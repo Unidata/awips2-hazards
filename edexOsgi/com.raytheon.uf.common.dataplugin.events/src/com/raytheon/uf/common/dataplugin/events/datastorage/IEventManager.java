@@ -71,7 +71,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param event
      * @return
      */
-    public boolean storeEvent(T event);
+    public boolean storeEvent(T... event);
 
     /**
      * Store multiple events
@@ -87,7 +87,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param event
      * @return
      */
-    public boolean updateEvent(T event);
+    public boolean updateEvent(T... event);
 
     /**
      * Update multiple events
@@ -95,7 +95,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param events
      * @return
      */
-    public boolean updateEvents(T... events);
+    public boolean updateEvents(List<T> events);
 
     /**
      * Remove a single event
@@ -103,7 +103,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param event
      * @return
      */
-    public boolean removeEvent(T event);
+    public boolean removeEvent(T... event);
 
     /**
      * Remove multiple events
@@ -111,7 +111,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param events
      * @return
      */
-    public boolean removeEvents(T... events);
+    public boolean removeEvents(List<T> events);
 
     /**
      * Retrieve an event based on the location, to be more precise, return ANY
