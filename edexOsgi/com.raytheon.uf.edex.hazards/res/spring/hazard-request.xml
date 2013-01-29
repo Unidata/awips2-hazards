@@ -1,0 +1,44 @@
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="handlerRegistry" class="com.raytheon.uf.edex.auth.HandlerRegistry"
+		factory-method="getInstance" />
+		
+	<bean id="hazardProperties" class="com.raytheon.uf.common.dataplugin.PluginProperties">
+		<property name="pluginName" value="hazards" />
+		<property name="pluginFQN"
+			value="com.raytheon.uf.common.dataplugin.events.hazards" />
+		<property name="record"
+			value="com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent" />
+	</bean>
+
+	<bean id="hazardsRegistered" factory-bean="pluginRegistry"
+		factory-method="register">
+		<constructor-arg value="hazards" />
+		<constructor-arg ref="hazardProperties" />
+	</bean>
+
+	<bean id="storeHazardHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.HazardStorageHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest" />
+		<constructor-arg ref="storeHazardHandler" />
+	</bean>
+
+	<bean id="getHazardHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.HazardRequestHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequest" />
+		<constructor-arg ref="getHazardHandler" />
+	</bean>
+	
+	<bean id="registryHandler"
+        class="com.raytheon.uf.common.registry.ebxml.ThriftRegistryHandler" />
+
+    <bean name="registryManagerInstanceInitializer" class="com.raytheon.uf.common.registry.RegistryManager">
+        <constructor-arg ref="registryHandler" />
+    </bean>
+</beans>

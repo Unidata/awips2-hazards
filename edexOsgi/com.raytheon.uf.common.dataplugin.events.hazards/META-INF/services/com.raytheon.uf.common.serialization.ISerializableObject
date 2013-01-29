@@ -1,0 +1,4 @@
+com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent
+com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardAttribute
+com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent
+com.raytheon.uf.common.dataplugin.events.hazards.event.HazardAttribute
