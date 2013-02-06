@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -240,5 +241,49 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
             return true;
         }
         throw new ValidationException("Unable to validate " + key.toString());
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
+        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        result = prime * result + Arrays.hashCode(valueSerializable);
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HazardAttribute other = (HazardAttribute) obj;
+        if (eventId == null) {
+            if (other.eventId != null)
+                return false;
+        } else if (!eventId.equals(other.eventId))
+            return false;
+        if (key == null) {
+            if (other.key != null)
+                return false;
+        } else if (!key.equals(other.key))
+            return false;
+        if (!Arrays.equals(valueSerializable, other.valueSerializable))
+            return false;
+        return true;
     }
 }

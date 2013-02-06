@@ -90,10 +90,10 @@ public class HazardQuery extends AdhocRegistryQuery<HazardEvent> implements
         HazardEvent object = (HazardEvent) RegistryUtil
                 .decodeObject(registryObjectType);
         if (geometry != null && object.getGeometry() != null
-                && geometry.intersects(object.getGeometry())) {
-            return object;
+                && geometry.intersects(object.getGeometry()) == false) {
+            return null;
         }
-        return null;
+        return object;
     }
 
     public void setFilters(Map<String, Object> filters) {

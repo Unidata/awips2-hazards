@@ -163,6 +163,10 @@ public class HazardEventManager implements IHazardEventManager {
         return factory.getHazardEvent();
     }
 
+    public IHazardEvent createEvent(IHazardEvent event) {
+        return factory.getHazardEvent(event);
+    }
+
     /**
      * Get the events from the registry/database based on filters given. Filters
      * will be evaluated by the handler on EDEX

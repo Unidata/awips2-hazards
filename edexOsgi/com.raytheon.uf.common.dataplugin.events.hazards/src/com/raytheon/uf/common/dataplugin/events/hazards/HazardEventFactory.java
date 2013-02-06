@@ -54,4 +54,17 @@ public class HazardEventFactory implements IHazardEventFactory {
         return new HazardEvent();
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory#
+     * getHazardEvent
+     * (com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent)
+     */
+    @Override
+    public IHazardEvent getHazardEvent(IHazardEvent event) {
+        return new HazardEvent(event);
+    }
+
 }

@@ -46,4 +46,6 @@ public interface IHazardEventFactory {
      * @return IHazardEvent
      */
     IHazardEvent getHazardEvent();
+
+    IHazardEvent getHazardEvent(IHazardEvent event);
 }

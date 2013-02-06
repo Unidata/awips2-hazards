@@ -84,29 +84,8 @@ import com.vividsolutions.jts.geom.Geometry;
 public class HazardEvent implements IHazardEvent, ISerializableObject,
         IValidator {
 
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardEvent.class);
-
-    @DynamicSerialize
-    private static class RegistryDate extends Date {
-
-        private static final long serialVersionUID = 1L;
-
-        @SuppressWarnings("unused")
-        public RegistryDate() {
-            super();
-        }
-
-        public RegistryDate(Date date) {
-            super(date.getTime());
-        }
-
-        @Override
-        public String toString() {
-            return String.valueOf(getTime());
-        }
-
-    }
 
     private static final long serialVersionUID = 1L;
 
@@ -148,19 +127,19 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     @XmlElement
     @SlotAttribute(HazardConstants.STARTTIME)
     @SlotAttributeConverter(DateSlotConverter.class)
-    private RegistryDate startTime;
+    private Date startTime;
 
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.ENDTIME)
     @SlotAttributeConverter(DateSlotConverter.class)
-    private RegistryDate endTime;
+    private Date endTime;
 
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.ISSUETIME)
     @SlotAttributeConverter(DateSlotConverter.class)
-    private RegistryDate issueTime;
+    private Date issueTime;
 
     @DynamicSerializeElement
     @XmlAttribute
@@ -190,6 +169,22 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         eventId = UUID.randomUUID().toString();
         hazardAttributesSerializable = new HashSet<HazardAttribute>();
         hazardAttributes = new HashMap<String, Serializable>();
+    }
+
+    public HazardEvent(IHazardEvent event) {
+        this();
+        setSite(event.getSite());
+        setEndTime(event.getEndTime());
+        setStartTime(event.getStartTime());
+        setIssueTime(event.getIssueTime());
+        setGeometry(event.getGeometry());
+        setPhenomenon(event.getPhenomenon());
+        setSignificance(event.getSignificance());
+        setState(event.getState());
+        setHazardMode(event.getHazardMode());
+        if (event.getHazardAttributes() != null) {
+            setHazardAttributes(event.getHazardAttributes());
+        }
     }
 
     /**
@@ -282,7 +277,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      *            the startTime to set
      */
     public void setStartTime(Date startTime) {
-        this.startTime = new RegistryDate(startTime);
+        this.startTime = new Date(startTime.getTime());
     }
 
     /**
@@ -298,7 +293,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      *            the endTime to set
      */
     public void setEndTime(Date endTime) {
-        this.endTime = new RegistryDate(endTime);
+        this.endTime = new Date(endTime.getTime());
     }
 
     /**
@@ -313,7 +308,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      *            the issueTime to set
      */
     public void setIssueTime(Date issueTime) {
-        this.issueTime = new RegistryDate(issueTime);
+        this.issueTime = new Date(issueTime.getTime());
     }
 
     /**
@@ -473,4 +468,112 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
                 .append("\n");
         return builder.toString();
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
+        result = prime * result
+                + ((geometry == null) ? 0 : geometry.hashCode());
+        result = prime
+                * result
+                + ((hazardAttributes == null) ? 0 : hazardAttributes.hashCode());
+        result = prime
+                * result
+                + ((hazardAttributesSerializable == null) ? 0
+                        : hazardAttributesSerializable.hashCode());
+        result = prime * result
+                + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result
+                + ((issueTime == null) ? 0 : issueTime.hashCode());
+        result = prime * result
+                + ((phenomenon == null) ? 0 : phenomenon.hashCode());
+        result = prime * result
+                + ((significance == null) ? 0 : significance.hashCode());
+        result = prime * result + ((site == null) ? 0 : site.hashCode());
+        result = prime * result
+                + ((startTime == null) ? 0 : startTime.hashCode());
+        result = prime * result + ((state == null) ? 0 : state.hashCode());
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HazardEvent other = (HazardEvent) obj;
+        if (endTime == null) {
+            if (other.endTime != null)
+                return false;
+        } else if (!endTime.equals(other.endTime))
+            return false;
+        if (eventId == null) {
+            if (other.eventId != null)
+                return false;
+        } else if (!eventId.equals(other.eventId))
+            return false;
+        if (geometry == null) {
+            if (other.geometry != null)
+                return false;
+        } else if (!geometry.equals(other.geometry))
+            return false;
+        if (hazardAttributes == null) {
+            if (other.hazardAttributes != null)
+                return false;
+        } else if (!hazardAttributes.equals(other.hazardAttributes))
+            return false;
+        if (hazardAttributesSerializable == null) {
+            if (other.hazardAttributesSerializable != null)
+                return false;
+        } else if (!hazardAttributesSerializable
+                .equals(other.hazardAttributesSerializable))
+            return false;
+        if (hazardMode != other.hazardMode)
+            return false;
+        if (issueTime == null) {
+            if (other.issueTime != null)
+                return false;
+        } else if (!issueTime.equals(other.issueTime))
+            return false;
+        if (phenomenon == null) {
+            if (other.phenomenon != null)
+                return false;
+        } else if (!phenomenon.equals(other.phenomenon))
+            return false;
+        if (significance == null) {
+            if (other.significance != null)
+                return false;
+        } else if (!significance.equals(other.significance))
+            return false;
+        if (site == null) {
+            if (other.site != null)
+                return false;
+        } else if (!site.equals(other.site))
+            return false;
+        if (startTime == null) {
+            if (other.startTime != null)
+                return false;
+        } else if (!startTime.equals(other.startTime))
+            return false;
+        if (state != other.state)
+            return false;
+        return true;
+    }
+
 }

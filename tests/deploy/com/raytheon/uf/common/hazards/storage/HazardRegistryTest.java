@@ -17,14 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.events.hazards;
+package com.raytheon.uf.common.hazards.storage;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 
 /**
- * Concrete implementation of {@link IHazardEventFactory} to return a
- * {@link PracticeHazardEvent}
+ * TODO Add Description
  * 
  * <pre>
  * 
@@ -32,7 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEven
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Dec 12, 2012            mnash     Initial creation
+ * Jan 30, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -40,31 +38,18 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEven
  * @version 1.0
  */
 
-public class PracticeHazardEventFactory implements IHazardEventFactory {
+public class HazardRegistryTest extends AbstractHazardStorageTest {
 
     /*
      * (non-Javadoc)
      * 
      * @see
-     * com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory#
-     * getHazardEvent()
+     * com.raytheon.uf.common.hazards.storage.AbstractHazardStorageTest#getMode
+     * ()
      */
     @Override
-    public IHazardEvent getHazardEvent() {
-        return new PracticeHazardEvent();
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory#
-     * getHazardEvent
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent)
-     */
-    @Override
-    public IHazardEvent getHazardEvent(IHazardEvent event) {
-        return new PracticeHazardEvent(event);
+    Mode getMode() {
+        return Mode.OPERATIONAL;
     }
 
 }

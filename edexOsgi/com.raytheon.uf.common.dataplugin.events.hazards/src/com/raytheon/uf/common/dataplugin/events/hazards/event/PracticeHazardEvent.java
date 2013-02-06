@@ -166,6 +166,22 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         hazardAttributes = new HashMap<String, Serializable>();
     }
 
+    public PracticeHazardEvent(IHazardEvent event) {
+        this();
+        setSite(event.getSite());
+        setEndTime(event.getEndTime());
+        setStartTime(event.getStartTime());
+        setIssueTime(event.getIssueTime());
+        setGeometry(event.getGeometry());
+        setPhenomenon(event.getPhenomenon());
+        setSignificance(event.getSignificance());
+        setState(event.getState());
+        setHazardMode(event.getHazardMode());
+        if (event.getHazardAttributes() != null) {
+            setHazardAttributes(event.getHazardAttributes());
+        }
+    }
+
     /**
      * @return the key
      */
@@ -499,5 +515,91 @@ public class PracticeHazardEvent extends PersistableDataObject implements
             }
         }
         return builder.toString();
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result
+                + ((geometry == null) ? 0 : geometry.hashCode());
+        result = prime
+                * result
+                + ((hazardAttrsSerializable == null) ? 0
+                        : hazardAttrsSerializable.hashCode());
+        result = prime * result
+                + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        result = prime * result
+                + ((phenomenon == null) ? 0 : phenomenon.hashCode());
+        result = prime * result
+                + ((significance == null) ? 0 : significance.hashCode());
+        result = prime * result
+                + ((startTime == null) ? 0 : startTime.hashCode());
+        result = prime * result + ((state == null) ? 0 : state.hashCode());
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        PracticeHazardEvent other = (PracticeHazardEvent) obj;
+        if (endTime == null) {
+            if (other.endTime != null)
+                return false;
+        } else if (endTime.getTime() != other.endTime.getTime())
+            return false;
+        if (geometry == null) {
+            if (other.geometry != null)
+                return false;
+        } else if (!geometry.equals(other.geometry))
+            return false;
+        if (hazardAttrsSerializable == null) {
+            if (other.hazardAttrsSerializable != null)
+                return false;
+        } else if (!hazardAttrsSerializable
+                .equals(other.hazardAttrsSerializable))
+            return false;
+        if (hazardMode != other.hazardMode)
+            return false;
+        if (key == null) {
+            if (other.key != null)
+                return false;
+        } else if (!key.equals(other.key))
+            return false;
+        if (phenomenon == null) {
+            if (other.phenomenon != null)
+                return false;
+        } else if (!phenomenon.equals(other.phenomenon))
+            return false;
+        if (significance == null) {
+            if (other.significance != null)
+                return false;
+        } else if (!significance.equals(other.significance))
+            return false;
+        if (startTime == null) {
+            if (other.startTime != null)
+                return false;
+        } else if (startTime.getTime() != other.startTime.getTime())
+            return false;
+        if (state != other.state)
+            return false;
+        return true;
     }
 }
