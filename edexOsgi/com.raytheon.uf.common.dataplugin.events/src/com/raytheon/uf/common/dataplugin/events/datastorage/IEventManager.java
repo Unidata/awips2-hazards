@@ -58,6 +58,14 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
     public T createEvent();
 
     /**
+     * Copies the past in event information and returns a new event out
+     * 
+     * @param event
+     * @return
+     */
+    public T createEvent(T event);
+
+    /**
      * Retrieve events based on a set of filters.
      * 
      * @param filter

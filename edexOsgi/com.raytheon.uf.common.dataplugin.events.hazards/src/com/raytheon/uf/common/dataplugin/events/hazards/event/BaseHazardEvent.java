@@ -58,7 +58,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private Date endTime;
 
-    private String geometry;
+    private Geometry geometry;
 
     private String site;
 
@@ -94,18 +94,17 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public Geometry getGeometry() {
+        return geometry;
+    }
+
+    public void setGeometry(String geom) {
         WKTReader reader = new WKTReader();
         try {
-            return reader.read(geometry);
+            this.geometry = reader.read(geom);
         } catch (ParseException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to read in geometry text", e);
         }
-        return null;
-    }
-
-    public void setGeometry(String text) {
-        this.geometry = text;
     }
 
     @Override
@@ -135,7 +134,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setState(HazardState state) {
-        throw new UnsupportedOperationException();
+        this.hazardState = state;
     }
 
     public void setState(String state) {
@@ -184,7 +183,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setGeometry(Geometry geom) {
-        throw new UnsupportedOperationException();
+        this.geometry = geom;
     }
 
     @Override
@@ -194,7 +193,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setHazardMode(ProductClass mode) {
-        throw new UnsupportedOperationException();
+        this.hazardMode = mode;
     }
 
     public void setHazardMode(String mode) {

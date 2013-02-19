@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Ignore;
@@ -62,15 +63,20 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 @Ignore
 public abstract class AbstractHazardStorageTest {
 
-    private final String site = "koax";
+    private final String site = "kxxx";
 
-    private final String phen = "FF";
+    private final String phen = "ZO"; // zombies!
 
-    private final String sig = "W";
+    private final String sig = "P"; // apocalypse!
 
     private final HazardState state = HazardState.POTENTIAL;
 
-    private final Date date = new Date();
+    private final TimeUnit time = TimeUnit.DAYS;
+
+    private final Date date = new Date(System.currentTimeMillis()
+            - time.convert(365, TimeUnit.MILLISECONDS)); // go back a year from
+                                                         // today, so we
+                                                         // don't overlap
 
     private final ProductClass clazz = ProductClass.OPERATIONAL;
 
@@ -97,7 +103,8 @@ public abstract class AbstractHazardStorageTest {
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
         createdEvent.setGeometry(geometry);
-        manager.storeEvent(createdEvent);
+        boolean stored = manager.storeEvent(createdEvent);
+        assertTrue("Not able to store event", stored);
         return createdEvent;
     }
 
@@ -118,6 +125,7 @@ public abstract class AbstractHazardStorageTest {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager
                 .getByGeometry(createdEvent.getGeometry());
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -129,6 +137,7 @@ public abstract class AbstractHazardStorageTest {
     public void testBySite() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager.getBySite(site);
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -140,6 +149,7 @@ public abstract class AbstractHazardStorageTest {
     public void testByPhenomenon() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager.getByPhenomenon(phen);
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -151,6 +161,7 @@ public abstract class AbstractHazardStorageTest {
     public void testBySignificance() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager.getBySignificance(sig);
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -162,6 +173,7 @@ public abstract class AbstractHazardStorageTest {
     public void testByPhensig() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager.getByPhensig(phen, sig);
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -173,6 +185,7 @@ public abstract class AbstractHazardStorageTest {
     public void testByTime() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager.getByTime(date, date);
+        assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventId())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
@@ -199,7 +212,7 @@ public abstract class AbstractHazardStorageTest {
         assertTrue(tf);
         HazardHistoryList list = manager
                 .getByEventId(createdEvent.getEventId());
-        assertThat(list, hasSize(1));
+        assertThat(createdEvent.getEventId(), list, hasSize(1));
         assertEquals(list.get(0), createdEvent);
     }
 

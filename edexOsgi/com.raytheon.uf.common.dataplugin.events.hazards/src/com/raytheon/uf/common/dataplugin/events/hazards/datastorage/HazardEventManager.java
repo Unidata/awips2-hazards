@@ -163,6 +163,7 @@ public class HazardEventManager implements IHazardEventManager {
         return factory.getHazardEvent();
     }
 
+    @Override
     public IHazardEvent createEvent(IHazardEvent event) {
         return factory.getHazardEvent(event);
     }

@@ -22,7 +22,7 @@ package com.raytheon.uf.common.hazards.storage;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 
 /**
- * TODO Add Description
+ * Tests registry interaction of IHazardEvents
  * 
  * <pre>
  * 

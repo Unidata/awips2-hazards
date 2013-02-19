@@ -43,6 +43,17 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         
     def __init__(self, wrappedObject):
         self.jobj = wrappedObject
+        self.site = None
+        self.eventId = None
+        self.hazardState = None
+        self.issueTime = None
+        self.startTime = None
+        self.endTime = None
+        self.phenomenon = None
+        self.significance = None
+        self.hazardAttributes = None
+        self.hazardMode = None
+        self.geometry = None
     
     def getSite(self):
         return self.getSite()
@@ -172,5 +183,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)
         self.jobj.setHazardMode(self.hazardMode)
-        self.jobj.setGeometry(self.geometry.wkt)
+        if geometry is not None:
+            self.jobj.setGeometry(self.geometry.wkt)
+        else :
+            self.jobj.setGeometry(None)
         return self.jobj                                        

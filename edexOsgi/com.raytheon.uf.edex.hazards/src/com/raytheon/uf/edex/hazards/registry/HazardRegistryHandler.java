@@ -101,11 +101,13 @@ public class HazardRegistryHandler extends
         // TODO, this should be implemented as part of the registry code
         List<HazardEvent> events = new ArrayList<HazardEvent>();
         for (HazardEvent event : getAll()) {
-            if ((event.getStartTime().after(start) || event.getStartTime()
-                    .equals(start))
-                    && (event.getEndTime().before(end) || event.getEndTime()
-                            .equals(end))) {
-                events.add(event);
+            if (event.getStartTime() != null && event.getEndTime() != null) {
+                if ((event.getStartTime().after(start) || event.getStartTime()
+                        .equals(start))
+                        && (event.getEndTime().before(end) || event
+                                .getEndTime().equals(end))) {
+                    events.add(event);
+                }
             }
         }
         return events;
