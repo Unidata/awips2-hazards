@@ -91,7 +91,7 @@ public class DatabaseEventManager implements
     @Override
     public void store(PracticeHazardEvent event) {
         dao.create(event);
-        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventId()
+        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully stored to database");
     }
 
@@ -105,7 +105,7 @@ public class DatabaseEventManager implements
     @Override
     public void delete(PracticeHazardEvent event) {
         dao.delete(event);
-        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventId()
+        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully deleted from database");
     }
 
@@ -119,7 +119,7 @@ public class DatabaseEventManager implements
     @Override
     public void update(PracticeHazardEvent event) {
         dao.update(event);
-        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventId()
+        statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully updated in database");
     }
 
@@ -132,7 +132,8 @@ public class DatabaseEventManager implements
      */
     @SuppressWarnings("unchecked")
     @Override
-    public Map<String, HazardHistoryList> retrieve(Map<String, Object> filters) {
+    public Map<String, HazardHistoryList> retrieve(
+            Map<String, List<Object>> filters) {
         Criteria criteria = dao.getSessionFactory().openSession()
                 .createCriteria(PracticeHazardEvent.class);
 
@@ -145,19 +146,27 @@ public class DatabaseEventManager implements
         }
 
         if (filters != null) {
-            for (Entry<String, Object> entry : filters.entrySet()) {
+            for (Entry<String, List<Object>> entry : filters.entrySet()) {
                 String finalKey = entry.getKey();
                 // filter for the geometry
                 if (finalKey.equals(HazardConstants.GEOMETRY)) {
                     try {
                         // TODO, is there a better way to do this?
                         ISpatialQuery query = SpatialQueryFactory.create();
-                        Object[] results = query
-                                .dbRequest(
-                                        "select eventid from awips.practice_hazards where ST_Intersects(geometry, ST_GeomFromText('"
-                                                + ((Geometry) entry.getValue())
-                                                        .toText() + "'));",
-                                        "metadata");
+                        StringBuilder requestString = new StringBuilder(
+                                "select eventid from awips.practice_hazards where ");
+                        for (int i = 0; i < entry.getValue().size(); i++) {
+                            if (i > 0) {
+                                requestString.append(" or ");
+                            }
+                            Geometry geom = (Geometry) entry.getValue().get(i);
+                            requestString
+                                    .append("ST_Intersects(geometry, ST_GeomFromText('"
+                                            + geom.toText() + "'))");
+                        }
+                        requestString.append(";");
+                        Object[] results = query.dbRequest(
+                                requestString.toString(), "metadata");
                         criteria.add(Restrictions.in("key."
                                 + HazardConstants.EVENTID, results));
                     } catch (SpatialException e) {
@@ -166,17 +175,32 @@ public class DatabaseEventManager implements
                     }
 
                 } else if (finalKey.equals(HazardConstants.STARTTIME)) {
+                    // we will not support any more than two times, it doesn't
+                    // make any sense, we will only support the first 2 in the
+                    // filter map
                     criteria.add(Restrictions.ge(HazardConstants.STARTTIME,
-                            filters.get(HazardConstants.STARTTIME)));
+                            filters.get(HazardConstants.STARTTIME).get(0)));
+                    if (filters.get(HazardConstants.STARTTIME).size() > 1) {
+                        criteria.add(Restrictions.le(HazardConstants.STARTTIME,
+                                filters.get(HazardConstants.STARTTIME).get(1)));
+                    }
                 } else if (finalKey.equals(HazardConstants.ENDTIME)) {
-                    criteria.add(Restrictions.le(HazardConstants.ENDTIME,
-                            filters.get(HazardConstants.ENDTIME)));
+                    // same as above, only support 2 times
+                    if (filters.get(HazardConstants.ENDTIME).size() > 1) {
+                        criteria.add(Restrictions.ge(HazardConstants.ENDTIME,
+                                filters.get(HazardConstants.ENDTIME).get(0)));
+                        criteria.add(Restrictions.le(HazardConstants.ENDTIME,
+                                filters.get(HazardConstants.ENDTIME).get(1)));
+                    } else {
+                        criteria.add(Restrictions.le(HazardConstants.ENDTIME,
+                                filters.get(HazardConstants.ENDTIME).get(0)));
+                    }
                 } else {
                     // filter for any specified column in the table
                     if (keys.contains(finalKey)) {
                         finalKey = "key." + entry.getKey();
                     }
-                    criteria.add(Restrictions.eq(finalKey, entry.getValue()));
+                    criteria.add(Restrictions.in(finalKey, entry.getValue()));
                 }
             }
         }
@@ -185,12 +209,12 @@ public class DatabaseEventManager implements
 
         // group them for use later
         for (PracticeHazardEvent event : events) {
-            if (mapEvents.containsKey(event.getEventId())) {
-                mapEvents.get(event.getEventId()).add(event);
+            if (mapEvents.containsKey(event.getEventID())) {
+                mapEvents.get(event.getEventID()).add(event);
             } else {
                 HazardHistoryList list = new HazardHistoryList();
                 list.add(event);
-                mapEvents.put(event.getEventId(), list);
+                mapEvents.put(event.getEventID(), list);
             }
         }
         return mapEvents;

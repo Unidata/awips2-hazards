@@ -77,7 +77,7 @@ public class HazardRegistryHandler extends
         return new HazardQuery();
     }
 
-    public List<HazardEvent> getByFilter(Map<String, Object> filters)
+    public List<HazardEvent> getByFilter(Map<String, List<Object>> filters)
             throws RegistryHandlerException {
         HazardQuery query = getQuery();
         query.setFilters(filters);

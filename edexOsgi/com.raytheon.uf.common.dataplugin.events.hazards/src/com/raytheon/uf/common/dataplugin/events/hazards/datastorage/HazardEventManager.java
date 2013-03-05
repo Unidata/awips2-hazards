@@ -50,7 +50,9 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PythonScript;
+import com.raytheon.uf.common.serialization.ExceptionWrapper;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.serialization.comm.response.ServerErrorResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -174,7 +176,7 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public Map<String, HazardHistoryList> getEventsByFilter(
-            Map<String, Object> filters) {
+            Map<String, List<Object>> filters) {
         try {
             HazardRetrieveRequest request = new HazardRetrieveRequest();
             request.setPractice(practice);
@@ -183,10 +185,16 @@ public class HazardEventManager implements IHazardEventManager {
             if (responseObject instanceof HazardRetrieveRequestResponse) {
                 HazardRetrieveRequestResponse response = (HazardRetrieveRequestResponse) responseObject;
                 return response.getEvents();
+            } else if (responseObject instanceof ServerErrorResponse) {
+                ServerErrorResponse response = (ServerErrorResponse) responseObject;
+                statusHandler.handle(Priority.ERROR, response.getException()
+                        .getMessage(), ExceptionWrapper
+                        .unwrapThrowable(response.getException()));
             } else {
-                statusHandler.handle(Priority.INFO,
+                statusHandler.handle(Priority.PROBLEM,
                         "Received an unexpected response of type "
                                 + responseObject.getClass());
+                return null;
             }
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -223,9 +231,11 @@ public class HazardEventManager implements IHazardEventManager {
                         validator.isValid();
                     } catch (ValidationException e) {
                         evs.remove(ev);
-                        statusHandler.handle(Priority.ERROR,
-                                "Event " + ev.getSite() + "-" + ev.getEventId()
-                                        + "-" + ev.getIssueTime()
+                        statusHandler.handle(
+                                Priority.ERROR,
+                                "Event " + ev.getSiteID() + "-"
+                                        + ev.getEventID() + "-"
+                                        + ev.getIssueTime()
                                         + " is not valid, not storing.");
                     }
                 }
@@ -269,9 +279,11 @@ public class HazardEventManager implements IHazardEventManager {
                         validator.isValid();
                     } catch (ValidationException e) {
                         evs.remove(ev);
-                        statusHandler.handle(Priority.ERROR,
-                                "Event " + ev.getSite() + "-" + ev.getEventId()
-                                        + "-" + ev.getIssueTime()
+                        statusHandler.handle(
+                                Priority.ERROR,
+                                "Event " + ev.getSiteID() + "-"
+                                        + ev.getEventID() + "-"
+                                        + ev.getIssueTime()
                                         + " is not valid, not updating.");
                     }
                 }
@@ -326,10 +338,10 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getBySite(java.lang.String)
      */
-    public Map<String, HazardHistoryList> getBySite(String site) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.SITE, site);
-        return getEventsByFilter(filters);
+    public Map<String, HazardHistoryList> getBySiteID(String site) {
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.SITEID, site);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -339,9 +351,9 @@ public class HazardEventManager implements IHazardEventManager {
      * IHazardEventManager#getByPhenomenon(java.lang.String)
      */
     public Map<String, HazardHistoryList> getByPhenomenon(String phenomenon) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.PHENOMENON, phenomenon);
-        return getEventsByFilter(filters);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.PHENOMENON, phenomenon);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -351,9 +363,9 @@ public class HazardEventManager implements IHazardEventManager {
      * IHazardEventManager#getBySignificance(java.lang.String)
      */
     public Map<String, HazardHistoryList> getBySignificance(String significance) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.SIGNIFICANCE, significance);
-        return getEventsByFilter(filters);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.SIGNIFICANCE, significance);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -363,10 +375,10 @@ public class HazardEventManager implements IHazardEventManager {
      * IHazardEventManager#getByPhensig(java.lang.String, java.lang.String)
      */
     public Map<String, HazardHistoryList> getByPhensig(String phen, String sig) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.PHENOMENON, phen);
-        filters.put(HazardConstants.SIGNIFICANCE, sig);
-        return getEventsByFilter(filters);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.PHENOMENON, phen);
+        builder.addKey(HazardConstants.SIGNIFICANCE, sig);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -375,11 +387,12 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getByEventId(java.lang.String)
      */
-    public HazardHistoryList getByEventId(String eventId) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.EVENTID, eventId);
+    public HazardHistoryList getByEventID(String eventId) {
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.EVENTID, eventId);
         HazardHistoryList list = new HazardHistoryList();
-        Map<String, HazardHistoryList> events = getEventsByFilter(filters);
+        Map<String, HazardHistoryList> events = getEventsByFilter(builder
+                .getQuery());
         list.addAll(events.get(eventId));
         return list;
     }
@@ -392,9 +405,9 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public Map<String, HazardHistoryList> getByGeometry(Geometry geometry) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.GEOMETRY, geometry);
-        return getEventsByFilter(filters);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.GEOMETRY, geometry);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -406,10 +419,10 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public Map<String, HazardHistoryList> getByTime(Date startTime, Date endTime) {
-        Map<String, Object> filters = new HashMap<String, Object>();
-        filters.put(HazardConstants.STARTTIME, startTime);
-        filters.put(HazardConstants.ENDTIME, endTime);
-        return getEventsByFilter(filters);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.STARTTIME, startTime);
+        builder.addKey(HazardConstants.ENDTIME, endTime);
+        return getEventsByFilter(builder.getQuery());
     }
 
     /*
@@ -445,6 +458,7 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public Map<String, HazardHistoryList> getAll() {
-        return getEventsByFilter(null);
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        return getEventsByFilter(builder.getQuery());
     }
 }

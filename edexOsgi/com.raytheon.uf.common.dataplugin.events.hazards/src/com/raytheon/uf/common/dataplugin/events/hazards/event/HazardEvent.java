@@ -79,7 +79,7 @@ import com.vividsolutions.jts.geom.Geometry;
 @XmlRootElement(name = "hazard")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-@RegistryObject({ HazardConstants.SITE, HazardConstants.EVENTID,
+@RegistryObject({ HazardConstants.SITEID, HazardConstants.EVENTID,
         HazardConstants.ISSUETIME })
 public class HazardEvent implements IHazardEvent, ISerializableObject,
         IValidator {
@@ -91,13 +91,13 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.SITE)
-    private String site;
+    @SlotAttribute(HazardConstants.SITEID)
+    private String siteID;
 
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.EVENTID)
-    private String eventId;
+    private String eventID;
 
     /**
      * The state of the record at this point in time
@@ -166,14 +166,14 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * {@link HazardEventManager}; {@link IHazardEventManager#createEvent()}
      */
     public HazardEvent() {
-        eventId = UUID.randomUUID().toString();
+        eventID = UUID.randomUUID().toString();
         hazardAttributesSerializable = new HashSet<HazardAttribute>();
         hazardAttributes = new HashMap<String, Serializable>();
     }
 
     public HazardEvent(IHazardEvent event) {
         this();
-        setSite(event.getSite());
+        setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setIssueTime(event.getIssueTime());
@@ -188,35 +188,37 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     }
 
     /**
-     * @return the site
+     * @return the siteID
      */
-    public String getSite() {
-        return site;
+    @Override
+    public String getSiteID() {
+        return siteID;
     }
 
     /**
-     * @param site
-     *            the site to set
+     * @param siteID
+     *            the siteID to set
      */
-    public void setSite(String site) {
-        this.site = site;
+    @Override
+    public void setSiteID(String site) {
+        this.siteID = site;
     }
 
     /**
-     * @return the eventId
+     * @return the eventID
      */
-    public String getEventId() {
-        return eventId;
+    public String getEventID() {
+        return eventID;
     }
 
     /**
-     * @param eventId
-     *            the eventId to set This is here to support dynamic serialize.
-     *            It is not recommended for use. An eventId gets set when the
+     * @param eventID
+     *            the eventID to set This is here to support dynamic serialize.
+     *            It is not recommended for use. An eventID gets set when the
      *            event gets created.
      */
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
+    public void setEventID(String eventId) {
+        this.eventID = eventId;
     }
 
     /**
@@ -389,14 +391,14 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @Override
     public void addHazardAttribute(String key, Serializable value) {
-        HazardAttribute attr = new HazardAttribute(eventId, key, value);
+        HazardAttribute attr = new HazardAttribute(eventID, key, value);
         try {
             attr.isValid();
             hazardAttributes.put(key, value);
             hazardAttributesSerializable.add(attr);
         } catch (ValidationException e) {
             statusHandler.handle(Priority.ERROR, "Unable to validate "
-                    + eventId, e);
+                    + eventID, e);
         }
     }
 
@@ -456,8 +458,8 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("EventId : ").append(eventId).append("\n");
-        builder.append("Site : ").append(site).append("\n");
+        builder.append("EventId : ").append(eventID).append("\n");
+        builder.append("Site : ").append(siteID).append("\n");
         builder.append("Phensig : ").append(phenomenon).append(".")
                 .append(significance).append("\n");
         builder.append("Issue Time : ").append(new Date(issueTime.getTime()))
@@ -479,7 +481,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         final int prime = 31;
         int result = 1;
         result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
-        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
+        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result
                 + ((geometry == null) ? 0 : geometry.hashCode());
         result = prime
@@ -497,7 +499,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
         result = prime * result
                 + ((significance == null) ? 0 : significance.hashCode());
-        result = prime * result + ((site == null) ? 0 : site.hashCode());
+        result = prime * result + ((siteID == null) ? 0 : siteID.hashCode());
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
@@ -523,10 +525,10 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
                 return false;
         } else if (!endTime.equals(other.endTime))
             return false;
-        if (eventId == null) {
-            if (other.eventId != null)
+        if (eventID == null) {
+            if (other.eventID != null)
                 return false;
-        } else if (!eventId.equals(other.eventId))
+        } else if (!eventID.equals(other.eventID))
             return false;
         if (geometry == null) {
             if (other.geometry != null)
@@ -561,10 +563,10 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
                 return false;
         } else if (!significance.equals(other.significance))
             return false;
-        if (site == null) {
-            if (other.site != null)
+        if (siteID == null) {
+            if (other.siteID != null)
                 return false;
-        } else if (!site.equals(other.site))
+        } else if (!siteID.equals(other.siteID))
             return false;
         if (startTime == null) {
             if (other.startTime != null)

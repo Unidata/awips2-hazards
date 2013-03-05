@@ -36,7 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * For more unique keys, since there are the possibility for multiple same
- * eventIds, make a primary key that uses the site, eventId, and issuingTime
+ * eventIds, make a primary key that uses the siteID, eventID, and issuingTime
  * 
  * <pre>
  * 
@@ -60,13 +60,13 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
 
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.SITE)
-    private String site;
+    @Column(name = HazardConstants.SITEID)
+    private String siteID;
 
     @DynamicSerializeElement
     @XmlElement
-    @Column
-    private String eventId;
+    @Column(name = HazardConstants.EVENTID)
+    private String eventID;
 
     @DynamicSerializeElement
     @XmlElement
@@ -77,37 +77,37 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
          * 
          */
     public PracticeHazardEventPK() {
-        eventId = UUID.randomUUID().toString();
+        eventID = UUID.randomUUID().toString();
     }
 
     /**
      * @return the issuingSite
      */
-    public String getSite() {
-        return site;
+    public String getSiteID() {
+        return siteID;
     }
 
     /**
      * @param issuingSite
      *            the issuingSite to set
      */
-    public void setSite(String issuingSite) {
-        this.site = issuingSite;
+    public void setSiteID(String issuingSite) {
+        this.siteID = issuingSite;
     }
 
     /**
-     * @return the eventId
+     * @return the eventID
      */
-    public String getEventId() {
-        return eventId;
+    public String getEventID() {
+        return eventID;
     }
 
     /**
-     * @param eventId
-     *            the eventId to set
+     * @param eventID
+     *            the eventID to set
      */
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
+    public void setEventID(String eventId) {
+        this.eventID = eventId;
     }
 
     /**
@@ -134,8 +134,8 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
-        result = prime * result + ((site == null) ? 0 : site.hashCode());
+        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
+        result = prime * result + ((siteID == null) ? 0 : siteID.hashCode());
         result = prime * result
                 + ((timeIssued == null) ? 0 : timeIssued.hashCode());
         return result;
@@ -155,15 +155,15 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
         if (getClass() != obj.getClass())
             return false;
         PracticeHazardEventPK other = (PracticeHazardEventPK) obj;
-        if (eventId == null) {
-            if (other.eventId != null)
+        if (eventID == null) {
+            if (other.eventID != null)
                 return false;
-        } else if (!eventId.equals(other.eventId))
+        } else if (!eventID.equals(other.eventID))
             return false;
-        if (site == null) {
-            if (other.site != null)
+        if (siteID == null) {
+            if (other.siteID != null)
                 return false;
-        } else if (!site.equals(other.site))
+        } else if (!siteID.equals(other.siteID))
             return false;
         if (timeIssued == null) {
             if (other.timeIssued != null)

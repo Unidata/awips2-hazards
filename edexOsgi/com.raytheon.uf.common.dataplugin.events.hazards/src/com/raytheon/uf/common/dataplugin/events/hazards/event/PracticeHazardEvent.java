@@ -168,7 +168,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
 
     public PracticeHazardEvent(IHazardEvent event) {
         this();
-        setSite(event.getSite());
+        setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setIssueTime(event.getIssueTime());
@@ -201,8 +201,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * @return the site
      */
     @Override
-    public String getSite() {
-        return key.getSite();
+    public String getSiteID() {
+        return key.getSiteID();
     }
 
     /**
@@ -210,28 +210,28 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      *            the site to set
      */
     @Override
-    public void setSite(String site) {
-        key.setSite(site);
+    public void setSiteID(String site) {
+        key.setSiteID(site);
     }
 
     /**
      * @return the eventId
      */
     @Override
-    public String getEventId() {
-        return key.getEventId();
+    public String getEventID() {
+        return key.getEventID();
     }
 
     /**
      * This is not to be used. This is set on construction of the object.
      */
     @Override
-    public void setEventId(String uuid) {
-        if (key.getEventId() != null) {
+    public void setEventID(String uuid) {
+        if (key.getEventID() != null) {
             throw new UnsupportedOperationException(
                     "Cannot set event id after it has already been set.");
         }
-        key.setEventId(uuid);
+        key.setEventID(uuid);
     }
 
     /**
@@ -497,8 +497,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("EventId : ").append(key.getEventId()).append("\n");
-        builder.append("Site : ").append(getSite()).append("\n");
+        builder.append("EventId : ").append(key.getEventID()).append("\n");
+        builder.append("Site : ").append(getSiteID()).append("\n");
         builder.append("Phensig : ").append(phenomenon).append(".")
                 .append(significance).append("\n");
         builder.append("Issue Time : ")

@@ -162,16 +162,16 @@ public class PracticeHazardAttribute extends PersistableDataObject implements
     /**
      * @return the eventId
      */
-    public String getEventId() {
-        return id.getEventId();
+    public String getEventID() {
+        return id.getEventID();
     }
 
     /**
      * @param eventId
      *            the eventId to set
      */
-    public void setEventId(String eventId) {
-        this.id.setEventId(eventId);
+    public void setEventID(String eventId) {
+        this.id.setEventID(eventId);
     }
 
     /*

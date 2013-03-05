@@ -54,10 +54,19 @@ public interface IHazardEventManager extends
      *            - a {@link String}
      * @return the history of hazards in a map keyed by the event id
      */
-    Map<String, HazardHistoryList> getBySite(String site);
+    Map<String, HazardHistoryList> getBySiteID(String site);
 
     /**
      * Retrieve all hazards with phenomenon that was passed in
+     * 
+     * @param phenomenon
+     *            - a {@link String}
+     * @return the history of hazards in a map keyed by the event id
+     */
+    Map<String, HazardHistoryList> getByPhenomenon(String phenomenon);
+
+    /**
+     * Retrieve all hazards with significance that was passed in
      * 
      * @param phenomenon
      *            - a {@link String}
@@ -85,7 +94,7 @@ public interface IHazardEventManager extends
      *            - a {@link String}
      * @return the history of hazards in a list
      */
-    HazardHistoryList getByEventId(String eventId);
+    HazardHistoryList getByEventID(String eventId);
 
     /**
      * Stores a set of events that were grouped together.

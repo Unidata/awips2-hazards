@@ -55,16 +55,16 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.hazardMode = None
         self.geometry = None
     
-    def getSite(self):
-        return self.getSite()
+    def getSiteID(self):
+        return self.site
 
-    def setSite(self, site):
+    def setSiteID(self, site):
         self.site = site
     
-    def getEventId(self):
+    def getEventID(self):
         return self.eventId
     
-    def setEventId(self, eventId):
+    def setEventID(self, eventId):
         self.eventId = eventId
         
     def getHazardState(self):
@@ -123,7 +123,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def __getitem__(self, key):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            return getSite()
+            return getSiteID()
         elif lowerKey == 'state':
             return getState()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
@@ -140,6 +140,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return getGeometry()
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
             return getHazardMode()
+        elif lowerKey == 'eventid':
+            return getEventID()
         elif lowerKey == 'attributes':
             return getHazardAttributes()
         else :
@@ -148,7 +150,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def __setitem__(self, key, value):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            setSite(value)
+            setSiteID(value)
         elif lowerKey == 'state':
             setState(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
@@ -175,7 +177,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         return not __eq__(other)
     
     def toJavaObj(self):
-        self.jobj.setSite(self.site)
+        self.jobj.setSiteID(self.site)
         self.jobj.setState(self.hazardState)
         self.jobj.setPhenomenon(self.phenomenon)
         self.jobj.setSignificance(self.significance)
@@ -183,8 +185,9 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)
         self.jobj.setHazardMode(self.hazardMode)
-        if geometry is not None:
+        if self.geometry is not None:
             self.jobj.setGeometry(self.geometry.wkt)
         else :
             self.jobj.setGeometry(None)
+        self.jobj.setHazardAttributes(Jutil.pyDictToJavaMap(self.hazardAttributes))
         return self.jobj                                        

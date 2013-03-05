@@ -75,7 +75,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.EVENTID)
-    private String eventId;
+    private String eventID;
 
     @DynamicSerializeElement
     @XmlElement
@@ -97,7 +97,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
      * 
      */
     public HazardAttribute(String eventId, String key, Serializable value) {
-        this.eventId = eventId;
+        this.eventID = eventId;
         this.key = key;
         ObjectOutputStream stream = null;
         ByteArrayOutputStream bStream = new ByteArrayOutputStream();
@@ -123,16 +123,16 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
     /**
      * @return the eventId
      */
-    public String getEventId() {
-        return eventId;
+    public String getEventID() {
+        return eventID;
     }
 
     /**
      * @param eventId
      *            the eventId to set
      */
-    public void setEventId(String eventId) {
-        this.eventId = eventId;
+    public void setEventID(String eventId) {
+        this.eventID = eventId;
     }
 
     /*
@@ -236,7 +236,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
     @Override
     public boolean isValid() throws ValidationException {
         if (Strings.isNullOrEmpty(key) == false
-                && Strings.isNullOrEmpty(eventId) == false
+                && Strings.isNullOrEmpty(eventID) == false
                 && valueSerializable != null) {
             return true;
         }
@@ -252,7 +252,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
+        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
         result = prime * result + Arrays.hashCode(valueSerializable);
         return result;
@@ -272,10 +272,10 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
         if (getClass() != obj.getClass())
             return false;
         HazardAttribute other = (HazardAttribute) obj;
-        if (eventId == null) {
-            if (other.eventId != null)
+        if (eventID == null) {
+            if (other.eventID != null)
                 return false;
-        } else if (!eventId.equals(other.eventId))
+        } else if (!eventID.equals(other.eventID))
             return false;
         if (key == null) {
             if (other.key != null)

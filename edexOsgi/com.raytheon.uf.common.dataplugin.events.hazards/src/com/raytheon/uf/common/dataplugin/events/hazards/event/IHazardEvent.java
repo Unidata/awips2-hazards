@@ -55,13 +55,13 @@ public interface IHazardEvent extends IEvent {
         }
     };
 
-    public String getSite();
+    public String getSiteID();
 
-    public void setSite(String site);
+    public void setSiteID(String site);
 
-    public String getEventId();
+    public String getEventID();
 
-    public void setEventId(String uuid);
+    public void setEventID(String uuid);
 
     public HazardState getState();
 

@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.registry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -96,10 +98,14 @@ public class HazardQuery extends AdhocRegistryQuery<HazardEvent> implements
         return object;
     }
 
-    public void setFilters(Map<String, Object> filters) {
-        for (Entry<String, Object> entry : filters.entrySet()) {
-            setAttribute(entry.getKey(), new StringAttribute(entry.getValue()
-                    .toString()));
+    public void setFilters(Map<String, List<Object>> filters) {
+        for (Entry<String, List<Object>> entry : filters.entrySet()) {
+            List<String> vals = new ArrayList<String>();
+            for (Object value : entry.getValue()) {
+                vals.add(value.toString());
+            }
+            StringAttribute attr = new StringAttribute(vals);
+            setAttribute(entry.getKey(), attr);
         }
     }
 

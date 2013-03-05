@@ -17,15 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.events.hazards.event;
+package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import java.io.Serializable;
-
-import com.raytheon.uf.common.dataplugin.events.IValidator;
-import com.raytheon.uf.common.dataplugin.events.ValidationException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Interface to the hazard attributes
+ * Helps to build a query for IHazardEvents.
  * 
  * <pre>
  * 
@@ -33,7 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.ValidationException;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 24, 2012            mnash     Initial creation
+ * Feb 28, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -41,13 +41,33 @@ import com.raytheon.uf.common.dataplugin.events.ValidationException;
  * @version 1.0
  */
 
-public interface IHazardAttribute extends IValidator {
-    public String getEventID();
+public class HazardQueryBuilder {
 
-    public String getKey();
+    private Map<String, List<Object>> query;
 
-    public Serializable getValue();
+    /**
+     * 
+     */
+    public HazardQueryBuilder() {
+        query = new HashMap<String, List<Object>>();
+    }
 
-    @Override
-    public boolean isValid() throws ValidationException;
+    @SuppressWarnings("unchecked")
+    public void addKey(String key, Object value) {
+        if (query.containsKey(key)) {
+            List<Object> list = query.get(key);
+            list.add(value);
+        } else {
+            List<Object> list = new ArrayList<Object>();
+            list.add(value);
+            query.put(key, list);
+        }
+    }
+
+    /**
+     * @return the query
+     */
+    public Map<String, List<Object>> getQuery() {
+        return query;
+    }
 }

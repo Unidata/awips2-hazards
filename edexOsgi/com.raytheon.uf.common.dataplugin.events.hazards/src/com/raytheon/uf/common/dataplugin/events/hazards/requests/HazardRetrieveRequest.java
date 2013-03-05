@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.requests;
 
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -46,7 +47,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
 public class HazardRetrieveRequest implements IServerRequest {
 
     @DynamicSerializeElement
-    private Map<String, Object> filters;
+    private Map<String, List<Object>> filters;
 
     @DynamicSerializeElement
     private boolean practice;
@@ -54,7 +55,7 @@ public class HazardRetrieveRequest implements IServerRequest {
     /**
      * @return the filters
      */
-    public Map<String, Object> getFilters() {
+    public Map<String, List<Object>> getFilters() {
         return filters;
     }
 
@@ -62,12 +63,8 @@ public class HazardRetrieveRequest implements IServerRequest {
      * @param filters
      *            the filters to set
      */
-    public void setFilters(Map<String, Object> filters) {
+    public void setFilters(Map<String, List<Object>> filters) {
         this.filters = filters;
-    }
-
-    public void addFilter(String key, String value) {
-        this.filters.put(key, value);
     }
 
     /**

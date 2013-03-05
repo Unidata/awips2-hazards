@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.hazards;
 
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -69,12 +70,13 @@ public interface IHazardStorageManager<T extends IHazardEvent> {
 
     /**
      * Retrieve a Map<String,List<IHazardEvent>> from the storage system as
-     * defined byt he implementing class. The Map contains the event id as the
+     * defined by the implementing class. The Map contains the event id as the
      * key, and the list of all the hazards with that event id as the value.
      * 
      * @param filters
      * @return
      */
-    public Map<String, HazardHistoryList> retrieve(Map<String, Object> filters);
+    public Map<String, HazardHistoryList> retrieve(
+            Map<String, List<Object>> filters);
 
 }

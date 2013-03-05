@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Contants to be used by both Java and Python code, Python will have a class
  * that mirrors many of the values within this class for use by the tool writers
@@ -44,6 +47,18 @@ public final class HazardConstants {
         PENDING, POTENTIAL, PROPOSED, ISSUED, ENDED;
     }
 
+    public static HazardState hazardStateFromString(String value) {
+        return HazardState.valueOf(String.valueOf(value).toUpperCase());
+    }
+
+    public static List<String> hazardStatesAsStringList() {
+        List<String> vals = new ArrayList<String>();
+        for (HazardState state : HazardState.values()) {
+            vals.add(state.toString().toLowerCase());
+        }
+        return vals;
+    }
+
     public static enum ProductClass {
         OPERATIONAL("O"), TEST("T"), EXPERIMENTAL("E"), EXPERIMENTAL_IN_CURRENT(
                 "X");
@@ -62,6 +77,28 @@ public final class HazardConstants {
         }
     }
 
+    public static ProductClass productClassFromAbbreviation(String value) {
+        for (ProductClass clazz : ProductClass.values()) {
+            if (clazz.getAbbreviation().equals(value)) {
+                return clazz;
+            }
+        }
+        throw new IllegalArgumentException("No enum const "
+                + ProductClass.class.getName() + "." + value);
+    }
+
+    public static ProductClass productClassFromName(String value) {
+        return ProductClass.valueOf(String.valueOf(value).toUpperCase());
+    }
+
+    public static List<String> productClassesAsStringList() {
+        List<String> vals = new ArrayList<String>();
+        for (ProductClass clazz : ProductClass.values()) {
+            vals.add(clazz.getAbbreviation());
+        }
+        return vals;
+    }
+
     public static enum Significance {
         WARNING("W"), WATCH("A"), ADVISORY("Y"), OUTLOOK("O"), STATEMENT("S"), FORECAST(
                 "F"), SYNOPSIS("N");
@@ -77,6 +114,28 @@ public final class HazardConstants {
         public String getAbbreviation() {
             return abbreviation;
         }
+    }
+
+    public static Significance significanceFromAbbreviation(String value) {
+        for (Significance clazz : Significance.values()) {
+            if (clazz.getAbbreviation().equals(value)) {
+                return clazz;
+            }
+        }
+        throw new IllegalArgumentException("No enum const "
+                + Significance.class.getName() + "." + value);
+    }
+
+    public static Significance significanceFromName(String value) {
+        return Significance.valueOf(String.valueOf(value).toUpperCase());
+    }
+
+    public static List<String> significancesAsStringList() {
+        List<String> vals = new ArrayList<String>();
+        for (Significance sig : Significance.values()) {
+            vals.add(sig.getAbbreviation());
+        }
+        return vals;
     }
 
     /*
@@ -108,7 +167,7 @@ public final class HazardConstants {
      * the database implementation and the registry implementation
      */
 
-    public static final String SITE = "site";
+    public static final String SITEID = "siteID";
 
     public static final String GEOMETRY = "geometry";
 
@@ -118,7 +177,7 @@ public final class HazardConstants {
 
     public static final String SIGNIFICANCE = "significance";
 
-    public static final String EVENTID = "eventId";
+    public static final String EVENTID = "eventID";
 
     public static final String STATE = "state";
 

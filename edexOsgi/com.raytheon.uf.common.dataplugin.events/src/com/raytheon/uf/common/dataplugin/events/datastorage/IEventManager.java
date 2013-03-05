@@ -71,7 +71,7 @@ public interface IEventManager<T extends IEvent, HL extends List<T>> {
      * @param filter
      * @return a list with the eventid being the key
      */
-    public Map<String, HL> getEventsByFilter(Map<String, Object> filters);
+    public Map<String, HL> getEventsByFilter(Map<String, List<Object>> filters);
 
     /**
      * Store a single event

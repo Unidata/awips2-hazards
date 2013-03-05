@@ -21,7 +21,9 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
@@ -80,6 +82,25 @@ public class BaseHazardEvent implements IHazardEvent {
      * 
      */
     public BaseHazardEvent() {
+        eventId = UUID.randomUUID().toString();
+        attributes = new HashMap<String, Serializable>();
+    }
+
+    public BaseHazardEvent(IHazardEvent event) {
+        this();
+        setEventID(event.getEventID());
+        setSiteID(event.getSiteID());
+        setEndTime(event.getEndTime());
+        setStartTime(event.getStartTime());
+        setIssueTime(event.getIssueTime());
+        setGeometry(event.getGeometry());
+        setPhenomenon(event.getPhenomenon());
+        setSignificance(event.getSignificance());
+        setState(event.getState());
+        setHazardMode(event.getHazardMode());
+        if (event.getHazardAttributes() != null) {
+            setHazardAttributes(event.getHazardAttributes());
+        }
     }
 
     @Override
@@ -108,22 +129,22 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public String getSite() {
+    public String getSiteID() {
         return site;
     }
 
     @Override
-    public void setSite(String site) {
+    public void setSiteID(String site) {
         this.site = site;
     }
 
     @Override
-    public String getEventId() {
+    public String getEventID() {
         return eventId;
     }
 
     @Override
-    public void setEventId(String uuid) {
+    public void setEventID(String uuid) {
         this.eventId = uuid;
     }
 
@@ -138,7 +159,8 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     public void setState(String state) {
-        this.hazardState = HazardState.valueOf(state);
+        this.hazardState = HazardState.valueOf(String.valueOf(state)
+                .toUpperCase());
     }
 
     @Override
@@ -201,7 +223,7 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     public Map<String, Serializable> getHazardAttributes() {
-        return this.attributes;
+        return attributes;
     }
 
     @Override
@@ -211,17 +233,17 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void addHazardAttribute(String key, Serializable value) {
-        throw new UnsupportedOperationException();
+        attributes.put(key, value);
     }
 
     @Override
     public void removeHazardAttribute(String key) {
-        throw new UnsupportedOperationException();
+        attributes.remove(key);
     }
 
     @Override
     public Serializable getHazardAttribute(String key) {
-        throw new UnsupportedOperationException();
+        return attributes.get(key);
     }
 
 }
