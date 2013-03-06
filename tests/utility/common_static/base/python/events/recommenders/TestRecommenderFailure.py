@@ -20,7 +20,7 @@
 
 
 #
-# The abstract recommender module that all other recommenders will be drawn from.  
+# A very simple recommender that demonstrates how recommenders should be used.
 #  
 #    
 #     SOFTWARE HISTORY
@@ -31,10 +31,25 @@
 #    
 # 
 #
-class Event(object):
-    def __init__(self):
-        return     
 
-class NullEvent(Event):
-    def __init__(self):
+import RecommenderTemplate
+
+class Recommender(RecommenderTemplate.Recommender):
+    
+    def getScriptMetadata(self):
+        metadata = {}
+        metadata["author"] = "Matt Nash"
+        metadata["version"] = "1.0"
+        return metadata
+    
+    def defineDialog(self):
+        print "Dialog info is not necessary for this recommender."
         return
+    
+    def defineSpatialInfo(self):
+        print "Spatial info is not necessary for this recommender."
+        return
+    
+    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+        return 0
+        

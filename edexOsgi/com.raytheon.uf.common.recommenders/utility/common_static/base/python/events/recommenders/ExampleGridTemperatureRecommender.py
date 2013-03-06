@@ -33,10 +33,12 @@
 #
 
 import datetime
+
 import EventFactory
 import GeometryFactory
 import RecommenderTemplate
 import numpy
+import JUtil
 
 from ufpy.dataaccess import DataAccessLayer
 
@@ -44,10 +46,10 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def getScriptMetadata(self):
         metadata = {}
-        metadata["author"] = "Jonathan Sanchez"
-        metadata["description"] = "A simple recommender to show how recommenders should be used."
+        metadata["author"] = "Matt Nash"
+        metadata["description"] = "A simple recommender to show how to get grid temperatures below certain values."
         metadata["version"] = "1.0"
-        metadata["productsgenerated"] = ["TO.W", "TO.A", "SV.W", "SV.A"]
+        metadata["productsgenerated"] = ["FZ.W"]
         return metadata
     
     def defineDialog(self):
@@ -58,27 +60,24 @@ class Recommender(RecommenderTemplate.Recommender):
         print "Spatial info is not necessary for this recommender."
         return
     
-    def execute(self, dialogInputMap, spatialInputMap):
-        req = DataAccessLayer.newGridRequest()
-        req.setDatatype("radar")
-        req.setParameters("Z")
-        req.addIdentifier("icao", "kdmx")
+    def execute(self, eventSet, dialogInputMap, spatialInputMap):
+        req = DataAccessLayer.newDataRequest()
+        req.setDatatype("grid")
+        req.setParameters("T")
+        req.setLevels("2FHAG")
+        req.addIdentifier("info.datasetId", "GFS212")
         times = DataAccessLayer.getAvailableTimes(req)
-        data = DataAccessLayer.getData(req, times)
+        data = DataAccessLayer.getGridData(req, times)
         latlons = DataAccessLayer.getLatLonCoords(req)
-        
         max = numpy.max(latlons[1][1:]-latlons[1][:-1])
-        high = 38
+        high = -10
     
-        rawdata = data[0].getRawData('dBZ')
+        rawdata = data[0].getRawData('C')
         finalVals = list()
-        import time
-        start = time.time()
         for i in range(len(rawdata)):
             for j in range(len(rawdata[i])):
-                if rawdata[i][j] > high:
+                if rawdata[i][j] < high:
                     finalVals.append([latlons[1][i][j], latlons[0][i][j]])
-        print "time to loop over data :", time.time() - start
         event = EventFactory.createEvent()
         event.setSite("koax")
         event.setHazardState("PENDING")
@@ -89,12 +88,8 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setEndTime(d)
         event.setStartTime(d)
         event.setHazardMode("OPERATIONAL")
-        start = time.time()
         geom = GeometryFactory.createMultiPoint(finalVals)
-        print "time to create multi point", time.time() - start
-        start = time.time()
-        geom = geom.buffer(max * 2.5)
-        print "time to buffer point", time.time() - start
+        geom = geom.buffer(max)
         event.setGeometry(geom)
         return event
         

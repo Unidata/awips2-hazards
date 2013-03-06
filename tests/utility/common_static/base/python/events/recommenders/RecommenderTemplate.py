@@ -69,7 +69,7 @@ class Recommender(object):
         return
     
     @abc.abstractmethod
-    def execute(self, dialogInputMap, spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, spatialInputMap):
         '''
         @param dialogInputMap: A map containing user selections from the dialog created
         by the defineDialog() routine

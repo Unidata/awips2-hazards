@@ -82,4 +82,3 @@ def createMultiPolygon(polygons):
     '''
     mp = MultiPolygon(polygons, context_type)
     return mp
-    

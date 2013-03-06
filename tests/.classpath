@@ -6,6 +6,8 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/tests"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events.hazards"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.python"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.recommenders"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.recommenders"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
