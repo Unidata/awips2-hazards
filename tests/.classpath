@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="unit"/>
-	<classpathentry kind="src" path="deploy"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tests"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.productgen"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events.hazards"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.recommenders"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.recommenders"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.python.concurrent"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

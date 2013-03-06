@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.IValidator;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
@@ -60,7 +61,7 @@ public class HazardEventSet extends HashSet<IHazardEvent> {
         super();
     }
 
-    public HazardEventSet(HazardEventSet set,
+    public HazardEventSet(Set<IHazardEvent> set,
             Map<String, Serializable> attributes) {
         addAll(set);
         this.attributes = attributes;
