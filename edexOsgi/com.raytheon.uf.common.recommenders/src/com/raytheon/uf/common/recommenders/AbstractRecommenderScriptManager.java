@@ -156,7 +156,7 @@ public abstract class AbstractRecommenderScriptManager extends
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
 
         String fileLoc = "python" + File.separator + "events" + File.separator
-                + "recommenders";
+                + "recommenders" + File.separator + "config";
 
         recommenderDir = pathMgr.getLocalizationFile(baseContext, fileLoc);
         String recommenderScriptPath = FileUtil.join(recommenderDir.getFile()
@@ -175,14 +175,16 @@ public abstract class AbstractRecommenderScriptManager extends
                 "python").getPath();
         String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
         String dataTimePath = FileUtil.join(pythonPath, "time");
-        String recommenderDirPath = recommenderDir.getFile().getPath();
+        String recommenderConfigPath = recommenderDir.getFile().getPath();
+        String recommenderDirPath = recommenderDir.getFile().getParentFile()
+                .getPath();
         String eventsPath = FileUtil.join(pythonPath, "events");
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
 
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                recommenderDirPath, dataAccessPath, dataTimePath, eventsPath,
-                utilitiesPath, gfePath);
+                recommenderConfigPath, recommenderDirPath, dataAccessPath,
+                dataTimePath, eventsPath, utilitiesPath, gfePath);
         return includePath;
     }
 
@@ -242,6 +244,15 @@ public abstract class AbstractRecommenderScriptManager extends
         return (Map<String, String>) retVal;
     }
 
+    private void retrieveInventory() {
+        Map<String, Object> results = null;
+        LocalizationFile[] lFiles = PathManagerFactory.getPathManager()
+                .listFiles(recommenderDir.getContext(),
+                        recommenderDir.getName(), new String[] { "py" }, false,
+                        true);
+
+    }
+
     /**
      * Retrieve the recommenders based on the file name
      */
@@ -273,7 +284,7 @@ public abstract class AbstractRecommenderScriptManager extends
                     reco.setAuthor(auth != null ? auth.toString() : "");
                     reco.setDescription(desc != null ? desc.toString() : "");
                     reco.setVersion(vers != null ? vers.toString() : "");
-                    getInventory().add(reco);
+                    inventory.add(reco);
                 }
             } catch (JepException e) {
                 statusHandler.handle(Priority.INFO, moduleName
@@ -355,6 +366,9 @@ public abstract class AbstractRecommenderScriptManager extends
         } else if (obj instanceof IEvent) {
             events.add((IEvent) obj);
             return events;
+        } else {
+            statusHandler.handle(Priority.CRITICAL,
+                    "Must return a single event or multiple event objects");
         }
         return events;
     }

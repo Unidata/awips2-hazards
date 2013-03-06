@@ -48,12 +48,14 @@ class Recommender(RecommenderTemplate.Recommender):
         return metadata
     
     def defineDialog(self):
-        print "Dialog info is not necessary for this recommender."
-        return
+        dialogInfo = {}
+        dialogInfo["test"] = "value"
+        return dialogInfo
     
     def defineSpatialInfo(self):
-        print "Spatial info is not necessary for this recommender."
-        return
+        spatialInfo = {}
+        spatialInfo["test"] = "value"
+        return spatialInfo
     
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         event = EventFactory.createEvent()
@@ -65,7 +67,7 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setIssueTime(d)
         event.setEndTime(d)
         event.setStartTime(d)
-        event.setHazardMode("OPERATIONAL")
+        event.setHazardMode("O")
         geom = GeometryFactory.createPoint((122, 42))
         event.setGeometry(geom)
         return event

@@ -25,7 +25,6 @@ import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 
 /**
  * Factory for use with the Python concurrency code to allow for multiple
@@ -48,7 +47,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 public class CAVERecommenderPythonFactory extends
         AbstractPythonScriptFactory<CAVERecommenderScriptManager> {
 
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderPythonFactory.class);
 
     public CAVERecommenderPythonFactory() {

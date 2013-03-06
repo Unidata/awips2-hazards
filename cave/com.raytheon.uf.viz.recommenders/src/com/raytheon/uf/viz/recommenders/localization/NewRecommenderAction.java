@@ -71,7 +71,8 @@ public class NewRecommenderAction extends Action {
             .getHandler(NewRecommenderAction.class);
 
     private static final String RECOMMENDER_TEMPLATE_DIR = "python"
-            + File.separator + "events" + File.separator + "recommenders";
+            + File.separator + "events" + File.separator + "recommenders"
+            + File.separator + "config";
 
     private static final String RECOMMENDER_TEMPLATE_NAME = "recommender.vm";
 

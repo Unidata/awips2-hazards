@@ -233,7 +233,14 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     public void setHazardMode(String mode) {
-        this.hazardMode = HazardConstants.productClassFromAbbreviation(mode);
+        try {
+            this.hazardMode = HazardConstants
+                    .productClassFromAbbreviation(mode);
+        } catch (IllegalArgumentException e) {
+            this.hazardMode = HazardConstants.productClassFromName(mode);
+        }
+        // default to test
+        this.hazardMode = ProductClass.TEST;
     }
 
     public Map<String, Serializable> getHazardAttributes() {

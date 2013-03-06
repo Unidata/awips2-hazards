@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.recommender;
 
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
@@ -26,12 +27,14 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.hazards.recommender.AbstractRecommenderTest;
 
 /**
  * Unit test for recommenders, successfully returns an IEvent.
@@ -58,6 +61,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
             @Override
             public void jobFailed(Throwable e) {
                 fail(e.getMessage());
+                proceed = true;
             }
 
             @Override
@@ -69,9 +73,24 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
                 proceed = true;
             }
         };
-        runRecommender("TestRecommenderSuccess", listener);
+        runRecommender("RecommenderSuccess", listener);
         while (proceed == false) {
             // sit and wait
         }
     }
+
+    @Test
+    public void runGetDialogInfo() {
+        Map<String, String> vals = getDialogInfo("RecommenderSuccess");
+        assertNotNull(vals);
+        assertThat(vals.get("test"), equalTo("value"));
+    }
+
+    @Test
+    public void runGetSpatialInfo() {
+        Map<String, String> vals = getDialogInfo("RecommenderSuccess");
+        assertNotNull(vals);
+        assertThat(vals.get("test"), equalTo("value"));
+    }
+
 }

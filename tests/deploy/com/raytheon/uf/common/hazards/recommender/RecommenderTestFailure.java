@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-
+import com.raytheon.uf.common.hazards.recommender.AbstractRecommenderTest;
 /**
  * A failure recommender, returns no events (testing if the value returned was
  * not an IEvent)
@@ -63,6 +63,7 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
             @Override
             public void jobFailed(Throwable e) {
                 fail(e.getMessage());
+                proceed = true;
             }
 
             @Override
@@ -72,7 +73,7 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
                 proceed = true;
             }
         };
-        runRecommender("TestRecommenderFailure", listener);
+        runRecommender("RecommenderFailure", listener);
         while (proceed == false) {
             // sit and wait
         }

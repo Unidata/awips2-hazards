@@ -22,6 +22,7 @@ package com.raytheon.uf.common.hazards.recommender;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.Map;
 
 import jep.JepException;
 
@@ -90,6 +91,34 @@ public abstract class AbstractRecommenderTest {
             }
         } catch (Throwable t) {
             fail("Could not run recommender " + t);
+        }
+        return null;
+    }
+
+    public Map<String, String> getDialogInfo(String name) {
+        try {
+            for (EventRecommender rec : engine.getInventory()) {
+                if (rec.getName().equals(name)) {
+                    Map<String, String> vals = engine.getDialogInfo(name);
+                    return vals;
+                }
+            }
+        } catch (Throwable t) {
+            fail("Could not run get dialog info " + t);
+        }
+        return null;
+    }
+
+    public Map<String, String> getSpatialInfo(String name) {
+        try {
+            for (EventRecommender rec : engine.getInventory()) {
+                if (rec.getName().equals(name)) {
+                    Map<String, String> vals = engine.getSpatialInfo(name);
+                    return vals;
+                }
+            }
+        } catch (Throwable t) {
+            fail("Could not run get dialog info " + t);
         }
         return null;
     }
