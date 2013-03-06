@@ -21,7 +21,7 @@ from ufpy.dataaccess import DataAccessLayer
 
 class Recommender(RecommenderTemplate.Recommender):
 	
-	def getScriptMetadata(self):
+	def defineScriptMetadata(self):
 		metadata = {}
 		metadata['author'] = $author
 		# TODO fill in values applying to the script metadata

@@ -42,7 +42,7 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         self.importModules()
         
     def getScriptMetadata(self, moduleName, className, **kwargs):
-        val = self.runMethod(moduleName, className, "getScriptMetadata", **kwargs)
+        val = self.runMethod(moduleName, className, "defineScriptMetadata", **kwargs)
         return JUtil.pyValToJavaObj(val)
     
     def execute(self, moduleName, className, **kwargs):

@@ -44,7 +44,7 @@ from ufpy.dataaccess import DataAccessLayer
 
 class Recommender(RecommenderTemplate.Recommender):
     
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = {}
         metadata["author"] = "Matt Nash"
         metadata["description"] = "A simple recommender to show how to get grid temperatures below certain values."

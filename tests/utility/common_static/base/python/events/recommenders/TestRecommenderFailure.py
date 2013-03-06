@@ -36,7 +36,7 @@ import RecommenderTemplate
 
 class Recommender(RecommenderTemplate.Recommender):
     
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = {}
         metadata["author"] = "Matt Nash"
         metadata["version"] = "1.0"

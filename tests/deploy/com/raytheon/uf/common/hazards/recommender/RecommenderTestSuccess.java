@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -30,6 +31,7 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
 /**
  * Unit test for recommenders, successfully returns an IEvent.
@@ -52,10 +54,24 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
     public void run() {
-        List<IEvent> events = runRecommender("TestRecommenderSuccess");
-        assertNotNull(events);
-        assertThat(events, hasSize(1));
-        assertTrue("Event not of type BaseHazardEvent",
-                events.get(0) instanceof BaseHazardEvent);
+        IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
+            @Override
+            public void jobFailed(Throwable e) {
+                fail(e.getMessage());
+            }
+
+            @Override
+            public void jobFinished(List<IEvent> result) {
+                assertNotNull(result);
+                assertThat(result, hasSize(1));
+                assertTrue("Event not of type BaseHazardEvent",
+                        result.get(0) instanceof BaseHazardEvent);
+                proceed = true;
+            }
+        };
+        runRecommender("TestRecommenderSuccess", listener);
+        while (proceed == false) {
+            // sit and wait
+        }
     }
 }

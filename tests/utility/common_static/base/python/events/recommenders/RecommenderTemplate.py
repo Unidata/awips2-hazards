@@ -42,7 +42,7 @@ class Recommender(object):
         return
     
     @abc.abstractmethod
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         '''
         @return: Returns a python dictionary which defines basic information
         about the recommender, such as author, script version, and description

@@ -42,7 +42,7 @@ from ufpy.dataaccess import DataAccessLayer
 
 class Recommender(RecommenderTemplate.Recommender):
     
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = {}
         metadata["author"] = "Jonathan Sanchez"
         metadata["description"] = "A simple recommender to show how recommenders should be used."

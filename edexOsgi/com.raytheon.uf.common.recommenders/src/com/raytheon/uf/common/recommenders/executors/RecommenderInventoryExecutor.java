@@ -17,15 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.executors;
+package com.raytheon.uf.common.recommenders.executors;
 
-import java.util.Map;
+import java.util.List;
 
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
+import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
+import com.raytheon.uf.common.recommenders.EventRecommender;
 
 /**
- * Off-loads the getScriptMetadata method using the Python concurrent
- * functionality
+ * Gets the inventory of the recommenders.
  * 
  * <pre>
  * 
@@ -41,14 +42,13 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @version 1.0
  */
 
-public class CAVERecommenderGetMetadataExecutor extends
-        AbstractRecommenderExecutor<Map<String, String>> {
+public class RecommenderInventoryExecutor<P extends AbstractRecommenderScriptManager>
+        implements IPythonExecutor<P, List<EventRecommender>> {
 
     /**
-     * @param recommenderName
+     * 
      */
-    public CAVERecommenderGetMetadataExecutor(String recommenderName) {
-        super(recommenderName);
+    public RecommenderInventoryExecutor() {
     }
 
     /*
@@ -59,8 +59,8 @@ public class CAVERecommenderGetMetadataExecutor extends
      * raytheon.uf.common.python.PythonInterpreter)
      */
     @Override
-    public Map<String, String> execute(CAVERecommenderScriptManager script) {
-        return script.getInfo(recommenderName, "getScriptMetadata");
+    public List<EventRecommender> execute(P script) {
+        return script.getInventory();
     }
 
 }

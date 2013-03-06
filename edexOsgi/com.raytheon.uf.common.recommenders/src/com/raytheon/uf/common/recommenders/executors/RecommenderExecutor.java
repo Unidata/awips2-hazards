@@ -17,16 +17,18 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.executors;
+package com.raytheon.uf.common.recommenders.executors;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
- * TODO Add Description
+ * {@link AbstractRecommenderExecutor} to run the recommender, just the execute
+ * method.
  * 
  * <pre>
  * 
@@ -34,7 +36,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 5, 2013            mnash     Initial creation
+ * Feb 5, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -42,30 +44,30 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @version 1.0
  */
 
-public class CAVEEntireRecommenderExecutor extends
-        AbstractRecommenderExecutor<List<IEvent>> {
+public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
+        extends AbstractRecommenderExecutor<P, List<IEvent>> {
 
     private Map<String, String> spatialInfo;
 
     private Map<String, String> dialogInfo;
 
+    private Set<IEvent> eventSet;
+
     /**
-     * @param recommenderName
+     * Pass in the dialog info and spatial info values. We will not need to get
+     * them when running.
      */
-    public CAVEEntireRecommenderExecutor(String recommenderName) {
+    public RecommenderExecutor(String recommenderName, Set<IEvent> eventSet,
+            Map<String, String> spatialInfo, Map<String, String> dialogInfo) {
         super(recommenderName);
+        this.eventSet = eventSet;
+        this.spatialInfo = spatialInfo;
+        this.dialogInfo = dialogInfo;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.python.concurrent.IPythonExecutor#execute(com.
-     * raytheon.uf.common.python.PythonInterpreter)
-     */
     @Override
-    public List<IEvent> execute(CAVERecommenderScriptManager script) {
-        return script.executeEntireRecommender(recommenderName);
+    public List<IEvent> execute(P script) {
+        return script.executeRecommender(recommenderName, eventSet, dialogInfo,
+                spatialInfo);
     }
-
 }

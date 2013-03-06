@@ -21,25 +21,15 @@ package com.raytheon.uf.viz.recommenders;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
-import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.recommenders.executors.CAVEEntireRecommenderExecutor;
-import com.raytheon.uf.viz.recommenders.executors.CAVERecommenderDialogInfoExecutor;
-import com.raytheon.uf.viz.recommenders.executors.CAVERecommenderExecutor;
-import com.raytheon.uf.viz.recommenders.executors.CAVERecommenderGetMetadataExecutor;
-import com.raytheon.uf.viz.recommenders.executors.CAVERecommenderSpatialInfoExecutor;
 
 /**
  * CAVE-side implementation of the {@link AbstractRecommenderScriptManager}. Has
@@ -61,14 +51,10 @@ import com.raytheon.uf.viz.recommenders.executors.CAVERecommenderSpatialInfoExec
  */
 
 public class CAVERecommenderScriptManager extends
-        AbstractRecommenderScriptManager<IEvent> {
+        AbstractRecommenderScriptManager {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderScriptManager.class);
-
-    private AbstractPythonScriptFactory<CAVERecommenderScriptManager> factory;
-
-    private PythonJobCoordinator<CAVERecommenderScriptManager> coordinator;
 
     /**
      * @throws JepException
@@ -78,51 +64,6 @@ public class CAVERecommenderScriptManager extends
         super(buildScriptPath(), buildPythonPath(),
                 CAVERecommenderScriptManager.class.getClassLoader(),
                 "Recommender");
-        factory = new CAVERecommenderPythonFactory();
-        coordinator = PythonJobCoordinator.newInstance(factory);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager#
-     * runRecommender(java.lang.String)
-     */
-    @Override
-    public void runEntireRecommender(final String recommenderName,
-            IPythonJobListener<List<IEvent>> listener) {
-        IPythonExecutor<CAVERecommenderScriptManager, List<IEvent>> executor = new CAVEEntireRecommenderExecutor(
-                recommenderName);
-        try {
-            coordinator.submitAsyncJob(executor, listener);
-        } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to submit job to executor service", e);
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager#
-     * runExecuteRecommender(java.lang.String, java.util.Map, java.util.Map,
-     * com.raytheon.uf.common.python.concurrent.IPythonJobListener)
-     */
-    @Override
-    public void runExecuteRecommender(String recommenderName,
-            Set<IEvent> eventSet, Map<String, String> spatialInfo,
-            Map<String, String> dialogInfo,
-            IPythonJobListener<List<IEvent>> listener) {
-        IPythonExecutor<CAVERecommenderScriptManager, List<IEvent>> executor = new CAVERecommenderExecutor(
-                recommenderName, eventSet, spatialInfo, dialogInfo);
-        try {
-            coordinator.submitAsyncJob(executor, listener);
-        } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to submit job to executor service", e);
-        }
     }
 
     /*
@@ -143,9 +84,11 @@ public class CAVERecommenderScriptManager extends
                     if (isInstantiated(recName) == false) {
                         instantiatePythonScript(recName);
                     }
-                    Map<String, String> dialogValues = getDialogInfo(recName);
+                    Map<String, String> dialogValues = getInfo(recName,
+                            "getDialogInfo");
                     showDialog(dialogValues);
-                    Map<String, String> spatialValues = getSpatialInfo(recName);
+                    Map<String, String> spatialValues = getInfo(recName,
+                            "getSpatialInfo");
                     return executeRecommender(recommenderName, null,
                             dialogValues, spatialValues);
                 } catch (JepException e) {
@@ -153,45 +96,6 @@ public class CAVERecommenderScriptManager extends
                             "Unable to execute recommender", e);
                 }
             }
-        }
-        return null;
-    }
-
-    @Override
-    protected Map<String, String> getDialogInfo(String recName) {
-        CAVERecommenderDialogInfoExecutor executor = new CAVERecommenderDialogInfoExecutor(
-                recName);
-        try {
-            return coordinator.submitSyncJob(executor);
-        } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to submit job to executor service", e);
-        }
-        return null;
-    }
-
-    @Override
-    protected Map<String, String> getSpatialInfo(String recName) {
-        CAVERecommenderSpatialInfoExecutor executor = new CAVERecommenderSpatialInfoExecutor(
-                recName);
-        try {
-            return coordinator.submitSyncJob(executor);
-        } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to submit job to executor service", e);
-        }
-        return null;
-    }
-
-    @Override
-    public Map<String, String> getScriptMetadata(String recommenderName) {
-        CAVERecommenderGetMetadataExecutor executor = new CAVERecommenderGetMetadataExecutor(
-                recommenderName);
-        try {
-            return coordinator.submitSyncJob(executor);
-        } catch (Exception e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to submit job to executor service", e);
         }
         return null;
     }

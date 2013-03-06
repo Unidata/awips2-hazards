@@ -17,14 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.executors;
+package com.raytheon.uf.common.recommenders.executors;
 
-import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
+import java.util.Map;
+
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
- * Abstract instance of {@link IPythonExecutor} so that any recommender can
- * extend this and get the recommender name for free.
+ * {@link AbstractRecommenderExecutor} to get the spatial information from the
+ * recommender.
  * 
  * <pre>
  * 
@@ -40,16 +41,18 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @version 1.0
  */
 
-public abstract class AbstractRecommenderExecutor<R extends Object> implements
-        IPythonExecutor<CAVERecommenderScriptManager, R> {
-
-    protected String recommenderName;
+public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptManager>
+        extends AbstractRecommenderExecutor<P, Map<String, String>> {
 
     /**
-     * 
-     */
-    public AbstractRecommenderExecutor(String recommenderName) {
-        this.recommenderName = recommenderName;
+* 
+*/
+    public RecommenderSpatialInfoExecutor(String recommenderName) {
+        super(recommenderName);
     }
 
+    @Override
+    public Map<String, String> execute(P script) {
+        return script.getInfo(recommenderName, "getSpatialinfo");
+    }
 }

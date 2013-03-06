@@ -34,7 +34,10 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.PathManagerFactoryTest;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.EventRecommender;
+import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 
 /**
@@ -56,13 +59,15 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 
 public abstract class AbstractRecommenderTest {
 
+    protected volatile boolean proceed = false;
+
     /**
      * 
      */
     public AbstractRecommenderTest() {
     }
 
-    private CAVERecommenderScriptManager manager;
+    private AbstractRecommenderEngine<CAVERecommenderScriptManager> engine;
 
     @BeforeClass
     public static void classSetUp() {
@@ -72,18 +77,15 @@ public abstract class AbstractRecommenderTest {
 
     @Before
     public void setUp() throws JepException {
-        try {
-            manager = new CAVERecommenderScriptManager();
-        } catch (JepException e) {
-            fail("Unable to instantiate JEP");
-        }
+        engine = new CAVERecommenderEngine();
     }
 
-    public List<IEvent> runRecommender(String name) {
+    public List<IEvent> runRecommender(String name,
+            IPythonJobListener<List<IEvent>> listener) {
         try {
-            for (EventRecommender rec : manager.getInventory()) {
+            for (EventRecommender rec : engine.getInventory()) {
                 if (rec.getName().equals(name)) {
-                    return manager.executeEntireRecommender(rec.getName());
+                    engine.runEntireRecommender(rec.getName(), listener);
                 }
             }
         } catch (Throwable t) {

@@ -22,12 +22,14 @@ package com.raytheon.uf.common.hazards.recommender;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
 /**
  * A failure recommender, returns no events (testing if the value returned was
@@ -57,9 +59,23 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
 
     @Test
     public void run() {
-        List<IEvent> events = runRecommender("TestRecommenderFailure");
-        assertNotNull(events);
-        assertThat(events, hasSize(0));
+        IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
+            @Override
+            public void jobFailed(Throwable e) {
+                fail(e.getMessage());
+            }
+
+            @Override
+            public void jobFinished(List<IEvent> result) {
+                assertNotNull(result);
+                assertThat(result, hasSize(0));
+                proceed = true;
+            }
+        };
+        runRecommender("TestRecommenderFailure", listener);
+        while (proceed == false) {
+            // sit and wait
+        }
     }
 
 }

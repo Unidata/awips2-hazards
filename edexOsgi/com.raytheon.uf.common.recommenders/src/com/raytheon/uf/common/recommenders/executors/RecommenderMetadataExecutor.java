@@ -17,15 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.executors;
+package com.raytheon.uf.common.recommenders.executors;
 
 import java.util.Map;
 
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
- * {@link AbstractRecommenderExecutor} to get the dialog information from the
- * recommender.
+ * Gets the metadata of a given file.
  * 
  * <pre>
  * 
@@ -33,7 +32,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
+ * Mar 6, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -41,26 +40,18 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @version 1.0
  */
 
-public class CAVERecommenderDialogInfoExecutor extends
-        AbstractRecommenderExecutor<Map<String, String>> {
+public class RecommenderMetadataExecutor<P extends AbstractRecommenderScriptManager>
+        extends AbstractRecommenderExecutor<P, Map<String, String>> {
 
     /**
-     * @param recommenderName
+     * 
      */
-    public CAVERecommenderDialogInfoExecutor(String recommenderName) {
+    public RecommenderMetadataExecutor(String recommenderName) {
         super(recommenderName);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.python.concurrent.IPythonExecutor#execute(com.
-     * raytheon.uf.common.python.PythonScript)
-     */
     @Override
-    public Map<String, String> execute(CAVERecommenderScriptManager script) {
-        return script.getInfo(recommenderName, "getDialogInfo");
+    public Map<String, String> execute(P script) {
+        return script.getInfo(recommenderName, "getScriptMetadata");
     }
-
 }

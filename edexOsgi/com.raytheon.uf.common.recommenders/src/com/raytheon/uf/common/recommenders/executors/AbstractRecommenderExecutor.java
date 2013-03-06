@@ -17,15 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.executors;
+package com.raytheon.uf.common.recommenders.executors;
 
-import java.util.Map;
-
-import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
+import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
 /**
- * {@link AbstractRecommenderExecutor} to get the spatial information from the
- * recommender.
+ * Abstract class that has the recommender name for all recommender code
+ * aligning with the Python concurrent plugin.
  * 
  * <pre>
  * 
@@ -33,7 +32,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
+ * Mar 6, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -41,14 +40,16 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @version 1.0
  */
 
-public class CAVERecommenderSpatialInfoExecutor extends
-        AbstractRecommenderExecutor<Map<String, String>> {
+public abstract class AbstractRecommenderExecutor<P extends AbstractRecommenderScriptManager, R extends Object>
+        implements IPythonExecutor<P, R> {
+
+    protected String recommenderName;
 
     /**
-     * @param recommenderName
+     * 
      */
-    public CAVERecommenderSpatialInfoExecutor(String recommenderName) {
-        super(recommenderName);
+    public AbstractRecommenderExecutor(String recommenderName) {
+        this.recommenderName = recommenderName;
     }
 
     /*
@@ -56,10 +57,9 @@ public class CAVERecommenderSpatialInfoExecutor extends
      * 
      * @see
      * com.raytheon.uf.common.python.concurrent.IPythonExecutor#execute(com.
-     * raytheon.uf.common.python.PythonScript)
+     * raytheon.uf.common.python.PythonInterpreter)
      */
     @Override
-    public Map<String, String> execute(CAVERecommenderScriptManager script) {
-        return script.getInfo(recommenderName, "getSpatialInfo");
-    }
+    public abstract R execute(P script);
+
 }

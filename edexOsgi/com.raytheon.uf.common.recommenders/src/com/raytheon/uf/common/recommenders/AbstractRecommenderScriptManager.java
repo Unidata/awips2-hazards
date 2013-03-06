@@ -39,7 +39,6 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -63,8 +62,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * @version 1.0
  */
 
-public abstract class AbstractRecommenderScriptManager<E extends IEvent>
-        extends PythonScriptController {
+public abstract class AbstractRecommenderScriptManager extends
+        PythonScriptController {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractRecommenderScriptManager.class);
@@ -188,29 +187,6 @@ public abstract class AbstractRecommenderScriptManager<E extends IEvent>
     }
 
     /**
-     * This method, as implemented by subclasses, needs to run the necessary
-     * parts (all of them) of the recommender in correct order. This method
-     * should be called by clients.
-     * 
-     * @param recommenderName
-     */
-    public abstract void runEntireRecommender(String recommenderName,
-            IPythonJobListener<List<E>> listener);
-
-    /**
-     * This method, as implemented by subclasses, executes just the execute
-     * method of a recommender. This method should be called by clients.
-     * 
-     * @param recommenderName
-     * @param spatialInfo
-     * @param dialogInfo
-     * @param listener
-     */
-    public abstract void runExecuteRecommender(String recommenderName,
-            Set<IEvent> eventSet, Map<String, String> spatialInfo,
-            Map<String, String> dialogInfo, IPythonJobListener<List<E>> listener);
-
-    /**
      * This method does the all encompassing execution of a recommender. This
      * should not be called by clients.
      * 
@@ -245,36 +221,6 @@ public abstract class AbstractRecommenderScriptManager<E extends IEvent>
         }
         return resolveEvents(retVal);
     }
-
-    /**
-     * This method may do different things depending on the implementation.
-     * Subclasses retrieve information about a possible dialog, or possibly read
-     * from a file if no dialog should be present.
-     * 
-     * @param recommenderName
-     * @return
-     */
-    protected abstract Map<String, String> getDialogInfo(String recommenderName);
-
-    /**
-     * This method may do different things depending on the implementation.
-     * Subclasses retrieve information about the spatial info, or possibly read
-     * from a file if no spatial info should be present.
-     * 
-     * @param recommenderName
-     * @return
-     */
-    protected abstract Map<String, String> getSpatialInfo(String recommenderName);
-
-    /**
-     * This method may do different things depending on the implementation.
-     * Subclasses retrieve script metadata from the file most likely.
-     * 
-     * @param recommenderName
-     * @return
-     */
-    protected abstract Map<String, String> getScriptMetadata(
-            String recommenderName);
 
     /**
      * Method to take in and retrieve information from either spatial info or
