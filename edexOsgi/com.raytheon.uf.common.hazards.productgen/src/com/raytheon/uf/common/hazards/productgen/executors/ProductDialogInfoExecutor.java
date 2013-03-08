@@ -17,11 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.productgen.product;
+package com.raytheon.uf.common.hazards.productgen.executors;
 
 import java.util.Map;
 
-import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
  * Executes the getDialogInfo method of ProductScript
@@ -40,17 +40,9 @@ import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
  * @version 1.0
  */
 
-public class ProductDialogInfoExecutor implements
-        IPythonExecutor<ProductScript, Map<String, String>> {
+public class ProductDialogInfoExecutor extends
+        AbstractProductExecutor<Map<String, String>> {
 
-    /** Name of the product generator */
-    private String product;
-
-    /**
-     * Constructor.
-     * 
-     * @param product
-     */
     public ProductDialogInfoExecutor(String product) {
         this.product = product;
     }

@@ -25,13 +25,15 @@ import java.util.Map;
 import org.apache.commons.lang.Validate;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
-import com.raytheon.uf.common.hazards.productgen.product.ProductDialogInfoExecutor;
-import com.raytheon.uf.common.hazards.productgen.product.ProductDialogInfoJobListener;
-import com.raytheon.uf.common.hazards.productgen.product.ProductJobListener;
+import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
+import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
+import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
+import com.raytheon.uf.common.hazards.productgen.executors.ProductMetadataExecutor;
+import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptExecutor;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
-import com.raytheon.uf.common.hazards.productgen.product.ProductScriptExecutor;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScriptFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -53,7 +55,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author jsanchez
  * @version 1.0
  */
-public class ProductGeneration {
+public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductGeneration.class);
@@ -69,17 +71,21 @@ public class ProductGeneration {
      * @param product
      *            name of the product generator. "ExampleFFW" refers to the
      *            python class "ExampleFFW.py" which should be in the
-     *            /common_static/base/python/productgen/products directory
+     *            /common_static/base/python/events/productgen/products
+     *            directory
      * @param hazardEventSet
      *            the HazardEventSet object that will provide the information
      *            for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
+     * @param listener
+     *            the listener to the aysnc job
      */
     public void generate(String product, HazardEventSet hazardEventSet,
-            String[] formats) {
+            String[] formats,
+            IPythonJobListener<List<IGeneratedProduct>> listener) {
         // Validates the parameter values
-        validate(formats, product, hazardEventSet);
+        validate(formats, product, hazardEventSet, listener);
 
         PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
                 .getInstance(ProductScriptFactory.NAME);
@@ -87,7 +93,7 @@ public class ProductGeneration {
                 product, hazardEventSet, formats);
 
         try {
-            jobCoordinator.submitAsyncJob(executor, new ProductJobListener());
+            jobCoordinator.submitAsyncJob(executor, listener);
         } catch (Exception e) {
             statusHandler.error("Error executing async job", e);
         }
@@ -100,40 +106,56 @@ public class ProductGeneration {
      * @param product
      *            name of the product generator. "ExampleFFW" refers to the
      *            python class "ExampleFFW.py" which should be in the
-     *            /common_static/base/python/productgen/products directory
+     *            /common_static/base/python/events/productgen/products
+     *            directory
      * @param hazardEventSets
      *            an array of HazardEventSet objects that will provide the
      *            information for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
+     * @param listener
+     *            the listener to the aysnc job
      */
     public void generate(String product, HazardEventSet[] hazardEventSets,
-            String[] formats) {
+            String[] formats,
+            IPythonJobListener<List<IGeneratedProduct>> listener) {
         for (HazardEventSet hazardEventSet : hazardEventSets) {
-            generate(product, hazardEventSet, formats);
+            generate(product, hazardEventSet, formats, listener);
         }
     }
 
-    /**
-     * Retrieves the dialog info for the product. The job is performed
-     * asynchronously and will be passed to the session manager.
-     * 
-     * @param product
-     *            name of the product generator. "ExampleFFW" refers to the
-     *            python class "ExampleFFW.py" which should be in the
-     *            /common_static/base/python/productgen/products directory
-     */
-    public void getDialogInfo(String product) {
+    @Override
+    public Map<String, String> getDialogInfo(String product) {
         PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
                 .getInstance(ProductScriptFactory.NAME);
         IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductDialogInfoExecutor(
                 product);
+        Map<String, String> retVal = null;
         try {
-            jobCoordinator.submitAsyncJob(executor,
-                    new ProductDialogInfoJobListener());
+            retVal = (Map<String, String>) jobCoordinator
+                    .submitSyncJob(executor);
         } catch (Exception e) {
-            statusHandler.error("Error executing async job", e);
+            statusHandler.error("Error executing job", e);
         }
+
+        return retVal;
+    }
+
+    @Override
+    public Map<String, String> getMetadata(String product) {
+        PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
+                .getInstance(ProductScriptFactory.NAME);
+        IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductMetadataExecutor(
+                product);
+        Map<String, String> retVal = null;
+        try {
+            retVal = (Map<String, String>) jobCoordinator
+                    .submitSyncJob(executor);
+        } catch (Exception e) {
+            statusHandler.error("Error executing job", e);
+        }
+
+        return retVal;
     }
 
     /**
@@ -145,12 +167,14 @@ public class ProductGeneration {
      * @param hazardEventSet
      */
     private void validate(String[] formats, String product,
-            HazardEventSet hazardEventSet) {
+            HazardEventSet hazardEventSet,
+            IPythonJobListener<List<IGeneratedProduct>> listener) {
         Validate.notNull(formats, "'FORMATS' must be set.");
         Validate.notNull(product, "'PRODUCT' must be set.");
         Validate.notNull(hazardEventSet, "'HAZARD EVENT SET' must be set");
         Validate.isTrue(!hazardEventSet.isEmpty(),
                 "HAZARD EVENT SET can't be empty");
+        Validate.notNull(listener, "'listener' must be set.");
     }
 
 }

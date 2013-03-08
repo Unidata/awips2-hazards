@@ -17,15 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.productgen.product;
+package com.raytheon.uf.common.hazards.productgen.executors;
 
 import java.util.Map;
 
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
- * Listener when the asynchronous job ProductScriptExecutor finishes or fails
- * for retrieving dialog info.
+ * TODO Add Description
  * 
  * <pre>
  * 
@@ -33,7 +32,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 6, 2013            jsanchez     Initial creation
+ * Mar 7, 2013            jsanchez     Initial creation
  * 
  * </pre>
  * 
@@ -41,19 +40,19 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
-public class ProductDialogInfoJobListener implements
-        IPythonJobListener<Map<String, String>> {
+public class ProductMetadataExecutor extends
+        AbstractProductExecutor<Map<String, String>> {
 
-    @Override
-    public void jobFinished(Map<String, String> result) {
-        // TODO Pass the dialog info to the Session Manager
-        System.out.println(result);
+    /** Name of the product generator */
+    private String product;
+
+    public ProductMetadataExecutor(String product) {
+        this.product = product;
     }
 
     @Override
-    public void jobFailed(Throwable e) {
-        // TODO Pass the error to the Session Manager
-        System.out.println(e.getLocalizedMessage());
+    public Map<String, String> execute(ProductScript script) {
+        return script.getScriptMetadata(product);
     }
 
 }

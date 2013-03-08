@@ -21,7 +21,14 @@ import ProductTemplate
 import collections
 
 class Product(ProductTemplate.Product):
-        
+    
+    def getScriptMetadata(self):
+        metadata = {}
+        metadata['author'] = "Johnny Dough"
+        metadata['description'] = "A sample product generator for FFW."
+        metadata['version'] = "1.0"
+        return metadata
+    
     def defineDialog(self):
         dialog = {'productID':'FFW'}
         return dialog

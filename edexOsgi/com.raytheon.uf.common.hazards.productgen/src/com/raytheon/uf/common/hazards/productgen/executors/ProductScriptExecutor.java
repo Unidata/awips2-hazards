@@ -17,13 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.productgen.product;
+package com.raytheon.uf.common.hazards.productgen.executors;
 
 import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
+import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
  * Executes the generateProduct method of ProductScript
@@ -42,17 +42,17 @@ import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
  * @version 1.0
  */
 
-public class ProductScriptExecutor implements
-        IPythonExecutor<ProductScript, List<IGeneratedProduct>> {
+public class ProductScriptExecutor extends
+        AbstractProductExecutor<List<IGeneratedProduct>> {
 
     /** provide the information for the product generator */
     private HazardEventSet hazardEventSet;
 
-    /** name of the product generator */
-    private String product;
-
     /** String array of formats */
     private String[] formats;
+
+    /** Name of the product generator */
+    private String product;
 
     /**
      * Constructor.

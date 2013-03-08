@@ -9,5 +9,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.recommenders"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.python.concurrent"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.recommenders"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

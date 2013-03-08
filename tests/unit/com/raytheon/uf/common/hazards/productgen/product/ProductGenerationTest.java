@@ -20,6 +20,8 @@
 package com.raytheon.uf.common.hazards.productgen.product;
 
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -29,11 +31,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.PathManagerFactoryTest;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -78,7 +84,7 @@ public class ProductGenerationTest {
         event.setEndTime(new Date());
         event.setStartTime(new Date());
         event.setIssueTime(new Date());
-        event.setSite("OAX");
+        event.setSiteID("OAX");
         event.setPhenomenon("FF");
         event.setSignificance("W");
         event.setHazardMode(ProductClass.EXPERIMENTAL);
@@ -103,29 +109,42 @@ public class ProductGenerationTest {
 
     @Test
     public void generateTest() {
-        // ProductGeneration productGeneration = new ProductGeneration();
-        // productGeneration.generate(product,hazardEventSet, formats);
-        // try {
-        // // A sleep on the current thread is needed due to that the product
-        // // generation is running asynchronously. There is a System.out in
-        // // the jobFinished method that will print the results.
-        // Thread.currentThread().sleep(5000);
-        // } catch (InterruptedException e) {
-        // System.out.println(e);
-        // }
+        IPythonJobListener<List<IGeneratedProduct>> listener = new IPythonJobListener<List<IGeneratedProduct>>() {
+
+            @Override
+            public void jobFinished(List<IGeneratedProduct> result) {
+                for (IGeneratedProduct generatedProduct : result) {
+                    System.out.println(generatedProduct.getEntries());
+                }
+            }
+
+            @Override
+            public void jobFailed(Throwable e) {
+                GeneratedProduct generatedProduct = new GeneratedProduct(null);
+                generatedProduct.setErrors(e.getLocalizedMessage());
+                // TODO Pass result to the SessionManager via EventBus or
+                // use ProductGeneration's listener
+                System.out.println(e.getLocalizedMessage());
+            }
+        };
+
+        ProductGeneration productGeneration = new ProductGeneration();
+        productGeneration.generate(product, hazardEventSet, formats, listener);
+        try {
+            // A sleep on the current thread is needed due to that the product
+            // generation is running asynchronously. There is a System.out in
+            // the jobFinished method that will print the results.
+            Thread.currentThread().sleep(500);
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
     }
 
     @Test
     public void getDialogTest() {
-        // ProductGeneration productGeneration = new ProductGeneration();
-        // productGeneration.getDialogInfo(product);
-        // try {
-        // // A sleep on the current thread is needed due to that the product
-        // // generation is running asynchronously. There is a System.out in
-        // // the jobFinished method that will print the results.
-        // Thread.currentThread().sleep(5000);
-        // } catch (InterruptedException e) {
-        // System.out.println(e);
-        // }
+        ProductGeneration productGeneration = new ProductGeneration();
+        Map<String, String> dialogInfo = productGeneration
+                .getDialogInfo(product);
+        System.out.println(dialogInfo);
     }
 }

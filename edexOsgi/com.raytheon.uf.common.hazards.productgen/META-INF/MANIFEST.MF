@@ -12,5 +12,6 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.localization;bundle-version="1.12.1174",
  com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.python.concurrent;bundle-version="1.0.0",
- com.raytheon.uf.common.util;bundle-version="1.12.1174"
+ com.raytheon.uf.common.util;bundle-version="1.12.1174",
+ com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0"
 Export-Package: com.raytheon.uf.common.hazards.productgen

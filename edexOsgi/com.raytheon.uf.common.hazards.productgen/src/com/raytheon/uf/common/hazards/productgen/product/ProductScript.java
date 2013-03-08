@@ -19,28 +19,24 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.product;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
+import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
+import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.LocalizationFile;
-import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.common.util.FileUtil;
 
 /**
  * Provides to execute methods in the product generator.
@@ -64,6 +60,8 @@ public class ProductScript extends PythonScriptController {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScript.class);
 
+    private static final String GET_SCRIPT_METADATA = "getScriptMetadata";
+
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
 
@@ -73,22 +71,29 @@ public class ProductScript extends PythonScriptController {
     /** Executing method in the python module */
     private static final String METHOD_NAME = "execute";
 
-    private static String PRODUCTS_DIRECTORY = "productgen/products";
+    private static final String PRODUCTS_DIRECTORY = "productgen/products";
 
-    private static String FORMATS_DIRECTORY = "productgen/formats";
+    private static final String FORMATS_DIRECTORY = "productgen/formats";
 
-    private static String PYTHON_INTERFACE = "ProductInterface";
+    private static final String PYTHON_INTERFACE = "ProductInterface";
 
-    /** python/productgen/products directory */
+    protected List<ProductInfo> inventory = null;
+
+    /** python/productgen/events/products directory */
     protected static LocalizationFile productsDir;
 
     protected ProductScript() throws JepException {
-        super(buildFilePath(), buildIncludePath(), ProductScript.class
+        super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
+                PYTHON_INTERFACE), PythonBuildPaths.buildIncludePath(
+                FORMATS_DIRECTORY, PRODUCTS_DIRECTORY), ProductScript.class
                 .getClassLoader(), PYTHON_CLASS);
-
+        inventory = new CopyOnWriteArrayList<ProductInfo>();
+        productsDir = PythonBuildPaths
+                .buildLocalizationDirectory(PRODUCTS_DIRECTORY);
         productsDir.addFileUpdatedObserver(this);
 
-        String scriptPath = buildDirectoryPath(PRODUCTS_DIRECTORY);
+        String scriptPath = PythonBuildPaths
+                .buildDirectoryPath(PRODUCTS_DIRECTORY);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
                 + "')");
         List<String> errors = getStartupErrors();
@@ -108,88 +113,14 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
-     * Builds the path for the directory in python/events
-     * 
-     * @param directory
-     * 
-     * @return the full path to the base, site, and user directories
-     */
-    private String buildDirectoryPath(String directory) {
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationContext siteContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.SITE);
-        LocalizationContext userContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
-
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + directory;
-
-        String userPath = pathMgr.getLocalizationFile(userContext, fileLoc)
-                .getFile().getPath();
-        String sitePath = pathMgr.getLocalizationFile(siteContext, fileLoc)
-                .getFile().getPath();
-        String basePath = pathMgr.getLocalizationFile(baseContext, fileLoc)
-                .getFile().getPath();
-
-        return PyUtil.buildJepIncludePath(userPath, sitePath, basePath);
-    }
-
-    /**
-     * 
-     * @return the file path to the product generator
-     */
-    private static String buildFilePath() {
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + PRODUCTS_DIRECTORY + File.separator + PYTHON_INTERFACE
-                + ".py";
-
-        productsDir = pathMgr.getLocalizationFile(baseContext, "python"
-                + File.separator + "events" + File.separator
-                + PRODUCTS_DIRECTORY);
-
-        String productScriptPath = pathMgr
-                .getLocalizationFile(baseContext, fileLoc).getFile().getPath();
-
-        return productScriptPath;
-    }
-
-    /**
-     * 
-     * @return paths of other libraries to help generate a product
-     */
-    private static String buildIncludePath() {
-        IPathManager manager = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = manager.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile formatsDir = manager.getLocalizationFile(baseContext,
-                "python" + File.separator + "events" + File.separator
-                        + FORMATS_DIRECTORY);
-
-        String pythonPath = manager.getFile(baseContext, "python").getPath();
-        String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
-        String dataTimePath = FileUtil.join(pythonPath, "time");
-        String productDirPath = productsDir.getFile().getPath();
-        String formatsDirPath = formatsDir.getFile().getPath();
-        String eventsPath = FileUtil.join(pythonPath, "events");
-        String utilitiesPath = FileUtil.join(eventsPath, "utilities");
-
-        String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                productDirPath, formatsDirPath, dataAccessPath, dataTimePath,
-                eventsPath, utilitiesPath);
-        return includePath;
-    }
-
-    /**
-     * Generates a product from the hazardEventSet
+     * Generates a list of IGeneratedProducts from the hazardEventSet
      * 
      * @param product
      * @param hazardEventSet
+     *            the HazardEventSet o
+     * @param formats
+     *            an array of the formats the IGeneratedProduct should be in
+     *            (i.e. XML)
      * @return
      */
     @SuppressWarnings("unchecked")
@@ -217,26 +148,119 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
-     * This method may do different things depending on the implementation.
-     * Subclasses retrieve information about a possible dialog, or possibly read
-     * from a file if no dialog should be present.
+     * Retrieves the information to define a dialog from the product.
      * 
      * @param product
      * @return
      */
     @SuppressWarnings("unchecked")
-    public Map<String, String> getDialogInfo(String moduleName) {
+    public Map<String, String> getDialogInfo(String product) {
+        return getInfo(product, "getDialogInfo");
+    }
+
+    /**
+     * Retrieves the metadata of the product.
+     * 
+     * @param product
+     * @return
+     */
+    public Map<String, String> getScriptMetadata(String product) {
+        return getInfo(product, "getScriptMetadata");
+    }
+
+    /**
+     * Executes the method of the module.
+     * 
+     * @param moduleName
+     *            name of the python module to execute
+     * @param methodName
+     *            name of the method to execute
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, String> getInfo(String moduleName, String methodName) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(moduleName));
         Map<String, String> retVal = null;
         try {
-            retVal = (Map<String, String>) execute("getDialogInfo", INTERFACE,
-                    args);
+            if (!isInstantiated(moduleName)) {
+                instantiatePythonScript(moduleName);
+            }
+
+            retVal = (Map<String, String>) execute(methodName, INTERFACE, args);
         } catch (JepException e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to get info from getDialogInfo", e);
+            statusHandler.handle(Priority.ERROR, "Unable to get info from "
+                    + methodName, e);
         }
 
         return retVal;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.python.controller.PythonScriptController#fileUpdated
+     * (com.raytheon.uf.common.localization.FileUpdatedMessage)
+     */
+    @Override
+    public void fileUpdated(FileUpdatedMessage message) {
+        FileChangeType type = message.getChangeType();
+        if (type == FileChangeType.UPDATED) {
+            for (ProductInfo pg : inventory) {
+                if (pg.getFile().getName().equals(message.getFileName())) {
+                    updateMetadata(pg);
+                    break;
+                }
+            }
+        } else if (type == FileChangeType.ADDED) {
+            for (ProductInfo pg : inventory) {
+                if (pg.getFile().getName().equals(message.getFileName())
+                        && pg.getFile()
+                                .getContext()
+                                .getLocalizationLevel()
+                                .compareTo(
+                                        message.getContext()
+                                                .getLocalizationLevel()) < 0) {
+                    updateMetadata(pg);
+                    break;
+                } else {
+                    ProductInfo newPG = new ProductInfo();
+                    inventory.add(newPG);
+                }
+            }
+        } else if (type == FileChangeType.DELETED) {
+            for (ProductInfo pg : inventory) {
+                if (pg.getFile().getName().equals(message.getFileName())) {
+                    inventory.remove(pg);
+                    break;
+                }
+            }
+        }
+        super.fileUpdated(message);
+    }
+
+    /**
+     * Updates a product's metadata.
+     * 
+     * @param ProductInfo
+     */
+    private void updateMetadata(ProductInfo ProductInfo) {
+        try {
+            if (isInstantiated(ProductInfo.getName()) == false) {
+                instantiatePythonScript(ProductInfo.getName());
+            }
+            Map<String, Object> args = getStarterMap(ProductInfo.getName());
+            execute(GET_SCRIPT_METADATA, INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(
+                    Priority.ERROR,
+                    "Unable to update metadata on file "
+                            + ProductInfo.getName(), e);
+        }
+    }
+
+    public synchronized List<ProductInfo> getInventory() {
+        return inventory;
     }
 }
