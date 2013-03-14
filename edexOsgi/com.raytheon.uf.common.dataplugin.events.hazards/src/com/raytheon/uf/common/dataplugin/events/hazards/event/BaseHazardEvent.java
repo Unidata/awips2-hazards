@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -72,6 +73,8 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private String significance;
 
+    private String subtype;
+
     private Date issueTime;
 
     private ProductClass hazardMode;
@@ -96,6 +99,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
+        setSubtype(event.getSubtype());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -184,6 +188,16 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
+    public String getSubtype() {
+        return subtype;
+    }
+
+    @Override
+    public void setSubtype(String subtype) {
+        this.subtype = subtype;
+    }
+
+    @Override
     public Date getIssueTime() {
         return issueTime;
     }
@@ -219,7 +233,7 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     public void setHazardMode(String mode) {
-        this.hazardMode = ProductClass.valueOf(mode);
+        this.hazardMode = HazardConstants.productClassFromAbbreviation(mode);
     }
 
     public Map<String, Serializable> getHazardAttributes() {
@@ -246,4 +260,106 @@ public class BaseHazardEvent implements IHazardEvent {
         return attributes.get(key);
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result
+                + ((attributes == null) ? 0 : attributes.hashCode());
+        result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
+        result = prime * result + ((eventId == null) ? 0 : eventId.hashCode());
+        result = prime * result
+                + ((geometry == null) ? 0 : geometry.hashCode());
+        result = prime * result
+                + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result
+                + ((hazardState == null) ? 0 : hazardState.hashCode());
+        result = prime * result
+                + ((issueTime == null) ? 0 : issueTime.hashCode());
+        result = prime * result
+                + ((phenomenon == null) ? 0 : phenomenon.hashCode());
+        result = prime * result
+                + ((significance == null) ? 0 : significance.hashCode());
+        result = prime * result + ((site == null) ? 0 : site.hashCode());
+        result = prime * result
+                + ((startTime == null) ? 0 : startTime.hashCode());
+        result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BaseHazardEvent other = (BaseHazardEvent) obj;
+        if (attributes == null) {
+            if (other.attributes != null)
+                return false;
+        } else if (!attributes.equals(other.attributes))
+            return false;
+        if (endTime == null) {
+            if (other.endTime != null)
+                return false;
+        } else if (!endTime.equals(other.endTime))
+            return false;
+        if (eventId == null) {
+            if (other.eventId != null)
+                return false;
+        } else if (!eventId.equals(other.eventId))
+            return false;
+        if (geometry == null) {
+            if (other.geometry != null)
+                return false;
+        } else if (!geometry.equals(other.geometry))
+            return false;
+        if (hazardMode != other.hazardMode)
+            return false;
+        if (hazardState != other.hazardState)
+            return false;
+        if (issueTime == null) {
+            if (other.issueTime != null)
+                return false;
+        } else if (!issueTime.equals(other.issueTime))
+            return false;
+        if (phenomenon == null) {
+            if (other.phenomenon != null)
+                return false;
+        } else if (!phenomenon.equals(other.phenomenon))
+            return false;
+        if (significance == null) {
+            if (other.significance != null)
+                return false;
+        } else if (!significance.equals(other.significance))
+            return false;
+        if (site == null) {
+            if (other.site != null)
+                return false;
+        } else if (!site.equals(other.site))
+            return false;
+        if (startTime == null) {
+            if (other.startTime != null)
+                return false;
+        } else if (!startTime.equals(other.startTime))
+            return false;
+        if (subtype == null) {
+            if (other.subtype != null)
+                return false;
+        } else if (!subtype.equals(other.subtype))
+            return false;
+        return true;
+    }
 }

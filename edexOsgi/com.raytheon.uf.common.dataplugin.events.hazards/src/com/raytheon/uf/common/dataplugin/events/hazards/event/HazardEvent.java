@@ -80,7 +80,7 @@ import com.vividsolutions.jts.geom.Geometry;
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 @RegistryObject({ HazardConstants.SITEID, HazardConstants.EVENTID,
-        HazardConstants.ISSUETIME })
+        HazardConstants.UNIQUEID })
 public class HazardEvent implements IHazardEvent, ISerializableObject,
         IValidator {
 
@@ -98,6 +98,11 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     @XmlAttribute
     @SlotAttribute(HazardConstants.EVENTID)
     private String eventID;
+
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.UNIQUEID)
+    private String uniqueID;
 
     /**
      * The state of the record at this point in time
@@ -122,6 +127,14 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     @XmlAttribute
     @SlotAttribute(HazardConstants.SIGNIFICANCE)
     private String significance;
+
+    /**
+     * subtype of the hazard
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.SUBTYPE)
+    private String subtype;
 
     @DynamicSerializeElement
     @XmlElement
@@ -166,7 +179,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * {@link HazardEventManager}; {@link IHazardEventManager#createEvent()}
      */
     public HazardEvent() {
-        eventID = UUID.randomUUID().toString();
+        uniqueID = UUID.randomUUID().toString();
         hazardAttributesSerializable = new HashSet<HazardAttribute>();
         hazardAttributes = new HashMap<String, Serializable>();
     }
@@ -180,6 +193,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
+        setSubtype(event.getSubtype());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -213,12 +227,25 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
 
     /**
      * @param eventID
-     *            the eventID to set This is here to support dynamic serialize.
-     *            It is not recommended for use. An eventID gets set when the
-     *            event gets created.
+     *            the eventID to set
      */
     public void setEventID(String eventId) {
         this.eventID = eventId;
+    }
+
+    /**
+     * @return the uniqueID
+     */
+    public String getUniqueID() {
+        return uniqueID;
+    }
+
+    /**
+     * @param uniqueID
+     *            the uniqueID to set
+     */
+    public void setUniqueID(String uniqueID) {
+        this.uniqueID = uniqueID;
     }
 
     /**
@@ -264,6 +291,22 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     public void setSignificance(String significance) {
         this.significance = significance;
+    }
+
+    /**
+     * @return subtype
+     */
+    @Override
+    public String getSubtype() {
+        return subtype;
+    }
+
+    /**
+     * @param subtype
+     */
+    @Override
+    public void setSubtype(String subtype) {
+        this.subtype = subtype;
     }
 
     /**
@@ -435,6 +478,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
 
     @Override
     public boolean isValid() throws ValidationException {
+        // future validation here, read from the necessary file
         if (true) {
             return true;
         }
@@ -468,6 +512,13 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
                 .append("\n");
         builder.append("End Time : ").append(new Date(endTime.getTime()))
                 .append("\n");
+        if (hazardAttributesSerializable.isEmpty() == false) {
+            builder.append("--Attributes--\n");
+            for (IHazardAttribute attr : hazardAttributesSerializable) {
+                builder.append(attr.getKey()).append(":")
+                        .append(attr.getValue()).append("\n");
+            }
+        }
         return builder.toString();
     }
 
@@ -503,6 +554,9 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
+        result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        result = prime * result
+                + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         return result;
     }
 
@@ -534,11 +588,6 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
             if (other.geometry != null)
                 return false;
         } else if (!geometry.equals(other.geometry))
-            return false;
-        if (hazardAttributes == null) {
-            if (other.hazardAttributes != null)
-                return false;
-        } else if (!hazardAttributes.equals(other.hazardAttributes))
             return false;
         if (hazardAttributesSerializable == null) {
             if (other.hazardAttributesSerializable != null)
@@ -575,7 +624,16 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
             return false;
         if (state != other.state)
             return false;
+        if (subtype == null) {
+            if (other.subtype != null)
+                return false;
+        } else if (!subtype.equals(other.subtype))
+            return false;
+        if (uniqueID == null) {
+            if (other.uniqueID != null)
+                return false;
+        } else if (!uniqueID.equals(other.uniqueID))
+            return false;
         return true;
     }
-
 }

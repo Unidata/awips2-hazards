@@ -88,7 +88,7 @@ import com.vividsolutions.jts.geom.Geometry;
 public class PracticeHazardEvent extends PersistableDataObject implements
         IHazardEvent, ISerializableObject, IValidator {
 
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PracticeHazardEvent.class);
 
     private static final long serialVersionUID = 1L;
@@ -117,12 +117,25 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     private String phenomenon;
 
     /**
-     * Significance of the hazard, held as an enum
+     * Significance of the hazard
      */
     @Column
     @DynamicSerializeElement
     @XmlElement
     private String significance;
+
+    /**
+     * Subtype of the hazard
+     */
+    @Column
+    @DynamicSerializeElement
+    @XmlElement
+    private String subtype;
+
+    @DynamicSerializeElement
+    @XmlElement
+    @Column
+    private Date issueTime;
 
     @Column
     @DynamicSerializeElement
@@ -175,6 +188,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
+        setSubtype(event.getSubtype());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -226,12 +240,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * This is not to be used. This is set on construction of the object.
      */
     @Override
-    public void setEventID(String uuid) {
-        if (key.getEventID() != null) {
-            throw new UnsupportedOperationException(
-                    "Cannot set event id after it has already been set.");
-        }
-        key.setEventID(uuid);
+    public void setEventID(String eventId) {
+        key.setEventID(eventId);
     }
 
     /**
@@ -286,6 +296,23 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     }
 
     /**
+     * @return the subtype
+     */
+    @Override
+    public String getSubtype() {
+        return subtype;
+    }
+
+    /**
+     * @param subtype
+     *            the subtype to set
+     */
+    @Override
+    public void setSubtype(String subtype) {
+        this.subtype = subtype;
+    }
+
+    /**
      * @return the startTime
      */
     @Override
@@ -322,7 +349,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public Date getIssueTime() {
-        return key.getTimeIssued();
+        return issueTime;
     }
 
     /**
@@ -331,7 +358,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public void setIssueTime(Date issueTime) {
-        key.setTimeIssued(issueTime);
+        this.issueTime = issueTime;
     }
 
     /**
@@ -475,6 +502,10 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public boolean isValid() throws ValidationException {
+        // TODO remove for later validation
+        if (true) {
+            return true;
+        }
         // check the validity of the PracticeHazardEvent, meaning, is everything
         // pertinent set (all the fields need to be set)
         for (Field field : getClass().getDeclaredFields()) {
@@ -531,10 +562,15 @@ public class PracticeHazardEvent extends PersistableDataObject implements
                 + ((geometry == null) ? 0 : geometry.hashCode());
         result = prime
                 * result
+                + ((hazardAttributes == null) ? 0 : hazardAttributes.hashCode());
+        result = prime
+                * result
                 + ((hazardAttrsSerializable == null) ? 0
                         : hazardAttrsSerializable.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result
+                + ((issueTime == null) ? 0 : issueTime.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
@@ -543,6 +579,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
+        result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
         return result;
     }
 
@@ -563,7 +600,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         if (endTime == null) {
             if (other.endTime != null)
                 return false;
-        } else if (endTime.getTime() != other.endTime.getTime())
+        } else if (!endTime.equals(other.endTime))
             return false;
         if (geometry == null) {
             if (other.geometry != null)
@@ -577,6 +614,11 @@ public class PracticeHazardEvent extends PersistableDataObject implements
                 .equals(other.hazardAttrsSerializable))
             return false;
         if (hazardMode != other.hazardMode)
+            return false;
+        if (issueTime == null) {
+            if (other.issueTime != null)
+                return false;
+        } else if (!issueTime.equals(other.issueTime))
             return false;
         if (key == null) {
             if (other.key != null)
@@ -596,9 +638,14 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         if (startTime == null) {
             if (other.startTime != null)
                 return false;
-        } else if (startTime.getTime() != other.startTime.getTime())
+        } else if (!startTime.equals(other.startTime))
             return false;
         if (state != other.state)
+            return false;
+        if (subtype == null) {
+            if (other.subtype != null)
+                return false;
+        } else if (!subtype.equals(other.subtype))
             return false;
         return true;
     }

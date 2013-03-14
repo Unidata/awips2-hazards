@@ -80,7 +80,7 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class HazardEventManager implements IHazardEventManager {
     /** The logger */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardEventManager.class);
 
     private final boolean practice;
@@ -236,7 +236,7 @@ public class HazardEventManager implements IHazardEventManager {
                                 "Event " + ev.getSiteID() + "-"
                                         + ev.getEventID() + "-"
                                         + ev.getIssueTime()
-                                        + " is not valid, not storing.");
+                                        + " is not valid, not storing.", e);
                     }
                 }
             }
@@ -460,5 +460,19 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getAll() {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         return getEventsByFilter(builder.getQuery());
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
+     * IHazardEventManager#removeAllEvents()
+     */
+    @Override
+    public boolean removeAllEvents() {
+        throw new UnsupportedOperationException(
+                "Cannot remove all events from the "
+                        + (practice == true ? "practice" : "operational")
+                        + " storage area");
     }
 }

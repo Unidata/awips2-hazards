@@ -20,11 +20,13 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import java.io.Serializable;
-import java.util.Date;
 import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.SequenceGenerator;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
@@ -53,6 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @Embeddable
 @DynamicSerialize
+@SequenceGenerator(name = "PRACTICE_HAZARD_GENERATOR", sequenceName = "practicehazard_seq", allocationSize = 1)
 @XmlAccessorType(XmlAccessType.NONE)
 public class PracticeHazardEventPK implements ISerializableObject, Serializable {
 
@@ -68,16 +71,19 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
     @Column(name = HazardConstants.EVENTID)
     private String eventID;
 
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "PRACTICE_HAZARD_GENERATOR")
     @DynamicSerializeElement
     @XmlElement
-    @Column
-    private Date timeIssued;
+    @Column(name = HazardConstants.UNIQUEID)
+    private String uniqueID;
 
     /**
          * 
          */
     public PracticeHazardEventPK() {
-        eventID = UUID.randomUUID().toString();
+        // unique id is always unique, allowing for different items to be added
+        // to the table with different primary keys
+        uniqueID = UUID.randomUUID().toString();
     }
 
     /**
@@ -111,18 +117,18 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
     }
 
     /**
-     * @return the timeIssued
+     * @return the uniqueID
      */
-    public Date getTimeIssued() {
-        return timeIssued;
+    public String getUniqueID() {
+        return uniqueID;
     }
 
     /**
-     * @param timeIssued
-     *            the timeIssued to set
+     * @param uniqueID
+     *            the uniqueID to set
      */
-    public void setTimeIssued(Date timeIssued) {
-        this.timeIssued = timeIssued;
+    public void setUniqueID(String uniqueID) {
+        this.uniqueID = uniqueID;
     }
 
     /*
@@ -137,7 +143,7 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
         result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
         result = prime * result + ((siteID == null) ? 0 : siteID.hashCode());
         result = prime * result
-                + ((timeIssued == null) ? 0 : timeIssued.hashCode());
+                + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         return result;
     }
 
@@ -165,10 +171,10 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
                 return false;
         } else if (!siteID.equals(other.siteID))
             return false;
-        if (timeIssued == null) {
-            if (other.timeIssued != null)
+        if (uniqueID == null) {
+            if (other.uniqueID != null)
                 return false;
-        } else if (timeIssued.getTime() != other.timeIssued.getTime())
+        } else if (!uniqueID.equals(other.uniqueID))
             return false;
         return true;
     }

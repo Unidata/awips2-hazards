@@ -75,74 +75,138 @@ public class InMemoryHazardEventManager extends HazardEventManager {
         return result;
     }
 
+    // very ugly, very brute force, but gets the job done
     private boolean filterCriteriaMet(IHazardEvent hazardEvent,
             Map<String, List<Object>> filters) {
         boolean value = true;
         for (String filterName : filters.keySet()) {
             List<Object> list = filters.get(filterName);
-            for (Object filterValue : list) {
-                if (filterName.equals(HazardConstants.EVENTID)) {
+            boolean internalTruth = true;
+            if (filterName.equals(HazardConstants.EVENTID)) {
+                for (Object filterValue : list) {
                     if (hazardEvent.getEventID().equals(filterValue)) {
-                        return true;
-                    }
-                    value = false;
-                }
-
-                if (filterName.equals(HazardConstants.SITEID)) {
-                    if (list.size() > 1) {
-                        if (hazardEvent.getSiteID().equals(filterValue)) {
-                            return true;
-                        }
-                        value = false;
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.STATE)) {
+            if (filterName.equals(HazardConstants.SITEID)) {
+                for (Object filterValue : list) {
+                    if (hazardEvent.getSiteID().equals(filterValue)) {
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
+                    }
+                }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
+
+            if (filterName.equals(HazardConstants.STATE)) {
+                for (Object filterValue : list) {
                     if (hazardEvent.getState().equals(filterValue)) {
-                        return true;
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.SIGNIFICANCE)) {
+            if (filterName.equals(HazardConstants.SIGNIFICANCE)) {
+                for (Object filterValue : list) {
                     if (hazardEvent.getSignificance().equals(filterValue)) {
-                        return true;
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.PHENOMENON)) {
+            if (filterName.equals(HazardConstants.PHENOMENON)) {
+                for (Object filterValue : list) {
                     if (hazardEvent.getPhenomenon().equals(filterValue)) {
-                        return true;
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.GEOMETRY)) {
+            if (filterName.equals(HazardConstants.GEOMETRY)) {
+                for (Object filterValue : list) {
                     if (hazardEvent.getGeometry().intersects(
                             (Geometry) filterValue)) {
-                        return true;
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.STARTTIME)) {
+            if (filterName.equals(HazardConstants.STARTTIME)) {
+                for (Object filterValue : list) {
                     Date filterDate = (Date) filterValue;
                     Date eventDate = hazardEvent.getStartTime();
-                    if (!eventDate.before(filterDate)) {
-                        return true;
+                    if (eventDate.after(filterDate)
+                            || eventDate.equals(filterDate)) {
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
+            }
 
-                if (filterName.equals(HazardConstants.ENDTIME)) {
+            if (filterName.equals(HazardConstants.ENDTIME)) {
+                for (Object filterValue : list) {
                     Date filterDate = (Date) filterValue;
                     Date eventDate = hazardEvent.getEndTime();
-                    if (!eventDate.after(filterDate)) {
-                        return true;
+                    if (eventDate.before(filterDate)
+                            || eventDate.equals(filterDate)) {
+                        internalTruth = true;
+                        break;
+                    } else {
+                        internalTruth = false;
                     }
-                    value = false;
                 }
+                if (value == false) {
+                    return false;
+                }
+                value = internalTruth;
             }
         }
         return value;
@@ -187,7 +251,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
         return true;
     }
 
-    // @Override
+    @Override
     public boolean removeAllEvents() {
         hazardEvents.clear();
         return true;

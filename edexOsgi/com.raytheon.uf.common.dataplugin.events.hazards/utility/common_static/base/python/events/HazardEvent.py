@@ -51,6 +51,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.endTime = None
         self.phenomenon = None
         self.significance = None
+        self.subtype = None
         self.hazardAttributes = None
         self.hazardMode = None
         self.geometry = None
@@ -84,6 +85,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setSignificance(self, significance):
         self.significance = significance
+        
+    def getSubtype(self):
+        return self.subtype
+    
+    def setSubtype(self, subtype):
+        self.subtype = subtype
         
     def getIssueTime(self):
         return self.issueTime
@@ -130,6 +137,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return getPhenomenon()
         elif lowerKey == 'significance' or lowerKey == 'sig':
             return getSignificance()
+        elif lowerKey == 'subtype':
+            return getSubtype()
         elif lowerKey == 'issuetime':
             return getIssueTime()
         elif lowerKey == 'endtime':
@@ -157,6 +166,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             setPhenomenon(value)
         elif lowerKey == 'significance' or lowerKey == 'sig':
             setSignificance(value)
+        elif lowerKey == 'subtype':
+            setSubtype(value)
         elif lowerKey == 'issuetime':
             setIssueTime(value)
         elif lowerKey == 'endtime':
@@ -181,6 +192,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setState(self.hazardState)
         self.jobj.setPhenomenon(self.phenomenon)
         self.jobj.setSignificance(self.significance)
+        self.jobj.setSubtype(self.subtype)
         self.jobj.setIssueTime(self.issueTime)
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)
@@ -189,5 +201,5 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.jobj.setGeometry(self.geometry.wkt)
         else :
             self.jobj.setGeometry(None)
-        self.jobj.setHazardAttributes(Jutil.pyDictToJavaMap(self.hazardAttributes))
+        self.jobj.setHazardAttributes(JUtil.pyDictToJavaMap(self.hazardAttributes))
         return self.jobj                                        

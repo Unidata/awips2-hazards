@@ -103,4 +103,11 @@ public interface IHazardEventManager extends
      *            - a {@link HazardEventSet}
      */
     void storeEventSet(HazardEventSet set);
+
+    /**
+     * Removes all events, should not be implemented in certain cases.
+     * 
+     * @return
+     */
+    boolean removeAllEvents();
 }

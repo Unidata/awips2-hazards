@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
@@ -35,10 +36,10 @@ import org.junit.Test;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.edex.ebxml.registry.RegistryManagerDeployTest;
@@ -85,10 +86,7 @@ public abstract class AbstractHazardStorageTest {
 
     private final Coordinate coordinate = new Coordinate(10, 10);
 
-    private final IHazardEventManager manager = new InMemoryHazardEventManager();
-
-    // private final IHazardEventManager manager = new HazardEventManager(
-    // getMode());
+    public IHazardEventManager manager = new HazardEventManager(getMode());
 
     @Before
     public void setUp() {
@@ -97,6 +95,7 @@ public abstract class AbstractHazardStorageTest {
 
     private IHazardEvent storeEvent() {
         IHazardEvent createdEvent = manager.createEvent();
+        createdEvent.setEventID(UUID.randomUUID().toString());
         createdEvent.setEndTime(date);
         createdEvent.setHazardMode(clazz);
         createdEvent.setIssueTime(date);
@@ -105,6 +104,7 @@ public abstract class AbstractHazardStorageTest {
         createdEvent.setSiteID(site);
         createdEvent.setState(state);
         createdEvent.setStartTime(date);
+        createdEvent.setSubtype("Biohazard");
 
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
@@ -210,16 +210,15 @@ public abstract class AbstractHazardStorageTest {
     }
 
     @Test
-    public void testUpdate() {
-        String modPhen = "FW";
+    public void testUpdateTime() {
         IHazardEvent createdEvent = storeEvent();
-        createdEvent.setPhenomenon(modPhen);
+        Date newTime = new Date();
+        createdEvent.setIssueTime(newTime);
         boolean tf = manager.updateEvent(createdEvent);
         assertTrue(tf);
         HazardHistoryList list = manager
                 .getByEventID(createdEvent.getEventID());
         assertThat(createdEvent.getEventID(), list, hasSize(1));
-        assertEquals(list.get(0), createdEvent);
     }
 
     @Test

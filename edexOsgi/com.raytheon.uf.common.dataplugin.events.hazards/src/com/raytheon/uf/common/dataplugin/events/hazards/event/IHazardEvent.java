@@ -61,7 +61,7 @@ public interface IHazardEvent extends IEvent {
 
     public String getEventID();
 
-    public void setEventID(String uuid);
+    public void setEventID(String eventId);
 
     public HazardState getState();
 
@@ -74,6 +74,10 @@ public interface IHazardEvent extends IEvent {
     public String getSignificance();
 
     public void setSignificance(String significance);
+
+    public String getSubtype();
+
+    public void setSubtype(String subtype);
 
     public Date getIssueTime();
 

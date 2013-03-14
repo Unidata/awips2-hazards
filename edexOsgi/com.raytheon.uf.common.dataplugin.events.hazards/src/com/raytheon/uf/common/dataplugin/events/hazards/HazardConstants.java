@@ -177,7 +177,11 @@ public final class HazardConstants {
 
     public static final String SIGNIFICANCE = "significance";
 
+    public static final String SUBTYPE = "subtype";
+
     public static final String EVENTID = "eventID";
+
+    public static final String UNIQUEID = "uniqueID";
 
     public static final String STATE = "state";
 
@@ -186,4 +190,10 @@ public final class HazardConstants {
     public static final String ISSUETIME = "issueTime";
 
     public static final String HAZARDMODE = "hazardMode";
+
+    public static final String RISE_ABOVE = "riseAbove";
+
+    public static final String CREST = "crest";
+
+    public static final String FALL_BELOW = "fallBelow";
 }

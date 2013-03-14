@@ -57,7 +57,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  */
 
 public class RegistryEventManager implements IHazardStorageManager<HazardEvent> {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RegistryEventManager.class);
 
     private HazardRegistryHandler handler;

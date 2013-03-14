@@ -63,7 +63,7 @@ import com.vividsolutions.jts.geom.Geometry;
 
 public class DatabaseEventManager implements
         IHazardStorageManager<PracticeHazardEvent> {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DatabaseEventManager.class);
 
     private CoreDao dao;
