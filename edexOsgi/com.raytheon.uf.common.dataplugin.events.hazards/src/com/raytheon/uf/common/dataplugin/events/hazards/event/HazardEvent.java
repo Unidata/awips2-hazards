@@ -188,6 +188,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         this();
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
+        setEventID(event.getEventID());
         setStartTime(event.getStartTime());
         setIssueTime(event.getIssueTime());
         setGeometry(event.getGeometry());

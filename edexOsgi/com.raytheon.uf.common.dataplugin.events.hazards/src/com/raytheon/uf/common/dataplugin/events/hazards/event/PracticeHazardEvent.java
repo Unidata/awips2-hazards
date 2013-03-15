@@ -182,6 +182,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     public PracticeHazardEvent(IHazardEvent event) {
         this();
         setSiteID(event.getSiteID());
+        setEventID(event.getEventID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setIssueTime(event.getIssueTime());
