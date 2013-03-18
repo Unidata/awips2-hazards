@@ -437,6 +437,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * @param hazardAttributes
      *            the hazardAttributes to set
      */
+    @Override
     public void setHazardAttributes(Map<String, Serializable> hazardAttributes) {
         Set<PracticeHazardAttribute> attrs = new HashSet<PracticeHazardAttribute>();
         for (Entry<String, Serializable> entry : hazardAttributes.entrySet()) {
