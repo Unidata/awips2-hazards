@@ -68,18 +68,22 @@ class Recommender(RecommenderTemplate.Recommender):
         req.addIdentifier("info.datasetId", "GFS212")
         times = DataAccessLayer.getAvailableTimes(req)
         data = DataAccessLayer.getGridData(req, times)
-        latlons = DataAccessLayer.getLatLonCoords(req)
-        max = numpy.max(latlons[1][1:]-latlons[1][:-1])
-        high = -10
+        max = 0
+        finalVals = None
+        if len(data) > 0 :
+            finalVals = list()
+            latlons = data[0].getLatLonCoords()
+            max = numpy.max(latlons[1][1:] - latlons[1][:-1])
+            high = -10
     
-        rawdata = data[0].getRawData('C')
-        finalVals = list()
-        for i in range(len(rawdata)):
-            for j in range(len(rawdata[i])):
-                if rawdata[i][j] < high:
-                    finalVals.append([latlons[1][i][j], latlons[0][i][j]])
+            rawdata = data[0].getRawData('C')
+            for i in range(len(rawdata)):
+                for j in range(len(rawdata[i])):
+                    if rawdata[i][j] < high:
+                        finalVals.append([latlons[1][i][j], latlons[0][i][j]])
+                        
         event = EventFactory.createEvent()
-        event.setSite("koax")
+        event.setSiteID("koax")
         event.setHazardState("PENDING")
         event.setPhenomenon("FZ")
         event.setSignificance("WARNING")

@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.recommender;
+package com.raytheon.uf.common.recommenders;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -34,7 +34,7 @@ import org.junit.Test;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.hazards.recommender.AbstractRecommenderTest;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
 
 /**
  * Unit test for recommenders, successfully returns an IEvent.

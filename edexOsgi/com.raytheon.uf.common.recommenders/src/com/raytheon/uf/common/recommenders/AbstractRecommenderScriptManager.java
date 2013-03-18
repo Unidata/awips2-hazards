@@ -232,6 +232,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @param methodName
      * @return
      */
+    @SuppressWarnings("unchecked")
     public Map<String, String> getInfo(String recName, String methodName) {
         Object retVal = null;
         try {
@@ -242,15 +243,6 @@ public abstract class AbstractRecommenderScriptManager extends
                     + methodName, e);
         }
         return (Map<String, String>) retVal;
-    }
-
-    private void retrieveInventory() {
-        Map<String, Object> results = null;
-        LocalizationFile[] lFiles = PathManagerFactory.getPathManager()
-                .listFiles(recommenderDir.getContext(),
-                        recommenderDir.getName(), new String[] { "py" }, false,
-                        true);
-
     }
 
     /**
@@ -359,6 +351,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @param obj
      * @return
      */
+    @SuppressWarnings("unchecked")
     protected List<IEvent> resolveEvents(Object obj) {
         List<IEvent> events = new ArrayList<IEvent>();
         if (obj instanceof List) {
