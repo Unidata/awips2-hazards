@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.recommender;
+package com.raytheon.uf.common.recommenders;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.hazards.recommender.AbstractRecommenderTest;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
 /**
  * A failure recommender, returns no events (testing if the value returned was
  * not an IEvent)
