@@ -167,8 +167,10 @@ public class DatabaseEventManager implements
                         requestString.append(";");
                         Object[] results = query.dbRequest(
                                 requestString.toString(), "metadata");
-                        criteria.add(Restrictions.in("key."
-                                + HazardConstants.EVENTID, results));
+                        if (results.length > 0) {
+                            criteria.add(Restrictions.in("key."
+                                    + HazardConstants.EVENTID, results));
+                        }
                     } catch (SpatialException e) {
                         statusHandler.handle(Priority.PROBLEM,
                                 e.getLocalizedMessage(), e);

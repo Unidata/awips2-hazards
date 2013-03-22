@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
@@ -413,6 +414,14 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @Override
     public Map<String, Serializable> getHazardAttributes() {
+        if (hazardAttributes == null
+                || hazardAttributes.size() != hazardAttributesSerializable
+                        .size()) {
+            hazardAttributes = new HashMap<String, Serializable>();
+            for (IHazardAttribute attr : hazardAttributesSerializable) {
+                hazardAttributes.put(attr.getKey(), attr.getValue());
+            }
+        }
         return hazardAttributes;
     }
 
@@ -424,6 +433,15 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @Override
     public void setHazardAttributes(Map<String, Serializable> attributes) {
+        if (hazardAttributesSerializable == null
+                || hazardAttributesSerializable.size() != hazardAttributes
+                        .size()) {
+            hazardAttributesSerializable = new HashSet<HazardAttribute>();
+            for (Entry<String, Serializable> entry : attributes.entrySet()) {
+                hazardAttributesSerializable.add(new HazardAttribute(eventID,
+                        entry.getKey(), entry.getValue()));
+            }
+        }
         this.hazardAttributes = attributes;
     }
 

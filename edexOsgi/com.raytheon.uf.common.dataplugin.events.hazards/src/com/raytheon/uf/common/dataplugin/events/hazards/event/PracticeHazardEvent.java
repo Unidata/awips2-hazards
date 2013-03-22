@@ -424,7 +424,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public Map<String, Serializable> getHazardAttributes() {
-        if (hazardAttributes == null) {
+        if (hazardAttributes == null
+                || hazardAttributes.size() != hazardAttrsSerializable.size()) {
             hazardAttributes = new HashMap<String, Serializable>();
             for (IHazardAttribute attr : hazardAttrsSerializable) {
                 hazardAttributes.put(attr.getKey(), attr.getValue());
@@ -439,12 +440,16 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public void setHazardAttributes(Map<String, Serializable> hazardAttributes) {
-        Set<PracticeHazardAttribute> attrs = new HashSet<PracticeHazardAttribute>();
-        for (Entry<String, Serializable> entry : hazardAttributes.entrySet()) {
-            attrs.add(new PracticeHazardAttribute(key, entry.getKey(), entry
-                    .getValue()));
+        if (hazardAttrsSerializable == null
+                || hazardAttrsSerializable.size() != hazardAttributes.size()) {
+            hazardAttrsSerializable = new HashSet<PracticeHazardAttribute>();
+            for (Entry<String, Serializable> entry : hazardAttributes
+                    .entrySet()) {
+                hazardAttrsSerializable.add(new PracticeHazardAttribute(key,
+                        entry.getKey(), entry.getValue()));
+            }
         }
-        this.hazardAttrsSerializable = attrs;
+        this.hazardAttributes = hazardAttributes;
     }
 
     /*
