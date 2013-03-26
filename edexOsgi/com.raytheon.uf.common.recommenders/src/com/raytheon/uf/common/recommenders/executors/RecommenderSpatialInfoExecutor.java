@@ -53,6 +53,6 @@ public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptM
 
     @Override
     public Map<String, String> execute(P script) {
-        return script.getInfo(recommenderName, "getSpatialinfo");
+        return script.getInfo(recommenderName, "getSpatialInfo");
     }
 }
