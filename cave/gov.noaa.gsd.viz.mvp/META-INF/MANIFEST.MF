@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: gov.noaa.gsd.viz.mvp
+Bundle-SymbolicName: gov.noaa.gsd.viz.mvp
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: GSD
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Import-Package: com.google.common.eventbus
+Export-Package: gov.noaa.gsd.viz.mvp,
+ gov.noaa.gsd.viz.mvp.widgets

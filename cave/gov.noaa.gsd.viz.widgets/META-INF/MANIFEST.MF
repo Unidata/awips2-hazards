@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: gov.noaa.gsd.viz.widgets
+Bundle-SymbolicName: gov.noaa.gsd.viz.widgets
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: GSD
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Require-Bundle: org.eclipse.swt;bundle-version="3.6.1"
+Export-Package: gov.noaa.gsd.viz.widgets
