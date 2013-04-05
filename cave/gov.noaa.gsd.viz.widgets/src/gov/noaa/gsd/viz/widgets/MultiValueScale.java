@@ -44,6 +44,7 @@ import org.eclipse.swt.widgets.Display;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
+ * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * 
  * </pre>
  * 
@@ -214,7 +215,7 @@ public class MultiValueScale extends MultiValueLinearControl {
      * value in this list than the number returned by <code>
      * getConstrainedThumbValueCount()</code>.
      */
-    private List<Image> trackTileImages = new ArrayList<Image>();
+    private final List<Image> trackTileImages = new ArrayList<Image>();
 
     /**
      * 1-pixel-wide image to be used as the tile to draw the track area if the

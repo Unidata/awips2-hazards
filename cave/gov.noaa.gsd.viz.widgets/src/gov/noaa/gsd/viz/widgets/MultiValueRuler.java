@@ -63,6 +63,7 @@ import org.eclipse.swt.widgets.Composite;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
+ * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * 
  * </pre>
  * 
@@ -184,7 +185,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * list corresponds to the marked value of that type at the same index, and
      * indicates which direction that marked value points.
      */
-    private Map<ValueType, List<IndicatorDirection>> markedValueDirectionsForTypes = new HashMap<ValueType, List<IndicatorDirection>>();
+    private final Map<ValueType, List<IndicatorDirection>> markedValueDirectionsForTypes = new HashMap<ValueType, List<IndicatorDirection>>();
 
     /**
      * Map pairing marked value types to lists of heights for those marked
@@ -193,7 +194,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * from the base that marked value is to be drawn (normalized to between 0.0
      * and 1.0).
      */
-    private Map<ValueType, List<Float>> markedValueHeightsForTypes = new HashMap<ValueType, List<Float>>();
+    private final Map<ValueType, List<Float>> markedValueHeightsForTypes = new HashMap<ValueType, List<Float>>();
 
     /**
      * Flag indicating whether or not the thumbs should be drawn as book-ends
@@ -208,7 +209,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * type at the same index. If a color is <code>
      * null</code>, a default color is used for that value's thumb.
      */
-    private Map<ValueType, List<Color>> thumbColorsForTypes = new HashMap<ValueType, List<Color>>();
+    private final Map<ValueType, List<Color>> thumbColorsForTypes = new HashMap<ValueType, List<Color>>();
 
     /**
      * Map pairing thumb types to lists of pointing directions for those thumbs;
@@ -216,7 +217,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * to the thumb value of that type at the same index, and indicates which
      * direction that thumb points.
      */
-    private Map<ValueType, List<IndicatorDirection>> thumbDirectionsForTypes = new HashMap<ValueType, List<IndicatorDirection>>();
+    private final Map<ValueType, List<IndicatorDirection>> thumbDirectionsForTypes = new HashMap<ValueType, List<IndicatorDirection>>();
 
     /**
      * Map pairing thumb types to lists of height specifiers for those thumbs;
@@ -225,21 +226,21 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * from the bottom the thumb should be drawn, with 0.0 indicating the bottom
      * of the ruler and 1.0 the top.
      */
-    private Map<ValueType, List<Float>> thumbHeightsForTypes = new HashMap<ValueType, List<Float>>();
+    private final Map<ValueType, List<Float>> thumbHeightsForTypes = new HashMap<ValueType, List<Float>>();
 
     /**
      * Map pairing thumb types to lists of thumb images for those thumbs; the
      * image at each index of each contained list corresponds to the thumb value
      * of that type at the same index when that thumb is not active.
      */
-    private Map<ValueType, List<Image>> thumbImagesForTypes = new HashMap<ValueType, List<Image>>();
+    private final Map<ValueType, List<Image>> thumbImagesForTypes = new HashMap<ValueType, List<Image>>();
 
     /**
      * Map pairing thumb types to lists of active thumb images for those thumbs;
      * the image at each index of each contained list corresponds to the thumb
      * value of that type at the same index when that thumb is active.
      */
-    private Map<ValueType, List<Image>> activeThumbImagesForTypes = new HashMap<ValueType, List<Image>>();
+    private final Map<ValueType, List<Image>> activeThumbImagesForTypes = new HashMap<ValueType, List<Image>>();
 
     /**
      * Bounds of a thumb.
@@ -269,7 +270,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * This is kept around only to avoid repeated allocations, not because it is
      * state.
      */
-    private int[] triangleCoordinates = new int[6];
+    private final int[] triangleCoordinates = new int[6];
 
     /**
      * Preferred client area height.
@@ -1582,7 +1583,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
         // over, if this is the case.
         ValueType closestType = null;
         int closestIndex = -1;
-        int smallestDelta = 100000;
+        int smallestDelta = Integer.MAX_VALUE;
         if ((e.x >= 0)
                 && (e.x < getClientAreaWidth() + getLeftInset()
                         + getRightInset())
