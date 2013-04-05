@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+  <xmlToJson>
+    <listParser parent="configuration" tag="mainWarngenProducts"
+                outerDelimeter="," innerDelimeter="/" innerKeyIndex="1" />
+    <listParser parent="configuration" tag="otherWarngenProducts"
+                outerDelimeter="," innerDelimeter="/" innerKeyIndex="1" />
+
+    <byModifier tag="include" modifierAttribute="file" />
+    <byModifier tag="pointSource" modifierAttribute="variable" />
+  </xmlToJson>

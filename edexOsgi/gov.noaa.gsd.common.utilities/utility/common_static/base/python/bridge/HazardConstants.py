@@ -1,14 +1,18 @@
 """
-10    Description: Constants used throughout Hazard Services Python code.
-12    
-13    SOFTWARE HISTORY
-14    Date         Ticket#    Engineer    Description
-15    ------------ ---------- ----------- --------------------------
-16    April 5, 2013            Tracy.L.Hansen      Initial creation
-17    
-18    @author Tracy.L.Hansen@noaa.gov
-19    @version 1.0
-20    """
+    Description: Constants used throughout Hazard Services Python code.
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    April 5, 2013            Tracy.L.Hansen      Initial creation
+    April 19, 2013           blawren             Added constants for 
+                                                 Bridge
+    
+    @author Tracy.L.Hansen@noaa.gov
+    @version 1.0
+"""
+
+import math
 
 #################################
 # Hazard Event Keys and Values
@@ -34,11 +38,15 @@ HEADLINE = "headline"
 FULLTYPE = "fullType"
 PHENOMENON = "phen"
 SIGNIFICANCE = "sig"
+PHENSIG = "phensig"
 
 START_TIME = "startTime"
 END_TIME = "endTime"
 CREATION_TIME = "creationTime"
 ISSUE_TIME = "issueTime"
+
+# Session State
+SELECTED_TIME_MS = "selectedTimeMS"
 
 # Meta Data
 CAUSES = "causes"
@@ -55,8 +63,10 @@ FORECAST_POINT = "forecastPoint"
 ID = "id"
 NAME = "name"
 POINT = "point"
+POLYGON = "polygon"
 
 PREVIEW_STATE = "previewState"
+PREVIEW_ENDED = "previewEnded"
 REPLACES = "replaces"
 REPLACED_BY = "replacedBy"
 
@@ -71,6 +81,55 @@ POINT_TIME = "pointTime"
 EDITABLE_START = "editableStart"
 EDITABLE_END = "editableEnd"
 PAST_FUTURE = "pastFuture"
+
+# Tool Types
+RECOMMENDER_TOOL = "Recommender"
+PRODUCT_GENERATOR_TOOL = "ProductGenerator"
+
+# Data Types
+EVENTS_DATA = "events"
+CANNED_EVENT_DATA = "cannedEvents"
+SETTINGS_DATA = "settings"
+HAZARD_TYPES_DATA = "hazardTypes"
+HAZARD_CATEGORIES_DATA = "hazardCategories"
+PRODUCT_DATA = "productGeneratorTable"
+STARTUP_CONFIG_DATA = "startUpConfig"
+HAZARD_METADATA = "hazardMetaData"
+HAZARD_METADATA_FILTER = "hazardMetaData_filter"
+CONFIG_DATA = "config"
+VTEC_TABLE_DATA = "VTECTable"
+VTEC_RECORDS_DATA = "vtecRecords"
+ALERTS_DATA = "alerts"
+TEST_VTEC_RECORDS_DATA = "testVtecRecords"
+VIEW_DEF_CONFIG_DATA = "viewDefConfig"
+VIEW_CONFIG_DATA = "viewConfig"
+VIEW_DEFAULT_DATA = "viewDefaultValues"
+HAZARD_INSTANCE_ALERT_CONFIG_DATA = "hazardInstanceAlertConfig"
+ALERT_CONFIG_DATA = "alertConfig"
+AREA_DICTIONARY_DATA = "AreaDictionary"
+CITY_LOCATION_DATA = "CityLocation"
+SITE_INFO_DATA = "SiteInfo"
+CALLS_TO_ACTIONS_DATA = "CallToActions"
+GFE_DATA = "GFEGrids"
+
+# Localization
+LOCALIZATION_LEVEL = "level"
+
+# Hazard Services Settings
+SETTINGS_ID = "settingsID"
+VISIBLE_TYPES = "visibleTypes"
+VISIBLE_STATES = "visibleStates"
+VISIBLE_SITES = "visibleSites"
+
+# Dictionary (or map) keys
+DATA_TYPE_KEY = "dataType"
+EVENTDICTS_KEY = "eventDicts"
+PRODUCT_CATEGORY_KEY = "productCategory"
+FIELDS_KEY = "fields"
+FILTER_KEY = "filter"
+RETURN_TYPE_KEY = "returnType"
+GRID_PARAM_KEY = "gridParm"
+
 
 #################################
 # VTEC Record Keys
@@ -92,5 +151,18 @@ UPGRADE_FROM = 'upgradeFrom'
 ACTION = 'act'
 OFFICE_ID = 'officeid'
 SEGMENT = 'seg'
+
+#################################
+# Math constants
+PI = math.pi # 3.141592653589793238462643383279502884197169399375106
+DEG_TO_RAD = 0.017453292519943295769236907684886127134428
+R_EARTH = 6370.0
+r_Earth2 = 2.0*R_EARTH
+halfCircEarth = R_EARTH*PI
+kmPerDegLat = R_EARTH*PI/180.0
+
+#################################
+# Localization Relative Paths
+TEXT_UTILITY_ROOT = "gfe/userPython/textUtilities/regular/"
 
 
