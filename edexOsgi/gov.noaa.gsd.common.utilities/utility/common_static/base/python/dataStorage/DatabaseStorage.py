@@ -1,17 +1,18 @@
 import json, os, cPickle, time, fcntl, random, stat
 import Logger as LogStream
 import defaultConfig as defaultConfig
-import pkg_resources
+#import pkg_resources
         
 class DatabaseStorage:
 
     def __init__(self):
         # Build the path to the database files.
         # These files live in the same directory as this module.
-        self._dbPath = self.buildDatabasePath()
-        print os.getcwd()
-        import sys
-        sys.stdout.flush()
+        self._readOnlyDbPath = self.buildDatabasePath()
+        self._dbPath = self.getUserPath("HazardServices")
+        #print os.getcwd()
+        #import sys
+        #sys.stdout.flush()
         self._vtecRecordsFileName = self._dbPath + "vtecRecords.json"
         self._vtecRecordsLockName = self._dbPath + "vtecRecords.lock"
         self._vtecRecordsLockFD = None
@@ -20,18 +21,33 @@ class DatabaseStorage:
         self._testVtecRecordsLockName = self._dbPath + "testVtecRecords.lock"
         self._testVtecRecordsLockFD = None
         self._testVtecRecordsLockTime = None
+        self._lastSeqNumFilePath = self._dbPath + "lastSeqNum.txt"
         
         #
         # Build path to the last sequence number file.
-        try:
-            self._lastSeqNumFilePath = pkg_resources.resource_filename("dataStorage", "lastSeqNum.txt")
-        except:
-            print "Could not find the lastSeqNum.txt file"
+        #try:
+        #    self._lastSeqNumFilePath = pkg_resources.resource_filename("dataStorage", "lastSeqNum.txt")
+        #except:
+        #    print "Could not find the lastSeqNum.txt file"
         
         # NOTE:  'getEvents' and 'getVtecRecords' do filtering on the entire database of 
         # entries (events or vtecRecords).  
         # Eventually, the database needs to do this filtering for us.
         
+    def getUserPath(self, category):
+        from com.raytheon.uf.common.localization import PathManagerFactory, LocalizationContext
+        from com.raytheon.uf.common.localization import LocalizationContext_LocalizationType as LocalizationType
+        from com.raytheon.uf.common.localization import LocalizationContext_LocalizationLevel as LocalizationLevel
+        pathMgr = PathManagerFactory.getPathManager()
+        path = 'gfe/userPython/'
+        lc = pathMgr.getContext(LocalizationType.valueOf('CAVE_STATIC'), LocalizationLevel.valueOf('USER'))
+        lf = pathMgr.getLocalizationFile(lc, path)
+        fullpath = lf.getFile().getPath()
+        #idx = fullpath.rfind("/")
+        #if not os.path.exists(fullpath[:idx]):
+        #    os.makedirs(fullpath[:idx])
+        return fullpath + "/"
+
     def buildDatabasePath(self):
         path = defaultConfig.__file__
         pos = path.rfind("dataStorage")
@@ -101,10 +117,7 @@ class DatabaseStorage:
         
     def deleteVtecDatabase(self, vtecDicts):
         self.deleteLocalData("vtecRecords", ["oid","key", "etn"], vtecDicts, dataFormat="list")    
-                         
-    def getDbPath(self):
-        return self._dbPath
-    
+                             
     def reset(self, criteria):
         info = json.loads(criteria)
         dataType = info.get('dataType')
@@ -256,8 +269,8 @@ class DatabaseStorage:
         lockFD.close()    
     
     def getColorTable(self, type):
-        colorTable_dir = self._dbPath + "ColorTable." + type
-        print "path", colorTable_dir
+        colorTable_dir = self._readOnlyDbPath + "ColorTable." + type
+        #print "path", colorTable_dir
         return open(colorTable_dir, "r")
         
     def newSeqNum(self):
@@ -278,7 +291,7 @@ class DatabaseStorage:
             return FIRST_AVAILABLE_EVENT_ID
         
     def getLayerColorTable(self, model):
-        colorTable_dir = self.dbPath + "SnowAmtColorTable.xml"
+        colorTable_dir = self.readOnlyDbPath + "SnowAmtColorTable.xml"
         return open(colorTable_dir, "r")
 
     def getLocalData(self, filename, id, dataFormat="dictionary"): 
@@ -364,8 +377,8 @@ class DatabaseStorage:
     
            
     def readJsonFile(self, filename):
-        fd = open(self._dbPath+filename+".json", 'rb')                
         try:
+            fd = open(self._dbPath+filename+".json", 'rb')                
             data = json.loads(fd.read())
             fd.close()
         except:
