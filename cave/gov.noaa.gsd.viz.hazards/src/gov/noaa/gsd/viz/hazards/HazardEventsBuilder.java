@@ -23,6 +23,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -32,14 +33,15 @@ import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 
 /**
- * Description: TODO
+ * Description: Utility method for building {@link HazardEvent}s from a JSON
+ * representation.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            daniel.s.schaffer      Initial induction into repo
+ * Apr 04, 2013            daniel.s.schaffer      Initial creation
  * 
  * </pre>
  * 
@@ -62,18 +64,12 @@ public class HazardEventsBuilder {
             Dict eventDict = dict.getDynamicallyTypedValue(eventId);
             Map<String, Serializable> attributes = Maps.newHashMap();
             for (String key : eventDict.keySet()) {
-
-                /**
-                 * The lowerCase calls is because of a mismatch between RTS and
-                 * GSD. RTS uses eventId, GSD uses eventID
-                 */
-                if (key.toLowerCase().equals(
-                        HazardConstants.EVENTID.toLowerCase())) {
+                if (key.equals(HazardConstants.EVENTID)) {
                     event.setEventID(eventId);
                 } else if (key.equals(HazardConstants.STATE)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setState(HazardConstants.hazardStateFromString(value));
-                } else if (key.equals("siteID")) {
+                } else if (key.equals(HazardConstants.SITEID)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(value);
                 } else if (key.equals(HazardConstants.STARTTIME)) {
@@ -81,8 +77,8 @@ public class HazardEventsBuilder {
                     event.setStartTime(date);
 
                     /**
-                     * TODO Find out why HS events don't have issue time in
-                     * them.
+                     * Deal with the fact that the handling of IssueTime needs
+                     * work. See Issue #694.
                      */
                     event.setIssueTime(date);
                 } else if (key.equals(HazardConstants.ENDTIME)) {
