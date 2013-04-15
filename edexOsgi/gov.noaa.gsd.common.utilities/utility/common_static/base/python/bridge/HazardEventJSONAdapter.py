@@ -1,18 +1,9 @@
-'''
-/**
- * This software was developed and / or modified by the
- * National Oceanic and Atmospheric Administration (NOAA), 
- * Earth System Research Laboratory (ESRL), 
- * Global Systems Division (GSD), 
- * Information Services Branch (ISB)
- * 
- * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
- */
-'''
+
 try:
     import JUtil
     import GeometryFactory
     import EventFactory
+    from HazardConstants import *
     
     # GSD has requested assistance from RTS on how to avoid the "Unresolved"
     # annotations.  In our eclipse editor, failing to include this causes
@@ -44,23 +35,23 @@ def hazardHistoryConverter(obj):
         javaEvent = obj.get(0)
         eventID = javaEvent.getEventID()
         event = dict()
-        event["eventID"] = eventID
-        event["startTime"] = toDate(javaEvent.getStartTime())
-        event["endTime"] = toDate(javaEvent.getEndTime())
-        event["phen"] = javaEvent.getPhenomenon()
-        event["sig"] = javaEvent.getSignificance()
-        event["subType"] = javaEvent.getSubtype()
+        event[EVENT_ID] = eventID
+        event[START_TIME] = toDate(javaEvent.getStartTime())
+        event[END_TIME] = toDate(javaEvent.getEndTime())
+        event[PHENOMENON] = javaEvent.getPhenomenon()
+        event[SIGNIFICANCE] = javaEvent.getSignificance()
+        event[SUBTYPE] = javaEvent.getSubtype()
         
         #
         # The subtype is not guaranteed to always be present.
-        if event["subType"] is not None and len(event["subType"]) > 0:
-            event["type"] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
+        if event[SUBTYPE] is not None and len(event[SUBTYPE]) > 0:
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
         else:
-            event["type"] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
             
-        event["state"] = str(javaEvent.getState()).lower()
-        event["siteID"] = javaEvent.getSiteID()
-        event["shapes"] = geometryConverter(javaEvent.getGeometry())
+        event[STATE] = str(javaEvent.getState()).lower()
+        event[SITE_ID] = javaEvent.getSiteID()
+        event[SHAPES] = geometryConverter(javaEvent.getGeometry())
         
         attributes = javaEvent.getHazardAttributes()
 
@@ -77,26 +68,26 @@ def hazardHistoryConverter(obj):
 
 def eventConverter(javaEvent):
     objtype = javaEvent.jclassname
-    if objtype == "com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent":
+    if objtype in ["com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent",
+                   "gov.noaa.gsd.viz.hazards.events.HazardServicesEvent"]:
         eventID = javaEvent.getEventID()
         event = dict()
-        event["eventID"] = eventID
-        event["startTime"] = toDate(javaEvent.getStartTime())
-        event["endTime"] = toDate(javaEvent.getEndTime())
-        event["phen"] = javaEvent.getPhenomenon()
-        event["sig"] = javaEvent.getSignificance()
-        event["subType"] = javaEvent.getSubtype()
-        
+        event[EVENT_ID] = eventID
+        event[START_TIME] = toDate(javaEvent.getStartTime())
+        event[END_TIME] = toDate(javaEvent.getEndTime())
+        event[PHENOMENON] = javaEvent.getPhenomenon()
+        event[SIGNIFICANCE] = javaEvent.getSignificance()
+        event[SUBTYPE] = javaEvent.getSubtype()        
         #
         # The subType is not guaranteed to always be present.
-        if event["subType"] is not None and len(event["subType"]) > 0:
-            event["type"] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
+        if event[SUBTYPE] is not None and len(event[SUBTYPE]) > 0:
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
         else:
-            event["type"] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
             
-        event["state"] = str(javaEvent.getState()).lower()
-        event["siteID"] = javaEvent.getSiteID()
-        event["shapes"] = geometryConverter(javaEvent.getGeometry())
+        event[STATE] = str(javaEvent.getState()).lower()
+        event[SITE_ID] = javaEvent.getSiteID()
+        event[SHAPES] = geometryConverter(javaEvent.getGeometry())
 
         
         attributes = javaEvent.getHazardAttributes()
@@ -116,8 +107,9 @@ def generatedProductConverter(javaGeneratedProduct):
     objtype = javaGeneratedProduct.jclassname
     if objtype == "com.raytheon.uf.common.dataplugin.events.hazards.productGeneration.IGeneratedProduct":
         productID = javaGeneratedProduct.getProductID()
-        asciiText = javaGeneratedProduct.getEntry('LegacyText').get(0)
-        return {'productID': productID, 'asciiText': asciiText}
+        jEntries = javaGeneratedProduct.getEntries()
+        pyEntries = JUtil.javaMapToPyDict(jEntries)
+        return {'productID': productID, 'entries': pyEntries}
 
 def toDate(date):
     result = date.getTime()
@@ -129,8 +121,8 @@ def asDatetime(dateAsMillis):
 
 def geometryConverter(geometry):
     dict = {}
-    dict["include"] = "true"
-    dict["shapeType"] = "polygon"
+    dict[INCLUDE] = "true"
+    dict[SHAPE_TYPE] = POLYGON
     pointsList = []
     
     coordinates = geometry.getCoordinates()
@@ -142,8 +134,8 @@ def geometryConverter(geometry):
         pointsList.append([coordinate.x, coordinate.y])
         
     # Although polygons are stored in the Hazards JSON, they are referenced with
-    # the name "points".
-    dict["points"] = pointsList
+    # the name POINTS.
+    dict[POINTS] = pointsList
     result = [dict]
     return result
 
@@ -216,23 +208,23 @@ class HazardEventJSONAdapter:
             hazardAttributes = {}
             
             for key in eventDict:
-                if key == "eventID":
+                if key == EVENT_ID:
                     eventID = eventDict[key]
                     hazardEvent.setEventID(eventID)
             
-                elif key == "state":
+                elif key == STATE:
                     hazardEvent.setHazardState(eventDict[key])
             
-                elif key == "phen":
+                elif key == PHENOMENON:
                     hazardEvent.setPhenomenon(eventDict[key])
                     
-                elif key == "sig":
+                elif key == SIGNIFICANCE:
                     hazardEvent.setSignificance(eventDict[key])
                     
-                elif key == "subType":
+                elif key == SUBTYPE:
                     hazardEvent.setSubtype(eventDict[key])
                     
-                elif key == "startTime":
+                elif key == START_TIME:
                     time = asDatetime(eventDict[key])
                     hazardEvent.setStartTime(time)
                     
@@ -242,20 +234,20 @@ class HazardEventJSONAdapter:
                     # this needs to be re-thought.  See Issue #694.
                     hazardEvent.setIssueTime(time)
             
-                elif key == "endTime":
+                elif key == END_TIME:
                     time = asDatetime(eventDict[key])
                     hazardEvent.setEndTime(time)
             
-                elif key == "siteID":
+                elif key == SITE_ID:
                     hazardEvent.setSiteID(eventDict[key])
             
-                elif key == "shapes":
+                elif key == SHAPES:
                     shapes = eventDict[key]
                     for shape in shapes:
                     
                         # For now, only handle polygons.
-                        if shape["shapeType"] == "polygon":
-                            points = shape["points"]
+                        if shape[SHAPE_TYPE] == POLYGON:
+                            points = shape[POINTS]
             
                             coordinates = list()
                             for point in points:
@@ -301,41 +293,41 @@ class HazardEventJSONAdapter:
             hazardAttributes = {}
             
             for key in eventDict:
-                if key == "eventID":
+                if key == EVENT_ID:
                     eventID = eventDict[key]
                     hazardEvent.setEventID(eventID)
             
-                elif key == "state":
+                elif key == STATE:
                     hazardEvent.setHazardState(eventDict[key])
             
-                elif key == "phen":
+                elif key == PHENOMENON:
                     hazardEvent.setPhenomenon(eventDict[key])
                     
-                elif key == "sig":
+                elif key == SIGNIFICANCE:
                     hazardEvent.setSignificance(eventDict[key])
                     
-                elif key == "subType":
+                elif key == SUBTYPE:
                     hazardEvent.setSubtype(eventDict[key])
                     
-                elif key == "startTime":
+                elif key == START_TIME:
                     time = asDatetime(eventDict[key])
                     hazardEvent.setStartTime(time)
                     hazardEvent.setIssueTime(time)
             
-                elif key == "endTime":
+                elif key == END_TIME:
                     time = asDatetime(eventDict[key])
                     hazardEvent.setEndTime(time)
             
-                elif key == "siteID":
+                elif key == SITE_ID:
                     hazardEvent.setSiteID(eventDict[key])
             
-                elif key == "shapes":
+                elif key == SHAPES:
                     shapes = eventDict[key]
                     for shape in shapes:
                     
                         # For now, only handle polygons.
-                        if shape["shapeType"] == "polygon":
-                            points = shape["points"]
+                        if shape[SHAPE_TYPE] == POLYGON:
+                            points = shape[POINTS]
             
                             coordinates = list()
                             for point in points:
