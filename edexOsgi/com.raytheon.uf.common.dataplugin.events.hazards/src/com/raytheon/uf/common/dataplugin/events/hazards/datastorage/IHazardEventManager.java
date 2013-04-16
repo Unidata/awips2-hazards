@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 
 /**
  * Any new hazard event manager must implement this interface, which provides
@@ -97,10 +98,20 @@ public interface IHazardEventManager extends
     HazardHistoryList getByEventID(String eventId);
 
     /**
+     * To explicitly specify only a few different types of phensigs, you can use
+     * this method, or, conversely, a call using HazardConstants.PHENSIG as the
+     * key can be used as it will be treated specially.
+     * 
+     * @param phensigs
+     * @return
+     */
+    Map<String, HazardHistoryList> getByMultiplePhensigs(List<String> phensigs);
+
+    /**
      * Stores a set of events that were grouped together.
      * 
      * @param set
-     *            - a {@link HazardEventSet}
+     *            - a {@link EventSet<IHazardEvent>}
      */
     void storeEventSet(HazardEventSet set);
 

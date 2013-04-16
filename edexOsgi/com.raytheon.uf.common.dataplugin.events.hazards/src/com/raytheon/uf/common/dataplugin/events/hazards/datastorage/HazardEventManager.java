@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import jep.JepException;
 
@@ -38,8 +39,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardEventFactory;
 import com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory;
 import com.raytheon.uf.common.dataplugin.events.hazards.PracticeHazardEventFactory;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest.RequestType;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequest;
@@ -381,6 +382,16 @@ public class HazardEventManager implements IHazardEventManager {
         return getEventsByFilter(builder.getQuery());
     }
 
+    @Override
+    public Map<String, HazardHistoryList> getByMultiplePhensigs(
+            List<String> phensigs) {
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        for (String phensig : phensigs) {
+            builder.addKey(HazardConstants.PHENSIG, phensig);
+        }
+        return getEventsByFilter(builder.getQuery());
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -437,8 +448,8 @@ public class HazardEventManager implements IHazardEventManager {
     };
 
     /**
-     * Takes a HazardEventSet, which can be unrelated hazards, and stores them
-     * individually. Just a convenience method.
+     * Takes a EventSet<IHazardEvent>, which can be unrelated hazards, and
+     * stores them individually. Just a convenience method.
      */
     @Override
     public void storeEventSet(HazardEventSet set) {
@@ -470,9 +481,17 @@ public class HazardEventManager implements IHazardEventManager {
      */
     @Override
     public boolean removeAllEvents() {
-        throw new UnsupportedOperationException(
-                "Cannot remove all events from the "
-                        + (practice == true ? "practice" : "operational")
-                        + " storage area");
+        // allow for a pass through, we should be throwing an exception here as
+        // removing all events is not a good idea
+        Map<String, HazardHistoryList> list = getAll();
+        List<IHazardEvent> events = new ArrayList<IHazardEvent>();
+        for (Entry<String, HazardHistoryList> entry : list.entrySet()) {
+            events.addAll(entry.getValue().getEvents());
+        }
+        return removeEvents(events);
+        // throw new UnsupportedOperationException(
+        // "Cannot remove all events from the "
+        // + (practice == true ? "practice" : "operational")
+        // + " storage area");
     }
 }

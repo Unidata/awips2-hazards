@@ -175,6 +175,8 @@ public final class HazardConstants {
 
     public static final String PHENOMENON = "phenomenon";
 
+    public static final String PHENSIG = "phensig";
+
     public static final String SIGNIFICANCE = "significance";
 
     public static final String SUBTYPE = "subtype";

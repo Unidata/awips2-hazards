@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.hibernate.Criteria;
+import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -197,6 +198,37 @@ public class DatabaseEventManager implements
                         criteria.add(Restrictions.le(HazardConstants.ENDTIME,
                                 filters.get(HazardConstants.ENDTIME).get(0)));
                     }
+                } else if (finalKey.equals(HazardConstants.PHENSIG)) {
+                    Criterion criterion = null;
+                    for (Object ob : entry.getValue()) {
+                        String phensig = ob.toString();
+                        String[] splitPhensig = phensig.split("\\.");
+                        if (splitPhensig.length != 2
+                                && splitPhensig.length != 3) {
+                            statusHandler.handle(Priority.WARN,
+                                    "Improperly formatted phensig, skipping "
+                                            + phensig);
+                            continue;
+                        }
+                        // build a criterion based on and/or according to
+                        // phensigs
+                        Criterion psCriterion = Restrictions.and(
+                                Restrictions.eq(HazardConstants.PHENOMENON,
+                                        splitPhensig[0]), Restrictions.eq(
+                                        HazardConstants.SIGNIFICANCE,
+                                        splitPhensig[1]));
+                        if (splitPhensig.length == 3) {
+                            psCriterion = Restrictions.and(psCriterion,
+                                    Restrictions.eq(HazardConstants.SUBTYPE,
+                                            splitPhensig[2]));
+                        }
+                        if (criterion == null) {
+                            criterion = psCriterion;
+                        } else {
+                            criterion = Restrictions.or(psCriterion, criterion);
+                        }
+                    }
+                    criteria.add(criterion);
                 } else {
                     // filter for any specified column in the table
                     if (keys.contains(finalKey)) {
