@@ -36,6 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -65,7 +66,132 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  */
 public final class HazardServicesMessageHandler {
 
-    // Private Static Constants
+    // Private Variables
+
+    /**
+     * Key indicating that an event has ended and that the cancellation or
+     * expiration product needs to be previewed.
+     */
+    private final String PREVIEW_ENDED = "previewEnded";
+
+    /**
+     * Canned hazard services setting identifiers
+     */
+    private final String FLOOD_SETTING = "Flood";
+
+    private final String WSW_SETTING = "WSW";
+
+    private final String TOR_SETTING = "TOR";
+
+    /**
+     * Perspective Identifiers A goal is to make this code perspective agnostic.
+     * So, these constants will be going away.
+     */
+    private final String HYDRO_PERSPECTIVE = "Hydro";
+
+    private final String GFE_PERSPECTIVE = "GFE";
+
+    private final String D2D_PERSPECTIVE = "D2D";
+
+    /**
+     * True/False string representations
+     */
+    private final String TRUE_FLAG = "True";
+
+    private final String FALSE_FLAG = "False";
+
+    /**
+     * The key for a hazard's label in a hazard event dict.
+     */
+    private final String HAZARD_LABEL = "label";
+
+    /**
+     * Possible return types for hazard dictionaries
+     */
+    private final String RETURN_TYPE = "returnType";
+
+    private final String POINT_RETURN_TYPE = "Point";
+
+    private final String STAGING_INFO_RETURN_TYPE = "stagingInfo";
+
+    private final String IEVENT_LIST_RETURN_TYPE = "IEvent List";
+
+    private final String EVENT_DICTS_RETURN_TYPE = "EventDicts";
+
+    /**
+     * Indicates that a range of selected times has been updated.
+     */
+    private final String RANGE_OF_SELECTED_TIMES = "Range";
+
+    /**
+     * Indicates that a single selected time has been updated.
+     */
+    private final String SINGLE_SELECTED_TIME = "Single";
+
+    /**
+     * Specifies a JSON format
+     */
+    private final String JSON = "json";
+
+    /**
+     * The selection call back is the recommender to run (if any) when a hazard
+     * is selected.
+     */
+    private final String SELECTION_CALLBACK = "selectionCallback";
+
+    /**
+     * Entries on the right-click, pop-up menu
+     */
+    private final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
+
+    private final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
+
+    private final String CONTEXT_MENU_ADD_REMOVE_SHAPES = "Add/Remove Shapes";
+
+    private final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
+
+    private final String CONTEXT_MENU_SAVE = "Save";
+
+    private final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
+
+    private final String CONTEXT_MENU_DELETE = "Delete";
+
+    private final String CONTEXT_MENU_MOVE_ENTIRE_ELEMENT = "Move Entire Element";
+
+    private final String CONTEXT_MENU_ADD_POINT = "Add Point";
+
+    private final String CONTEXT_MENU_DELETE_POINT = "Delete Point";
+
+    private final String CONTEXT_MENU_END = "End";
+
+    private final String CONTEXT_MENU_ISSUE = "Issue";
+
+    private final String CONTEXT_MENU_PROPOSE = "Propose";
+
+    /**
+     * Constants representing CAVE frame information.
+     */
+    private final String FRAME_TIMES = "frameTimes";
+
+    private final String FRAME_INDEX = "frameIndex";
+
+    private final String FRAME_COUNT = "frameCount";
+
+    /**
+     * A key used to represent results from a recommender
+     */
+    private final String RECOMMENDER = "Recommender";
+
+    /**
+     * Key for retrieving event state information from hazard event dict meta
+     * data.
+     */
+    private final String EVENT_STATE = "eventState";
+
+    /**
+     * Meta data hazard dictionary key.
+     */
+    private final String META_DATA = "metaData";
 
     /**
      * Logging mechanism.
@@ -74,11 +200,6 @@ public final class HazardServicesMessageHandler {
             .getHandler(HazardServicesMessageHandler.class);
 
     // Private Static Variables
-
-    /**
-     * Temporary flag for testing between two recommender frameworks.
-     */
-    private static boolean useNewRecommenderFramework = true;
 
     /**
      * Interface to SessionManager (via proxy).
@@ -139,8 +260,6 @@ public final class HazardServicesMessageHandler {
 
         }
     }
-
-    // Private Variables
 
     /**
      * An instance of the Hazard Services app builder.
@@ -259,7 +378,8 @@ public final class HazardServicesMessageHandler {
                 sourcePaths.add(path);
             }
 
-            return Utilities.buildJepIncludePath(sourcePaths);
+            return PyUtil.buildJepIncludePath(sourcePaths
+                    .toArray(new String[0]));
         } catch (IOException e) {
             statusHandler.error("Error building Hazard Services JEP interface",
                     e);
@@ -292,8 +412,6 @@ public final class HazardServicesMessageHandler {
         this.appBuilder = appBuilder;
         model = new ModelDecorator(instantiateModel());
 
-        // IHazardEventManager hazardEventManager = new
-        // InMemoryHazardEventManager();
         IHazardEventManager hazardEventManager = new HazardEventManager(
                 HazardEventManager.Mode.PRACTICE);
         model.setHazardEventManager(hazardEventManager);
@@ -331,7 +449,7 @@ public final class HazardServicesMessageHandler {
             // Run any selectionCallback tools associated with the selected
             // events
             String toolList = model.getEventValues(eventIDs,
-                    "selectionCallback", "json",
+                    SELECTION_CALLBACK, JSON,
                     Utilities.HAZARD_EVENT_STATE_POTENTIAL);
             DictList tools = DictList.getInstance(toolList);
             for (int i = 0; i < tools.size(); i++) {
@@ -343,12 +461,12 @@ public final class HazardServicesMessageHandler {
         String updateTime = model.updateSelectedEvents(eventIDs,
                 multipleSelection, originator);
 
-        if (updateTime.contains("Single")) {
+        if (updateTime.contains(SINGLE_SELECTED_TIME)) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(IHazardServicesModel.Element.SELECTED_TIME));
             updateCaveSelectedTime();
         }
-        if (updateTime.contains("Range")) {
+        if (updateTime.contains(RANGE_OF_SELECTED_TIMES)) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(IHazardServicesModel.Element.SELECTED_TIME_RANGE));
         }
@@ -430,10 +548,10 @@ public final class HazardServicesMessageHandler {
         if (spatialInput != null) {
             Dict spatialDict = Dict.getInstance(spatialInput);
 
-            String returnType = (String) spatialDict.get("returnType");
+            String returnType = (String) spatialDict.get(RETURN_TYPE);
 
-            if (returnType.equals("Point")) {
-                String label = (String) spatialDict.get("label");
+            if (returnType.equals(POINT_RETURN_TYPE)) {
+                String label = (String) spatialDict.get(HAZARD_LABEL);
 
                 /*
                  * Activate the storm tracking mouse handler
@@ -460,7 +578,7 @@ public final class HazardServicesMessageHandler {
      */
     public void runTool(String toolName, String sourceKey, String json) {
 
-        if (useNewRecommenderFramework && sourceKey != null && json != null) {
+        if (sourceKey != null && json != null) {
             json = "{ \"" + sourceKey + "\":" + json + "}";
         }
 
@@ -484,18 +602,20 @@ public final class HazardServicesMessageHandler {
         if (resultJSON != null) {
 
             Dict resultDict = Dict.getInstance(resultJSON);
-            Dict metaData = (Dict) resultDict.get("metaData");
+            Dict metaData = (Dict) resultDict.get(META_DATA);
 
             /*
              * 
              * If the return type is Graph Data, launch the grapher.
              */
             if (metaData != null) {
-                String returnType = (String) metaData.get("returnType");
-                String eventState = (String) metaData.get("eventState");
+                String returnType = (String) metaData.get(RETURN_TYPE);
+                String eventState = (String) metaData.get(EVENT_STATE);
 
-                if (returnType.equals("EventDicts")) {
-                    if (eventState != null && eventState.equals("Potential")) {
+                if (returnType.equals(EVENT_DICTS_RETURN_TYPE)) {
+                    if (eventState != null
+                            && eventState
+                                    .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_POTENTIAL)) {
                         notifyModelEventsChanged();
                     } else {
                         String eventIDs = sessionManager.getSelectedEvents();
@@ -503,7 +623,7 @@ public final class HazardServicesMessageHandler {
                         if (eventIDs != "[]") {
                             try {
                                 updateSelectedEvents(eventIDs, false,
-                                        "Recommender");
+                                        RECOMMENDER);
 
                             } catch (VizException e) {
                                 statusHandler
@@ -542,19 +662,21 @@ public final class HazardServicesMessageHandler {
         if (resultJSON != null) {
 
             Dict resultDict = Dict.getInstance(resultJSON);
-            Dict metaData = (Dict) resultDict.get("metaData");
+            Dict metaData = (Dict) resultDict.get(META_DATA);
 
             /*
              * 
              * If the return type is Graph Data, launch the grapher.
              */
             if (metaData != null) {
-                String returnType = (String) metaData.get("returnType");
-                String eventState = (String) metaData.get("eventState");
+                String returnType = (String) metaData.get(RETURN_TYPE);
+                String eventState = (String) metaData.get(EVENT_STATE);
 
-                if (returnType.equals("EventDicts")
-                        || returnType.equals("IEvent List")) {
-                    if (eventState != null && eventState.equals("Potential")) {
+                if (returnType.equals(EVENT_DICTS_RETURN_TYPE)
+                        || returnType.equals(IEVENT_LIST_RETURN_TYPE)) {
+                    if (eventState != null
+                            && eventState
+                                    .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_POTENTIAL)) {
                         notifyModelEventsChanged();
                     } else {
                         String eventIDs = model.getSelectedEvents();
@@ -562,7 +684,7 @@ public final class HazardServicesMessageHandler {
                         if (eventIDs != "[]") {
                             try {
                                 updateSelectedEvents(eventIDs, false,
-                                        "Recommender");
+                                        RECOMMENDER);
 
                             } catch (VizException e) {
                                 statusHandler
@@ -584,12 +706,13 @@ public final class HazardServicesMessageHandler {
 
         String resultJSON = model.handleProductGeneratorResult(toolID,
                 productList);
+
         if (resultJSON != null) {
 
             Dict resultDict = Dict.getInstance(resultJSON);
-            String returnType = (String) resultDict.get("returnType");
+            String returnType = (String) resultDict.get(RETURN_TYPE);
 
-            if (returnType.equals("NONE")) {
+            if (returnType == null) {
                 /*
                  * Need to make sure that the hazard services views are updated
                  * to reflect new hazard state.
@@ -597,6 +720,7 @@ public final class HazardServicesMessageHandler {
                 notifyModelEventsChanged();
                 return;
             }
+
             // Preview the products
             appBuilder.showProductEditorView(resultJSON);
         }
@@ -661,11 +785,12 @@ public final class HazardServicesMessageHandler {
      *            action.
      * @return Products that were generated.
      */
-    private String generateProducts(boolean issueFlag) {
+    private void generateProducts(boolean issueFlag) {
 
-        String issue = "False";
+        String issue = FALSE_FLAG;
+
         if (issueFlag) {
-            issue = "True";
+            issue = TRUE_FLAG;
         }
 
         /*
@@ -679,15 +804,9 @@ public final class HazardServicesMessageHandler {
          * If returnDict's returnType is stagingInfo, invoke the Product Staging
          * Dialog
          */
-        if (returnDict.get("returnType").equals("stagingInfo")) {
+        if (returnDict.get(RETURN_TYPE).equals(STAGING_INFO_RETURN_TYPE)) {
             appBuilder.showProductStagingView(issueFlag, returnDict);
-            return "NONE";
-        } else if (returnDict.get("returnType").equals("generatedProducts")) {
-            return returnDict_json;
         }
-
-        return returnDict_json;
-
     }
 
     /**
@@ -721,12 +840,12 @@ public final class HazardServicesMessageHandler {
         String perspectiveID = appBuilder.getCurrentPerspectiveDescriptor()
                 .getId();
 
-        if (perspectiveID.contains("D2D")) {
-            appBuilder.setInitialSetting("TOR");
-        } else if (perspectiveID.contains("GFE")) {
-            appBuilder.setInitialSetting("WSW");
-        } else if (perspectiveID.contains("Hydro")) {
-            appBuilder.setInitialSetting("Flood");
+        if (perspectiveID.contains(D2D_PERSPECTIVE)) {
+            appBuilder.setInitialSetting(TOR_SETTING);
+        } else if (perspectiveID.contains(GFE_PERSPECTIVE)) {
+            appBuilder.setInitialSetting(WSW_SETTING);
+        } else if (perspectiveID.contains(HYDRO_PERSPECTIVE)) {
+            appBuilder.setInitialSetting(FLOOD_SETTING);
         }
 
         changeSetting(appBuilder.getInitialSetting(), false, true);
@@ -970,17 +1089,7 @@ public final class HazardServicesMessageHandler {
      * Generates products for preview.
      */
     public void preview() {
-        String productInfo = generateProducts(false);
-
-        statusHandler
-                .debug("CHECK productInfo in HazardServicesMessageHandler "
-                        + productInfo);
-
-        if (productInfo.equals("NONE")) {
-            return;
-        }
-
-        appBuilder.showProductEditorView(productInfo);
+        generateProducts(false);
     }
 
     /**
@@ -1021,9 +1130,9 @@ public final class HazardServicesMessageHandler {
                 }
 
                 Dict frameDict = new Dict();
-                frameDict.put("frameCount", frameCount);
-                frameDict.put("frameIndex", frameIndex);
-                frameDict.put("frameTimes", dataTimeList);
+                frameDict.put(FRAME_COUNT, frameCount);
+                frameDict.put(FRAME_INDEX, frameIndex);
+                frameDict.put(FRAME_TIMES, dataTimeList);
 
                 final String framesJSON = frameDict.toJSONString();
 
@@ -1067,41 +1176,41 @@ public final class HazardServicesMessageHandler {
      *            The label of the selected menu item.
      */
     public void handleContextMenuSelection(String label) {
-        if (label.contains("Propose")) {
+        if (label.contains(CONTEXT_MENU_PROPOSE)) {
             changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
-        } else if (label.contains("Issue")) {
+        } else if (label.contains(CONTEXT_MENU_ISSUE)) {
             issueEvents();
-        } else if (label.contains("End")) {
+        } else if (label.contains(CONTEXT_MENU_END)) {
             String events = model.getSelectedEvents();
-            model.changeState(events, "previewEnded");
+            model.changeState(events, PREVIEW_ENDED);
             preview();
-        } else if (label.equals("Delete Point")) {
+        } else if (label.equals(CONTEXT_MENU_DELETE_POINT)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_POINT);
-        } else if (label.equals("Add Point")) {
+        } else if (label.equals(CONTEXT_MENU_ADD_POINT)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.ADD_POINT);
-        } else if (label.equals("Move Entire Element")) {
+        } else if (label.equals(CONTEXT_MENU_MOVE_ENTIRE_ELEMENT)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.MOVE_ELEMENT);
-        } else if (label.contains("Delete")) {
+        } else if (label.contains(CONTEXT_MENU_DELETE)) {
             deleteEvent(model.getSelectedEvents());
-        } else if (label.contains("Hazard Information Dialog")) {
+        } else if (label.contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
             /*
              * Save off any changes the user has made in the HID. Otherwise,
              * this would be lost when selecting different events.
              */
             appBuilder.showHazardDetail();
-        } else if (label.contains("Remove Potential Hazards")) {
+        } else if (label.contains(CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS)) {
             model.removeEvents(Utilities.HAZARD_EVENT_STATE,
                     Utilities.HAZARD_EVENT_STATE_POTENTIAL);
             notifyModelEventsChanged();
-        } else if (label.contains("Save")) {
+        } else if (label.contains(CONTEXT_MENU_SAVE)) {
             model.putHazards();
-        } else if (label.equals("Add/Remove Shapes")) {
+        } else if (label.equals(CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
             String eventIDs = model.getSelectedEvents();
             appBuilder.loadGeometryOverlayForSelectedEvent(eventIDs);
-        } else if (label.equals("Send to Back")) {
+        } else if (label.equals(CONTEXT_MENU_SEND_TO_BACK)) {
             model.sendSelectedHazardsToBack();
             notifyModelEventsChanged();
-        } else if (label.equals("Bring to Front")) {
+        } else if (label.equals(CONETXT_MENU_BRING_TO_FRONT)) {
             model.sendSelectedHazardsToFront();
             notifyModelEventsChanged();
         } else {
@@ -1145,7 +1254,6 @@ public final class HazardServicesMessageHandler {
      */
     public void setIssuedState() {
         issueEvents();
-        // appBuilder.hideHazardDetail();
         appBuilder.closeProductEditorView();
     }
 
@@ -1172,13 +1280,13 @@ public final class HazardServicesMessageHandler {
         String productDisplayAction = action.getAction();
         String productDisplayJSON = action.getJSONText();
 
-        if (productDisplayAction.equals("Propose")) {
+        if (productDisplayAction.equals(CONTEXT_MENU_PROPOSE)) {
             changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
-        } else if (productDisplayAction.equals("Issue")) {
+        } else if (productDisplayAction.equals(CONTEXT_MENU_ISSUE)) {
             if (HazardServicesAppBuilder
                     .getUserAnswerToQuestion("Are you sure "
                             + "you want to issue the hazard event(s)?")) {
-                model.createProductsFromHazardEventSets("True",
+                model.createProductsFromHazardEventSets(TRUE_FLAG,
                         productDisplayJSON);
                 notifyModelEventsChanged();
             }
@@ -1201,7 +1309,7 @@ public final class HazardServicesMessageHandler {
         String returnDict_json = model.createProductsFromHazardEventSets(
                 issueFlag, hazardEventSets);
 
-        if (!issueFlag.equalsIgnoreCase("True")) {
+        if (!issueFlag.equalsIgnoreCase(TRUE_FLAG)) {
             appBuilder.showProductEditorView(returnDict_json);
             notifyModelEventsChanged();
         }

@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
@@ -54,14 +55,12 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     removed lots of unused code.
  * 02/25/2013              B. Lawrence Set up 70 character width limit and made this dialog modal.
  * 03/08/2013              B. Lawrence Changed to SWT.APPLICATION_MODAL and non-blocking.
+ * 04/23/2013              B. Lawrence Made fixes based on code review responses.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 class ProductEditorDialog extends BasicDialog {
-    public static String ASCII_PRODUCT_KEY = "asciiText";
-
-    public static String XML_PRODUCT_KEY = "xml";
 
     /**
      * For logging...
@@ -72,19 +71,19 @@ class ProductEditorDialog extends BasicDialog {
     /**
      * The maximum characters per line in the product editor dialog.
      */
-    private static final int MAX_CHARACTERS_PER_LINE = 70;
+    private final int MAX_CHARACTERS_PER_LINE = 70;
 
     /**
      * Factor to adjust the width of 70 characters displayed in this dialog.
      */
-    private static double WIDTH_ADJUSTMENT_FACTOR = 1.3;
+    private final double WIDTH_ADJUSTMENT_FACTOR = 1.3;
 
     /**
      * The height of this dialog. Note that the width of this dialog is
      * dynamically determined by average font width and the maximum number of
      * characters per line.
      */
-    private static final int DIALOG_HEIGHT = 600;
+    private final int DIALOG_HEIGHT = 600;
 
     /** The 'Issue' button */
     private final int ISSUE_ID = 2;
@@ -102,8 +101,6 @@ class ProductEditorDialog extends BasicDialog {
      * Flag indicating whether or not to show the Issue, Propose and Dismiss
      * buttons.
      */
-    private final boolean showButtons = true;
-
     private TabFolder tabFolder = null;
 
     /**
@@ -228,13 +225,13 @@ class ProductEditorDialog extends BasicDialog {
              * A generated product may be ASCII, XML, or both. Favor XML over
              * ASCII when both are available.
              */
-            if (generatedProduct.containsKey(XML_PRODUCT_KEY)) {
+            if (generatedProduct.containsKey(ProductConstants.XML_PRODUCT_KEY)) {
                 String xmlText = generatedProduct
-                        .getDynamicallyTypedValue(XML_PRODUCT_KEY);
+                        .getDynamicallyTypedValue(ProductConstants.XML_PRODUCT_KEY);
                 processXMLProduct(body[j], xmlText);
             } else {
                 String asciiText = generatedProduct
-                        .getDynamicallyTypedValue(ASCII_PRODUCT_KEY);
+                        .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
                 processASCIIProduct(body[j], asciiText);
             }
 
@@ -277,16 +274,14 @@ class ProductEditorDialog extends BasicDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-        if (showButtons) {
-            Button issueButton = createButton(parent, ISSUE_ID, "Issue", false);
-            issueButton.setVisible(true);
-            issueButton.setToolTipText("Issue the Event");
+        Button issueButton = createButton(parent, ISSUE_ID, "Issue", false);
+        issueButton.setVisible(true);
+        issueButton.setToolTipText("Issue the Event");
 
-            Button dismissButton = createButton(parent, DISMISS_ID, "Dismiss",
-                    false);
-            dismissButton.setVisible(true);
-            dismissButton.setToolTipText("Dismiss this Window");
-        }
+        Button dismissButton = createButton(parent, DISMISS_ID, "Dismiss",
+                false);
+        dismissButton.setVisible(true);
+        dismissButton.setToolTipText("Dismiss this Window");
     }
 
     @Override
@@ -345,16 +340,14 @@ class ProductEditorDialog extends BasicDialog {
                 String tx = el.getText();
                 String val = el.getName();
 
-                Boolean editable;
+                Boolean editable = false;
+
                 if (el.attribute("editable") != null) {
-                    if (el.attribute("editable").getValue() == "false") {
-                        editable = false;
-                    } else {
+                    if (el.attribute("editable").getValue() == "true") {
                         editable = true;
                     }
-                } else {
-                    editable = false;
                 }
+
                 if (editable) {
                     Text textBox = new Text(body, SWT.WRAP);
                     textBox.setText(tx);
@@ -364,13 +357,13 @@ class ProductEditorDialog extends BasicDialog {
                     textBox.setLayoutData(productTextGridData);
                     textBox.setData(val);
                 } else {
-                    Label textBox = new Label(body, SWT.WRAP);
-                    textBox.setText(tx);
-                    textBox.setBounds(body.getClientArea());
+                    Label label = new Label(body, SWT.WRAP);
+                    label.setText(tx);
+                    label.setBounds(body.getClientArea());
                     GridData productTextGridData = new GridData(
                             GridData.FILL_HORIZONTAL | GridData.GRAB_HORIZONTAL);
-                    textBox.setLayoutData(productTextGridData);
-                    textBox.setData(val);
+                    label.setLayoutData(productTextGridData);
+                    label.setData(val);
                 }
             }
 
@@ -402,7 +395,6 @@ class ProductEditorDialog extends BasicDialog {
         GridData productTextGridData = new GridData(GridData.FILL_HORIZONTAL
                 | GridData.GRAB_HORIZONTAL);
         textBox.setLayoutData(productTextGridData);
-        textBox.setEditable(true);
     }
 
     /**

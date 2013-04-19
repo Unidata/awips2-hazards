@@ -15,7 +15,7 @@ try:
     from com.raytheon.uf.viz.recommenders import CAVERecommenderEngine #@UnresolvedImport
     from com.raytheon.uf.common.hazards.productgen import ProductGeneration #@UnresolvedImport
 
-    import DBAdapter as Adapter
+    import HazardEventJSONAdapter as Adapter
     from com.raytheon.uf.common.dataplugin.events.hazards.event.collections import HazardEventSet #@UnresolvedImport
     from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesRecommenderJobListener #@UnresolvedImport
     from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesGeneratorJobListener #@UnresolvedImport
@@ -156,13 +156,10 @@ class ScriptAdapter:
         for key in runDict:
             if key != 'eventDicts':
                 metaDict[key] = runDict[key]
+        formats = runDict.get("formats")
         metaDict = JUtil.pyDictToJavaMap(metaDict)
         hazardEventSet = HazardEventSet(eventSet, metaDict)
-     
-        formats = ['Legacy', 'XML'] #, 'LegacyXML']
         
-        print "executeProductGeneratorScript new ScriptAdaptor calling product generator", scriptID, hazardEventSet, formats, listener
-
         #This might be needed if the arguments to generate change for 'formats'
         #from String[] to List<String>  
         #javaFormats = JUtil.pylistToJavaStringList(formats)
@@ -192,8 +189,7 @@ class ScriptAdapter:
             return [self.convert(element) for element in input]
         elif isinstance(input, unicode):
             return input.encode('utf-8')
-        else:
-            return input
+        return input
         
     def buildHashSet(self, runDict) :
         eventSet = HashSet()
