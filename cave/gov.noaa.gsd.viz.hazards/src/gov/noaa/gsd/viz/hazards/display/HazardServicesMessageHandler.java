@@ -78,10 +78,7 @@ public final class HazardServicesMessageHandler {
     /**
      * Temporary flag for testing between two recommender frameworks.
      */
-
     private static boolean useNewRecommenderFramework = true;
-
-    // private static boolean useNewRecommenderFramework = false;
 
     /**
      * Interface to SessionManager (via proxy).
@@ -257,17 +254,8 @@ public final class HazardServicesMessageHandler {
             List<String> sourcePaths = Utilities
                     .buildPythonSourcePaths(basePath);
 
-            // String pathToJUtil = Utilities.buildPythonUtilitiesPath();
-            // sourcePaths.add(pathToJUtil);
-            // String pathToGeoUtil =
-            // Utilities.buildPythonGeometryUtilitiesPath();
-            // sourcePaths.add(pathToGeoUtil);
-            // String pathToEventUtil =
-            // Utilities.buildPythonEventUtilitiesPath();
-            // sourcePaths.add(pathToEventUtil);
-
             for (String locPath : pythonLocalizationDirectories) {
-                String path = Utilities.buildtUtilitiesPath(locPath);
+                String path = Utilities.buildUtilitiesPath(locPath);
                 sourcePaths.add(path);
             }
 
@@ -599,10 +587,14 @@ public final class HazardServicesMessageHandler {
         if (resultJSON != null) {
 
             Dict resultDict = Dict.getInstance(resultJSON);
-            Dict metaData = (Dict) resultDict.get("metaData");
-            String returnType = (String) metaData.get("returnType");
+            String returnType = (String) resultDict.get("returnType");
 
             if (returnType.equals("NONE")) {
+                /*
+                 * Need to make sure that the hazard services views are updated
+                 * to reflect new hazard state.
+                 */
+                notifyModelEventsChanged();
                 return;
             }
             // Preview the products

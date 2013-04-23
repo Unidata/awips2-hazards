@@ -16,7 +16,9 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -163,25 +165,32 @@ public class ConsolePresenter extends
         }
 
         // Get the hazard events as shown by the view, and compare them
-        // to the hazard events in the model. If the event list is un-
-        // changed (meaning that the two lists have the same event iden-
-        // tifiers in the same order), then one or more events have had
-        // their parameters changed; otherwise, the event list as a
-        // whole has changed.
-        List<Dict> oldEvents = getView().getHazardEvents();
-        List<Dict> newEvents = componentData
+        // to the hazard events in the model. If the number of events
+        // and their identifiers are unchanged, then one or more events
+        // have had their parameters changed; otherwise, the event set
+        // as a whole has changed.
+        List<Dict> oldEventsList = getView().getHazardEvents();
+        List<Dict> newEventsList = componentData
                 .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_EVENTS);
-        boolean eventsListUnchanged = (newEvents.size() == oldEvents.size());
+        Map<String, Dict> oldEventsMap = null;
+        Map<String, Dict> newEventsMap = null;
+        boolean eventsListUnchanged = (newEventsList.size() == oldEventsList
+                .size());
         if (eventsListUnchanged) {
-            for (int j = 0; j < newEvents.size(); j++) {
-                if (!newEvents
-                        .get(j)
-                        .get(Utilities.HAZARD_EVENT_IDENTIFIER)
-                        .equals(oldEvents.get(j).get(
-                                Utilities.HAZARD_EVENT_IDENTIFIER))) {
-                    eventsListUnchanged = false;
-                    break;
-                }
+            oldEventsMap = new HashMap<String, Dict>();
+            newEventsMap = new HashMap<String, Dict>();
+            for (int j = 0; j < newEventsList.size(); j++) {
+                Dict event = oldEventsList.get(j);
+                oldEventsMap.put(
+                        (String) event.get(Utilities.HAZARD_EVENT_IDENTIFIER),
+                        event);
+                event = newEventsList.get(j);
+                newEventsMap.put(
+                        (String) event.get(Utilities.HAZARD_EVENT_IDENTIFIER),
+                        event);
+            }
+            if (!oldEventsMap.keySet().equals(newEventsMap.keySet())) {
+                eventsListUnchanged = false;
             }
         }
 
@@ -190,10 +199,11 @@ public class ConsolePresenter extends
         // and update the view accordingly; otherwise, update the view's
         // entire list.
         if (eventsListUnchanged) {
-            for (int j = 0; j < newEvents.size(); j++) {
-                if (!newEvents.get(j).equals(oldEvents.get(j))) {
-                    getView()
-                            .updateHazardEvent(newEvents.get(j).toJSONString());
+            for (String identifier : oldEventsMap.keySet()) {
+                if (!oldEventsMap.get(identifier).equals(
+                        newEventsMap.get(identifier))) {
+                    getView().updateHazardEvent(
+                            newEventsMap.get(identifier).toJSONString());
                 }
             }
         } else {

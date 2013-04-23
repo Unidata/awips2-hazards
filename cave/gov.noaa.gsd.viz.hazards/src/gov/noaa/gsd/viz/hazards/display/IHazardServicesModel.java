@@ -257,6 +257,26 @@ public interface IHazardServicesModel {
      */
     public void reset(String name);
 
+    /**
+     * Sends the selected hazards to the "front" or top of the list of event
+     * dicts so that they are displayed on top of other hazards in the spatial
+     * display.
+     * 
+     * @param
+     * @return
+     */
+    public void sendSelectedHazardsToFront();
+
+    /**
+     * Sends the selected hazards to the "back" or bottom of the list of event
+     * dicts so that they are displayed beneath or under other hazards in the
+     * spatial display.
+     * 
+     * @param
+     * @return
+     */
+    public void sendSelectedHazardsToBack();
+
     // ********************
     // SELECTED TIME
     // ********************
@@ -498,25 +518,5 @@ public interface IHazardServicesModel {
     public void setHazardEventManager(Object hazardEventManager);
 
     public String[] getHazardsForDynamicSettings();
-
-    /**
-     * Sends the selected hazards to the "front" or top of the list of event
-     * dicts so that they are displayed on top of other hazards in the spatial
-     * display.
-     * 
-     * @param
-     * @return
-     */
-    public void sendSelectedHazardsToFront();
-
-    /**
-     * Sends the selected hazards to the "back" or bottom of the list of event
-     * dicts so that they are displayed beneath or under other hazards in the
-     * spatial display.
-     * 
-     * @param
-     * @return
-     */
-    public void sendSelectedHazardsToBack();
 
 }

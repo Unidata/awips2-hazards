@@ -58,6 +58,19 @@ public class Utilities {
             "gov.noaa.gsd.viz.hazards.database");
 
     /**
+     * Minimum time as an epoch time in milliseconds.
+     */
+    public static final long MIN_TIME = 0L;
+
+    /**
+     * Maximum time as an epoch time in milliseconds. This is arbitrarily large,
+     * but not so large as to be anywhere close to the limit of what a long
+     * integer value can represent, so that accidental overflow during
+     * calculations does not occur.
+     */
+    public static final long MAX_TIME = Long.MAX_VALUE / 2L;
+
+    /**
      * Event identifier key in hazard event dictionary.
      */
     public static final String HAZARD_EVENT_IDENTIFIER = "eventID";
@@ -438,7 +451,7 @@ public class Utilities {
         return result;
     }
 
-    public static String buildtUtilitiesPath(String locPath) {
+    public static String buildUtilitiesPath(String locPath) {
         IPathManager pm = PathManagerFactory.getPathManager();
         LocalizationContext context = pm.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
@@ -490,6 +503,43 @@ public class Utilities {
         String[] pathEntries = System.getenv("PYTHONPATH").split(":");
         for (String pathEntry : pathEntries) {
             sourcePaths.add(pathEntry);
+        }
+
+        return sourcePaths;
+    }
+
+    /**
+     * Builds the JEP include path. This includes the paths to all of the python
+     * resources that Hazard Services will need. This removes dependence from
+     * the PYTHONPATH environment variable.
+     * 
+     * @param
+     * @return An path like string containing all of the python resources needed
+     *         by Hazard Services.
+     */
+    static String[] pythonLocalizationDirectories = {
+            "python",
+            "python" + File.separator + "UFStatusHandler.py",
+            "python" + File.separator + "bridge",
+            "python" + File.separator + "dataStorage",
+            "python" + File.separator + "events",
+            "python" + File.separator + "geoUtilities",
+            "python" + File.separator + "logUtilities",
+            "python" + File.separator + "shapeUtilities",
+            "python" + File.separator + "textUtilities",
+            "python" + File.separator + "VTECutilities",
+            "python" + File.separator + "events" + File.separator + "utilities",
+            "python" + File.separator + "events" + File.separator
+                    + "recommenders" + File.separator
+                    + "DamBreakFloodRecommender.py" };
+
+    public static List<String> buildPythonPath() {
+
+        List<String> sourcePaths = Lists.newArrayList();
+
+        for (String locPath : pythonLocalizationDirectories) {
+            String path = Utilities.buildUtilitiesPath(locPath);
+            sourcePaths.add(path);
         }
 
         return sourcePaths;

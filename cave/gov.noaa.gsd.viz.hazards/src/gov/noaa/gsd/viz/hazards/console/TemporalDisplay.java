@@ -221,16 +221,6 @@ class TemporalDisplay {
     private static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
 
     /**
-     * Minimum time as an epoch time in milliseconds.
-     */
-    private static final long MIN_TIME = 0L;
-
-    /**
-     * Maximum time as an epoch time in milliseconds.
-     */
-    private static final long MAX_TIME = Long.MAX_VALUE;
-
-    /**
      * The default table width value.
      */
     private static final int TABLE_WIDTH = 700;
@@ -1421,13 +1411,13 @@ class TemporalDisplay {
         // current time. Also send the visible time range back as a
         // model change.
         long lowerTime = currentTime - (visibleTimeRange / 4L);
-        if (lowerTime < MIN_TIME) {
-            lowerTime = MIN_TIME;
+        if (lowerTime < Utilities.MIN_TIME) {
+            lowerTime = Utilities.MIN_TIME;
         }
         long upperTime = lowerTime + visibleTimeRange - 1L;
-        if (upperTime > MAX_TIME) {
-            lowerTime -= upperTime - MAX_TIME;
-            upperTime = MAX_TIME;
+        if (upperTime > Utilities.MAX_TIME) {
+            lowerTime -= upperTime - Utilities.MAX_TIME;
+            upperTime = Utilities.MAX_TIME;
         }
         ruler.setVisibleValueRange(lowerTime, upperTime);
         fireConsoleActionOccurred(new ConsoleAction(
@@ -2412,7 +2402,8 @@ class TemporalDisplay {
 
         // Create a time scale widget with two thumbs and configure it
         // appropriately.
-        MultiValueScale scale = new MultiValueScale(table, MIN_TIME, MAX_TIME);
+        MultiValueScale scale = new MultiValueScale(table, Utilities.MIN_TIME,
+                Utilities.MAX_TIME);
         scale.setSnapValueCalculator(snapValueCalculator);
         scale.setTooltipTextProvider(thumbTooltipTextProvider);
         scale.setInsets(TIME_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING,
@@ -2948,7 +2939,8 @@ class TemporalDisplay {
 
         // Create the time line widget. It is configured to snap
         // to values at increments of five minutes.
-        ruler = new MultiValueRuler(parent, MIN_TIME, MAX_TIME, hatchMarkGroups);
+        ruler = new MultiValueRuler(parent, Utilities.MIN_TIME,
+                Utilities.MAX_TIME, hatchMarkGroups);
         FontData fontData = ruler.getFont().getFontData()[0];
         Font minuteFont = new Font(Display.getCurrent(), fontData.getName(),
                 (fontData.getHeight() * 7) / 10, fontData.getStyle());
@@ -2986,15 +2978,15 @@ class TemporalDisplay {
         ruler.setViewportDraggable(true);
 
         long lowerTime = currentTime - (visibleTimeRange / 4L);
-        if (lowerTime < MIN_TIME) {
-            lowerTime = MIN_TIME;
+        if (lowerTime < Utilities.MIN_TIME) {
+            lowerTime = Utilities.MIN_TIME;
         }
         long upperTime = lowerTime + visibleTimeRange - 1L;
-        if (upperTime > MAX_TIME) {
-            lowerTime -= upperTime - MAX_TIME;
-            upperTime = MAX_TIME;
+        if (upperTime > Utilities.MAX_TIME) {
+            lowerTime -= upperTime - Utilities.MAX_TIME;
+            upperTime = Utilities.MAX_TIME;
         } else if (upperTime <= lowerTime) {
-            upperTime = MAX_TIME;
+            upperTime = Utilities.MAX_TIME;
         }
         ruler.setVisibleValueRange(lowerTime, upperTime);
         ruler.setFreeMarkedValues(currentTime);
@@ -3398,15 +3390,15 @@ class TemporalDisplay {
 
         // Sanity check the bounds.
         boolean altered = false;
-        if (lower < MIN_TIME) {
+        if (lower < Utilities.MIN_TIME) {
             altered = true;
-            upper += MIN_TIME - lower;
-            lower = MIN_TIME;
+            upper += Utilities.MIN_TIME - lower;
+            lower = Utilities.MIN_TIME;
         }
-        if (upper > MAX_TIME) {
+        if (upper > Utilities.MAX_TIME) {
             altered = true;
-            lower -= upper - MAX_TIME;
-            upper = MAX_TIME;
+            lower -= upper - Utilities.MAX_TIME;
+            upper = Utilities.MAX_TIME;
         }
 
         // If the time range has changed from what the time line
@@ -3562,13 +3554,13 @@ class TemporalDisplay {
             buttonsForIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
                     getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
             buttonsForIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > MIN_TIME);
+                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
             buttonsForIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > MIN_TIME);
+                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
             buttonsForIdentifiers.get(BUTTON_PAN_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < MAX_TIME);
+                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
             buttonsForIdentifiers.get(BUTTON_PAGE_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < MAX_TIME);
+                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
         }
 
         // Update the toolbar buttons if they exist.
@@ -3578,13 +3570,13 @@ class TemporalDisplay {
             actionsForButtonIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
                     getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
             actionsForButtonIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > MIN_TIME);
+                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > MIN_TIME);
+                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAN_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < MAX_TIME);
+                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAGE_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < MAX_TIME);
+                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
         }
     }
 
@@ -3593,13 +3585,13 @@ class TemporalDisplay {
      */
     private void showTime(long time) {
         long lower = time - (visibleTimeRange / 2L);
-        if (lower < MIN_TIME) {
-            lower = MIN_TIME;
+        if (lower < Utilities.MIN_TIME) {
+            lower = Utilities.MIN_TIME;
         }
         long upper = lower + visibleTimeRange - 1L;
-        if (upper > MAX_TIME) {
-            lower -= upper - MAX_TIME;
-            upper = MAX_TIME;
+        if (upper > Utilities.MAX_TIME) {
+            lower -= upper - Utilities.MAX_TIME;
+            upper = Utilities.MAX_TIME;
         }
         setVisibleTimeRange(lower, upper, true);
     }

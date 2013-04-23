@@ -151,16 +151,6 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      */
     private static final int PREVIEW_ID = 4;
 
-    /**
-     * Minimum time as an epoch time in milliseconds.
-     */
-    private static final long MIN_TIME = 0L;
-
-    /**
-     * Maximum time as an epoch time in milliseconds.
-     */
-    private static final long MAX_TIME = Long.MAX_VALUE;
-
     // Private Classes
 
     /**
@@ -502,12 +492,12 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     /**
      * Minimum visible time in the time range.
      */
-    private long minimumVisibleTime = MIN_TIME;
+    private long minimumVisibleTime = Utilities.MIN_TIME;
 
     /**
      * Maximum visible time in the time range.
      */
-    private long maximumVisibleTime = MAX_TIME;
+    private long maximumVisibleTime = Utilities.MAX_TIME;
 
     /**
      * Widget specifier factory.
@@ -660,6 +650,12 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      * changed.
      */
     private boolean scrolledCompositePageIncrementChanging = false;
+
+    /**
+     * Flag indicating whether or not the scrolled composite has had its size
+     * calculated at least once.
+     */
+    private boolean scrolledCompositeSizeCalculated = false;
 
     /**
      * Hazard detail view that is managing this dialog.
@@ -1440,8 +1436,10 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         // fiers at the widgets' creation time.
         widgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
         widgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
-        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME, MIN_TIME);
-        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME, MAX_TIME);
+        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
+                Utilities.MIN_TIME);
+        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
+                Utilities.MAX_TIME);
         widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minimumVisibleTime);
         widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
@@ -2295,7 +2293,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             // data widgets, the other for the point-
             // specific widgets; otherwise, just
             // construct a single group holding the
-            // general metadata widgets.
+            // general metadata widgets if the latter
+            // are required, or an empty panel other-
+            // wise.
             List<MegawidgetSpecifier> pointWidgetSpecifiers = pointWidgetsForTypes
                     .get(type);
             if (pointWidgetSpecifiers != null) {
@@ -2344,31 +2344,56 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
 
                 // Lay out the tab folder.
                 panel.pack();
-            } else {
+            } else if ((widgetsForTypes.get(type) != null)
+                    && (widgetsForTypes.get(type).size() > 0)) {
 
                 // Create the group panel to hold all the
                 // widgets.
                 panel = new Group(metadataContentPanel, SWT.NONE);
-                if (widgetsForTypes.get(type) != null) {
-                    ((Group) panel).setText("Details");
-                    Map<String, Megawidget> widgetsForIds = new HashMap<String, Megawidget>();
-                    addWidgetsToPanel(widgetsForTypes.get(type), panel,
-                            widgetsForIds, null,
-                            primaryParamValues.get(visibleHazardIndex));
-                    widgetsForIdsForTypes.put(type, widgetsForIds);
-                }
+                ((Group) panel).setText("Details");
+                Map<String, Megawidget> widgetsForIds = new HashMap<String, Megawidget>();
+                addWidgetsToPanel(widgetsForTypes.get(type), panel,
+                        widgetsForIds, null,
+                        primaryParamValues.get(visibleHazardIndex));
+                widgetsForIdsForTypes.put(type, widgetsForIds);
+            } else {
+                panel = new Composite(metadataContentPanel, SWT.NONE);
             }
             panelsForTypes.put(type, panel);
         }
 
         // Show this type's panel and lay out the content
-        // panel to display it.
+        // panel to display it. This is done asynchronously
+        // the first time this method is called because
+        // sometimes when the dialog first comes up the
+        // metadata panel requests a bizarrely large height.
+        if (scrolledCompositeSizeCalculated == false) {
+            final Composite thePanel = panel;
+            Display.getCurrent().asyncExec(new Runnable() {
+                @Override
+                public void run() {
+                    configureScrolledCompositeToHoldPanel(thePanel);
+                }
+            });
+            scrolledCompositeSizeCalculated = true;
+        } else {
+            configureScrolledCompositeToHoldPanel(panel);
+        }
+        return creationOccurred;
+    }
+
+    /**
+     * Configure the scrolled composite to hold the specified panel.
+     * 
+     * @param panel
+     *            Panel to be held.
+     */
+    private void configureScrolledCompositeToHoldPanel(Composite panel) {
         scrolledCompositeContentsChanging = true;
         metadataContentLayout.topControl = panel;
         metadataContentPanel.layout();
         configureScrolledCompositeForSelectedEvent();
         scrolledCompositeContentsChanging = false;
-        return creationOccurred;
     }
 
     /**
