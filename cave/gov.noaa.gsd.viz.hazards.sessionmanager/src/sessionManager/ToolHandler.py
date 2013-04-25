@@ -19,7 +19,8 @@ class ToolHandler(object):
         self.logger = logging.getLogger("ToolHandler")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             "gov.noaa.gsd.viz.hazards.sessionmanager", "ToolHandler", level=logging.INFO))
-        
+        self.logger.setLevel(logging.INFO)   
+                
     def runTool(self, toolID, toolType = "Recommender", runData=None):
         """
         Runs a tool and stores the results.
@@ -227,7 +228,7 @@ class ToolHandler(object):
             self.parent = parent
             self.productGenerator = productGenerator
             self.eventIDsWithStatus = []
-            self.formats = ["PartnerXML", "LegacyASCII"]
+            self.formats = [LEGACY_FORMAT, XML_FORMAT]
             self.combinable = False
             self.dialogInfo = {}
                  
@@ -438,13 +439,12 @@ class ToolHandler(object):
         runningAsynch = False
         for hazardEventSet in self.hazardEventSets:
             productGenerator = hazardEventSet.getProductGenerator()
-            self.logger.debug( "ToolHandler calling " + productGenerator +" "+ \
-                               json.dumps(hazardEventSet.generateProduct_info()))
+            #self.logger.info("ToolHandler calling " + productGenerator +" "+ \
+            #                   str(hazardEventSet.generateProduct_info()))
             runData = json.dumps(hazardEventSet.generateProduct_info())
-            #productGenerator = "TestProduct"
             resultProducts = self.bridge.runTool(productGenerator, "ProductGenerator", runData)
             self.logger.debug( "resultProducts" + json.dumps(resultProducts))
-            if resultProducts is None:# "NONE": 
+            if resultProducts is None: 
                 runningAsynch = True 
                 continue       
             products += resultProducts
@@ -472,23 +472,26 @@ class ToolHandler(object):
         if generatedProducts is None:
             return 
         generatedProducts = self.bridge.handleProductGeneratorResult(toolID, generatedProducts)
-        self.logger.debug( "generatedProducts converted" + str(generatedProducts))
+        self.logger.info( "ToolHandler generatedProducts converted" + json.dumps(generatedProducts, indent=4))
         self.productsReceived += generatedProducts
-        generatedProduct = generatedProducts[0]
-        generatedProduct = dict(generatedProduct)
-        entries = generatedProduct.get('entries')
-        entries = dict(entries)
         if not len(self.productsReceived) == self.numberOfProducts:
             return
         
         if self.issueFlag == "True":
             self.issueFromHazardEventSets(self.hazardEventSets, self.productsReceived, ISSUED) 
-            return json.dumps({"returnType": "NONE"})        
+            return json.dumps({"returnType": None})        
         else:
+            products = []
+            
+            for product in self.productsReceived:
+                entries = product.get("entries")
+                productID = product.get("productID")
+                products.append({"productID":productID, LEGACY_FORMAT: entries.get(LEGACY_FORMAT)[0]})
             hazardEventSets_json = self.convertHazardEventSets_toJson(self.hazardEventSets)
             generatedProducts = {"returnType":"generatedProducts", 
-                                 "generatedProducts":self.productsReceived, 
+                                 "generatedProducts":products, 
                                  "hazardEventSets":hazardEventSets_json}
+
             return json.dumps(generatedProducts)
 
     def getHazardEventSets(self, issueFlag, eventDicts):
@@ -535,16 +538,12 @@ class ToolHandler(object):
             hazardEventSet.addEventIDsWithStatus(productGenerators[productKey])
             hazardEventSet.setIssueFlag(issueFlag)
             if issueFlag:
-                hazardEventSet.setFormats(["XML", "ASCII"])
+                hazardEventSet.setFormats([XML_FORMAT, LEGACY_FORMAT])
             else:
-                hazardEventSet.setFormat(["previewXML"])
+                hazardEventSet.setFormat([LEGACY_FORMAT])
             if productGenerators.get(productKey) is not None:
                 hazardEventSet.setCombinable(True)
             hazardEventSets.append(hazardEventSet)
-            #dialogInfo = self.bridge.getDialogInfo(
-            #         hazardEventSet.getProductGenerator(), "ProductGenerator")
-            #if type(dialogInfo) is types.StringType:
-            #    dialogInfo = json.loads(dialogInfo)
             dialogInfo = {}
             hazardEventSet.setDialogInfo(dialogInfo)
         return hazardEventSets    

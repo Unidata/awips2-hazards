@@ -165,4 +165,8 @@ kmPerDegLat = R_EARTH*PI/180.0
 # Localization Relative Paths
 TEXT_UTILITY_ROOT = "gfe/userPython/textUtilities/regular/"
 
+#################################
+# Product Generation
+XML_FORMAT = "XML"
+LEGACY_FORMAT = "Legacy"
 
