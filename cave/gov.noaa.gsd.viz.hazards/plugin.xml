@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+    <extension
+         point="org.eclipse.ui.commands">
+      <command
+            id="gov.noaa.gsd.viz.hazards.display.startHazardServices"
+            name="Start Hazard Services">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="gov.noaa.gsd.viz.hazards.display.HazardServicesAction"
+            commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices">
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=plugins">
+         <toolbar
+               id="IHISButton">
+            <command
+                  commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices"
+                  icon="icons/startHazardServices.png"
+                  label="Start Hazard Services"
+                  style="push">
+               <visibleWhen>
+                  <reference
+                        definitionId="com.raytheon.uf.viz.d2d.ui.inD2DActionSet">
+                  </reference>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices"
+                  icon="icons/startHazardServices.png"
+                  label="Start Hazard Services"
+                  style="push">
+               <visibleWhen>
+                  <reference
+                        definitionId="com.raytheon.viz.gfe.inGFEActionSet">
+                  </reference>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices"
+                  icon="icons/startHazardServices.png"
+                  label="Start Hazard Services"
+                  style="push">
+               <visibleWhen>
+                  <reference
+                        definitionId="com.raytheon.viz.hydro.inHydroActionSet">
+                  </reference>
+               </visibleWhen>
+            </command>
+            <command
+                  commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices"
+                  icon="icons/startHazardServices.png"
+                  label="Start Hazard Services"
+                  style="push">
+               <visibleWhen>
+                  <reference
+                        definitionId="com.raytheon.viz.inMPEActionSet">
+                  </reference>
+               </visibleWhen>
+            </command>
+         </toolbar>
+        
+      </menuContribution>
+   </extension>
+   <extension
+         point="com.raytheon.uf.viz.localization.localizationpath">
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Hazard Types"
+            recursive="true"
+            value="hazardServices/hazardTypes">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Hazard Type Color Table"
+            recursive="true"
+            value="hazardServices/hazardTypeColorTable">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Hazard Categories"
+            recursive="true"
+            value="hazardServices/hazardCategories">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Settings"
+            recursive="true"
+            value="hazardServices/settings">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Product Generator Table"
+            recursive="true"
+            value="hazardServices/productGeneratorTable">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Alerts"
+            recursive="true"
+            value="hazardServices/alerts">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Startup Config"
+            recursive="true"
+            value="hazardServices/startUpConfig">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py,.json,.xml"
+            localizationType="COMMON_STATIC"
+            name="Hazard Meta Data"
+            recursive="true"
+            value="hazardServices/hazardMetaData">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            name="Product Generators"
+            recursive="false"
+            value="python/events/productgen/products">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            name="Product Formats"
+            recursive="true"
+            value="python/events/productgen/formats">
+      </path>
+   </extension>
+   <extension point="org.eclipse.ui.views">
+      <view id="gov.noaa.gsd.viz.hazards.console.view"
+      		name="Hazard Services Console"
+            allowMultiple="false"
+            restorable="false"
+      		class="gov.noaa.gsd.viz.hazards.console.ConsoleViewPart"/>
+   </extension>
+</plugin>

@@ -8,3 +8,4 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Require-Bundle: org.eclipse.swt;bundle-version="3.6.1",
  gov.noaa.gsd.viz.widgets;bundle-version="1.0.0"
 Export-Package: gov.noaa.gsd.viz.megawidgets
+Import-Package: com.raytheon.viz.ui.widgets.duallist

@@ -28,7 +28,12 @@ import datetime
 #
 
 
+ENCLOSED = True
 
+def setEnclosed(trueFalse):
+    global ENCLOSED
+    ENCLOSED = trueFalse
+    
 def hazardHistoryConverter(obj):
     objtype = obj.jclassname
     if objtype == "com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList":
@@ -105,7 +110,8 @@ def eventConverter(javaEvent):
 
 def generatedProductConverter(javaGeneratedProduct):    
     objtype = javaGeneratedProduct.jclassname
-    if objtype == "com.raytheon.uf.common.dataplugin.events.hazards.productGeneration.IGeneratedProduct":
+    if objtype in["com.raytheon.uf.common.dataplugin.events.hazards.productGeneration.IGeneratedProduct", 
+                  "com.raytheon.uf.common.hazards.productgen.GeneratedProduct"]:
         productID = javaGeneratedProduct.getProductID()
         jEntries = javaGeneratedProduct.getEntries()
         pyEntries = JUtil.javaMapToPyDict(jEntries)
@@ -120,6 +126,7 @@ def asDatetime(dateAsMillis):
     return result
 
 def geometryConverter(geometry):
+    global ENCLOSED
     dict = {}
     dict[INCLUDE] = "true"
     dict[SHAPE_TYPE] = POLYGON
@@ -127,8 +134,11 @@ def geometryConverter(geometry):
     
     coordinates = geometry.getCoordinates()
     
-    # Skip the last point since JSON representation doesn't repeat it.
-    size = coordinates.__len__() - 1
+    if ENCLOSED:
+        # Skip the last point since JSON representation doesn't repeat it.
+        size = coordinates.__len__() - 1
+    else:
+        size = coordinates.__len__()
     for i in range(size):
         coordinate = coordinates[i]
         pointsList.append([coordinate.x, coordinate.y])

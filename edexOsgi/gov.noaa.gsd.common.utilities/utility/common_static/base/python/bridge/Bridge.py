@@ -27,11 +27,12 @@ import logging, UFStatusHandler
 
 import ast, types, time, traceback
 import DatabaseStorage
+import json
 
-from viewConfig import *
 from HazardServicesConfig import HazardServicesConfig
 from HazardMetaData import HazardMetaData
 from HazardConstants import *
+from LocalizationInterface import LocalizationInterface
 import collections
 
 try:
@@ -93,14 +94,14 @@ class Bridge:
         if toolType == PRODUCT_GENERATOR_TOOL:
             pythonJobListener = self.generatorScriptAdapter.buildGeneratorJobListener(toolID)
             self.generatorScriptAdapter.executeProductGeneratorScript(toolID, pythonJobListener, runData)
-            self.flush()
         elif toolType == RECOMMENDER_TOOL:
             pythonJobListener = self.recommenderScriptAdapter.buildRecommenderJobListener(toolID)
             self.recommenderScriptAdapter.executeRecommenderScript(toolID, pythonJobListener, runData)
             
         return None   
     
-    def handleRecommenderResult(self, toolID, eventList):
+    def handleRecommenderResult(self, toolID, eventList, enclosed=True):
+        Adapter.setEnclosed(enclosed)
         return JUtil.javaObjToPyVal(eventList, Adapter.eventConverter)   
     
     def handleProductGeneratorResult(self, toolID, generatedProductList):

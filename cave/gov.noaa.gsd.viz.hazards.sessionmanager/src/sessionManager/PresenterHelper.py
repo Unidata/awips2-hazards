@@ -34,7 +34,7 @@ class PresenterHelper(object):
             #    Selected Events first
             #    Potential Events next
             #    By creation time or start time IF no creation time
-            events.sort(self.sortEventsTD)
+            #events.sort(self.sortEventsTD)
             selectedEventIDs = self.sessionManager.getSelectedEventIDs()
             for event in events:
                 eventID = event.get(EVENT_ID)

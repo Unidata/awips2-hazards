@@ -61,7 +61,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
             .getHandler(ProductGeneration.class);
 
     /** Manages ProductScriptExecutor jobs */
-    private PythonJobCoordinator<ProductScript> coordinator = PythonJobCoordinator
+    private final PythonJobCoordinator<ProductScript> coordinator = PythonJobCoordinator
             .newInstance(new ProductScriptFactory());
 
     /**
@@ -132,8 +132,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 product);
         Map<String, String> retVal = null;
         try {
-            retVal = (Map<String, String>) jobCoordinator
-                    .submitSyncJob(executor);
+            retVal = jobCoordinator.submitSyncJob(executor);
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }
@@ -149,8 +148,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 product);
         Map<String, String> retVal = null;
         try {
-            retVal = (Map<String, String>) jobCoordinator
-                    .submitSyncJob(executor);
+            retVal = jobCoordinator.submitSyncJob(executor);
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }

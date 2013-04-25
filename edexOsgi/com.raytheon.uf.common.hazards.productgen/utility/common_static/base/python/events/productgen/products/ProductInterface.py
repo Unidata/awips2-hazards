@@ -36,13 +36,18 @@ import JUtil
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct
-
+import traceback, sys, os
+import logging, UFStatusHandler
 
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     
     def __init__(self, scriptPath):
         super(ProductInterface, self).__init__(scriptPath)
         self.importModules()
+        self.logger = logging.getLogger("ProductInterface")
+        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
+            "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
+        self.logger.setLevel(logging.INFO)         
     
     def execute(self, moduleName, className, hazardEventSet, formats):
         # TODO Convert hazardEventSet to a python hazardEventSet
@@ -51,6 +56,7 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         if not isinstance(dataList, list):
             raise Exception('Expecting a list from ' + moduleName + '.execute()')
         formats = JUtil.javaStringListToPylist(formats) 
+        
         return self.format(dataList, formats)
     
     def getDialogInfo(self, moduleName, className, **kwargs):
@@ -77,11 +83,10 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         generatedProductList = ArrayList()
         for data in dataList:
             if isinstance(data, OrderedDict):
-                if 'productID' in data:
-                    productID = data['productID']
-                else:
-                    productID = None
-                   
+                wmoHeader = data.get('wmoHeader') 
+                if wmoHeader:
+                    productID = wmoHeader.get('productID')
+                  
                 generatedProduct = GeneratedProduct(productID)
                 products = {}
                 for format in formats:
@@ -96,6 +101,10 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                         products[format] = product
                     except Exception, e:
                         products[format] = 'Failed to execute ' + format + '. Make sure it exists.'
+                        #self.logger.exception("An Exception Occurred" + traceback.format_exc(limit=20))
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        traceback.print_tb(exc_traceback, limit=20)
+                        os.sys.__stdout__.flush()
                 
                 jmap = JUtil.pyDictToJavaMap(products)
                 generatedProduct.setEntries(jmap)

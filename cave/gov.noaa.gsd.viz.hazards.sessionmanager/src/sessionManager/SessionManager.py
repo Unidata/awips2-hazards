@@ -380,6 +380,7 @@ class SessionManager(object):
                 curDict = newDict
                 curDict[STATE] = PENDING
                 eventID = curDict.get(EVENT_ID)
+            self.flush()
                 
             # Check to see if new event required for a time change
             if self.newEventNeededForTimeChange(updateDict, curDict, ignoreKeys):
@@ -515,7 +516,7 @@ class SessionManager(object):
         @param ignoreKeys -- key fields that will be ignored and not changed 
         """
         #return False
-        
+                
         oldType = curDict.get(HAZARD_TYPE)
         # Type has not been set yet
         if not oldType or oldType == "":
@@ -626,9 +627,12 @@ class SessionManager(object):
                 if state == ISSUED:
                     # Remove from selectedEvents
                     eventID = eventDict.get(EVENT_ID)
-                    self.selectedEventIDs.remove(eventID)
+                    try:
+                        self.selectedEventIDs.remove(eventID)
+                    except:
+                        pass
                 continue
-            if state == "previewEnded":
+            if state == PREVIEW_ENDED:
                 # We are going to preview the ending of the hazard
                 # so the actual state does not change
                 eventDict[PREVIEW_STATE] = ENDED
@@ -647,7 +651,7 @@ class SessionManager(object):
             else:
                 eventDict[STATE]= state
                 # Turn off previewEnded, replacedBy, replaces if set previously
-                eventDict['previewEnded'] = ''  
+                eventDict[PREVIEW_ENDED] = ''  
                 eventDict[REPLACED_BY] = ''
                 eventDict[REPLACES] = ''
         if state in [ISSUED, PROPOSED, ENDED]:

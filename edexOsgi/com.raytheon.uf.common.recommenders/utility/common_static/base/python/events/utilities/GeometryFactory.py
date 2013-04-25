@@ -67,9 +67,10 @@ def createMultiPoint(coordinates):
     mp = MultiPoint(coordinates)
     return mp
     
-def createPolygon(shell, holes):
+def createPolygon(shell, holes=None):
     '''
-    @param coordinates: The coordinates of the polygon, in order, in lat/lon space
+    @param shell: The coordinates of the polygon outer shell, in order, in lat/lon space
+    @param holes: The coordinates of the polygon holes, in order, in lat/lon space
     @return: 
     '''
     p = Polygon(shell, holes)

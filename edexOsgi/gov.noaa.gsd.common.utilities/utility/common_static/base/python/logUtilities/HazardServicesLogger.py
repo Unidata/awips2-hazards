@@ -5,43 +5,59 @@ Description: This class is deprecated.  Do not use it. It is being
              transition is expected to be completed by the beginning of
              PV2.
 
+Now that this logs through alertviz if enabled, there is no absolute reason
+to deprecate this class.  In fact, this is now the preferred means of logging
+for python modules that may run in standalone applications.
+
 SOFTWARE HISTORY
 Date         Ticket#    Engineer    Description
 ------------ ---------- ----------- --------------------------
 Jan 11, 2013            Bryon.Lawrence      Initial creation
+Apr 18, 2013            Jim Ramer           Enabled formal alertviz logging.
 
 @author Bryon.Lawrence@noaa.gov
 @version 1.0
 """
 import traceback
+import sys
+import os
 from time import gmtime, strftime
+
+try :
+    import logging, UFStatusHandler #@UnresolvedImport
+except :
+    import logging
 
 class HazardServicesLogger():
     
     fileName = '/tmp/HazardServices.log'
-    singleInstance = None
+    instanceFactory = {}
     
-    def __init__(self):
+    def __init__(self, package, module):
         """
         Treat as a singleton.  Do not call this 
         initializer directly. Instead, call
         getInstance()
         """
-        self._handlers = {}
+
         self._ufStatusAvailable = False
+        self._module = module
+        self._package = package
         
         try:
-            from com.raytheon.uf.common.status import UFStatus #@UnresolvedImport
-            from com.raytheon.uf.common.status import UFStatus_Priority as Priority #@UnresolvedImport
-            self._ufStatus = UFStatus
-            self._priority = Priority
-            self._ufStatusAvailable = True            
+            self._myhandler = UFStatusHandler.UFStatusHandler( \
+                 package, module, level=logging.INFO)
+            self._logger = logging.getLogger(module)
+            self._logger.addHandler(self._myhandler)
+            self._logger.setLevel(logging.INFO)
+            self._ufStatusAvailable = True
         except:    
             timeString = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            f = open(HazardServicesLogger.fileName, 'a')
-            f.write(timeString + '\n')
-            traceback.print_exc(file=f)
-            f.close()
+            if len(HazardServicesLogger.instanceFactory)==0 :
+                f = open(HazardServicesLogger.fileName, 'a')
+                f.write(timeString + '\n')
+                traceback.print_exc(file=f)
+                f.close()
 
     @staticmethod            
     def getInstance():
@@ -51,12 +67,42 @@ class HazardServicesLogger():
         @return: a singleton instance of the 
                  HazardServicesLogger
         """
-        if HazardServicesLogger.singleInstance is None:
-            HazardServicesLogger.singleInstance = HazardServicesLogger()
-            
-        return HazardServicesLogger.singleInstance
+
+        package = "unknown.package"
+        module = "UnknownModule"
+        try :
+            tbdata = traceback.format_stack(limit=2)
+            updata = tbdata[0].split()
+            pathparts = updata[1].split('"')[1].split('/')
+            m = len(pathparts)-1
+            if m>=0 :
+                module = pathparts[m]
+                if module[-3:]==".py" :
+                    module = module[:-3]
+            if m==0 :
+                pathparts = os.environ["PWD"].split('/')
+                m = len(pathparts)-1
+            while m>0 :
+                m = m-1
+                if pathparts[m].find(".")>0 :
+                    package = pathparts[m]
+                    break
+                if pathparts[m]=="utility" :
+                    package = "gov.noaa.gsd.common.utilities"
+        except :
+            pass
+
+        thisInstance = HazardServicesLogger.instanceFactory.get(package+module)
+        if thisInstance != None :
+            return thisInstance
+
+        thisInstance = HazardServicesLogger(package, module)
+        HazardServicesLogger.instanceFactory[package+module] = thisInstance
+
+        return thisInstance
     
-    def logMessage(self, message, status, moduleName="HazardServicesLogger", category="WORKSTATION", source="CAVE"):
+    def logMessage(self, message, status, moduleName="", \
+                   category="WORKSTATION", source="CAVE"):
         """
         Logs a message to the AWIPS II UFStatus utilities
         if available. Otherwise, logs to /tmp/HazardServices.log.
@@ -69,29 +115,29 @@ class HazardServicesLogger():
         @param category: the log category, default WORKSTATION
         @param source: the log source, default CAVE
         """
-        if moduleName is not None and isinstance(moduleName, str):
-            message = "(" + moduleName + ") " + message
+
+        moduleNow = self._module
+        if isinstance(moduleName, str) or isinstance(moduleName, unicode) :
+            if len(moduleName)>0 :
+                moduleNow = str(moduleName)
+        message = "(" + moduleNow + ") " + message
             
         status = status.lower()
             
         if self._ufStatusAvailable:
+            message = category + '|' + message
             if status == "fatal":
-                importance = self._priority.CRITICAL
+                self._logger.critical(message)
             elif status == "error":
-                importance = self._priority.SIGNIFICANT
+                self._logger.error(message)
             elif status == "warning":
-                importance = self._priority.PROBLEM
+                self._logger.warning(message)
             elif status == "info":
-                importance = self._priority.EVENTA
+                self._logger.info(message)
             elif status == "debug":
-                importance = self._priority.VERBOSE
+                self._logger.debug(message)
             else:
-                importance = self._priority.SIGNIFICANT
-                
-            if category not in self._handlers:
-                self._handlers[category] = self._ufStatus.getHandler(moduleName, category, source)
-            
-            self._handlers[category].handle(importance, message)
+                self._logger.info(message)
         else:
             #
             # Write to a file in /tmp

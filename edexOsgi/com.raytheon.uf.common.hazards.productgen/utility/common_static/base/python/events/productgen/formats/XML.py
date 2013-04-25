@@ -35,6 +35,7 @@
 #
 import FormatTemplate
 from xml.etree.ElementTree import Element, SubElement, tostring
+import os, collections
 
 class Format(FormatTemplate.Formatter):
     
@@ -44,9 +45,9 @@ class Format(FormatTemplate.Formatter):
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in XML format.
         """        
-        xml = Element('textProduct')
+        xml = Element('product')
         self.dictionary(xml, data)
-        
+
         return tostring(xml)
     
     def dictionary(self, xml, data):
@@ -58,25 +59,36 @@ class Format(FormatTemplate.Formatter):
         if data is not None:
             for key in data:        
                 value = data[key]
-                
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)
                     self.dictionary(subElement, value)
                 elif isinstance(value, list):
                     self.list(xml, key, value)
                 else:
+                    editable = False
+                    if ':editable' in key:
+                        editable = True
+                        key = key[:-9]
                     subElement = SubElement(xml,key)
                     subElement.text = value
+                    if editable:
+                        subElement.attrib['editable'] = 'true'
     
     def list(self, xml, key, data):
         """
         Returns the list in XML format.
         @param data: list of values
         @return: Returns the list in XML format.
-        """   
+        """
+        editable = False
+        if ':editable' in key:
+            key = key[:-9]
+            editable = True    
         if data is not None:
             for value in data:
                 subElement = SubElement(xml, key)
+                if editable:
+                    subElement.attrib['editable'] = 'true'
                 if isinstance(value, dict):
                     self.dictionary(subElement, value)
                 else:          

@@ -1,7 +1,6 @@
 import json, os, cPickle, time, fcntl, random, stat
 import Logger as LogStream
 import defaultConfig as defaultConfig
-#import pkg_resources
         
 class DatabaseStorage:
 
@@ -10,9 +9,8 @@ class DatabaseStorage:
         # These files live in the same directory as this module.
         self._readOnlyDbPath = self.buildDatabasePath()
         self._dbPath = self.getUserPath("HazardServices")
-        #print os.getcwd()
-        #import sys
-        #sys.stdout.flush()
+        self._cannedDataPath = self.getCannedDataPath()
+        self._cannedEventsFileName = self._cannedDataPath + "cannedEvents"
         self._vtecRecordsFileName = self._dbPath + "vtecRecords.json"
         self._vtecRecordsLockName = self._dbPath + "vtecRecords.lock"
         self._vtecRecordsLockFD = None
@@ -21,18 +19,7 @@ class DatabaseStorage:
         self._testVtecRecordsLockName = self._dbPath + "testVtecRecords.lock"
         self._testVtecRecordsLockFD = None
         self._testVtecRecordsLockTime = None
-        self._lastSeqNumFilePath = self._dbPath + "lastSeqNum.txt"
-        
-        #
-        # Build path to the last sequence number file.
-        #try:
-        #    self._lastSeqNumFilePath = pkg_resources.resource_filename("dataStorage", "lastSeqNum.txt")
-        #except:
-        #    print "Could not find the lastSeqNum.txt file"
-        
-        # NOTE:  'getEvents' and 'getVtecRecords' do filtering on the entire database of 
-        # entries (events or vtecRecords).  
-        # Eventually, the database needs to do this filtering for us.
+        self._lastSeqNumFilePath = self._dbPath + ".lastSeqNum.json"
         
     def getUserPath(self, category):
         from com.raytheon.uf.common.localization import PathManagerFactory, LocalizationContext
@@ -43,9 +30,24 @@ class DatabaseStorage:
         lc = pathMgr.getContext(LocalizationType.valueOf('CAVE_STATIC'), LocalizationLevel.valueOf('USER'))
         lf = pathMgr.getLocalizationFile(lc, path)
         fullpath = lf.getFile().getPath()
-        #idx = fullpath.rfind("/")
-        #if not os.path.exists(fullpath[:idx]):
-        #    os.makedirs(fullpath[:idx])
+
+        return fullpath + "/"
+
+    def getCannedDataPath(self):
+        """
+        Builds the path to the canned hazards file.
+        When the user presses the reset option in the
+        Hazard Services Console, the contents of the hazards
+        database are replaces with the events contained in this
+        file.
+        
+        @return The path to the canned events json file (in localization)
+                or None if the file does not exist.
+        """
+        from com.raytheon.uf.common.localization import PathManagerFactory
+        pathMgr = PathManagerFactory.getPathManager()
+        path = 'python/dataStorage'
+        fullpath = pathMgr.getStaticFile(path).getPath()
         return fullpath + "/"
 
     def buildDatabasePath(self):
@@ -68,6 +70,11 @@ class DatabaseStorage:
 
         elif dataType == 'events':
             return self.getEvents(dataType, info)
+
+        elif dataType == 'cannedEvents':
+            # We are handling this in a special way and it does
+            # NOT return JSON.
+            return self.getLocalData(self._cannedEventsFileName)
         
         elif dataType in ["vtecRecords", "testVtecRecords"]:
             return self.getVtecRecords(dataType, info)
@@ -108,15 +115,14 @@ class DatabaseStorage:
 ####  HELPER METHODs
     
     def readVtecDatabase(self, dataType):
-        return self.getLocalData(dataType, ["oid","key", "etn"], dataFormat="list")
+        return self.getLocalData(self._dbPath+dataType, ["oid","key", "etn"], dataFormat="list")
             
     def writeVtecDatabase(self, dataType, vtecDicts):
-        self.writeJsonFile(dataType + "_local", id, vtecDicts, True) 
+        self.writeJsonFile(self._dbPath+dataType + "_local", id, vtecDicts, True) 
         self.flush()
-        #self.putLocalData("vtecRecords", [], vtecDicts, dataFormat="list", replaceFile=True)
         
     def deleteVtecDatabase(self, vtecDicts):
-        self.deleteLocalData("vtecRecords", ["oid","key", "etn"], vtecDicts, dataFormat="list")    
+        self.deleteLocalData(self._dbPath+"vtecRecords", ["oid","key", "etn"], vtecDicts, dataFormat="list")    
                              
     def reset(self, criteria):
         info = json.loads(criteria)
@@ -132,7 +138,7 @@ class DatabaseStorage:
                 pass
      
     def resetEventDatabase(self):  
-        eventDicts = self.getLocalData("cannedEvents", "eventsId")
+        eventDicts = self.getLocalData(self._cannedDataPath+"cannedEvents", "eventsId")
         self.writeEventDatabase(eventDicts)
 
     def resetVtecDatabase(self):
@@ -140,12 +146,12 @@ class DatabaseStorage:
              
     def getConfigData(self, dataType, info):
         returnDict = eval('defaultConfig.' + dataType)
-        #exec 'returnDict = defaultConfig.'+dataType
+
         try:
             # Override config info from local ihisConfig
             import database.ihisConfig as ihisConfig #@UnresolvedImport
             ihisConfigDict = eval("ihisConfig." + dataType)
-            #exec 'ihisConfigDict = ihisConfig.'+ dataType
+
             for key in ihisConfigDict:
                 returnDict[key] = ihisConfigDict[key]
         except:
@@ -153,7 +159,7 @@ class DatabaseStorage:
         return json.dumps(returnDict)
     
     def getAlertValues(self):
-        result = self.getLocalData("alerts", "Not used")
+        result = self.getLocalData(self._dbPath+"alerts", "Not used")
         return json.dumps(result)
         
     
@@ -166,9 +172,6 @@ class DatabaseStorage:
         # Leave database locked if user has requested read with lock
         ###Basic filter - filters for visibleTypes and visibleSites
         filter = info.get("filter")
-        
-#        print "DatabaseService getEvents", filter
-#        print "DatabaseService getEvents", events
         
         if filter is not None:
             self.filterEvents(events, "type", filter.get("visibleTypes"))
@@ -215,7 +218,6 @@ class DatabaseStorage:
         return json.dumps(dictTable)                        
 
     def _lockDB(self, fileName, lockName, initialData=[]):
-        #LogStream.logDebug("LOCKing")
 
         if fileName is None:
             raise Exception, "lockAT without filename"
@@ -226,7 +228,6 @@ class DatabaseStorage:
             os.chmod(lockName, 0664)
         except:
             pass
-#        fcntl.lockf(self._activeTableLockFD.fileno(), fcntl.LOCK_EX)
 
         opened = 1
         while opened:
@@ -239,8 +240,6 @@ class DatabaseStorage:
               opened = 1
 
         t2 = time.time()
-        #LogStream.logDebug("LOCK granted. Wait: ", "%.3f" % (t2 - t1), "sec.,",
-        #  " file=", os.path.basename(fileName))
         lockTime = t2
 
         # if file doesn't exist or zero length, create it (first time)
@@ -258,19 +257,15 @@ class DatabaseStorage:
         return lockFD, lockTime
 
     def _unlockDB(self, fileName, lockName, lockFD, lockTime):
-        #LogStream.logDebug("UNLOCKing ")
         if fileName is None:
             raise Exception, "unlockAT without filename"
 
         fcntl.lockf(lockFD.fileno(), fcntl.LOCK_UN)
         t2 = time.time()
-        #LogStream.logDebug("LOCK duration: ", "%.3f" % (t2 - lockTime),
-        #  "sec., file=", os.path.basename(fileName))
         lockFD.close()    
     
     def getColorTable(self, type):
         colorTable_dir = self._readOnlyDbPath + "ColorTable." + type
-        #print "path", colorTable_dir
         return open(colorTable_dir, "r")
         
     def newSeqNum(self):
@@ -294,7 +289,7 @@ class DatabaseStorage:
         colorTable_dir = self.readOnlyDbPath + "SnowAmtColorTable.xml"
         return open(colorTable_dir, "r")
 
-    def getLocalData(self, filename, id, dataFormat="dictionary"): 
+    def getLocalData(self, filename, id=None, dataFormat="dictionary"): 
         """ 
         In the following methods:
         
@@ -309,10 +304,11 @@ class DatabaseStorage:
         otherwise, will use the base version e.g. events.json
         """
         # Use local version if there 
-        try:
-            dataDicts = self.readJsonFile(filename + "_local")
-        except:
-            dataDicts = self.readJsonFile(filename)
+        self.flush()
+        dataDicts = self.readJsonFile(filename + "_local")
+        
+        if dataDicts is None:
+           dataDicts = self.readJsonFile(filename)
         if dataDicts is not None:
             return dataDicts
         if dataFormat == "dictionary": return {}
@@ -331,7 +327,7 @@ class DatabaseStorage:
             for dict in dataDicts:
                 # Replace matching record if it exists
                 match = self.findMatch(dict, currentDicts, id)
-                #print "DatabaseService putLocalData dict, currentDict, match", dict, currentDicts, match
+
                 if match is not None:
                     currentDicts[match] = dict
                 # Otherwise, add it
@@ -378,7 +374,7 @@ class DatabaseStorage:
            
     def readJsonFile(self, filename):
         try:
-            fd = open(self._dbPath+filename+".json", 'rb')                
+            fd = open(filename+".json", 'rb')                
             data = json.loads(fd.read())
             fd.close()
         except:
@@ -390,9 +386,7 @@ class DatabaseStorage:
             mode = "w"
         else:
             mode = "w+"
-        #print "DatabaseService writeJsonFile replaceFile, mode", replaceFile, mode
-        #print "  dataDicts", dataDicts
-        fd = open(self._dbPath + filename + ".json", mode)
+        fd = open(filename + ".json", mode)
         fd.write(json.dumps(dataDicts, sort_keys=True, indent=4))
         fd.close()
         

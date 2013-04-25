@@ -5,12 +5,17 @@ import os
 import stat
 import glob
 import json
+import socket
 import re
 from jsonCombine import *
 from xml2Json import *
-from LocalFileInstaller import *
 import HazardServicesImporter
 from HazardServicesLogger import *
+
+try:
+    from LocalFileInstaller import * #@UnresolvedImport
+except :
+    from AppFileInstaller import *
 
 # The purpose of this class is to provide a very generalized interface to
 # localization data.
@@ -68,13 +73,22 @@ class LocalizationInterface():
         self.__logger = HazardServicesLogger.getInstance()
         self.__repat = None
         self.__resrch = None
+        self.__javaenv = False
         if edexHost!="" :
             self.__locServer = edexHost
-            self.__lfi = LocalFileInstaller(edexHost)
+            try :
+                self.__lfi = LocalFileInstaller(edexHost)
+                self.__javaenv = True
+            except :
+                self.__lfi = AppFileInstaller(edexHost)
             return
         if caveEdexHost!=None :
             self.__locServer = caveEdexHost
-            self.__lfi = LocalFileInstaller(caveEdexHost)
+            try :
+                self.__lfi = LocalFileInstaller(caveEdexHost)
+                self.__javaenv = True
+            except :
+                self.__lfi = AppFileInstaller(caveEdexHost)
             return
         caveEdexHost = ""
         prefspath = os.environ["HOME"] + "/caveData/.metadata/.plugins/" + \
@@ -101,17 +115,18 @@ class LocalizationInterface():
             msg = "Could not determine host of current EDEX server."
             self.__logger.logMessage(msg, "Error")
         self.__locServer = caveEdexHost
-        self.__lfi = LocalFileInstaller(caveEdexHost)
+        try :
+            self.__lfi = LocalFileInstaller(caveEdexHost)
+            self.__javaenv = True
+        except :
+            self.__lfi = AppFileInstaller(caveEdexHost)
 
     # This method determines the current host id.
     def getThisHost(self) :
         global hostnameF
         if hostnameF!=None :
             return hostnameF
-        cmd = "hostname -f"
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        (stdout, stderr) = p.communicate()
-        hostnameF = stdout.rsplit('\n')[0]
+        hostnameF = socket.gethostbyaddr(socket.gethostname())[0]
         return hostnameF
 
     # This would normally only be called to support service backup operations.
@@ -407,55 +422,78 @@ class LocalizationInterface():
     # This method allows one to submit an arbitrary command through the
     # uEngine to an arbitrary host.  If the host is "postgres", will attempt
     # to verify that the command is run on the host that has postgres running.
-    def submitCommand(self, submit, \
-                      host="", singleQuoteMeta='@', dblQuoteMeta="#") :
-        i = submit.find(singleQuoteMeta)
-        while i>=0 :
-            submit = submit[:i]+"'"+submit[i+1:]
-            i = submit.find(singleQuoteMeta, i+1)
-        i = submit.find(dblQuoteMeta)
-        while i>=0 :
-            submit = submit[:i]+'"'+submit[i+1:]
-            i = submit.find(dblQuoteMeta, i+1)
-        tmpcmdfile = "/home/awips/bin/tmpcmd"+str(os.getpid())+".csh"
-        tmpcmddata = "#!/bin/csh -f\n"
+    def submitCommand(self, submit, host="") :
+        tmpcmdfile = "tmpcmd"+str(os.getpid())+".csh"
         if host=="postgres" :
-            tmpcmddata += 'if ( "$1" != "again" ) then\n'
+            mycmd = ""
+            tmpcmddata = "#!/bin/csh\n"
+            tmpcmddata += 'if ( "$1" != "" ) then\n'
             tmpcmddata += '    set n = `ps -C postmaster -U awips | '
             tmpcmddata +=           'grep postmaster | wc -l`\n'
             tmpcmddata += '    if ( $n == 0 ) then\n'
-            tmpcmddata += '        ssh "dx1" '+tmpcmdfile+' again\n'
+            tmpcmddata += '        ssh -q "dx1" $0\n'
             tmpcmddata += '        exit\n'
             tmpcmddata += '    endif\n'
             tmpcmddata += 'endif\n'
-            host = ""
+            tmpcmddata += submit+'\n'
+            tmpcmddata += \
+               '( ( sleep 3 ; rm -f $0 ) & ) >& /dev/null\n'
         elif host!="" :
-            tmpcmddata += 'if ( "$1" != "" && "$1" != "again" ) then\n'
-            tmpcmddata += '    ssh "$1" '+tmpcmdfile+' again\n'
+            mycmd = ""
+            tmpcmddata = "#!/bin/csh\n"
+            tmpcmddata += 'if ( "$1" != "" ) then\n'
+            tmpcmddata += '    ssh -q "$1" $0\n'
             tmpcmddata += '    exit\n'
             tmpcmddata += 'endif\n'
-        tmpcmddata += submit+'\n'
-        tmpcmddata += '( ( sleep 3 ; rm -f '+tmpcmdfile+' ) & ) >& /dev/null\n'
-        ffff = open(tmpcmdfile, 'w')
-        ffff.write(tmpcmddata)
-        ffff.close()
-        os.chmod(tmpcmdfile, \
-           stat.S_IRWXU|stat.S_IRWXG|stat.S_IROTH|stat.S_IXOTH)
-        cmd = 'export DEFAULT_HOST='+self.__locServer+' ; '
-        cmd = cmd + '( echo import subprocess ; echo import os ;'
-        cmd = cmd + 'echo from com.raytheon.uf.common.message.response '
-        cmd = cmd +        'import ResponseMessageGeneric ; '
-        if host=="" :
-            cmd = cmd + 'echo mycmd = "'+"'"+tmpcmdfile+"'"+'" ;'
+            tmpcmddata += submit+'\n'
+            tmpcmddata += \
+               '( ( sleep 3 ; rm -f $0 ) & ) >& /dev/null\n'
         else :
-            cmd = cmd + 'echo mycmd = "'+tmpcmdfile+' '+host+'" ;'
-        cmd = cmd + 'echo "p = subprocess.Popen(mycmd, shell=True, '
-        cmd = cmd +        'stdout=subprocess.PIPE)" ;'
-        cmd = cmd + 'echo "(stdout, stderr) = p.communicate()" ; '
-        cmd = cmd + 'echo "return ResponseMessageGeneric(stdout)" ) | '
-        cmd = cmd + '/awips2/fxa/bin/uengine -r python'
+            tmpcmddata = ""
+            mycmd = submit
+        d = chr(34)
+        myscript = """
+from com.raytheon.uf.common.message.response import ResponseMessageGeneric
+import subprocess
+import os
+import stat
+"""
+        if len(tmpcmddata)>0 :
+            myscript += """
+if os.path.isdir("/home/awips/bin") :
+    tmpcmddir = "/home/awips/bin/"
+elif os.path.isdir("/data_store") :
+    tmpcmddir = "/data_store/"
+else :
+    tmpcmddir = os.environ["HOME"]+"/"
+"""
+            myscript += "\nexechost = "+d+d+d+host+d+d+d
+            myscript += "\ntmpcmdfile = "+d+d+d+tmpcmdfile+d+d+d
+            myscript += "\ntmpcmddata = "+d+d+d+tmpcmddata+d+d+d
+            myscript += """
+tmpcmdpath = tmpcmddir+tmpcmdfile
+ffff = open(tmpcmdpath, 'w')
+ffff.write(tmpcmddata)
+ffff.close()
+os.chmod(tmpcmdpath, stat.S_IRWXU|stat.S_IRWXG|stat.S_IROTH|stat.S_IXOTH)
+mycmd = tmpcmdpath+" "+exechost
+"""
+        else :
+            myscript += "\nmycmd = "+d+d+d+mycmd+' '+d+d+d
+        myscript += """
+p = subprocess.Popen(mycmd, shell=True, stdout=subprocess.PIPE)
+(stdout, stderr) = p.communicate()
+return ResponseMessageGeneric(stdout)
+"""
+        mypyfile = "/tmp/"+str(os.getpid())+".py"
+        fff = open(mypyfile, "w")
+        fff.write(myscript)
+        fff.close()
+        cmd = 'export DEFAULT_HOST='+self.__locServer+' ; '
+        cmd = cmd + '/awips2/fxa/bin/uengine -r python < '+mypyfile
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         (stdout, stderr) = p.communicate()
+        os.remove(mypyfile)
         return stdout
 
     # This method allows one to delete a localization file.  'locPath' is the
@@ -526,6 +564,16 @@ class LocalizationInterface():
             locPath0 = locPath0[:i]+sss+locPath0[i+3:]
             i = locPath0.find("###", i+3)
 
+        if self.__javaenv :
+            self.__lfi.setType(locType)
+            self.__lfi.setLevel(locLevel)
+            self.__lfi.setName(locName)
+            if contextUser=="" :
+                self.__lfi.setMyContextName(self.__curUser)
+            else :
+                self.__lfi.setMyContextName(contextUser)
+            return self.__lfi.rmFile(locPath0)
+
         # For now lets do an end run by submitting this to the uEngine
         filePath = '/awips2/edex/data/utility/'+locType.lower()+'/'+ \
                    locLevel.lower()+'/'+locName+'/'+locPath0
@@ -543,17 +591,7 @@ class LocalizationInterface():
         (stdout, stderr) = p.communicate()
         if stderr==None :
             return True
-        else :
-            return False
-
-        self.__lfi.setType(locType)
-        self.__lfi.setLevel(locLevel)
-        self.__lfi.setName(locName)
-        if contextUser=="" :
-            self.__lfi.setMyContextName(self.__curUser)
-        else :
-            self.__lfi.setMyContextName(contextUser)
-        return self.__lfi.rmFile(locPath0)
+        return False
 
 
     # This method allows one to get listings of localization directories.   
@@ -878,15 +916,11 @@ class LocalizationInterface():
             locName = locNames[lll]
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            # sys.stderr.write(locLevel+"  '"+locName+"'\n")
-            # sys.stderr.write("'"+locPath0+"'\n")
             lll = lll - 1
             try:
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
-                # sys.stderr.write("pyRoot '"+str(pyRoot)+"'\n");
                 t = self.checkDataType(result, pyRoot)
-                # sys.stderr.write("t="+str(t)+"\n");
                 if t == 0 :
                     continue
                 

@@ -33,6 +33,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -82,11 +83,20 @@ public class ProductScript extends PythonScriptController {
     /** python/productgen/events/products directory */
     protected static LocalizationFile productsDir;
 
-    protected ProductScript() throws JepException {
+    /**
+     * Instantiates a ProductScript object.
+     * 
+     * @param jepIncludePath
+     *            - A jep include path containing python utilities specific to
+     *            Hazard Services.
+     * @throws JepException
+     */
+    protected ProductScript(final String jepIncludePath) throws JepException {
         super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
-                PYTHON_INTERFACE), PythonBuildPaths.buildIncludePath(
-                FORMATS_DIRECTORY, PRODUCTS_DIRECTORY), ProductScript.class
-                .getClassLoader(), PYTHON_CLASS);
+                PYTHON_INTERFACE), PyUtil.buildJepIncludePath(PythonBuildPaths
+                .buildIncludePath(FORMATS_DIRECTORY, PRODUCTS_DIRECTORY),
+                jepIncludePath), ProductScript.class.getClassLoader(),
+                PYTHON_CLASS);
         inventory = new CopyOnWriteArrayList<ProductInfo>();
         productsDir = PythonBuildPaths
                 .buildLocalizationDirectory(PRODUCTS_DIRECTORY);
