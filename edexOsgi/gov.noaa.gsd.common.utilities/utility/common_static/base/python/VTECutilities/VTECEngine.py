@@ -9,7 +9,7 @@ import cPickle, os, types, string, copy
 import sys, gzip, time
 import collections
 from VTECTableUtil import VTECTableUtil
-import logUtilities.Logger as LogStream
+import Logger as LogStream
 
 # Define several named tuples for cleaner code
 VTECDefinitions = collections.namedtuple('VTECDefinitions',
@@ -100,9 +100,9 @@ class VTECEngine(VTECTableUtil):
         # list of phen/sig from national centers and "until further notice"
         self._tpcKeys = [('HU','A'), ('HU','S'), ('HU','W'), ('TR','A'), 
           ('TR','W')]
-        self._tpcBaseETN = 1000
+        self._tpcBaseETN = 1001
         self._ncKeys = [('TO','A'), ('SV','A'), ('HU','A'), ('HU','W'),
-          ('TR','A'), ('TR','W')]
+          ('TR','A'), ('TR','W'), ('HU', 'S')]
         self._ufnKeys = [('HU','A'), ('HU','S'), ('HU','W'), ('TR','A'),
           ('TR','W'), ('TY','A'), ('TY','W')]
 
@@ -507,7 +507,7 @@ class VTECEngine(VTECTableUtil):
             return -1
 
         # check sig
-        sigOrder = ["W", "Y", "A", "S", "F"]
+        sigOrder = ["W", "Y", "A", "O", "S", "F"]
         try:
             aIndex = sigOrder.index(a['sig'])
             bIndex = sigOrder.index(b['sig'])
@@ -583,7 +583,7 @@ class VTECEngine(VTECTableUtil):
             return -1
 
         # check sig
-        sigOrder = ["W", "Y", "A", "S", "F"]
+        sigOrder = ["W", "Y", "A", "O", "S", "F"]
         try:
             aIndex = sigOrder.index(a['sig'])
             bIndex = sigOrder.index(b['sig'])
@@ -1011,6 +1011,7 @@ class VTECEngine(VTECTableUtil):
         # Convert events to VTEC Records
         LogStream.logDebug("EventDicts: ", eventDicts)
         atable = self._convertEventsToVTECrecords(eventDicts)
+        
         LogStream.logDebug("Proposed Table length: ", len(atable), atable)
         LogStream.logDebug("Sampled Proposed Table:\n", 
           self.printVtecRecords(atable, combine=True))
@@ -2449,6 +2450,8 @@ class VTECEngine(VTECTableUtil):
                         records[x]['seg'] = maxSN + rnx + 1
                         records[x]['startTime'] = trDict[rnx][0]
                         records[x]['endTime'] = trDict[rnx][1]
+                        records[x]['phensig'] = records[x]['phen'] + '.' + \
+                          records[x]['sig'] + ':' + `records[x]['seg']`
                         del records[x]['rn']
 
                 #now eliminate records duplicate records
@@ -2484,7 +2487,9 @@ class VTECEngine(VTECTableUtil):
                         if self.hazardCompare(p, p1, compare) and \
                           p1['seg'] > orgMax:
                             p1['seg'] = p['seg']
-
+                            p1['phensig'] = p1['phen'] + '.' + p1['sig'] + \
+                              ':' + `p1['seg']`
+                              
         #step 5: Eliminate duplicate entries
         finalList = []
         for p in updatedList:
@@ -2536,15 +2541,16 @@ class VTECEngine(VTECTableUtil):
     def _checkValidETNcw(self, pTable):
         '''check for valid etns for all national center products.'''
         for p in pTable:
-            if (p['phen'],p['sig']) in self._ncKeys:
+            if (p['phen'],p['sig']) in self._ncKeys and p['officeid'] != 'PGUM':
                 try:
                     a = int(p['etn'])
                 except:
-                    raise Exception("ABORTING: Found National Hazard "
-                      "with no ETN in grids. \n" + self.printVtecRecords(p) + \
+                    raise Exception, "\n\n" + errorLine + "\n" +\
+                      "ABORTING: Found National Hazard " + \
+                      "with no ETN in grids. \n" + self.printActiveTable(p) + \
                       " Fix your grids by adding watch/storm number." + \
-                      "\nor running PlotSPCWatches or HazardRecovery" +\
-                      "\n to correct situation.\n")
+                      "\nFor tropical hazards, an override to MakeHazard" +\
+                      "\n is likely to blame.\n" + errorLine
 
     # check for valid ETN/Actions in the analyzed table. Cannot have
     # a split ETN where one part of ongoing/NEW, and the other part
@@ -2665,6 +2671,36 @@ class VTECEngine(VTECTableUtil):
                         assigned[akey] = trs  #put back into dictionary
                         keyetnmax[vteckey]= p['etn']  #updated for new assign
 
+    def __warnETNduplication(self, pTable):
+        # Check should only operate on applicable VTEC products.
+        if self._pil not in \
+                ['CFW', 'FFA', 'MWW', 'NPW', 'RFW', 'WSW']:
+            return
+
+        dups = []
+        byZones = self._organizeByZone(pTable)  
+        for id, hazards in byZones.iteritems():
+            visited = []
+            for p in hazards:
+                key = p['phen'], p['sig'], p['etn']
+                if key in visited:
+                    estr = "%s.%s:%d" % key
+                    if estr not in dups:
+                        dups.append(estr)
+                else:
+                    visited.append(key)
+
+        if len(dups) > 0:
+            errorLine = '\n******************************************************\n'
+            LogStream.logProblem("Illegal ETN duplication is found for:\n", \
+                                 dups, errorLine)
+
+            # Throw exception
+            msg = "The formatted %s product contains a duplicate ETN.\n"\
+                  "Please transmit the product and then open a trouble ticket with the NCF."\
+                  % self._pil
+            raise Exception(msg)
+
     def _addUpgradeDowngradeRec(self, proposedTable):
         '''Add upgrade/downgrade information for upgrades and downgrades.
 
@@ -2679,7 +2715,7 @@ class VTECEngine(VTECTableUtil):
           'subtype']
 
         for rec in proposedTable:
-            if rec['act'] in ['NEW', 'EXA', 'EXB', 'EXT']:
+            if rec['act'] == 'NEW':
                 for checkR in proposedTable:
                     if checkR['act'] in ['CAN', 'UPG']:
                         if self._hazardsOverlap(checkR, rec) and \
@@ -2791,6 +2827,9 @@ class VTECEngine(VTECTableUtil):
         self._checkETNdups(pTable)
         LogStream.logDebug("Analyzed Table -- After checkETNdups:",
           self.printVtecRecords(pTable, combine=True))
+
+        # Warn user about ETN duplication if any
+        self.__warnETNduplication(pTable)           
 
         # Ensure that starting times are not before now, and that starting
         # times are not after the event ends.

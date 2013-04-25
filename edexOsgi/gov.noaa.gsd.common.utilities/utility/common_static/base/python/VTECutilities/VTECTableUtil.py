@@ -166,7 +166,7 @@ class VTECTableUtil(object):
           "Hdln: {hdln}\n"
           "Start:   {startTime}  Action: {act}  Office: {officeid}\n"
           "End:     {endTime}  UFN: {ufn}\n"
-          "Issue:   {issue}  Key: {key}\n{prevtecstr}"
+          "Issue:   {issueTime}  Key: {key}\n{prevtecstr}"
           "Phen: {phen}  Sig: {sig}  SubT: {subtype}  Seg: {seg}  Etn: {etn}"
           "  EventID: {eventID} RecState: {recState}\n"
           "geoIds: {zones}\n{relatedText}{hvtecStr}\n")
@@ -177,10 +177,10 @@ class VTECTableUtil(object):
            etnS = "{etn:<4}".format(etn=h.get('etn'))
               
         t = fmt.format(vtecstr=h.get('vtecstr'), hdln=h.get('hdln'),
-          start=self.printTime(h.get('startTime')), act=h.get('act'),
-          eventID=h.get('eventID'), end=self.printTime(h.get('endTime')),
+          startTime=self.printTime(h.get('startTime')), act=h.get('act'),
+          eventID=h.get('eventID'), endTime=self.printTime(h.get('endTime')),
           ufn=h.get('ufn', 0), recState=h.get('state'),
-          issue=self.printTime(h.get('issueTime')), key=h.get('key'),
+          issueTime=self.printTime(h.get('issueTime')), key=h.get('key'),
           phen=h.get('phen'), sig=h.get('sig'), subtype=h.get('subtype'),
           officeid=h.get('officeid'), etn=etnS, seg=h.get('seg'),
           zones=h.get('geoId'), relatedText=relatedText, hvtecStr=hvtecStr,
