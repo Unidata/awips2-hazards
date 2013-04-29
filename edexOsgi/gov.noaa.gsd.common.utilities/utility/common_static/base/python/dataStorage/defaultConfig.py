@@ -1171,8 +1171,16 @@ viewDefaultValues = {
  "defaultBaseLayer": "Google Hybrid",
 }
 
-# This lists the fields that are possible in a View
-# The Define View Dialog will use this information to collect a View Definition from the user.
+# This lists the fields that are possible in a Setting
+# The Setting Dialog will use this information to display and allow manipulation
+# of a Setting Definition from the user.
+#
+# NOTE:
+#
+# Some megawidgets defined here include the non-megawidget-specifier key
+# "columnName", with a value that matches one of the "columns" names. These
+# key-value pairs are used to determine which filters may be paired with which
+# console table columns. 
 viewConfig = [
               {
                "fieldName": "tabbedPanel",
@@ -1193,20 +1201,23 @@ viewConfig = [
                                           "label": "Hazard Categories and Types:",
                                           "fieldType": "HierarchicalChoicesTree",
                                           "lines": 16,
+                                          "columnName": "Hazard Type"
                                          },
                                          {
-                                         "fieldName": "visibleSites",
-                                         "label": "Site IDs:",
-                                         "fieldType": "CheckList",
-                                         "choices": siteIDs,
-                                         "lines": 16,
+                                          "fieldName": "visibleSites",
+                                          "label": "Site IDs:",
+                                          "fieldType": "CheckList",
+                                          "choices": siteIDs,
+                                          "lines": 16,
+                                          "columnName": "Site ID"
                                          },              
                                          {
-                                         "fieldName": "visibleStates",
-                                         "label": "State:",
-                                         "fieldType": "CheckList",
-                                         "choices": states,
-                                         "lines": 16,
+                                          "fieldName": "visibleStates",
+                                          "label": "State:",
+                                          "fieldType": "CheckList",
+                                          "choices": states,
+                                          "lines": 16,
+                                          "columnName": "State"
                                          },              
                                         ],
                          },
