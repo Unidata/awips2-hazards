@@ -74,7 +74,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
-import com.raytheon.uf.viz.core.rsc.tools.AwipsToolsResourceData;
+import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
@@ -210,7 +210,7 @@ public class ToolLayer extends
      * @param loadProperties
      *            The properties describing this resource.
      */
-    public ToolLayer(AwipsToolsResourceData<ToolLayer> resourceData,
+    public ToolLayer(GenericToolsResourceData<ToolLayer> resourceData,
             LoadProperties loadProperties) {
 
         super(resourceData, loadProperties);

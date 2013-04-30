@@ -1,15 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="unit"/>
-	<classpathentry kind="src" path="deploy"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/tests"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.productgen"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events"/>
+	<classpathentry kind="lib" path="jmock-2.5.1.jar"/>
+	<classpathentry kind="lib" path="objenesis-1.0.jar"/>
+	<classpathentry kind="lib" path="jmock-legacy-2.5.1.jar"/>
+	<classpathentry exported="true" kind="lib" path="spock-core-0.6-groovy-1.8.jar"/>
+	<classpathentry kind="src" path="deploy"/>
+	<classpathentry kind="src" path="test_resources"/>
+	<classpathentry kind="src" path="unit"/>
+	<classpathentry exported="true" kind="con" path="GROOVY_SUPPORT"/>
+	<classpathentry exported="true" kind="con" path="GROOVY_DSL_SUPPORT"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.shef"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.geotools"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.apache.log4j"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events.hazards"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.events"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.time"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/javax.persistence"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.serialization"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tests"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.viz.hazards"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.utilities"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.productgen"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.recommenders"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.python.concurrent"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.recommenders"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.python"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.viz.mvp"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.uf.common.recommenders.hydro"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.status"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/com.raytheon.uf.common.localization"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

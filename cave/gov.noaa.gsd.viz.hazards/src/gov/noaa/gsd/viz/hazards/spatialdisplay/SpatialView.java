@@ -67,7 +67,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
-import com.raytheon.uf.viz.core.rsc.tools.AwipsToolsResourceData;
+import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -599,7 +599,7 @@ public class SpatialView implements
 
         try {
 
-            AwipsToolsResourceData<ToolLayer> HSToolLayerResourceData = new AwipsToolsResourceData<ToolLayer>(
+            GenericToolsResourceData<ToolLayer> HSToolLayerResourceData = new GenericToolsResourceData<ToolLayer>(
                     ToolLayer.DEFAULT_NAME, ToolLayer.class);
             spatialDisplay = HSToolLayerResourceData.construct(
                     new LoadProperties(), desc);

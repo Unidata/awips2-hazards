@@ -51,20 +51,21 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.endTime = None
         self.phenomenon = None
         self.significance = None
+        self.subtype = None
         self.hazardAttributes = None
         self.hazardMode = None
         self.geometry = None
     
-    def getSite(self):
-        return self.getSite()
+    def getSiteID(self):
+        return self.site
 
-    def setSite(self, site):
+    def setSiteID(self, site):
         self.site = site
     
-    def getEventId(self):
+    def getEventID(self):
         return self.eventId
     
-    def setEventId(self, eventId):
+    def setEventID(self, eventId):
         self.eventId = eventId
         
     def getHazardState(self):
@@ -84,6 +85,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setSignificance(self, significance):
         self.significance = significance
+        
+    def getSubtype(self):
+        return self.subtype
+    
+    def setSubtype(self, subtype):
+        self.subtype = subtype
         
     def getIssueTime(self):
         return self.issueTime
@@ -123,13 +130,15 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def __getitem__(self, key):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            return getSite()
+            return getSiteID()
         elif lowerKey == 'state':
             return getState()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             return getPhenomenon()
         elif lowerKey == 'significance' or lowerKey == 'sig':
             return getSignificance()
+        elif lowerKey == 'subtype':
+            return getSubtype()
         elif lowerKey == 'issuetime':
             return getIssueTime()
         elif lowerKey == 'endtime':
@@ -140,6 +149,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return getGeometry()
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
             return getHazardMode()
+        elif lowerKey == 'eventid':
+            return getEventID()
         elif lowerKey == 'attributes':
             return getHazardAttributes()
         else :
@@ -148,13 +159,15 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def __setitem__(self, key, value):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            setSite(value)
+            setSiteID(value)
         elif lowerKey == 'state':
             setState(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             setPhenomenon(value)
         elif lowerKey == 'significance' or lowerKey == 'sig':
             setSignificance(value)
+        elif lowerKey == 'subtype':
+            setSubtype(value)
         elif lowerKey == 'issuetime':
             setIssueTime(value)
         elif lowerKey == 'endtime':
@@ -179,6 +192,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setState(self.hazardState)
         self.jobj.setPhenomenon(self.phenomenon)
         self.jobj.setSignificance(self.significance)
+        self.jobj.setSubtype(self.subtype)
         self.jobj.setIssueTime(self.issueTime)
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)
@@ -187,4 +201,5 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.jobj.setGeometry(self.geometry.wkt)
         else :
             self.jobj.setGeometry(None)
+        self.jobj.setHazardAttributes(JUtil.pyDictToJavaMap(self.hazardAttributes))
         return self.jobj                                        
