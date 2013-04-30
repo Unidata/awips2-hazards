@@ -126,7 +126,13 @@ class LocalizationInterface():
         global hostnameF
         if hostnameF!=None :
             return hostnameF
-        hostnameF = socket.gethostbyaddr(socket.gethostname())[0]
+        try:
+            # If we are on the network
+            hostnameF = socket.gethostbyaddr(socket.gethostname())[0]
+        except:
+            # If we are off the network
+            hostnameF = "localhost"
+
         return hostnameF
 
     # This would normally only be called to support service backup operations.
