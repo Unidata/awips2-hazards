@@ -401,7 +401,7 @@ class ToolHandler(object):
         @ issueFlag -- if True -- issue the hazard set
 
         '''
-        self.logger.debug("ToolHandler:createproductsFromEventIDs issueFlag "+str(issueFlag))    
+        self.logger.debug("ToolHandler:createProductsFromEventIDs issueFlag "+str(issueFlag))    
         eventDicts = self.sessionManager.findSessionEventDicts(self.sessionManager.selectedEventIDs)      
         hazardEventSets = self.getHazardEventSets(issueFlag, eventDicts)  
         stagingDialogFlag = self.stagingDialogFlag(hazardEventSets) 
@@ -433,8 +433,9 @@ class ToolHandler(object):
 
         products = []
         self.issueFlag = issueFlag
-        self.numberOfProducts = len(hazardEventSets)
+        self.numberOfProductGenerators = len(hazardEventSets)
         self.productsReceived = []
+        self.productGeneratorsReceived = 0
         self.hazardEventSets = hazardEventSets
         runningAsynch = False
         for hazardEventSet in self.hazardEventSets:
@@ -474,7 +475,9 @@ class ToolHandler(object):
         generatedProducts = self.bridge.handleProductGeneratorResult(toolID, generatedProducts)
         self.logger.info( "ToolHandler generatedProducts converted" + json.dumps(generatedProducts, indent=4))
         self.productsReceived += generatedProducts
-        if not len(self.productsReceived) == self.numberOfProducts:
+        self.productGeneratorsReceived += 1
+        
+        if not self.productGeneratorsReceived == self.numberOfProductGenerators:
             return
         
         if self.issueFlag == "True":
