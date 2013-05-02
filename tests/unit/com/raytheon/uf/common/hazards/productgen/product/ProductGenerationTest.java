@@ -26,11 +26,11 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
@@ -69,7 +69,7 @@ public class ProductGenerationTest {
     /** This file is located in the productgen/products directory **/
     private String product = "ExampleFFW";
 
-    private HazardEventSet hazardEventSet;
+    private EventSet<IHazardEvent> hazardEventSet;
 
     private String[] formats = new String[] { "XML", "ASCII" };
 
@@ -94,7 +94,7 @@ public class ProductGenerationTest {
         Geometry geom = factory.createPoint(new Coordinate(22, 2));
         event.setGeometry(geom);
 
-        hazardEventSet = new HazardEventSet();
+        hazardEventSet = new EventSet<IHazardEvent>();
         hazardEventSet.add(event);
     }
 

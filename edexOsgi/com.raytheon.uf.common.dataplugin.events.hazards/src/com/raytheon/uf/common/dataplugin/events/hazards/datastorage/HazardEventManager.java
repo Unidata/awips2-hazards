@@ -32,6 +32,7 @@ import java.util.Map.Entry;
 
 import jep.JepException;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IValidator;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -40,7 +41,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.IHazardEventFactory;
 import com.raytheon.uf.common.dataplugin.events.hazards.PracticeHazardEventFactory;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest.RequestType;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequest;
@@ -339,6 +339,7 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getBySite(java.lang.String)
      */
+    @Override
     public Map<String, HazardHistoryList> getBySiteID(String site) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.SITEID, site);
@@ -351,6 +352,7 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getByPhenomenon(java.lang.String)
      */
+    @Override
     public Map<String, HazardHistoryList> getByPhenomenon(String phenomenon) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.PHENOMENON, phenomenon);
@@ -363,6 +365,7 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getBySignificance(java.lang.String)
      */
+    @Override
     public Map<String, HazardHistoryList> getBySignificance(String significance) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.SIGNIFICANCE, significance);
@@ -375,6 +378,7 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getByPhensig(java.lang.String, java.lang.String)
      */
+    @Override
     public Map<String, HazardHistoryList> getByPhensig(String phen, String sig) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.PHENOMENON, phen);
@@ -398,6 +402,7 @@ public class HazardEventManager implements IHazardEventManager {
      * @see com.raytheon.uf.common.dataplugin.events.hazards.datastorage.
      * IHazardEventManager#getByEventId(java.lang.String)
      */
+    @Override
     public HazardHistoryList getByEventID(String eventId) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.EVENTID, eventId);
@@ -452,7 +457,7 @@ public class HazardEventManager implements IHazardEventManager {
      * stores them individually. Just a convenience method.
      */
     @Override
-    public void storeEventSet(HazardEventSet set) {
+    public void storeEventSet(EventSet<IHazardEvent> set) {
         Iterator<IHazardEvent> eventIter = set.iterator();
         while (eventIter.hasNext()) {
             IHazardEvent event = eventIter.next();

@@ -29,12 +29,12 @@ import static org.junit.Assert.fail;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
 
 /**
  * Unit test for recommenders, successfully returns an IEvent.
@@ -56,6 +56,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
 public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
+    @Ignore
     public void run() {
         IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
             @Override

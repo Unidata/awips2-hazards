@@ -223,6 +223,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the eventID
      */
+    @Override
     public String getEventID() {
         return eventID;
     }
@@ -231,6 +232,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param eventID
      *            the eventID to set
      */
+    @Override
     public void setEventID(String eventId) {
         this.eventID = eventId;
     }
@@ -253,6 +255,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the state
      */
+    @Override
     public HazardState getState() {
         return state;
     }
@@ -261,6 +264,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param state
      *            the state to set
      */
+    @Override
     public void setState(HazardState state) {
         this.state = state;
     }
@@ -268,6 +272,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the phenomenon
      */
+    @Override
     public String getPhenomenon() {
         return phenomenon;
     }
@@ -276,6 +281,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param phenomenon
      *            the phenomenon to set
      */
+    @Override
     public void setPhenomenon(String phenomenon) {
         this.phenomenon = phenomenon;
     }
@@ -283,6 +289,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the significance
      */
+    @Override
     public String getSignificance() {
         return significance;
     }
@@ -291,6 +298,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param significance
      *            the significance to set
      */
+    @Override
     public void setSignificance(String significance) {
         this.significance = significance;
     }
@@ -323,6 +331,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param startTime
      *            the startTime to set
      */
+    @Override
     public void setStartTime(Date startTime) {
         this.startTime = new Date(startTime.getTime());
     }
@@ -339,6 +348,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param endTime
      *            the endTime to set
      */
+    @Override
     public void setEndTime(Date endTime) {
         this.endTime = new Date(endTime.getTime());
     }
@@ -346,6 +356,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the issueTime
      */
+    @Override
     public Date getIssueTime() {
         return issueTime;
     }
@@ -354,6 +365,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param issueTime
      *            the issueTime to set
      */
+    @Override
     public void setIssueTime(Date issueTime) {
         this.issueTime = new Date(issueTime.getTime());
     }
@@ -361,6 +373,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     /**
      * @return the hazardType
      */
+    @Override
     public ProductClass getHazardMode() {
         return hazardMode;
     }
@@ -369,6 +382,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @param hazardType
      *            the hazardType to set
      */
+    @Override
     public void setHazardMode(ProductClass hazardMode) {
         this.hazardMode = hazardMode;
     }
@@ -586,73 +600,100 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         HazardEvent other = (HazardEvent) obj;
         if (endTime == null) {
-            if (other.endTime != null)
+            if (other.endTime != null) {
                 return false;
-        } else if (!endTime.equals(other.endTime))
+            }
+        } else if (!endTime.equals(other.endTime)) {
             return false;
+        }
         if (eventID == null) {
-            if (other.eventID != null)
+            if (other.eventID != null) {
                 return false;
-        } else if (!eventID.equals(other.eventID))
+            }
+        } else if (!eventID.equals(other.eventID)) {
             return false;
+        }
         if (geometry == null) {
-            if (other.geometry != null)
+            if (other.geometry != null) {
                 return false;
-        } else if (!geometry.equals(other.geometry))
+            }
+        } else if (!geometry.equals(other.geometry)) {
             return false;
+        }
         if (hazardAttributesSerializable == null) {
-            if (other.hazardAttributesSerializable != null)
+            if (other.hazardAttributesSerializable != null) {
                 return false;
+            }
         } else if (!hazardAttributesSerializable
-                .equals(other.hazardAttributesSerializable))
+                .equals(other.hazardAttributesSerializable)) {
             return false;
-        if (hazardMode != other.hazardMode)
+        }
+        if (hazardMode != other.hazardMode) {
             return false;
+        }
         if (issueTime == null) {
-            if (other.issueTime != null)
+            if (other.issueTime != null) {
                 return false;
-        } else if (!issueTime.equals(other.issueTime))
+            }
+        } else if (!issueTime.equals(other.issueTime)) {
             return false;
+        }
         if (phenomenon == null) {
-            if (other.phenomenon != null)
+            if (other.phenomenon != null) {
                 return false;
-        } else if (!phenomenon.equals(other.phenomenon))
+            }
+        } else if (!phenomenon.equals(other.phenomenon)) {
             return false;
+        }
         if (significance == null) {
-            if (other.significance != null)
+            if (other.significance != null) {
                 return false;
-        } else if (!significance.equals(other.significance))
+            }
+        } else if (!significance.equals(other.significance)) {
             return false;
+        }
         if (siteID == null) {
-            if (other.siteID != null)
+            if (other.siteID != null) {
                 return false;
-        } else if (!siteID.equals(other.siteID))
+            }
+        } else if (!siteID.equals(other.siteID)) {
             return false;
+        }
         if (startTime == null) {
-            if (other.startTime != null)
+            if (other.startTime != null) {
                 return false;
-        } else if (!startTime.equals(other.startTime))
+            }
+        } else if (!startTime.equals(other.startTime)) {
             return false;
-        if (state != other.state)
+        }
+        if (state != other.state) {
             return false;
+        }
         if (subtype == null) {
-            if (other.subtype != null)
+            if (other.subtype != null) {
                 return false;
-        } else if (!subtype.equals(other.subtype))
+            }
+        } else if (!subtype.equals(other.subtype)) {
             return false;
+        }
         if (uniqueID == null) {
-            if (other.uniqueID != null)
+            if (other.uniqueID != null) {
                 return false;
-        } else if (!uniqueID.equals(other.uniqueID))
+            }
+        } else if (!uniqueID.equals(other.uniqueID)) {
             return false;
+        }
         return true;
     }
 }

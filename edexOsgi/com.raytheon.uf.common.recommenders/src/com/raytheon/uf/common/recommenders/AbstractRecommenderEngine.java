@@ -21,8 +21,8 @@ package com.raytheon.uf.common.recommenders;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
@@ -101,7 +101,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param listener
      */
     public void runExecuteRecommender(String recommenderName,
-            Set<IEvent> eventSet, Map<String, String> spatialInfo,
+            EventSet<IEvent> eventSet, Map<String, String> spatialInfo,
             Map<String, String> dialogInfo,
             IPythonJobListener<List<IEvent>> listener) {
         IPythonExecutor<P, List<IEvent>> executor = new RecommenderExecutor<P>(

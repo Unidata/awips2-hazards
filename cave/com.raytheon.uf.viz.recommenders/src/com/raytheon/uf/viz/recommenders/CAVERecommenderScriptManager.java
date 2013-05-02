@@ -24,6 +24,7 @@ import java.util.Map;
 
 import jep.JepException;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 import com.raytheon.uf.common.recommenders.EventRecommender;
@@ -89,8 +90,8 @@ public class CAVERecommenderScriptManager extends
                     showDialog(dialogValues);
                     Map<String, String> spatialValues = getInfo(recName,
                             "getSpatialInfo");
-                    return executeRecommender(recommenderName, null,
-                            dialogValues, spatialValues);
+                    return executeRecommender(recommenderName,
+                            new EventSet<IEvent>(), dialogValues, spatialValues);
                 } catch (JepException e) {
                     statusHandler.handle(Priority.ERROR,
                             "Unable to execute recommender", e);

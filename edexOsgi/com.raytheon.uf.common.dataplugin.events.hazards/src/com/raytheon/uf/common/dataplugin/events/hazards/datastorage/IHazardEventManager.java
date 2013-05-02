@@ -22,10 +22,10 @@ package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
 
 /**
  * Any new hazard event manager must implement this interface, which provides
@@ -113,7 +113,7 @@ public interface IHazardEventManager extends
      * @param set
      *            - a {@link EventSet<IHazardEvent>}
      */
-    void storeEventSet(HazardEventSet set);
+    void storeEventSet(EventSet<IHazardEvent> set);
 
     /**
      * Removes all events, should not be implemented in certain cases.

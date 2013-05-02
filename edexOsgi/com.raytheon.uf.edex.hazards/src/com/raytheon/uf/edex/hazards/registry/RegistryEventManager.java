@@ -171,6 +171,18 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                         listEvents.addAll(handler.getByTimeRange(
                                 (Date) filters.get(HazardConstants.STARTTIME),
                                 (Date) filters.get(HazardConstants.ENDTIME)));
+                    } else if (finalKey.equals(HazardConstants.PHENSIG)) {
+                        // List<Object> obs =
+                        // filters.get(HazardConstants.PHENSIG);
+                        // for (Object ob : obs){
+                        // // this is most likely not the ideal way to do this
+                        // String phensig = ob.toString();
+                        // listEvents.addAll(handler.getByFilter(filters))
+                        // }
+                        // TODO this should be implemented
+                        statusHandler
+                                .handle(Priority.ERROR,
+                                        "Querying by phensig is not currently supported in the registry");
                     } else {
                         listEvents.addAll(handler.getByFilter(filters));
                     }

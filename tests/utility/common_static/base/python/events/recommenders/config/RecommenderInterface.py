@@ -32,8 +32,12 @@
 # 
 #
 
+import os
+
 import RollbackMasterInterface
 import JUtil
+import EventConverter
+from EventSet import EventSet
 
 class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
     
@@ -46,6 +50,22 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         return JUtil.pyValToJavaObj(val)
     
     def execute(self, moduleName, className, **kwargs):
+        javaDialogInput = kwargs['dialogInputMap']
+        if javaDialogInput is not None :
+            kwargs['dialogInputMap'] = JUtil.javaMapToPyDict(javaDialogInput)
+        javaSpatialInput = kwargs['spatialInputMap']
+        if javaSpatialInput is not None :
+            kwargs['spatialInputMap'] = JUtil.javaMapToPyDict(javaSpatialInput)
+        javaEvents = kwargs['eventSet']
+
+        converter = EventConverter.findConverter(javaEvents)
+        
+        # if we have a converter, convert it to python, otherwise make it empty
+        if converter is not None :
+            kwargs['eventSet'] = EventConverter.convert(javaEvents, converter)
+        else :
+            kwargs['eventSet'] = EventSet(javaEvents)
+        # turn attributes into python dict
         val = self.runMethod(moduleName, className, "execute", **kwargs)
         return JUtil.pyValToJavaObj(val)
     
@@ -54,5 +74,5 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         return JUtil.pyValToJavaObj(val)
     
     def getSpatialInfo(self, moduleName, className, **kwargs):
-        val =  self.runMethod(moduleName, className, "defineSpatialInfo", **kwargs)
+        val = self.runMethod(moduleName, className, "defineSpatialInfo", **kwargs)
         return JUtil.pyValToJavaObj(val)

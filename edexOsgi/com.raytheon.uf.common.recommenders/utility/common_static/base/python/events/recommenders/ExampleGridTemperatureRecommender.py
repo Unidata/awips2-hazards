@@ -39,6 +39,8 @@ import GeometryFactory
 import RecommenderTemplate
 import numpy
 import JUtil
+from PathManager import PathManager
+from LocalizationFile import LocalizationFile
 
 from ufpy.dataaccess import DataAccessLayer
 
@@ -53,14 +55,46 @@ class Recommender(RecommenderTemplate.Recommender):
         return metadata
     
     def defineDialog(self):
-        print "Dialog info is not necessary for this recommender."
-        return
+        dialogInput = {}
+        dialogInput["button"] = "button"
+        return dialogInput
     
     def defineSpatialInfo(self):
         print "Spatial info is not necessary for this recommender."
         return
     
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
+        import sys
+        manager = PathManager()
+        print 'get localization file', manager.getLocalizationFile('python/JUtil.py', loctype='COMMON_STATIC', loclevel='BASE')
+        sys.stdout.flush()
+        print 'list files', manager.listFiles('python',[".py"], True, False, loctype='COMMON_STATIC',loclevel='BASE')
+        sys.stdout.flush()
+        print 'getAvailableLevels', manager.getAvailableLevels()
+        sys.stdout.flush()
+        print 'getTieredLocalizationFiles', manager.getTieredLocalizationFile('COMMON_STATIC','python/JUtil.py')
+        sys.stdout.flush()
+        print 'getLocalizationFile for mnash', manager.getLocalizationFile('HELLO.py', loctype='COMMON_STATIC', loclevel='USER', locname='mnash').getPath()
+        print 'getLocalizationFile for mnash without mnash', manager.getLocalizationFile('HELLO.py', loctype='COMMON_STATIC').getPath()
+        
+#        req = DataAccessLayer.newDataRequest()
+#        req.setDatatype("maps") # the factory to use
+#        req.addIdentifier("table","mapdata.county") # the table to get from
+#        req.addIdentifier("geomField","the_geom") # the geometry field in the table to return
+#        req.addIdentifier("inLocation", "true") # adds another filter based on location
+#        req.addIdentifier("locationField","cwa") # for extra querying based on location, search the cwa field for the cwas below
+#        req.setLocationNames("OAX", "DMX") # adds this to the filter
+#        req.setParameters("countyname","state","fips") # other parameters that you want besides the geometry
+#        req.addIdentifier("cwa","OAX") # returns all geometries in this cwa
+#        sys.stdout.flush()
+#        geometries = DataAccessLayer.getGeometryData(req)
+#        print "geometries", str(geometries) 
+#             
+#        for geometry in geometries:
+#            print "countyname", geometry.getString("countyname")
+#            print "Geometry", geometry.getParameters()
+#            print "polygon", geometry.getGeometry()
+# 
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("grid")
         req.setParameters("T")
@@ -74,7 +108,7 @@ class Recommender(RecommenderTemplate.Recommender):
             finalVals = list()
             latlons = data[0].getLatLonCoords()
             max = numpy.max(latlons[1][1:] - latlons[1][:-1])
-            high = -10
+            high = -1000
     
             rawdata = data[0].getRawData('C')
             for i in range(len(rawdata)):

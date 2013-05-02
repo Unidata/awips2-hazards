@@ -325,6 +325,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * @param startTime
      *            the startTime to set
      */
+    @Override
     public void setStartTime(Date startTime) {
         this.startTime = startTime;
     }
@@ -341,6 +342,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * @param endTime
      *            the endTime to set
      */
+    @Override
     public void setEndTime(Date endTime) {
         this.endTime = endTime;
     }
@@ -597,63 +599,86 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         PracticeHazardEvent other = (PracticeHazardEvent) obj;
         if (endTime == null) {
-            if (other.endTime != null)
+            if (other.endTime != null) {
                 return false;
-        } else if (!endTime.equals(other.endTime))
+            }
+        } else if (!endTime.equals(other.endTime)) {
             return false;
+        }
         if (geometry == null) {
-            if (other.geometry != null)
+            if (other.geometry != null) {
                 return false;
-        } else if (!geometry.equals(other.geometry))
+            }
+        } else if (!geometry.equals(other.geometry)) {
             return false;
+        }
         if (hazardAttrsSerializable == null) {
-            if (other.hazardAttrsSerializable != null)
+            if (other.hazardAttrsSerializable != null) {
                 return false;
+            }
         } else if (!hazardAttrsSerializable
-                .equals(other.hazardAttrsSerializable))
+                .equals(other.hazardAttrsSerializable)) {
             return false;
-        if (hazardMode != other.hazardMode)
+        }
+        if (hazardMode != other.hazardMode) {
             return false;
+        }
         if (issueTime == null) {
-            if (other.issueTime != null)
+            if (other.issueTime != null) {
                 return false;
-        } else if (!issueTime.equals(other.issueTime))
+            }
+        } else if (!issueTime.equals(other.issueTime)) {
             return false;
+        }
         if (key == null) {
-            if (other.key != null)
+            if (other.key != null) {
                 return false;
-        } else if (!key.equals(other.key))
+            }
+        } else if (!key.equals(other.key)) {
             return false;
+        }
         if (phenomenon == null) {
-            if (other.phenomenon != null)
+            if (other.phenomenon != null) {
                 return false;
-        } else if (!phenomenon.equals(other.phenomenon))
+            }
+        } else if (!phenomenon.equals(other.phenomenon)) {
             return false;
+        }
         if (significance == null) {
-            if (other.significance != null)
+            if (other.significance != null) {
                 return false;
-        } else if (!significance.equals(other.significance))
+            }
+        } else if (!significance.equals(other.significance)) {
             return false;
+        }
         if (startTime == null) {
-            if (other.startTime != null)
+            if (other.startTime != null) {
                 return false;
-        } else if (!startTime.equals(other.startTime))
+            }
+        } else if (!startTime.equals(other.startTime)) {
             return false;
-        if (state != other.state)
+        }
+        if (state != other.state) {
             return false;
+        }
         if (subtype == null) {
-            if (other.subtype != null)
+            if (other.subtype != null) {
                 return false;
-        } else if (!subtype.equals(other.subtype))
+            }
+        } else if (!subtype.equals(other.subtype)) {
             return false;
+        }
         return true;
     }
 }

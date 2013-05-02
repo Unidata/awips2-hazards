@@ -27,7 +27,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import jep.JepException;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
@@ -127,7 +128,7 @@ public class ProductScript extends PythonScriptController {
      * 
      * @param product
      * @param hazardEventSet
-     *            the HazardEventSet o
+     *            the EventSet<IHazardEvent> o
      * @param formats
      *            an array of the formats the IGeneratedProduct should be in
      *            (i.e. XML)
@@ -135,7 +136,7 @@ public class ProductScript extends PythonScriptController {
      */
     @SuppressWarnings("unchecked")
     public List<IGeneratedProduct> generateProduct(String product,
-            HazardEventSet hazardEventSet, String[] formats) {
+            EventSet<IHazardEvent> hazardEventSet, String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));

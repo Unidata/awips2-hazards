@@ -122,6 +122,7 @@ public class BaseHazardEvent implements IHazardEvent {
         return geometry;
     }
 
+    @Deprecated
     public void setGeometry(String geom) {
         WKTReader reader = new WKTReader();
         try {
@@ -162,6 +163,7 @@ public class BaseHazardEvent implements IHazardEvent {
         this.hazardState = state;
     }
 
+    @Deprecated
     public void setState(String state) {
         this.hazardState = HazardState.valueOf(String.valueOf(state)
                 .toUpperCase());
@@ -232,6 +234,7 @@ public class BaseHazardEvent implements IHazardEvent {
         this.hazardMode = mode;
     }
 
+    @Deprecated
     public void setHazardMode(String mode) {
         try {
             this.hazardMode = HazardConstants
