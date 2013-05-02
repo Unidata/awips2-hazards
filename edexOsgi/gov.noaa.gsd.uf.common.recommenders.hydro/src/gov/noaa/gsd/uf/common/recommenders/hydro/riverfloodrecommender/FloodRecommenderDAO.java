@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.TimeZone;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.shef.tables.Fpinfo;
 import com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams;
 import com.raytheon.uf.common.ohd.AppsDefaults;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -220,10 +219,10 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         String query;
 
         try {
-            query = "FROM " + Fpinfo.class.getName() + " where hsa = '"
+            query = "SELECT * FROM FpInfo WHERE hsa = '"
                     + hazardSettings.getHsa() + "' ORDER BY ordinal, lid ASC";
             List<Object[]> fpInfoResults = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.HQL);
+                    HydroConstants.IHFS, QueryLanguage.SQL);
             /*
              * Loop on the number of groups defined in the table and determine
              * the number of forecast points included per group. This is
@@ -232,13 +231,12 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
              * a different office.
              */
             for (Object[] infoRecord : fpInfoResults) {
-                Fpinfo fpInfo = (Fpinfo) infoRecord[0];
 
-                if (fpInfo != null) {
+                if (infoRecord != null) {
                     // Create a new forecast point.
                     // reference to fp structure.
-                    RiverForecastPoint fp = new RiverForecastPoint(
-                            fpInfo.getId(), this);
+                    RiverForecastPoint fp = new RiverForecastPoint(infoRecord,
+                            this);
                     forecastPointList.add(fp);
                 }
 

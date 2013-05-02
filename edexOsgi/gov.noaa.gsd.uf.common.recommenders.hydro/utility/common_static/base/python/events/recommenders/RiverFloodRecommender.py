@@ -14,6 +14,17 @@ import numpy
 import JUtil
 
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
+
+#
+# The size of the buffer for default flood polygons.
+DEFAULT_POLYGON_BUFFER = 0.05
+
+#
+# Keys to values in the attributes dictionary produced
+# by the flood recommender.
+POINT_ID = "pointID"
+POINT = "point"
+FORECAST_POINT = "forecastPoint"
      
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -118,13 +129,20 @@ class Recommender(RecommenderTemplate.Recommender):
                           the flood hazard polygon
         """
         attributesDict = eventDict.getHazardAttributes()
-        id = attributesDict.get("pointID")
+        id = attributesDict.get(POINT_ID)
         
         if id in self.hazardPolygonDict:
             hazardPolygon = self.hazardPolygonDict[id]
             geometry = GeometryFactory.createMultiPoint(hazardPolygon)      
             eventDict.setGeometry(geometry)
-
+        else:
+            forecastPointDict = attributesDict.get(FORECAST_POINT)
+            point = forecastPointDict.get(POINT)
+            coords = [float(point[0]), float(point[1])]
+            pointGeometry = GeometryFactory.createPoint(coords)
+            defaultFloodGeometry = pointGeometry.buffer(DEFAULT_POLYGON_BUFFER)
+            eventDict.setGeometry(defaultFloodGeometry)
+            
     def addFloodPolygons(self, eventDicts):
         """
         Inserts flood polygons for each river forecast point

@@ -7,7 +7,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-import com.raytheon.uf.common.dataplugin.shef.tables.FpinfoId;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -22,6 +21,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 2012               Bryon.Lawrence    Initial creation
+ * 
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -30,6 +30,27 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class RiverForecastPoint {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(RiverForecastPoint.class);
+
+    /**
+     * 
+     * Description: Enumeration describing the fields in the FpInfo table in the
+     * IHFS database.
+     * 
+     * <pre>
+     * 
+     * SOFTWARE HISTORY
+     * Date         Ticket#    Engineer    Description
+     * ------------ ---------- ----------- --------------------------
+     * May 02, 2013            Bryon.Lawrence      Initial creation
+     * 
+     * </pre>
+     * 
+     * @author Bryon.Lawrence
+     * @version 1.0
+     */
+    private enum FpInfoFieldEnum {
+        LID, NAME, COUNTY, STATE, HSA, PRIMARY_BACK, SECONDARY_BACK, STREAM, BF, WSTG, FS, FQ, ACTION_FLOW, PE, USE_LATEST_FCST, PROXIMITY, REACH, GROUP_ID, ORDINAL, CHG_THRESHOLD, REC_TYPE, BACK_HRS, FORWARD_HRS, ADJUST_END_HRS, MINOR_STAGE, MODERATE_STAGE, MAJOR_STAGE, MINOR_FLOW, MODERATE_FLOW, MAJOR_FLOW
+    }
 
     /**
      * The maximum flood category a hazard can obtain.
@@ -525,7 +546,7 @@ public class RiverForecastPoint {
      * @param floodDAO
      *            data accessor object
      */
-    public RiverForecastPoint(FpinfoId forecastPointInfo,
+    public RiverForecastPoint(Object[] forecastPointInfo,
             IFloodRecommenderDAO floodDAO) {
         this.floodDAO = floodDAO;
         loadForecastPointData(forecastPointInfo);
@@ -538,26 +559,34 @@ public class RiverForecastPoint {
      * @param forecastPointInfo
      *            The information pertaining to this forecast point.
      */
-    private void loadForecastPointData(FpinfoId forecastPointInfo) {
+    private void loadForecastPointData(Object[] forecastPointInfo) {
         // Load in those fields that map directly...
-        this.id = forecastPointInfo.getLid();
-        this.name = forecastPointInfo.getName();
-        this.county = forecastPointInfo.getCounty();
-        this.state = forecastPointInfo.getState();
-        this.stream = forecastPointInfo.getStream();
-        this.proximity = forecastPointInfo.getProximity();
-        this.reach = forecastPointInfo.getReach();
-        this.groupId = forecastPointInfo.getGroupId();
-        this.physicalElement = forecastPointInfo.getPe();
-        this.hsa = forecastPointInfo.getHsa();
-        this.primaryBackup = forecastPointInfo.getPrimaryBack();
-        this.secondaryBackup = forecastPointInfo.getSecondaryBack();
+        this.id = (String) forecastPointInfo[FpInfoFieldEnum.LID.ordinal()];
+        this.name = (String) forecastPointInfo[FpInfoFieldEnum.NAME.ordinal()];
+        this.county = (String) forecastPointInfo[FpInfoFieldEnum.COUNTY
+                .ordinal()];
+        this.state = (String) forecastPointInfo[FpInfoFieldEnum.STATE.ordinal()];
+        this.stream = (String) forecastPointInfo[FpInfoFieldEnum.STREAM
+                .ordinal()];
+        this.proximity = (String) forecastPointInfo[FpInfoFieldEnum.PROXIMITY
+                .ordinal()];
+        this.reach = (String) forecastPointInfo[FpInfoFieldEnum.REACH.ordinal()];
+        this.groupId = (String) forecastPointInfo[FpInfoFieldEnum.GROUP_ID
+                .ordinal()];
+        this.physicalElement = (String) forecastPointInfo[FpInfoFieldEnum.PE
+                .ordinal()];
+        this.hsa = (String) forecastPointInfo[FpInfoFieldEnum.HSA.ordinal()];
+        this.primaryBackup = (String) forecastPointInfo[FpInfoFieldEnum.PRIMARY_BACK
+                .ordinal()];
+        this.secondaryBackup = (String) forecastPointInfo[FpInfoFieldEnum.SECONDARY_BACK
+                .ordinal()];
 
         /*
          * This field will be used to determine whether or not to load the
          * latest timeseries.
          */
-        if (forecastPointInfo.getUseLatestFcst().equals("T")) {
+        if (((String) forecastPointInfo[FpInfoFieldEnum.USE_LATEST_FCST
+                .ordinal()]).equals("T")) {
             this.useLatestForecast = true;
         } else {
             this.useLatestForecast = false;
@@ -567,30 +596,34 @@ public class RiverForecastPoint {
          * Retrieve the change threshold used in the load_detail_trend_info
          * function.
          */
-        if (forecastPointInfo.getChgThreshold() != null) {
-            this.changeThreshold = forecastPointInfo.getChgThreshold();
+        if (forecastPointInfo[FpInfoFieldEnum.CHG_THRESHOLD.ordinal()] != null) {
+            this.changeThreshold = (Double) forecastPointInfo[FpInfoFieldEnum.CHG_THRESHOLD
+                    .ordinal()];
         } else {
             statusHandler
                     .info("Missing the change of threshold for " + this.id);
             this.changeThreshold = MISSINGVAL;
         }
 
-        if (forecastPointInfo.getBackhrs() != null) {
-            this.lookBackHours = forecastPointInfo.getBackhrs();
+        if (forecastPointInfo[FpInfoFieldEnum.BACK_HRS.ordinal()] != null) {
+            this.lookBackHours = (Integer) forecastPointInfo[FpInfoFieldEnum.BACK_HRS
+                    .ordinal()];
         } else {
             this.lookBackHours = floodDAO
                     .getLookBackHoursForAllForecastPoints();
         }
 
-        if (forecastPointInfo.getForwardhrs() != null) {
-            this.lookFowardHours = forecastPointInfo.getForwardhrs();
+        if (forecastPointInfo[FpInfoFieldEnum.FORWARD_HRS.ordinal()] != null) {
+            this.lookFowardHours = (Integer) forecastPointInfo[FpInfoFieldEnum.FORWARD_HRS
+                    .ordinal()];
         } else {
             this.lookFowardHours = floodDAO
                     .getLookForwardHoursForAllForecastPoints();
         }
 
-        if (forecastPointInfo.getAdjustendhrs() != null) {
-            this.adjustEndHrs = forecastPointInfo.getAdjustendhrs();
+        if (forecastPointInfo[FpInfoFieldEnum.ADJUST_END_HRS.ordinal()] != null) {
+            this.adjustEndHrs = (Double) forecastPointInfo[FpInfoFieldEnum.ADJUST_END_HRS
+                    .ordinal()];
         } else {
             this.adjustEndHrs = floodDAO.getShiftHoursForAllForecastPoints();
         }
@@ -603,8 +636,9 @@ public class RiverForecastPoint {
          * it means the opposite.
          */
 
-        if (forecastPointInfo.getRecType() != null) {
-            this.recommendationType = forecastPointInfo.getRecType();
+        if (forecastPointInfo[FpInfoFieldEnum.REC_TYPE.ordinal()] != null) {
+            this.recommendationType = (String) forecastPointInfo[FpInfoFieldEnum.REC_TYPE
+                    .ordinal()];
         } else {
             this.recommendationType = "PE";
         }
@@ -614,32 +648,37 @@ public class RiverForecastPoint {
          * and check that the data are specified.
          */
 
-        if (forecastPointInfo.getFs() != null) {
-            this.floodStage = forecastPointInfo.getFs();
+        if (forecastPointInfo[FpInfoFieldEnum.FS.ordinal()] != null) {
+            this.floodStage = (Double) forecastPointInfo[FpInfoFieldEnum.FS
+                    .ordinal()];
         } else {
             statusHandler.info("Missing flood stage for " + this.id);
         }
 
-        if (forecastPointInfo.getFq() != null) {
-            this.floodFlow = forecastPointInfo.getFq();
+        if (forecastPointInfo[FpInfoFieldEnum.FQ.ordinal()] != null) {
+            this.floodFlow = (Double) forecastPointInfo[FpInfoFieldEnum.FQ
+                    .ordinal()];
         } else {
             statusHandler.info("Missing flood flow for " + this.id);
         }
 
-        if (forecastPointInfo.getBf() != null) {
-            this.bankFull = forecastPointInfo.getBf();
+        if (forecastPointInfo[FpInfoFieldEnum.BF.ordinal()] != null) {
+            this.bankFull = (Double) forecastPointInfo[FpInfoFieldEnum.BF
+                    .ordinal()];
         } else {
             statusHandler.info("Missing bankfull stage for " + this.id);
         }
 
-        if (forecastPointInfo.getWstg() != null) {
-            this.actionStage = forecastPointInfo.getWstg();
+        if (forecastPointInfo[FpInfoFieldEnum.WSTG.ordinal()] != null) {
+            this.actionStage = (Double) forecastPointInfo[FpInfoFieldEnum.WSTG
+                    .ordinal()];
         } else {
             statusHandler.info("Missing warning stage for " + this.id);
         }
 
-        if (forecastPointInfo.getActionFlow() != null) {
-            this.actionFlow = forecastPointInfo.getActionFlow();
+        if (forecastPointInfo[FpInfoFieldEnum.ACTION_FLOW.ordinal()] != null) {
+            this.actionFlow = (Double) forecastPointInfo[FpInfoFieldEnum.ACTION_FLOW
+                    .ordinal()];
         } else {
             statusHandler.info("Missing action flow for " + this.id);
         }
@@ -654,24 +693,28 @@ public class RiverForecastPoint {
          * Load the minor/moderate/major stage or flow based on the primary_pe
          * specified for the station.
          */
-        String primaryPE = forecastPointInfo.getPe();
+        String primaryPE = (String) forecastPointInfo[FpInfoFieldEnum.PE
+                .ordinal()];
         char peFirstChar = primaryPE.charAt(0);
         char peSecondChar = primaryPE.charAt(1);
 
         if (peFirstChar != 'Q') {
-            if (forecastPointInfo.getMinorStage() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MINOR_STAGE.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MINOR_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getMinorStage();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MINOR_STAGE
+                        .ordinal()];
             }
 
-            if (forecastPointInfo.getModerateStage() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MODERATE_STAGE.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getModerateStage();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MODERATE_STAGE
+                        .ordinal()];
             }
 
-            if (forecastPointInfo.getMajorStage() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MAJOR_STAGE.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getMajorStage();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MAJOR_STAGE
+                        .ordinal()];
             }
 
         } else if (peSecondChar != 'B' && peSecondChar != 'C'
@@ -681,19 +724,22 @@ public class RiverForecastPoint {
              * Only load Q* PE's if there are not certain types of non-flow
              * based Q* types.
              */
-            if (forecastPointInfo.getMinorFlow() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MINOR_FLOW.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MINOR_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getMinorFlow();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MINOR_FLOW
+                        .ordinal()];
             }
 
-            if (forecastPointInfo.getModerateFlow() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MODERATE_FLOW.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getModerateFlow();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MODERATE_FLOW
+                        .ordinal()];
             }
 
-            if (forecastPointInfo.getMajorFlow() != null) {
+            if (forecastPointInfo[FpInfoFieldEnum.MAJOR_FLOW.ordinal()] != null) {
                 this.floodCategory[HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                        .getRank()] = forecastPointInfo.getMajorFlow();
+                        .getRank()] = (Double) forecastPointInfo[FpInfoFieldEnum.MAJOR_FLOW
+                        .ordinal()];
             }
 
         }
