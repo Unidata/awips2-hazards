@@ -287,12 +287,9 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                 (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME));
         scale.setMinimumDeltaBetweenConstrainedThumbs(MINUTE_INTERVAL);
         long[] startingValues = new long[specifier.getStateIdentifiers().size()];
-        long range = scale.getMaximumAllowableValue()
-                - scale.getMinimumAllowableValue();
         for (int j = 0; j < startingValues.length; j++) {
             startingValues[j] = scale.getMinimumAllowableValue()
-                    + ((startingValues.length < 3 ? range
-                            : (range / (startingValues.length - 1))) * j);
+                    + (MINUTE_INTERVAL * j);
         }
         scale.setConstrainedThumbValues(startingValues);
         for (int j = 1; j < startingValues.length; j++) {
@@ -319,6 +316,9 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         // of the state for the widget, and a change
         // in the corresponding text component.
         scale.addMultiValueLinearControlListener(new IMultiValueLinearControlListener() {
+
+            private boolean initialized = false;
+
             @Override
             public void visibleValueRangeChanged(
                     MultiValueLinearControl widget, long lowerValue,
@@ -333,8 +333,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                     MultiValueLinearControl.ChangeSource source) {
 
                 // If the change source is not user-
-                // GUI interaction, do nothing.
-                if (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION) {
+                // GUI interaction and this method
+                // has been called at least once be-
+                // fore, do nothing
+                if (initialized
+                        && (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION)) {
                     return;
                 }
 
@@ -354,9 +357,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                     // it has changed, and if so,
                     // make a note of the new value
                     // and forward the change to any
-                    // listeners.
+                    // listeners. If this is the first
+                    // time this method has been in-
+                    // voked, do it regardless.
                     String identifier = stateIdentifiers.get(j);
-                    if ((statesForIds.get(identifier) == null)
+                    if ((initialized == false)
+                            || (statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
                         statesForIds.put(identifier, values[j]);
                         TimeScaleMegawidget.this.textsForIds.get(identifier)
@@ -364,6 +370,10 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                         notifyListener(identifier, values[j]);
                     }
                 }
+
+                // Remember that this method has been
+                // invoked.
+                initialized = true;
 
                 // Reset the in-progress flag.
                 changeInProgress = false;
@@ -380,6 +390,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                 // No action.
             }
         });
+
+        // Set the thumb values for the scale again in
+        // order to trigger updates of the text widgets
+        // to match said values.
+        scale.setConstrainedThumbValues(startingValues);
 
         // Iterate through the state identifiers,
         // setting up text bindings for each of them.
