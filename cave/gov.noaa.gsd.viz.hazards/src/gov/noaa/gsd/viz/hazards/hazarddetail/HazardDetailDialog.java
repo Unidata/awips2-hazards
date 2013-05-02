@@ -2614,21 +2614,25 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 }
                 for (String identifier : ((IStatefulSpecifier) widget
                         .getSpecifier()).getStateIdentifiers()) {
-                    Object value = paramValues.get(identifier);
-                    try {
-                        if (widget instanceof IExplicitCommitStateful) {
-                            ((IExplicitCommitStateful) widget)
-                                    .setUncommittedState(identifier, value);
-                            widgetsNeedingCommit
-                                    .add((IExplicitCommitStateful) widget);
-                        } else {
-                            ((IStateful) widget).setState(identifier, value);
+                    if (paramValues.containsKey(identifier)) {
+                        Object value = paramValues.get(identifier);
+                        try {
+                            if (widget instanceof IExplicitCommitStateful) {
+                                ((IExplicitCommitStateful) widget)
+                                        .setUncommittedState(identifier, value);
+                                widgetsNeedingCommit
+                                        .add((IExplicitCommitStateful) widget);
+                            } else {
+                                ((IStateful) widget)
+                                        .setState(identifier, value);
+                            }
+                        } catch (Exception e) {
+                            statusHandler
+                                    .error("HazardDetailDialog.setWidgetsStates(): "
+                                            + "Unable to set state for "
+                                            + identifier + " to " + value + ".",
+                                            e);
                         }
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "HazardDetailDialog.setWidgetsStates(): "
-                                        + "Unable to set state for "
-                                        + identifier + " to " + value + ".", e);
                     }
                 }
             }
