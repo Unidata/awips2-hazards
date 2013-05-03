@@ -80,23 +80,17 @@ class LocalFileInstaller():
     def putFile(self, fname, data):
         resp = None
         lev = self.__context.getLocalizationLevel()
-        if lev.getText().upper() == "BASE":
+        if lev.toString().upper() == "BASE":
             raise LocalFileInstallerException("I can GET files from BASE, but I won't PUT them.  It just wouldn't be right.")
         self.__lspr.setFileName(fname)
+        self.__lspr.setUser(User(self.__duc.getMyContextName()))
         size = len(fname)
         self.__lspr.setBytes(numpy.fromstring(data, dtype=numpy.int8))
+        
         try:
             resp = self.__tc.sendRequest(self.__lspr)
         except ThriftClient.ThriftRequestException:
             raise LocalFileInstallerException("putFile: Error sending request to server")
-        
-        if isinstance(resp, UserNotAuthorized):
-            raise LocalFileInstallerException("UserNotAuthorized: "+resp.getMessage())
-        elif isinstance(resp, SuccessfulExecution):
-            return resp.getResponse()
-        else:
-            raise LocalFileInstallerException("Unexpected/no response from server in putFile")
-
 
     def rmFile(self, fname):
         lev = self.__context.getLocalizationLevel()

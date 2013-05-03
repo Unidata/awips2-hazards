@@ -373,14 +373,17 @@ class SessionManager(object):
             # Check to see if new event required for a new hazard type
             replacedDict = None
             if self.newEventNeededForHazardType(updateDict, curDict, ignoreKeys):
-                curDict[PREVIEW_STATE] = ENDED
-                newDict = self.makeNewCopyOfSelectedEvent(curDict, updateDict)
-                replacedDict = curDict
-                newDict[REPLACES] = curDict.get(HEADLINE)
+                # Can the new hazard type "replace" the old?
+                if self.replacedBy(curDict, updateDict):
+                    curDict[PREVIEW_STATE] = ENDED
+                    newDict = self.makeNewCopyOfSelectedEvent(curDict, updateDict)
+                    replacedDict = curDict
+                    newDict[REPLACES] = curDict.get(HEADLINE)
+                else:
+                    newDict = self.makeNewCopyOfSelectedEvent(curDict, updateDict)                    
                 curDict = newDict
                 curDict[STATE] = PENDING
                 eventID = curDict.get(EVENT_ID)
-            self.flush()
                 
             # Check to see if new event required for a time change
             if self.newEventNeededForTimeChange(updateDict, curDict, ignoreKeys):
@@ -474,20 +477,29 @@ class SessionManager(object):
     def newEventNeededForTimeChange(self, updateDict, curDict, ignoreKeys):
         """
         Returns True if the updateDict contains a time change AND 
-        time change is not allowed for the given hazard type.  
+        time change is not allowed for the given hazard type. 
+         
         @param updateDict -- dictionary of updated hazard event fields
         @param curDict -- the eventDict for the hazard event to be updated
         @param ignoreKeys -- key fields that will be ignored and not changed 
         """
-        return False
+        #return False
+        curType = curDict.get(HAZARD_TYPE)
+        # Type has not been set yet
+        if not curType or curType == "":
+            return False
+        # If not yet issued, then the hazard type can change freely
+        if curDict.get(STATE) != ISSUED:
+            return False
+
         keys = updateDict.keys()
-        type = curDict.get(HAZARD_TYPE) 
+        curType = curDict.get(HAZARD_TYPE) 
         try: 
             if self.hazardTypes.get(type).get("allowTimeChange"):
                 return False
         except:
             # Assume that time change is allowed if not found
-            self.logger.debug( "SessionManager -- newEventNeededForTimeChange Warning - hazard type not found" + type)
+            self.logger.debug( "SessionManager -- newEventNeededForTimeChange Warning - hazard type not found" + str(type))
             return False
         # Time change is not allowed
         for changeKey in [START_TIME, END_TIME]:
@@ -496,27 +508,35 @@ class SessionManager(object):
         return False
 
     def newEventNeededForAreaChange(self, eventDict):
-        return False
-        type = eventDict.get(HAZARD_TYPE)
+        '''
+        Return True if areaChange not allowed for the hazard type of the Hazard Event
+        '''
+        curType = eventDict.get(HAZARD_TYPE)
+        # Type has not been set yet
+        if not curType or curType == "":
+            return False
+        # If not yet issued, then the hazard type can change freely
+        if eventDict.get(STATE) != ISSUED:
+            return False
+
         try:
-            if not self.hazardTypes.get(type).get("allowAreaChange"):
+            if not self.hazardTypes.get(curType).get("allowAreaChange"):
                 return True
         except:
-            self.logger.debug("SessionManager -- newEventNeededForAreaChange Warning - hazard type not found" + type)
-            self.logger.debug( "     allowAreaChange" + self.hazardTypes.get(type).get("allowAreaChange"))
+            self.logger.debug("SessionManager -- newEventNeededForAreaChange Warning - hazard type not found " + str(curType))
+            self.logger.debug( "     allowAreaChange " + str(self.hazardTypes.get(curType)))
             # Assume area change is allowed if not found
             return True
         return False
     
     def newEventNeededForHazardType(self, updateDict, curDict, ignoreKeys):
         """
-        Returns True if the updateDict contains a hazard type for an issued hazard.  
+        Returns True if the updateDict contains a hazard type for an issued hazard.
+          
         @param updateDict -- dictionary of updated hazard event fields
         @param curDict -- the eventDict for the hazard event to be updated
         @param ignoreKeys -- key fields that will be ignored and not changed 
-        """
-        #return False
-                
+        """                
         oldType = curDict.get(HAZARD_TYPE)
         # Type has not been set yet
         if not oldType or oldType == "":
@@ -537,9 +557,9 @@ class SessionManager(object):
         # See if the hazard type change is an upgrade or downgrade
         
         # We retain this code for a future refinement.
-        # For long-fused hazards, it will work to retain the 
-        # same eventID when upgrading/ downgrading, but for 
-        # simplicity, for now, we are always creating a new 
+        # For long-fused hazards that truly upgrade or downgrade, 
+        # it could work to retain the same eventID when upgrading/ downgrading, 
+        # but for simplicity, for now, we are always creating a new 
         # eventID when the hazard type is changed.
 
 #        upgradeDict=UpDown.upgradeHazardsDict,
@@ -549,7 +569,32 @@ class SessionManager(object):
 #                if oldType in upDownDict.get(newType):
 #                    return False                
 #        return True
-    
+
+    def replacedBy(self, curDict, updateDict):
+        '''
+        @param Current Hazard Event
+        @param Update dictionary containing either a changed HAZARD_TYPE 
+               or changed FULLTYPE
+        @return True if the current Hazard Type can be "replacedBy" the
+                changed Hazard Type
+                Otherwise, return False
+        '''
+        oldType = curDict.get(HAZARD_TYPE)
+                
+        newType = updateDict.get(HAZARD_TYPE)
+        if not newType:
+            fullType = updateDict.get(FULLTYPE)
+            phen, sig, subType = self.getPhenSigSubType(FULLTYPE, fullType) 
+            newType, headline, fullType = self.getHazardTypeInfo(phen, sig, subType)
+        if not newType:
+            return False
+        hazardTypeInfo = self.hazardTypes.get(oldType)
+        replacedBy = hazardTypeInfo.get(REPLACED_BY)
+        if replacedBy:
+            if newType in replacedBy:
+                return True  
+        return False
+            
     def makeNewCopyOfSelectedEvent(self, curDict, updateDict):
         newDict = self.copyEvent(curDict)
         eventID = newDict.get(EVENT_ID)
@@ -822,7 +867,8 @@ class SessionManager(object):
                 "displayName": "Census Data"
             }
             ]
-        settingsID = settingsDef["settingsID"]
+        settingsID = settingsDef["displayName"]
+        settingsDef["settingsID"] = settingsID
         level = settingsDef.get("level", "site" )
         criteria = {
                     NAME: settingsID,
@@ -839,8 +885,10 @@ class SessionManager(object):
         self.staticSettingsID = settingsDef.get("settingsID")
         settingsID = self.staticSettingsID
         criteria = {
+                    NAME: settingsID,
+                    "level": "USER",
                     "dataType": "settings",
-                    "settings": {settingsID: settingsDef}
+                    "configData": settingsDef
                     }
         self.bridge.putData(json.dumps(criteria))        
     
@@ -921,8 +969,6 @@ class SessionManager(object):
         """
         menuList = []
         eventDicts = self.findSessionEventDicts(self.selectedEventIDs);
-        if not eventDicts: return json.dumps(menuList)
-
         
         # Test if there are any context menu entries associated with the selected events.
         for eventDict in eventDicts:
@@ -1267,20 +1313,8 @@ class SessionManager(object):
         """
         changedValue = eventDict.get(changedField)
         if not changedValue:
-            return   
-        try:
-            phen, sig, subType = changedValue.split(".")
-        except:
-            phen, sig = changedValue.split(".")
-            subType = ""
-        if changedField == FULLTYPE:
-            try:
-                subType, headline = subType.split("(")
-                subType = subType.strip() 
-            except:
-                sig, headline = sig.split("(")
-                headline = headline.strip(")")
-        sig = sig.strip()
+            return 
+        phen, sig, subType = self.getPhenSigSubType(changedField, changedValue)  
         eventDict[PHENOMENON] = phen
         eventDict[SIGNIFICANCE] = sig
         eventDict[SUBTYPE] = subType
@@ -1288,7 +1322,27 @@ class SessionManager(object):
         eventDict[HAZARD_TYPE] = type
         eventDict[HEADLINE] = headline 
         eventDict[FULLTYPE] = fullType
-               
+        
+    def getPhenSigSubType(self, field, value):   
+        '''
+        Given a field (HAZARD_TYPE or FULLTYPE),
+        return the PHENONMENON, SIGNIFICANCE, and SUBTYPE        
+        '''     
+        try:
+            phen, sig, subType = value.split(".")
+        except:
+            phen, sig = value.split(".")
+            subType = ""
+        if field == FULLTYPE:
+            try:
+                subType, headline = subType.split("(")
+                subType = subType.strip() 
+            except:
+                sig, headline = sig.split("(")
+                headline = headline.strip(")")
+        sig = sig.strip()
+        return phen, sig, subType
+                       
     def getHazardTypeInfo(self, phen, sig, subType):
         type = phen+"."+sig
         if subType:
