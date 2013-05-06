@@ -24,7 +24,8 @@ import java.util.Map;
 
 import org.apache.commons.lang.Validate;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardEventSet;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
@@ -74,14 +75,14 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            /common_static/base/python/events/productgen/products
      *            directory
      * @param hazardEventSet
-     *            the HazardEventSet object that will provide the information
-     *            for the product generator
+     *            the EventSet<IHazardEvent> object that will provide the
+     *            information for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String product, HazardEventSet hazardEventSet,
+    public void generate(String product, EventSet<IHazardEvent> hazardEventSet,
             String[] formats,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
         // Validates the parameter values
@@ -109,17 +110,17 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            /common_static/base/python/events/productgen/products
      *            directory
      * @param hazardEventSets
-     *            an array of HazardEventSet objects that will provide the
-     *            information for the product generator
+     *            an array of EventSet<IHazardEvent> objects that will provide
+     *            the information for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String product, HazardEventSet[] hazardEventSets,
-            String[] formats,
+    public void generate(String product,
+            EventSet<IHazardEvent>[] hazardEventSets, String[] formats,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
-        for (HazardEventSet hazardEventSet : hazardEventSets) {
+        for (EventSet<IHazardEvent> hazardEventSet : hazardEventSets) {
             generate(product, hazardEventSet, formats, listener);
         }
     }
@@ -165,7 +166,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param hazardEventSet
      */
     private void validate(String[] formats, String product,
-            HazardEventSet hazardEventSet,
+            EventSet<IHazardEvent> hazardEventSet,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
         Validate.notNull(formats, "'FORMATS' must be set.");
         Validate.notNull(product, "'PRODUCT' must be set.");

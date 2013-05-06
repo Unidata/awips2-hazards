@@ -33,7 +33,6 @@
 #
 
 import abc
-from shapely.geometry import *
 
 class Recommender(object):
     __metaclass__ = abc.ABCMeta

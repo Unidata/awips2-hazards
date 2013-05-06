@@ -24,7 +24,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -93,7 +95,7 @@ public abstract class AbstractHazardStorageTest {
         RegistryManagerDeployTest.setDeployInstance();
     }
 
-    private IHazardEvent storeEvent() {
+    public IHazardEvent createNewEvent() {
         IHazardEvent createdEvent = manager.createEvent();
         createdEvent.setEventID(UUID.randomUUID().toString());
         createdEvent.setEndTime(date);
@@ -109,6 +111,11 @@ public abstract class AbstractHazardStorageTest {
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
         createdEvent.setGeometry(geometry);
+        return createdEvent;
+    }
+
+    private IHazardEvent storeEvent() {
+        IHazardEvent createdEvent = createNewEvent();
         boolean stored = manager.storeEvent(createdEvent);
         assertTrue("Not able to store event", stored);
         return createdEvent;
@@ -285,6 +292,39 @@ public abstract class AbstractHazardStorageTest {
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
                 assertEquals(list.get(eId).get(0), createdEvent);
+            }
+        }
+    }
+
+    @Test
+    public void testByMultiplePhensig() {
+        List<String> phensigs = new ArrayList<String>();
+        IHazardEvent event = storeEvent();
+
+        event = createNewEvent();
+        event.setPhenomenon("ZW");
+        event.setSubtype("Convective");
+        manager.storeEvent(event);
+
+        event = createNewEvent();
+        event.setPhenomenon("ZW");
+        event.setSignificance("D");
+        manager.storeEvent(event);
+
+        event = createNewEvent();
+        event.setPhenomenon("TL");
+        event.setSignificance("D");
+        manager.storeEvent(event);
+
+        phensigs.add("TL.D");
+        phensigs.add("ZW.P.Convective");
+        Map<String, HazardHistoryList> list = manager
+                .getByMultiplePhensigs(phensigs);
+        // should get 2 back
+        assertThat(list.keySet(), hasSize(2));
+        for (String eid : list.keySet()) {
+            for (IHazardEvent ev : list.get(eid)) {
+                manager.removeEvent(ev);
             }
         }
     }

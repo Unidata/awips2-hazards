@@ -24,11 +24,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import jep.JepException;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
@@ -208,7 +208,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     public List<IEvent> executeRecommender(String recommenderName,
-            Set<IEvent> eventSet, Map<String, String> dialogValues,
+            EventSet<IEvent> eventSet, Map<String, String> dialogValues,
             Map<String, String> spatialValues) {
         final Map<String, Object> args = getStarterMap(recommenderName);
         args.put("eventSet", eventSet);
@@ -241,6 +241,9 @@ public abstract class AbstractRecommenderScriptManager extends
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR, "Unable to get info from "
                     + methodName, e);
+        }
+        if (retVal == null) {
+            retVal = new HashMap<String, String>();
         }
         return (Map<String, String>) retVal;
     }

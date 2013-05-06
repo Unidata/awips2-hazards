@@ -34,7 +34,6 @@ import org.junit.Test;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
 
 /**
  * Unit test for recommenders, successfully returns an IEvent.

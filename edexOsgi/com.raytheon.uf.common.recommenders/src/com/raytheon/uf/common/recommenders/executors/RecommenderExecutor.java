@@ -21,8 +21,8 @@ package com.raytheon.uf.common.recommenders.executors;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
@@ -51,14 +51,15 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
 
     private Map<String, String> dialogInfo;
 
-    private Set<IEvent> eventSet;
+    private EventSet<IEvent> eventSet;
 
     /**
      * Pass in the dialog info and spatial info values. We will not need to get
      * them when running.
      */
-    public RecommenderExecutor(String recommenderName, Set<IEvent> eventSet,
-            Map<String, String> spatialInfo, Map<String, String> dialogInfo) {
+    public RecommenderExecutor(String recommenderName,
+            EventSet<IEvent> eventSet, Map<String, String> spatialInfo,
+            Map<String, String> dialogInfo) {
         super(recommenderName);
         this.eventSet = eventSet;
         this.spatialInfo = spatialInfo;
@@ -67,7 +68,8 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
 
     @Override
     public List<IEvent> execute(P script) {
-        return script.executeRecommender(recommenderName, eventSet, dialogInfo,
-                spatialInfo);
+        List<IEvent> events = script.executeRecommender(recommenderName,
+                eventSet, dialogInfo, spatialInfo);
+        return events;
     }
 }

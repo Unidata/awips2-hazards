@@ -21,8 +21,6 @@ package com.raytheon.uf.viz.recommenders;
 
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * A single class in which all recommender actions will go through.
@@ -43,9 +41,6 @@ import com.raytheon.uf.common.status.UFStatus;
 
 public final class CAVERecommenderEngine extends
         AbstractRecommenderEngine<CAVERecommenderScriptManager> {
-
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(CAVERecommenderEngine.class);
 
     public CAVERecommenderEngine() {
         super();

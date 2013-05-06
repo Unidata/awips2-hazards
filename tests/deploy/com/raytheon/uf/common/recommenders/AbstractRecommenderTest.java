@@ -36,8 +36,6 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.PathManagerFactoryTest;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
-import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 

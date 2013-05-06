@@ -76,7 +76,7 @@ def createPolygon(shell, holes=None):
     p = Polygon(shell, holes)
     return p
     
-def createMultiPolygon(polygons):
+def createMultiPolygon(polygons, context_type):
     '''
     @param polygons: A list of polygons
     @return: MultiPolygon
