@@ -34,7 +34,8 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
  * @version 1.0
  */
 @SuppressWarnings("serial")
-public final class ComparableLazilyParsedNumber extends Number {
+public final class ComparableLazilyParsedNumber extends Number implements
+        Comparable<ComparableLazilyParsedNumber> {
     /**
      * The original number. Many method calls are just delegated to the original
      * Number object. This reduces duplication of logic. It also helps in the
@@ -103,11 +104,27 @@ public final class ComparableLazilyParsedNumber extends Number {
     }
 
     /**
+     * Compares this object with the specified object for order. Returns a
+     * negative integer, zero, or a positive integer as this object is less
+     * than, equal to, or greater than the specified object.
+     * 
+     * @param other
+     *            Other object to which this one is to be compared.
+     * @return A negative integer, zero, or a positive integer indicating that
+     *         this object is less than, equal to, or greater than the other
+     *         object, respectively.
+     */
+    @Override
+    public int compareTo(ComparableLazilyParsedNumber other) {
+        double delta = doubleValue() - other.doubleValue();
+        return (delta < 0.0 ? -1 : (delta == 0.0 ? 0 : 1));
+    }
+
+    /**
      * @return A string representation of this object.
      */
     @Override
     public String toString() {
         return number.toString();
     }
-
 }
