@@ -225,6 +225,10 @@ public final class HazardServicesMessageHandler {
         Bundle sessionManagerBundle = Platform
                 .getBundle(Utilities.SESSION_MANAGER_PLUGIN);
 
+        statusHandler.debug("Utilities.SESSION_MANAGER_PLUGIN: "
+                + Utilities.SESSION_MANAGER_PLUGIN);
+        statusHandler.debug("sessionManagerBundle: " + sessionManagerBundle);
+
         if (sessionManagerBundle != null) {
 
             // The plug-in has been loaded. Try to find the serverCode
@@ -237,9 +241,14 @@ public final class HazardServicesMessageHandler {
                         .getEntry(File.separator + "src" + File.separator
                                 + "sessionManager");
 
+                statusHandler.debug("sessionManagerURL: " + sessionManagerURL);
+
                 if (sessionManagerURL != null) {
                     PATH_TO_SESSION_MANAGER = FileLocator.resolve(
                             sessionManagerURL).getPath();
+
+                    statusHandler.debug("PATH_TO_SESSION_MANAGER: "
+                            + PATH_TO_SESSION_MANAGER);
                 }
 
             } catch (IOException e) {
@@ -361,6 +370,8 @@ public final class HazardServicesMessageHandler {
 
             Bundle bundle = Platform.getBundle(Utilities
                     .getSessionManagerPlugin());
+            statusHandler.debug("buildJepIncludePath: ",
+                    Utilities.getSessionManagerPlugin());
             File file = new File(FileLocator.resolve(bundle.getResource("src"))
                     .getPath());
             file = file.getParentFile().getParentFile().getParentFile();
