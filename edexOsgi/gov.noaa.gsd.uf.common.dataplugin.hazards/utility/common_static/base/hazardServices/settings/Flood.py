@@ -168,20 +168,12 @@ Flood = {
     }, 
     "toolbarTools": [
         {
-            "toolName": "gov.noaa.gsd.viz.ihis.java.dtf.tools.FlashFloodRecommender", 
-            "displayName": "Flash Flood Recommender"
-        }, 
-        {
             "toolName": "DamBreakFloodRecommender", 
             "displayName": "Dam/Levee Break Flood Recommender"
         }, 
         {
             "toolName": "RiverFloodRecommender", 
             "displayName": "River Flood Recommender"
-        }, 
-        {
-            "toolName": "CensusTool", 
-            "displayName": "Census Data"
         }
     ], 
     "defaultHazardCategory": "hydro"

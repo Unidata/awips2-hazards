@@ -150,14 +150,6 @@ WSW = {
         }
     }, 
     "toolbarTools": [
-        {
-            "toolName": "WSW_recommender", 
-            "displayName": "WSW Recommender"
-        }, 
-        {
-            "toolName": "CensusTool", 
-            "displayName": "Census Data"
-        }
     ], 
     "defaultHazardCategory": "longFused"
 }

@@ -153,22 +153,6 @@ TOR = {
         }
     }, 
     "toolbarTools": [
-        {
-            "toolName": "StormTrackTool", 
-            "displayName": "StormTrack Tool"
-        }, 
-        {
-            "toolName": "AdvStormTrackTool", 
-            "displayName": "Advanced StormTrack"
-        }, 
-        {
-            "toolName": "CensusTool", 
-            "displayName": "Census Data"
-        }, 
-        {
-            "toolName": "FollowUpRecommender", 
-            "displayName": "Follow Up"
-        }
     ], 
     "defaultHazardCategory": "shortFused"
 }
