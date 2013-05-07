@@ -95,15 +95,9 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: A event containing the potential flood hazard polygon. 
         """
         sessionAttributes = eventSet.getAttributes()
-        
-        #
-        # Convert input Java args to native Python args.
-        # This needs to be discussed.  Should focal points
-        # have to do this?
-        sessionDict = JUtil.javaMapToPyDict(sessionAttributes)
-        dialogDict = JUtil.javaMapToPyDict(dialogInputMap)
-        spatialDict = JUtil.javaMapToPyDict(spatialInputMap)
-        event = self.createHazardEvent(sessionDict, dialogDict, spatialDict)
+        sessionDict = sessionAttributes
+
+        event = self.createHazardEvent(sessionDict, dialogInputMap, spatialInputMap)
         return event
     
     def toString(self):

@@ -101,10 +101,14 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: A list of potential events. 
         """
         sessionAttributes = eventSet.getAttributes()
+        
+        sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
+        dialogMap = JUtil.pyDictToJavaMap(dialogInputMap)
+        spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
         riverProFloodRecommender = RiverProFloodRecommender()
-        javaEventList = riverProFloodRecommender.getRecommendation(sessionAttributes,
-                                                                   dialogInputMap,
-                                                                   spatialInputMap)
+        javaEventList = riverProFloodRecommender.getRecommendation(sessionMap,
+                                                                   dialogMap,
+                                                                   spatialMap)
             
         pythonEventList = JUtil.javaObjToPyVal(javaEventList, hazardEventConverter)
         self.addFloodPolygons(pythonEventList)    

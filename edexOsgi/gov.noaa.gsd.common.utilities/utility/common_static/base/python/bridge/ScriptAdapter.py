@@ -16,7 +16,7 @@ try:
     from com.raytheon.uf.common.hazards.productgen import ProductGeneration #@UnresolvedImport
 
     import HazardEventJSONAdapter as Adapter
-    from com.raytheon.uf.common.dataplugin.events.hazards.event.collections import HazardEventSet #@UnresolvedImport
+    from com.raytheon.uf.common.dataplugin.events import EventSet #@UnresolvedImport
     from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesRecommenderJobListener #@UnresolvedImport
     from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesGeneratorJobListener #@UnresolvedImport
     from gov.noaa.gsd.viz.hazards.events import HazardServicesEvent #@UnresolvedImport
@@ -55,7 +55,7 @@ class ScriptAdapter:
         result = None
         scriptSpatialInfo = self._scriptManager.getSpatialInfo(scriptID)
         
-        if scriptSpatialInfo is not None:
+        if scriptSpatialInfo is not None and not scriptSpatialInfo.isEmpty() :
             result = JUtil.javaMapToPyDict(scriptSpatialInfo)
             
         return result
@@ -73,7 +73,7 @@ class ScriptAdapter:
         result = None
         scriptDialogInfo = self._scriptManager.getDialogInfo(str(scriptID))
         
-        if scriptDialogInfo is not None:
+        if scriptDialogInfo is not None and not scriptDialogInfo.isEmpty():
             result = JUtil.javaMapToPyDict(scriptDialogInfo)
             
         return result
@@ -125,7 +125,7 @@ class ScriptAdapter:
         
         sessionDict = runDict['sessionDict']
         sessionJavaMap = JUtil.pyDictToJavaMap(sessionDict)
-        hazardEventSet = HazardEventSet(eventSet, sessionJavaMap)
+        hazardEventSet = EventSet(eventSet, sessionJavaMap)
         
         if 'spatialInfo' in runDict:
             spatialDict = runDict['spatialDict']
@@ -158,7 +158,7 @@ class ScriptAdapter:
                 metaDict[key] = runDict[key]
         formats = runDict.get("formats")
         metaDict = JUtil.pyDictToJavaMap(metaDict)
-        hazardEventSet = HazardEventSet(eventSet, metaDict)
+        hazardEventSet = EventSet(eventSet, metaDict)
         
         #This might be needed if the arguments to generate change for 'formats'
         #from String[] to List<String>  
