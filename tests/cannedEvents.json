@@ -1,0 +1,695 @@
+{
+    "11": {
+        "eventID": "11", 
+	"phen": "FF", "sig":"W", "subType":"Convective",
+        "include": [
+            "Also Snow Melt"
+        ], 
+        "reportedBy": "Local law enforcement reported...", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.48, 
+                        40.17
+                    ], 
+                    [
+                        -103.48, 
+                        40.05
+                    ], 
+                    [
+                        -103.59, 
+                        40.07
+                    ], 
+                    [
+                        -103.6, 
+                        40.15
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Additional rainfall expected... (need dialog to specify how much)", 
+            "Rural flooding/small streams"
+        ], 
+        "startTime": 1297137600000, 
+        "fullType": "FF.W (FLASH FLOOD WARNING)", 
+        "endTime": 1297162800000, 
+        "type": "FF.W.Convective"
+    }, 
+    "10": {
+        "eventID": "10", 
+	"phen": "FA", "sig":"Y", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.84, 
+                        39.56
+                    ], 
+                    [
+                        -103.95, 
+                        39.39
+                    ], 
+                    [
+                        -104.13, 
+                        39.45
+                    ], 
+                    [
+                        -104.05, 
+                        39.56
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297137600000, 
+        "fullType": "FA.Y (AREAL FLOOD ADVISORY)", 
+        "endTime": 1297163040000, 
+        "type": "FA.Y", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "12": {
+        "eventID": "12", 
+	"phen": "FL", "sig":"W", "subType":"",
+        "fallBelow": 0, 
+        "crest": 0, 
+        "VTECmode": "operational", 
+        "riseAbove": 0, 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.15, 
+                        40.68
+                    ], 
+                    [
+                        -103.43, 
+                        40.43
+                    ], 
+                    [
+                        -103.47, 
+                        40.43
+                    ], 
+                    [
+                        -103.47, 
+                        40.41
+                    ], 
+                    [
+                        -103.92, 
+                        40.71
+                    ], 
+                    [
+                        -103.8, 
+                        40.86
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "startTime": 1297137600000, 
+        "fullType": "FL.W (FLOOD WARNING)", 
+        "endTime": 1297581900000, 
+        "type": "FL.W"
+    }, 
+    "15": {
+        "eventID": "15", 
+	"phen": "SV", "sig":"W", "subType":"",
+        "VTECmode": "operational", 
+        "creationTime": 1297137600000, 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -77.244873046875, 
+                        36.244273184939
+                    ], 
+                    [
+                        -77.58544921875, 
+                        35.692994632099
+                    ], 
+                    [
+                        -76.8603515625, 
+                        35.442770925858
+                    ], 
+                    [
+                        -76.57470703125, 
+                        35.844534504216
+                    ], 
+                    [
+                        -76.673583984375, 
+                        36.27970720524
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "RAH", 
+        "startTime": 1297137600000, 
+        "endTime": 1297166400000, 
+        "type": "SV.W"
+    }, 
+    "16": {
+        "eventID": "16", 
+	"phen": "SV", "sig":"W", "subType":"",
+        "VTECmode": "operational", 
+        "creationTime": 1297137600000, 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -78.299560546875, 
+                        34.867904962568
+                    ], 
+                    [
+                        -77.67333984375, 
+                        35.424867919306
+                    ], 
+                    [
+                        -77.1240234375, 
+                        35.146862906756
+                    ], 
+                    [
+                        -77.596435546875, 
+                        34.714524661704
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "RAH", 
+        "startTime": 1297125600000, 
+        "endTime": 1297154400000, 
+        "type": "SV.W"
+    }, 
+    "13": {
+        "eventID": "13", 
+	"phen": "FA", "sig":"W", "subType":"",
+        "VTECmode": "operational", 
+        "creationTime": 1297137600000, 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -81.002197265625, 
+                        35.782170703266
+                    ], 
+                    [
+                        -81.2109375, 
+                        35.719757939334
+                    ], 
+                    [
+                        -81.123046875, 
+                        35.200744801724
+                    ], 
+                    [
+                        -80.70556640625, 
+                        35.218697496329
+                    ], 
+                    [
+                        -80.518798828125, 
+                        35.433819920142
+                    ], 
+                    [
+                        -80.6396484375, 
+                        35.79108281625
+                    ]
+                ]
+            }
+        ], 
+        "containedPoints": [], 
+        "state": "issued", 
+        "siteID": "RAH", 
+        "startTime": 1297137600000, 
+        "endTime": 1297166400000, 
+        "type": "FA.W"
+    }, 
+    "14": {
+        "eventID": "14", 
+	"phen": "FA", "sig":"W", "subType":"",
+        "floodSeverity": "3", 
+        "VTECmode": "operational", 
+        "creationTime": 1297137600000, 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -82.012939453125, 
+                        36.562600037385
+                    ], 
+                    [
+                        -82.265625, 
+                        36.438961240859
+                    ], 
+                    [
+                        -82.15576171875, 
+                        36.049098959066
+                    ], 
+                    [
+                        -81.947021484375, 
+                        36.049098959066
+                    ], 
+                    [
+                        -81.80419921875, 
+                        36.350527005428
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "RAH", 
+        "startTime": 1297137600000, 
+        "floodRecord": "NR", 
+        "endTime": 1297166400000, 
+        "type": "FA.W", 
+        "immediateCause": "ER"
+    }, 
+    "1": {
+        "eventID": "1", 
+	"phen": "TO", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.83, 
+                        39.74
+                    ], 
+                    [
+                        -103.78, 
+                        39.61
+                    ], 
+                    [
+                        -104.05, 
+                        39.57
+                    ], 
+                    [
+                        -104.06, 
+                        39.67
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297140900000, 
+        "fullType": "TO.W (TORNADO WARNING)", 
+        "endTime": 1297143900000, 
+        "type": "TO.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "3": {
+        "eventID": "3", 
+	"phen": "TO", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.48, 
+                        40.17
+                    ], 
+                    [
+                        -103.48, 
+                        40.05
+                    ], 
+                    [
+                        -103.59, 
+                        40.07
+                    ], 
+                    [
+                        -103.6, 
+                        40.15
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297148400000, 
+        "fullType": "TO.W (TORNADO WARNING)", 
+        "endTime": 1297150200000, 
+        "type": "TO.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "2": {
+        "eventID": "2", 
+	"phen": "TO", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.84, 
+                        39.56
+                    ], 
+                    [
+                        -103.95, 
+                        39.39
+                    ], 
+                    [
+                        -104.13, 
+                        39.45
+                    ], 
+                    [
+                        -104.05, 
+                        39.56
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297141440000, 
+        "fullType": "TO.W (TORNADO WARNING)", 
+        "endTime": 1297143900000, 
+        "type": "TO.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "5": {
+        "eventID": "5", 
+	"phen": "WS", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -101.83, 
+                        40.74
+                    ], 
+                    [
+                        -101.78, 
+                        40.61
+                    ], 
+                    [
+                        -102.05, 
+                        40.57
+                    ], 
+                    [
+                        -102.06, 
+                        40.67
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297140900000, 
+        "fullType": "WS.W (WINTER STORM WARNING)", 
+        "endTime": 1297151700000, 
+        "type": "WS.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "4": {
+        "eventID": "4", 
+	"phen": "TO", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.15, 
+                        40.68
+                    ], 
+                    [
+                        -103.43, 
+                        40.43
+                    ], 
+                    [
+                        -103.47, 
+                        40.43
+                    ], 
+                    [
+                        -103.47, 
+                        40.41
+                    ], 
+                    [
+                        -103.92, 
+                        40.71
+                    ], 
+                    [
+                        -103.8, 
+                        40.86
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297149900000, 
+        "fullType": "TO.W (TORNADO WARNING)", 
+        "endTime": 1297152900000, 
+        "type": "TO.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "7": {
+        "eventID": "7", 
+	"phen": "WS", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -98.48, 
+                        42.17
+                    ], 
+                    [
+                        -98.48, 
+                        42.05
+                    ], 
+                    [
+                        -98.59, 
+                        42.07
+                    ], 
+                    [
+                        -98.6, 
+                        42.15
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297148400000, 
+        "fullType": "WS.W (WINTER STORM WARNING)", 
+        "endTime": 1297162800000, 
+        "type": "WS.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "6": {
+        "eventID": "6", 
+	"phen": "WS", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -101.84, 
+                        41.56
+                    ], 
+                    [
+                        -101.95, 
+                        41.39
+                    ], 
+                    [
+                        -102.13, 
+                        41.45
+                    ], 
+                    [
+                        -102.05, 
+                        41.56
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297141440000, 
+        "fullType": "WS.W (WINTER STORM WARNING)", 
+        "endTime": 1297163040000, 
+        "type": "WS.W", 
+        "causes": [
+            "Rain"
+        ]
+    }, 
+    "9": {
+        "eventID": "9", 
+	"phen": "FA", "sig":"W", "subType":"",
+        "include": "Urban areas and small streams", 
+        "primaryCause": "Snow melt", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -103.83, 
+                        39.74
+                    ], 
+                    [
+                        -103.78, 
+                        39.61
+                    ], 
+                    [
+                        -104.05, 
+                        39.57
+                    ], 
+                    [
+                        -104.06, 
+                        39.67
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Turn around...don't drown", 
+            "Urban flooding"
+        ], 
+        "startTime": 1297137600000, 
+        "fullType": "FA.W (AREAL FLOOD WARNING)", 
+        "endTime": 1297151700000, 
+        "type": "FA.W", 
+        "VTECmode": "operational"
+    }, 
+    "8": {
+        "eventID": "8", 
+	"phen": "WS", "sig":"W", "subType":"",
+        "nonGenericAdvisory": "Urban and small stream", 
+        "VTECmode": "operational", 
+        "shapes": [
+            {
+                "include": "true", 
+                "shapeType": "polygon", 
+                "points": [
+                    [
+                        -99.15, 
+                        42.68
+                    ], 
+                    [
+                        -99.43, 
+                        42.43
+                    ], 
+                    [
+                        -99.47, 
+                        42.43
+                    ], 
+                    [
+                        -99.47, 
+                        42.41
+                    ], 
+                    [
+                        -99.92, 
+                        42.71
+                    ], 
+                    [
+                        -99.8, 
+                        42.86
+                    ]
+                ]
+            }
+        ], 
+        "state": "issued", 
+        "siteID": "BOU", 
+        "cta": [
+            "Do not drive into water", 
+            "A Flood Advisory means..."
+        ], 
+        "startTime": 1297151880000, 
+        "fullType": "WS.W (WINTER STORM WARNING)", 
+        "endTime": 1297173780000, 
+        "type": "WS.W", 
+        "causes": [
+            "Rain"
+        ]
+    }
+}

@@ -19,10 +19,8 @@
  **/
 package com.raytheon.uf.common.hazards.storage;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -296,6 +294,7 @@ public abstract class AbstractHazardStorageTest {
         }
     }
 
+    @Ignore
     @Test
     public void testByMultiplePhensig() {
         List<String> phensigs = new ArrayList<String>();

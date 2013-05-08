@@ -19,10 +19,8 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import java.util.List;
 
@@ -30,7 +28,7 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderTest;
+
 /**
  * A failure recommender, returns no events (testing if the value returned was
  * not an IEvent)
