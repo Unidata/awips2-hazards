@@ -71,7 +71,6 @@ public abstract class AbstractRecommenderTest {
     @BeforeClass
     public static void classSetUp() {
         PathManagerFactoryTest.initLocalization();
-        fillFiles();
     }
 
     @Before
@@ -121,12 +120,4 @@ public abstract class AbstractRecommenderTest {
         return null;
     }
 
-    /**
-     * Method to help bring in correct localization files.
-     */
-    private static void fillFiles() {
-        IPathManager manager = PathManagerFactory.getPathManager();
-        manager.listFiles(manager.getContext(LocalizationType.COMMON_STATIC,
-                LocalizationLevel.BASE), "python", null, true, false);
-    }
 }

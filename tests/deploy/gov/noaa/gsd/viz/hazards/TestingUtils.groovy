@@ -19,6 +19,7 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
+import com.raytheon.uf.common.localization.PathManagerFactoryTest;
 
 
 
@@ -40,7 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHaza
 class TestingUtils {
 
     public TestingUtils() {
-        //FileUtilities.fillFiles()
+        PathManagerFactoryTest.initLocalization();
     }
 
     /**
