@@ -1,5 +1,6 @@
 package gov.noaa.gsd.viz.hazards.mixedhazardstory
 import static org.junit.Assert.*;
+import gov.noaa.gsd.viz.hazards.TestingUtils
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 
@@ -36,6 +37,7 @@ class LocalizationHostnameTest extends spock.lang.Specification {
      * @return
      */
     def setup() {
+        new TestingUtils()
         jepInstance = getJepInstance()
         localhostname = java.net.InetAddress.getLocalHost().getHostName();
     }

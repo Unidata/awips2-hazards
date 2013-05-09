@@ -30,6 +30,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.viz.mvp"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.uf.common.recommenders.hydro"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.status"/>
+    <classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.core"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/com.raytheon.uf.common.localization"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
