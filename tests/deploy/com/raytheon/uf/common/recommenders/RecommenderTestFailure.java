@@ -49,12 +49,6 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
 public class RecommenderTestFailure extends AbstractRecommenderTest {
 
-    /**
-     * 
-     */
-    public RecommenderTestFailure() {
-    }
-
     @Test
     public void run() {
         IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
