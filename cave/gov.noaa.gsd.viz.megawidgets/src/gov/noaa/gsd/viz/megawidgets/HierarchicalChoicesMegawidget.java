@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier.IllegalChoicesProblem;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -30,7 +33,7 @@ import java.util.Map;
  * @version 1.0
  * @see HierarchicalChoicesMegawidgetSpecifier
  */
-public abstract class HierarchicalChoicesMegawidget extends StatefulMegawidget {
+public abstract class HierarchicalChoicesMegawidget extends ChoicesMegawidget {
 
     // Protected Variables
 
@@ -56,13 +59,37 @@ public abstract class HierarchicalChoicesMegawidget extends StatefulMegawidget {
         super(specifier, paramMap);
     }
 
-    // Protected Methods
+    // Public Methods
 
     /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
+     * Get the available choices hierarchy.
+     * 
+     * @return Available choices hierarchy.
      */
-    protected abstract void synchronizeWidgetsToState();
+    public final List<?> getChoices() {
+        return doGetChoices();
+    }
+
+    /**
+     * Set the choices to those specified. If the current state is not a subset
+     * of the new choices, the state will be set to <code>null</code>.
+     * 
+     * @param value
+     *            List of new choices.
+     * @throws MegawidgetPropertyException
+     *             If the choices are invalid.
+     */
+    public final void setChoices(Object value)
+            throws MegawidgetPropertyException {
+        doSetChoices(value);
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final boolean isChoicesListMutable() {
+        return true;
+    }
 
     /**
      * Get the current state for the specified identifier. This method is called
@@ -77,7 +104,8 @@ public abstract class HierarchicalChoicesMegawidget extends StatefulMegawidget {
      */
     @Override
     protected final Object doGetState(String identifier) {
-        return state;
+        return ((HierarchicalChoicesMegawidgetSpecifier) getSpecifier())
+                .createChoicesCopy(state);
     }
 
     /**
@@ -104,25 +132,32 @@ public abstract class HierarchicalChoicesMegawidget extends StatefulMegawidget {
 
         // Ensure that the provided hierarchy is legal.
         List<?> hierarchy = (List<?>) state;
-        HierarchicalChoicesMegawidgetSpecifier specifier = getSpecifier();
-        HierarchicalChoicesMegawidgetSpecifier.IllegalTreeProblem eval = specifier
-                .evaluateLegality(hierarchy);
-        if (eval != null) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    hierarchy, "parameter \"" + eval.getSubParameterName()
-                            + "\" " + eval.getProblem());
-        }
+        if (hierarchy != null) {
+            HierarchicalChoicesMegawidgetSpecifier specifier = getSpecifier();
+            IllegalChoicesProblem eval = specifier
+                    .evaluateChoicesLegality(hierarchy);
+            if (eval != null) {
+                throw new MegawidgetStateException(identifier,
+                        specifier.getType(), hierarchy,
+                        (eval.getDepth() == 0 ? "" : "parameter \""
+                                + eval.getSubParameterName() + "\" ")
+                                + eval.getProblem());
+            }
 
-        // Ensure that the provided hierarchy is a subset
-        // of the choices hierarchy.
-        if (specifier.isSubset(hierarchy, specifier.choicesList) == false) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    hierarchy, "not a subset of the choices hierarchy");
-        }
+            // Ensure that the provided hierarchy is a subset
+            // of the choices hierarchy.
+            if (specifier.isSubset(hierarchy, choices) == false) {
+                throw new MegawidgetStateException(identifier,
+                        specifier.getType(), hierarchy,
+                        "not a subset of the choices hierarchy");
+            }
 
-        // Set the state to match the provided state.
-        this.state.clear();
-        this.state.addAll(hierarchy);
+            // Set the state to match the provided state.
+            this.state.clear();
+            this.state.addAll(specifier.createChoicesCopy(hierarchy));
+        } else {
+            this.state.clear();
+        }
 
         // Synchronize user-facing widgets to the new state.
         synchronizeWidgetsToState();
@@ -162,5 +197,4 @@ public abstract class HierarchicalChoicesMegawidget extends StatefulMegawidget {
         notifyListener(getSpecifier().getIdentifier(), state);
         notifyListener();
     }
-
 }

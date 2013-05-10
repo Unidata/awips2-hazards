@@ -15,7 +15,9 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,14 +37,55 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 /**
  * Tool dialog, used to allow the user to specify parameters for tool
  * executions.
+ * <p>
+ * When instantiated, the dialog is passed a JSON string holding a dictionary
+ * which in turn contains the following parameters:
+ * <dl>
+ * <dt><code>fields</code></dt>
+ * <dd>List of dictionaries, with each of the latter defining a megawidget.</dd>
+ * <dt><code>valueDict</code></dt>
+ * <dd>Dictionary mapping tool parameter identifiers to their starting values.</dd>
+ * <dt><code>sideEffectsScript</code></dt>
+ * <dd>Optional string which, if provided, is used as the Python script that
+ * defines the <code>applySideEffects()</code> method required by
+ * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}. If not
+ * provided, no side effects are applied when megawidgets are invoked or
+ * experience state changes.</dd>
+ * <dt><code>runToolTriggers</code></dt>
+ * <dd>Optional list of megawidget identifier strings indicating which of the
+ * megawidgets defined within <code>fields</code> are to trigger tool execution
+ * when invoked, if any.</dd>
+ * <dt><code>title</code></dt>
+ * <dd>Optional string giving the dialog title.</dd>
+ * <dt><code>minimumTime</code></dt>
+ * <dd>Minimum time as required by
+ * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
+ * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * <dt><code>maximumTime</code></dt>
+ * <dd>Maximum time as required by
+ * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
+ * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * <dt><code>minimumVisibleTime</code></dt>
+ * <dd>Minimum visible time as required by
+ * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
+ * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * <dt><code>maximumVisibleTime</code></dt>
+ * <dd>Maximum visible time as required by
+ * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
+ * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * </dl>
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Apr 04, 2013            Chris.Golden      Initial induction into repo.
+ * Jun 20, 2013   1277     Chris.Golden      Added code to support the
+ *                                           specification of a side
+ *                                           effects applier for the
+ *                                           megawidgets showing in the
+ *                                           tool dialog.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,6 +133,19 @@ class ToolDialog extends BasicDialog {
      */
     private boolean enabled = true;
 
+    /**
+     * Python side effects applier script for implementing any needed megawidget
+     * interdependencies; if <code>null</code>, there is no such script.
+     */
+    private final String pythonSideEffectsScript;
+
+    /**
+     * List of megawidget identifiers that, when their associated megawidgets
+     * are invoked, should result in the tool being run; if <code>null</code>,
+     * none cause such invocations.
+     */
+    private final List<String> runToolTriggerIdentifiers;
+
     // Public Constructors
 
     /**
@@ -115,7 +171,8 @@ class ToolDialog extends BasicDialog {
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE);
         setBlockOnOpen(false);
 
-        // Parse the strings into two JSON objects.
+        // Parse the strings into the dialog dictionary and various
+        // values found within the dictionary.
         try {
             dialogDict = Dict.getInstance(jsonParams);
         } catch (Exception e) {
@@ -130,6 +187,27 @@ class ToolDialog extends BasicDialog {
                     .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
                             e);
         }
+        String script = null;
+        try {
+            script = dialogDict.getDynamicallyTypedValue("sideEffectsScript");
+        } catch (Exception e) {
+            statusHandler
+                    .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                            e);
+        }
+        pythonSideEffectsScript = script;
+        List<String> triggers = null;
+        try {
+            triggers = dialogDict.getDynamicallyTypedValue("runToolTriggers");
+            if (triggers == null) {
+                triggers = new ArrayList<String>();
+            }
+        } catch (Exception e) {
+            statusHandler
+                    .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                            e);
+        }
+        runToolTriggerIdentifiers = triggers;
     }
 
     // Public Methods
@@ -263,23 +341,31 @@ class ToolDialog extends BasicDialog {
         // widgets and manage their displaying, and allowing of mani-
         // pulation, of the the dictionary values. Invocations are
         // interpreted as tools to be run, with the tool name being
-        // contained within the extra callback information.
+        // contained within the extra callback information. If a
+        // Python side effects script was supplied as part of the
+        // dialog parameters, create a Python side effects applier
+        // object and pass it to the megawidget manager.
         List<Dict> megawidgetSpecifiersList = new ArrayList<Dict>();
         for (Object specifier : megawidgetSpecifiers) {
             megawidgetSpecifiersList.add((Dict) specifier);
         }
         try {
+            PythonSideEffectsApplier sideEffectsApplier = (pythonSideEffectsScript == null ? null
+                    : new PythonSideEffectsApplier(pythonSideEffectsScript));
             megawidgetManager = new MegawidgetManager(top,
                     megawidgetSpecifiersList, valuesDict, minTime, maxTime,
-                    minVisibleTime, maxVisibleTime) {
+                    minVisibleTime, maxVisibleTime, sideEffectsApplier) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {
 
-                    // Fire off the action.
-                    fireAction(new ToolAction(
-                            ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                            extraCallback, ToolDialog.this.getState()));
+                    // Fire off the action if the invoked megawidget
+                    // is a tool-running trigger.
+                    if (runToolTriggerIdentifiers.contains(identifier)) {
+                        fireAction(new ToolAction(
+                                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
+                                extraCallback, ToolDialog.this.getState()));
+                    }
                 }
 
                 @Override
@@ -287,6 +373,15 @@ class ToolDialog extends BasicDialog {
                         Object state) {
 
                     // No action.
+                }
+
+                @Override
+                protected void sideEffectMutablePropertyChangeErrorOccurred(
+                        MegawidgetPropertyException e) {
+                    statusHandler
+                            .error("ToolDialog.MegawidgetManager error occurred "
+                                    + "while attempting to apply megawidget side effects",
+                                    e);
                 }
             };
         } catch (MegawidgetException e) {

@@ -21,6 +21,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -28,7 +29,7 @@ import java.util.Map;
  * @version 1.0
  * @see ChoicesMegawidgetSpecifier
  */
-public abstract class SingleChoiceMegawidget extends StatefulMegawidget {
+public abstract class SingleChoiceMegawidget extends ChoicesMegawidget {
 
     // Protected Variables
 
@@ -48,7 +49,7 @@ public abstract class SingleChoiceMegawidget extends StatefulMegawidget {
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected SingleChoiceMegawidget(MegawidgetSpecifier specifier,
+    protected SingleChoiceMegawidget(ChoicesMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
     }
@@ -100,10 +101,16 @@ public abstract class SingleChoiceMegawidget extends StatefulMegawidget {
             throw new MegawidgetStateException(identifier, getSpecifier()
                     .getType(), state, "must be single choice");
         }
+        if ((this.state != null)
+                && (getChoiceIdentifiers().contains(this.state) == false)) {
+            this.state = null;
+            throw new MegawidgetStateException(identifier, getSpecifier()
+                    .getType(), state, "must be one of ["
+                    + getChoicesAsString() + "]");
+        }
 
-        // Notify the widget itself that the state has
-        // changed.
-        megawidgetStateChanged(this.state);
+        // Synchronize the widgets to the new state.
+        synchronizeWidgetsToState();
     }
 
     /**
@@ -134,12 +141,4 @@ public abstract class SingleChoiceMegawidget extends StatefulMegawidget {
                     .getType(), state, "must be single choice");
         }
     }
-
-    /**
-     * Receive notification that the megawidget's state has changed.
-     * 
-     * @param state
-     *            New state.
-     */
-    protected abstract void megawidgetStateChanged(String state);
 }

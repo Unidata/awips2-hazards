@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +51,7 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -151,6 +153,43 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      * List currently acting as a drop target, if any.
      */
     private Table dropTargetList = null;
+
+    /**
+     * Map of choice identifiers to their names.
+     */
+    private final Map<String, String> choiceNamesForIdentifiers = new HashMap<String, String>();
+
+    /**
+     * Last position of the available table's vertical scrollbar. This is used
+     * whenever the choices are being changed via <code>setChoices()</code> or
+     * one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
+     */
+    private int availableScrollPosition = 0;
+
+    /**
+     * Last position of the selected table's vertical scrollbar. This is used
+     * whenever the choices are being changed via <code>setChoices()</code> or
+     * one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
+     */
+    private int selectedScrollPosition = 0;
+
+    /**
+     * Set of choices in the available table that were last selected. This is
+     * used whenever the choices are being changed via <code>setChoices()</code>
+     * or one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
+     */
+    private final List<String> selectedAvailableChoiceIdentifiers = new ArrayList<String>();
+
+    /**
+     * List of choices in the selected table that were last selected. This is
+     * used whenever the choices are being changed via <code>setChoices()</code>
+     * or one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
+     */
+    private final List<String> selectedSelectedChoiceIdentifiers = new ArrayList<String>();
 
     // Protected Constructors
 
@@ -263,6 +302,9 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
             selectedLabel = null;
         }
 
+        // Associate choice identifiers with their names.
+        associateChoiceIdentifiersWithNames();
+
         // Create the available items list. A table is
         // used because tables offer functionality like
         // being able to determine what row lies under
@@ -273,9 +315,10 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         availableTable.setLinesVisible(false);
         availableTable.setEnabled(specifier.isEnabled());
         TableColumn column = new TableColumn(availableTable, SWT.NONE);
-        for (String choice : specifier.getChoiceNames()) {
+        for (Object choice : choices) {
             TableItem item = new TableItem(availableTable, SWT.NONE);
-            item.setText(0, choice);
+            item.setText(0, specifier.getNameOfNode(choice));
+            item.setData(specifier.getIdentifierOfNode(choice));
         }
         column.pack();
         SelectionListener listListener = new SelectionAdapter() {
@@ -370,8 +413,8 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // provided in SWT by tables over lists.
         selectedTable = new Table(panel, SWT.BORDER + SWT.MULTI
                 + SWT.FULL_SELECTION);
-        availableTable.setHeaderVisible(false);
-        availableTable.setLinesVisible(false);
+        selectedTable.setHeaderVisible(false);
+        selectedTable.setLinesVisible(false);
         selectedTable.setEnabled(specifier.isEnabled());
         column = new TableColumn(selectedTable, SWT.NONE);
         selectedTable.addSelectionListener(listListener);
@@ -455,7 +498,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
                     if (dropTargetList == null) {
                         StringBuffer buffer = new StringBuffer();
                         for (String choice : getItemsFromList(dragSourceList,
-                                true)) {
+                                true, false, null)) {
                             if (buffer.length() > 0) {
                                 buffer.append("\n");
                             }
@@ -632,45 +675,122 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    // Protected Methods
+    // Public Methods
 
     /**
-     * Receive notification that the megawidget's state has changed.
+     * Get the available choices hierarchy.
      * 
-     * @param state
-     *            New state.
+     * @return Available choices hierarchy.
      */
+    public final List<?> getChoices() {
+        return doGetChoices();
+    }
+
+    /**
+     * Set the choices to those specified. If the current state is not a subset
+     * of the new choices, the state will be set to <code>null</code>.
+     * 
+     * @param value
+     *            List of new choices.
+     * @throws MegawidgetPropertyException
+     *             If the choices are invalid.
+     */
+    public final void setChoices(Object value)
+            throws MegawidgetPropertyException {
+        doSetChoices(value);
+    }
+
+    // Protected Methods
+
     @Override
-    protected void megawidgetStateChanged(List<String> state) {
+    protected final boolean isChoicesListMutable() {
+        return true;
+    }
+
+    @Override
+    protected final void prepareForChoicesChange() {
+
+        // Remember the scrollbar positions so that they can be approximately
+        // restored.
+        availableScrollPosition = availableTable.getVerticalBar()
+                .getSelection();
+        selectedScrollPosition = selectedTable.getVerticalBar().getSelection();
+
+        // Remember the identifiers of the currently selected choices for
+        // each table, if any.
+        getItemsFromList(availableTable, true, true,
+                selectedAvailableChoiceIdentifiers);
+        getItemsFromList(selectedTable, true, true,
+                selectedSelectedChoiceIdentifiers);
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
 
         // If a drag is mid-process, cancel it.
         dragSourceList = dropTargetList = null;
 
-        // Get a list of the choice names, and set the
+        // Create the mapping of choice identifiers to names.
+        associateChoiceIdentifiersWithNames();
+
+        // Synchronize the widgets with the current state, as this will
+        // populate the two tables appropriately.
+        synchronizeWidgetsToState();
+
+        // For each of the tables, see what items were selected previously
+        // that are present in the new item list for that table, and select
+        // those items.
+        Table[] tables = { availableTable, selectedTable };
+        for (Table table : tables) {
+            List<String> selectedChoiceIdentifiers = (table == availableTable ? selectedAvailableChoiceIdentifiers
+                    : selectedSelectedChoiceIdentifiers);
+            List<TableItem> selectedTableItems = new ArrayList<TableItem>();
+            for (TableItem item : table.getItems()) {
+                if (selectedChoiceIdentifiers.contains(item.getData())) {
+                    selectedTableItems.add(item);
+                }
+            }
+            if (selectedTableItems.size() > 0) {
+                table.setSelection(selectedTableItems
+                        .toArray(new TableItem[selectedTableItems.size()]));
+            }
+        }
+
+        // Clear the selected choices lists, as they are no longer needed.
+        selectedAvailableChoiceIdentifiers.clear();
+        selectedSelectedChoiceIdentifiers.clear();
+
+        // Set the scrollbar positions to be similar to what it was before.
+        availableTable.getVerticalBar().setSelection(availableScrollPosition);
+        selectedTable.getVerticalBar().setSelection(selectedScrollPosition);
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToState() {
+
+        // If a drag is mid-process, cancel it.
+        dragSourceList = dropTargetList = null;
+
+        // Get a list of the choice identifiers, and set the
         // selected list's contents to match it.
-        ChoicesMegawidgetSpecifier specifier = (ChoicesMegawidgetSpecifier) getSpecifier();
-        String[] items = state.toArray(new String[state.size()]);
         selectedTable.removeAll();
-        for (String choice : items) {
+        for (String choice : state) {
             TableItem item = new TableItem(selectedTable, SWT.NONE);
-            item.setText(0, specifier.getLongVersionFromChoice(choice));
+            item.setText(0, choiceNamesForIdentifiers.get(choice));
+            item.setData(choice);
         }
         selectedTable.getColumn(0).pack();
 
         // Determine which choices are left over, and
         // set the available list's contents to match.
         availableTable.removeAll();
-        for (String choice : specifier.getChoiceIdentifiers()) {
-            boolean notSelected = true;
-            for (String selectedChoice : items) {
-                if (choice.equals(selectedChoice)) {
-                    notSelected = false;
-                    break;
-                }
-            }
-            if (notSelected) {
+        ListBuilderSpecifier specifier = getSpecifier();
+        for (Object choice : choices) {
+            String identifier = specifier.getIdentifierOfNode(choice);
+            if (state.contains(identifier) == false) {
                 TableItem item = new TableItem(availableTable, SWT.NONE);
-                item.setText(0, specifier.getLongVersionFromChoice(choice));
+                item.setText(0, specifier.getNameOfNode(choice));
+                item.setData(identifier);
             }
         }
         availableTable.getColumn(0).pack();
@@ -679,14 +799,6 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         enableOrDisableButtons();
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected void doSetEnabled(boolean enable) {
         if (availableLabel != null) {
@@ -700,14 +812,6 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         enableOrDisableButtons();
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
     @Override
     protected void doSetEditable(boolean editable) {
         Label label = (availableLabel != null ? availableLabel : selectedLabel);
@@ -719,6 +823,19 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     }
 
     // Private Methods
+
+    /**
+     * Associate choice identifiers with names.
+     */
+    private void associateChoiceIdentifiersWithNames() {
+        choiceNamesForIdentifiers.clear();
+        ListBuilderSpecifier specifier = getSpecifier();
+        for (Object choice : choices) {
+            choiceNamesForIdentifiers.put(
+                    specifier.getIdentifierOfNode(choice),
+                    specifier.getNameOfNode(choice));
+        }
+    }
 
     /**
      * Update the buttons enabled state as is appropriate to the current states
@@ -803,7 +920,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     private void addAll() {
 
         // Add all available items to the selected list.
-        addItems(getItemsFromList(availableTable, false),
+        addItems(getItemsFromList(availableTable, false, true, null),
                 getLastSelectedIndex());
 
         // Remove all available items from the available
@@ -827,12 +944,12 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // list after the selected items are removed, if
         // any, as well as getting a list of the items
         // to be removed in ascending index order.
-        String[] items = new String[availableTable.getSelectionCount()];
+        List<String> identifiers = new ArrayList<String>();
         int firstUnselectedAfterSelected = getIndexOfFirstUnselectedAfterSelected(
-                availableTable, items);
+                availableTable, identifiers);
 
         // Add the items to the selected list.
-        addItems(items, index);
+        addItems(identifiers, index);
 
         // Get the indices that are currently selected,
         // so that they may be removed.
@@ -863,7 +980,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // in the selected list are found in the choices
         // list.
         int[] indices = getSelectedItemsChoiceIndices(getItemsFromList(
-                selectedTable, false));
+                selectedTable, false, false, null));
 
         // Repopulate the available list with all possible
         // choices, and select the items that were added
@@ -888,7 +1005,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // selected in the selected list are found in the
         // choices list.
         int[] indices = getSelectedItemsChoiceIndices(getItemsFromList(
-                selectedTable, true));
+                selectedTable, true, false, null));
 
         // Repopulate the available list with all possible
         // choices, and select the items that were added
@@ -926,7 +1043,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // available list that should not be there, be-
         // cause they are still part of the selected list.
         availableTable.remove(getSelectedItemsChoiceIndices(getItemsFromList(
-                selectedTable, false)));
+                selectedTable, false, false, null)));
         availableTable.getColumn(0).pack();
 
         // Show the selection in the available and se-
@@ -947,10 +1064,14 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         int[] indices = selectedTable.getSelectionIndices();
         Arrays.sort(indices);
         for (int j = 0; j < indices.length; j++) {
-            String choice = selectedTable.getItem(indices[j]).getText(0);
+            TableItem oldItem = selectedTable.getItem(indices[j]);
+            String name = oldItem.getText(0);
+            String identifier = (String) oldItem.getData();
             selectedTable.remove(indices[j]--);
             TableItem item = new TableItem(selectedTable, SWT.NONE, indices[j]);
-            item.setText(0, choice);
+            item.setText(0, name);
+            item.setData(identifier);
+
         }
         selectedTable.getColumn(0).pack();
 
@@ -974,10 +1095,13 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         int[] indices = selectedTable.getSelectionIndices();
         Arrays.sort(indices);
         for (int j = indices.length - 1; j >= 0; j--) {
-            String choice = selectedTable.getItem(indices[j]).getText(0);
+            TableItem oldItem = selectedTable.getItem(indices[j]);
+            String name = oldItem.getText(0);
+            String identifier = (String) oldItem.getData();
             selectedTable.remove(indices[j]++);
             TableItem item = new TableItem(selectedTable, SWT.NONE, indices[j]);
-            item.setText(0, choice);
+            item.setText(0, name);
+            item.setData(identifier);
         }
 
         // Select the just-moved items.
@@ -1008,9 +1132,9 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // one above it that is unselected, or just
         // -1 if the selection includes the first
         // item in the list.
-        String[] items = new String[selectedTable.getSelectionCount()];
+        List<String> identifiers = new ArrayList<String>();
         index = getClosestUnselectedIndexAtOrAboveIndex(selectedTable, index,
-                items);
+                identifiers);
 
         // If a valid index was found, get the item
         // at that index; it will need to be found
@@ -1026,7 +1150,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         selectedTable.remove(selectedTable.getSelectionIndices());
 
         // Add the items back at the appropriate index.
-        addItems(items,
+        addItems(identifiers,
                 (index == -1 ? -1 : selectedTable.indexOf(insertionIndexItem)));
 
         // Show the selection.
@@ -1056,39 +1180,39 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      * closest one that precedes the specified index, if the latter is selected.
      * If an array is specified, fill it with the selected items from the list.
      * 
-     * @param list
-     *            List for which the index is to be found.
+     * @param table
+     *            Table for which the index is to be found.
      * @param index
      *            Index to use as the base.
-     * @param items
-     *            Optional array; if supplied, it must be large enough to hold
-     *            all of the list's selected items, and it will be populated
-     *            with said items, in the order in which their indices occur.
+     * @param list
+     *            Optional list; if supplied, it will be populated with the
+     *            identifiers of the selected choices in the table, in the order
+     *            in which their indices occur.
      * @return Closest unselected index at or before the specified index, or
      *         <code>-1</code> if there is no such index.
      */
-    private int getClosestUnselectedIndexAtOrAboveIndex(Table list, int index,
-            String[] items) {
+    private int getClosestUnselectedIndexAtOrAboveIndex(Table table, int index,
+            List<String> list) {
 
-        // Get a list of the selected indices, and
+        // Get an array of the selected indices, and
         // sort it so that lower indices precede
         // higher ones.
-        int[] indices = list.getSelectionIndices();
+        int[] indices = table.getSelectionIndices();
         Arrays.sort(indices);
 
         // Iterate through the indices, finding the
         // one that matches the target index, if
         // the target is indeed selected. If an
-        // items array was provided, fill in the
+        // items list was provided, fill in the
         // items as well.
         int indexIntoSelected = -1;
         for (int j = 0; j < indices.length; j++) {
-            if (items != null) {
-                items[j] = list.getItem(indices[j]).getText(0);
+            if (list != null) {
+                list.add((String) table.getItem(indices[j]).getData());
             }
             if ((indexIntoSelected == -1) && (index == indices[j])) {
                 indexIntoSelected = j;
-                if (items == null) {
+                if (list == null) {
                     break;
                 }
             }
@@ -1115,38 +1239,38 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     }
 
     /**
-     * Get the first unselected index for the specified list following the first
-     * contiguous group of selected indices, and optionally fill the specified
-     * array with the selected items in the order in which they occur.
+     * Get the first unselected index for the specified table following the
+     * first contiguous group of selected indices, and optionally fill the
+     * specified list with the selected items in the order in which they occur.
      * 
+     * @param table
+     *            Table for which the index is to be found.
      * @param list
-     *            List for which the index is to be found.
-     * @param items
-     *            Optional array; if supplied, it must be large enough to hold
-     *            all of the list's selected items, and it will be populated
-     *            with said items, in the order in which their indices occur.
-     * @return First unselected index for the list that follows the first
+     *            Optional list; if supplied, it will be populated with the
+     *            identifiers of all selected choices in the table, in the order
+     *            in which their indices occur.
+     * @return First unselected index for the table that follows the first
      *         contiguous group of selected indices, or <code>-1</code> if there
      *         are no unselected indices.
      */
-    private int getIndexOfFirstUnselectedAfterSelected(Table list,
-            String[] items) {
+    private int getIndexOfFirstUnselectedAfterSelected(Table table,
+            List<String> list) {
 
-        // Get a list of the selected indices, and
+        // Get an array of the selected indices, and
         // sort it so that lower indices precede
         // higher ones.
-        int[] indices = list.getSelectionIndices();
+        int[] indices = table.getSelectionIndices();
         Arrays.sort(indices);
 
         // Iterate through the indices, finding the
         // first unselected index after the first
         // contiguous grouping of selected indices.
-        // If an items array was provided, fill in
+        // If an items list was provided, fill in
         // the items as well.
         int firstUnselectedAfterSelected = -1;
         for (int j = 0; j < indices.length; j++) {
-            if (items != null) {
-                items[j] = list.getItem(indices[j]).getText(0);
+            if (list != null) {
+                list.add((String) table.getItem(indices[j]).getData());
             }
             if ((j > 0) && (firstUnselectedAfterSelected == -1)
                     && (indices[j] > indices[j - 1] + 1)) {
@@ -1161,7 +1285,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // index.
         if (firstUnselectedAfterSelected == -1) {
             firstUnselectedAfterSelected = indices[indices.length - 1] + 1;
-            if (firstUnselectedAfterSelected >= list.getItemCount()) {
+            if (firstUnselectedAfterSelected >= table.getItemCount()) {
                 firstUnselectedAfterSelected = indices[0] - 1;
             }
         }
@@ -1173,13 +1297,13 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     /**
      * Add the specified items to the selected list.
      * 
-     * @param items
-     *            Items to be added.
+     * @param identifiers
+     *            Identifiers of the items to be added.
      * @param index
      *            Index after which to add the items; if it is <code>-1</code>,
      *            they will be added at the start of the list.
      */
-    private void addItems(String[] items, int index) {
+    private void addItems(List<String> identifiers, int index) {
 
         // Ensure that the items are added at the
         // beginning of the list if the index is
@@ -1194,9 +1318,10 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // Iterate through the items, adding each
         // in turn, one after the next.
         int startIndex = index;
-        for (String choice : items) {
+        for (String choice : identifiers) {
             TableItem item = new TableItem(selectedTable, SWT.NONE, index++);
-            item.setText(0, choice);
+            item.setText(0, choiceNamesForIdentifiers.get(choice));
+            item.setData(choice);
         }
         selectedTable.getColumn(0).pack();
 
@@ -1210,10 +1335,11 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      */
     private void addAllItemsToAvailableList() {
         availableTable.removeAll();
-        for (String choice : ((ChoicesMegawidgetSpecifier) getSpecifier())
-                .getChoiceNames()) {
+        ListBuilderSpecifier specifier = getSpecifier();
+        for (Object choice : choices) {
             TableItem item = new TableItem(availableTable, SWT.NONE);
-            item.setText(0, choice);
+            item.setText(0, specifier.getNameOfNode(choice));
+            item.setData(specifier.getIdentifierOfNode(choice));
         }
         availableTable.getColumn(0).pack();
     }
@@ -1226,16 +1352,19 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      *            Choices for which indices are to be found.
      * @return List of indices for the specified choices.
      */
-    private int[] getSelectedItemsChoiceIndices(String[] items) {
+    private int[] getSelectedItemsChoiceIndices(List<String> items) {
 
         // Iterate through the items, finding for
         // each the index indicating where it lives
         // in the choices list.
-        int[] indices = new int[items.length];
-        List<String> choices = ((ChoicesMegawidgetSpecifier) getSpecifier())
-                .getChoiceNames();
-        for (int j = 0; j < items.length; j++) {
-            int index = choices.indexOf(items[j]);
+        int[] indices = new int[items.size()];
+        List<String> choiceNames = new ArrayList<String>();
+        ListBuilderSpecifier specifier = getSpecifier();
+        for (Object choice : choices) {
+            choiceNames.add(specifier.getNameOfNode(choice));
+        }
+        for (int j = 0; j < items.size(); j++) {
+            int index = choiceNames.indexOf(items.get(j));
             if (index != -1) {
                 indices[j] = index;
             }
@@ -1249,36 +1378,48 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      * Set the state to match the selected list's contents.
      */
     private void megawidgetWidgetsChanged() {
-        state = new ArrayList<String>(Arrays.asList(getItemsFromList(
-                selectedTable, false)));
+        state.clear();
+        state.addAll(getItemsFromList(selectedTable, false, false, null));
         notifyListener(getSpecifier().getIdentifier(), state);
         notifyListener();
     }
 
     /**
-     * Get all the contents as an array of strings from the specified list.
+     * Get all the contents as a list of strings from the specified list.
      * 
-     * @param list
-     *            List from which to fetch the items.
+     * @param table
+     *            Table from which to fetch the items.
      * @param selectedOnly
      *            Flag indicating whether only the selected items should be
      *            fetched, or just all the items.
-     * @return Array of strings from the selected list.
+     * @param needIdentifiers
+     *            Flag indicating whether or not identifiers are to be returned
+     *            instead of names.
+     * @param list
+     *            Optional list to be cleared and populated; if <code>
+     *            null</code>, a new list is created.
+     * @return List of strings from the selected table.
      */
-    private String[] getItemsFromList(Table list, boolean selectedOnly) {
-        String[] items = new String[selectedOnly ? list.getSelectionCount()
-                : list.getItemCount()];
+    private List<String> getItemsFromList(Table table, boolean selectedOnly,
+            boolean needIdentifiers, List<String> list) {
+        if (list == null) {
+            list = new ArrayList<String>();
+        } else {
+            list.clear();
+        }
         if (selectedOnly) {
-            int[] indices = list.getSelectionIndices();
+            int[] indices = table.getSelectionIndices();
             Arrays.sort(indices);
-            for (int j = 0; j < items.length; j++) {
-                items[j] = list.getItem(indices[j]).getText(0);
+            for (int index : indices) {
+                list.add(needIdentifiers ? (String) table.getItem(index)
+                        .getData() : table.getItem(index).getText(0));
             }
         } else {
-            for (int j = 0; j < items.length; j++) {
-                items[j] = list.getItem(j).getText(0);
+            for (TableItem item : table.getItems()) {
+                list.add(needIdentifiers ? (String) item.getData() : item
+                        .getText(0));
             }
         }
-        return items;
+        return list;
     }
 }

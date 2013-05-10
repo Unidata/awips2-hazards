@@ -20,6 +20,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 28, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -27,20 +28,8 @@ import java.util.Map;
  * @version 1.0
  * @see CheckBoxesMenuMegawidget
  */
-public class CheckBoxesMenuSpecifier extends ChoicesMegawidgetSpecifier
+public class CheckBoxesMenuSpecifier extends FlatChoicesMegawidgetSpecifier
         implements IMenuSpecifier {
-
-    // Public Static Constants
-
-    /**
-     * Megawidget show on parent menu parameter name; a megawidget may include a
-     * boolean value associated with this name to indicate whether or not it
-     * wishes to have its menu items made a part of the parent menu it is given
-     * when created. If false, the items are instead placed on a submenu that
-     * pulls out from the parent menu. If not specified, it is assumed to be
-     * false.
-     */
-    public static final String MEGAWIDGET_ON_PARENT_MENU = "onParentMenu";
 
     // Private Variables
 

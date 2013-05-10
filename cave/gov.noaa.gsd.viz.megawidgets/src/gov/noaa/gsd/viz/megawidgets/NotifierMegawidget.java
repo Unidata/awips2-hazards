@@ -20,6 +20,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -50,7 +51,7 @@ public abstract class NotifierMegawidget extends Megawidget implements
      *            Hash table mapping widget creation time parameter identifiers
      *            to values.
      */
-    protected NotifierMegawidget(MegawidgetSpecifier specifier,
+    protected NotifierMegawidget(NotifierMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier);
         notificationListener = (INotificationListener) paramMap
@@ -65,7 +66,7 @@ public abstract class NotifierMegawidget extends Megawidget implements
      */
     protected final void notifyListener() {
         NotifierMegawidgetSpecifier specifier = getSpecifier();
-        if (specifier.isToNotify() && (notificationListener != null)) {
+        if (notificationListener != null) {
             notificationListener.megawidgetInvoked(this,
                     specifier.getCallbackData());
         }

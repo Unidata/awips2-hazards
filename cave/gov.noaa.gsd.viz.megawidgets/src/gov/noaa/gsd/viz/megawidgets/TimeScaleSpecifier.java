@@ -26,6 +26,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -39,19 +40,17 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
 
     /**
      * Minimum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>
-     * createMegawidget()</code>, its value must be an object of type
-     * <code>Long</code> indicating the minimum time in milliseconds that may be
-     * specified using the created megawidget.
+     * map passed to <code>createMegawidget()</code>, its value must be an
+     * object of type <code>Long</code> indicating the minimum time in
+     * milliseconds that may be specified using the created megawidget.
      */
     public static final String MINIMUM_TIME = "minimumTime";
 
     /**
      * Maximum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>
-     * createMegawidget()</code>, its value must be an object of type
-     * <code>Long</code> indicating the maximum time in milliseconds that may be
-     * specified using the created megawidget.
+     * map passed to <code>createMegawidget()</code>, its value must be an
+     * object of type <code>Long</code> indicating the maximum time in
+     * milliseconds that may be specified using the created megawidget.
      */
     public static final String MAXIMUM_TIME = "maximumTime";
 
@@ -75,8 +74,7 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
 
     /**
      * Map pairing state identifier keys with their indices in the list provided
-     * by the <code>getStateIdentifiers()
-     * </code> method.
+     * by the <code>getStateIdentifiers()</code> method.
      */
     private final Map<String, Integer> indicesForIds;
 

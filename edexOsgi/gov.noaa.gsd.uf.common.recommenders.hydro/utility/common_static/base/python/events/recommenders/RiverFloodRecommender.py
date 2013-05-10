@@ -66,19 +66,42 @@ class Recommender(RecommenderTemplate.Recommender):
         """        
         dialogDict = {"title": "Flood Recommender"}
         
-        fieldDict = {}
-        fieldDict["fieldType"] = "Slider"
-        fieldDict["fieldName"] = "forecastConfidencePercentage"
-        fieldDict["label"] = "Forecast Confidence (%)"
-        fieldDict["minValue"] = 0
-        fieldDict["maxValue"] = 100
-        fieldDict["incrementDelta"] = 1
+        choiceFieldDict = {}
+        choiceFieldDict["fieldType"] = "RadioButtons"
+        choiceFieldDict["fieldName"] = "forecastType"
+        choiceFieldDict["label"] = "Type:"
+        choiceFieldDict["choices"] = ["Watch", "Warning", "Set confidence:"]
         
-        fieldDicts = [fieldDict]
+        levelFieldDict = {}
+        levelFieldDict["fieldType"] = "IntegerSpinner"
+        levelFieldDict["fieldName"] = "forecastConfidencePercentage"
+        levelFieldDict["label"] = "Forecast Confidence (%)"
+        levelFieldDict["minValue"] = 0
+        levelFieldDict["maxValue"] = 100
+        levelFieldDict["incrementDelta"] = 10
+        levelFieldDict["showScale"] = True
+        
+        fieldDicts = [choiceFieldDict, levelFieldDict]
         dialogDict["fields"] = fieldDicts
-        
-        valueDict = {"forecastConfidencePercentage":50}
+
+        valueDict = {"forecastType":"Set confidence:", "forecastConfidencePercentage":50}
         dialogDict["valueDict"] = valueDict
+
+        # Define the side effects script used to make the megawidgets
+        # affect one another (in this case, radio button selection
+        # enables and disables the forecast confidence spinner).        
+        dialogDict["sideEffectsScript"] = """
+def applySideEffects(triggerIdentifier, mutableProperties):
+   if triggerIdentifier == "forecastType":
+      if mutableProperties["forecastType"]["values"]["forecastType"] == "Watch":
+         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 50 } } }
+      elif mutableProperties["forecastType"]["values"]["forecastType"] == "Warning":
+         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 80 } } }
+      else:
+         return { "forecastConfidencePercentage": { "enable": True } }
+   else:
+      return None
+"""
         
         return dialogDict
     

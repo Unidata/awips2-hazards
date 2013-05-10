@@ -19,6 +19,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 24, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -35,13 +36,6 @@ public class MegawidgetStateException extends MegawidgetException {
      * Serial version UID.
      */
     private static final long serialVersionUID = -814802644768798603L;
-
-    // Private Variables
-
-    /**
-     * State identifier.
-     */
-    private final String identifier;
 
     // Public Constructors
 
@@ -85,29 +79,23 @@ public class MegawidgetStateException extends MegawidgetException {
      */
     public MegawidgetStateException(String identifier, String type,
             Object badState, String message, Throwable cause) {
-        super(type, badState, message, cause);
-        this.identifier = identifier;
+        super(identifier, type, badState, message, cause);
     }
 
     // Public Methods
 
-    /**
-     * Get the state identifier.
-     * 
-     * @return State identifier.
-     */
-    public String getIdentifier() {
-        return identifier;
-    }
-
     @Override
     public String toString() {
-        return getClass().getName()
-                + " "
-                + (getType() != null ? MegawidgetSpecifier.MEGAWIDGET_TYPE
-                        + " = " + getType() + ", " : "")
-                + "state identifier = \"" + identifier + "\": invalid state \""
-                + getBadValue() + "\""
-                + (getMessage() != null ? ": " + getMessage() : "");
+        StringBuilder builder = new StringBuilder(getClass().getName() + " ");
+        if (getType() != null) {
+            builder.append(MegawidgetSpecifier.MEGAWIDGET_TYPE + " = "
+                    + getType() + ", ");
+        }
+        builder.append("state identifier = \"" + getIdentifier()
+                + "\": invalid state \"" + getBadValue() + "\"");
+        if (getMessage() != null) {
+            builder.append(": " + getMessage());
+        }
+        return builder.toString();
     }
 }

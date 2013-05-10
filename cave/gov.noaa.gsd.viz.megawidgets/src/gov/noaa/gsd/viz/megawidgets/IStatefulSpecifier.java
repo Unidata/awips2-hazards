@@ -23,6 +23,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -55,11 +56,11 @@ public interface IStatefulSpecifier {
      * string (if only one state identifier is associated with the specifier),
      * or else a dictionary mapping state identifiers to short label strings
      * (with one per state identifier). State identifiers are as specified in
-     * the value associated with the <code>
-     * MEGAWIDGET_IDENTIFIER</code> parameter. There must be the same number of
-     * short labels as there are states associated with this specifier, one per
-     * identifier. If not provided, If not provided, the value is taken to be
-     * the same as the value for the full-length labels.
+     * the value associated with the <code>MEGAWIDGET_IDENTIFIER</code>
+     * parameter. There must be the same number of short labels as there are
+     * states associated with this specifier, one per identifier. If not
+     * provided, If not provided, the value is taken to be the same as the value
+     * for the full-length labels.
      */
     public static final String MEGAWIDGET_STATE_SHORT_LABELS = "shortValueLabels";
 
@@ -69,32 +70,31 @@ public interface IStatefulSpecifier {
      * positive integer (if only one state identifier is associated with the
      * specifier), or else a dictionary mapping state identifiers to positive
      * integers (with one per state identifier). State identifiers are as
-     * specified in the value associated with the <code>
-     * MEGAWIDGET_IDENTIFIER</code> parameter. There must be the same number of
-     * positive integers as there are states associated with this specifier, one
-     * per identifier. These integers provide the relative visual weight of a
-     * state within a table, in comparison with the weights of other states
-     * associated with this or other stateful megawidget specifiers. If not
-     * provided, the relative weights for all states belonging to this
-     * megawidget specifier is taken to be 1.
+     * specified in the value associated with the <code>MEGAWIDGET_IDENTIFIER
+     * </code> parameter. There must be the same number of positive integers as
+     * there are states associated with this specifier, one per identifier.
+     * These integers provide the relative visual weight of a state within a
+     * table, in comparison with the weights of other states associated with
+     * this or other stateful megawidget specifiers. If not provided, the
+     * relative weights for all states belonging to this megawidget specifier is
+     * taken to be 1.
      */
     public static final String MEGAWIDGET_STATE_RELATIVE_WEIGHTS = "relativeValueWeights";
 
     /**
-     * Megawidget state default values parameter name; a megawidget may include
-     * a value associated with this name. The value may be either a single
-     * default state value (if only one state identifier is associated with the
-     * specifier), or else a dictionary mapping state identifiers to default
-     * state values (with one per state identifier). State identifiers are as
-     * specified in the value associated with the <code>
-     * MEGAWIDGET_IDENTIFIER</code> parameter. Each default state value must be
-     * of the type appropriate to a particular stateful specifier; for example,
-     * a specifier used to construct a text entry megawidget could require any
-     * default state value to be a string of text, whereas a specifier for an
-     * integer spinner megawidget might need the default state value to be an
-     * integer.
+     * Megawidget state values parameter name; a megawidget may include a value
+     * associated with this name. The value may be either a single state value
+     * (if only one state identifier is associated with the specifier), or else
+     * a dictionary mapping state identifiers to state values (with one per
+     * state identifier). State identifiers are as specified in the value
+     * associated with the <code>MEGAWIDGET_IDENTIFIER</code> parameter. Each
+     * state value must be of the type appropriate to a particular stateful
+     * specifier; for example, a specifier used to construct a text entry
+     * megawidget could require any state value to be a string of text, whereas
+     * a specifier for an integer spinner megawidget might need the state value
+     * to be an integer.
      */
-    public static final String MEGAWIDGET_STATE_DEFAULT_VALUES = "defaultValues";
+    public static final String MEGAWIDGET_STATE_VALUES = "values";
 
     // Public Methods
 
@@ -134,12 +134,12 @@ public interface IStatefulSpecifier {
     public int getRelativeWeight(String identifier);
 
     /**
-     * Get the default value of the specified state.
+     * Get the starting value of the specified state.
      * 
      * @param identifier
-     *            Identifier of the state for which the default value is
+     *            Identifier of the state for which the starting value is
      *            desired.
-     * @return Default state value.
+     * @return Starting state value.
      */
-    public Object getDefaultState(String identifier);
+    public Object getStartingState(String identifier);
 }

@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -126,9 +127,10 @@ public abstract class StatefulMegawidgetSpecifier extends
     private final Map<String, Integer> relativeWeightsForStateIdentifiers;
 
     /**
-     * Map pairing state identifiers with default values for each state, if any.
+     * Map pairing state identifiers with starting values for each state, if
+     * any.
      */
-    private final Map<String, Object> defaultValuesForStateIdentifiers;
+    private final Map<String, Object> valuesForStateIdentifiers;
 
     // Public Constructors
 
@@ -193,11 +195,11 @@ public abstract class StatefulMegawidgetSpecifier extends
                 parameters, MEGAWIDGET_STATE_RELATIVE_WEIGHTS,
                 "positive integer", 1, null, POSITIVE_INTEGER_VALUE_CONVERTER);
 
-        // Ensure that the default values, if present, are
+        // Ensure that the starting state values, if present, are
         // acceptable.
-        defaultValuesForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_DEFAULT_VALUES, "state value",
-                null, null, null);
+        valuesForStateIdentifiers = getStateMappedParametersFromObject(
+                parameters, MEGAWIDGET_STATE_VALUES, "state value", null, null,
+                null);
     }
 
     // Public Methods
@@ -258,8 +260,8 @@ public abstract class StatefulMegawidgetSpecifier extends
      * @return Default state value.
      */
     @Override
-    public final Object getDefaultState(String identifier) {
-        return defaultValuesForStateIdentifiers.get(identifier);
+    public final Object getStartingState(String identifier) {
+        return valuesForStateIdentifiers.get(identifier);
     }
 
     /**
@@ -423,7 +425,7 @@ public abstract class StatefulMegawidgetSpecifier extends
         // wait on the commit until afterward.
         boolean toBeCommitted = false;
         for (String identifier : stateIdentifiers) {
-            Object defaultValue = getDefaultState(getIdentifier());
+            Object defaultValue = getStartingState(getIdentifier());
             if (defaultValue != null) {
                 if (megawidget instanceof IExplicitCommitStateful) {
                     ((IExplicitCommitStateful) megawidget).setUncommittedState(

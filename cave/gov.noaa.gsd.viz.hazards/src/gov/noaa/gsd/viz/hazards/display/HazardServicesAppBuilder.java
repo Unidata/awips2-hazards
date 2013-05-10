@@ -29,6 +29,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.timer.HazardServicesTimer;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 import gov.noaa.gsd.viz.mvp.IView;
 
@@ -80,7 +81,9 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * ------------ ---------- ----------- --------------------------
  * Jan 28, 2013            bryon.lawrence      Initial creation
  * May 10, 2013            Chris.Golden        Change HID to Eclipse view implementation.
- * 
+ * Jun 20, 2013   1277     Chris.Golden        Added code to support the specification
+ *                                             of a Python side effects applier anywhere
+ *                                             in Hazard Services.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -288,6 +291,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         currentTime = null;
 
         PlatformUI.getWorkbench().addWorkbenchListener(this);
+
+        // Initialize the Python side effects applier.
+        PythonSideEffectsApplier.initialize();
 
         /*
          * For testing and demos, force DRT for operational mode start HS
@@ -949,5 +955,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Close the Jep connection.
         messageHandler.closeJepConnection();
+
+        // Prepare the Python side effects applier for shutdown.
+        PythonSideEffectsApplier.prepareForShutDown();
     }
 }

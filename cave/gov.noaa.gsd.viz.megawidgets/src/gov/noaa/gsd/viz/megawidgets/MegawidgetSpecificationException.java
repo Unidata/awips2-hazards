@@ -19,6 +19,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 24, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -36,12 +37,6 @@ public class MegawidgetSpecificationException extends MegawidgetException {
     private static final long serialVersionUID = -8957251278649153793L;
 
     // Private Constants
-
-    /**
-     * Identifier of the invalid megawidget specification, or <code>null</code>
-     * if the identifier was not able to be determined.
-     */
-    private final String identifier;
 
     /**
      * Name of the parameter that is missing or faulty in the specification.
@@ -99,43 +94,39 @@ public class MegawidgetSpecificationException extends MegawidgetException {
     public MegawidgetSpecificationException(String identifier, String type,
             String badParamName, Object badParamValue, String message,
             Throwable cause) {
-        super(type, badParamValue, message, cause);
-        this.identifier = identifier;
+        super(identifier, type, badParamValue, message, cause);
         this.badParamName = badParamName;
     }
 
     // Public Methods
 
-    /**
-     * Get the identifier of the problematic specification.
-     * 
-     * @return Identifier of the problematic specification, or <code>null</code>
-     *         if one could not be found.
-     */
-    public String getIdentifier() {
-        return identifier;
-    }
-
     @Override
     public String toString() {
-        String typeAndId = ((identifier != null) && (getType() != null) ? " ("
-                + MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER + " = \""
-                + identifier + "\", " + MegawidgetSpecifier.MEGAWIDGET_TYPE
-                + " = " + getType() + ")" : (identifier != null ? " ("
-                + MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER + " = "
-                + identifier + ")" : (getType() != null ? " ("
-                + MegawidgetSpecifier.MEGAWIDGET_TYPE + " = " + getType() + ")"
-                : "")));
-        return getClass().getName()
-                + typeAndId
-                + (badParamName != null ? ": parameter \""
-                        + badParamName
-                        + "\" "
-                        + (getBadValue() == null ? "missing value"
-                                : "has illegal value \"" + getBadValue()
-                                        + "\" of type "
-                                        + getBadValue().getClass().getName())
-                        : "")
-                + (getMessage() != null ? ": " + getMessage() : "");
+        StringBuilder builder = new StringBuilder(getClass().getName());
+        if ((getIdentifier() != null) && (getType() != null)) {
+            builder.append(" (" + MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER
+                    + " = \"" + getIdentifier() + "\", "
+                    + MegawidgetSpecifier.MEGAWIDGET_TYPE + " = " + getType()
+                    + ")");
+        } else if (getIdentifier() != null) {
+            builder.append(" (" + MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER
+                    + " = " + getIdentifier() + ")");
+        } else if (getType() != null) {
+            builder.append(" (" + MegawidgetSpecifier.MEGAWIDGET_TYPE + " = "
+                    + getType() + ")");
+        }
+        if (badParamName != null) {
+            builder.append(": parameter \"" + badParamName + "\" ");
+            if (getBadValue() == null) {
+                builder.append("missing value");
+            } else {
+                builder.append("has illegal value \"" + getBadValue()
+                        + "\" of type " + getBadValue().getClass().getName());
+            }
+        }
+        if (getMessage() != null) {
+            builder.append(": " + getMessage());
+        }
+        return builder.toString();
     }
 }

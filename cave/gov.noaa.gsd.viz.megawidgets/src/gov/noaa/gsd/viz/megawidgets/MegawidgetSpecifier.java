@@ -42,14 +42,14 @@ import org.eclipse.swt.widgets.Widget;
  * </code> with two columns. A suggestion as to how a megawidget positions
  * itself within the layout may be included via its specifier.
  * <p>
- * All subclasses must have a constructor taking arguments identical to those
- * taken by the constructor of this class. Furthermore, all concrete subclasses
- * of <code>Megawidget</code> must have the same name as their corresponding
- * specifier classes, except with "Specifier" replaced with "Megawidget", and
- * each such subclass must exist in the same package as its specifier. Thus, for
- * example, if there is a specifier with the path and name <code>
- * org.foo.megawidgets.ExampleSpecifier</code>, the latter will assume that the
- * megawidget it is to construct is an instance of the class <code>
+ * All concrete subclasses must have a constructor taking arguments identical to
+ * those taken by the constructor of this class. Furthermore, all concrete
+ * subclasses of <code>Megawidget</code> must have the same name as their
+ * corresponding specifier classes, except with "Specifier" replaced with
+ * "Megawidget", and each such subclass must exist in the same package as its
+ * specifier. Thus, for example, if there is a specifier with the path and name
+ * <code>org.foo.megawidgets.ExampleSpecifier</code>, the latter will assume
+ * that the megawidget it is to construct is an instance of the class <code>
  * org.foo.megawidgets.ExampleMegawidget</code>.
  * 
  * <pre>
@@ -58,6 +58,7 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -633,8 +634,9 @@ public abstract class MegawidgetSpecifier {
         try {
             return getIntegerValueFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -667,8 +669,9 @@ public abstract class MegawidgetSpecifier {
         try {
             return getIntegerObjectFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -700,8 +703,9 @@ public abstract class MegawidgetSpecifier {
         try {
             return getLongValueFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -734,8 +738,9 @@ public abstract class MegawidgetSpecifier {
         try {
             return getLongObjectFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -767,8 +772,9 @@ public abstract class MegawidgetSpecifier {
         try {
             return getBooleanValueFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -801,8 +807,44 @@ public abstract class MegawidgetSpecifier {
         try {
             return getBooleanObjectFromObject(object, defValue);
         } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(identifier, e.getType(),
-                    paramName, e.getBadValue(), e.getMessage(), e.getCause());
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Get a dynamically typed object from the specified object as a specifier
+     * parameter. The object must be either <code>null</code> (only allowed if
+     * <code>defValue</code> is not <code>null</code>), or an object of dynamic
+     * type <code>T</code>.
+     * 
+     * @param object
+     *            Object to be cast or converted.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param requiredClass
+     *            Class to which this object must be cast or converted.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Object of the specified dynamic type.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    protected final <T> T getSpecifierDynamicallyTypedObjectFromObject(
+            Object object, String paramName, Class<T> requiredClass, T defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getDynamicallyTypedObjectFromObject(object, requiredClass,
+                    defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
         }
     }
 
@@ -830,7 +872,7 @@ public abstract class MegawidgetSpecifier {
             throws MegawidgetException {
         if (object == null) {
             if (defValue == null) {
-                throw new MegawidgetException(getType(), null, null);
+                throw new MegawidgetException(identifier, getType(), null, null);
             } else {
                 return defValue.intValue();
             }
@@ -841,13 +883,14 @@ public abstract class MegawidgetSpecifier {
                     - number.doubleValue() != 0.0))
                     || (value < Integer.MIN_VALUE)
                     || (value > Integer.MAX_VALUE)) {
-                throw new MegawidgetException(getType(), number,
+                throw new MegawidgetException(identifier, getType(), number,
                         "must be integer");
             } else {
                 return (int) value;
             }
         } else {
-            throw new MegawidgetException(getType(), object, "must be integer");
+            throw new MegawidgetException(identifier, getType(), object,
+                    "must be integer");
         }
     }
 
@@ -901,7 +944,7 @@ public abstract class MegawidgetSpecifier {
             throws MegawidgetException {
         if (object == null) {
             if (defValue == null) {
-                throw new MegawidgetException(getType(), null, null);
+                throw new MegawidgetException(identifier, getType(), null, null);
             } else {
                 return defValue.longValue();
             }
@@ -910,13 +953,13 @@ public abstract class MegawidgetSpecifier {
             long value = number.longValue();
             if (((number instanceof Double) || (number instanceof Float))
                     && ((value) - number.doubleValue() != 0.0)) {
-                throw new MegawidgetException(getType(), number,
+                throw new MegawidgetException(identifier, getType(), number,
                         "must be long integer");
             } else {
                 return value;
             }
         } else {
-            throw new MegawidgetException(getType(), object,
+            throw new MegawidgetException(identifier, getType(), object,
                     "must be long integer");
         }
     }
@@ -972,7 +1015,7 @@ public abstract class MegawidgetSpecifier {
             throws MegawidgetException {
         if (object == null) {
             if (defValue == null) {
-                throw new MegawidgetException(getType(), null, null);
+                throw new MegawidgetException(identifier, getType(), null, null);
             } else {
                 return defValue.booleanValue();
             }
@@ -982,7 +1025,7 @@ public abstract class MegawidgetSpecifier {
             if ((((number instanceof Double) || (number instanceof Float)) && ((value)
                     - number.doubleValue() != 0.0))
                     || ((value != 0L) && (value != 1L))) {
-                throw new MegawidgetException(getType(), number,
+                throw new MegawidgetException(identifier, getType(), number,
                         "must be boolean");
             } else {
                 return (value == 1L ? true : false);
@@ -990,7 +1033,8 @@ public abstract class MegawidgetSpecifier {
         } else if (object instanceof Boolean) {
             return ((Boolean) object).booleanValue();
         } else {
-            throw new MegawidgetException(getType(), object, "must be boolean");
+            throw new MegawidgetException(identifier, getType(), object,
+                    "must be boolean");
         }
     }
 
@@ -1020,6 +1064,67 @@ public abstract class MegawidgetSpecifier {
             return (Boolean) object;
         } else {
             return getBooleanValueFromObject(object, defValue);
+        }
+    }
+
+    /**
+     * Get a dynamically typed object from the specified object. The object must
+     * be either <code>null</code> (only allowed if <code>defValue</code> is not
+     * <code>null</code>), or an object of dynamic type <code>T</code>.
+     * 
+     * @param object
+     *            Object to be cast or converted.
+     * @param requiredClass
+     *            Class to which this object must be cast or converted.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Object of the specified dynamic type.
+     * @throws MegawidgetException
+     *             If an object of the dynamic type cannot be obtained from the
+     *             original object.
+     */
+    @SuppressWarnings("unchecked")
+    <T> T getDynamicallyTypedObjectFromObject(Object object,
+            Class<T> requiredClass, T defValue) throws MegawidgetException {
+
+        // If no object was supplied, return the default value, or throw an
+        // exception if no default was supplied either.
+        if (object == null) {
+            if (defValue == null) {
+                throw new MegawidgetException(identifier, getType(), null, null);
+            } else {
+                return defValue;
+            }
+        }
+
+        // If the value cannot be cast, throw an exception. Otherwise, if the
+        // required dynamic type is extended or implemented by the class of
+        // the object, the object itself may be returned. If neither of these
+        // are the case, do some conversions for specific types of objects
+        // if one of these is desired, or throw an exception if no conversion
+        // can be done.
+        try {
+            T value = (T) object;
+            if (requiredClass.isAssignableFrom(value.getClass())) {
+                return value;
+            } else if (requiredClass.equals(Integer.class)) {
+                return (T) getIntegerObjectFromObject(value, null);
+            } else if (requiredClass.equals(Long.class)) {
+                return (T) getLongObjectFromObject(value, null);
+            } else if (requiredClass.equals(Boolean.class)) {
+                return (T) getBooleanObjectFromObject(value, null);
+            } else {
+                throw new ClassCastException(value.getClass()
+                        + " cannot be cast to " + requiredClass);
+            }
+        } catch (Exception e) {
+            throw new MegawidgetException(identifier, getType(), object,
+                    "must be " + requiredClass.getSimpleName(),
+                    new ClassCastException(object.getClass()
+                            + " cannot be cast to " + requiredClass));
         }
     }
 
