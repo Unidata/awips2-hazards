@@ -370,8 +370,8 @@ public final class HazardServicesMessageHandler {
 
             Bundle bundle = Platform.getBundle(Utilities
                     .getSessionManagerPlugin());
-            statusHandler.debug("buildJepIncludePath: ",
-                    Utilities.getSessionManagerPlugin());
+            statusHandler.debug("buildJepIncludePath: "
+                    + Utilities.getSessionManagerPlugin());
             File file = new File(FileLocator.resolve(bundle.getResource("src"))
                     .getPath());
             file = file.getParentFile().getParentFile().getParentFile();

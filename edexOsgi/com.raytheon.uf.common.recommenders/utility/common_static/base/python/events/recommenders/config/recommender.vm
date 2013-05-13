@@ -23,7 +23,7 @@ class Recommender(RecommenderTemplate.Recommender):
 	
 	def defineScriptMetadata(self):
 		metadata = {}
-		metadata['author'] = $author
+		metadata['author'] = "$author"
 		# TODO fill in values applying to the script metadata
 		# Description of the script
 		metadata['description'] = "Add description here"
