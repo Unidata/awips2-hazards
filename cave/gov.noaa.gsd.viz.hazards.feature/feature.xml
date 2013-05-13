@@ -33,15 +33,13 @@
          id="com.raytheon.uf.common.dataplugin.events"
          download-size="0"
          install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="com.raytheon.uf.common.dataplugin.events.hazards"
          download-size="0"
          install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="gov.noaa.gsd.viz.hazards"
@@ -88,13 +86,6 @@
          unpack="false"/>
 
    <plugin
-         id="gov.noaa.gsd.viz.widgets"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
          id="gov.noaa.gsd.viz.megawidgets"
          download-size="0"
          install-size="0"
@@ -105,22 +96,13 @@
          id="gov.noaa.gsd.common.utilities"
          download-size="0"
          install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="gov.noaa.gsd.uf.common.dataplugin.hazards"
          download-size="0"
          install-size="0"
-         version="0.0.0"
-         unpack="false"/>
-
-   <plugin
-         id="gov.noaa.gsd.viz.mvp"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="gov.noaa.gsd.viz.widgets"
@@ -128,4 +110,5 @@
          install-size="0"
          version="0.0.0"
          unpack="false"/>
+
 </feature>

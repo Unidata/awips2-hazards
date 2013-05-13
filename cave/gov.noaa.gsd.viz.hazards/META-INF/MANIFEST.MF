@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Viz Ihis Drawing display Capabilities
+Bundle-Name: Viz Hazards Drawing display Capabilities
 Bundle-SymbolicName: gov.noaa.gsd.viz.hazards;singleton:=true
 Bundle-Version: 1.0
 Bundle-Activator: gov.noaa.gsd.viz.hazards.display.HazardServicesActivator
