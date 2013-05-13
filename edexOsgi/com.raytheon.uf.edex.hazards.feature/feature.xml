@@ -21,13 +21,15 @@
          id="com.raytheon.uf.common.dataplugin.events"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
    <plugin
          id="com.raytheon.uf.common.dataplugin.events.hazards"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
    <plugin
          id="com.raytheon.uf.edex.hazards"
@@ -40,13 +42,15 @@
          id="com.raytheon.uf.common.recommenders"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
    <plugin
          id="com.raytheon.uf.common.hazards.productgen"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
    <plugin
          id="gov.noaa.gsd.common.utilities"
@@ -59,12 +63,14 @@
          id="gov.noaa.gsd.uf.common.dataplugin.hazards"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
    <plugin
          id="gov.noaa.gsd.uf.common.recommenders.hydro"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
 </feature>

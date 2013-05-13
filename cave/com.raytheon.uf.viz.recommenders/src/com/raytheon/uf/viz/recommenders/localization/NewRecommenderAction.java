@@ -33,6 +33,9 @@ import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 
+import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
+import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -43,6 +46,7 @@ import com.raytheon.uf.common.localization.exception.LocalizationOpFailedExcepti
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.localization.LocalizationPerspectiveUtils;
 import com.raytheon.uf.viz.localization.service.ILocalizationService;
@@ -102,7 +106,7 @@ public class NewRecommenderAction extends Action {
         int returnCode = dialog.open();
         if (returnCode == Window.OK) {
             String scriptName = dialog.getValue();
-            LocalizationFile file = getUserFile(scriptName);
+            final LocalizationFile file = getUserFile(scriptName);
 
             File f = file.getFile();
             if (f.exists()) {
@@ -129,17 +133,35 @@ public class NewRecommenderAction extends Action {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to close the file writer", e);
             }
+
+            final ILocalizationService service = LocalizationPerspectiveUtils
+                    .changeToLocalizationPerspective();
             try {
+                final Runnable select = new Runnable() {
+                    @Override
+                    public void run() {
+                        service.selectFile(file);
+                        service.openFile(file);
+                    }
+                };
+                final ILocalizationFileObserver[] observers = new ILocalizationFileObserver[1];
+                ILocalizationFileObserver observer = new ILocalizationFileObserver() {
+                    @Override
+                    public void fileUpdated(FileUpdatedMessage message) {
+                        if (message.getChangeType() != FileChangeType.DELETED) {
+                            service.fileUpdated(message);
+                            VizApp.runAsync(select);
+                        }
+                        file.removeFileUpdatedObserver(observers[0]);
+                    }
+                };
+                observers[0] = observer;
+                file.addFileUpdatedObserver(observer);
                 file.save();
             } catch (LocalizationOpFailedException e) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to save file to localization", e);
             }
-
-            ILocalizationService service = LocalizationPerspectiveUtils
-                    .changeToLocalizationPerspective();
-            service.refresh(file);
-            service.openFile(file);
         }
     }
 
