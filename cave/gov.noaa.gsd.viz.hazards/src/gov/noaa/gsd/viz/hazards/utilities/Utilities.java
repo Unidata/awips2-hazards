@@ -21,6 +21,7 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
+import com.raytheon.uf.viz.core.localization.BundleScanner;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -52,10 +53,8 @@ public class Utilities {
     /**
      * GSD Python plugins.
      */
-    public static final List<String> GSD_PYTHON_PLUGINS = Lists.newArrayList(
-            SESSION_MANAGER_PLUGIN,
-            "gov.noaa.gsd.viz.hazards.datatransformation",
-            "gov.noaa.gsd.viz.hazards.database");
+    public static final List<String> GSD_PYTHON_PLUGINS = Lists
+            .newArrayList(SESSION_MANAGER_PLUGIN);
 
     /**
      * Minimum time as an epoch time in milliseconds.
@@ -395,17 +394,6 @@ public class Utilities {
      */
     public static final String SETTING_CONFIG = "viewConfig";
 
-    // Private Static Constants
-
-    /**
-     * Edex paths.
-     */
-    private static final List<String> EDEX_PATHS = Lists
-            .newArrayList(
-                    "com.raytheon.uf.common.dataplugin.events.hazards/utility/common_static/base/python/events",
-                    "com.raytheon.uf.common.recommenders/utility/common_static/base/recommenders/utilities",
-                    "com.raytheon.uf.common.recommenders/utility/common_static/base/recommenders/events");
-
     // Private Static Variables
 
     /**
@@ -488,14 +476,24 @@ public class Utilities {
         List<String> sourcePaths = Lists.newArrayList();
 
         for (String plugin : GSD_PYTHON_PLUGINS) {
-            sourcePaths.add(String.format(Utils.directoryJoin(basePath, "cave",
-                    plugin, "src")));
+            File srcPath = BundleScanner.searchInBundle(plugin, "src",
+                    File.separator);
+            if (srcPath != null) {
+                sourcePaths.add(srcPath.getAbsolutePath());
+            }
         }
 
-        for (String edexPath : EDEX_PATHS) {
-            sourcePaths.add(String.format(Utils.directoryJoin(basePath,
-                    "edexOsgi", edexPath)));
-        }
+        // NOT SURE THIS IS USED, BUT WILL KEEP IT IN
+        IPathManager manager = PathManagerFactory.getPathManager();
+        LocalizationContext context = manager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        LocalizationFile lFile = manager.getLocalizationFile(context, "python"
+                + File.separator + "events");
+        sourcePaths.add(lFile.getFile().getAbsolutePath());
+        lFile = manager.getLocalizationFile(context, "python" + File.separator
+                + "events" + File.separator + "recommenders" + File.separator
+                + "utilities");
+        sourcePaths.add(lFile.getFile().getAbsolutePath());
 
         /**
          * Optional path entries such as python debugger

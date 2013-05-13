@@ -374,7 +374,6 @@ public final class HazardServicesMessageHandler {
                     + Utilities.getSessionManagerPlugin());
             File file = new File(FileLocator.resolve(bundle.getResource("src"))
                     .getPath());
-            file = file.getParentFile().getParentFile().getParentFile();
 
             /**
              * A real hack. The other directories are not plugins so we can't
