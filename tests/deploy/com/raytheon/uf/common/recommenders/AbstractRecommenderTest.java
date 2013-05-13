@@ -19,7 +19,8 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
+import gov.noaa.gsd.viz.hazards.utilities.FileUtilities;
 
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
-import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.PathManagerFactoryTest;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
@@ -64,6 +61,7 @@ public abstract class AbstractRecommenderTest {
      * 
      */
     public AbstractRecommenderTest() {
+        FileUtilities.fillFiles();
     }
 
     private AbstractRecommenderEngine<CAVERecommenderScriptManager> engine;

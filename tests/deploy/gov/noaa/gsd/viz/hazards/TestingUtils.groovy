@@ -15,6 +15,7 @@ import java.util.List;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel
 import gov.noaa.gsd.viz.hazards.display.ModelDecorator;
+import gov.noaa.gsd.viz.hazards.utilities.FileUtilities
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
@@ -42,6 +43,7 @@ class TestingUtils {
 
     public TestingUtils() {
         PathManagerFactoryTest.initLocalization();
+        FileUtilities.fillFiles();
     }
 
     /**
