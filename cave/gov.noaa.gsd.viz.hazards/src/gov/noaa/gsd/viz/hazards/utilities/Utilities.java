@@ -51,12 +51,6 @@ public class Utilities {
     public static final String SESSION_MANAGER_PLUGIN = "gov.noaa.gsd.viz.hazards.sessionmanager";
 
     /**
-     * GSD Python plugins.
-     */
-    public static final List<String> GSD_PYTHON_PLUGINS = Lists
-            .newArrayList(SESSION_MANAGER_PLUGIN);
-
-    /**
      * Minimum time as an epoch time in milliseconds.
      */
     public static final long MIN_TIME = 0L;
@@ -475,25 +469,30 @@ public class Utilities {
             throws IOException {
         List<String> sourcePaths = Lists.newArrayList();
 
-        for (String plugin : GSD_PYTHON_PLUGINS) {
-            File srcPath = BundleScanner.searchInBundle(plugin, "src",
-                    File.separator);
-            if (srcPath != null) {
-                sourcePaths.add(srcPath.getAbsolutePath());
-            }
+        File srcPath = BundleScanner.searchInBundle(SESSION_MANAGER_PLUGIN,
+                "src", File.separator);
+        if (srcPath != null) {
+            sourcePaths.add(srcPath.getAbsolutePath());
         }
 
         // NOT SURE THIS IS USED, BUT WILL KEEP IT IN
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationContext context = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile lFile = manager.getLocalizationFile(context, "python"
-                + File.separator + "events");
-        sourcePaths.add(lFile.getFile().getAbsolutePath());
-        lFile = manager.getLocalizationFile(context, "python" + File.separator
-                + "events" + File.separator + "recommenders" + File.separator
-                + "utilities");
-        sourcePaths.add(lFile.getFile().getAbsolutePath());
+        sourcePaths.add(manager
+                .getLocalizationFile(context,
+                        "python" + File.separator + "events").getFile()
+                .getAbsolutePath());
+        sourcePaths
+                .add(manager
+                        .getLocalizationFile(
+                                context,
+                                "python" + File.separator + "events"
+                                        + File.separator + "recommenders"
+                                        + File.separator + "utilities")
+                        .getFile().getAbsolutePath());
+        sourcePaths.add(manager.getLocalizationFile(context, "python")
+                .getFile().getAbsolutePath());
 
         /**
          * Optional path entries such as python debugger
