@@ -14,15 +14,13 @@ import java.util.List;
 import java.util.TimeZone;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
 import com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams;
 import com.raytheon.uf.common.ohd.AppsDefaults;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery.QueryLanguage;
-import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.viz.hydrocommon.HydroConstants;
 
 /**
  * Description: Product data accessor implementation of the
@@ -43,6 +41,8 @@ import com.raytheon.viz.hydrocommon.HydroConstants;
  * @version 1.0
  */
 public class FloodRecommenderDAO implements IFloodRecommenderDAO {
+
+    private static final String IHFS = "ihfs";
 
     /**
      * For logging...
@@ -133,20 +133,15 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         /*
          * Retrieve configuration information from the RpfParams table.
          */
-        try {
-            List<Object[]> rpfParmsList = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.HQL);
 
-            if (rpfParmsList != null && rpfParmsList.size() > 0) {
-                Object[] paramObject = rpfParmsList.get(0);
-                Rpfparams params = (Rpfparams) paramObject[0];
-                lookBackHoursForAllForecastPoints = params.getId().getObshrs();
-                lookForwardHoursForAllForecastPoints = params.getId()
-                        .getFcsthrs();
-            }
-        } catch (VizException e) {
-            statusHandler
-                    .info("Could not read RpfParams db table. Keeping defaults");
+        List<Object[]> rpfParmsList = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_HQLQUERY, query, IHFS, "RpfParams db");
+
+        if (rpfParmsList != null && rpfParmsList.size() > 0) {
+            Object[] paramObject = rpfParmsList.get(0);
+            Rpfparams params = (Rpfparams) paramObject[0];
+            lookBackHoursForAllForecastPoints = params.getId().getObshrs();
+            lookForwardHoursForAllForecastPoints = params.getId().getFcsthrs();
         }
 
         AppsDefaults appsDefaults = AppsDefaults.getInstance();
@@ -218,20 +213,19 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         List<RiverForecastPoint> forecastPointList = Lists.newArrayList();
         String query;
 
-        try {
-            query = "SELECT * FROM FpInfo WHERE hsa = '"
-                    + hazardSettings.getHsa() + "' ORDER BY ordinal, lid ASC";
-            List<Object[]> fpInfoResults = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-            /*
-             * Loop on the number of groups defined in the table and determine
-             * the number of forecast points included per group. This is
-             * necessary since some groups may not be used, either because they
-             * have no forecast points, or because their forecast points are for
-             * a different office.
-             */
-            for (Object[] infoRecord : fpInfoResults) {
+        query = "SELECT * FROM FpInfo WHERE hsa = '" + hazardSettings.getHsa()
+                + "' ORDER BY ordinal, lid ASC";
 
+        List<Object[]> fpInfoResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "forecast point");
+        /*
+         * Loop on the number of groups defined in the table and determine the
+         * number of forecast points included per group. This is necessary since
+         * some groups may not be used, either because they have no forecast
+         * points, or because their forecast points are for a different office.
+         */
+        if (fpInfoResults != null) {
+            for (Object[] infoRecord : fpInfoResults) {
                 if (infoRecord != null) {
                     // Create a new forecast point.
                     // reference to fp structure.
@@ -239,12 +233,7 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
                             this);
                     forecastPointList.add(fp);
                 }
-
             }
-
-        } catch (VizException e) {
-            statusHandler.error("Error retrieving forecast point information.",
-                    e);
         }
 
         return forecastPointList;
@@ -265,11 +254,11 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         List<RiverForecastGroup> riverGroupList = Lists.newArrayList();
         String query = "SELECT * FROM rpffcstgroup ORDER BY ordinal, group_id ASC";
 
-        try {
+        List<Object[]> rpffcstgroupResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
+                        "forecast group");
 
-            List<Object[]> rpffcstgroupResults = DirectDbQuery.executeQuery(
-                    query, HydroConstants.IHFS, QueryLanguage.SQL);
-
+        if (rpffcstgroupResults != null) {
             for (Object[] record : rpffcstgroupResults) {
                 int forecastPointCounter = 0;
                 ArrayList<RiverForecastPoint> forecastPointsInGroupList = new ArrayList<RiverForecastPoint>();
@@ -293,9 +282,6 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
                     riverGroupList.add(riverGroup);
                 }
             }
-
-        } catch (VizException e) {
-            statusHandler.error("Error retrieving forecast group info.", e);
         }
 
         return riverGroupList;
@@ -324,22 +310,19 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
                 + hazardSettings.getHsa() + "' "
                 + "AND (type IS NULL OR type NOT LIKE '%I%'));";
 
-        try {
-            List<Object[]> countyStateList = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.SQL);
+        List<Object[]> countyStateList = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
+                        "forecast county group");
 
-            if (countyStateList != null && countyStateList.size() > 0) {
-                for (Object[] countyRecord : countyStateList) {
-                    CountyForecastGroup countyForecastGroup = new CountyForecastGroup(
-                            forecastPointList, countyRecord,
-                            hazardSettings.getHsa(), this);
-                    countyForecastGroupList.add(countyForecastGroup);
-                }
-            } else {
-                statusHandler.info("No records in CountyNum table");
+        if (countyStateList != null && countyStateList.size() > 0) {
+            for (Object[] countyRecord : countyStateList) {
+                CountyForecastGroup countyForecastGroup = new CountyForecastGroup(
+                        forecastPointList, countyRecord,
+                        hazardSettings.getHsa(), this);
+                countyForecastGroupList.add(countyForecastGroup);
             }
-        } catch (VizException e) {
-            statusHandler.error("Error retrieving forecast county groups.", e);
+        } else {
+            statusHandler.info("No records in CountyNum table");
         }
 
         return countyForecastGroupList;
@@ -365,72 +348,59 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         /*
          * Retrieve configuration information from the RpfParams table.
          */
-        List<Object[]> rpfParmsList;
+        List<Object[]> rpfParmsList = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_HQLQUERY, query, IHFS, "IHFS hazard settings");
         HazardSettings hazardSettings = new HazardSettings();
 
-        try {
-            rpfParmsList = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.HQL);
+        if (rpfParmsList != null && rpfParmsList.size() > 0) {
+            Object[] paramObject = rpfParmsList.get(0);
+            Rpfparams params = (Rpfparams) paramObject[0];
 
-            if (rpfParmsList != null && rpfParmsList.size() > 0) {
-                Object[] paramObject = rpfParmsList.get(0);
-                Rpfparams params = (Rpfparams) paramObject[0];
-
-                hazardSettings.setRvsExpirationHours(params.getId()
-                        .getRvsexphrs());
-                hazardSettings.setFlsExpirationHours(params.getId()
-                        .getFlsexphrs());
-                hazardSettings.setFlwExpirationHours(params.getId()
-                        .getFlwexphrs());
-                hazardSettings.setObsLookbackHours(params.getId().getObshrs());
-                hazardSettings.setForecastLookForwardHours(params.getId()
-                        .getFcsthrs());
-            } else {
-                statusHandler.info("Could not load RpfParams information.");
-            }
-
-            query = "SELECT hsa from Admin";
-
-            List<Object[]> adminList;
-
-            adminList = DirectDbQuery.executeQuery(query, HydroConstants.IHFS,
-                    QueryLanguage.SQL);
-
-            if (adminList != null && adminList.size() > 0) {
-                Object[] adminRecord = adminList.get(0);
-                hazardSettings.setHsa(adminRecord[0].toString());
-            } else {
-                statusHandler.info("Could not load Admin information");
-            }
-
-            hazardSettings.setDefaultTimeZone(System.getenv("TZ"));
-
-            /*
-             * Retrieve the defaults which define the flood record values.
-             */
-            AppsDefaults appsDefaults = AppsDefaults.getInstance();
-            double vtecRecordStageOffset = appsDefaults.getDouble(
-                    "vtec_record_stageoffset",
-                    HazardSettings.DEFAULT_VTECRECORD_STAGE);
-            double vtecRecordFlowOffset = appsDefaults.getDouble(
-                    "vtec_record_flowoffset",
-                    HazardSettings.DEFAULT_VTECRECORD_FLOW);
-
-            if (vtecRecordStageOffset <= 0.0d) {
-                vtecRecordStageOffset = HazardSettings.DEFAULT_VTECRECORD_STAGE;
-            }
-
-            if (vtecRecordFlowOffset <= 0.0d) {
-                vtecRecordFlowOffset = HazardSettings.DEFAULT_VTECRECORD_FLOW;
-            }
-
-            hazardSettings.setVtecRecordStageOffset(vtecRecordStageOffset);
-            hazardSettings.setVtecRecordFlowOffset(vtecRecordFlowOffset);
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "Could not load IHFS Hazard Settings information.", e);
+            hazardSettings.setRvsExpirationHours(params.getId().getRvsexphrs());
+            hazardSettings.setFlsExpirationHours(params.getId().getFlsexphrs());
+            hazardSettings.setFlwExpirationHours(params.getId().getFlwexphrs());
+            hazardSettings.setObsLookbackHours(params.getId().getObshrs());
+            hazardSettings.setForecastLookForwardHours(params.getId()
+                    .getFcsthrs());
+        } else {
+            statusHandler.info("Could not load RpfParams information.");
         }
+
+        query = "SELECT hsa from Admin";
+
+        List<Object[]> adminList = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "admin");
+
+        if (adminList != null && adminList.size() > 0) {
+            Object[] adminRecord = adminList.get(0);
+            hazardSettings.setHsa(adminRecord[0].toString());
+        } else {
+            statusHandler.info("Could not load Admin information");
+        }
+
+        hazardSettings.setDefaultTimeZone(System.getenv("TZ"));
+
+        /*
+         * Retrieve the defaults which define the flood record values.
+         */
+        AppsDefaults appsDefaults = AppsDefaults.getInstance();
+        double vtecRecordStageOffset = appsDefaults.getDouble(
+                "vtec_record_stageoffset",
+                HazardSettings.DEFAULT_VTECRECORD_STAGE);
+        double vtecRecordFlowOffset = appsDefaults.getDouble(
+                "vtec_record_flowoffset",
+                HazardSettings.DEFAULT_VTECRECORD_FLOW);
+
+        if (vtecRecordStageOffset <= 0.0d) {
+            vtecRecordStageOffset = HazardSettings.DEFAULT_VTECRECORD_STAGE;
+        }
+
+        if (vtecRecordFlowOffset <= 0.0d) {
+            vtecRecordFlowOffset = HazardSettings.DEFAULT_VTECRECORD_FLOW;
+        }
+
+        hazardSettings.setVtecRecordStageOffset(vtecRecordStageOffset);
+        hazardSettings.setVtecRecordFlowOffset(vtecRecordFlowOffset);
 
         return hazardSettings;
 
@@ -466,14 +436,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
                 + "') ");
         query.append("AND basistime IS NULL ");
 
-        List<Object[]> riverStatusResults = null;
-
-        try {
-            riverStatusResults = DirectDbQuery.executeQuery(query.toString(),
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Error querying RiverStatus Table", e);
-        }
+        List<Object[]> riverStatusResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "RiverStatus");
 
         return riverStatusResults;
 
@@ -514,14 +479,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         query.append("AND pe = '" + physicalElement + "' ");
         query.append("AND ingest = 'T' ORDER BY 1 ");
 
-        List<Object[]> ingestResults = null;
-
-        try {
-            ingestResults = DirectDbQuery.executeQuery(query.toString(),
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Could not read IHFS IngestTable.", e);
-        }
+        List<Object[]> ingestResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "IHFS ingest");
 
         return ingestResults;
 
@@ -550,13 +510,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
             query.append("AND ( pe LIKE 'H%%' OR pe LIKE 'Q%%') ");
             query.append("AND ingest = 'T'");
 
-            try {
-                ingestResults = DirectDbQuery.executeQuery(query.toString(),
-                        HydroConstants.IHFS, QueryLanguage.SQL);
-            } catch (VizException e) {
-                statusHandler.error("Could not query IngestFilter table", e);
-            }
-
+            ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                    "IngestFilter");
         }
 
         return ingestResults;
@@ -616,16 +572,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
         query.append("ORDER BY obstime ASC ");
 
-        List<Object[]> observationRecordList = null;
-
-        try {
-            observationRecordList = DirectDbQuery.executeQuery(
-                    query.toString(), HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error(
-                    "Error retrieving observed river hydrograph. query: "
-                            + query, e);
-        }
+        List<Object[]> observationRecordList = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "observed river hydrograph");
 
         return observationRecordList;
     }
@@ -689,16 +638,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         query.append("AND quality_code >= " + QUESTIONABLE_BAD_THRESHOLD + " ");
         query.append("ORDER BY basistime DESC");
 
-        List<Object[]> basisTimeResults = null;
-
-        try {
-            basisTimeResults = DirectDbQuery.executeQuery(query.toString(),
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error(
-                    "Error retrieving river forecast basis time. query: "
-                            + query, e);
-        }
+        List<Object[]> basisTimeResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "river forecast basis time");
 
         return basisTimeResults;
 
@@ -788,16 +730,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
             query.append("ORDER BY validtime ASC");
         }
 
-        List<Object[]> forecastResults = null;
-
-        try {
-            forecastResults = DirectDbQuery.executeQuery(query.toString(),
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error(
-                    "Error retrieving river forecast hydrograph. query: "
-                            + query, e);
-        }
+        List<Object[]> forecastResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "river forecast hydrograph");
 
         return forecastResults;
     }
@@ -888,37 +823,33 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         query.append("AND ts LIKE '" + ts_prefix + "%' ");
         query.append("AND ingest = 'T' ORDER BY ts_rank, ts");
 
-        try {
-            List<Object[]> ingestResults = DirectDbQuery.executeQuery(
-                    query.toString(), HydroConstants.IHFS, QueryLanguage.SQL);
+        List<Object[]> ingestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                "IngestFilter table");
 
-            if (ingestResults != null && ingestResults.size() > 0) {
-                /*
-                 * if no specific ordinal number was requested, return with the
-                 * highest rank.
-                 */
-                if (ordinal <= 0) {
-                    tsFound = ingestResults.get(0)[3].toString();
-                }
-                /* if a specific ordinal number was requested. */
-                else {
-                    /*
-                     * get a count of the number of matching ts entries. if the
-                     * requested ordinal number is greater than the number
-                     * available then return with a not found status.
-                     */
-                    cnt = ingestResults.size();
-
-                    if (ordinal <= cnt) {
-                        Object[] ingestRecord = ingestResults.get(ordinal);
-                        tsFound = ingestRecord[3].toString();
-                    }
-                }
-
+        if (ingestResults != null && ingestResults.size() > 0) {
+            /*
+             * if no specific ordinal number was requested, return with the
+             * highest rank.
+             */
+            if (ordinal <= 0) {
+                tsFound = ingestResults.get(0)[3].toString();
             }
-        } catch (VizException e) {
-            statusHandler.error("Could not query IngestFilter table. query: "
-                    + query, e);
+            /* if a specific ordinal number was requested. */
+            else {
+                /*
+                 * get a count of the number of matching ts entries. if the
+                 * requested ordinal number is greater than the number available
+                 * then return with a not found status.
+                 */
+                cnt = ingestResults.size();
+
+                if (ordinal <= cnt) {
+                    Object[] ingestRecord = ingestResults.get(ordinal);
+                    tsFound = ingestRecord[3].toString();
+                }
+            }
+
         }
 
         return tsFound;
@@ -944,15 +875,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
                 + "AND lid IN " + "(SELECT lid FROM location WHERE hsa='"
                 + hsaID + "' " + "AND (type IS NULL OR type NOT LIKE '%I%'));";
 
-        List<Object[]> countyForecastPointList = null;
-
-        try {
-            countyForecastPointList = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Error querying IHFS countynum table. query: "
-                    + query, e);
-        }
+        List<Object[]> countyForecastPointList = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY, query, IHFS,
+                        "IHFS countynum");
 
         return countyForecastPointList;
 
@@ -978,14 +903,9 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         StringBuffer query = new StringBuffer("SELECT lat, lon ");
         query.append("FROM Location WHERE lid = '" + lid + "'");
 
-        List<Object[]> locationResults = null;
-
-        try {
-            locationResults = DirectDbQuery.executeQuery(query.toString(),
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Error querying IHFS location table.", e);
-        }
+        List<Object[]> locationResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "IHFS location");
 
         return locationResults;
     }
@@ -1002,15 +922,8 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         String query = "SELECT q FROM Crest WHERE lid = '" + lid
                 + "' AND prelim = 'R' AND stage is NOT NULL";
 
-        List<Object[]> crestResults = null;
-
-        try {
-            crestResults = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Error querying IHFS Crest table. query: "
-                    + query, e);
-        }
+        List<Object[]> crestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS, "IHFS Crest");
 
         return crestResults;
     }
@@ -1027,14 +940,8 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         String query = "SELECT stage FROM Crest WHERE lid = '" + lid
                 + "' AND prelim = 'R' AND stage is NOT NULL";
 
-        List<Object[]> crestResults = null;
-        try {
-            crestResults = DirectDbQuery.executeQuery(query,
-                    HydroConstants.IHFS, QueryLanguage.SQL);
-        } catch (VizException e) {
-            statusHandler.error("Error querying IHFS crest table. query: "
-                    + query, e);
-        }
+        List<Object[]> crestResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS crest table");
 
         return crestResults;
     }
