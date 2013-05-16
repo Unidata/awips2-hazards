@@ -1,11 +1,10 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -897,27 +896,26 @@ public class RiverForecastPoint {
      * 
      * @param previousEventDict
      */
-    public void loadObservedForecastValues(Dict previousEventDict) {
+    public void loadObservedForecastValues(Map<String, Object> previousEventDict) {
         if (previousEventDict != null) {
             this.previousProductAvailable = true;
 
-            Double obsValue = previousEventDict
-                    .getDynamicallyTypedValue("currentObsValue");
+            Double obsValue = (Double) previousEventDict.get("currentObsValue");
             this.previousCurObsValue = obsValue;
-            Long previousCurObsTime = previousEventDict
-                    .getDynamicallyTypedValue("currentObsValueTime");
+            Long previousCurObsTime = (Long) previousEventDict
+                    .get("currentObsValueTime");
             this.previousCurrentObsTime = new Date(previousCurObsTime);
-            Double maxFcstValue = previousEventDict
-                    .getDynamicallyTypedValue("maxForecastValue");
+            Double maxFcstValue = (Double) previousEventDict
+                    .get("maxForecastValue");
             this.previousMaxFcstValue = maxFcstValue;
-            Long maxForecastTime = previousEventDict
-                    .getDynamicallyTypedValue("maxForecastTime");
+            Long maxForecastTime = (Long) previousEventDict
+                    .get("maxForecastTime");
             this.previousMaxFcstTime = new Date(maxForecastTime);
-            Long maxForecastCTime = previousEventDict
-                    .getDynamicallyTypedValue("maxForecastCTime");
+            Long maxForecastCTime = (Long) previousEventDict
+                    .get("maxForecastCTime");
             this.previousMaxFcstCTime = new Date(maxForecastCTime);
-            Integer previousMaxObservedForecastCategory = previousEventDict
-                    .getDynamicallyTypedValue("maxObservedForecastCategory");
+            Integer previousMaxObservedForecastCategory = (Integer) previousEventDict
+                    .get("maxObservedForecastCategory");
             this.previousMaxObservedForecastCategory = previousMaxObservedForecastCategory;
         } else {
             this.previousProductAvailable = false;

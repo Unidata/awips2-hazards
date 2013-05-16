@@ -19,5 +19,4 @@ Import-Package: com.raytheon.uf.common.dataaccess.util,
  com.raytheon.uf.common.ohd,
  com.raytheon.uf.common.status,
  com.raytheon.uf.common.time,
- gov.noaa.gsd.viz.hazards.jsonutilities
 Export-Package: gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender

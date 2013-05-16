@@ -1,8 +1,7 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-
 import java.util.Date;
+import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
@@ -144,7 +143,7 @@ public class HydroEvent {
      *            event dict containing information to load into this hydro
      *            event.
      */
-    public HydroEvent(Dict eventDict) {
+    public HydroEvent(Map<String, Object> eventDict) {
         this();
         loadEvent(eventDict);
     }
@@ -162,26 +161,26 @@ public class HydroEvent {
      *            The flood recommender data access object
      */
     public HydroEvent(RiverForecastPoint forecastPoint,
-            HazardSettings hazardSettings, Dict eventDict,
+            HazardSettings hazardSettings, Map<String, Object> eventDict,
             IFloodRecommenderDAO floodDAO) {
         this();
         this.forecastPoint = forecastPoint;
 
         // Retrieve previous FL.W if any...
-        Dict previousFLWevent = getPreviousEvent(hazardSettings.getHsa(),
-                eventDict, HydroEvent.SIGNIF_WARNING);
+        Map<String, Object> previousFLWevent = getPreviousEvent(
+                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_WARNING);
 
         // If available, load the previous observed and forecast data in
         // the forecast point.
         forecastPoint.loadObservedForecastValues(previousFLWevent);
 
         // Retrieve previous FL.A if any...
-        Dict previousFLYevent = getPreviousEvent(hazardSettings.getHsa(),
-                eventDict, HydroEvent.SIGNIF_WATCH);
+        Map<String, Object> previousFLYevent = getPreviousEvent(
+                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_WATCH);
 
         // Retrieve previous FL.Y if any...
-        Dict previousFLAevent = getPreviousEvent(hazardSettings.getHsa(),
-                eventDict, HydroEvent.SIGNIF_ADVISORY);
+        Map<String, Object> previousFLAevent = getPreviousEvent(
+                hazardSettings.getHsa(), eventDict, HydroEvent.SIGNIF_ADVISORY);
 
         this.previousFLW = new HydroEvent(previousFLWevent);
 
@@ -189,17 +188,17 @@ public class HydroEvent {
         this.previousFLY = new HydroEvent(previousFLYevent);
 
         // Retrieve previous inactive FL.W if any...
-        Dict previousInactiveFLWevent = getPreviousInactiveEvent(
+        Map<String, Object> previousInactiveFLWevent = getPreviousInactiveEvent(
                 hazardSettings.getHsa(), eventDict, floodDAO,
                 HydroEvent.SIGNIF_WARNING);
 
         // Retrieve previous inactive FL.Y if any...
-        Dict previousInactiveFLYevent = getPreviousInactiveEvent(
+        Map<String, Object> previousInactiveFLYevent = getPreviousInactiveEvent(
                 hazardSettings.getHsa(), eventDict, floodDAO,
                 HydroEvent.SIGNIF_WARNING);
 
         // Retrieve previous inactive FL.A if any...
-        Dict previousInactiveFLAevent = getPreviousInactiveEvent(
+        Map<String, Object> previousInactiveFLAevent = getPreviousInactiveEvent(
                 hazardSettings.getHsa(), eventDict, floodDAO,
                 HydroEvent.SIGNIF_WARNING);
 
@@ -223,18 +222,21 @@ public class HydroEvent {
      * @param significance
      * @return The previously issued event for this forecast point if any.
      */
-    private Dict getPreviousEvent(String geoId, Dict eventDict,
-            String significance) {
-        Dict previousEvent = null;
+    private Map<String, Object> getPreviousEvent(String geoId,
+            Map<String, Object> eventDict, String significance) {
+        Map<String, Object> previousEvent = null;
         long mostRecentCreationTime = Long.MIN_VALUE;
 
         if ((eventDict != null) && (!eventDict.isEmpty())) {
             Set<String> eventIDs = eventDict.keySet();
 
             for (String eventID : eventIDs) {
-                Dict dict = (Dict) eventDict.get(eventID);
-                String siteID = dict.getDynamicallyTypedValue("siteID");
-                String type = dict.getDynamicallyTypedValue("type");
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dict = (Map<String, Object>) eventDict
+                        .get(eventID);
+                String siteID = (String) dict.get("siteID");
+                String type = (String) dict.get("type");
                 int dotPosition = type.indexOf('.');
                 String phenomena = type.substring(0, dotPosition);
                 String eventSignificance = type.substring(++dotPosition);
@@ -246,8 +248,8 @@ public class HydroEvent {
                 if (siteID.equals(geoId)
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
-                    Number eventCreationTimeNumber = dict
-                            .getDynamicallyTypedValue("creationTime");
+                    Number eventCreationTimeNumber = (Number) dict
+                            .get("creationTime");
                     long eventCreationTime = eventCreationTimeNumber
                             .longValue();
 
@@ -275,11 +277,12 @@ public class HydroEvent {
      *            The significance
      * @return The previous event (now inactive) for this forecast point.
      */
-    private Dict getPreviousInactiveEvent(String geoId, Dict eventDict,
-            IFloodRecommenderDAO floodDAO, String significance) {
+    private Map<String, Object> getPreviousInactiveEvent(String geoId,
+            Map<String, Object> eventDict, IFloodRecommenderDAO floodDAO,
+            String significance) {
         String activeETN = null;
 
-        Dict previousInactiveEvent = null;
+        Map<String, Object> previousInactiveEvent = null;
         long mostRecentCreationTime = Long.MIN_VALUE;
 
         if ((eventDict != null) && (!eventDict.isEmpty())) {
@@ -289,9 +292,11 @@ public class HydroEvent {
              * The first loop is for finding an active event.
              */
             for (String eventID : eventIDs) {
-                Dict dict = (Dict) eventDict.get(eventID);
-                String siteID = dict.getDynamicallyTypedValue("siteID");
-                String type = dict.getDynamicallyTypedValue("type");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dict = (Map<String, Object>) eventDict
+                        .get(eventID);
+                String siteID = (String) dict.get("siteID");
+                String type = (String) dict.get("type");
                 int dotPosition = type.indexOf('.');
                 String phenomena = type.substring(0, dotPosition);
                 String eventSignificance = type.substring(++dotPosition);
@@ -304,9 +309,8 @@ public class HydroEvent {
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
 
-                    Number number = dict
-                            .getDynamicallyTypedValue("creationTime");
-                    number = dict.getDynamicallyTypedValue("endTime");
+                    Number number = (Number) dict.get("creationTime");
+                    number = (Number) dict.get("endTime");
                     long previousEventEndtime = number.longValue();
 
                     /*
@@ -334,9 +338,11 @@ public class HydroEvent {
              * inactive event.
              */
             for (String eventID : eventIDs) {
-                Dict dict = (Dict) eventDict.get(eventID);
-                String siteID = dict.getDynamicallyTypedValue("siteID");
-                String type = dict.getDynamicallyTypedValue("type");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dict = (Map<String, Object>) eventDict
+                        .get(eventID);
+                String siteID = (String) dict.get("siteID");
+                String type = (String) dict.get("type");
                 int dotPosition = type.indexOf('.');
                 String phenomena = type.substring(0, dotPosition);
                 String eventSignificance = type.substring(++dotPosition);
@@ -348,10 +354,9 @@ public class HydroEvent {
                 if (siteID.equals(geoId)
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
-                    Number number = dict
-                            .getDynamicallyTypedValue("creationTime");
+                    Number number = (Number) dict.get("creationTime");
                     long eventCreationTime = number.longValue();
-                    number = dict.getDynamicallyTypedValue("endTime");
+                    number = (Number) dict.get("endTime");
                     long previousEventEndtime = number.longValue();
 
                     boolean active = checkIfEventActive(previousEventEndtime,
@@ -377,7 +382,7 @@ public class HydroEvent {
      * @param eventDict
      *            contains the event information to load into this hydro event.
      */
-    private void loadEvent(Dict eventDict) {
+    private void loadEvent(Map<String, Object> eventDict) {
         if (eventDict != null) {
             this.eventFound = true;
 
@@ -389,7 +394,7 @@ public class HydroEvent {
             this.vtecInfo.setVtecphenom(null);
             this.vtecInfo.setVtecsignif(null);
 
-            String eventID = eventDict.getDynamicallyTypedValue("eventID");
+            String eventID = (String) eventDict.get("eventID");
             this.vtecInfo.setEtn(Short.parseShort(eventID));
 
             /*
@@ -397,28 +402,27 @@ public class HydroEvent {
              */
             this.vtecInfo.setExpiretime(null);
 
-            Long startTime = eventDict.getDynamicallyTypedValue("startTime");
+            Long startTime = (Long) eventDict.get("startTime");
             this.vtecInfo.setBegintime(new Date(startTime));
-            Long endTime = eventDict.getDynamicallyTypedValue("endTime");
+            Long endTime = (Long) eventDict.get("endTime");
             this.vtecInfo.setEndtime(new Date(endTime));
 
-            String severity = eventDict
-                    .getDynamicallyTypedValue("floodSeverity");
+            String severity = (String) eventDict.get("floodSeverity");
             this.vtecInfo.setVtecsever(new Vtecsever(severity));
 
-            String cause = eventDict.getDynamicallyTypedValue("immediateCause");
+            String cause = (String) eventDict.get("immediateCause");
             this.vtecInfo.setVteccause(new Vteccause(cause));
 
-            String record = eventDict.getDynamicallyTypedValue("floodRecord");
+            String record = (String) eventDict.get("floodRecord");
             this.vtecInfo.setVtecrecord(new Vtecrecord(record));
 
-            Long riseTime = eventDict.getDynamicallyTypedValue("riseAbove");
+            Long riseTime = (Long) eventDict.get("riseAbove");
             this.vtecInfo.setRisetime(new Date(riseTime));
 
-            Long crestTime = eventDict.getDynamicallyTypedValue("crest");
+            Long crestTime = (Long) eventDict.get("crest");
             this.vtecInfo.setCresttime(new Date(crestTime));
 
-            Long fallTime = eventDict.getDynamicallyTypedValue("fallBelow");
+            Long fallTime = (Long) eventDict.get("fallBelow");
             this.vtecInfo.setFalltime(new Date(fallTime));
 
             // Typesources not implemented at the moment.

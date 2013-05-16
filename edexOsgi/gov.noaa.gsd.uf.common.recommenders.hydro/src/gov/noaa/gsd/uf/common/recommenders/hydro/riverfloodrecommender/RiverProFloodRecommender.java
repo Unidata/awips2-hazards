@@ -2,7 +2,6 @@ package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
 
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HydroEvent.HydroEventReason;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint.HydroGraphTrend;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -184,7 +183,7 @@ public class RiverProFloodRecommender {
      * previous events.
      */
     private void loadPreviousEventInfo() {
-        Dict eventDict = null;
+        Map<String, Object> eventDict = null;
 
         for (RiverForecastPoint forecastPoint : forecastPointList) {
             HydroEvent hazardEvent = new HydroEvent(forecastPoint,
