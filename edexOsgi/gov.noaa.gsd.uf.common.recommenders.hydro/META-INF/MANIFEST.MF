@@ -17,6 +17,7 @@ Import-Package: com.raytheon.uf.common.dataaccess.util,
  com.raytheon.uf.common.dataplugin,
  com.raytheon.uf.common.dataplugin.shef.tables,
  com.raytheon.uf.common.ohd,
+ com.raytheon.uf.common.serialization,
  com.raytheon.uf.common.status,
  com.raytheon.uf.common.time,
 Export-Package: gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender
