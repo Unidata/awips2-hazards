@@ -16,7 +16,9 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.auth;bundle-version="1.12.1174",
  com.raytheon.uf.common.plugin.nwsauth;bundle-version="1.12.1174",
- com.raytheon.uf.viz.core;bundle-version="1.12.1174",
- com.raytheon.viz.core;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataaccess;bundle-version="1.0.0"
+ com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
+ com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
+ javax.persistence;bundle-version="1.0.0",
+ javax.measure;bundle-version="1.0.0",
+ javax.vecmath;bundle-version="1.3.1"
 Export-Package: com.raytheon.uf.common.hazards.productgen

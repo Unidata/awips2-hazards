@@ -26,15 +26,15 @@ from com.raytheon.uf.common.localization import LocalizationContext_Localization
 from com.raytheon.uf.common.auth.resp import UserNotAuthorized #@UnresolvedImport
 from com.raytheon.uf.common.auth.resp import SuccessfulExecution #@UnresolvedImport
 from com.raytheon.uf.common.plugin.nwsauth.user import User #@UnresolvedImport
-from com.raytheon.uf.viz.core.requests import ThriftClient #@UnresolvedImport
-from com.raytheon.uf.viz.core.requests import PrivilegedRequestFactory #@UnresolvedImport
+from com.raytheon.uf.common.serialization.comm import RequestRouter #@UnresolvedImport
+from com.raytheon.uf.common.auth.req import AbstractPrivilegedRequest #@UnresolvedImport
 
 import numpy
-import sys
+import sys, os, traceback
 
 class LocalFileInstaller():
-    def __init__(self, host="ec"):
-        self.__tc = ThriftClient()
+    def __init__(self, host="ec"):        
+        self.__rr = RequestRouter
         self.__context = LocalizationContext()
         self.__lspr = self.createPutRequest()
         self.__lspr.setContext(self.__context)
@@ -43,7 +43,6 @@ class LocalFileInstaller():
         self.__luc = self.createListRequest()
         self.__luc.setContext(self.__context)
         self.__duc = self.createDeleteRequest()
-        self.__prf = PrivilegedRequestFactory()
         self.__duc.setContext(self.__context)
 
     def createPutRequest(self):
@@ -88,7 +87,7 @@ class LocalFileInstaller():
         self.__lspr.setBytes(numpy.fromstring(data, dtype=numpy.int8))
         
         try:
-            resp = self.__tc.sendRequest(self.__lspr)
+            resp = self.__rr.route(self.__lspr)
         except ThriftClient.ThriftRequestException:
             raise LocalFileInstallerException("putFile: Error sending request to server")
 
@@ -106,7 +105,7 @@ class LocalFileInstaller():
             else :
                 urm = UtilityRequestMessage()
                 urm.setCommands([self.__duc])
-            resp = self.__tc.sendRequest(urm)
+            resp = self.__rr.route(urm)
             if resp==None :
                 return False
         except :
@@ -114,28 +113,29 @@ class LocalFileInstaller():
         return True
 
     def getFile(self, fname):
-        self.__lsgr = self.__prf.constructPrivilegedRequest(LocalizationStreamGetRequest().getClass())
+        user = os.environ["USER"]
+        self.__lsgr = AbstractPrivilegedRequest.createRequest(LocalizationStreamGetRequest().getClass(), User(user))
         self.__lsgr.setFileName(fname)
         self.__lsgr.setContext(self.__context)
         resp = None
         try:
-            resp = self.__tc.sendRequest(self.__lsgr)
-            fileStr = str(resp.getBytes())
+            resp = self.__rr.route(self.__lsgr)
+            putReq = resp.getResponse()
+            fileStr = str(putReq.getBytes())
         except:
             raise LocalFileInstallerException("getFile: Error sending request to server")
-
         return fileStr
 
     def getList(self, dirname):
         self.__luc.setSubDirectory(dirname)
         nnn = len(dirname)+1
         resp = None
-        try:
+        try: 
             urm = UtilityRequestMessage()
             urmArray = jep.jarray(1, AbstractUtilityCommand)
             urmArray[0] = self.__luc
             urm.setCommands(urmArray)
-            resp = self.__tc.sendRequest(urm)
+            resp = self.__rr.route(urm)            
             respList = resp.getResponses()
             entries = respList[0].getEntries()
             retList = []
@@ -147,7 +147,6 @@ class LocalFileInstaller():
                     retList.append(onefil[nnn:])
         except ThriftClient.ThriftRequestException:
             raise LocalFileInstallerException("getList: Error sending request to server")
-
         return retList
 
     def check(self, filname):
@@ -158,7 +157,7 @@ class LocalFileInstaller():
             urmArray = jep.jarray(1, AbstractUtilityCommand)
             urmArray[0] = self.__luc
             urm.setCommands(urmArray)
-            resp = self.__tc.sendRequest(urm)
+            resp = self.__rr.route(urm)
             respList = resp.getResponses()
             entries = respList[0].getEntries()
             if len(entries)==1 and entries[0].getFileName()==filname :

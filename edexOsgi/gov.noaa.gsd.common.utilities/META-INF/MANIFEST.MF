@@ -2,10 +2,12 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Utilities
 Bundle-SymbolicName: gov.noaa.gsd.common.utilities
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 1.0.0
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
- com.google.guava;bundle-version="1.0.0"
+ com.google.guava;bundle-version="1.0.0",
+ com.raytheon.uf.common.auth;bundle-version="1.12.1174",
+ com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: com.google.gson,
  com.google.gson.annotations,
