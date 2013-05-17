@@ -110,6 +110,8 @@ public class SettingsView implements
                     // Remember the newly selected setting name and fire off
                     // the action.
                     fireAction("SettingChosen", (String) event.widget.getData());
+                } else {
+                    fireAction("UnsupportedOperation", "");
                 }
             }
         };

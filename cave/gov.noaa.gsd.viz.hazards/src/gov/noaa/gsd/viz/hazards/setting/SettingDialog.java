@@ -122,7 +122,8 @@ class SettingDialog extends BasicDialog {
      * implement non-standard behavior; or <code>null</code> for any menu item
      * that has no effect.
      */
-    private final Object[] EDIT_MENU_ITEM_ACTIONS = { null };
+    private final Object[] EDIT_MENU_ITEM_ACTIONS = { new SettingsAction(
+            "Revert", null) };
 
     // Private Variables
 

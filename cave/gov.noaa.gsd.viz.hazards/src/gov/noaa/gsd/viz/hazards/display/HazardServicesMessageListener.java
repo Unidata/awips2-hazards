@@ -23,6 +23,10 @@ import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 
 import java.util.List;
 
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
+
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -359,6 +363,11 @@ public class HazardServicesMessageListener {
             messageHandler.updateStaticSetting(settingsAction.getDetail());
         } else if (settingsAction.getAction().equals("Save As")) {
             messageHandler.createStaticSetting(settingsAction.getDetail());
+        } else {
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageDialog.openInformation(shell, null,
+                    "This feature is not yet implemented.");
         }
     }
 
