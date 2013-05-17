@@ -74,7 +74,7 @@ class DatabaseStorage:
         elif dataType == 'cannedEvents':
             # We are handling this in a special way and it does
             # NOT return JSON.
-            return self.getLocalData(self._cannedEventsFileName)
+            return []
         
         elif dataType in ["vtecRecords", "testVtecRecords"]:
             return self.getVtecRecords(dataType, info)
@@ -137,8 +137,8 @@ class DatabaseStorage:
             except:
                 pass
      
-    def resetEventDatabase(self):  
-        eventDicts = self.getLocalData(self._cannedDataPath+"cannedEvents", "eventsId")
+    def resetEventDatabase(self):
+        eventDicts = []  
         self.writeEventDatabase(eventDicts)
 
     def resetVtecDatabase(self):
