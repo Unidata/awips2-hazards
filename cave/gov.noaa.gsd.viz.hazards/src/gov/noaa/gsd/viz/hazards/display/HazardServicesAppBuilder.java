@@ -57,7 +57,6 @@ import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
 /**
@@ -94,7 +93,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Timer interval in milliseconds.
      */
-    public static final long TIMER_UPDATE_MS = TimeUnit.HOURS.toMillis(1);
+    public static final long TIMER_UPDATE_MS = TimeUnit.SECONDS.toMillis(10);
 
     /**
      * Temporal display originator.
@@ -295,12 +294,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * the user can interact with the CAVE status line clock only in
          * practice mode.
          */
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
-            currentTime = CANNED_TIME;
-        } else {
-            currentTime = Long.toString(SimulatedTime.getSystemTime().getTime()
-                    .getTime());
-        }
+        currentTime = Long.toString(SimulatedTime.getSystemTime().getTime()
+                .getTime());
 
         currentPerspectiveDescriptor = VizWorkbenchManager.getInstance()
                 .getActiveEditor().getSite().getPage().getPerspective();

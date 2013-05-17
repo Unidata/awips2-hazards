@@ -20,7 +20,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.tools.map.AbstractMapTool;
 
 /**
@@ -59,7 +58,14 @@ public class HazardServicesAction extends AbstractMapTool {
     public Object execute(ExecutionEvent event) throws ExecutionException {
         super.execute(event);
 
-        if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+        /*
+         * Test if the developer/user wants to set the CAVE clock to the canned
+         * data time. This is really for developers to facilitate their testing
+         * during development. This will be removed for IOC.
+         */
+        String useCannedTime = System.getenv("HAZARD_SERVICES_USE_CANNED_TIME");
+
+        if (useCannedTime != null && useCannedTime.equalsIgnoreCase("true")) {
 
             // Set CAVE to run in Displaced Real Time (DRT) Mode.
             Date date = new Date();
@@ -79,5 +85,4 @@ public class HazardServicesAction extends AbstractMapTool {
         }
         return null;
     }
-
 }
