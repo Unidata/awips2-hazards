@@ -31,6 +31,7 @@ from com.raytheon.uf.common.auth.req import AbstractPrivilegedRequest #@Unresolv
 
 import numpy
 import sys, os, traceback
+import getpass
 
 class LocalFileInstaller():
     def __init__(self, host="ec"):        
@@ -113,7 +114,7 @@ class LocalFileInstaller():
         return True
 
     def getFile(self, fname):
-        user = os.environ["USER"]
+        user = getpass.getuser()
         self.__lsgr = AbstractPrivilegedRequest.createRequest(LocalizationStreamGetRequest().getClass(), User(user))
         self.__lsgr.setFileName(fname)
         self.__lsgr.setContext(self.__context)

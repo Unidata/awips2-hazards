@@ -7,6 +7,7 @@ import glob
 import json
 import socket
 import re
+import getpass
 from jsonCombine import *
 from xml2Json import *
 import HazardServicesImporter
@@ -68,7 +69,7 @@ class LocalizationInterface():
     # EDEX host currently being used by Cave.
     def __init__(self, edexHost="") :
         global caveEdexHost
-        self.__curUser = os.environ["USER"]
+        self.__curUser = getpass.getuser()
         self.__defLoc = None
         self.__logger = HazardServicesLogger.getInstance()
         self.__repat = None
