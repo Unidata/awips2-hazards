@@ -27,7 +27,6 @@ import jep.JepException;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
-import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -76,26 +75,24 @@ public class CAVERecommenderScriptManager extends
      */
     @Override
     public List<IEvent> executeEntireRecommender(String recommenderName) {
-        for (EventRecommender rec : inventory) {
-            if (rec.getName().equals(recommenderName)) {
-                statusHandler.handle(Priority.VERBOSE, "Running "
-                        + recommenderName);
-                try {
-                    String recName = resolveCorrectName(recommenderName);
-                    if (isInstantiated(recName) == false) {
-                        instantiatePythonScript(recName);
-                    }
-                    Map<String, String> dialogValues = getInfo(recName,
-                            "getDialogInfo");
-                    showDialog(dialogValues);
-                    Map<String, String> spatialValues = getInfo(recName,
-                            "getSpatialInfo");
-                    return executeRecommender(recommenderName,
-                            new EventSet<IEvent>(), dialogValues, spatialValues);
-                } catch (JepException e) {
-                    statusHandler.handle(Priority.ERROR,
-                            "Unable to execute recommender", e);
+        if (inventory.containsKey(recommenderName)) {
+            statusHandler
+                    .handle(Priority.VERBOSE, "Running " + recommenderName);
+            try {
+                String recName = resolveCorrectName(recommenderName);
+                if (isInstantiated(recName) == false) {
+                    instantiatePythonScript(recName);
                 }
+                Map<String, String> dialogValues = getInfo(recName,
+                        "getDialogInfo");
+                showDialog(dialogValues);
+                Map<String, String> spatialValues = getInfo(recName,
+                        "getSpatialInfo");
+                return executeRecommender(recommenderName,
+                        new EventSet<IEvent>(), dialogValues, spatialValues);
+            } catch (JepException e) {
+                statusHandler.handle(Priority.ERROR,
+                        "Unable to execute recommender", e);
             }
         }
         return null;

@@ -24,7 +24,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 
 import jep.JepException;
 
@@ -39,7 +40,9 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
+import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
+import com.raytheon.uf.common.recommenders.executors.RecommenderMetadataExecutor;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -75,7 +78,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * all of them. We cache so that we don't have to run getScriptMetadata
      * continuously for every script.
      */
-    protected List<EventRecommender> inventory = null;
+    protected Map<String, EventRecommender> inventory = null;
 
     protected static LocalizationFile recommenderDir;
 
@@ -90,8 +93,7 @@ public abstract class AbstractRecommenderScriptManager extends
             String anIncludePath, ClassLoader classLoader,
             String aPythonClassName) throws JepException {
         super(filePath, anIncludePath, classLoader, aPythonClassName);
-        inventory = new CopyOnWriteArrayList<EventRecommender>();
-        recommenderDir.addFileUpdatedObserver(this);
+        inventory = new ConcurrentHashMap<String, EventRecommender>();
 
         String scriptPath = buildRecommenderPath();
         jep.eval(INTERFACE + " = RecommenderInterface('" + scriptPath + "')");
@@ -112,6 +114,7 @@ public abstract class AbstractRecommenderScriptManager extends
         jep.eval("sys.argv = ['RecommenderInterface']");
 
         Thread thread = new Thread("Retrieve Recommender List") {
+            @Override
             public void run() {
                 retrieveRecommenderList();
             };
@@ -253,38 +256,13 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     @SuppressWarnings("unchecked")
     private void retrieveRecommenderList() {
-        Map<String, Object> results = null;
-        LocalizationFile[] lFiles = PathManagerFactory.getPathManager()
-                .listFiles(recommenderDir.getContext(),
-                        recommenderDir.getName(), new String[] { "py" }, false,
-                        true);
+        IPathManager manager = PathManagerFactory.getPathManager();
+        LocalizationFile[] lFiles = manager.listStaticFiles(
+                recommenderDir.getName(), new String[] { "py" }, false, true);
         for (LocalizationFile lFile : lFiles) {
-            final String moduleName = resolveCorrectName(lFile.getFile()
-                    .getName());
-            try {
-                if (isInstantiated(moduleName) == false) {
-                    instantiatePythonScript(moduleName);
-                }
-
-                Map<String, Object> args = getStarterMap(moduleName);
-                results = (HashMap<String, Object>) execute(
-                        GET_SCRIPT_METADATA, INTERFACE, args);
-                if (results != null) {
-                    EventRecommender reco = new EventRecommender();
-                    reco.setName(moduleName);
-                    reco.setFile(lFile);
-                    Object auth = results.get(EventRecommender.AUTHOR);
-                    Object desc = results.get(EventRecommender.DESCRIPTION);
-                    Object vers = results.get(EventRecommender.VERSION);
-                    reco.setAuthor(auth != null ? auth.toString() : "");
-                    reco.setDescription(desc != null ? desc.toString() : "");
-                    reco.setVersion(vers != null ? vers.toString() : "");
-                    inventory.add(reco);
-                }
-            } catch (JepException e) {
-                statusHandler.handle(Priority.INFO, moduleName
-                        + " failed to instantiate.", e);
-            }
+            lFile.addFileUpdatedObserver(this);
+            EventRecommender reco = setMetadata(lFile);
+            inventory.put(reco.getName(), reco);
         }
     }
 
@@ -297,54 +275,67 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     @Override
     public void fileUpdated(FileUpdatedMessage message) {
+        IPathManager pathMgr = PathManagerFactory.getPathManager();
         FileChangeType type = message.getChangeType();
+        String[] dirs = message.getFileName().split(File.separator);
+        String name = dirs[dirs.length - 1];
+        String filename = resolveCorrectName(name);
         if (type == FileChangeType.UPDATED) {
-            for (EventRecommender rec : inventory) {
-                if (rec.getFile().getName().equals(message.getFileName())) {
-                    updateMetadata(rec);
-                    break;
-                }
-            }
+            EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
+                    message.getContext(), message.getFileName()));
+            inventory.put(filename, rec);
         } else if (type == FileChangeType.ADDED) {
-            for (EventRecommender rec : inventory) {
-                if (rec.getFile().getName().equals(message.getFileName())
-                        && rec.getFile()
-                                .getContext()
-                                .getLocalizationLevel()
-                                .compareTo(
-                                        message.getContext()
-                                                .getLocalizationLevel()) < 0) {
-                    updateMetadata(rec);
-                    break;
-                } else {
-                    EventRecommender newRec = new EventRecommender();
-                    // TODO get the file from the path manager?
-                    inventory.add(newRec);
-                }
+            if (inventory.get(filename) != null) {
+                inventory.get(filename).getFile()
+                        .removeFileUpdatedObserver(this);
             }
+            EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
+                    message.getContext(), message.getFileName()));
+            rec.getFile().addFileUpdatedObserver(this);
         } else if (type == FileChangeType.DELETED) {
-            for (EventRecommender rec : inventory) {
-                // TODO, need a better check here
-                if (rec.getFile().getName().equals(message.getFileName())) {
-                    inventory.remove(rec);
-                    break;
-                }
-            }
+            EventRecommender rec = inventory.remove(filename);
+            rec.getFile().removeFileUpdatedObserver(this);
         }
         super.fileUpdated(message);
     }
 
-    private void updateMetadata(EventRecommender rec) {
+    private EventRecommender setMetadata(LocalizationFile file) {
+        final String modName = resolveCorrectName(file.getFile().getName());
+        Map<String, String> results = null;
         try {
-            if (isInstantiated(rec.getName()) == false) {
-                instantiatePythonScript(rec.getName());
+            if (isInstantiated(modName) == false) {
+                instantiatePythonScript(modName);
             }
-            Map<String, Object> args = getStarterMap(rec.getName());
-            execute(GET_SCRIPT_METADATA, INTERFACE, args);
-        } catch (JepException e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to update metadata on file " + rec.getName(), e);
+            Map<String, Object> args = getStarterMap(modName);
+            results = (HashMap<String, String>) execute(GET_SCRIPT_METADATA,
+                    INTERFACE, args);
+        } catch (Throwable e) {
+            RecommenderMetadataExecutor<AbstractRecommenderScriptManager> executor = new RecommenderMetadataExecutor<AbstractRecommenderScriptManager>(
+                    modName);
+            PythonJobCoordinator<AbstractRecommenderScriptManager> coordinator = (PythonJobCoordinator<AbstractRecommenderScriptManager>) PythonJobCoordinator
+                    .getInstance("Recommenders");
+            try {
+                results = coordinator.submitSyncJob(executor);
+            } catch (InterruptedException e1) {
+                statusHandler.handle(Priority.PROBLEM,
+                        e1.getLocalizedMessage(), e1);
+            } catch (ExecutionException e1) {
+                statusHandler.handle(Priority.PROBLEM,
+                        e1.getLocalizedMessage(), e1);
+            }
         }
+        EventRecommender reco = new EventRecommender();
+        reco.setName(modName);
+        reco.setFile(file);
+        if (results != null) {
+            Object auth = results.get(EventRecommender.AUTHOR);
+            Object desc = results.get(EventRecommender.DESCRIPTION);
+            Object vers = results.get(EventRecommender.VERSION);
+            reco.setAuthor(auth != null ? auth.toString() : "");
+            reco.setDescription(desc != null ? desc.toString() : "");
+            reco.setVersion(vers != null ? vers.toString() : "");
+        }
+        return reco;
     }
 
     /**
@@ -377,6 +368,6 @@ public abstract class AbstractRecommenderScriptManager extends
     }
 
     public synchronized List<EventRecommender> getInventory() {
-        return inventory;
+        return new ArrayList<EventRecommender>(inventory.values());
     }
 }

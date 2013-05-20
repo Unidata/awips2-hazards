@@ -33,37 +33,35 @@
 #
 
 import os
+import imp
+import LocalizationUtil
 
 from PathManager import PathManager
-from PathManager import COMMON_STATIC, BASE, SITE, USER
-
-from com.raytheon.uf.common.dataplugin.events import EventSet
-
 from EventSet import EventSet
+
+from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
 
 def findConverter(eventSet):        
     # for now get the BASE site only, maybe we should add lower levels of localization later
     pathMgr = PathManager()
-    context = pathMgr.getContext(COMMON_STATIC, BASE)
     
-    # TODO, needs to better handle the /
     path = os.path.join('python', 'events')
-    events = pathMgr.listFiles(context, path, [".py"], False, True)
+    events = pathMgr.listFiles(path, [".py"], False, True, loctype='COMMON_STATIC',loclevel='BASE')
     if eventSet.size() > 0 :
         iter = eventSet.iterator()
         #assumes that every thing in the event set is of the same type
         next = iter.next()
         # for each python module in the directory
-        for event in events :
-            filename = os.path.splitext(event)[0]
-            importedEvent = __import__(filename, globals(), locals(), [], -1)
-            if hasattr(importedEvent,'canConvert'):
-                if importedEvent.canConvert(next) :
-                    return importedEvent
+        if events is not None :
+            for event in events :
+                importedEvent = LocalizationUtil.loadModule(event.getFilePath())
+                if hasattr(importedEvent,'canConvert'):
+                    if importedEvent.canConvert(next) :
+                        return importedEvent
     return None
 
 def convert(eventSet, converter):
-    pyEvents = EventSet(eventSet)
+    pyEvents = set()
     iter = eventSet.iterator()
     while iter.hasNext() :
         next = iter.next()
