@@ -20,7 +20,6 @@ class Product(ProductTemplate.Product):
         self.metaDict = {}
         # This is for the VTEC Engine
         self._productCategory = "FLW_FLS"
-        self._wmoID = "WGUS63"
         self._areaName = "" 
         # Does the product use zones or counties for areal hazards
         self._areaUgcType = 'counties'

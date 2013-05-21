@@ -20,7 +20,6 @@ class Product(ProductTemplate.Product):
         self._productCategory = "FFA"
         # This will be accessed through the afos2awips utility which is still being
         #   tested
-        self._wmoID = "WGUS63"
         self._areaName = "" 
         # Does the product use zones or counties for areal hazards
         self._areaUgcType = "publicZones"

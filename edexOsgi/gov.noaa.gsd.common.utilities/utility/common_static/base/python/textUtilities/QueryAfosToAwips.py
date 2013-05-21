@@ -10,71 +10,120 @@ May 6, 2013               Bryon Lawrence   Removed test for
                                            less than 9 character
                                            product id. Sometimes
                                            these can be 8.
+May 21, 2013              Bryon Lawrence   Refactored to use
+                                           Python Thrift Client
+                                           and GetPartialAfosIdRequest
+                                           dstype      
+
+May 22, 2013              Bryon Lawrence   Refactored to use
+                                           RequestRouter instead
+                                           of ThriftClient.                                           
+                                                                                
 @author James.E.Ramer@noaa.gov
 @version 1.0
 """
-from LocalizationInterface import *
-
-A2AData = None
-SiteData = None
+from com.raytheon.uf.common.serialization.comm import RequestRouter
+from com.raytheon.uf.common.dataplugin.text.request import GetPartialAfosIdRequest
 
 class QueryAfosToAwips() :
 
-    def initA2AData(self) :
-        global A2AData
-        global SiteData
-        A2AData = {}
-        SiteData = {}
+    def __init__(self, productID, siteID):
+        """
+        Builds an instance of QueryAfosToAwips
+        using the provided product id and site
+        id. Makes a query to the afos_to_awips
+        table in the fxatext db using 
+        request router.  Processes and stores the
+        results in member variables.
+        
+        @param productID: The product id, e.g. WSW
+        @param siteID:  The 3-letter site id, e.g. OAX
+        
+        @raise Exception: An error was encountered reading
+                          from the afos_to_awips table for
+                          the given productID and siteID. 
+                          This is a fatal circumstance. 
+                          A product should not be 
+                          generated unless it has valid
+                          product information in its header.  
+        """
+        #
+        # Build the request to read
+        # information from the afos_to_awips
+        # table      
+        request = GetPartialAfosIdRequest()
+        request.setNnn(productID)
+        request.setXxx(siteID)
+        requestRouter = RequestRouter
+        
+        try:
+            resp = requestRouter.route(request)
+            idList = resp.getIdList()
+            
+            if idList.size() > 0 :
+                afosToAwips = idList.get(0)
+                id = afosToAwips.getId()
+                cccnnnxxx = id.getAfosid()
+                self.ccc = cccnnnxxx[:3]
+                self.xxx = cccnnnxxx[6:]
+                self.nnn = cccnnnxxx[3:6]
+                self.wmoProd = id.getWmottaaii()
+                self.wmoSite = id.getWmocccc()
+                self.pil = cccnnnxxx[3:]
+                self.awipsWANPil = self.wmoSite + self.pil
+                self.textdbPil = cccnnnxxx
+            else:
+                raise Exception("QueryAfosToAwips: Could not read record from afos_to_awips for product ", \
+                                  productID, ", site ", siteID)
+                 
+        except:
+            raise Exception("QueryAfosToAwips: Could not read record from afos_to_awips for product ", \
+                              productID, ", site ", siteID)
 
-        # To do this as user awips, we have to submit this to the uEngine.
-        myLI = LocalizationInterface("")
-        psqlcmd = "psql -a -c #select * from afos_to_awips ;# fxatext "
-        result = myLI.submitCommand(psqlcmd, "postgres")
-        result = result.split("\n")
-        print "AfosToAwips result from table", result
-        for oneline in result :
-            parts = oneline.split("|")
-            if len(parts) < 3 :
-                continue
-            cccnnnxxx = parts[0].strip()
-            wmosite = parts[1].strip()
-            wmoprod = parts[2].strip()
-            if len(wmosite) < 4 or len(wmoprod) < 5 :
-                continue
-            if wmosite[0]!="K" and wmosite[0]!="T" and wmosite[0]!="P" :
-                continue
-            ccc = cccnnnxxx[:3]
-            xxx = cccnnnxxx[6:]
-            nnn = cccnnnxxx[3:6]
-            nnnEntry = A2AData.get(nnn)
-            if nnnEntry == None :
-                nnnEntry = {}
-                A2AData[nnn] = nnnEntry
-            nnnEntry[xxx] = { "wmoID" : wmoprod, "pil" : cccnnnxxx[3:], \
-                              "awipsWANPil" : wmosite+cccnnnxxx[3:],
-                              "textdbPil" : cccnnnxxx }
-            if not xxx in SiteData:
-                if nnn=="SVR" or nnn=="HYD" or xxx=="GUM" :
-                    SiteData[xxx] = { "CCC" : ccc, "WMO" : wmosite }
+    def getWMOsite(self) :
+        """
+        @return: The WMO site id, e.g. KOAX
+        """
+        return self.wmoSite
 
-        return
+    def getCCC(self) :
+        """
+        @return: The ccc id, e.g. DEN from DENWSWBOU
+        """
+        return self.ccc
+    
+    def getXXX(self):
+        """
+        @return: The xxx identifier, e.g. BOU from DENWSWBOU
+        """
+        return self.xxx
+    
+    def getNNN(self):
+        """
+        @return: The nnn identifier, e.g. WSW from DENWSWBOU
+        """
+        return self.nnn
+    
+    def getWMOprod(self):
+        """
+        @return: The WMO ttaaii, e.g. WWUS45 for DENWSWBOU
+        """
+        return self.wmoProd
 
-    def getWMOsite(self, site) :
-        global SiteData
-        if SiteData == None :
-            self.initA2AData()
-        siteEntry = SiteData.get(site, {})
-        return siteEntry.get("WMO", "K"+site)
-
-    def getCCC(self, site) :
-        global SiteData
-        if SiteData == None :
-            self.initA2AData()
-        siteEntry = SiteData.get(site, {})
-        return siteEntry.get("CCC", "")
-
-    def getNNNXXXinfo(self, nnn, site) :
-        global A2AData
-        if A2AData == None :
-            self.initA2AData()
-        return A2AData.get(nnn, {}).get(site, {})
+    def getPIL(self):
+        """
+        @return: The product PIL, e.g. WSWBOU from DENWSWBOU
+        """
+        return self.pil
+    
+    def getAwipsWANpil(self):
+        """
+        @return: The AWIPS wan pil; KBOUWSWBOU for DENWSWBOU
+        """
+        return self.awipsWANPil
+    
+    def getTextDBpil(self):
+        """
+        @return: The text db PIL, e.g. DENWSWBOU
+        """
+        return self.textdbPil

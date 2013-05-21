@@ -14,7 +14,7 @@ try:
     import JUtil #@UnresolvedImport
 except:
     pass
-#from dynamicserialize.dstypes.com.raytheon.uf.common.localization.stream import LocalizationStreamPutRequest
+
 from Bridge import Bridge
 from LocalizationInterface import *
 
@@ -219,22 +219,26 @@ class Product(object):
                                       
     def _getProductInfo(self, siteID, productID): 
         '''
-         Get Product Info given siteID e.g. OAX and product ID  (XXX) e.g. FFA
+         Get Product Info given siteID and product ID
+         @param siteID: The site identifier, e.g. OAX
+         @param productID: The product identifier, e.g. FFA
         '''
-        a2a = QueryAfosToAwips()        
-        #{'awipsWANPil': 'KTOPSVRTOP', 'textdbPil': 'TOPSVRTOP', 'pil': 'SVRTOP', 'wmoID': 'WUUS53'}
-        info = a2a.getNNNXXXinfo(productID, siteID)
-        self._wmoID = info.get("wmoID", "WGUS63")
-        self._CCC = a2a.getCCC(siteID)  #"OMA" # NNN
-        if self._CCC is None:
-            raise Exception("Cannot find CCC for siteID "+siteID)
+        #
+        # Retrieve the record from the afos_to_awips table
+        # for which the nnn and xxx portions of the afosid
+        # correspond to the productID and siteID, respectively.
+        a2a = QueryAfosToAwips(productID, siteID)        
+        self._wmoID = a2a.getWMOprod() # e.g. WUUS53
+        self._CCC = a2a.getCCC()  #e.g. OMA 
+        
+        # Product PIL, e.g. SVRTOP
         self._pil = productID + siteID
-        # Product ID for transmitting to AWIPS WAN.  
-        # Add to IGeneratedProducts for transmittal by client.
-        self._awipsWANPil = info.get("awipsWANPil", "KOAXFFAOAX")      
-        # Product ID for storing to AWIPS text database.  
-        # Add to IGeneratedProducts for transmittal by client.
-        self._textdbPil = info.get("textdbPil", self._CCC + productID + siteID) # "OMAFFAOAX" 
+
+        # Product ID for transmitting to AWIPS WAN, e.g. KTOPSVRTOP  
+        self._awipsWANPil = a2a.getAwipsWANpil()      
+      
+        # Product ID for storing to AWIPS text database, e.g. TOPSVRTOP  
+        self._textdbPil = a2a.getTextDBpil() 
             
     def _getSegments(self, eventDicts):
         '''
