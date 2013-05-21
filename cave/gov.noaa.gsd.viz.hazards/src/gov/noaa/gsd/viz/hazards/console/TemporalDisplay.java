@@ -1532,7 +1532,7 @@ class TemporalDisplay {
         if ((time < lower + (range / 8L)) || (time > upper - (range / 8L))) {
             lower = time - (range / 2L);
             upper = lower + range - 1L;
-            ruler.setVisibleValueRange(lower, upper);
+            setVisibleTimeRange(lower, upper, true);
         }
     }
 
