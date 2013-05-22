@@ -4,7 +4,7 @@ Adapter to the recommender framework
 Created on Mar 20, 2013
 @author: blawrenc
 """
-import json
+import json, traceback
 import os
 
 #
@@ -25,7 +25,9 @@ try:
     from java.lang import String #@UnresolvedImport
     import jep #@UnresolvedImport
 except:
-    pass
+    tbData = traceback.format_exc()
+    print tbData
+
 
 class ScriptAdapter:
     

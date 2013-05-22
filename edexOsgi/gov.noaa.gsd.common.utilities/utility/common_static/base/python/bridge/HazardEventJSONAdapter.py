@@ -1,4 +1,4 @@
-
+import traceback
 try:
     import JUtil
     import GeometryFactory
@@ -12,7 +12,9 @@ try:
     from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants #@UnresolvedImport
     from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardQueryBuilder #@UnresolvedImport
 except:
-    pass
+    tbData = traceback.format_exc()
+    print tbData
+
 import datetime
 
 #

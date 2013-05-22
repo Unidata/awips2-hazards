@@ -474,6 +474,12 @@ class ToolHandler(object):
             return 
         generatedProducts = self.bridge.handleProductGeneratorResult(toolID, generatedProducts)
         self.logger.info( "ToolHandler generatedProducts converted" + json.dumps(generatedProducts, indent=4))
+        if not generatedProducts:
+            emptyProduct = {
+                'productID': 'EMPTY',
+                'entries':{LEGACY_FORMAT:[" EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. "]}
+                }
+            generatedProducts = [emptyProduct]
         self.productsReceived += generatedProducts
         self.productGeneratorsReceived += 1
         
@@ -489,7 +495,8 @@ class ToolHandler(object):
             for product in self.productsReceived:
                 entries = product.get("entries")
                 productID = product.get("productID")
-                products.append({"productID":productID, LEGACY_FORMAT: entries.get(LEGACY_FORMAT)[0]})
+                legacyText = entries.get(LEGACY_FORMAT)[0]
+                products.append({"productID":productID, LEGACY_FORMAT: legacyText})
             hazardEventSets_json = self.convertHazardEventSets_toJson(self.hazardEventSets)
             generatedProducts = {"returnType":"generatedProducts", 
                                  "generatedProducts":products, 

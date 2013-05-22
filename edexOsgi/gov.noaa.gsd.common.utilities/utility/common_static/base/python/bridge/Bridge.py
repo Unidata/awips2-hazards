@@ -43,7 +43,7 @@ try:
     from jep import *  
 except:
     tbData = traceback.format_exc()
-    pass
+    print tbData
 
 class Bridge:
 

@@ -375,7 +375,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 HazardServicesMouseHandlers.SINGLE_SELECTION, new String[] {});
 
         // Tell the spatial display to use the setting's zoom parameters.
-        spatialPresenter.useSettingZoomParameters(initialSetting);
+        // spatialPresenter.useSettingZoomParameters(initialSetting);
 
         // Set the time line duration.
         messageHandler.updateConsoleVisibleTimeDelta();

@@ -16,7 +16,7 @@ from Bridge import Bridge
 # To run with old bridge:
 #from bridge.Bridge import Bridge
 
-import os, copy, sys, json, types
+import os, copy, sys, json, types, traceback
 import logging, UFStatusHandler
 from  sessionManager.ToolHandler import ToolHandler
 from sessionManager.PresenterHelper import PresenterHelper
@@ -33,7 +33,8 @@ from HazardConstants import *
 try:
     from jep import * #@unresolvedImport 
 except:
-    pass
+    tbData = traceback.format_exc()
+    print tbData
 
 def getProxy():
     """
