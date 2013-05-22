@@ -9,17 +9,19 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Listener;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.IPartListener2;
+import org.eclipse.ui.IWorkbenchPartReference;
+import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -34,16 +36,25 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
  * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardDetailView implements
+@SuppressWarnings("restriction")
+public class HazardDetailView extends
+        ViewPartDelegatorView<HazardDetailViewPart> implements
         IHazardDetailView<IActionBars, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
+
+    /**
+     * Prefix for the preferences key used to determine whether or not to use
+     * the previous size and position of the view part when showing it.
+     */
+    private static final String USE_PREVIOUS_SIZE_AND_POSITION_KEY_PREFIX = "usePreviousHazardDetailViewPartSizeAndPosition.";
 
     /**
      * Logging mechanism.
@@ -64,19 +75,108 @@ public class HazardDetailView implements
     private Action hazardDetailToggleAction = null;
 
     /**
-     * Hazard detail dialog.
+     * JSON string holding a dictionary that specifies the general widgets for
+     * the dialog.
      */
-    private HazardDetailDialog hazardDetailDialog = null;
+    private String jsonGeneralWidgets = null;
 
     /**
-     * Dialog visiblity listener.
+     * JSON string holding a list of dictionaries specifying megawidgets for the
+     * metadata specific to each hazard type.
      */
-    private final Listener dialogHideListener = new Listener() {
+    private String jsonMetadataWidgets = null;
+
+    /**
+     * Minimum visible time to be shown in the time megawidgets.
+     */
+    private long minVisibleTime = 0L;
+
+    /**
+     * Maximum visible time to be shown in the time megawidgets.
+     */
+    private long maxVisibleTime = 0L;
+
+    /**
+     * View part listener.
+     */
+    private final IPartListener2 partListener = new IPartListener2() {
+
         @Override
-        public void handleEvent(Event e) {
-            hideHazardDetail();
+        public void partActivated(IWorkbenchPartReference partRef) {
+
+            // No action.
+        }
+
+        @Override
+        public void partBroughtToTop(IWorkbenchPartReference partRef) {
+
+            // No action.
+        }
+
+        @Override
+        public void partClosed(IWorkbenchPartReference partRef) {
+            if (partRef.getId().equals(HazardDetailViewPart.ID)) {
+                if (hazardDetailToggleAction != null) {
+                    hazardDetailToggleAction.setEnabled(true);
+                    hazardDetailToggleAction.setChecked(false);
+                }
+                viewPartShowing = false;
+                hideViewPart(true);
+            }
+        }
+
+        @Override
+        public void partDeactivated(IWorkbenchPartReference partRef) {
+
+            // No action.
+        }
+
+        @Override
+        public void partOpened(IWorkbenchPartReference partRef) {
+
+            // No action.
+        }
+
+        @Override
+        public void partHidden(IWorkbenchPartReference partRef) {
+            if (partRef == getViewPartReference()) {
+                if (hazardDetailToggleAction != null) {
+                    hazardDetailToggleAction.setEnabled(true);
+                    hazardDetailToggleAction.setChecked(false);
+                }
+                viewPartShowing = false;
+            }
+        }
+
+        @Override
+        public void partVisible(IWorkbenchPartReference partRef) {
+            if (partRef == getViewPartReference()) {
+                if (hazardDetailToggleAction != null) {
+                    hazardDetailToggleAction.setEnabled(true);
+                    hazardDetailToggleAction.setChecked(true);
+                }
+                viewPartShowing = true;
+            }
+        }
+
+        @Override
+        public void partInputChanged(IWorkbenchPartReference partRef) {
+
+            // No action.
         }
     };
+
+    /**
+     * Flag indicating whether or not the view part is showing (the alternative
+     * is that it is minimized).
+     */
+    private boolean viewPartShowing = true;
+
+    /**
+     * Flag indicating whether or not to use the previous size and position for
+     * the view part from the moment it is created.
+     */
+    private boolean usePreviousSizeAndPosition;
 
     /**
      * Flag indicating whether or not actions should be dispatched.
@@ -89,8 +189,45 @@ public class HazardDetailView implements
      * Construct a standard instance.
      */
     public HazardDetailView() {
+        super(HazardDetailViewPart.ID, HazardDetailViewPart.class);
 
-        // No action.
+        // Determine whether the view part uses its previous size
+        // and position by seeing whether the flag indicating this
+        // should happen exists. If it does not, create the flag
+        // in the preferences so that future invocations of the
+        // hazard detail view use previous size and position.
+        WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(true);
+        String usePreviousSizeAndPositionKey = USE_PREVIOUS_SIZE_AND_POSITION_KEY_PREFIX
+                + page.getPerspective().getId();
+        IPreferenceStore preferenceStore = HazardServicesActivator.getDefault()
+                .getPreferenceStore();
+        usePreviousSizeAndPosition = preferenceStore
+                .contains(usePreviousSizeAndPositionKey);
+        if (usePreviousSizeAndPosition == false) {
+            preferenceStore.putValue(usePreviousSizeAndPositionKey, "true");
+        }
+
+        // Show the view part.
+        showViewPart();
+
+        // If previous size and position is not to be used, detach
+        // the view, as this is the default starting state. It would
+        // be nice if this were possible via the plugin.xml perspec-
+        // tive extension entry for this view, but apparently it can
+        // only be started off detached programmatically.
+        if ((usePreviousSizeAndPosition == false) && (page != null)) {
+            page.detachView(page.findViewReference(HazardDetailViewPart.ID));
+        }
+
+        // Set the use previous size and position flag to true so
+        // that any future showings of the view part by this view
+        // come up with previous dimensions.
+        usePreviousSizeAndPosition = true;
+
+        // Register the part listener for view part events so that
+        // the closing of the hazard detail view part may be re-
+        // sponded to.
+        setPartListener(partListener);
     }
 
     // Public Methods
@@ -100,31 +237,43 @@ public class HazardDetailView implements
      * 
      * @param presenter
      *            Presenter managing this view.
+     * @param jsonGeneralWidgets
+     *            JSON string holding a dictionary that specifies the general
+     *            widgets for the dialog.
+     * @param jsonMetadataWidgets
+     *            JSON string holding a list of dictionaries specifying
+     *            megawidgets for the metadata specific to each hazard type.
+     * @param minVisibleTime
+     *            Minimum visible time to be shown in the time megawidgets.
+     * @param maxVisibleTime
+     *            Maximum visible time to be shown in the time megawidgets.
      */
     @Override
-    public final void initialize(HazardDetailPresenter presenter) {
+    public final void initialize(HazardDetailPresenter presenter,
+            String jsonGeneralWidgets, String jsonMetadataWidgets,
+            long minVisibleTime, long maxVisibleTime) {
         this.presenter = presenter;
-    }
+        this.jsonGeneralWidgets = jsonGeneralWidgets;
+        this.jsonMetadataWidgets = jsonMetadataWidgets;
+        this.minVisibleTime = minVisibleTime;
+        this.maxVisibleTime = maxVisibleTime;
 
-    /**
-     * Prepare for disposal.
-     */
-    @Override
-    public final void dispose() {
-        if ((hazardDetailDialog != null)
-                && (hazardDetailDialog.getShell() != null)
-                && (hazardDetailDialog.getShell().isDisposed() == false)) {
-            hazardDetailDialog.close();
+        // If undocked, hide the view part, since it is empty; otherwise,
+        // initialize the view part.
+        if (isViewPartDocked() == false) {
+            hideViewPart(false);
+        } else {
+            getViewPart().initialize(this, jsonGeneralWidgets,
+                    jsonMetadataWidgets, minVisibleTime, maxVisibleTime);
         }
-        hazardDetailDialog = null;
     }
 
     /**
      * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type
-     * </code> to (re)populate the main UI with the specified <code>type</code>;
-     * implementations are responsible for cleaning up after contributed items
-     * that may exist from a previous call with the same <code>type</code>.
+     * called multiple times per <code>type</code> to (re)populate the main UI
+     * with the specified <code>type</code>; implementations are responsible for
+     * cleaning up after contributed items that may exist from a previous call
+     * with the same <code>type</code>.
      * 
      * @param mainUI
      *            Main user interface to which to contribute.
@@ -142,19 +291,17 @@ public class HazardDetailView implements
                     Action.AS_CHECK_BOX, "Hazard Information") {
                 @Override
                 public void run() {
-                    if (isChecked()
-                            && ((hazardDetailDialog == null) || (hazardDetailDialog
-                                    .getShell().isVisible() == false))) {
-                        presenter.showHazardDetail();
-                    } else if ((isChecked() == false)
-                            && (hazardDetailDialog != null)) {
-                        hideHazardDetail();
+                    boolean showing = isViewPartVisible();
+                    if (isChecked() && (showing == false)) {
+                        presenter.showHazardDetail(true);
+                    } else if ((isChecked() == false) && showing) {
+                        hideHazardDetail(true);
                     }
                 }
             };
-            hazardDetailToggleAction.setEnabled(false);
-
-            // Add the actions to the toolbar.
+            boolean showing = isViewPartVisible();
+            hazardDetailToggleAction.setEnabled(showing);
+            hazardDetailToggleAction.setChecked(showing);
             mainUI.getToolBarManager().add(hazardDetailToggleAction);
             return true;
         }
@@ -164,12 +311,6 @@ public class HazardDetailView implements
     /**
      * Show the hazard detail subview.
      * 
-     * @param jsonGeneralWidgets
-     *            JSON string holding a dictionary that specifies the general
-     *            widgets for the dialog.
-     * @param jsonMetadataWidgets
-     *            JSON string holding a list of dictionaries specifying
-     *            megawidgets for the metadata specific to each hazard type.
      * @param eventValuesList
      *            List of dictionaries, each holding key-value pairs that
      *            specify a hazard event.
@@ -177,65 +318,46 @@ public class HazardDetailView implements
      *            Identifier for the hazard event that should be foregrounded
      *            with respect to other hazard events; must be one of the
      *            identifiers in the hazard events of
-     *            <code>jsonEventValues</code>.
-     * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
-     * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
+     *            <code>eventValuesList</code>.
+     * @param force
+     *            Flag indicating whether or not to force the showing of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not showing the subview for whatever reason.
      */
     @Override
-    public final void showHazardDetail(String jsonGeneralWidgets,
-            String jsonMetadataWidgets, DictList eventValuesList,
-            String topEventID, long minVisibleTime, long maxVisibleTime) {
+    public final void showHazardDetail(DictList eventValuesList,
+            String topEventID, boolean force) {
 
         // If there are no events to be shown, do nothing.
-        if (eventValuesList == null) {
+        if ((force == false) && (eventValuesList == null)) {
             statusHandler
                     .error("HazardDetailView.showHazardDetail(): No event "
                             + "dictionaries, so not opening the view.");
             return;
         }
 
-        // Create the dialog if it is not already created.
-        boolean justCreated = false;
-        if (hazardDetailDialog == null) {
-
-            // Build the dialog itself.
-            try {
-                hazardDetailDialog = new HazardDetailDialog(PlatformUI
-                        .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                        this);
-            } catch (Exception e) {
-                statusHandler.error(
-                        "HazardDetailView.showHazardDetail(): error "
-                                + "building dialog:", e);
-                return;
-            }
-            justCreated = true;
-
-            // Get the basic initialization info for the dialog, and
-            // initialize it.
-            hazardDetailDialog.initialize(jsonGeneralWidgets,
-                    jsonMetadataWidgets, minVisibleTime, maxVisibleTime);
-        }
-
         // Set the flag indicating that HID actions should be ignored
         // while setting the dialog info and opening it.
         doNotForwardActions = true;
 
+        // If the view part does not exist, show it.
+        if (getViewPart() == null) {
+            viewPartShowing = true;
+            showViewPart();
+            getViewPart().initialize(this, jsonGeneralWidgets,
+                    jsonMetadataWidgets, minVisibleTime, maxVisibleTime);
+        }
+
         // Give the dialog the event information.
-        hazardDetailDialog.setHidEventInfo(eventValuesList, topEventID);
+        if (eventValuesList != null) {
+            getViewPart().setHidEventInfo(eventValuesList, topEventID);
+        }
+        int numEvents = getViewPart().getEventCount();
 
-        // Open the dialog.
-        if (justCreated) {
-            hazardDetailDialog.open();
-
-            // Ensure that hide events for the dialog are responded
-            // to appropriately.
-            hazardDetailDialog.getShell().addListener(SWT.Hide,
-                    dialogHideListener);
-        } else {
-            hazardDetailDialog.setVisible(true);
+        // Ensure that the view part is visible.
+        if ((isViewPartVisible() == false)
+                && ((numEvents > 0) || force || isViewPartDocked())) {
+            setViewPartVisible(true);
         }
 
         // Enable and check the hazard detail checkbox.
@@ -253,38 +375,63 @@ public class HazardDetailView implements
      * @param eventValuesList
      *            List of dictionaries, each holding key-value pairs that
      *            specify a hazard event.
+     * @param topEventID
+     *            Identifier for the hazard event that should be foregrounded
+     *            with respect to other hazard events; must be one of the
+     *            identifiers in the hazard events of
+     *            <code>eventValuesList</code>.
      */
     @Override
-    public final void updateHazardDetail(DictList eventValuesList) {
+    public final void updateHazardDetail(DictList eventValuesList,
+            String topEventID) {
 
-        // If the detail dialog is showing, update it.
-        if ((hazardDetailDialog != null)
-                && (hazardDetailDialog.getShell().isDisposed() == false)) {
+        // If the view part is not showing, show it; otherwise, just
+        // update it.
+        if ((eventValuesList != null) && (getViewPart() == null)) {
+            showHazardDetail(eventValuesList, topEventID, true);
+        } else {
 
             // Set the flag indicating that HID actions should be ig-
-            // nored while setting the dialog info and opening it.
+            // nored while setting the view part info and opening it.
             doNotForwardActions = true;
 
-            // Give the dialog the event information.
-            hazardDetailDialog.setHidEventInfo(eventValuesList, null);
+            // Give the view part the event information.
+            getViewPart().setHidEventInfo(eventValuesList, topEventID);
 
             // Reset the ignore HID actions flag, indicating that
-            // actions
-            // from the dialog should no longer be ignored.
+            // actions from the view part should no longer be ignored.
             doNotForwardActions = false;
+
+            // If there are no event values being shown and the view
+            // part exists but is undocked, hide it.
+            if ((eventValuesList == null) && (getViewPart() != null)
+                    && (isViewPartDocked() == false)) {
+                hideHazardDetail(true);
+            }
         }
     }
 
     /**
      * Hide the hazard detail subview.
+     * 
+     * @param force
+     *            Flag indicating whether or not to force the hiding of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not hiding the subview for whatever reason.
      */
     @Override
-    public final void hideHazardDetail() {
-        if ((hazardDetailDialog != null)
-                && (hazardDetailDialog.getShell() != null)
-                && (hazardDetailDialog.getShell().isDisposed() == false)
-                && (hazardDetailDialog.getShell().isVisible() == true)) {
-            hazardDetailDialog.setVisible(false);
+    public final void hideHazardDetail(boolean force) {
+        int numEvents = getViewPart().getEventCount();
+        if ((numEvents == 0) || force) {
+            if (isViewPartDocked()) {
+                if (isViewPartVisible()) {
+                    setViewPartVisible(false);
+                }
+            } else {
+                if (getViewPart() != null) {
+                    hideViewPart(false);
+                }
+            }
         }
         hazardDetailToggleAction.setChecked(false);
     }
@@ -300,11 +447,10 @@ public class HazardDetailView implements
     @Override
     public final void setVisibleTimeRange(long minVisibleTime,
             long maxVisibleTime) {
-        if ((hazardDetailDialog != null)
-                && (hazardDetailDialog.getShell() != null)
-                && (hazardDetailDialog.getShell().isDisposed() == false)) {
-            hazardDetailDialog.setVisibleTimeRange(minVisibleTime,
-                    maxVisibleTime);
+        this.minVisibleTime = minVisibleTime;
+        this.maxVisibleTime = maxVisibleTime;
+        if (getViewPart() != null) {
+            getViewPart().setVisibleTimeRange(minVisibleTime, maxVisibleTime);
         }
     }
 
@@ -320,5 +466,51 @@ public class HazardDetailView implements
         if (doNotForwardActions == false) {
             presenter.fireAction(action);
         }
+    }
+
+    /**
+     * Determine whether or not to use previous size and position for the view
+     * part from the moment the latter is created.
+     * 
+     * @return True if previous size and position should be used from the first
+     *         moment of instantiation, false otherwise.
+     */
+    boolean alwaysUsePreviousSizeAndPosition() {
+        return usePreviousSizeAndPosition;
+    }
+
+    // Private Methods
+
+    /**
+     * Change the view part's visibility.
+     * 
+     * @param visible
+     *            Flag indicating whether or not the view should be visible.
+     */
+    private void setViewPartVisible(boolean visible) {
+        getActiveWorkbenchPage(true).setPartState(
+                getViewPartReference(),
+                (visible ? WorkbenchPage.STATE_RESTORED
+                        : WorkbenchPage.STATE_MINIMIZED));
+    }
+
+    /**
+     * Determine whether or not the view part is currently visible.
+     * 
+     * @return True if the view part is currently visible, false otherwise.
+     */
+    private boolean isViewPartVisible() {
+        return ((getViewPart() != null) && viewPartShowing);
+    }
+
+    /**
+     * Determine whether or not the view part is docked, or if invisible, was
+     * docked when last visible.
+     * 
+     * @return True if the view part is docked, or if invisible, was docked the
+     *         last time it was visible.
+     */
+    private boolean isViewPartDocked() {
+        return (getViewPart() == null ? false : getViewPart().isDocked());
     }
 }

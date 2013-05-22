@@ -79,6 +79,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 28, 2013            bryon.lawrence      Initial creation
+ * May 10, 2013            Chris.Golden        Change HID to Eclipse view implementation.
  * 
  * </pre>
  * 
@@ -327,9 +328,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         createSpatialDisplay();
 
-        /*
-         * Open the console.
-         */
+        // Open the console.
         createConsole();
 
         // Create the settings view.
@@ -429,7 +428,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createConsole() {
         if (consolePresenter == null) {
-
             consolePresenter = new ConsolePresenter(
                     HazardServicesMessageHandler.getModelProxy(),
                     new ConsoleView());
@@ -437,7 +435,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         } else {
             consolePresenter.setView(new ConsoleView());
         }
-
     }
 
     /**
@@ -445,6 +442,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void destroyConsole() {
         consolePresenter.getView().dispose();
+    }
+
+    /**
+     * Dispose of the hazard detail view.
+     */
+    private void destroyHazardDetailDisplay() {
+        hazardDetailPresenter.getView().dispose();
     }
 
     /**
@@ -465,11 +469,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createHazardDetailDisplay() {
         if (hazardDetailPresenter == null) {
-
             hazardDetailPresenter = new HazardDetailPresenter(
                     HazardServicesMessageHandler.getModelProxy(),
                     new HazardDetailView());
             presenters.add(hazardDetailPresenter);
+        } else {
+            hazardDetailPresenter.setView(new HazardDetailView());
         }
     }
 
@@ -605,14 +610,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Show the hazard detail subview.
      */
     public void showHazardDetail() {
-        hazardDetailPresenter.showHazardDetail();
+        hazardDetailPresenter.showHazardDetail(false);
     }
 
     /**
      * Hide the hazard detail subview.
      */
     public void hideHazardDetail() {
-        hazardDetailPresenter.hideHazardDetail();
+        hazardDetailPresenter.hideHazardDetail(false);
     }
 
     /**
@@ -647,8 +652,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             return;
         }
 
-        // Recreate the console.
+        // Recreate the console and the hazard detail views.
         createConsole();
+        createHazardDetailDisplay();
 
         /*
          * Retrieve and store the descriptor of the newly activated perspective.
@@ -731,6 +737,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public void perspectivePreDeactivate(IWorkbenchPage page,
             IPerspectiveDescriptor perspective) {
         destroyConsole();
+        destroyHazardDetailDisplay();
     }
 
     @Override

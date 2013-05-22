@@ -22,6 +22,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
  * 
  * </pre>
  * 
@@ -37,18 +38,24 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
-     */
-    public void initialize(HazardDetailPresenter presenter);
-
-    /**
-     * Show the hazard detail subview.
-     * 
      * @param jsonGeneralWidgets
      *            JSON string holding a dictionary that specifies the general
      *            widgets for the dialog.
      * @param jsonMetadataWidgets
      *            JSON string holding a list of dictionaries specifying
      *            megawidgets for the metadata specific to each hazard type.
+     * @param minVisibleTime
+     *            Minimum visible time to be shown in the time megawidgets.
+     * @param maxVisibleTime
+     *            Maximum visible time to be shown in the time megawidgets.
+     */
+    public void initialize(HazardDetailPresenter presenter,
+            String jsonGeneralWidgets, String jsonMetadataWidgets,
+            long minVisibleTime, long maxVisibleTime);
+
+    /**
+     * Show the hazard detail subview.
+     * 
      * @param eventValuesList
      *            List of dictionaries, each holding key-value pairs that
      *            specify a hazard event.
@@ -56,15 +63,14 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      *            Identifier for the hazard event that should be foregrounded
      *            with respect to other hazard events; must be one of the
      *            identifiers in the hazard events of
-     *            <code>jsonEventValues</code>.
-     * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
-     * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
+     *            <code>eventValuesList</code>.
+     * @param force
+     *            Flag indicating whether or not to force the showing of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not showing the subview for whatever reason.
      */
-    public void showHazardDetail(String jsonGeneralWidgets,
-            String jsonMetadataWidgets, DictList eventValuesList,
-            String topEventID, long minVisibleTime, long maxVisibleTime);
+    public void showHazardDetail(DictList eventValuesList, String topEventID,
+            boolean force);
 
     /**
      * Update the hazard detail subview, if it is showing.
@@ -72,13 +78,23 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      * @param eventValuesList
      *            List of dictionaries, each holding key-value pairs that
      *            specify a hazard event.
+     * @param topEventID
+     *            Identifier for the hazard event that should be foregrounded
+     *            with respect to other hazard events; must be one of the
+     *            identifiers in the hazard events of
+     *            <code>eventValuesList</code>.
      */
-    public void updateHazardDetail(DictList eventValuesList);
+    public void updateHazardDetail(DictList eventValuesList, String topEventID);
 
     /**
      * Hide the hazard detail subview.
+     * 
+     * @param force
+     *            Flag indicating whether or not to force the hiding of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not hiding the subview for whatever reason.
      */
-    public void hideHazardDetail();
+    public void hideHazardDetail(boolean force);
 
     /**
      * Set the visible time range.
