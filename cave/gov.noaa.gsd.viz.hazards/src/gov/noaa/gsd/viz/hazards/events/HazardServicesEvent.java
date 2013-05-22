@@ -93,12 +93,12 @@ public class HazardServicesEvent extends BaseHazardEvent {
             } else if (key.equals(Utilities.HAZARD_EVENT_SUB_TYPE)) {
                 setSubtype((String) attribute);
             } else if (key.equals(Utilities.HAZARD_EVENT_START_TIME)) {
-                long startInMillis = (Long) attribute;
+                long startInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(startInMillis);
                 setStartTime(cal.getTime());
             } else if (key.equals(Utilities.HAZARD_EVENT_END_TIME)) {
-                long endInMillis = (Long) attribute;
+                long endInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(endInMillis);
                 setEndTime(cal.getTime());
