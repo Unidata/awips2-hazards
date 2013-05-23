@@ -886,7 +886,7 @@ class Product(object):
                       " FOR " + areaPhrase + " HAS EXPIRED. " + \
                       "|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|"
                 else:
-                   timeWords = self.getTimingPhrase(hazard, expTimeCurrent)
+                   timeWords = self._tpc.getTimingPhrase(hazard, expTimeCurrent)
                    attribution = "THE " + hazName + \
                       " FOR " + areaPhrase + " WILL EXPIRE " + timeWords + \
                       ". " + \
