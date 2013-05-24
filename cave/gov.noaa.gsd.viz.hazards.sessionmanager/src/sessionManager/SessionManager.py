@@ -10,28 +10,16 @@ non-homogeneous data structures.
  @author: GSD Hazard Services Team 
 """
 
-# To run with new bridge:
 from Bridge import Bridge
-
-# To run with old bridge:
-#from bridge.Bridge import Bridge
 
 import os, copy, sys, json, types, traceback
 import logging, UFStatusHandler
 from  sessionManager.ToolHandler import ToolHandler
 from sessionManager.PresenterHelper import PresenterHelper
 from HazardConstants import *
-   
-#try:
-#    from com.raytheon.uf.viz.core.localization import LocalizationManager #@UnresolvedImport
-#    from com.raytheon.viz.core.mode import CAVEMode #@UnresolvedImport
-#except:
-#    pass
-
-# Put this in when debugging python code called via JEP.
 
 try:
-    from jep import * #@unresolvedImport 
+    from jep import * 
 except:
     tbData = traceback.format_exc()
     print tbData
@@ -76,7 +64,7 @@ class SessionManager(object):
         #sys.path.append()
         
         # Uncomment these lines when debugging 
-        #import pydevd    #@UnresolvedImport   
+        #import pydevd   
         #pydevd.settrace(suspend=False)
         self.logger = logging.getLogger("SessionManager")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(

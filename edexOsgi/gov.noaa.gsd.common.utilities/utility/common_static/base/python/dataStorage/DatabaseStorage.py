@@ -149,7 +149,7 @@ class DatabaseStorage:
 
         try:
             # Override config info from local ihisConfig
-            import database.ihisConfig as ihisConfig #@UnresolvedImport
+            import database.ihisConfig as ihisConfig
             ihisConfigDict = eval("ihisConfig." + dataType)
 
             for key in ihisConfigDict:

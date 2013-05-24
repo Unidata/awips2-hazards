@@ -19,8 +19,8 @@ import VTECTableUtil as VTECTableUtil
 
 import VTECIngester
 try:
-    import LogStream   #for AWIPS @UnresolvedImport
-    import AFPS #for AWIPS @UnresolvedImport
+    import LogStream
+    import AFPS
 except:
     import Logger as LogStream #for ihis
 
@@ -58,7 +58,7 @@ class VTECDecoder(VTECTableUtil.VTECTableUtil):
         # our site so we don't do filtering (and we can't send notifications
         # for WCL, SPC, TPC bulletin arrivals)
         try:
-            import siteConfig #@UnresolvedImport
+            import siteConfig
             siteid = siteConfig.GFESUITE_SITEID
             self._ourSite = self._get4ID(siteid)
             self._filterSites = self._getFilterSites()
@@ -742,10 +742,10 @@ usage: VTECDecoder -f productfilename -d -a vtecRecordsName
         try:
             if self._notifyGFE:
                 LogStream.logDebug("Notifying ifpServer of table change")
-                import siteConfig #@UnresolvedImport
+                import siteConfig
                 host = siteConfig.GFESUITE_SERVER
                 port = int(siteConfig.GFESUITE_PORT)
-                import PyNet #@UnresolvedImport
+                import PyNet
                 c = PyNet.IFPClient((host, port))
                 # ???????????????????????????????????????????????????????????????
                 # REFACTOR rename self._activeTableFilename to self._vtecRecordsFilename

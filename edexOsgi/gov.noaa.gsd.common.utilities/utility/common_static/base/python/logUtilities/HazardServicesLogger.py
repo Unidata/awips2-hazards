@@ -24,7 +24,7 @@ import os
 from time import gmtime, strftime
 
 try :
-    import logging, UFStatusHandler #@UnresolvedImport
+    import logging, UFStatusHandler
 except :
     import logging
 

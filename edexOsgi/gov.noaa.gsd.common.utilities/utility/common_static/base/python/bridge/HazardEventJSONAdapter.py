@@ -4,13 +4,9 @@ try:
     import GeometryFactory
     import EventFactory
     from HazardConstants import *
-    
-    # GSD has requested assistance from RTS on how to avoid the "Unresolved"
-    # annotations.  In our eclipse editor, failing to include this causes
-    # a syntax error.
-    from java.util import ArrayList #@UnresolvedImport
-    from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants #@UnresolvedImport
-    from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardQueryBuilder #@UnresolvedImport
+    from java.util import ArrayList
+    from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants
+    from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardQueryBuilder
 except:
     tbData = traceback.format_exc()
     print tbData

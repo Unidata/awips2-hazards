@@ -12,18 +12,18 @@ import os
 # gracefully to support our python unit tests.
 try:
 
-    from com.raytheon.uf.viz.recommenders import CAVERecommenderEngine #@UnresolvedImport
-    from com.raytheon.uf.common.hazards.productgen import ProductGeneration #@UnresolvedImport
+    from com.raytheon.uf.viz.recommenders import CAVERecommenderEngine
+    from com.raytheon.uf.common.hazards.productgen import ProductGeneration
 
     import HazardEventJSONAdapter as Adapter
-    from com.raytheon.uf.common.dataplugin.events import EventSet #@UnresolvedImport
-    from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesRecommenderJobListener #@UnresolvedImport
-    from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesGeneratorJobListener #@UnresolvedImport
-    from gov.noaa.gsd.viz.hazards.events import HazardServicesEvent #@UnresolvedImport
-    import JUtil #@UnresolvedImport
-    from java.util import HashSet #@UnresolvedImport
-    from java.lang import String #@UnresolvedImport
-    import jep #@UnresolvedImport
+    from com.raytheon.uf.common.dataplugin.events import EventSet
+    from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesRecommenderJobListener
+    from gov.noaa.gsd.viz.hazards.pythonjoblistener import HazardServicesGeneratorJobListener
+    from gov.noaa.gsd.viz.hazards.events import HazardServicesEvent
+    import JUtil
+    from java.util import HashSet
+    from java.lang import String
+    import jep
 except:
     tbData = traceback.format_exc()
     print tbData

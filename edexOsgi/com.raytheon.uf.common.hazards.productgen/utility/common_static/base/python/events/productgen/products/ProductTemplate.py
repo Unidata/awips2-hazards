@@ -11,7 +11,7 @@
 20    """
 
 try:
-    import JUtil #@UnresolvedImport
+    import JUtil
 except:
     pass
 
@@ -31,7 +31,7 @@ import os, types, copy, sys, json
 from QueryAfosToAwips import QueryAfosToAwips
 
 try:
-    from java.util import ArrayList #@UnresolvedImport
+    from java.util import ArrayList
 except:
     pass
 

@@ -14,7 +14,7 @@ import HazardServicesImporter
 from HazardServicesLogger import *
 
 try:
-    from LocalFileInstaller import * #@UnresolvedImport
+    from LocalFileInstaller import *
 except :
     from AppFileInstaller import *
 
