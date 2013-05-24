@@ -755,7 +755,7 @@ public class SpatialView implements
             redoCommandAction.setEnabled(false);
             addToSelectedToggleAction = new BasicSpatialAction("",
                     "addToSelected.png", Action.AS_CHECK_BOX,
-                    "Add New to Selected", "addToSelected", null);
+                    "Add New Pending to Selected", "addToSelected", null);
             moveAndSelectChoiceAction = new BasicSpatialAction("",
                     "moveAndSelect.png", Action.AS_RADIO_BUTTON,
                     "Select Event", "Drawing", "SelectEvent");
