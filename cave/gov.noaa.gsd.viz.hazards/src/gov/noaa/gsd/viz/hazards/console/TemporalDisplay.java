@@ -658,7 +658,7 @@ class TemporalDisplay {
     /**
      * List of hazard event dictionaries used to populate the table.
      */
-    private final ArrayList<Dict> eventDictList;
+    private final List<Dict> eventDictList;
 
     /**
      * Indices of items that are currently selected.
@@ -2269,6 +2269,22 @@ class TemporalDisplay {
     }
 
     /**
+     * Modify the existing event dictionary list to indicate only the specified
+     * selected items as selected.
+     * 
+     * @param identifiers
+     *            Identifiers of events that are currently selected.
+     */
+    private void updateEventDictListSelection(List<String> identifiers) {
+        for (Dict eventDict : eventDictList) {
+            eventDict
+                    .put(Utilities.HAZARD_EVENT_SELECTED, identifiers
+                            .contains(eventDict
+                                    .get(Utilities.HAZARD_EVENT_IDENTIFIER)));
+        }
+    }
+
+    /**
      * Set the selected time mode.
      * 
      * @param mode
@@ -2512,14 +2528,17 @@ class TemporalDisplay {
                         }
                     } else {
                         TableItem[] selectedItems = table.getSelection();
-                        String[] selectedIdentifiers = new String[selectedItems.length];
+                        List<String> selectedIdentifiers = new ArrayList<String>();
                         for (int j = 0; j < selectedItems.length; j++) {
                             TableItem item = selectedItems[j];
-                            selectedIdentifiers[j] = (String) item.getData();
+                            selectedIdentifiers.add((String) item.getData());
                         }
                         selectedIndices = table.getSelectionIndices();
+                        updateEventDictListSelection(selectedIdentifiers);
                         fireConsoleActionOccurred(new ConsoleAction(
-                                "SelectedEventsChanged", selectedIdentifiers));
+                                "SelectedEventsChanged", selectedIdentifiers
+                                        .toArray(new String[selectedIdentifiers
+                                                .size()])));
                     }
                 }
             }
