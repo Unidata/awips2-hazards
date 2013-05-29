@@ -30,6 +30,7 @@ import static TestingUtils.*
  * @author daniel.s.schaffer
  * @version 1.0
  */
+@Ignore
 class DamBreakRecommenderTest extends spock.lang.Specification {
     ModelDecorator model;
 
