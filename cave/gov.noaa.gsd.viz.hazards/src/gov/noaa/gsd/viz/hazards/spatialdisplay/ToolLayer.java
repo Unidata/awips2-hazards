@@ -99,6 +99,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jun 21, 2011            Xiangbao       Initial creation
  * Jul 21, 2012            Xiangbao       Added multiple events selection
  *                         Bryon.Lawrence Modified
+ * May 29, 2013            Bryon.Lawrence Added code to handle multiple
+ *                                        deselection of hazards.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -115,6 +117,8 @@ public class ToolLayer extends
             .getHandler(ToolLayer.class);
 
     public static final String DEFAULT_NAME = "Hazard Services";
+
+    public static final String IS_SELECTED_KEY = "isSelected";
 
     public static double VERTEX_CIRCLE_RADIUS = 2;
 
@@ -185,22 +189,15 @@ public class ToolLayer extends
     private DictList previousDictList = null;
 
     /*
-     * ID of the selected events, support multiple selection
-     */
-    private List<String> clickedEventIds = null;
-
-    /*
-     * Callback for right button selection invoking in the multiple event
-     * selection case. The callback can be an product editor or whatever
-     * dialog(or application) which will be invoked after the multiple selecting
-     * is done. An application like River Recommender can set up the callback.
-     */
-    private final String multiSelectCallback = null;
-
-    /*
      * reference to eventBus singleton instance
      */
     private EventBus eventBus = null;
+
+    /*
+     * List of the currently selected events. This is needed for the case of
+     * "multiple-deselection".
+     */
+    private List<String> selectedEventIDs = null;
 
     /**
      * Constructor.
@@ -224,6 +221,7 @@ public class ToolLayer extends
 
         dataTimes = new ArrayList<DataTime>();
         eventBus = EventBusSingleton.getInstance();
+        selectedEventIDs = Lists.newArrayList();
     }
 
     /**
@@ -276,6 +274,7 @@ public class ToolLayer extends
         previousDictList = dictList;
         clearEvents();
         selectedHazardIHISLayer = null;
+        selectedEventIDs.clear();
 
         try {
             if (dictList != null) {
@@ -321,6 +320,16 @@ public class ToolLayer extends
                 points = null;
 
                 Dict shape = shapeArray.get(i);
+
+                Boolean isSelected = shape
+                        .getDynamicallyTypedValue(IS_SELECTED_KEY);
+
+                /*
+                 * Keep an inventory of which events are selected.
+                 */
+                if (isSelected != null && isSelected) {
+                    selectedEventIDs.add(eventID);
+                }
 
                 /*
                  * Do not try to draw anything that is outside or has a point
@@ -747,8 +756,22 @@ public class ToolLayer extends
             String clickedEventId = ((IHazardServicesShape) element)
                     .getEventID();
             if (fireEvent) {
-                fireSelectedEventActionOccurred(
-                        new String[] { clickedEventId }, multipleSelection);
+
+                /*
+                 * If this is a multiple selection operation (left mouse click
+                 * with the Ctrl or Shift key held down), then check if the user
+                 * is selecting something that was already selected and treat
+                 * this as a deselect.
+                 */
+                if (multipleSelection
+                        && selectedEventIDs.contains(clickedEventId)) {
+                    selectedEventIDs.remove(clickedEventId);
+                    String[] eventIDs = selectedEventIDs.toArray(new String[0]);
+                    fireSelectedEventActionOccurred(eventIDs, false);
+                } else {
+                    fireSelectedEventActionOccurred(
+                            new String[] { clickedEventId }, multipleSelection);
+                }
             }
             return clickedEventId;
 
@@ -768,57 +791,6 @@ public class ToolLayer extends
     public void multipleElementsClicked(Set<String> eventIDs) {
         fireSelectedEventActionOccurred(
                 eventIDs.toArray(new String[eventIDs.size()]), false);
-    }
-
-    // Support multiple selection------------------------------------
-    /**
-     * Get the selected event IDs for the multiple selection
-     */
-    public List<String> getSelectedEventIds() {
-        return clickedEventIds;
-    }
-
-    /**
-     * Add a selected event ID into the selectedEventIds for the multiple
-     * selection. The adding rule is that add the event ID into the
-     * selectedEventIds if it not is existing, otherwise remove it from the
-     * selectedEventIds.
-     * 
-     * @param selectedEventId
-     *            The identifier of the selected event.
-     * 
-     */
-    public void addSelectedEventId(String selectedEventId) {
-        clickedEventIds.add(selectedEventId);
-    }
-
-    /**
-     * Set the selected event IDs for the multiple selection
-     * 
-     * @param selectedEventIds
-     *            The selected events.
-     */
-    public void setSelectedEventIds(ArrayList<String> selectedEventIds) {
-        this.clickedEventIds = selectedEventIds;
-    }
-
-    /**
-     * Tests an event to determine whether or not it is selected.
-     * 
-     * @param selectedEventId
-     *            The identifier of the event to test for selected state
-     * @return true - the event is selected; false - the event is not selected.
-     */
-    public boolean isSelectedEventId(String selectedEventId) {
-        if (clickedEventIds == null || clickedEventIds.size() == 0) {
-            return false;
-        }
-
-        if (!clickedEventIds.contains(selectedEventId)) {
-            return false;
-        }
-
-        return true;
     }
 
     /**
