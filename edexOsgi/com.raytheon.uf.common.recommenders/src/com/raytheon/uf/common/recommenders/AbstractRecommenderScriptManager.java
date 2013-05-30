@@ -262,7 +262,9 @@ public abstract class AbstractRecommenderScriptManager extends
         for (LocalizationFile lFile : lFiles) {
             lFile.addFileUpdatedObserver(this);
             EventRecommender reco = setMetadata(lFile);
-            inventory.put(reco.getName(), reco);
+            if (reco != null) {
+                inventory.put(reco.getName(), reco);
+            }
         }
     }
 
@@ -283,14 +285,20 @@ public abstract class AbstractRecommenderScriptManager extends
         if (type == FileChangeType.UPDATED) {
             EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
                     message.getContext(), message.getFileName()));
-            inventory.put(filename, rec);
+            if (rec != null) {
+                inventory.put(filename, rec);
+            }
         } else if (type == FileChangeType.ADDED) {
             if (inventory.get(filename) != null) {
                 inventory.get(filename).getFile()
                         .removeFileUpdatedObserver(this);
+                inventory.remove(filename);
             }
             EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
                     message.getContext(), message.getFileName()));
+            if (rec != null) {
+                inventory.put(filename, rec);
+            }
             rec.getFile().addFileUpdatedObserver(this);
         } else if (type == FileChangeType.DELETED) {
             EventRecommender rec = inventory.remove(filename);
@@ -309,6 +317,10 @@ public abstract class AbstractRecommenderScriptManager extends
             Map<String, Object> args = getStarterMap(modName);
             results = (HashMap<String, String>) execute(GET_SCRIPT_METADATA,
                     INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.WARN, "Recommender " + modName
+                    + " is unable to be instantiated", e);
+            return null;
         } catch (Throwable e) {
             RecommenderMetadataExecutor<AbstractRecommenderScriptManager> executor = new RecommenderMetadataExecutor<AbstractRecommenderScriptManager>(
                     modName);
@@ -367,7 +379,7 @@ public abstract class AbstractRecommenderScriptManager extends
         return name;
     }
 
-    public synchronized List<EventRecommender> getInventory() {
+    public List<EventRecommender> getInventory() {
         return new ArrayList<EventRecommender>(inventory.values());
     }
 }
