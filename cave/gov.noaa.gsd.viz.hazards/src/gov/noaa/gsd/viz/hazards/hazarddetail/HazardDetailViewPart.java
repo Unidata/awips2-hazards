@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
-import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
@@ -41,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.layout.TableColumnLayout;
+import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -55,28 +55,27 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Widget;
+import org.eclipse.ui.part.ViewPart;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.exception.VizException;
 
 /**
- * This class represents an instance of the Hazard Detail Dialog, which is the
- * primary interface the user uses for entering information pertinent to the
+ * This class represents an instance of the Hazard Detail view part, which is
+ * the primary interface the user uses for entering information pertinent to the
  * event being created or modified. It also allows the user to preview the
  * event, propose it or issue it.
  * 
@@ -85,15 +84,22 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * May 10, 2013            Chris.Golden      Initial creation
  * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class HazardDetailDialog extends BasicDialog implements INotificationListener,
-        IStateChangeListener {
+public class HazardDetailViewPart extends ViewPart implements
+        INotificationListener, IStateChangeListener {
+
+    // Public Static Constants
+
+    /**
+     * Identifier of the view.
+     */
+    public static final String ID = "gov.noaa.gsd.viz.hazards.hazarddetail.view";
 
     // Private Static Constants
 
@@ -101,7 +107,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardDetailDialog.class);
+            .getHandler(HazardDetailViewPart.class);
 
     /**
      * Points table widget identifier, a special string used as an identifier
@@ -142,14 +148,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     private static final int ISSUE_ID = 2;
 
     /**
-     * Dismiss button identifier.
-     */
-    private static final int DISMISS_ID = 3;
-
-    /**
      * Preview button identifier.
      */
-    private static final int PREVIEW_ID = 4;
+    private static final int PREVIEW_ID = 3;
 
     // Private Classes
 
@@ -304,16 +305,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             // to the list.
             for (int line = 0; line < table.getItemCount(); line++) {
 
-                // // If the point is not checked, it is
-                // // skipped.
-                TableItem item = table.getItem(line);
-                // if (item.getChecked() == false)
-                // continue;
-
                 // Create the hash table mapping point
                 // field names to their values, and then
                 // iterate through the columns, adding
                 // all these pairings to the table.
+                TableItem item = table.getItem(line);
                 Map<String, Object> map = new HashMap<String, Object>();
                 String name = null;
                 for (int col = 0; col < table.getColumnCount(); col++) {
@@ -456,6 +452,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     // Private Variables
 
     /**
+     * Parent composite.
+     */
+    private Composite parent = null;
+
+    /**
      * Tab folder holding the different hazard events, one per tab page.
      */
     private CTabFolder eventTabFolder = null;
@@ -525,7 +526,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     private StackLayout metadataContentLayout = null;
 
     /**
-     * Base tab page height, calculated at dialog content creation time and used
+     * Base tab page height, calculated at part content creation time and used
      * when determining how large to make the scrolled composite holding the tab
      * page contents.
      */
@@ -619,11 +620,6 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     private Button issueButton = null;
 
     /**
-     * Dismiss button.
-     */
-    private Button dismissButton = null;
-
-    /**
      * Preview button.
      */
     private Button previewButton = null;
@@ -658,30 +654,618 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     private boolean scrolledCompositeSizeCalculated = false;
 
     /**
-     * Hazard detail view that is managing this dialog.
+     * Hazard detail view that is managing this part.
      */
     private HazardDetailView hazardDetailView = null;
 
-    // Public Constructors
-
     /**
-     * Construct a standard instance.
-     * 
-     * @param parent
-     *            Parent shell for the dialog.
-     * @param hazardDetailView
-     *            Hazard detail view that is managing this dialog.
+     * Flag indicating whether or not this view part is currently docked.
      */
-    public HazardDetailDialog(Shell parent, HazardDetailView hazardDetailView)
-            throws VizException {
-        super(parent);
-        this.hazardDetailView = hazardDetailView;
-        setShellStyle(SWT.TITLE | SWT.MODELESS | SWT.CLOSE | SWT.LEFT_TO_RIGHT
-                | SWT.RESIZE);
-        setBlockOnOpen(false);
-    }
+    private boolean docked;
 
     // Public Methods
+
+    /**
+     * Initialize the view part.
+     * 
+     * @param hazardDetailView
+     *            View managing this view part.
+     * @param generalWidgets
+     *            JSON specifying the general widgets that the view part must
+     *            contain.
+     * @param hazardWidgets
+     *            JSON specifying the widgets that the view part must contain
+     *            for each of the hazards that the general widgets allow the
+     *            user to select.
+     * @param minVisibleTime
+     *            Minimum visible time.
+     * @param maxVisibleTime
+     *            Maximum visible time.
+     */
+    public void initialize(HazardDetailView hazardDetailView,
+            String generalWidgets, String hazardWidgets, long minVisibleTime,
+            long maxVisibleTime) {
+
+        // Remember the minimum and maximum visible times.
+        minimumVisibleTime = minVisibleTime;
+        maximumVisibleTime = maxVisibleTime;
+        this.hazardDetailView = hazardDetailView;
+
+        // Iterate through the time scale widgets, changing
+        // their visible time ranges to match the current
+        // range.
+        for (TimeScaleMegawidget widget : timeScaleWidgets) {
+            widget.setVisibleTimeRange(minimumVisibleTime, maximumVisibleTime);
+        }
+
+        // Determine whether or not the view is currently docked.
+        docked = determineWhetherDocked();
+
+        // Parse the strings into a JSON object and a JSON array.
+        Dict jsonGeneralWidgets = null;
+        DictList jsonHazardWidgets = null;
+        try {
+            jsonGeneralWidgets = Dict.getInstance(generalWidgets);
+        } catch (Exception e) {
+            statusHandler.error("HazardDetailViewPart.initialize(): Error "
+                    + "parsing JSON for general megawidgets.", e);
+        }
+        try {
+            jsonHazardWidgets = DictList.getInstance(hazardWidgets);
+        } catch (Exception e) {
+            statusHandler.error("HazardDetailViewPart.initialize(): Error "
+                    + "parsing JSON for hazard megawidgets.", e);
+        }
+
+        // Get the list of event categories, and the list of event
+        // types going with each category, and the category going
+        // with each set of event types.
+        categories.clear();
+        typesForCategories.clear();
+        categoriesForTypes.clear();
+        for (Object item : (List<?>) jsonGeneralWidgets
+                .get(Utilities.HAZARD_INFO_GENERAL_CONFIG_WIDGETS)) {
+
+            // Get the category.
+            Dict jsonItem = (Dict) item;
+            String category = jsonItem
+                    .getDynamicallyTypedValue(HierarchicalChoicesTreeSpecifier.CHOICE_NAME);
+            categories.add(category);
+
+            // Get the types that go with this category. Each JSON
+            // array will contain dictionaries which in turn hold
+            // strings as one of their values naming the types; the
+            // resulting list must then be alphabetized.
+            List<String> types = new ArrayList<String>();
+            for (Object child : (List<?>) jsonItem
+                    .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN)) {
+                types.add((String) ((Map<?, ?>) child)
+                        .get(HierarchicalChoicesTreeSpecifier.CHOICE_NAME));
+            }
+            Collections.sort(types);
+
+            // Remember the association of the category and the
+            // types, placing an empty string type at the head of
+            // the types list before saving it, so that each cate-
+            // gory has an empty type with no associated metadata.
+            for (String type : types) {
+                categoriesForTypes.put(type, category);
+            }
+            types.add(0, "");
+            typesForCategories.put(category, types);
+        }
+
+        // If the categories combo box is not yet populated, do
+        // it now.
+        if ((categoryCombo != null) && (categoryCombo.getItemCount() == 0)) {
+            for (String category : categories) {
+                categoryCombo.add(category);
+            }
+        }
+
+        // Get the widget specifier lists for the event types.
+        widgetsForTypes.clear();
+        pointWidgetsForTypes.clear();
+        for (int j = 0; j < jsonHazardWidgets.size(); j++) {
+
+            // Get the event types to which this list of widget
+            // specifiers applies, ignoring any that already
+            // have an associated widget specifier list due to
+            // a previous iteration. This last part is neces-
+            // sary because an event type might appear in more
+            // than one set of event types (each set being
+            // associated with a list of widget specifiers), in
+            // which case the first set in which it appears is
+            // considered to be the set in which it actually
+            // belongs.
+            Dict jsonItem = jsonHazardWidgets.getDynamicallyTypedValue(j);
+            List<String> types = new ArrayList<String>();
+            for (Object child : (List<?>) jsonItem
+                    .get(Utilities.HAZARD_INFO_METADATA_TYPES)) {
+                types.add((String) child);
+            }
+            Set<String> typesSet = new HashSet<String>();
+            for (String type : types) {
+                if (widgetsForTypes.containsKey(type) == false) {
+                    typesSet.add(type);
+                }
+            }
+
+            // If after dropping any event types that have
+            // already been taken care of in previous itera-
+            // tions there is still a non-empty set of event
+            // types left, put together any widget specifiers
+            // for this set.
+            if (typesSet.isEmpty() == false) {
+
+                // Create the widget specifiers for the event
+                // type as a whole.
+                List<MegawidgetSpecifier> widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
+                List<Dict> objects = getJsonObjectList(jsonItem
+                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
+                try {
+                    for (Dict object : objects) {
+                        widgetSpecifiers.add(widgetSpecifierFactory
+                                .createMegawidgetSpecifier(object));
+                    }
+                } catch (Exception e) {
+                    statusHandler.error("HazardDetailViewPart.initialize(): "
+                            + "Error parsing JSON for hazard megawidgets.", e);
+                }
+                for (String type : typesSet) {
+                    widgetsForTypes.put(type, widgetSpecifiers);
+                }
+
+                // Create the widget specifiers for the event
+                // type's individual points, if any. Any
+                // widget specifiers for points must be pre-
+                // ceded by a points table widget specifier,
+                // which is synthesized here and placed at
+                // the head of the list. The widget immedi-
+                // ately following the table is padded so
+                // that it does not get too far into the
+                // table's personal space.
+                Object pointObject = jsonItem
+                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
+                if (pointObject != null) {
+                    widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
+                    objects = getJsonObjectList(pointObject);
+                    Dict tableObject = new Dict();
+                    tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                            POINTS_TABLE_IDENTIFIER);
+                    tableObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
+                    try {
+                        widgetSpecifiers.add(new PointsTableSpecifier(
+                                tableObject));
+                        boolean first = true;
+                        for (Dict object : objects) {
+                            if (first) {
+                                first = false;
+                                int spacing = (object
+                                        .get(MegawidgetSpecifier.MEGAWIDGET_SPACING) == null ? 0
+                                        : ((Number) object
+                                                .get(MegawidgetSpecifier.MEGAWIDGET_SPACING))
+                                                .intValue());
+                                if (spacing < 10) {
+                                    object.put(
+                                            MegawidgetSpecifier.MEGAWIDGET_SPACING,
+                                            10);
+                                }
+                            }
+                            widgetSpecifiers.add(widgetSpecifierFactory
+                                    .createMegawidgetSpecifier(object));
+                        }
+                    } catch (Exception e) {
+                        statusHandler
+                                .error("HazardDetailViewPart.initialize(): "
+                                        + "Error parsing JSON for hazard point megawidgets.",
+                                        e);
+                    }
+                    for (String type : typesSet) {
+                        pointWidgetsForTypes.put(type, widgetSpecifiers);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Create the part control for the view.
+     * 
+     * @param parent
+     *            Parent panel to populate with widgets.
+     */
+    @Override
+    public void createPartControl(Composite parent) {
+
+        // Remember the parent for use later, and
+        // keep track of resize events to determine
+        // whether or not the part is currently
+        // docked.
+        this.parent = parent;
+        parent.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+
+                // Determine whether or not the part
+                // is now docked.
+                boolean docked = determineWhetherDocked();
+                if (docked != HazardDetailViewPart.this.docked) {
+                    HazardDetailViewPart.this.docked = docked;
+                }
+            }
+        });
+
+        // Configure the parent layout.
+        parent.setLayout(new GridLayout(1, false));
+
+        // Fill in the widget creation parameters
+        // hash table, used to provide parameters
+        // to widgets created via widget speci-
+        // fiers at the widgets' creation time.
+        widgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
+        widgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
+        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
+                Utilities.MIN_TIME);
+        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
+                Utilities.MAX_TIME);
+        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                minimumVisibleTime);
+        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                maximumVisibleTime);
+
+        // Create the main panel of the view part.
+        Composite tabTop = new Composite(parent, SWT.NONE);
+        tabTop.setLayout(new FillLayout());
+        tabTop.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        // Create the tab folder that will hold
+        // the hazard event(s), and configure it
+        // to manually respond to tab selections
+        // since it actually uses only one com-
+        // posite as the control for all its
+        // tabs, and simply reconfigures the
+        // widgets therein for each different
+        // tab selection.
+        eventTabFolder = new CTabFolder(tabTop, SWT.TOP);
+        eventTabFolder.setBorderVisible(true);
+        eventTabFolder.setTabHeight(eventTabFolder.getTabHeight() + 8);
+        eventTabFolder.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+
+                // Do nothing if in the middle of
+                // tab manipulation already.
+                if (tabsBeingChanged) {
+                    return;
+                }
+
+                // Occasionally, an event is ge-
+                // nerated from a tab which is not
+                // the currently selected tab, so
+                // ensure that the tab reporting
+                // the event is indeed selected.
+                CTabItem item = eventTabFolder.getSelection();
+                if ((CTabItem) e.item == item) {
+                    visibleHazardIndex = eventTabFolder
+                            .indexOf((CTabItem) e.item);
+                    synchWithEventInfo();
+                }
+            }
+        });
+        scrolledComposite = new ScrolledComposite(eventTabFolder, SWT.H_SCROLL
+                | SWT.V_SCROLL);
+
+        // Create the composite that will be used as
+        // the control for every event tab page.
+        top = new Composite(scrolledComposite, SWT.NONE);
+
+        // If there are events already, iterate
+        // through them, creating a tab for each.
+        tabsBeingChanged = true;
+        for (Map<String, Object> eventDict : primaryParamValues) {
+            CTabItem tabItem = new CTabItem(eventTabFolder, SWT.NONE);
+            setTabText(tabItem,
+                    (String) eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER),
+                    (String) eventDict.get(Utilities.HAZARD_EVENT_FULL_TYPE));
+            tabItem.setData(eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER));
+        }
+        tabsBeingChanged = false;
+
+        // Create the layout for the main panel.
+        GridLayout mainLayout = new GridLayout(1, true);
+        mainLayout.marginRight = 5;
+        mainLayout.marginLeft = 5;
+        mainLayout.marginBottom = 5;
+        mainLayout.marginHeight = 3;
+        mainLayout.marginWidth = 3;
+        top.setLayout(mainLayout);
+
+        // Add the margins and spacing within the
+        // main panel to the base tab page height
+        // tracker.
+        baseTabPageHeight = (mainLayout.marginHeight * 2)
+                + mainLayout.marginBottom + mainLayout.marginTop
+                + (mainLayout.verticalSpacing * 2);
+
+        // Create the category and hazard type
+        // grouping, and a subpanel within it
+        // that will hold the category and type
+        // widgets. The latter is needed be-
+        // cause the subpanel will be enabled
+        // and disabled to give the combo boxes
+        // a read-only status without making
+        // them look disabled.
+        Group hazardGroup = new Group(top, SWT.NONE);
+        hazardGroup.setText("Hazard Type");
+        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gridData.widthHint = 426;
+        hazardGroup.setLayoutData(gridData);
+        hazardGroup.setLayout(new FillLayout());
+        Composite hazardSubGroup = new Composite(hazardGroup, SWT.NONE);
+        GridLayout gridLayout = new GridLayout();
+        gridLayout.numColumns = 2;
+        hazardSubGroup.setLayout(gridLayout);
+
+        // Create the hazard category combo box.
+        Label categoryLabel = new Label(hazardSubGroup, SWT.NONE);
+        categoryLabel.setText("Hazard Category:");
+        gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        categoryLabel.setLayoutData(gridData);
+        categoryCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
+        categoryCombo.removeAll();
+        for (String category : categories) {
+            categoryCombo.add(category);
+        }
+        if (primaryParamValues.size() > 0) {
+            categoryCombo.setText(getCategoryOfCurrentEvent());
+        }
+        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
+        categoryCombo.setLayoutData(gridData);
+
+        // Create the hazard type combo box.
+        Label label = new Label(hazardSubGroup, SWT.NONE);
+        label.setText("Hazard Type:");
+        gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+        label.setLayoutData(gridData);
+        typeCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
+        if (primaryParamValues.size() > 0) {
+            populateHazardTypesList((String) primaryParamValues.get(
+                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_CATEGORY));
+            if (primaryParamValues.get(visibleHazardIndex).get(
+                    Utilities.HAZARD_EVENT_FULL_TYPE) != null) {
+                typeCombo.setText((String) primaryParamValues.get(
+                        visibleHazardIndex).get(
+                        Utilities.HAZARD_EVENT_FULL_TYPE));
+            } else {
+                typeCombo.setText("");
+            }
+        }
+        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
+        typeCombo.setLayoutData(gridData);
+
+        // Add the hazard category/type group to
+        // the base tab page height tracker.
+        baseTabPageHeight += hazardGroup.computeSize(SWT.DEFAULT, SWT.DEFAULT).y;
+
+        // Create the time range panel.
+        Group timeRangePanel = new Group(top, SWT.NONE);
+        timeRangePanel.setText("Time Range");
+        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        timeRangePanel.setLayoutData(gridData);
+        gridLayout = new GridLayout();
+        gridLayout.numColumns = 2;
+        timeRangePanel.setLayout(gridLayout);
+
+        // Create the time range sliders.
+        try {
+            Dict scaleObject = new Dict();
+            scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                    TIME_RANGE_IDENTIFIER);
+            Map<String, String> stateLabels = new HashMap<String, String>();
+            stateLabels.put(START_TIME_STATE, "Start Time:");
+            stateLabels.put(END_TIME_STATE, "End Time:");
+            scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
+                    stateLabels);
+            scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
+            timeRangeWidget = (TimeScaleMegawidget) (new TimeScaleSpecifier(
+                    scaleObject)).createMegawidget(timeRangePanel,
+                    widgetCreationParams);
+            timeScaleWidgets.add(timeRangeWidget);
+            if (primaryParamValues.size() > 0) {
+                timeRangeWidget.setUncommittedState(
+                        START_TIME_STATE,
+                        primaryParamValues.get(visibleHazardIndex).get(
+                                Utilities.HAZARD_EVENT_START_TIME));
+                timeRangeWidget.setUncommittedState(
+                        END_TIME_STATE,
+                        primaryParamValues.get(visibleHazardIndex).get(
+                                Utilities.HAZARD_EVENT_END_TIME));
+                timeRangeWidget.commitStateChanges();
+            }
+        } catch (Exception e) {
+            statusHandler
+                    .error("HazardDetailViewPart.createPartControl(): Exception "
+                            + "during time range megawidget creation; should not occur.",
+                            e);
+        }
+
+        // Ensure that the first column of the time range
+        // panel has the same width as the first column
+        // of the previous panel, for visual consistency's
+        // sake.
+        GridData timeLabelGridData = (GridData) timeRangePanel.getChildren()[0]
+                .getLayoutData();
+        timeLabelGridData.widthHint = categoryLabel.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT, false).x;
+
+        // Add the hazard category/type group to
+        // the base tab page height tracker.
+        baseTabPageHeight += timeRangePanel.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT).y;
+
+        // Create the metadata options panel, which will
+        // hold the actual metadata panel that is appro-
+        // priate for the currently selected hazard type.
+        metadataContentPanel = new Composite(top, SWT.NONE);
+        GridData contentPanelGridData = new GridData(SWT.FILL, SWT.FILL, true,
+                true);
+        metadataContentPanel.setLayoutData(contentPanelGridData);
+        metadataContentLayout = new StackLayout();
+        metadataContentPanel.setLayout(metadataContentLayout);
+
+        // Add a listener for hazard category changes which
+        // alters the list of hazard types.
+        categoryCombo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                populateHazardTypesList(categoryCombo.getText());
+                primaryParamValues.get(visibleHazardIndex).put(
+                        Utilities.HAZARD_EVENT_CATEGORY,
+                        categoryCombo.getText());
+                typeCombo.select(0);
+                typeCombo.notifyListeners(SWT.Selection, new Event());
+            }
+        });
+
+        // Clear the various data structures holding metadata
+        // widget information, since any such widgets should
+        // be recreated at this point.
+        panelsForTypes.clear();
+        widgetsForIdsForTypes.clear();
+        pointWidgetsForIdsForTypes.clear();
+
+        // Show the currently selected hazard type's metadata
+        // panel.
+        if (primaryParamValues.size() > 0) {
+            showMetadataForType((String) primaryParamValues.get(
+                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_FULL_TYPE));
+        }
+
+        // Add a listener for hazard type changes which shows
+        // the metadata panel appropriate to the new hazard
+        // type.
+        typeCombo.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+
+                // Update the records for this event of its
+                // category and type.
+                primaryParamValues.get(visibleHazardIndex).put(
+                        Utilities.HAZARD_EVENT_CATEGORY,
+                        categoryCombo.getText());
+                primaryParamValues.get(visibleHazardIndex).put(
+                        Utilities.HAZARD_EVENT_TYPE,
+                        typeCombo.getText().split(" ")[0]);
+                primaryParamValues.get(visibleHazardIndex).put(
+                        Utilities.HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
+                Dict eventInfo = new Dict();
+                eventInfo.put(
+                        Utilities.HAZARD_EVENT_IDENTIFIER,
+                        primaryParamValues.get(visibleHazardIndex).get(
+                                Utilities.HAZARD_EVENT_IDENTIFIER));
+                eventInfo.put(Utilities.HAZARD_EVENT_CATEGORY,
+                        categoryCombo.getText());
+                eventInfo.put(Utilities.HAZARD_EVENT_FULL_TYPE,
+                        typeCombo.getText());
+                String jsonText = null;
+                try {
+                    jsonText = eventInfo.toJSONString();
+                } catch (Exception e) {
+                    statusHandler
+                            .error("HazardDetailViewPart.createPartControl(): conversion "
+                                    + "of event info to JSON string failed.", e);
+                }
+
+                // Send off the JSON to notify listeners of
+                // the change.
+                fireHIDAction(new HazardDetailAction("updateEventType",
+                        jsonText));
+
+                // Show the metadata widgets for this type,
+                // and synch them up with the event infor-
+                // mation.
+                if (showMetadataForType(typeCombo.getText()) == false) {
+                    synchMetadataWidgetsWithEventInfo();
+                }
+            }
+        });
+
+        // Ensure that this panel is told when the window
+        // is being hidden, and notifies any listener that
+        // it is being dismissed in response.
+        top.getShell().addListener(SWT.Hide, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                fireHIDAction(new HazardDetailAction("Dismiss"));
+            }
+        });
+
+        // Configure the scrolled composite that will allow
+        // each tab page to scroll if it gets too tall.
+        scrolledComposite.setContent(top);
+        scrolledComposite.setExpandHorizontal(true);
+        scrolledComposite.setShowFocusedControl(true);
+
+        // Make the scrolled composite the control of each
+        // tab page.
+        CTabItem[] tabItems = eventTabFolder.getItems();
+        for (CTabItem tabItem : tabItems) {
+            tabItem.setControl(scrolledComposite);
+        }
+
+        // Pack the main tab folder.
+        eventTabFolder.pack();
+
+        // Add a listener to the vertical scroll bar of the
+        // scrolled composite to record the origin each time
+        // scrolling occurs.
+        scrolledComposite.getVerticalBar().addSelectionListener(
+                new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if ((scrolledCompositeContentsChanging == false)
+                                && (visibleHazardIndex != -1)
+                                && (visibleHazardIndex < primaryParamValues
+                                        .size())) {
+                            scrollOriginsForEventIDs.put(
+                                    (String) primaryParamValues.get(
+                                            visibleHazardIndex).get(
+                                            Utilities.HAZARD_EVENT_IDENTIFIER),
+                                    scrolledComposite.getOrigin());
+                        }
+                    }
+                });
+
+        // Create the button bar below the tab composite.
+        createButtonBar(parent);
+
+        // Add a listener to the scrolled composite to make
+        // it resize its page increment whenever it changes
+        // size, and schedule a recalculation to happen when
+        // the GUI has been completely constructed so that
+        // the scrolled composite will know how large its
+        // child widget is to be.
+        scrolledComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+                recalculateScrolledCompositePageIncrement();
+            }
+        });
+        configureScrolledCompositeForSelectedEvent();
+        Display.getCurrent().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                recalculateScrolledCompositePageIncrement();
+            }
+        });
+    }
+
+    @Override
+    public void setFocus() {
+
+        // No action.
+    }
 
     /**
      * Receive notification that the given specifier's widget has been invoked
@@ -696,6 +1280,12 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      */
     @Override
     public void megawidgetInvoked(INotifier widget, String extraCallback) {
+
+        // If there are no event dictionaries, do
+        // nothing.
+        if (primaryParamValues.size() == 0) {
+            return;
+        }
 
         // Create an event dictionary and add the event
         // identifier to it.
@@ -725,7 +1315,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                             .getSpecifier().getIdentifier()));
                 } catch (Exception e) {
                     statusHandler
-                            .error("HazardDetailDialog.megawidgetInvoked(): "
+                            .error("HazardDetailViewPart.megawidgetInvoked(): "
                                     + "Error: Could not get value for state identifier \""
                                     + widget.getSpecifier().getIdentifier()
                                     + "\" for " + "megawidget \""
@@ -740,7 +1330,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                                 ((IStateful) widget).getState(identifier));
                     } catch (Exception e) {
                         statusHandler
-                                .error("HazardDetailDialog.megawidgetInvoked(): "
+                                .error("HazardDetailViewPart.megawidgetInvoked(): "
                                         + "Error: Could not get value for state "
                                         + "identifier \""
                                         + identifier
@@ -765,7 +1355,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         try {
             eventString = eventInfo.toJSONString();
         } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.megawidgetInvoked(): "
+            statusHandler.error("HazardDetailViewPart.megawidgetInvoked(): "
                     + "Could not serialize JSON.", e);
         }
         fireHIDAction(new HazardDetailAction(widget.getSpecifier()
@@ -789,8 +1379,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
 
         // If the widget that experienced a state
         // change is the time range widget, handle
-        // it separately.
-        if (widget == timeRangeWidget) {
+        // it separately. If there are no event
+        // dictionaries, do nothing.
+        if (primaryParamValues.size() == 0) {
+            return;
+        } else if (widget == timeRangeWidget) {
             timeRangeChanged();
             return;
         }
@@ -854,15 +1447,15 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             jsonText = eventInfo.toJSONString();
         } catch (Exception e) {
             statusHandler.error(
-                    "HazardDetailDialog.megawidgetStateChanged(): conversion "
+                    "HazardDetailViewPart.megawidgetStateChanged(): conversion "
                             + "of event info to JSON string failed.", e);
         }
         fireHIDAction(new HazardDetailAction("updateEventMetadata", jsonText));
     }
 
     /**
-     * Get the event information from the hazard information dialog based upon
-     * the current values of the various widgets.
+     * Get the event information based upon the current values of the various
+     * widgets.
      * 
      * @return JSON string.
      */
@@ -908,8 +1501,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         try {
             jsonText = eventsList.toJSONString();
         } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.getHidEventInfo(): write "
-                    + "of JSON string failed.", e);
+            statusHandler.error(
+                    "HazardDetailViewPart.getHidEventInfo(): write "
+                            + "of JSON string failed.", e);
         }
 
         // Print out diagnostic info.
@@ -983,7 +1577,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                             .get(Utilities.HAZARD_EVENT_CATEGORY);
                     if (category == null) {
                         statusHandler
-                                .warn("HazardDetailDialog.setHidEventInfo(): "
+                                .warn("HazardDetailViewPart.setHidEventInfo(): "
                                         + "Problem: for empty hazard type, could "
                                         + "not find hazard category!");
                     } else {
@@ -1034,15 +1628,16 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                             .containsKey(fullType);
                     if (keepPointsSeparate) {
                         statusHandler
-                                .debug("HazardDetailDialog.setHidEventInfo(): "
+                                .debug("HazardDetailViewPart.setHidEventInfo(): "
                                         + "For hazard type of \""
                                         + fullType
                                         + "\", points (if found in JSON) should be "
                                         + "on separate tab.");
                     } else {
                         statusHandler
-                                .debug("HazardDetailDialog.setHidEventInfo(): "
-                                        + "For hazard type of \"" + fullType
+                                .debug("HazardDetailViewPart.setHidEventInfo(): "
+                                        + "For hazard type of \""
+                                        + fullType
                                         + "\", no points tabs should be used.");
                     }
                     for (int k = 1; k < eventDictList.size(); k++) {
@@ -1079,7 +1674,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 auxiliaryParamValues.add(thisAuxiliaryParamValues);
             }
         } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.setHidEventInfo():"
+            statusHandler.error("HazardDetailViewPart.setHidEventInfo():"
                     + "Problem reading event dictionary JSON.", e);
         }
 
@@ -1119,9 +1714,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                     CTabItem tabItem = new CTabItem(eventTabFolder, SWT.NONE);
                     setTabText(tabItem, eventID, types.get(j));
                     tabItem.setData(eventID);
-                    if (getShell() != null) {
-                        tabItem.setControl(scrolledComposite);
-                    }
+                    tabItem.setControl(scrolledComposite);
                 }
                 scrolledCompositeContentsChanging = false;
                 tabsBeingChanged = false;
@@ -1151,11 +1744,20 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                     eventTabFolder.setSelection(tabItemToSelect);
                 }
             }
-            synchDialogWithEventInfo();
+            synchWithEventInfo();
 
             // Turn redraw back on.
             eventTabFolder.setRedraw(true);
         }
+    }
+
+    /**
+     * Get the number of events showing.
+     * 
+     * @return Number of events showing.
+     */
+    public int getEventCount() {
+        return primaryParamValues.size();
     }
 
     /**
@@ -1178,225 +1780,38 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         }
     }
 
+    // Package Methods
+
     /**
-     * Configure the dialog's visual representation to include widgets as
-     * specified.
+     * Determine whether or not the view is currently docked.
      * 
-     * @param generalWidgets
-     *            JSON specifying the general widgets that the dialog must
-     *            contain.
-     * @param hazardWidgets
-     *            JSON specifying the widgets that the dialog must contain for
-     *            each of the hazards that the general widgets allow the user to
-     *            select.
-     * @param minVisibleTime
-     *            Minimum visible time.
-     * @param maxVisibleTime
-     *            Maximum visible time.
+     * @return True if the view is currently docked, false otherwise.
      */
-    public void initialize(String generalWidgets, String hazardWidgets,
-            long minVisibleTime, long maxVisibleTime) {
-
-        // Remember the minimum and maximum visible times.
-        minimumVisibleTime = minVisibleTime;
-        maximumVisibleTime = maxVisibleTime;
-
-        // Parse the strings into a JSON object and a JSON array.
-        Dict jsonGeneralWidgets = null;
-        DictList jsonHazardWidgets = null;
-        try {
-            jsonGeneralWidgets = Dict.getInstance(generalWidgets);
-        } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.initialize(): Error "
-                    + "parsing JSON for general megawidgets.", e);
-        }
-        try {
-            jsonHazardWidgets = DictList.getInstance(hazardWidgets);
-        } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.initialize(): Error "
-                    + "parsing JSON for hazard megawidgets.", e);
-        }
-
-        // Get the list of event categories, and the list of event
-        // types going with each category, and the category going
-        // with each set of event types.
-        categories.clear();
-        typesForCategories.clear();
-        categoriesForTypes.clear();
-        for (Object item : (List<?>) jsonGeneralWidgets
-                .get(Utilities.HAZARD_INFO_GENERAL_CONFIG_WIDGETS)) {
-
-            // Get the category.
-            Dict jsonItem = (Dict) item;
-            String category = jsonItem
-                    .getDynamicallyTypedValue(HierarchicalChoicesTreeSpecifier.CHOICE_NAME);
-            categories.add(category);
-
-            // Get the types that go with this category. Each JSON
-            // array will contain dictionaries which in turn hold
-            // strings as one of their values naming the types; the
-            // resulting list must then be alphabetized.
-            List<String> types = new ArrayList<String>();
-            for (Object child : (List<?>) jsonItem
-                    .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN)) {
-                types.add((String) ((Map<?, ?>) child)
-                        .get(HierarchicalChoicesTreeSpecifier.CHOICE_NAME));
-            }
-            Collections.sort(types);
-
-            // Remember the association of the category and the
-            // types, placing an empty string type at the head of
-            // the types list before saving it, so that each cate-
-            // gory has an empty type with no associated metadata.
-            for (String type : types) {
-                categoriesForTypes.put(type, category);
-            }
-            types.add(0, "");
-            typesForCategories.put(category, types);
-        }
-
-        // Get the default hazard category, to be used when no
-        // hazard type is sent in an event dictionary.
-        // categoriesForTypes.put("", (String)
-        // jsonGeneralWidgets.get("defaultCategory"));
-
-        // Get the widget specifier lists for the event types.
-        widgetsForTypes.clear();
-        pointWidgetsForTypes.clear();
-        for (int j = 0; j < jsonHazardWidgets.size(); j++) {
-
-            // Get the event types to which this list of widget
-            // specifiers applies, ignoring any that already
-            // have an associated widget specifier list due to
-            // a previous iteration. This last part is neces-
-            // sary because an event type might appear in more
-            // than one set of event types (each set being
-            // associated with a list of widget specifiers), in
-            // which case the first set in which it appears is
-            // considered to be the set in which it actually
-            // belongs.
-            Dict jsonItem = jsonHazardWidgets.getDynamicallyTypedValue(j);
-            List<String> types = new ArrayList<String>();
-            for (Object child : (List<?>) jsonItem
-                    .get(Utilities.HAZARD_INFO_METADATA_TYPES)) {
-                types.add((String) child);
-            }
-            Set<String> typesSet = new HashSet<String>();
-            for (String type : types) {
-                if (widgetsForTypes.containsKey(type) == false) {
-                    typesSet.add(type);
-                }
-            }
-
-            // If after dropping any event types that have
-            // already been taken care of in previous itera-
-            // tions there is still a non-empty set of event
-            // types left, put together any widget specifiers
-            // for this set.
-            if (typesSet.isEmpty() == false) {
-
-                // Create the widget specifiers for the event
-                // type as a whole.
-                List<MegawidgetSpecifier> widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
-                List<Dict> objects = getJsonObjectList(jsonItem
-                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
-                try {
-                    for (Dict object : objects) {
-                        widgetSpecifiers.add(widgetSpecifierFactory
-                                .createMegawidgetSpecifier(object));
-                    }
-                } catch (Exception e) {
-                    statusHandler.error("HazardDetailDialog.initialize(): "
-                            + "Error parsing JSON for hazard megawidgets.", e);
-                }
-                for (String type : typesSet) {
-                    widgetsForTypes.put(type, widgetSpecifiers);
-                }
-
-                // Create the widget specifiers for the event
-                // type's individual points, if any. Any
-                // widget specifiers for points must be pre-
-                // ceded by a points table widget specifier,
-                // which is synthesized here and placed at
-                // the head of the list. The widget immedi-
-                // ately following the table is padded so
-                // that it does not get too far into the
-                // table's personal space.
-                Object pointObject = jsonItem
-                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
-                if (pointObject != null) {
-                    widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
-                    objects = getJsonObjectList(pointObject);
-                    Dict tableObject = new Dict();
-                    tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
-                            POINTS_TABLE_IDENTIFIER);
-                    tableObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
-                    try {
-                        widgetSpecifiers.add(new PointsTableSpecifier(
-                                tableObject));
-                        boolean first = true;
-                        for (Dict object : objects) {
-                            if (first) {
-                                first = false;
-                                int spacing = (object
-                                        .get(MegawidgetSpecifier.MEGAWIDGET_SPACING) == null ? 0
-                                        : ((Number) object
-                                                .get(MegawidgetSpecifier.MEGAWIDGET_SPACING))
-                                                .intValue());
-                                if (spacing < 10) {
-                                    object.put(
-                                            MegawidgetSpecifier.MEGAWIDGET_SPACING,
-                                            10);
-                                }
-                            }
-                            widgetSpecifiers.add(widgetSpecifierFactory
-                                    .createMegawidgetSpecifier(object));
-                        }
-                    } catch (Exception e) {
-                        statusHandler
-                                .error("HazardDetailDialog.initialize(): "
-                                        + "Error parsing JSON for hazard point megawidgets.",
-                                        e);
-                    }
-                    for (String type : typesSet) {
-                        pointWidgetsForTypes.put(type, widgetSpecifiers);
-                    }
-                }
-            }
-        }
+    final boolean isDocked() {
+        return docked;
     }
 
-    // Protected Methods
+    // Private Methods
 
     /**
-     * Respond to the user closing the window using the window title bar close
-     * button.
-     */
-    @Override
-    protected void handleShellCloseEvent() {
-        setVisible(false);
-    }
-
-    /**
-     * Configure the dialog shell.
-     * 
-     * @param shell
-     *            Shell of the dialog.
-     */
-    @Override
-    protected void configureShell(Shell shell) {
-        super.configureShell(shell);
-        shell.setText("Hazard Information");
-    }
-
-    /**
-     * Create the buttons at the bottom of the dialog.
+     * Create a button bar for the action buttons.
      * 
      * @param parent
-     *            Parent in which to create the buttons.
+     *            Parent composite of the new button bar.
      */
-    @Override
-    protected void createButtonsForButtonBar(Composite parent) {
+    private void createButtonBar(Composite parent) {
+        Composite buttonBar = new Composite(parent, SWT.NONE);
+        buttonBar
+                .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        RowLayout layout = new RowLayout();
+        layout.center = true;
+        layout.justify = true;
+        layout.pack = false;
+        layout.wrap = true;
+        layout.spacing = 10;
+        layout.marginWidth = 5;
+        layout.marginHeight = 5;
+        buttonBar.setLayout(layout);
         boolean enable = (primaryParamValues.size() > 0);
         if (enable) {
             for (Map<String, Object> eventDict : primaryParamValues) {
@@ -1407,413 +1822,66 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 }
             }
         }
-        previewButton = createButton(parent, PREVIEW_ID, "Preview...", false);
+        previewButton = createButton(buttonBar, PREVIEW_ID, "  Preview...  ");
         previewButton.setEnabled(enable);
         previewButton.setToolTipText("Preview the text product");
-        proposeButton = createButton(parent, PROPOSE_ID, "Propose", false);
-        proposeButton.setEnabled(enable/* && !alreadyIssued */);
+        proposeButton = createButton(buttonBar, PROPOSE_ID, "  Propose  ");
+        proposeButton.setEnabled(enable);
         proposeButton.setToolTipText("Propose the event");
-        issueButton = createButton(parent, ISSUE_ID, "Issue...", false);
-        issueButton.setEnabled(enable/* && !alreadyIssued */);
+        issueButton = createButton(buttonBar, ISSUE_ID, "  Issue...  ");
+        issueButton.setEnabled(enable);
         issueButton.setToolTipText("Issue the event");
-        dismissButton = createButton(parent, DISMISS_ID, "Dismiss", false);
-        dismissButton.setToolTipText("Dismiss this dialog");
     }
 
     /**
-     * Create the dialog layout and components.
+     * Creates a new button with the given identifier.
      * 
      * @param parent
-     *            Parent panel to populate with widgets.
-     * @return Panel that was created.
+     *            Parent composite.
+     * @param id
+     *            Identifier of the button.
+     * @param label
+     *            Label from the button.
+     * @return Button that was created.
      */
-    @Override
-    protected Control createDialogArea(Composite parent) {
-
-        // Fill in the widget creation parameters
-        // hash table, used to provide parameters
-        // to widgets created via widget speci-
-        // fiers at the widgets' creation time.
-        widgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
-        widgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
-        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
-                Utilities.MIN_TIME);
-        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
-                Utilities.MAX_TIME);
-        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
-                minimumVisibleTime);
-        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
-                maximumVisibleTime);
-
-        // Create the main panel of the dialog.
-        Composite tabTop = (Composite) super.createDialogArea(parent);
-        tabTop.setLayout(new FillLayout());
-
-        // Create the tab folder that will hold
-        // the hazard event(s), and configure it
-        // to manually respond to tab selections
-        // since it actually uses only one com-
-        // posite as the control for all its
-        // tabs, and simply reconfigures the
-        // widgets therein for each different
-        // tab selection.
-        eventTabFolder = new CTabFolder(tabTop, SWT.TOP);
-        eventTabFolder.setBorderVisible(true);
-        eventTabFolder.setTabHeight(eventTabFolder.getTabHeight() + 8);
-        eventTabFolder.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-
-                // Do nothing if in the middle of
-                // tab manipulation already.
-                if (tabsBeingChanged) {
-                    return;
-                }
-
-                // Occasionally, an event is ge-
-                // nerated from a tab which is not
-                // the currently selected tab, so
-                // ensure that the tab reporting
-                // the event is indeed selected.
-                CTabItem item = eventTabFolder.getSelection();
-                if ((CTabItem) e.item == item) {
-                    visibleHazardIndex = eventTabFolder
-                            .indexOf((CTabItem) e.item);
-                    synchDialogWithEventInfo();
-                }
-            }
-        });
-        scrolledComposite = new ScrolledComposite(eventTabFolder, SWT.H_SCROLL
-                | SWT.V_SCROLL);
-
-        // Create the composite that will be used as
-        // the control for every event tab page.
-        top = new Composite(scrolledComposite, SWT.NONE);
-
-        // If there are events already, iterate
-        // through them, creating a tab for each.
-        tabsBeingChanged = true;
-        for (Map<String, Object> eventDict : primaryParamValues) {
-            CTabItem tabItem = new CTabItem(eventTabFolder, SWT.NONE);
-            setTabText(tabItem,
-                    (String) eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER),
-                    (String) eventDict.get(Utilities.HAZARD_EVENT_FULL_TYPE));
-            tabItem.setData(eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER));
-        }
-        tabsBeingChanged = false;
-
-        // Create the layout for the main panel.
-        GridLayout mainLayout = new GridLayout(1, true);
-        mainLayout.marginRight = 5;
-        mainLayout.marginLeft = 5;
-        mainLayout.marginBottom = 5;
-        mainLayout.marginHeight = 3;
-        mainLayout.marginWidth = 3;
-        top.setLayout(mainLayout);
-
-        // Add the margins and spacing within the
-        // main panel to the base tab page height
-        // tracker.
-        baseTabPageHeight = (mainLayout.marginHeight * 2)
-                + mainLayout.marginBottom + mainLayout.marginTop
-                + (mainLayout.verticalSpacing * 2);
-
-        // Create the category and hazard type
-        // grouping, and a subpanel within it
-        // that will hold the category and type
-        // widgets. The latter is needed be-
-        // cause the subpanel will be enabled
-        // and disabled to give the combo boxes
-        // a read-only status without making
-        // them look disabled.
-        Group hazardGroup = new Group(top, SWT.NONE);
-        hazardGroup.setText("Hazard Type");
-        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gridData.widthHint = 426;
-        hazardGroup.setLayoutData(gridData);
-        hazardGroup.setLayout(new FillLayout());
-        Composite hazardSubGroup = new Composite(hazardGroup, SWT.NONE);
-        GridLayout gridLayout = new GridLayout();
-        gridLayout.numColumns = 2;
-        hazardSubGroup.setLayout(gridLayout);
-
-        // Create the hazard category combo box.
-        Label categoryLabel = new Label(hazardSubGroup, SWT.NONE);
-        categoryLabel.setText("Hazard Category:");
-        gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        categoryLabel.setLayoutData(gridData);
-        categoryCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
-        categoryCombo.removeAll();
-        for (String category : categories) {
-            categoryCombo.add(category);
-        }
-        if (primaryParamValues.size() > 0) {
-            String category = (String) primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_CATEGORY);
-            if (category == null) {
-                category = categoriesForTypes.get(primaryParamValues.get(
-                        visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
-            }
-            categoryCombo.setText(category);
-        }
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
-        categoryCombo.setLayoutData(gridData);
-
-        // Create the hazard type combo box.
-        Label label = new Label(hazardSubGroup, SWT.NONE);
-        label.setText("Hazard Type:");
-        gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
-        label.setLayoutData(gridData);
-        typeCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
-        if (primaryParamValues.size() > 0) {
-            populateHazardTypesList((String) primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_CATEGORY));
-            if (primaryParamValues.get(visibleHazardIndex).get(
-                    Utilities.HAZARD_EVENT_FULL_TYPE) != null) {
-                typeCombo.setText((String) primaryParamValues.get(
-                        visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
-            } else {
-                typeCombo.setText("");
-            }
-        }
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
-        typeCombo.setLayoutData(gridData);
-
-        // Add the hazard category/type group to
-        // the base tab page height tracker.
-        baseTabPageHeight += hazardGroup.computeSize(SWT.DEFAULT, SWT.DEFAULT).y;
-
-        // Create the time range panel.
-        Group timeRangePanel = new Group(top, SWT.NONE);
-        timeRangePanel.setText("Time Range");
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gridData.widthHint = 427;
-        timeRangePanel.setLayoutData(gridData);
-        gridLayout = new GridLayout();
-        gridLayout.numColumns = 2;
-        timeRangePanel.setLayout(gridLayout);
-
-        // Create the time range sliders.
-        try {
-            Dict scaleObject = new Dict();
-            scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
-                    TIME_RANGE_IDENTIFIER);
-            Map<String, String> stateLabels = new HashMap<String, String>();
-            stateLabels.put(START_TIME_STATE, "Start Time:");
-            stateLabels.put(END_TIME_STATE, "End Time:");
-            scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
-                    stateLabels);
-            scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
-            timeRangeWidget = (TimeScaleMegawidget) (new TimeScaleSpecifier(
-                    scaleObject)).createMegawidget(timeRangePanel,
-                    widgetCreationParams);
-            timeScaleWidgets.add(timeRangeWidget);
-            if (primaryParamValues.size() > 0) {
-                timeRangeWidget.setUncommittedState(
-                        START_TIME_STATE,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_START_TIME));
-                timeRangeWidget.setUncommittedState(
-                        END_TIME_STATE,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_END_TIME));
-                timeRangeWidget.commitStateChanges();
-            }
-        } catch (Exception e) {
-            statusHandler
-                    .error("HazardDetailDialog.createDialogArea(): Exception "
-                            + "during time range megawidget creation; should not occur.",
-                            e);
-        }
-
-        // Ensure that the first column of the time range
-        // panel has the same width as the first column
-        // of the previous panel, for visual consistency's
-        // sake.
-        GridData timeLabelGridData = (GridData) timeRangePanel.getChildren()[0]
-                .getLayoutData();
-        timeLabelGridData.widthHint = categoryLabel.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT, false).x;
-
-        // Add the hazard category/type group to
-        // the base tab page height tracker.
-        baseTabPageHeight += timeRangePanel.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT).y;
-
-        // Create the metadata options panel, which will
-        // hold the actual metadata panel that is appro-
-        // priate for the currently selected hazard type.
-        metadataContentPanel = new Composite(top, SWT.NONE);
-        GridData contentPanelGridData = new GridData(SWT.FILL, SWT.FILL, true,
-                true);
-        contentPanelGridData.widthHint = 427;
-        metadataContentPanel.setLayoutData(contentPanelGridData);
-        metadataContentLayout = new StackLayout();
-        metadataContentPanel.setLayout(metadataContentLayout);
-
-        // Add a listener for hazard category changes which
-        // alters the list of hazard types.
-        categoryCombo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                populateHazardTypesList(categoryCombo.getText());
-                primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
-                typeCombo.select(0);
-                typeCombo.notifyListeners(SWT.Selection, new Event());
-            }
-        });
-
-        // Clear the various data structures holding metadata
-        // widget information, since any such widgets should
-        // be recreated at this point.
-        panelsForTypes.clear();
-        widgetsForIdsForTypes.clear();
-        pointWidgetsForIdsForTypes.clear();
-
-        // Show the currently selected hazard type's metadata
-        // panel.
-        if (primaryParamValues.size() > 0) {
-            showMetadataForType((String) primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_FULL_TYPE));
-        }
-
-        // Add a listener for hazard type changes which shows
-        // the metadata panel appropriate to the new hazard
-        // type.
-        typeCombo.addSelectionListener(new SelectionAdapter() {
+    private Button createButton(Composite parent, int id, String label) {
+        Button button = new Button(parent, SWT.PUSH);
+        button.setText(label);
+        button.setFont(JFaceResources.getDialogFont());
+        button.setData(new Integer(id));
+        button.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-
-                // Update the records for this event of its
-                // category and type.
-                primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
-                primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_TYPE,
-                        typeCombo.getText().split(" ")[0]);
-                primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
-                Dict eventInfo = new Dict();
-                eventInfo.put(
-                        Utilities.HAZARD_EVENT_IDENTIFIER,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_IDENTIFIER));
-                eventInfo.put(Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
-                eventInfo.put(Utilities.HAZARD_EVENT_FULL_TYPE,
-                        typeCombo.getText());
-                String jsonText = null;
-                try {
-                    jsonText = eventInfo.toJSONString();
-                } catch (Exception e) {
-                    statusHandler
-                            .error("HazardDetailDialog.createDialogArea(): conversion "
-                                    + "of event info to JSON string failed.", e);
-                }
-
-                // Send off the JSON to notify listeners of
-                // the change.
-                fireHIDAction(new HazardDetailAction("updateEventType",
-                        jsonText));
-
-                // Show the metadata widgets for this type,
-                // and synch them up with the event infor-
-                // mation.
-                if (showMetadataForType(typeCombo.getText()) == false) {
-                    synchMetadataWidgetsWithEventInfo();
-                }
+                buttonPressed(((Integer) event.widget.getData()).intValue());
             }
         });
-
-        // Ensure that this panel is told when the window
-        // is being hidden, and notifies any listener that
-        // it is being dismissed in response.
-        top.getShell().addListener(SWT.Hide, new Listener() {
-            @Override
-            public void handleEvent(Event event) {
-                fireHIDAction(new HazardDetailAction("Dismiss"));
-            }
-        });
-
-        // Configure the scrolled composite that will allow
-        // each tab page to scroll if it gets too tall.
-        scrolledComposite.setContent(top);
-        scrolledComposite.setExpandHorizontal(true);
-        scrolledComposite.setShowFocusedControl(true);
-
-        // Make the scrolled composite the control of each
-        // tab page.
-        CTabItem[] tabItems = eventTabFolder.getItems();
-        for (CTabItem tabItem : tabItems) {
-            tabItem.setControl(scrolledComposite);
-        }
-
-        // Pack the main tab folder.
-        eventTabFolder.pack();
-
-        // Add a listener to the vertical scroll bar of the
-        // scrolled composite to record the origin each time
-        // scrolling occurs.
-        scrolledComposite.getVerticalBar().addSelectionListener(
-                new SelectionAdapter() {
-                    @Override
-                    public void widgetSelected(SelectionEvent e) {
-                        if ((scrolledCompositeContentsChanging == false)
-                                && (visibleHazardIndex != -1)
-                                && (visibleHazardIndex < primaryParamValues
-                                        .size())) {
-                            scrollOriginsForEventIDs.put(
-                                    (String) primaryParamValues.get(
-                                            visibleHazardIndex).get(
-                                            Utilities.HAZARD_EVENT_IDENTIFIER),
-                                    scrolledComposite.getOrigin());
-                        }
-                    }
-                });
-
-        // Add a listener to the scrolled composite to make
-        // it resize its page increment whenever it changes
-        // size, and schedule a recalculation to happen when
-        // the GUI has been completely constructed so that
-        // the scrolled composite will know how large its
-        // child widget is to be.
-        scrolledComposite.addControlListener(new ControlAdapter() {
-            @Override
-            public void controlResized(ControlEvent e) {
-                recalculateScrolledCompositePageIncrement();
-            }
-        });
-        configureScrolledCompositeForSelectedEvent();
-        Display.getCurrent().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                recalculateScrolledCompositePageIncrement();
-            }
-        });
-
-        // Return the create panel.
-        return tabTop;
+        return button;
     }
 
-    @Override
-    protected void buttonPressed(int buttonId) {
+    /**
+     * Respond to a command button being pressed in the button bar.
+     * 
+     * @param buttonId
+     *            Identifier of the button that was pressed.
+     */
+    private void buttonPressed(int buttonId) {
         if (buttonId == PROPOSE_ID) {
             fireHIDAction(new HazardDetailAction("Propose"));
         } else if (buttonId == ISSUE_ID) {
             fireHIDAction(new HazardDetailAction("Issue"));
         } else if (buttonId == PREVIEW_ID) {
             fireHIDAction(new HazardDetailAction("Preview"));
-        } else if (buttonId == DISMISS_ID) {
-            fireHIDAction(new HazardDetailAction("Dismiss"));
         }
     }
 
-    // Private Methods
+    /**
+     * Determine whether or not the view is now docked.
+     * 
+     * @return True if the view is docked, false otherwise.
+     */
+    private boolean determineWhetherDocked() {
+        return (parent.getShell().getText().length() > 0);
+    }
 
     /**
      * Configure the specified points table with the proper headers and columns.
@@ -1832,7 +1900,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (widgetSpecifiers == null) {
             statusHandler
-                    .info("HazardDetailDialog.configurePointsTable(): Could "
+                    .info("HazardDetailViewPart.configurePointsTable(): Could "
                             + "not find point megawidget specifiers for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
                                     Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
@@ -1928,17 +1996,18 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (widgetsForIds == null) {
             statusHandler
-                    .info("HazardDetailDialog.populatePointsTable(): Could "
+                    .info("HazardDetailViewPart.populatePointsTable(): Could "
                             + "not find point megawidgets for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
                                     Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
         if (pointsParamValues.get(visibleHazardIndex) == null) {
-            statusHandler.info("HazardDetailDialog.populatePointsTable(): No "
-                    + "points parameter values were found for type \""
-                    + primaryParamValues.get(visibleHazardIndex).get(
-                            Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+            statusHandler
+                    .info("HazardDetailViewPart.populatePointsTable(): No "
+                            + "points parameter values were found for type \""
+                            + primaryParamValues.get(visibleHazardIndex).get(
+                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -1987,7 +2056,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                                 .get(identifier)).getStateDescription(
                                 identifier, value);
                     } catch (Exception e) {
-                        statusHandler.error("HazardDetailDialog."
+                        statusHandler.error("HazardDetailViewPart."
                                 + "populatePointsTable(): Unable to format "
                                 + value + " for table column " + identifier
                                 + ".", e);
@@ -2029,10 +2098,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (widgetsForIds == null) {
-            statusHandler.info("HazardDetailDialog.updatePointsTable(): Could "
-                    + "not find point megawidgets for type = \""
-                    + primaryParamValues.get(visibleHazardIndex).get(
-                            Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+            statusHandler
+                    .info("HazardDetailViewPart.updatePointsTable(): Could "
+                            + "not find point megawidgets for type = \""
+                            + primaryParamValues.get(visibleHazardIndex).get(
+                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2042,7 +2112,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         // length.
         TableItem[] items = table.getSelection();
         if (items.length == 0) {
-            statusHandler.info("HazardDetailDialog.updatePointsTable(): No "
+            statusHandler.info("HazardDetailViewPart.updatePointsTable(): No "
                     + "points table item selected.");
             return;
         }
@@ -2059,8 +2129,8 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 items[0].setText(col,
                         widget.getStateDescription(identifier, state));
             } catch (Exception e) {
-                statusHandler
-                        .error("HazardDetailDialog.updatePointsTable(): "
+                statusHandler.error(
+                        "HazardDetailViewPart.updatePointsTable(): "
                                 + "Unable to update table column " + identifier
                                 + " to have state = "
                                 + items[0].getData(identifier), e);
@@ -2087,10 +2157,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (widgetsForIds == null) {
-            statusHandler.info("HazardDetailDialog.updatePointWidgetValues(): "
-                    + "Could not find point megawidgets for type = \""
-                    + primaryParamValues.get(visibleHazardIndex).get(
-                            Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+            statusHandler
+                    .info("HazardDetailViewPart.updatePointWidgetValues(): "
+                            + "Could not find point megawidgets for type = \""
+                            + primaryParamValues.get(visibleHazardIndex).get(
+                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2100,7 +2171,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         // length.
         TableItem[] items = table.getSelection();
         if (items.length == 0) {
-            statusHandler.info("HazardDetailDialog.updatePointsTable(): No "
+            statusHandler.info("HazardDetailViewPart.updatePointsTable(): No "
                     + "points table item selected.");
             return;
         }
@@ -2126,8 +2197,8 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                     widget.setState(identifier, items[0].getData(identifier));
                 }
             } catch (Exception e) {
-                statusHandler
-                        .error("HazardDetailDialog.updatePointsTable(): "
+                statusHandler.error(
+                        "HazardDetailViewPart.updatePointsTable(): "
                                 + "Unable to update point megawidget "
                                 + identifier + " to have state = "
                                 + items[0].getData(identifier), e);
@@ -2138,7 +2209,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                 widget.commitStateChanges();
             } catch (Exception e) {
                 statusHandler
-                        .error("HazardDetailDialog.updatePointsTable(): "
+                        .error("HazardDetailViewPart.updatePointsTable(): "
                                 + "Unable to commit change(s) to state in point "
                                 + "megawidget "
                                 + widget.getSpecifier().getIdentifier(), e);
@@ -2147,9 +2218,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     }
 
     /**
-     * Set the dialog's widgets' values to match the current event info.
+     * Set the part's widgets' values to match the current event info.
      */
-    private void synchDialogWithEventInfo() {
+    private void synchWithEventInfo() {
 
         // If there are no hazard events, do nothing.
         if (eventTabFolder.getItemCount() == 0) {
@@ -2162,9 +2233,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         }
 
         // Set the category and type combo boxes.
-        categoryCombo.setText((String) primaryParamValues.get(
-                visibleHazardIndex).get(Utilities.HAZARD_EVENT_CATEGORY));
-        populateHazardTypesList(categoryCombo.getText());
+        String category = getCategoryOfCurrentEvent();
+        categoryCombo.setText(category);
+        populateHazardTypesList(category);
         String type = (String) primaryParamValues.get(visibleHazardIndex).get(
                 Utilities.HAZARD_EVENT_FULL_TYPE);
         typeCombo.setText(type);
@@ -2183,7 +2254,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             timeRangeWidget.commitStateChanges();
         } catch (Exception e) {
             statusHandler
-                    .error("HazardDetailDialog.synchDialogWithEventInfo(): "
+                    .error("HazardDetailViewPart.synchWithEventInfo(): "
                             + "Error: Could not set the state for time range megawidget.",
                             e);
         }
@@ -2241,6 +2312,21 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
     }
 
     /**
+     * Get the category of the current event.
+     * 
+     * @return Category of the current event.
+     */
+    private String getCategoryOfCurrentEvent() {
+        String category = (String) primaryParamValues.get(visibleHazardIndex)
+                .get(Utilities.HAZARD_EVENT_CATEGORY);
+        if (category == null) {
+            category = categoriesForTypes.get(primaryParamValues.get(
+                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_FULL_TYPE));
+        }
+        return category;
+    }
+
+    /**
      * Display the metadata panel for the specified hazard type.
      * 
      * @param type
@@ -2252,7 +2338,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
 
         // If no type has been chosen, do nothing
         if (type == null) {
-            statusHandler.info("HazardDetailDialog.showMetadataForType(): "
+            statusHandler.info("HazardDetailViewPart.showMetadataForType(): "
                     + "Problem: switching to null hazard type, ignoring.");
             return false;
         }
@@ -2264,10 +2350,10 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             previewButton.setEnabled(enable);
         }
         if (proposeButton != null) {
-            proposeButton.setEnabled(enable/* && !alreadyIssued */);
+            proposeButton.setEnabled(enable);
         }
         if (issueButton != null) {
-            issueButton.setEnabled(enable/* && !alreadyIssued */);
+            issueButton.setEnabled(enable);
         }
 
         // If the type chosen is the same as what was
@@ -2365,7 +2451,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
         // Show this type's panel and lay out the content
         // panel to display it. This is done asynchronously
         // the first time this method is called because
-        // sometimes when the dialog first comes up the
+        // sometimes when the view part first comes up the
         // metadata panel requests a bizarrely large height.
         if (scrolledCompositeSizeCalculated == false) {
             final Composite thePanel = panel;
@@ -2401,6 +2487,11 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      */
     private void configureScrolledCompositeForSelectedEvent() {
 
+        // If there are no events, do nothing.
+        if (primaryParamValues.size() == 0) {
+            return;
+        }
+
         // Determine the required height of the metadata panel.
         int metadataHeight = (metadataContentLayout.topControl == null ? 0
                 : metadataContentLayout.topControl.computeSize(SWT.DEFAULT,
@@ -2432,6 +2523,9 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
      * Recalculate the scrolled composite page increment.
      */
     private void recalculateScrolledCompositePageIncrement() {
+        if (scrolledComposite.isDisposed()) {
+            return;
+        }
         if (scrolledCompositePageIncrementChanging) {
             return;
         }
@@ -2483,7 +2577,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             primaryParamValues.get(visibleHazardIndex).put(
                     Utilities.HAZARD_EVENT_END_TIME, endTime);
         } catch (Exception e) {
-            statusHandler.error("HazardDetailDialog.timeRangeChanged(): "
+            statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
                     + "could not get state from time range megawidgets.", e);
         }
 
@@ -2506,7 +2600,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
             jsonText = eventInfo.toJSONString();
         } catch (Exception e) {
             statusHandler.error(
-                    "HazardDetailDialog.timeRangeChanged(): conversion "
+                    "HazardDetailViewPart.timeRangeChanged(): conversion "
                             + "of event info to JSON string failed.", e);
         }
         fireHIDAction(new HazardDetailAction("updateTimeRange", jsonText));
@@ -2560,7 +2654,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                         widgetCreationParams);
             } catch (MegawidgetException e) {
                 statusHandler
-                        .error("HazardDetailDialog.addWidgetsToPanel(): Hazard "
+                        .error("HazardDetailViewPart.addWidgetsToPanel(): Hazard "
                                 + "event type metadata megawidget creation error.",
                                 e);
             }
@@ -2628,7 +2722,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                             }
                         } catch (Exception e) {
                             statusHandler
-                                    .error("HazardDetailDialog.setWidgetsStates(): "
+                                    .error("HazardDetailViewPart.setWidgetsStates(): "
                                             + "Unable to set state for "
                                             + identifier + " to " + value + ".",
                                             e);
@@ -2641,7 +2735,7 @@ class HazardDetailDialog extends BasicDialog implements INotificationListener,
                     widget.commitStateChanges();
                 } catch (Exception e) {
                     statusHandler
-                            .error("HazardDetailDialog.setWidgetStates(): "
+                            .error("HazardDetailViewPart.setWidgetStates(): "
                                     + "Unable to commit change(s) to state for "
                                     + widget.getSpecifier().getIdentifier(), e);
                 }

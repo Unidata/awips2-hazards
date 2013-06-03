@@ -28,6 +28,7 @@ import java.util.EnumSet;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
  * 
  * </pre>
  * 
@@ -74,43 +75,45 @@ public class HazardDetailPresenter extends
             getView().updateHazardDetail(
                     DictList.getInstance(getModel().getComponentData(
                             HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                            "all")));
+                            "all")), getModel().getLastSelectedEventID());
         }
     }
 
     /**
      * Show a subview providing setting detail for the current hazard events.
+     * 
+     * @param force
+     *            Flag indicating whether or not to force the showing of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not showing the subview for whatever reason.
      */
-    public final void showHazardDetail() {
-
-        // Get the basic initialization info for the subview.
-        String basicInfo = getModel().getConfigItem(
-                Utilities.HAZARD_INFO_GENERAL_CONFIG);
-        String metadataMegawidgets = getModel().getConfigItem(
-                Utilities.HAZARD_INFO_METADATA_CONFIG);
+    public final void showHazardDetail(boolean force) {
 
         // Get the hazard events to be displayed in detail, and
         // determine which event should be foregrounded.
         String jsonEventsList = getModel().getComponentData(
                 HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, "all");
         DictList eventsList = DictList.getInstance(jsonEventsList);
-        if ((eventsList == null) || (eventsList.size() == 0)) {
+        if ((force == false)
+                && ((eventsList == null) || (eventsList.size() == 0))) {
             return;
         }
         String topEventID = getModel().getLastSelectedEventID();
 
         // Have the view open the alert detail subview.
-        getView().showHazardDetail(basicInfo, metadataMegawidgets, eventsList,
-                topEventID,
-                Long.parseLong(getModel().getTimeLineEarliestVisibleTime()),
-                Long.parseLong(getModel().getTimeLineLatestVisibleTime()));
+        getView().showHazardDetail(eventsList, topEventID, force);
     }
 
     /**
      * Hide the hazard detail subview.
+     * 
+     * @param force
+     *            Flag indicating whether or not to force the hiding of the
+     *            subview. This may be used as a hint by views if they are
+     *            considering not hiding the subview for whatever reason.
      */
-    public final void hideHazardDetail() {
-        getView().hideHazardDetail();
+    public final void hideHazardDetail(boolean force) {
+        getView().hideHazardDetail(force);
     }
 
     // Protected Methods
@@ -123,6 +126,14 @@ public class HazardDetailPresenter extends
      */
     @Override
     protected void initialize(IHazardDetailView<?, ?> view) {
-        getView().initialize(this);
+
+        // Get the basic initialization info for the subview.
+        String basicInfo = getModel().getConfigItem(
+                Utilities.HAZARD_INFO_GENERAL_CONFIG);
+        String metadataMegawidgets = getModel().getConfigItem(
+                Utilities.HAZARD_INFO_METADATA_CONFIG);
+        getView().initialize(this, basicInfo, metadataMegawidgets,
+                Long.parseLong(getModel().getTimeLineEarliestVisibleTime()),
+                Long.parseLong(getModel().getTimeLineLatestVisibleTime()));
     }
 }

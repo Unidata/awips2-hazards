@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.IView;
@@ -20,12 +21,7 @@ import org.eclipse.jface.action.IContributionManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IPartListener;
-import org.eclipse.ui.IViewPart;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -40,14 +36,16 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * May 08, 2013            Chris.Goldenj     Moved view-part-managing code
+ *                                           to new superclass.
  * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ConsoleView implements
-        IConsoleView<IActionBars, RCPMainUserInterfaceElement> {
+public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
+        implements IConsoleView<IActionBars, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -63,11 +61,6 @@ public class ConsoleView implements
      * Console presenter.
      */
     private ConsolePresenter presenter = null;
-
-    /**
-     * Console view part.
-     */
-    private ConsoleViewPart viewPart = null;
 
     /**
      * View part listener.
@@ -87,7 +80,7 @@ public class ConsoleView implements
 
         @Override
         public void partClosed(IWorkbenchPart part) {
-            if ((viewPart != null) && (part == viewPart)) {
+            if ((getViewPart() != null) && (part == getViewPart())) {
                 statusHandler
                         .debug("ConsoleView.partClosed(): console view part closed.");
                 presenter.fireAction(new ConsoleAction("Close", (String) null));
@@ -113,50 +106,15 @@ public class ConsoleView implements
      * Construct a standard instance.
      */
     public ConsoleView() {
+        super(ConsoleViewPart.ID, ConsoleViewPart.class);
 
-        // Get the active window.
-        IWorkbenchWindow window = PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow();
-        if (window == null) {
-            statusHandler
-                    .error("ConsoleView.<init>: PlatformUI.getWorkbench()."
-                            + "getActiveWorkbenchWindow() returned null.");
-            return;
-        }
+        // Show the view part.
+        showViewPart();
 
-        // Get the active page.
-        IWorkbenchPage page = window.getActivePage();
-        if (page == null) {
-            statusHandler
-                    .error("ConsoleView.<init>: PlatformUI.getWorkbench()."
-                            + "getActiveWorkbenchWindow().getActivePage() returned null.");
-            return;
-        }
-
-        // Register the part listener for view part events.
-        page.addPartListener(partListener);
-
-        // Create and activate the console view part.
-        try {
-            page.showView(ConsoleViewPart.ID, null,
-                    IWorkbenchPage.VIEW_ACTIVATE);
-        } catch (PartInitException e) {
-            statusHandler.error(
-                    "ConsoleView.<init>: Unable to show console view part.", e);
-            return;
-        }
-        IViewPart viewPart = page.findView(ConsoleViewPart.ID);
-        if (viewPart == null) {
-            statusHandler
-                    .error("ConsoleView.<init>: Unable to find console view part.");
-            return;
-        } else if ((viewPart instanceof ConsoleViewPart) == false) {
-            statusHandler
-                    .error("ConsoleView.<init>: Could not find view part that was "
-                            + "of type ConsoleViewPart.");
-            return;
-        }
-        this.viewPart = (ConsoleViewPart) viewPart;
+        // Register the part listener for view part events so that
+        // the closing of the console view part may be responded
+        // to.
+        setPartListener(partListener);
     }
 
     // Public Methods
@@ -192,7 +150,7 @@ public class ConsoleView implements
             String jsonSettings, String jsonFilters,
             boolean temporalControlsInToolBar) {
         this.presenter = presenter;
-        viewPart.initialize(presenter, selectedTime, currentTime,
+        getViewPart().initialize(presenter, selectedTime, currentTime,
                 visibleTimeRange, jsonHazardEvents, jsonSettings, jsonFilters,
                 temporalControlsInToolBar);
     }
@@ -213,7 +171,7 @@ public class ConsoleView implements
 
         // Remove all toolbar or menubar items first, since there may
         // be ones left over from a previous invocation of this method.
-        IActionBars actionBars = viewPart.getMainActionBarsManager();
+        IActionBars actionBars = getViewPart().getMainActionBarsManager();
         IContributionManager contributionManager = (type
                 .equals(RCPMainUserInterfaceElement.TOOLBAR) ? actionBars
                 .getToolBarManager() : actionBars.getMenuManager());
@@ -238,49 +196,6 @@ public class ConsoleView implements
     }
 
     /**
-     * Prepare for disposal.
-     */
-    @Override
-    public final void dispose() {
-
-        // Stop listening for workbench page part changes.
-        // Exceptions are ignored because it is possible that
-        // the active page will not be around at this point.
-        try {
-            PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getActivePage().removePartListener(partListener);
-        } catch (Exception e) {
-
-            // No action.
-        }
-
-        // Remove the console view from the display. Exceptions
-        // are caught in case CAVE is closing, since the work-
-        // bench, window, page, or view part may not be around
-        // at this point.
-        if (viewPart != null) {
-            try {
-                IWorkbenchPage page = PlatformUI.getWorkbench()
-                        .getActiveWorkbenchWindow().getActivePage();
-                if (page.isPartVisible(viewPart)) {
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                            .getActivePage().hideView(viewPart);
-                    statusHandler
-                            .debug("ConsoleView.dispose(): Closing console view part.");
-                }
-            } catch (Exception e) {
-                statusHandler
-                        .info("ConsoleView.dispose(): Could not close view: "
-                                + e);
-            }
-        }
-
-        // Forget the member data.
-        presenter = null;
-        viewPart = null;
-    }
-
-    /**
      * Contribute to the main UI, if desired. Note that this method may be
      * called multiple times per <code>type
      * </code> to (re)populate the main UI with the specified <code>type</code>;
@@ -296,7 +211,7 @@ public class ConsoleView implements
     @Override
     public final boolean contributeToMainUI(IActionBars mainUI,
             RCPMainUserInterfaceElement type) {
-        return viewPart.contributeToMainUI(mainUI, type);
+        return getViewPart().contributeToMainUI(mainUI, type);
     }
 
     /**
@@ -307,7 +222,7 @@ public class ConsoleView implements
      */
     @Override
     public final void updateCurrentTime(String jsonCurrentTime) {
-        viewPart.updateCurrentTime(jsonCurrentTime);
+        getViewPart().updateCurrentTime(jsonCurrentTime);
     }
 
     /**
@@ -318,7 +233,7 @@ public class ConsoleView implements
      */
     @Override
     public final void updateSelectedTime(String jsonSelectedTime) {
-        viewPart.updateSelectedTime(jsonSelectedTime);
+        getViewPart().updateSelectedTime(jsonSelectedTime);
     }
 
     /**
@@ -332,7 +247,7 @@ public class ConsoleView implements
      */
     @Override
     public final void updateSelectedTimeRange(String jsonRange) {
-        viewPart.updateSelectedTimeRange(jsonRange);
+        getViewPart().updateSelectedTimeRange(jsonRange);
     }
 
     /**
@@ -344,7 +259,7 @@ public class ConsoleView implements
      */
     @Override
     public final void updateVisibleTimeDelta(String jsonVisibleTimeDelta) {
-        viewPart.updateVisibleTimeDelta(jsonVisibleTimeDelta);
+        getViewPart().updateVisibleTimeDelta(jsonVisibleTimeDelta);
     }
 
     /**
@@ -360,7 +275,7 @@ public class ConsoleView implements
     @Override
     public final void updateVisibleTimeRange(String jsonEarliestVisibleTime,
             String jsonLatestVisibleTime) {
-        viewPart.updateVisibleTimeRange(jsonEarliestVisibleTime,
+        getViewPart().updateVisibleTimeRange(jsonEarliestVisibleTime,
                 jsonLatestVisibleTime);
     }
 
@@ -371,7 +286,7 @@ public class ConsoleView implements
      */
     @Override
     public final List<Dict> getHazardEvents() {
-        return viewPart.getHazardEvents();
+        return getViewPart().getHazardEvents();
     }
 
     /**
@@ -383,7 +298,7 @@ public class ConsoleView implements
      */
     @Override
     public final void setHazardEvents(String hazardEvents) {
-        viewPart.updateHazardEvents(hazardEvents);
+        getViewPart().updateHazardEvents(hazardEvents);
     }
 
     /**
@@ -398,7 +313,7 @@ public class ConsoleView implements
      */
     @Override
     public final void updateHazardEvent(String hazardEvent) {
-        viewPart.updateHazardEvent(hazardEvent);
+        getViewPart().updateHazardEvent(hazardEvent);
     }
 
     /**
@@ -408,7 +323,7 @@ public class ConsoleView implements
      */
     @Override
     public final Dict getDynamicSetting() {
-        return viewPart.getDynamicSetting();
+        return getViewPart().getDynamicSetting();
     }
 
     /**
@@ -421,6 +336,6 @@ public class ConsoleView implements
      */
     @Override
     public final void setSettings(String jsonSettings) {
-        viewPart.setSettings(jsonSettings);
+        getViewPart().setSettings(jsonSettings);
     }
 }
