@@ -124,28 +124,47 @@ def asDatetime(dateAsMillis):
     return result
 
 def geometryConverter(geometry):
+    """
+    Converts a geometry object into a list of
+    shape dictionaries.  This supports the
+    case where an event may have more than
+    one polygon associated with it.
+    
+    @param  geometry: The geometry object to convert.
+    """
     global ENCLOSED
-    dict = {}
-    dict[INCLUDE] = "true"
-    dict[SHAPE_TYPE] = POLYGON
-    pointsList = []
+
+    geometryList = []
+    geometryCount = geometry.getNumGeometries()
     
-    coordinates = geometry.getCoordinates()
-    
-    if ENCLOSED:
-        # Skip the last point since JSON representation doesn't repeat it.
-        size = coordinates.__len__() - 1
-    else:
-        size = coordinates.__len__()
-    for i in range(size):
-        coordinate = coordinates[i]
-        pointsList.append([coordinate.x, coordinate.y])
+    for i in range(geometryCount):
+        geometryList.append(geometry.getGeometryN(i))
+
+    shapeList = []
         
-    # Although polygons are stored in the Hazards JSON, they are referenced with
-    # the name POINTS.
-    dict[POINTS] = pointsList
-    result = [dict]
-    return result
+    for geometry in geometryList:     
+        dict = {}
+        dict[INCLUDE] = "true"
+        dict[SHAPE_TYPE] = POLYGON
+        pointsList = []
+    
+        coordinates = geometry.getCoordinates()
+    
+        if ENCLOSED:
+            # Skip the last point since JSON representation doesn't repeat it.
+            size = coordinates.__len__() - 1
+        else:
+            size = coordinates.__len__()
+            
+        for i in range(size):
+            coordinate = coordinates[i]
+            pointsList.append([coordinate.x, coordinate.y])
+        
+            # Although polygons are stored in the Hazards JSON, they are referenced with
+            # the name POINTS.
+        dict[POINTS] = pointsList
+        shapeList.append(dict)
+    return shapeList
 
 def unicodeToString(input):
     if isinstance(input, dict):
@@ -251,6 +270,8 @@ class HazardEventJSONAdapter:
             
                 elif key == SHAPES:
                     shapes = eventDict[key]
+                    polygonList = list()
+                    
                     for shape in shapes:
                     
                         # For now, only handle polygons.
@@ -265,8 +286,14 @@ class HazardEventJSONAdapter:
                                 # On write, we must close off the linear ring
                                 coordinates.append(coordinates[0])
                         
-                            geometry = GeometryFactory.createPolygon(coordinates, holes=None) 
-                            hazardEvent.setGeometry(geometry)
+                            geometry = GeometryFactory.createPolygon(coordinates, holes=None)
+                            polygonList.append(geometry)
+                    
+                    if len(polygonList) == 1:         
+                        hazardEvent.setGeometry(polygonList[0])
+                    elif len(polygonList) > 0:
+                        multiPolygon = GeometryFactory.createMultiPolygon(polygonList, 'polygons')
+                        hazardEvent.setGeometry(multiPolygon)
 
                 else:
                     hazardAttributes[key] = eventDict[key] 

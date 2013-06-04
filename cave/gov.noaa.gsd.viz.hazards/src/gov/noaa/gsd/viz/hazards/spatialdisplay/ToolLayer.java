@@ -101,6 +101,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                         Bryon.Lawrence Modified
  * May 29, 2013            Bryon.Lawrence Added code to handle multiple
  *                                        deselection of hazards.
+ * Jun 04, 2013            Bryon.Lawrence Added support for events with multiple
+ *                                        hazard polygons.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -327,7 +329,13 @@ public class ToolLayer extends
                 /*
                  * Keep an inventory of which events are selected.
                  */
-                if (isSelected != null && isSelected) {
+                if (isSelected != null && isSelected
+                        && !selectedEventIDs.contains(eventID)) {
+
+                    /*
+                     * Since there can be multiple polygons per event, represent
+                     * each event only once.
+                     */
                     selectedEventIDs.add(eventID);
                 }
 

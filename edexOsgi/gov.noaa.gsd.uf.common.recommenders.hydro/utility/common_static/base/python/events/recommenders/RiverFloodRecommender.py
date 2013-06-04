@@ -128,24 +128,29 @@ class Recommender(RecommenderTemplate.Recommender):
         @param  eventDict: An event dict corresponding to 
                            a river forecast point flood 
                            hazard
-                           
-        @return Geometry: A Shapely geometry representing
-                          the flood hazard polygon
         """
         attributesDict = eventDict.getHazardAttributes()
         id = attributesDict.get(POINT_ID)
-        
+
+        #
+        # Always create the point representing the 
+        # The river forecast point location.
+        # Then check to determine if there 
+        # is an additional inundation map available.
+        forecastPointDict = attributesDict.get(FORECAST_POINT)
+        point = forecastPointDict.get(POINT)
+        coords = [float(point[0]), float(point[1])]
+        pointGeometry = GeometryFactory.createPoint(coords)
+        defaultFloodPolygon = pointGeometry.buffer(DEFAULT_POLYGON_BUFFER)
+        geometryList = [defaultFloodPolygon]
+                
         if id in self.hazardPolygonDict:
             hazardPolygon = self.hazardPolygonDict[id]
-            geometry = GeometryFactory.createMultiPoint(hazardPolygon)      
-            eventDict.setGeometry(geometry)
-        else:
-            forecastPointDict = attributesDict.get(FORECAST_POINT)
-            point = forecastPointDict.get(POINT)
-            coords = [float(point[0]), float(point[1])]
-            pointGeometry = GeometryFactory.createPoint(coords)
-            defaultFloodGeometry = pointGeometry.buffer(DEFAULT_POLYGON_BUFFER)
-            eventDict.setGeometry(defaultFloodGeometry)
+            geometry = GeometryFactory.createPolygon(hazardPolygon)
+            geometryList.append(geometry)      
+            
+        multiPolygon = GeometryFactory.createMultiPolygon(geometryList, 'polygons')
+        eventDict.setGeometry(multiPolygon)
             
     def addFloodPolygons(self, eventDicts):
         """
