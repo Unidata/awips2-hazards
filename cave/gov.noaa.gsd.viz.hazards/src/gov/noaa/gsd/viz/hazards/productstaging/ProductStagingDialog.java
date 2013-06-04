@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * This Product Staging Dialog handles multiple hazards per product. This is a
@@ -53,6 +54,9 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     user-defined content.
  * Feb-Mar 2013            Chris G.    More refactoring for MVP reasons,
  *                                     general cleanup.
+ * Jun 04, 2013            Chris G.    Added support for changing background
+ *                                     and foreground colors in order to stay
+ *                                     in synch with CAVE mode.
  * 
  * </pre>
  * 
@@ -247,6 +251,8 @@ class ProductStagingDialog extends BasicDialog {
         Composite top = (Composite) super.createDialogArea(parent);
         top.setLayout(new FillLayout());
         CTabFolder tabFolder = new CTabFolder(top, SWT.TOP);
+        tabFolder.setBorderVisible(true);
+        new ModeListener(tabFolder);
         List<Dict> hazardEventSetList = productStagingInfo
                 .getDynamicallyTypedValue("hazardEventSets");
         for (int i = 0; i < hazardEventSetList.size(); i++) {

@@ -24,6 +24,7 @@ import org.eclipse.ui.part.ViewPart;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * Console view part, used to display the main control widgets for Hazard
@@ -36,7 +37,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * June 4, 2013            Chris.Golden      Added support for changing background
+ *                                           and foreground colors in order to stay
+ *                                           in synch with CAVE mode.
  * </pre>
  * 
  * @author Chris.Golden
@@ -213,6 +216,13 @@ public class ConsoleViewPart extends ViewPart {
         actionBars = getViewSite().getActionBars();
         temporalDisplay = new TemporalDisplay();
         temporalDisplay.createDisplayComposite(parent);
+
+        // Create a CAVE mode listener, which will set the foreground
+        // and background colors appropriately according to the CAVE
+        // mode whenever a paint event occurs. This is done with the
+        // grandparent of this parent, because this ensures that the
+        // part's toolbar gets colored appropriately as well.
+        new ModeListener(parent.getParent().getParent());
     }
 
     /**
