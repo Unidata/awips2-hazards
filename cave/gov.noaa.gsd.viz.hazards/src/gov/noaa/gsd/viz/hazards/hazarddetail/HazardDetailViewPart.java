@@ -2358,10 +2358,9 @@ public class HazardDetailViewPart extends ViewPart implements
 
         // If the type chosen is the same as what was
         // already showing, do nothing more.
-        if (((type.length() == 0) && (metadataContentLayout.topControl == null))
-                || ((type.length() > 0)
-                        && (metadataContentLayout.topControl != null) && (panelsForTypes
-                        .get(type) == metadataContentLayout.topControl))) {
+        if ((type.length() > 0)
+                && (metadataContentLayout.topControl != null)
+                && (panelsForTypes.get(type) == metadataContentLayout.topControl)) {
             return false;
         }
 
@@ -2369,7 +2368,7 @@ public class HazardDetailViewPart extends ViewPart implements
         // yet been created, create it now.
         Composite panel = panelsForTypes.get(type);
         boolean creationOccurred = false;
-        if (panel == null) {
+        if ((type.length() > 0) && (panel == null)) {
             creationOccurred = true;
 
             // Determine whether or not point-speci-
