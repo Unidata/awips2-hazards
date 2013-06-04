@@ -385,27 +385,26 @@ public class HazardDetailView extends
     public final void updateHazardDetail(DictList eventValuesList,
             String topEventID) {
 
-        // If the view part is not showing, show it; otherwise, just
-        // update it.
-        if ((eventValuesList != null) && (getViewPart() == null)) {
-            showHazardDetail(eventValuesList, topEventID, true);
+        // If there are event values to show, show or update the part;
+        // otherwise, hide it if it is showing but undocked.
+        if (eventValuesList != null) {
+            if (getViewPart() == null) {
+                showHazardDetail(eventValuesList, topEventID, true);
+            } else {
+
+                // Set the flag indicating that HID actions should be ig-
+                // nored while setting the view part info and opening it.
+                doNotForwardActions = true;
+
+                // Give the view part the event information.
+                getViewPart().setHidEventInfo(eventValuesList, topEventID);
+
+                // Reset the ignore HID actions flag, indicating that
+                // actions from the view part should no longer be ignored.
+                doNotForwardActions = false;
+            }
         } else {
-
-            // Set the flag indicating that HID actions should be ig-
-            // nored while setting the view part info and opening it.
-            doNotForwardActions = true;
-
-            // Give the view part the event information.
-            getViewPart().setHidEventInfo(eventValuesList, topEventID);
-
-            // Reset the ignore HID actions flag, indicating that
-            // actions from the view part should no longer be ignored.
-            doNotForwardActions = false;
-
-            // If there are no event values being shown and the view
-            // part exists but is undocked, hide it.
-            if ((eventValuesList == null) && (getViewPart() != null)
-                    && (isViewPartDocked() == false)) {
+            if ((getViewPart() != null) && (isViewPartDocked() == false)) {
                 hideHazardDetail(true);
             }
         }
