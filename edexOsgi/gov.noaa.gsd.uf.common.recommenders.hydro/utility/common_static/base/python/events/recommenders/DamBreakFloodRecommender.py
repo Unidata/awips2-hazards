@@ -138,7 +138,7 @@ class Recommender(RecommenderTemplate.Recommender):
             hazardEvent.setPhenomenon(phenomena)
             hazardEvent.setSignificance(significance)
             hazardEvent.setSubtype(subtype)
-            geometry = GeometryFactory.createMultiPoint(hazardPolygon) 
+            geometry = GeometryFactory.createPolygon(hazardPolygon) 
             hazardEvent.setGeometry(geometry)
             
             creationDateTime = datetime.datetime.fromtimestamp(currentTime/1000)

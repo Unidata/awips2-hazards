@@ -23,6 +23,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Description: Extends the Base Hazard Event class. Adds a constructor which
@@ -34,6 +36,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 26, 2013            Bryon.Lawrence      Initial creation
+ * Jun 04, 2013            Bryon.Lawrence      Added support for events
+ *                                             with multiple polygons.
  * 
  * </pre>
  * 
@@ -106,6 +110,8 @@ public class HazardServicesEvent extends BaseHazardEvent {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Serializable>> shapesList = (List<Map<String, Serializable>>) attribute;
 
+                List<Polygon> polygonList = Lists.newArrayList();
+
                 for (Map<String, Serializable> shape : shapesList) {
                     String shapeType = (String) shape
                             .get(Utilities.HAZARD_EVENT_SHAPE_TYPE);
@@ -125,12 +131,28 @@ public class HazardServicesEvent extends BaseHazardEvent {
                             coordinateList.add(coord);
                         }
 
-                        Geometry geometry = geoFactory
-                                .createMultiPoint(coordinateList
+                        /*
+                         * Make sure that the coordinate list is closed. This is
+                         * necessary for building a linear ring.
+                         */
+                        Coordinate firstCoord = coordinateList.get(0);
+                        coordinateList.add(firstCoord);
+
+                        LinearRing linearRing = geoFactory
+                                .createLinearRing(coordinateList
                                         .toArray(new Coordinate[0]));
-                        setGeometry(geometry);
+
+                        Polygon polygon = geoFactory.createPolygon(linearRing,
+                                null);
+
+                        polygonList.add(polygon);
                     }
                 }
+
+                Geometry geometry = geoFactory.createMultiPolygon(polygonList
+                        .toArray(new Polygon[0]));
+                setGeometry(geometry);
+
             } else {
                 addHazardAttribute(key, attribute);
             }
