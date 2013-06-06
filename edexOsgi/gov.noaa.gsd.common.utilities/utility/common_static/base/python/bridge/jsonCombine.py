@@ -14,7 +14,7 @@ from HazardServicesLogger import *
 # data, and the subsequent data structures are overrides for that 
 # configuration data.  Where two items reside in the same name space
 # in both the base and override structures, the override value will usually
-# displace the base value, though pairs of lists and dictionaries that
+# displace the base value, though pairs of lists and pairs of dictionaries that
 # appear at the same namespace will be merged.  Items that have nothing in
 # the corresponding name space in the other structure will be usually be
 # added to the final result regardless of which structure they are in.
@@ -35,33 +35,45 @@ from HazardServicesLogger import *
 # stripped. There are some exceptions to this general behavior for override
 # control strings which will be discussed later.
 #
-# There are only three control strings used within dictionary objects,
-# _override_replace_, _override_remove_ and _override_lock_.  _override_lock_
-# is exceptional in that is interpreted in the base and not stripped until the
-# client requests the final data structure with the combine() method.  The
-# value of the _override_lock_ key can be True, which means the entire base
-# dictionary object is prevented from being affected in any way by an override
-# object, or it can be a list of specific keys to "lock".  An _override_lock_
-# entry in the override will not affect the combination but can be added to
-# the combined object to affect later combination operations. An entry with a
-# key of _override_replace_ and a value of True will cause all entries in
-# the base dictionary object at the same name space to be cleared out
+# There are only four control strings used within dictionary objects;
+# these are _override_replace_, _override_remove_, _override_lock_, and
+# _override_multiple_.  _override_lock_ is exceptional in that is
+# interpreted in the base and not stripped until the client requests the
+# final data structure with the combine() method.  The value of the
+# _override_lock_ key can be True, which means the entire base
+# dictionary object is prevented from being affected in any way by an
+# override object, or it can be a list of specific keys to "lock".  If a
+# specific list of keys is provided, the object can be deleted from the
+# parent unless one of the entries in the list is True.  An empty list
+# acts like a wildcard, locking all keys but still allowing the whole
+# object to be deleted from the parent.  An _override_lock_ entry in the
+# override will not affect the combination but can be added to the
+# combined object to affect later combination operations. An entry with
+# a key of _override_replace_ and a value of True will cause all entries
+# in the base dictionary object at the same name space to be cleared out
 # (if not locked) before adding the entries from the override structure.
-# An entry with a value of _override_remove_ will cause the entry with that
-# same key at that namespace to be removed, unless that entry is locked.
-# 
+# An entry with a value of _override_remove_ will cause the entry with
+# that same key at that namespace to be removed, unless that entry is
+# locked.  A entry with a key of _override_multiple_ and a value that is
+# either a list or dict can potentially be combined with all entries in
+# the base that are the same type.
+#
 # For lists there are many more control strings implemented.  Control strings
 # can be interspersed with other kinds of serializable objects.  There are
-# two strings that must be immediately at the front of the list to be
-# interpreted, _override_replace_ and _override_lock_; if both are present
-# either can be first or second.  As with dictionaries, _override_lock_ is
+# three strings that must be immediately at the front of the list to be
+# interpreted, _override_replace_, _override_lock_ and _override_lock_parent_.
+# _override_lock_ and _override_lock_parent_ are exclusionary, so at most
+# two of these can be present, and in this case either can be first or second.
+# As with dictionaries, _override_lock_ (and _override_lock_parent_) are
 # interpreted in the base and not stripped until the client requests the final
 # data structure with the combine() method. If in the base, _override_lock_
 # will prevent any part of the base list object from being affected in any way
-# by an override list.  If _override_lock_ is in the override, it will not
-# affect the combination but can be added to the combined object to affect
-# later combination operations. If _override_replace_ is present, it causes
-# the base list at the same name space to be emptied out before members
+# by an override list, and will shield the list from being removed from the
+# parent. _override_lock_parent_ only shields the list from being removed from
+# the parent. If _override_lock_ or_override_lock_parent_ are in the override,
+# they will not affect the combination but can be added to the combined object
+# to affect later combination operations. If _override_replace_ is present, it
+# causes the base list at the same name space to be emptied out before members
 # are added from the override structure, much as with dictionaries.
 #
 # There are several control strings that do not refer to specific members,
@@ -84,20 +96,35 @@ from HazardServicesLogger import *
 #
 # The rest of the available list control strings treat one or more of the
 # immediately following override list members as arguments. With the exception
-# of _override_lock_one_ (which "locks" the next item), they are all used to 
-# remove one or more items from the base list at the same name space.
+# of _override_lock_one_ ("locks" the next item), they all follow the typical
+# paradigm of only being interpretted in the override and then are immediately
+# stripped.  Except for _override_lock_one_, _override_insert_before_,
+# and _override_insert_after_, they are all used to remove one or more items 
+# from the base list at the same name space.
+#
 # When the argument members cannot be matched up to a member of the base
 # list, the operation is ignored and the argument members are also ignored.
 # _override_remove_ causes the one item that follows to be removed, whereas
 # _override_remove_list_ causes all items that follow up until the next
-# control string to be removed; _override_remove_stop_ is provided to allow
+# control string to be removed; _override_null_ is provided to allow
 # this to be terminated and do nothing else. _override_remove_range_ and
 # _override_remove_between_ take two arguments, removing everything in
 # that range of members, inclusively and exclusively, respectively.
 # _override_remove_before_ and _override_remove_after_ take one argument,
 # causing everything either before or after the indicated item to be
-# removed, exclusively.
+# removed, exclusively. _override_insert_before_ and _override_insert_after_
+# do not remove items, but rather identify the place in the combined list
+# where the next insertion action will take place.
 #
+
+listArgCount = { "_override_remove_" : 1,
+                 "_override_remove_list_" : 999999,
+                 "_override_remove_before_" : 1,
+                 "_override_remove_after_" : 1,
+                 "_override_remove_range_": 2,
+                 "_override_remove_between_": 2,
+                 "_override_insert_before_": 1,
+                 "_override_insert_after_": 1}
 
 class jsonCombine :
 
@@ -235,6 +262,101 @@ class jsonCombine :
             return 1
         return -3
 
+    # Compare list dict objects for equality, ignoring control strings.    
+    def listCompare(self, one, two) :
+        n = len(one)
+        nn = len(two)
+        j = 0
+        jj = 0
+        m = 0
+        mm = 0
+        while j<n or jj<nn :
+            if (mm<=0 or jj>=nn) and j<n :
+                v = one[j]
+                i = self.classify(v)
+                j += 1
+                if i==-3 :
+                    continue
+                if i==-1 or i==-2 :
+                    m = listArgCount.get(v, 0)
+                    continue
+                elif m>0 :
+                    m -= 1
+                    continue
+            if (m<=0 or j>=n) and jj<nn :
+                vv = two[jj]
+                ii = self.classify(vv)
+                jj += 1
+                if i==-3 :
+                    continue
+                if ii==-1 or ii==-2 :
+                    mm = listArgCount.get(vv, 0)
+                    continue
+                elif mm>0 :
+                    mm -= 1
+                    continue
+            if m>0 :
+                return mm>0
+            if mm>0 :
+                return False
+            if not self.compare(v, vv) :
+                return False
+        return (m>0)==(mm>0)
+
+    # Compare two dict objects for equality, ignoring control strings.    
+    def dictCompare(self, one, two) :
+        keys2 = set( [ ] )
+        for kk in two.keys() :
+            if self.classify(kk)==2 and self.classify(two[kk])!=-2 :
+                if "kk"!="__order__" :
+                    keys2.add(kk)
+        for kk in one.keys() :
+            if self.classify(kk)!=2 or self.classify(one[kk])==-2 :
+                continue
+            if "kk"=="__order__" :
+                continue
+            if not kk in keys2 :
+                return False
+            if not self.compare(one[kk], two[kk]) :
+                return False
+            keys2.remove(kk)
+        return len(keys2)==0
+
+    # Compare two dict objects for identical keys, ignoring control strings.    
+    def keysCompare(self, one, two) :
+        keys2 = set( [ ] )
+        for kk in two.keys() :
+            if self.classify(kk)==2 and self.classify(two[kk])!=-2 :
+                if "kk"!="__order__" :
+                    keys2.add(kk)
+        for kk in one.keys() :
+            if self.classify(kk)!=2 or self.classify(one[kk])==-2 :
+                continue
+            if "kk"=="__order__" :
+                continue
+            if not kk in keys2 :
+                return False
+            keys2.remove(kk)
+        return len(keys2)==0
+
+    # Compare two objects for equality, ignoring control strings.    
+    def compare(self, one, two) :
+        if one==two :
+            return True
+        i = self.classify(one)
+        ii = self.classify(two)
+        if i==-3 :
+            return ii==-3
+        if ii==-3 :
+            return False
+        if i<0 and ii<0 :
+            return True
+        if i!=ii or i<3 :
+            return False
+        if i==3 :
+            return self.listCompare(one, two)
+        return self.dictCompare(one, two)
+
     # Make a copy of a dictionary object, stripping control strings and
     # unserializable objects.
     def dictionaryCopy(self, d) :
@@ -261,13 +383,21 @@ class jsonCombine :
     # Make a copy of a list object, stripping control strings and
     # unserializable objects.
     def listCopy(self, l) :
+        global listArgCount
         clist = [ ]
+        m = 0
         for vv in l :
             ii = self.classify(vv)
+            if ii==-3 :
+                continue
             if ii==-1 :
                 if self.final :
                     continue
-            elif ii<0 :
+            elif ii==-2 :
+                m = listArgCount.get(vv, 0)
+                continue
+            if m>0 :
+                m -= 1
                 continue
             if ii<3 :
                 clist.append(vv)
@@ -276,6 +406,15 @@ class jsonCombine :
             else :
                 clist.append(self.dictionaryCopy(vv))
         return clist
+
+    # Make a clean copy of an arbitrary object.
+    def arbCopy(self, a) :
+        ii = self.classify(a)
+        if ii==3 :
+            return self.listCopy(a)
+        elif ii==4 :
+            return self.dictionaryCopy(a)
+        return a
 
     # Make a copy of a list object, copying only locked items
     # Perhaps this copy mechanism needs to be passed down recursively.
@@ -304,22 +443,23 @@ class jsonCombine :
                 clist.append(self.dictionaryCopy(vv))
         return clist
 
-    # Check whether an object is "locked" internally.
-    def checkLock(self, one) :
+    # Check if an object is internally sheilded from being removed from parent.
+    def rigid(self, one) :
         if isinstance(one, dict) :
             lockEntry = one.get("_override_lock_")
             if isinstance(lockEntry, bool) :
                 return lockEntry
+            if isinstance(lockEntry, list) :
+                return True in lockEntry
         elif isinstance(one, list) or isinstance(one, tuple):
             i = len(one)
             if i==0 :
-                return False
-            if one[0]=="_override_lock_" :
                 return True
-            if i==1 :
-                return False
-            if one[0]=="_override_replace_" and one[1]=="_override_lock_" :
-                return True
+            if i>1 and one[0]=="_override_replace_" :
+                return one[1]=="_override_lock_" or \
+                       one[1]=="_override_lock_parent_"
+            return one[0]=="_override_lock_" or \
+                   one[0]=="_override_lock_parent_"
         return False
 
     # Here we check whether the value of a key for two dictionaries is the
@@ -332,13 +472,13 @@ class jsonCombine :
             if key in one and key in two :
                 v1 = one[key]
                 v2 = two[key]
-                if v1 == v2 :
+                if self.compare(v1, v2) :
                     return True
                 if not isinstance(v1, dict) or not isinstance(v2, dict) :
                     return False
                 if not "___" in v1 or not "___" in v2 :
                     return False
-                return v1["___"]==v2["___"]
+                return self.compare(v1["___"],v2["___"])
             if "___" in one and "___" in two :
                 kk = "___"
             elif a==1 and len(one)==1 and one.keys()==two.keys() :
@@ -355,14 +495,14 @@ class jsonCombine :
     def keyscmp(self, one, two) :
         if not isinstance(one, dict) or not isinstance(two, dict) :
             return False
-        if one.keys()!=two.keys() :
+        if not self.keysCompare(one, two) :
             return False
         if "___" in one :
             one = one.get("___")
             two = two.get("___")
             if not isinstance(one, dict) or not isinstance(two, dict) :
                 return True
-            return one.keys()==two.keys()
+            return self.keysCompare(one, two)
         if len(one)!=1 :
             return True
         kk = one.keys()[0]
@@ -393,10 +533,11 @@ class jsonCombine :
             if lockList :
                 return self.dictionaryCopy(b)
             lockList = [ ]
+        elif isinstance(lockList, list) or isinstance(lockList, tuple):
+            if len(lockList)==0 :
+                return self.dictionaryCopy(b)
         else :
-            if not isinstance(lockList, list) and \
-               not isinstance(lockList, tuple):
-                lockList = [ lockList ]
+            lockList = [ lockList ]
 
         # Handle case of non-incrementally replacing everything.
         vv = o.get("_override_replace_")
@@ -409,6 +550,12 @@ class jsonCombine :
             for kk in cdict.keys() :
                 if not kk in lockList :
                     del cdict[kk]
+
+        # Grab value that we can combine with multiple entries.
+        mmm =  o.get("_override_multiple_")
+        iii = self.classify(mmm)
+        if (iii<3) :
+            iii = 0
 
         # Process lock info in the override unless this is directly for client
         if not self.final :
@@ -433,14 +580,14 @@ class jsonCombine :
             ii = self.classify(kk)
             if ii!=2 :
                 continue
-            if kk in cdict :
-                if kk in lockList or self.checkLock(cdict[kk]) :
-                    continue
+            if kk in lockList :
+                continue
             vv = o[kk]
             ii = self.classify(vv)
             if ii<0 :
-                if ii==-2 and vv=="_override_remove_" :
-                    del cdict[kk]
+                if ii==-2 and vv=="_override_remove_" and kk in cdict :
+                    if not self.rigid(cdict[kk]) :
+                        del cdict[kk]
                 continue
             if ii<3 :
                 cdict[kk] = vv
@@ -463,6 +610,21 @@ class jsonCombine :
             else :
                 cdict[kk] = self.dictionaryCombine(cdict[kk], vv)
 
+        if (iii==0) :
+            return cdict
+
+        # Processing for value that we can combine with multiple entries.
+        for kk in cdict.keys():
+            if kk in lockList :
+                continue
+            ii = self.classify(cdict[kk])
+            if ii!=iii :
+                continue
+            if ii==3 :
+                cdict[kk] = self.listCombine(cdict[kk], mmm)
+            else :
+                cdict[kk] = self.dictionaryCombine(cdict[kk], mmm)
+
         return cdict
 
 
@@ -479,31 +641,30 @@ class jsonCombine :
             if b[0]=="_override_replace_" and b[1]=="_override_lock_" :
                 return self.listCopy(b)
 
-        # Process the two control strings that must be at front of the override
-        # list to make any sense
+        # Process the control strings that must be at front of the override
+        # list to make any sense, move loop control variable jj past these
+        jj = 0
+        mm = len(o)
         lock0 = False
         replace0 = False
-        if o[0]=="_override_replace_" :
-            replace0 = True
-            if len(o)>1 :
-                lock0 = o[1]=="_override_lock_"
-        elif o[0]=="_override_lock_" :
-            lock0 = True
-            if len(o)>1 :
-                replace0 = o[1]=="_override_replace_"
+        while jj<mm and jj<2 :
+            if o[jj]=="_override_replace_" and not replace0 :
+                replace0 = True
+            elif o[jj]=="_override_lock_" and not lock0 :
+                lock0 = True
+            elif o[jj]=="_override_lock_parent_" and not lock0 :
+                pass
+            else :
+                break
+            jj += 1
                 
-        # Copy our base list to our working output list, set loop control
-        # variable jj
-        jj = -1
+        # Copy our base list to our working output list
         allLocked = False
         if replace0 :
-            jj = 0
             clist = self.listCopyLocked(b)
             allLocked = True
         else :
             clist = self.listCopy(b)
-        if lock0 :
-            jj = jj+1
 
         # Set default state of our override control flags
         jp = 0
@@ -517,20 +678,19 @@ class jsonCombine :
         prevLock = False
         multiple = False
 
-        # Our loop is constructed in a bit of a non-standard manner
-        mm = len(o)-1
+        # Loop by index so we can skip some if we want
         while jj<mm :
-            jj = jj+1
 
             # Classify next object, just ignore if unserializable
             vv = o[jj]
+            jj = jj+1
             ii = self.classify(vv)
             if ii==-3 :
                 continue
 
             # Handle our override control strings.
             if ii==-1 :
-                prevLock = not self.final and not lock0
+                prevLock = not self.final and not lock0 and vv.find("_one")
                 remove = "no"
                 continue
             elif ii==-2 :
@@ -544,7 +704,7 @@ class jsonCombine :
                     remove = "yes"
                 elif vv=="_override_remove_list_" :
                     remove = "list"
-                elif vv=="_override_remove_stop_" :
+                elif vv=="_override_null_" :
                     remove = "no"
                 elif vv=="_override_remove_before_" :
                     remove = "before"
@@ -580,17 +740,19 @@ class jsonCombine :
                 elif vv=="_override_append_" :
                     append = True
                     remove = "no"
+                elif vv=="_override_insert_before_" :
+                    jp = 0
+                    append = False
+                    remove = "beforeno" # borrow remove to trigger matching
+                elif vv=="_override_insert_after_" :
+                    jp = len(clist)
+                    append = False
+                    remove = "afterno" # borrow remove to trigger matching
                 else :
                     remove = "no"
                 continue
 
-            # get a "clean" copy of object
-            if ii==3 :
-                vc = self.listCopy(vv)
-            elif ii==4 :
-                vc = self.dictionaryCopy(vv)
-            else :
-                vc = vv
+            # keep track of whether current object is individually locked.
             prevLockNow = prevLock
             prevLock = False
 
@@ -608,12 +770,12 @@ class jsonCombine :
                     elif dictKey!=None :
                         if self.valcmp(vv, clist[j], dictKey) :
                             clist[j] = self.dictionaryCombine(clist[j], vv)
-                    elif self.keyscmp(vv, clist[j]) or \
-                         self.keyscmp(vc, clist[j]) :
+                    elif self.keyscmp(vv, clist[j]) :
                         clist[j] = self.dictionaryCombine(clist[j], vv)
                     j = j + 1
                 multiple = False
                 continue
+            multiple = False
 
             # Simple cases of empty base list or unconditional add
             if len(clist)==0 :
@@ -622,7 +784,7 @@ class jsonCombine :
                 if remove=="no" :
                      if prevLockNow :
                          clist.append("_override_lock_one_")
-                     clist.append(vc)
+                     clist.append(self.arbCopy(vv))
                      jp = len(clist)
                 else :
                      remove = "no"
@@ -631,18 +793,18 @@ class jsonCombine :
                 if append :
                     if prevLockNow :
                         clist.append("_override_lock_one_")
-                    clist.append(vc)
+                    clist.append(self.arbCopy(vv))
                 else :
                     if prevLockNow :
                         clist.insert(jp, "_override_lock_one_")
                         jp = jp + 1
-                    clist.insert(jp, vc)
+                    clist.insert(jp, self.arbCopy(vv))
                     jp = jp + 1
                 continue
 
             # Rest of cases where we need to see if our override list entry
             # matches something in the base list.
-            if remove=="after" or remove=="range" and jr0>0 :
+            if remove[:5]=="after" or remove=="range" and jr0>0 :
                 j = len(clist)-1
                 d = -1
                 ee = -1
@@ -652,15 +814,14 @@ class jsonCombine :
                 ee = len(clist)
             while j!=ee :
                 if ii<4 or not dictByKeys:
-                    if vc == clist[j] or vv == clist[j] :
+                    if self.compare(vv, clist[j]) :
                         break
                 elif isinstance(clist[j], dict) :
                     if dictKey!=None :
                         if self.valcmp(vv, clist[j], dictKey) :
                             ii = 9
                             break
-                    elif self.keyscmp(vv, clist[j]) or \
-                         self.keyscmp(vc, clist[j]) :
+                    elif self.keyscmp(vv, clist[j]) :
                         ii = 9
                         break
                 j = j + d
@@ -683,12 +844,12 @@ class jsonCombine :
                 if append :
                     if prevLockNow :
                         clist.append("_override_lock_one_")
-                    clist.append(vc)
+                    clist.append(self.arbCopy(vv))
                 else :
                     if prevLockNow :
                         clist.insert(jp, "_override_lock_one_")
                         jp = jp + 1
-                    clist.insert(jp, vc)
+                    clist.insert(jp, self.arbCopy(vv))
                     jp = jp + 1
                 continue
 
@@ -719,6 +880,12 @@ class jsonCombine :
             elif remove=="before" :
                 jr0 = 0
                 j = j-1
+            elif remove=="afterno" :
+                jp = j+1
+                jr0 = j+1
+            elif remove=="beforeno" :
+                jp = j
+                jr0 = j+1
             else :
                 jr0 = j
             if jr0>j :
@@ -729,8 +896,11 @@ class jsonCombine :
             # Delete each index in range if not locked
             if not allLocked :
                 while j>=jr0 :
-                    if j>0 and clist[j-1]=="_override_lock_one_":
+                    if j>0 and clist[j-1]=="_override_lock_one_" :
                         j = j-2
+                        continue
+                    if self.rigid(clist[j]) :
+                        j = j-1
                         continue
                     del clist[j]
                     if jp>j and jp>0 :

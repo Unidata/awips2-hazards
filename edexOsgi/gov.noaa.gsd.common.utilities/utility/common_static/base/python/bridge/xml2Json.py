@@ -5,15 +5,28 @@ import os
 import sys
 import collections
 
+initDone = False
+
+# This is a set of keys that are always stripped out of the structure that
+# returned via the simplify method.
 stripKeys = set( [ "listParser", "outerDelimeter", "innerDelimeter",
                    "innerKeyIndex", "modifierAttribute", "listMember" ] )
 
-initDone = False
+# modifyName is a list of attributes for which their values are automatically
+# adopted as the namespace identifier for an element that is treated as a
+# dictionary entry.  modifyTrail is a list of possible suffixes for these
+# attribute names.
 modifyName = set( [ "xsi:type", "key" ] )
 modifyTrail = set( [ "Id", "Name" ] )
+
 #byModifier = { "include" : "file",
 #               "pointSource" : "variable" }
 byModifier = { }
+
+# keeps track of items that, because there are multiple occurences in the
+# same name space, are thereafter treated as lists.  It is possible for
+# an item to self identify itself as a list member, and one can add list
+# members through xml2Json.xml.
 listMember = set( [] )
 #listParser = { "mainWarngenProducts" : ( ',' , '/' , 1) ,
 #               "otherWarngenProducts" : ( ',' , '/' , 1) }
@@ -32,6 +45,8 @@ overrideActions = { "remove" : "_override_remove_",
                     "removeStop" : "_override_remove_stop_" ,
                     "removeBefore" : "_override_remove_before_" ,
                     "removeAfter" : "_override_remove_after_" ,
+                    "insertBefore" : "_override_insert_before_" ,
+                    "insertAfter" : "_override_insert_after_" ,
                     "removeRange" : "_override_remove_range_" ,
                     "removeBetween" : "_override_remove_between_" }
 
@@ -95,7 +110,7 @@ class xml2Json :
         try :
             tree = ET.parse(path)
         except :
-            return None
+            return
         topnode = tree.getroot()
         for onenode in topnode :
             aaa = onenode.attrib
@@ -274,7 +289,7 @@ class xml2Json :
         overridedata = []
         if len(overrideContents)==0 :
             pass
-        elif nodemode==2 :
+        elif nodemode==2 : # Pure text represented as list
             for oneentry in overrideContents :
                 if oneentry == "replace" :
                     outdict["_override_replace_"] = True
@@ -298,7 +313,7 @@ class xml2Json :
                 overridedata.extend(textrep)
                 textrep = overridedata
             overridedata = []
-        elif nodemode==1 :
+        elif nodemode==1 : # Element that is part of a list
             for oneentry in overrideContents :
                 if oneentry == "replace" :
                     outdict["_override_replace_"] = True
@@ -315,7 +330,7 @@ class xml2Json :
             for oneentry in overrideContents :
                 if oneentry in overrideActions :
                     overridedata.append(overrideActions[oneentry])
-        else :
+        else : # Element that is represented as dict entry
             for oneentry in overrideContents :
                 if oneentry == "replace" :
                     outdict["_override_replace_"] = True
