@@ -11,22 +11,18 @@ package gov.noaa.gsd.viz.hazards.dialogs;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 
-import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.window.IShellProvider;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.viz.ui.dialogs.CaveJFACEDialog;
+
 /**
- * Base class for dialogs that provides additional functionality over the JFace
- * <code>Dialog</code>, upon which this is based.
+ * Base class for dialogs that provides additional functionality over the <code>
+ * CaveJFACEDialog</code>, upon which this is based.
  * <p>
  * First, it provides on a per-subclass basis the saving and restoring of dialog
  * sizes and positions. This also functions with modeless dialogs that are
@@ -45,13 +41,14 @@ import org.eclipse.swt.widgets.Shell;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Jun 04, 2013            Chris.Golden      Changed to subclass CaveJFACEDialog
  * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class BasicDialog extends Dialog {
+public class BasicDialog extends CaveJFACEDialog {
 
     // Private Static Constants
 
@@ -100,17 +97,7 @@ public class BasicDialog extends Dialog {
      *            Parent shell.
      */
     public BasicDialog(Shell parent) {
-        super(parent);
-    }
-
-    /**
-     * Construct a standard instance.
-     * 
-     * @param parentProvider
-     *            Provider of the parent shell.
-     */
-    public BasicDialog(IShellProvider parentProvider) {
-        super(parentProvider);
+        super(parent, false);
     }
 
     // Public Methods
@@ -219,21 +206,5 @@ public class BasicDialog extends Dialog {
         } else {
             super.initializeBounds();
         }
-    }
-
-    /**
-     * Create the button bar for the dialog. This implementation ensures that
-     * the button bar is centered horizontally.
-     * 
-     * @param parent
-     *            Parent in which to create the button bar.
-     * @return Button bar that was created.
-     */
-    @Override
-    protected Control createButtonBar(Composite parent) {
-        Control bar = super.createButtonBar(parent);
-        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        bar.setLayoutData(gd);
-        return bar;
     }
 }

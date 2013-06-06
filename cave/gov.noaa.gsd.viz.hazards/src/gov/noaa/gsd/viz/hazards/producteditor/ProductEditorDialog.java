@@ -20,6 +20,8 @@ import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -34,12 +36,11 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * Description: The product editor dialog. This dialog allows the forecaster to
@@ -56,6 +57,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * 02/25/2013              B. Lawrence Set up 70 character width limit and made this dialog modal.
  * 03/08/2013              B. Lawrence Changed to SWT.APPLICATION_MODAL and non-blocking.
  * 04/23/2013              B. Lawrence Made fixes based on code review responses.
+ * 06/04/2013              C. Golden   Added support for changing background and foreground
+ *                                     colors in order to stay in synch with CAVE mode.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -101,7 +104,7 @@ class ProductEditorDialog extends BasicDialog {
      * Flag indicating whether or not to show the Issue, Propose and Dismiss
      * buttons.
      */
-    private TabFolder tabFolder = null;
+    private CTabFolder tabFolder = null;
 
     /**
      * List of generated products, some of which may be ASCII text, some which
@@ -199,7 +202,9 @@ class ProductEditorDialog extends BasicDialog {
         top.setLayout(new FillLayout());
 
         // Build tabs
-        tabFolder = new TabFolder(top, SWT.BORDER);
+        tabFolder = new CTabFolder(top, SWT.BORDER);
+        tabFolder.setBorderVisible(true);
+        new ModeListener(tabFolder);
 
         body = new Composite[getGeneratedProductsDictList().size()];
 
@@ -217,7 +222,7 @@ class ProductEditorDialog extends BasicDialog {
             Dict generatedProduct = getGeneratedProductsDictList().get(j);
             String productName = generatedProduct
                     .getDynamicallyTypedValue("productID");
-            TabItem tabItem = new TabItem(tabFolder, SWT.NONE);
+            CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
 
             tabItem.setText(productName);
 

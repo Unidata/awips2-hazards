@@ -127,6 +127,12 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * June 4, 2013            Chris.Golden      Added support for changing background
+ *                                           and foreground colors in order to stay
+ *                                           in synch with CAVE mode. Also tightened
+ *                                           up area around timeline ruler to make
+ *                                           the column header border show up around
+ *                                           it as it should.
  * 
  * </pre>
  * 
@@ -176,7 +182,7 @@ class TemporalDisplay {
     /**
      * Height of vertical padding in pixels above and below the ruler.
      */
-    private static final int RULER_VERTICAL_PADDING = 5;
+    private static final int RULER_VERTICAL_PADDING = 0;
 
     /**
      * Height of vertical padding in pixels above and below time scales.
@@ -2957,9 +2963,26 @@ class TemporalDisplay {
                 0.05f, hatchMarkColors[3], null));
 
         // Create the time line widget. It is configured to snap
-        // to values at increments of five minutes.
+        // to values at increments of five minutes. The actual
+        // widget is an instance of an anonymous subclass; the
+        // latter is needed because background and foreground
+        // color changes must be ignored, since the ModeListener
+        // objects may try to change the colors when the CAVE
+        // mode changes, which in this case is undesirable.
         ruler = new MultiValueRuler(parent, Utilities.MIN_TIME,
-                Utilities.MAX_TIME, hatchMarkGroups);
+                Utilities.MAX_TIME, hatchMarkGroups) {
+            @Override
+            public void setBackground(Color background) {
+
+                // No action.
+            }
+
+            @Override
+            public void setForeground(Color foreground) {
+
+                // No action.
+            }
+        };
         FontData fontData = ruler.getFont().getFontData()[0];
         Font minuteFont = new Font(Display.getCurrent(), fontData.getName(),
                 (fontData.getHeight() * 7) / 10, fontData.getStyle());

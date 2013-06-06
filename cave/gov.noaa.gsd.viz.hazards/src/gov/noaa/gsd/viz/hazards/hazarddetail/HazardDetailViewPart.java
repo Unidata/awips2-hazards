@@ -72,6 +72,7 @@ import org.eclipse.ui.part.ViewPart;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * This class represents an instance of the Hazard Detail view part, which is
@@ -85,7 +86,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 10, 2013            Chris.Golden      Initial creation
- * 
+ * June 4, 2013            Chris.Golden      Added support for changing background
+ *                                           and foreground colors in order to stay
+ *                                           in synch with CAVE mode.
  * </pre>
  * 
  * @author Chris.Golden
@@ -877,6 +880,12 @@ public class HazardDetailViewPart extends ViewPart implements
      */
     @Override
     public void createPartControl(Composite parent) {
+
+        // Create a CAVE mode listener, which will
+        // set the foreground and background colors
+        // appropriately according to the CAVE mode
+        // whenever a paint event occurs.
+        new ModeListener(parent);
 
         // Remember the parent for use later, and
         // keep track of resize events to determine
@@ -2445,6 +2454,12 @@ public class HazardDetailViewPart extends ViewPart implements
                 panel = new Composite(metadataContentPanel, SWT.NONE);
             }
             panelsForTypes.put(type, panel);
+
+            // Create a CAVE mode listener, which will
+            // set the foreground and background colors
+            // appropriately according to the CAVE mode
+            // whenever a paint event occurs.
+            new ModeListener(panel);
         }
 
         // Show this type's panel and lay out the content
