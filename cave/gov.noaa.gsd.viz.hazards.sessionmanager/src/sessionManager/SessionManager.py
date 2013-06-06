@@ -154,37 +154,27 @@ class SessionManager(object):
         """
         return json.dumps(self.selectedEventIDs)
 
-    def updateSelectedEvents(self, eventIDsJSON, 
-                             multipleSelection, originator):
+    def updateSelectedEvents(self, eventIDsJSON, originator):
         """
         @param eventIDsJSON: A JSON list containing the ids of the
                              selected events
-        @param multipleSelection: Flag indicating whether or not
-                                  this is a multiple selection action
         @param originator:    Where this event came from, e.g. "Spatial" or
                               "Temporal"
         @return updateTime -- IF the current selected time does not overlap the
                              first selected event, 
-                                 return the new selected time
-                              otherwise, return "None"
+                                 return the new selected time or time range
+                              otherwise, return ""
         """
         eventIDs = json.loads(eventIDsJSON)
         if type(eventIDs) is not types.ListType:
             eventIDs = [eventIDs]
-            
-        returnVal = "None"
+                        
+        returnVal = ""
                                     
-        if (self.addToSelected or multipleSelection) and originator != "Temporal":
-            if not eventIDs: #Do nothing
-                return returnVal
-            self.lastSelectedEventID = eventIDs[-1]
-            self.selectedEventIDs += eventIDs
-            self.selectedEventIDs = self.removeDuplicates(self.selectedEventIDs)
-        else:
-            self.selectedEventIDs = eventIDs
-            if not eventIDs:
-                return returnVal
-            self.lastSelectedEventID = eventIDs[-1]
+        self.selectedEventIDs = eventIDs
+        if not eventIDs:
+            return returnVal
+        self.lastSelectedEventID = eventIDs[-1]
         first = True 
         for eventID in eventIDs:
             eventDict = self.findSessionEventDicts([eventID])[0]
@@ -231,7 +221,28 @@ class SessionManager(object):
         @return the eventID of the most recent selected event
         '''
         return self.lastSelectedEventID
+    
+    def _addPendingEventToSelected(self, eventDict):
+        '''
+        Add the event represented by the eventDict to the 
+        selected events IF it has a state of PENDING.
         
+        If "addToSelected" is on, then we add it to the set of 
+        selected events.
+        Otherwise, we replace the selected events with this one.
+        
+        @param eventDict to check for adding to selected
+        
+        '''
+        if eventDict.get(STATE) == PENDING:
+            eventID = eventDict.get(EVENT_ID)
+            if self.addToSelected:
+                self.selectedEventIDs.append(eventID)
+            else:
+                self.selectedEventIDs = [eventID]
+            self.lastSelectedEventID = eventID
+            self.selectedEventIDs = self.removeDuplicates(self.selectedEventIDs)
+                        
     def getEventValues(self, eventIDs, field, returnType, ignoreState=None):
         '''
         Return the list of values for the given field and given eventIDs
@@ -317,7 +328,7 @@ class SessionManager(object):
         shapes = eventArea.get(SHAPES, [])
         self.addEvent(eventID, shapes, currentTime, startTime, endTime)
         return eventID
-    
+        
     def copyEvent(self, eventDict):
         '''
         Return a new event dictionary which is a copy of the given eventDict
@@ -1131,7 +1142,7 @@ class SessionManager(object):
             else:
                 self.updateSelectedTime(str(startTime)) 
                 return "Single"
-        return "None"                                                                                     
+        return ""                                                                                     
         
     def getHazards(self, settings):
         """
@@ -1198,7 +1209,8 @@ class SessionManager(object):
                      "modifyCallbackToolName": modifyCallbackToolName,
                      }
         eventDict = self.setUpEventFields(eventDict)
-        self.eventDicts.append(eventDict)        
+        self.eventDicts.append(eventDict)
+        self._addPendingEventToSelected(eventDict)        
             
     def getIgnoreKeys(self, source):
         """
@@ -1283,10 +1295,8 @@ class SessionManager(object):
                 eventDict[EVENT_ID] = eventID
                 eventDict = self.setUpEventFields(eventDict)
                 self.eventDicts.append(eventDict)
+                self._addPendingEventToSelected(eventDict)
             state = eventDict.get(STATE)
-        # IF there is only one pending event, add it the Selected Events
-        if len(eventDicts) == 1 and state == PENDING:
-            self.updateSelectedEvents(json.dumps([eventID]), self.addToSelected, "")
         
     def setUpEventFields(self, eventDict): 
         eventDict[SITE_ID] = self.siteID

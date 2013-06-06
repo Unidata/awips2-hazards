@@ -1,6 +1,6 @@
 """
 10    Description: Provides classes and methods for creating and
-11     manipulating projections.
+11     manipulating products.
 12    
 13    SOFTWARE HISTORY
 14    Date         Ticket#    Engineer    Description
@@ -11,10 +11,7 @@
 19    @version 1.0
 20    """
 
-import cPickle, os, types, string, copy
-import sys, gzip, time, re
-import xml.etree.ElementTree as ET
-import json
+import types, string, re
 
 from TextProductCommon import TextProductCommon
 
@@ -29,7 +26,7 @@ class HazardServicesGenericHazards:
     for capturing user text.  There is a "hook" for this in PV1 ProductGeneratorTemplate.
     The hazardBodyText method is used in AWIPS 2 GHG products: CFW, MWS, MWW, NPW, RFW, WSW.
     It is included since we are building the foundation of all of Phase 1 Hazard Services 
-    which will include these programs.
+    which will include these products representing other programs (e.g. Fire Weather...).
     
     NOTE: Times are in ms -- vtecRecords are assumed to have been converted to ms.
     '''  

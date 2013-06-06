@@ -305,17 +305,14 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String updateSelectedEvents(String eventIDs,
-            boolean multipleSelection, String originator) {
+    public String updateSelectedEvents(String eventIDs, String originator) {
         final String methodName = "updateSelectedEvents";
         logCallingMethod(methodName);
         log("Calling updateSelectedEvents");
         log(String.format("eventdIDs: %s", eventIDs));
-        log(String.format("multipleSelection: %s", multipleSelection));
         log(String.format("originator: %s", originator));
         benchmarkStart(methodName);
-        String result = decorated.updateSelectedEvents(eventIDs,
-                multipleSelection, originator);
+        String result = decorated.updateSelectedEvents(eventIDs, originator);
         benchmarkStop(methodName);
         logResult(result);
         return result;

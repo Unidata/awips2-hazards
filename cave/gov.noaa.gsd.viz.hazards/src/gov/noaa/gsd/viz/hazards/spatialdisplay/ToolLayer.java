@@ -494,14 +494,10 @@ public class ToolLayer extends
      * 
      * @param eventIDs
      *            The identifiers of the events selected in the spatial display.
-     * @param multipleSelection
-     *            Indicates whether or not this was a part of a multiple
-     *            selection action.
      */
-    private void fireSelectedEventActionOccurred(String[] eventIDs,
-            boolean multipleSelection) {
+    private void fireSelectedEventActionOccurred(String[] eventIDs) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                "SelectedEventsChanged", eventIDs, multipleSelection);
+                "SelectedEventsChanged", eventIDs);
         eventBus.post(action);
     }
 
@@ -775,10 +771,13 @@ public class ToolLayer extends
                         && selectedEventIDs.contains(clickedEventId)) {
                     selectedEventIDs.remove(clickedEventId);
                     String[] eventIDs = selectedEventIDs.toArray(new String[0]);
-                    fireSelectedEventActionOccurred(eventIDs, false);
+                    fireSelectedEventActionOccurred(eventIDs);
+                } else if (multipleSelection) {
+                    selectedEventIDs.add(clickedEventId);
+                    String[] eventIDs = selectedEventIDs.toArray(new String[0]);
+                    fireSelectedEventActionOccurred(eventIDs);
                 } else {
-                    fireSelectedEventActionOccurred(
-                            new String[] { clickedEventId }, multipleSelection);
+                    fireSelectedEventActionOccurred(new String[] { clickedEventId });
                 }
             }
             return clickedEventId;
@@ -797,8 +796,8 @@ public class ToolLayer extends
      * @return
      */
     public void multipleElementsClicked(Set<String> eventIDs) {
-        fireSelectedEventActionOccurred(
-                eventIDs.toArray(new String[eventIDs.size()]), false);
+        fireSelectedEventActionOccurred(eventIDs.toArray(new String[eventIDs
+                .size()]));
     }
 
     /**

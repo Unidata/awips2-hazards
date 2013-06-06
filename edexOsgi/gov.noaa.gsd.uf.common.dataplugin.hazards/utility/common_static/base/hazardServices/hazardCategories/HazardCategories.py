@@ -10,7 +10,7 @@ HazardCategories = collections.OrderedDict(
                                         
         "Hydrology": [("FF", "A"), ("FF", "W", "Convective"), ("FF", "W", "NonConvective"), ("FA", "Y"), ("FA", "A"), ("FA", "W"), 
                        ("FL", "A"), ("FL", "W"), ("FL", "Y"), ("HY", "S")],
-                       #("FF", "Y")],  # This are not used...         
+                       #("FF", "Y")],  # This is not used...         
         
         "Coastal Flood": [("CF", "Y"), ("CF", "A"), ("CF", "W"), ("CR", "S"), ("LS", "A")],
         
