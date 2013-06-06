@@ -15,15 +15,15 @@ class VTECTableUtil(object):
 #------------------------------------------------------------------
 
     #given the table, will consolidate like records and return a table
-    #with identical hazards, but with multiple id entries
+    #with identical vtecRecords, but with multiple id entries
     def consolidateByID(self, ptable):
-        '''Consolidates the vtec records by geoId.
+        '''Consolidates the vtec records by id.
 
         Keyword Arguments:
         pTable -- list of dictionary records in the vtecRecord format,
           non-consolidated.
 
-        Returns consolidated vtec records, with the 'geoId' field now a list.
+        Returns consolidated vtec records, with the 'id' field now a list.
         '''
 
         compare = ['etn','vtecstr','ufn','areaPoints','valuePoints','hdln',
@@ -35,24 +35,24 @@ class VTECTableUtil(object):
         for a in ptable:
             found = False
             for c in ctable:
-                if self.hazardCompare(a, c, compare):
+                if self.vtecRecordCompare(a, c, compare):
                     found = True
-                    if isinstance(a['geoId'], list):
-                        zones = a['geoId']
+                    if isinstance(a['id'], list):
+                        zones = a['id']
                     else:
-                        zones = [a['geoId']]
+                        zones = [a['id']]
                  
-                    allzones = c['geoId']
+                    allzones = c['id']
                     for z in zones:
                         allzones.append(z)
-                    c['geoId'] = allzones
+                    c['id'] = allzones
 
                     break
 
             if not found:
                 newc = copy.deepcopy(a)
-                if not isinstance(newc['geoId'], list):
-                    newc['geoId'] = [newc['geoId']]
+                if not isinstance(newc['id'], list):
+                    newc['id'] = [newc['id']]
                 ctable.append(newc)
 
         return ctable
@@ -65,10 +65,9 @@ class VTECTableUtil(object):
         '''Pretty-prints the given vtecRecord or vtecRecords.
 
         Keyword Arguments:
-        table - individual hazard entry or list of hazard entries in the
-          form of vtecRecords.
+        table - individual vtecRecord entry or list of vtecRecord entries.
         combine - If True, will return records with identical hazards from
-          different geoIds.  If False, will not combine the records for output.
+          different ids.  If False, will not combine the records for output.
 
         Returns a string representing the table.
         '''
@@ -167,9 +166,9 @@ class VTECTableUtil(object):
           "Start:   {startTime}  Action: {act}  Office: {officeid}\n"
           "End:     {endTime}  UFN: {ufn}\n"
           "Issue:   {issueTime}  Key: {key}\n{prevtecstr}"
-          "Phen: {phen}  Sig: {sig}  SubT: {subtype}  Seg: {seg}  Etn: {etn}"
+          "Phen: {phen}  Sig: {sig}  SubT: {subtype}  Seg: {seg}  Etn: {etn}  Pil: {pil}"
           "  EventID: {eventID} RecState: {recState}\n"
-          "geoIds: {zones}\n{relatedText}{hvtecStr}\n")
+          "ids: {zones}\n{relatedText}{hvtecStr}\n")
 
         try:
            etnS = "{etn:04d}".format(etn=h.get('etn'))
@@ -182,15 +181,15 @@ class VTECTableUtil(object):
           ufn=h.get('ufn', 0), recState=h.get('state'),
           issueTime=self.printTime(h.get('issueTime')), key=h.get('key'),
           phen=h.get('phen'), sig=h.get('sig'), subtype=h.get('subtype'),
-          officeid=h.get('officeid'), etn=etnS, seg=h.get('seg'),
-          zones=h.get('geoId'), relatedText=relatedText, hvtecStr=hvtecStr,
+          officeid=h.get('officeid'), etn=etnS, seg=h.get('seg'), pil=h.get('pil'),
+          zones=h.get('id'), relatedText=relatedText, hvtecStr=hvtecStr,
           prevtecstr=prevtecstr)
 
         return t
 
 
-    def hazardCompare(self, rec1, rec2, fields):
-        '''Comparison routine for two hazard entries.
+    def vtecRecordCompare(self, rec1, rec2, fields):
+        '''Comparison routine for two vtecRecord entries.
 
         Keyword Arguments:
         rec1 -- first record for comparison in form of vtecRecord dictionary.
@@ -244,10 +243,10 @@ class VTECTableUtil(object):
         '''Returns True if tr1 overlaps tr2 (adjacent is not an overlap)'''
         return self._containsT(tr2, tr1[0]) or self._containsT(tr1, tr2[0])
 
-    def _hazardsOverlap(self, h1, h2):
+    def _vtecRecordsOverlap(self, v1, v2):
         '''Returns True if two records times overlap.'''
-        tr1 = (h1['startTime'], h1['endTime'])
-        tr2 = (h2['startTime'], h2['endTime'])
+        tr1 = (v1['startTime'], v1['endTime'])
+        tr2 = (v2['startTime'], v2['endTime'])
         return self._containsT(tr2, tr1[0]) or self._containsT(tr1, tr2[0])
 
     def _isAdjacent(self, tr1, tr2):
