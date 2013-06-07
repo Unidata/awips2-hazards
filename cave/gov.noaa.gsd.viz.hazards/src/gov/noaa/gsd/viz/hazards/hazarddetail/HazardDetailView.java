@@ -361,8 +361,10 @@ public class HazardDetailView extends
         }
 
         // Enable and check the hazard detail checkbox.
-        hazardDetailToggleAction.setEnabled(true);
-        hazardDetailToggleAction.setChecked(true);
+        if (hazardDetailToggleAction != null) {
+            hazardDetailToggleAction.setEnabled(true);
+            hazardDetailToggleAction.setChecked(true);
+        }
 
         // Reset the ignore HID actions flag, indicating that actions
         // from the dialog should no longer be ignored.
@@ -385,28 +387,28 @@ public class HazardDetailView extends
     public final void updateHazardDetail(DictList eventValuesList,
             String topEventID) {
 
-        // If there are event values to show, show or update the part;
-        // otherwise, hide it if it is showing but undocked.
-        if (eventValuesList != null) {
-            if (getViewPart() == null) {
-                showHazardDetail(eventValuesList, topEventID, true);
-            } else {
+        // If the view part exists, update it; otherwise, if there
+        // is at least one event to show, show the view part.
+        if (getViewPart() != null) {
 
-                // Set the flag indicating that HID actions should be ig-
-                // nored while setting the view part info and opening it.
-                doNotForwardActions = true;
+            // Set the flag indicating that HID actions should be ig-
+            // nored while setting the view part info and opening it.
+            doNotForwardActions = true;
 
-                // Give the view part the event information.
-                getViewPart().setHidEventInfo(eventValuesList, topEventID);
+            // Give the view part the event information.
+            getViewPart().setHidEventInfo(eventValuesList, topEventID);
 
-                // Reset the ignore HID actions flag, indicating that
-                // actions from the view part should no longer be ignored.
-                doNotForwardActions = false;
-            }
-        } else {
-            if ((getViewPart() != null) && (isViewPartDocked() == false)) {
+            // Reset the ignore HID actions flag, indicating that
+            // actions from the view part should no longer be ignored.
+            doNotForwardActions = false;
+
+            // If the event values list is empty and the view part is
+            // not docked, hide the view.
+            if ((eventValuesList == null) && (isViewPartDocked() == false)) {
                 hideHazardDetail(true);
             }
+        } else if (eventValuesList != null) {
+            showHazardDetail(eventValuesList, topEventID, true);
         }
     }
 
