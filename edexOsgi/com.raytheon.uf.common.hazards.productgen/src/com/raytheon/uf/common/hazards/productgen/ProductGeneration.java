@@ -88,13 +88,11 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         // Validates the parameter values
         validate(formats, product, hazardEventSet, listener);
 
-        PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
-                .getInstance(ProductScriptFactory.NAME);
         IPythonExecutor<ProductScript, List<IGeneratedProduct>> executor = new ProductScriptExecutor(
                 product, hazardEventSet, formats);
 
         try {
-            jobCoordinator.submitAsyncJob(executor, listener);
+            coordinator.submitAsyncJob(executor, listener);
         } catch (Exception e) {
             statusHandler.error("Error executing async job", e);
         }
@@ -127,13 +125,11 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     @Override
     public Map<String, String> getDialogInfo(String product) {
-        PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
-                .getInstance(ProductScriptFactory.NAME);
         IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductDialogInfoExecutor(
                 product);
         Map<String, String> retVal = null;
         try {
-            retVal = jobCoordinator.submitSyncJob(executor);
+            retVal = coordinator.submitSyncJob(executor);
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }
@@ -143,13 +139,11 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     @Override
     public Map<String, String> getMetadata(String product) {
-        PythonJobCoordinator<ProductScript> jobCoordinator = (PythonJobCoordinator<ProductScript>) coordinator
-                .getInstance(ProductScriptFactory.NAME);
         IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductMetadataExecutor(
                 product);
         Map<String, String> retVal = null;
         try {
-            retVal = jobCoordinator.submitSyncJob(executor);
+            retVal = coordinator.submitSyncJob(executor);
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }

@@ -324,7 +324,7 @@ public abstract class AbstractRecommenderScriptManager extends
         } catch (Throwable e) {
             RecommenderMetadataExecutor<AbstractRecommenderScriptManager> executor = new RecommenderMetadataExecutor<AbstractRecommenderScriptManager>(
                     modName);
-            PythonJobCoordinator<AbstractRecommenderScriptManager> coordinator = (PythonJobCoordinator<AbstractRecommenderScriptManager>) PythonJobCoordinator
+            PythonJobCoordinator<AbstractRecommenderScriptManager> coordinator = PythonJobCoordinator
                     .getInstance("Recommenders");
             try {
                 results = coordinator.submitSyncJob(executor);
