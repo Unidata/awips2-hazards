@@ -30,9 +30,9 @@ class VTECIngester(VTECTableUtil):
         Keyword Arguments:
         vtecAnalyzedRecords -- List of dictionaries representing calculated
           vtec records to be merged into the vtecRecords.  Non-consolidated
-          by geoId.
+          by id.
         vtecRecords -- List of dictionaries representing already issued vtec
-          records from the database. Non-consolidated by geoId
+          records from the database. Non-consolidated by id
         issueTime -- current time for processing records, same as issuance time.
           Units are milliseconds since epoch of Jan 1 1970 0000z. Affects
           purging of old records.
@@ -124,19 +124,19 @@ class VTECIngester(VTECTableUtil):
             changedFlag = True
 
         #expand out any 000 UGC codes, such as FLC000, to indicate all
-        #zones. We do this by finding existing records with the geoId
+        #zones. We do this by finding existing records with the 'id'
         #that matches.
         newRecExpanded = []
         compare1 = ['phen', 'sig', 'officeid', 'etn']
         for newR in newRecords:
-            if newR['geoId'][3:6] == "000":
+            if newR['id'][3:6] == "000":
                 for oldR in vtecRecords:
-                    if self.hazardCompare(oldR, newR, compare1) and \
-                      oldR['geoId'][0:2] == newR['geoId'][0:2] and \
+                    if self.vtecRecordCompare(oldR, newR, compare1) and \
+                      oldR['id'][0:2] == newR['id'][0:2] and \
                       (oldR['act'] not in ['EXP', 'CAN', 'UPG'] or \
                        oldR['act'] == 'EXP' and oldR['endTime'] > issueTime):
                         newE = copy.deepcopy(newR)
-                        newE['geoId'] = oldR['geoId']
+                        newE['id'] = oldR['id']
                         newRecExpanded.append(newE)
             else:
                 newRecExpanded.append(newR)
@@ -152,10 +152,10 @@ class VTECIngester(VTECTableUtil):
         compare = ['phen', 'sig', 'officeid', 'etn']
         for newR in newRecords:
             for oldR in vtecRecords:
-                if self.hazardCompare(oldR, newR, compare):
+                if self.vtecRecordCompare(oldR, newR, compare):
                   oldYear = self.gmtime_fromMS(oldR['issueTime'])[0]
                   newYear = self.gmtime_fromMS(newR['issueTime'])[0]
-                  if oldYear < newYear and self._hazardsOverlap(oldR, newR):
+                  if oldYear < newYear and self._vtecRecordsOverlap(oldR, newR):
                       LogStream.logVerbose("Reset issuance time to last year:",
                         "\nNewRec: ", self.printEntry(newR),
                         "OldRec: ", self.printEntry(oldR))
@@ -199,7 +199,7 @@ class VTECIngester(VTECTableUtil):
                     if newR['act'] == "ROU":
                         continue
     
-                    if self.hazardCompare(oldR, newR, compare):
+                    if self.vtecRecordCompare(oldR, newR, compare):
                         #we don't keep older records with same etns
                         if newR['etn'] == oldR['etn']:
                             keepflag = False   #don't bother keeping this record
@@ -234,7 +234,7 @@ class VTECIngester(VTECTableUtil):
                     #substitute it.
                     if newR['act'] == "COR":
                         for rec in updatedTable:
-                            if self.hazardCompare(rec, newR, compare):
+                            if self.vtecRecordCompare(rec, newR, compare):
                                 LogStream.logVerbose(\
                                   "COR record matched with:",
                                   "\nNewRec: ", self.printEntry(newR),

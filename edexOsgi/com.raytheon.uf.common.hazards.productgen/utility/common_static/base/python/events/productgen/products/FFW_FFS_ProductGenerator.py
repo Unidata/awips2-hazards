@@ -79,23 +79,22 @@ class Product(ProductTemplate.Product):
          Group the segments into the products
             return a list of tuples (productInfo, segments)
         
-         Check the VTEC for each segment
-          IF NEW, EXT -- make a new FFW
-          Else CON, CAN:
-             Group them into FFS's with same ETN
+         Check the pil 
+          IF FFW -- make a new FFW -- there can only be one segment per FFW
+          Group the segments into FFS products with same ETN
         '''
         # For short fused areal products, 
         #     we can safely make the assumption of only one hazard/action per segment.
         productSegmentGroups = []
         for segment in segments:
-            hazardList = self._vtecEngine.getHazardList(segment)
-            for hazard in hazardList:  # NOTE there is only one hazard to process
-                action = hazard.get("act")
-                etn = hazard.get("etn")
-                if action in ["NEW", "EXT"]:
+            vtecRecords = self.getVtecRecords(segment)
+            for vtecRecord in vtecRecords:  # NOTE there is only one hazard to process
+                pil = vtecRecord.get("pil")
+                etn = vtecRecord.get("etn")
+                if pil == "FFW":
                     # Create new FFW
                     productSegmentGroup = { 
-                       "productID" : "FFW",
+                       "productID" : pil,
                        "productName": self._FFW_ProductName,
                        "geoType": "area",
                        "vtecEngine": self._vtecEngine,
@@ -106,7 +105,7 @@ class Product(ProductTemplate.Product):
                        "segments": [segment]
                        }
                     productSegmentGroups.append(productSegmentGroup)
-                else:
+                else: # FFS
                     # See if this record matches the ETN of an existing FFS
                     found = False
                     for productSegmentGroup in productSegmentGroups:
@@ -116,7 +115,7 @@ class Product(ProductTemplate.Product):
                     if not found:
                         # Make a new FFS productSegmentGroup
                        productSegmentGroup = {
-                            "productID" : "FFS",
+                            "productID" : pil,
                             "productName": self._FFS_ProductName,
                             "geoType": "area",
                             "vtecEngine": self._vtecEngine,

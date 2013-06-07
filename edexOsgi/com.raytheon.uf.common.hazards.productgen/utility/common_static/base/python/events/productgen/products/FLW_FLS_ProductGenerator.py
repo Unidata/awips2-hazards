@@ -82,20 +82,20 @@ class Product(ProductTemplate.Product):
          Group the segments into the products
             return a list of tuples (productInfo, segments)
          
-         Check the VTEC for each segment
-          IF NEW, EXT -- make a new FLW
-          Else CON, CAN:
-             Group them into FLS's with same ETN
+         Check the pil 
+          IF FLW -- make a new FLW -- there can only be one segment per FLW
+          Group the segments into FLS products with same ETN
+          
         '''
         productSegmentGroups = []
         for segment in segments:
             segmentEventDict = self.getSegmentEventDicts(self._eventDicts, [segment])[0]
             geoType = segmentEventDict.get("geoType")
-            hazardList = self._vtecEngine.getHazardList(segment)
-            for hazard in hazardList:  # NOTE there is only one hazard to process
-                action = hazard.get("act")
-                etn = hazard.get("etn")
-                if action in ["NEW", "EXT"]:
+            vtecRecords = self.getVtecRecords(segment)
+            for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord to process
+                pil = vtecRecord.get("pil")
+                etn = vtecRecord.get("etn")
+                if pil == "FLW":
                     # Create new FLW
                     productSegmentGroup = { 
                        "productID" : "FLW",
@@ -109,7 +109,7 @@ class Product(ProductTemplate.Product):
                        "segments": [segment]
                        }
                     productSegmentGroups.append(productSegmentGroup)
-                else:
+                else: # FLS
                     # See if this record matches the ETN of an existing FLS
                     found = False
                     for productSegmentGroup in productSegmentGroups:
@@ -119,7 +119,7 @@ class Product(ProductTemplate.Product):
                     if not found:
                         # Make a new FLS productSegmentGroup
                        productSegmentGroup = {
-                            "productID" : "FLS",
+                            "productID" : pil,
                             "productName": self._FLW_ProductName,
                             "geoType": geoType,
                             "vtecEngine": self._vtecEngine,

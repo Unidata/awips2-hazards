@@ -81,7 +81,7 @@ class VTECTableSqueeze(VTECTableUtil.VTECTableUtil):
             phensig = (rec['phen'], rec['sig'])
             issuance = time.gmtime(rec['issueTime']/1000)[0]
             etn = rec['etn']
-            id = rec['geoId']
+            id = rec['id']
         
             # officeid
             if not d.has_key(officeid):
@@ -114,7 +114,7 @@ class VTECTableSqueeze(VTECTableUtil.VTECTableUtil):
     #shortened table NC,  and purged table.
     #entries.
     def __removeOldNationalAndShortFusedEvents(self, table):
-        compare = ['geoId', 'phen', 'sig', 'officeid']
+        compare = ['id', 'phen', 'sig', 'officeid']
         convWatch=[('SV','A'), ('TO','A')]
         #tropicalPhen=['TR','TY','HU'] Removed to disable 24hour purging for OB 8.2
         tropicalPhen=[]
@@ -240,7 +240,7 @@ class VTECTableSqueeze(VTECTableUtil.VTECTableUtil):
                                 elif not ufn and not hourOld: # 2
                                     saveRec.append(rec)
                                 elif iy == self.__thisYear and \
-                                  rec['geoId'] == minid1 and \
+                                  rec['id'] == minid1 and \
                                   rec['etn'] == maxetn1:
                                     if rec['officeid'] in ['KNHC'] and twoWeeksOld:
                                        LogStream.logDebug("******** WILL PURGE *******", rec['vtecstr'])
@@ -249,7 +249,7 @@ class VTECTableSqueeze(VTECTableUtil.VTECTableUtil):
                                 elif iy == self.__thisYear and \
                                   maxetn1 != maxetn2 and \
                                   rec['phen'] in tropicalPhen and \
-                                  rec['geoId'] == minid2 and \
+                                  rec['id'] == minid2 and \
                                   rec['etn'] == maxetn2: # 3
                                     saveRec.append(rec)
                                 # otherwise, remove them

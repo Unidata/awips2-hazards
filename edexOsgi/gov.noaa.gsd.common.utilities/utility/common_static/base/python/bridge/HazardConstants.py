@@ -133,7 +133,7 @@ GRID_PARAM_KEY = "gridParm"
 
 #################################
 # VTEC Record Keys
-GEO_ID = "geoid"
+ID = "id"
 ETN = 'etn'
 VTEC_STR = 'vtecstr'
 HVTEC = 'hvtec'

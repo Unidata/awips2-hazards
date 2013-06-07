@@ -3,12 +3,13 @@
 #------------------------------------------------------------------
 # This is the object that takes a proposed set of events, a list of
 # the currently active events, and calculates the proper VTEC to
-# determine the segments, VTEC codes, HVTEC codes, and hazards.
+# determine the segments, VTEC codes, HVTEC codes, and vtecRecords.
 #------------------------------------------------------------------
 import cPickle, os, types, string, copy
 import sys, gzip, time
 import collections
 from VTECTableUtil import VTECTableUtil
+from Pil import Pil
 import Logger as LogStream
 
 # Define several named tuples for cleaner code
@@ -17,18 +18,20 @@ VTECDefinitions = collections.namedtuple('VTECDefinitions',
 
 EndedEvents = collections.namedtuple('EndedEvents', 'phen sig eventID areas')
 
-ZCSort = collections.namedtuple('ZCSort', 'hazards zoneCombo')
+ZCSort = collections.namedtuple('ZCSort', 'vtecRecords zoneCombo')
 
 
 class VTECEngine(VTECTableUtil):
 
     def __init__(self, productCategory, siteID4, eventDicts,
-      vtecRecords, vtecDefinitions, allowedHazards,
+      rawVtecRecords, vtecDefinitions, allowedHazards,
       vtecMode, creationTime=None, limitGeoZones=None):
 
         '''Constructor for VTEC Engine
         Once instantiated, it will run the calculations.  The output may
         be accessed through different functions.
+        
+        NOTE :  Times are in seconds.
 
         Keyword Arguments:
         productCategory -- identifier for the product, which must match a 
@@ -36,7 +39,8 @@ class VTECEngine(VTECTableUtil):
         siteID4 -- identifier for the site, such as KBOU
         eventDicts -- list of event dictionaries containing the hazard records.
           All times within the records are in units of milliseconds since epoch
-          of Jan 1 1970 at 0000Z.
+          of Jan 1 1970 at 0000Z.  This is changed on input to seconds.
+        rawVtecRecords -- current active vtec records from the database.
         vtecDefinitions -- named tuple consisting of the HazardTypes dictionary,
           upgrade dictionary, and downgrade dictionary.
         allowedHazards - priority ordered list of (key, category) of the hazard
@@ -45,7 +49,7 @@ class VTECEngine(VTECTableUtil):
           'E' for experimental product, 'X' for Experimental VTEC in an
           operational product.
         creationTime -- time the engine is run, a.k.a. issue time.  Units of
-          milliseconds since epoch (Jan 1 1970 00:00Z)
+          seconds since epoch (Jan 1 1970 00:00Z)
         limitGeoZones -- A list of zones used to limit the vtec logic.  This is
           only used in places where there are multiple products for the same
           hazard types issued at an office.  Example: PAFG (Fairbanks, AK).
@@ -53,12 +57,20 @@ class VTECEngine(VTECTableUtil):
 
         VTECTableUtil.__init__(self)
         # save data
+        self._productCategory = productCategory
         self._pil = productCategory
         self._siteID4 = siteID4
         self._spcSiteID4 = "KWNS"
         self._vtecDef = vtecDefinitions
         self._vtecMode = vtecMode
         self._etnCache = {}
+        
+        # Change the times in the eventDicts from milliseconds to seconds
+        for eventDict in eventDicts:
+            for key in ['startTime', 'endTime', 'riseAbove', 'crest', 'fallBelow']:
+                value = eventDict.get(key)
+                if value:
+                    eventDict[key] = value/1000
 
         # determine appropriate VTEC lifecycle, based on event dicts,
         # and the hazards table.  All hazard records provided must equate
@@ -114,19 +126,19 @@ class VTECEngine(VTECTableUtil):
         if creationTime is not None:
             self._time = creationTime
         else:
-            self._time = time.time() * 1000 #now time
-        self._time = (int(self._time) / 60000) * 60000  #truncated to minute
+            self._time = time.time() #now time in seconds
+        self._time = (int(self._time) / 60) * 60  #truncated to minute
 
         # sample, and merge vtec codes
         proposed, zonesP, limitEventIDs, endedEventIDs = \
           self._getProposedTable(eventDicts, limitGeoZones,
           combinableSegments)
 
-        self._allGEOVtecRecords, self._vtecRecords, zonesA = \
-          self._getCurrentTable(vtecRecords, limitGeoZones, limitEventIDs)
+        self._allGEOVtecRecords, self._activeVtecRecords, zonesA = \
+          self._getCurrentTable(rawVtecRecords, limitGeoZones, limitEventIDs)
 
         self._analyzedTable = self._calcAnalyzedTable(proposed,
-          self._vtecRecords, endedEventIDs, combinableSegments)
+          self._activeVtecRecords, endedEventIDs, combinableSegments)
 
         #print "analyzed", self._analyzedTable
         # calculate the set of all zones in the proposed and vtec tables
@@ -146,26 +158,26 @@ class VTECEngine(VTECTableUtil):
 
         #print "Segments", self._segments
 
-        # calc the VTEC strings and hazardList dictionaries. Important
-        # to call calcHazardList before calcVTECString. 
-        self._hazardList = {}
+        # calc the VTEC strings and vtecRecord Dictionaries. Important
+        # to call calcVtecRecords before calcVTECString. 
+        self._vtecRecordDict = {}
         for seg in self._segments:
-            self._hazardList[seg] = self._calcHazardList(seg,
+            self._vtecRecordDict[seg] = self._calcVtecRecords(seg,
               combinableSegments)
 
         self._vtecStrings = {}
         for seg in self._segments:
+            self._calcPil(seg)
             self._vtecStrings[seg] = self._calcVTECString(seg)
-
-
+        
 #-----------------------------------------------------------------
 # VTEC Engine Accessors
 #-----------------------------------------------------------------
 
 
-    def vtecRecords(self):
+    def activeVtecRecords(self):
         '''Returns the filtered list of vtec records as a list of dicts'''
-        return self.consolidateByID(self._vtecRecords)
+        return self.consolidateByID(self._activeVtecRecords)
 
     def analyzedTable(self):
         '''Returns the analyzed table as a list of dictionaries'''
@@ -173,7 +185,7 @@ class VTECEngine(VTECTableUtil):
 
     def consolidatedAnalyzedTable(self):
         '''Returns the consolidated version of the analyzed table. Records that
-        are identical other than geoArea are combined.  The 'geoId' field is 
+        are identical other than geoArea are combined.  The 'id' field is 
         a list of zones.'''
         return self.consolidateByID(self._analyzedTable)
 
@@ -198,12 +210,12 @@ class VTECEngine(VTECTableUtil):
         '''
         return self._vtecStrings.get(segmentArea)
 
-    def getHazardList(self, segmentArea):
-        '''Returns a list of dictionaries that represent the hazards in the
+    def getVtecRecords(self, segmentArea):
+        '''Returns a list of dictionaries that represent the vtecRecords in the
         provided segment area.  The segment area must be
         one of the values returned from getSegments().
         '''
-        return self._hazardList.get(segmentArea)
+        return self._vtecRecordDict.get(segmentArea)
 
 #-----------------------------------------------------------------
 # VTEC Engine Implementation Routines
@@ -308,8 +320,8 @@ class VTECEngine(VTECTableUtil):
             raise Exception("Multiple geoTypes detected {}".format(geoTypes))
 
 
-    def _calcHazardList(self, segment, combinableSegments):
-        '''Calculates the hazard list for the segment.
+    def _calcVtecRecords(self, segment, combinableSegments):
+        '''Calculates the vtec records for the segment.
 
         Keyword Arguments:
         segment -- Tuple containing the set of geographical ids, and the
@@ -318,26 +330,34 @@ class VTECEngine(VTECTableUtil):
           False otherwise.
 
         Returns a list of dictionaries that represent the vtecRecords
-        containing hazards in the "segment".
+        in the "segment".
         '''
 
         if combinableSegments:
-            hazards = [a for a in self.consolidatedAnalyzedTable() if set(
-              a['geoId']) & set(segment[0])]   # hazards that overlap segment
+            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if set(
+              a['id']) & set(segment[0])]   # vtecRecords that overlap segment
 
-            # some of the hazard records may have zones that include other
+            # some of the vtecRecords may have zones that include other
             # zones and segments.  We want to remove them here.
-            hazards1 = copy.deepcopy(hazards)
-            for h in hazards1:
-                h['geoId'] = list(set(segment[0]) & set(h['geoId']))
-            return hazards1
+            vtecRecords1 = copy.deepcopy(vtecRecords)
+            for h in vtecRecords1:
+                h['id'] = list(set(segment[0]) & set(h['id']))
+            return vtecRecords1
 
         else:
             # non-combinable segments
-            hazards = [a for a in self.consolidatedAnalyzedTable() if set(
-              a['geoId']) == set(segment[0]) and a['eventID'] in segment[1]]
-            return hazards
-
+            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if set(
+              a['id']) == set(segment[0]) and a['eventID'] in segment[1]]
+            return vtecRecords
+        
+    def _calcPil(self, segment):
+        '''
+        Sets the pil for each vtec record
+        '''
+        vtecRecords = self.getVtecRecords(segment)
+        for vtecRecord in vtecRecords:
+            vtecRecord['pil'] = Pil(self._productCategory, vtecRecord.get('act')).getPil()
+        
     def _calcVTECString(self, segment):
         '''Calculates the P-VTEC and H-VTEC strings for the segment.
 
@@ -345,46 +365,46 @@ class VTECEngine(VTECTableUtil):
         segment -- Tuple containing the set of geographical ids, and the
           set of eventIDs, representing one segment.
 
-        Returns a string containing the p-vtec and h-vtec strings for the
+        Returns a string containing the p-vtec and v-vtec strings for the
         given forecast segment.
         '''
 
-        # get the list of hazards for this segment
-        hazards = self.getHazardList(segment)   #could sort in here
+        # get the list of vtecRecords for this segment
+        vtecRecords = self.getVtecRecords(segment)   #could sort in here
 
-        # sort the list of hazards depending on the type of product
+        # sort the list of vtecRecords depending on the type of product
         if self._pil in self._marineProds:   # it's a marine product
-            hazards.sort(self._marineHazardsSort)
+            vtecRecords.sort(self._marineVtecRecordsSort)
         else:   # non-marine product
-            hazards.sort(self._hazardsSort)
+            vtecRecords.sort(self._vtecRecordsSort)
 
-        # hazards need upgrade records to be paired up
-        hazards = self._pairUpgradeRecords(hazards)
+        # vtecRecords need upgrade records to be paired up
+        vtecRecords = self._pairUpgradeRecords(vtecRecords)
             
         # get VTEC strings and VTEC records
         vtecStrings = []
-        for i, h in enumerate(hazards):
-            vtecStrings.append(h['vtecstr'])
+        for i, v in enumerate(vtecRecords):
+            vtecStrings.append(v['vtecstr'])
 
-            # is there an h-vtec string?
-            if h['hvtecstr']:
+            # is there an v-vtec string?
+            if v['hvtecstr']:
 
                 # H-VTEC always included on non-CAN actions.
-                if h['act'] != 'CAN':
-                    vtecStrings.append(h['hvtecstr'])
+                if v['act'] != 'CAN':
+                    vtecStrings.append(v['hvtecstr'])
 
                 # H-VTEC not included on CAN for FA.A, FF.A exchange with paired
                 # records: CAN/NEW, CAN/EXA, CAN/EXB
-                elif i + 1 < len(hazards) - 1:   # is there a next record?
-                    h1 = hazards[i + 1]
-                    if h1['act'] not in ['NEW', 'EXA', 'EXB'] or \
-                      not ((h1['key'] == 'FA.A' and h['key'] == 'FF.A') or \
-                      (h1['key'] == 'FF.A' and h['key'] == 'FA.A')) :
-                        vtecStrings.append(h['hvtecstr'])
+                elif i + 1 < len(vtecRecords) - 1:   # is there a next record?
+                    v1 = vtecRecords[i + 1]
+                    if v1['act'] not in ['NEW', 'EXA', 'EXB'] or \
+                      not ((v1['key'] == 'FA.A' and v['key'] == 'FF.A') or \
+                      (v1['key'] == 'FF.A' and v['key'] == 'FA.A')) :
+                        vtecStrings.append(v['hvtecstr'])
 
-                # no next record, so always output h-vtec
+                # no next record, so always output v-vtec
                 else:
-                    vtecStrings.append(h['hvtecstr'])
+                    vtecStrings.append(v['hvtecstr'])
 
         return vtecStrings
 
@@ -401,30 +421,30 @@ class VTECEngine(VTECTableUtil):
         Returns the sorted segments.
         ''' 
 
-        allHazards = self.consolidatedAnalyzedTable()
+        allVtecRecords = self.consolidatedAnalyzedTable()
 
         # reformat to prepare for sorting
         zcsort = []
         for zoneCombo in hazardCombinations:
-            # get all hazards for this zoneCombo
+            # get all vtecRecords for this zoneCombo
             if combinableSegments:
-                hazards = [a for a in allHazards \
-                  if set(a['geoId']) & zoneCombo[0]]
+                vtecRecords = [a for a in allVtecRecords \
+                  if set(a['id']) & zoneCombo[0]]
 
 
-                # change the hazard record so it only has geoIds for this group
-                hazards = copy.deepcopy(hazards)
-                for h in hazards:
-                    h['geoId'] = list(set(h['geoId']) & zoneCombo[0])
+                # change the hazard record so it only has ids for this group
+                vtecRecords = copy.deepcopy(vtecRecords)
+                for v in vtecRecords:
+                    v['id'] = list(set(v['id']) & zoneCombo[0])
 
             # non-combinable segments
             else:
-                hazards = [a for a in allHazards if set(a['geoId']) == zoneCombo[0]
+                vtecRecords = [a for a in allVtecRecords if set(a['id']) == zoneCombo[0]
                   and a['eventID'] in zoneCombo[1]] 
 
-            hazards.sort(self._hazardsGroupSort)   # normal sorting order
+            vtecRecords.sort(self._vtecRecordsGroupSort)   # normal sorting order
 
-            zc = ZCSort(hazards, zoneCombo)
+            zc = ZCSort(vtecRecords, zoneCombo)
             zcsort.append(zc)
         zcsort.sort(self._comboSort)
 
@@ -432,7 +452,7 @@ class VTECEngine(VTECTableUtil):
         return [a.zoneCombo for a in zcsort]
 
     def _comboSort(self, a, b):
-        ''' Comparison routine for two eventDict records.
+        ''' Comparison routine for two vtec records.
 
         Keyword Arguments:
         a -- combo 1 to compare
@@ -441,19 +461,19 @@ class VTECEngine(VTECTableUtil):
         Returns -1, 0, +1 based on the comparisons.
         '''
 
-        ahaz = a.hazards
-        bhaz = b.hazards
-        commonNum = min(len(ahaz), len(bhaz))
+        aRecords = a.vtecRecords
+        bRecords = b.vtecRecords
+        commonNum = min(len(aRecords), len(bRecords))
         for idx in range(commonNum):
-            hs = self._hazardsGroupSort(ahaz[idx], bhaz[idx])
+            hs = self._vtecRecordsGroupSort(aRecords[idx], bRecords[idx])
             if hs != 0:
                 return hs   # not equal
 
         # first common ones are equal, if we got here, then we send either
         # 1 or -1 depending which list is longer
-        if len(ahaz) > len(bhaz):
+        if len(aRecords) > len(bRecords):
             return -1
-        elif len(ahaz) < len(bhaz):
+        elif len(aRecords) < len(bRecords):
             return 1
 
         # lists are equal length, and apparently test equal. Check the
@@ -480,7 +500,7 @@ class VTECEngine(VTECTableUtil):
             return 1
         return 0
 
-    def _hazardsGroupSort(self, a, b):
+    def _vtecRecordsGroupSort(self, a, b):
         ''' Comparison routine for two eventDict records.
 
         Keyword Arguments:
@@ -497,8 +517,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = actionCodeOrder.index(a['act'])
             bIndex = actionCodeOrder.index(b['act'])
         except ValueError:
-            raise Exception("Invalid action code in hazard in "
-              "_hazardsGroupSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid action code in vtecRecord in "
+              "_vtecRecordsGroupSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
 
         if aIndex > bIndex:
@@ -512,8 +532,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = sigOrder.index(a['sig'])
             bIndex = sigOrder.index(b['sig'])
         except ValueError:
-            raise Exception("Invalid sig code in hazard in "
-              "_hazardsGroupSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid sig code in vtecRecord in "
+              "_vtecRecordsGroupSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
 
         if aIndex > bIndex:
@@ -554,15 +574,15 @@ class VTECEngine(VTECTableUtil):
 
         return 0
 
-    def _hazardsSort(self, a, b):
-        '''Compares two hazard records.
+    def _vtecRecordsSort(self, a, b):
+        '''Compares two vtecRecord records.
 
         Keyword Arguments:
         a -- object A for compare
         b -- object B for compare
 
         Returns 1, 0, or -1 depending upon
-        whether the first hazard is considered higher, equal, or lower
+        whether the first vtecRecord is considered higher, equal, or lower
         priority when compared to the second as defined in the VTEC
         directive.
         '''
@@ -574,8 +594,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = actionCodeOrder.index(a['act'])
             bIndex = actionCodeOrder.index(b['act'])
         except ValueError:
-            raise Exception("Invalid action code in hazard in "
-              "_hazardsSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid action code in vtecRecord in "
+              "_vtecRecordsSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
         if aIndex > bIndex:
             return 1
@@ -588,8 +608,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = sigOrder.index(a['sig'])
             bIndex = sigOrder.index(b['sig'])
         except ValueError:
-            raise Exception("Invalid sig code in hazard in "
-              "_hazardsSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid sig code in vtecRecord in "
+              "_vtecRecordsSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
         if aIndex > bIndex:
             return 1
@@ -614,19 +634,19 @@ class VTECEngine(VTECTableUtil):
         elif a['subtype'] < b['subtype']:
             return -1
 
-        LogStream.logProblem("Hazards are identical in _hazardsSort",
+        LogStream.logProblem("VtecRecords are identical in _vtecRecordsSort",
           self.printVtecRecords([a, b]))
         return 0
     
-    def _marineHazardsSort(self, a, b):
-        '''Compares two hazard records.
+    def _marineVtecRecordsSort(self, a, b):
+        '''Compares two vtecRecord records.
 
         Keyword Arguments:
         a -- object A for compare
         b -- object B for compare
 
         Returns 1, 0, or -1 depending upon
-        whether the first hazard is considered higher, equal, or lower
+        whether the first vtecRecord is considered higher, equal, or lower
         priority when compared to the second as defined in the VTEC
         directive.  This sorting is based on the marine directive which
         is difference from that of the non-marine products.
@@ -645,8 +665,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = actionCodeOrder.index(a['act'])
             bIndex = actionCodeOrder.index(b['act'])
         except ValueError:
-            raise Exception("Invalid action code in hazard in "
-              "_hazardsSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid action code in vtecRecord in "
+              "_vtecRecordsSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
 
         if aIndex > bIndex:
@@ -660,8 +680,8 @@ class VTECEngine(VTECTableUtil):
             aIndex = sigOrder.index(a['sig'])
             bIndex = sigOrder.index(b['sig'])
         except ValueError:
-            raise Exception("Invalid sig code in hazard in "
-              "_hazardsSort:\n{a}\n{b}".format(a=self.printEntry(a),
+            raise Exception("Invalid sig code in vtecRecord in "
+              "_vtecRecordsSort:\n{a}\n{b}".format(a=self.printEntry(a),
               b=self.printEntry(b)))
         if aIndex > bIndex:
             return 1
@@ -687,16 +707,16 @@ class VTECEngine(VTECTableUtil):
             return -1
 
         LogStream.logProblem(\
-          "Marine Hazards are identical in _marineHazardsSort",
+          "Marine VtecRecords are identical in _marineVtecRecordsSort",
             self.printVtecRecords([a, b]))
         return 0
 
-    def _pairUpgradeRecords(self, hazardsList):
+    def _pairUpgradeRecords(self, vtecRecords):
         '''Moves items in the list around such that the upgrades and
         downgrades are sequential (UPG, NEW, (CAN, NEW), etc.
 
         Keyword Arguments:
-        hazardsList -- list of dictionary records denoting the hazards. These
+        vtecRecords -- list of dictionary records denoting the vtecRecords. These
           are not consolidated by ID.
         '''
 
@@ -704,13 +724,13 @@ class VTECEngine(VTECTableUtil):
 
         # get the list of upgraded or downgraded records
         upDownList = []
-        for h in hazardsList:
-            if h.has_key('upgradeFrom') or h.has_key('downgradeFrom'):
-                upDownList.append(h)
+        for v in vtecRecords:
+            if v.has_key('upgradeFrom') or v.has_key('downgradeFrom'):
+                upDownList.append(v)
 
-        # temporarily remove these guys from the hazardsList
+        # temporarily remove these guys from the vtecRecords
         for upDown in upDownList:
-            hazardsList.remove(upDown)
+            vtecRecords.remove(upDown)
 
         # Hunt down their counterparts and add the record in the correct slot
         for upDown in upDownList:
@@ -723,17 +743,17 @@ class VTECEngine(VTECTableUtil):
 
             # find its match
             foundMatch = 0  # set a flag
-            for h in hazardsList:
-                if self.hazardCompare(oldRec, h, compare):
+            for v in vtecRecords:
+                if self.vtecRecordCompare(oldRec, v, compare):
                     # found a match
-                    hazardsList.insert(hazardsList.index(h) + 1, upDown)
+                    vtecRecords.insert(vtecRecords.index(v) + 1, upDown)
                     foundMatch = 1
-                    break  # done with this pass through hazardsList
+                    break  # done with this pass through vtecRecords
 
             if foundMatch == 0:
                 LogStream.logProblem("Match not found for upgrade/downgrade.")
 
-        return hazardsList
+        return vtecRecords
         
     #-----------------------------------------------------------------
     # The following set of functions are utility functions.
@@ -743,10 +763,10 @@ class VTECEngine(VTECTableUtil):
         '''Prepares the etn cache.  Adds new entries to the etn cache,
         but doesn't figure out the etn values at this point.  Organizes the
         information by phen.sig, then maintains a list of start, end, etns,
-        eventIDs, and geoIds'''
+        eventIDs, and ids'''
 
         phensig = (proposedRecord['phen'], proposedRecord['sig'])
-        id = proposedRecord['geoId']
+        id = proposedRecord['id']
         if self._etnCache.has_key(phensig):
             for start, end, etn, eventID, ids in self._etnCache[phensig]:
                 if proposedRecord['startTime'] == start and \
@@ -897,47 +917,47 @@ class VTECEngine(VTECTableUtil):
     # groups together.
     #-----------------------------------------------------------------
 
-    def _organizeByZone(self, hazardList):
+    def _organizeByZone(self, vtecRecords):
         '''Returns a dictionary that is keyed on zonename, and contains a list
-        of all hazards for that zone.
+        of all vtecRecords for that zone.
 
         Keyword Arguments:
-        hazardList -- list of non-consolidated hazard records
+        vtecRecords -- list of non-consolidated vtec records
 
-        Returns dictionary with key being the geoId, and the values being
-        a list of hazard records for that geoId.
+        Returns dictionary with key being the id, and the values being
+        a list of vtec records for that id.
         '''
         
-        hazardsByZone = {}
-        for h in hazardList:
-            hazardsByZone.setdefault(h['geoId'], []).append(h)
+        vtecRecordsByZone = {}
+        for v in vtecRecords:
+            vtecRecordsByZone.setdefault(v['id'], []).append(v)
 
-        return hazardsByZone
+        return vtecRecordsByZone
 
-    def _organizeByKey(self, hazardList):
+    def _organizeByKey(self, vtecRecords):
         '''Returns a dictionary that is based on key, and contains a list
-        of all hazards for each key value.
+        of all vtecRecords for each key value.
 
         Keyword Arguments:
-        hazardList -- list of consolidated or non-consolidated hazard
+        vtecRecords -- list of consolidated or non-consolidated vtec
           records.
 
         Returns dictionary with key being the phen/sig/subtype, and the
-        values being a list of hazard records with that phen/sig/subtype.
+        values being a list of vtec records with that phen/sig/subtype.
         '''
 
-        hazards = {}
-        for h in hazardList:
-            hazards.setdefault(h['key'], []).append(h)
+        vtecRecords = {}
+        for h in vtecRecords:
+            vtecRecords.setdefault(h['key'], []).append(h)
 
-        return hazards
+        return vtecRecords
 
-    def _combineZones(self, hazards, combinableSegments, zoneList):
-        '''Determines how to combine all of the hazards based on the
+    def _combineZones(self, vtecRecords, combinableSegments, zoneList):
+        '''Determines how to combine all of the vtecRecords based on the
         combinableSegments flag and the list of zones.
 
         Keyword Arguments:
-        hazards -- list of hazard records (dictionary) to determine how
+        vtecRecords -- list of vtecRecord (dictionary) to determine how
           to combine.
         combinableSegments -- True if hazards can be combined into segments,
           otherwise False if only one hazard can be in a segment.
@@ -954,20 +974,20 @@ class VTECEngine(VTECTableUtil):
 
         if not combinableSegments:
             outCombo = []   # start with an empty list
-            for h in hazards:
+            for rec in vtecRecords:
                 # ensure Z and C ids are kept separated
-                idSets = [set([v for v in h['geoId'] if v[2] == 'Z']),
-                  set([v for v in h['geoId'] if v[2] not in 'Z'])]
+                idSets = [set([v for v in rec['id'] if v[2] == 'Z']),
+                  set([v for v in rec['id'] if v[2] not in 'Z'])]
                 for ids in idSets:
-                    if ids and (ids, set([h['eventID']])) not in outCombo:
-                        outCombo.append((ids, set([h['eventID']])))
+                    if ids and (ids, set([rec['eventID']])) not in outCombo:
+                        outCombo.append((ids, set([rec['eventID']])))
         else:
             # start with a complete list
             outCombo = [set(zoneList)]
-            for h in hazards:
+            for rec in vtecRecords:
                 # ensure Z and C ids are kept separated
-                idSets = [set([v for v in h['geoId'] if v[2] == 'Z']),
-                  set([v for v in h['geoId'] if v[2] != 'Z'])]
+                idSets = [set([v for v in rec['id'] if v[2] == 'Z']),
+                  set([v for v in rec['id'] if v[2] != 'Z'])]
                 for ids in idSets:
                     if ids:
                         for i, c in enumerate(outCombo):
@@ -980,7 +1000,7 @@ class VTECEngine(VTECTableUtil):
                                 outCombo.append(common) 
 
             # handle the event ids
-            ev = [set([a['eventID'] for a in hazards if set(a['geoId']) & c])
+            ev = [set([a['eventID'] for a in vtecRecords if set(a['id']) & c])
               for c in outCombo]
             outCombo = zip(outCombo, ev)
 
@@ -1029,24 +1049,24 @@ class VTECEngine(VTECTableUtil):
         LogStream.logDebug("Proposed Table after Time Combining:\n", 
           self.printVtecRecords(atable, combine=True))
 
-        # remove hazards that don't apply to the product
+        # remove vtecRecords that don't apply to the product
         atable = self.filterAllowedHazards(atable)
         LogStream.logDebug("Proposed Table, after filterAllowedHazards:\n",
           self.printVtecRecords(atable, combine=True))
 
-        # remove hazards in conflict (applies to GHG longFused only)
+        # remove vtecRecords in conflict (applies to GHG longFused only)
         if combinableSegments:
-            atable = self.filterLowerPriorityHazards(atable)
-            LogStream.logDebug("Proposed Table, after filterLowerPriorityHazards:\n",
+            atable = self.filterLowerPriority(atable)
+            LogStream.logDebug("Proposed Table, after filterLowerPriority:\n",
               self.printVtecRecords(atable, combine=True))
 
-        # remove hazards that aren't in the specified geography
+        # remove vtecRecords that aren't in the specified geography
         atable = self.filterGeoZones(atable, limitGeoZones)
         LogStream.logDebug("Proposed Table, after filterGeoZones:\n",
           self.printVtecRecords(atable, combine=True))
         
         # determine zones in use (set of all zones in the proposed table)
-        zones = set([a['geoId'] for a in atable])
+        zones = set([a['id'] for a in atable])
                 
         # make a list of those events that have been marked as "ended"
        ## or has an ending time now or earlier than now
@@ -1071,14 +1091,14 @@ class VTECEngine(VTECTableUtil):
 
     def _getCurrentTable(self, rawVtecRecords, limitGeoZones, 
       limitEventIDs=None):
-        '''Calculates and returns the current hazard vtec tables.
+        '''Calculates and returns the current vtecRecords.
 
         Keyword Arguments:
-        rawVtecRecords -- list of dictionaries representing the current events.
-          (Current events denote those records in the vtec database and may
+        rawVtecRecords -- list of dictionaries representing the current vtec records.
+          (Current vtec records denote those records in the vtec database and may
           include some older records for etn calculations.)
         limitGeoZones -- None for no limits, otherwise a list of geographical
-          descriptors which limit the hazards to be processed to just those
+          descriptors which limit the vtecRecords to be processed to just those
           zones.
         limitEventIDs -- None to not limit the records to just certain
           EventIDs.  Otherwise a list of eventIDs that should be included
@@ -1119,7 +1139,7 @@ class VTECEngine(VTECTableUtil):
           self.printVtecRecords(rawVtecRecords, combine=True))
 
         # determine zones in use
-        zones = set([a['geoId'] for a in actTable])
+        zones = set([a['id'] for a in actTable])
 
         # delete upgrade/downgrade information in current table
         actTable = self._removeFieldFromTable(actTable, 'upgradeFrom')
@@ -1148,7 +1168,7 @@ class VTECEngine(VTECTableUtil):
         Keyword Arguments:
         @eventDicts -- list of eventDict dictionaries.
 
-        Returns list of vtec records representing the hazards that are
+        Returns list of vtec records representing the hazard events that are
         proposed.
         '''
 
@@ -1190,7 +1210,7 @@ class VTECEngine(VTECTableUtil):
             for areaID in areas:
                 d = {}
                 d['eventID'] = eventID
-                d['geoId'] = areaID
+                d['id'] = areaID
                 d['officeid'] = self._siteID4
                 d['key'] = key   #such as TO.W
 
@@ -1208,6 +1228,7 @@ class VTECEngine(VTECTableUtil):
                 d['seg'] = phd.get('forceSeg', 0)
                 d['phen'] = phen    #form XX.Y where XX is phen
                 d['sig'] = sig   #form XX.Y where Y is sig
+                d['phensig'] = phen+"."+sig
                 d['subtype'] = subtype
                 d['hdln'] = self._vtecDef.hazards[key]['headline']
                 d['ufn'] = phd.get('ufn', 0)
@@ -1222,13 +1243,13 @@ class VTECEngine(VTECTableUtil):
             # these keys always get the event from now until forever
             if phensig in self._ufnKeys:
                 proposed['startTime'] = self._time #now
-                proposed['endTime'] = float(2**31-1)*1000  #forever
+                proposed['endTime'] = float(2**31-1) #*1000  #forever
                 proposed['ufn'] = 1  #until further notice
 
             # these events are forced to be until further notice. Leave
             # starting time as specified in the eventDict.
             elif proposed['ufn'] == 1:
-                proposed['endTime'] = float(2**31-1)*1000  #forever
+                proposed['endTime'] = float(2**31-1) #*1000  #forever
                 proposed['ufn'] = 1  #until further notice
 
         return rval
@@ -1291,7 +1312,7 @@ class VTECEngine(VTECTableUtil):
         Returns -1, 0, or 1 depending upon the values.
         '''
 
-        sortBy = ['officeid', 'geoId', 'phen', 'sig', 'seg', 'etn', 'act',
+        sortBy = ['officeid', 'id', 'phen', 'sig', 'seg', 'etn', 'act',
           'eventID', 'startTime']
 
         for skey in sortBy:
@@ -1314,11 +1335,11 @@ class VTECEngine(VTECTableUtil):
         atable.sort(self._consolidateSortFunc)
 
         # now attempt to combine entries that are overlapping/adjacent
-        compare = ['officeid', 'geoId', 'phen', 'sig', 'seg', 'etn', 'act', 'eventID']
+        compare = ['officeid', 'id', 'phen', 'sig', 'seg', 'etn', 'act', 'eventID']
         if atable:
             for i, rec in enumerate(atable):
                 if i + 1 < len(atable) and \
-                  self.hazardCompare(rec, atable[i + 1], compare):
+                  self.vtecRecordCompare(rec, atable[i + 1], compare):
                     tr1 = (rec['startTime'], rec['endTime'])
                     tr2 = (atable[i + 1]['startTime'], atable[i + 1]['endTime'])
                     if self._isAdjacent(tr1, tr2) or self._overlaps(tr1, tr2):
@@ -1410,27 +1431,27 @@ class VTECEngine(VTECTableUtil):
               h=hazard))
 
 
-    def fixHazardConflict(self, index1, index2, hazardTable):
+    def fixRecordConflict(self, index1, index2, vtecRecords):
         '''This method uses the allowedHazards list to determine which
-        hazardTable entry has the most important priority and removes
+        vtecRecords entry has the most important priority and removes
         the entry or piece thereof in place.
 
         Keyword Arguments:
-        index1 -- index into the hazardTable to check for conflict.
-        index2 -- index into the hazardTable to check for conflict.
-        hazardTable -- list of dictionaries representing the analyzed hazard
+        index1 -- index into the vtecRecords to check for conflict.
+        index2 -- index into the vtecRecords to check for conflict.
+        vtecRecords -- list of dictionaries representing the analyzed 
           table in the vtecRecords format.
 
-        Returns True if something was modified. Modifies the hazardTable.
+        Returns True if something was modified. Modifies the vtecRecords.
         '''
        
         allowedHazardList = self.getAllowedHazardList()
-        phen1 = hazardTable[index1]['phen']
-        phen2 = hazardTable[index2]['phen']
-        sig1 = hazardTable[index1]['sig']
-        sig2 = hazardTable[index2]['sig']
-        act1 =  hazardTable[index1]['act']
-        act2 =  hazardTable[index2]['act']
+        phen1 = vtecRecords[index1]['phen']
+        phen2 = vtecRecords[index2]['phen']
+        sig1 = vtecRecords[index1]['sig']
+        sig2 = vtecRecords[index2]['sig']
+        act1 =  vtecRecords[index1]['act']
+        act2 =  vtecRecords[index2]['act']
         haz1 = phen1 + "." + sig1
         haz2 = phen2 + "." + sig2
         ignoreList = ['CAN', 'EXP', 'UPG']
@@ -1452,161 +1473,158 @@ class VTECEngine(VTECTableUtil):
         # Added to prevent a current lower TO.A from overiding a higher SV.A
         #
         
-        if hazardTable[lowIndex]['phen'] == 'SV' and \
-           hazardTable[lowIndex]['sig'] == 'A' and \
-           hazardTable[highIndex]['phen'] == 'TO' and \
-           hazardTable[highIndex]['sig'] == 'A':
-               if (int(hazardTable[lowIndex]['etn']) > int(hazardTable[highIndex]['etn']) and
-                  (int(hazardTable[highIndex]['etn']) - int(hazardTable[lowIndex]['etn'])) > 50):
+        if vtecRecords[lowIndex]['phen'] == 'SV' and \
+           vtecRecords[lowIndex]['sig'] == 'A' and \
+           vtecRecords[highIndex]['phen'] == 'TO' and \
+           vtecRecords[highIndex]['sig'] == 'A':
+               if (int(vtecRecords[lowIndex]['etn']) > int(vtecRecords[highIndex]['etn']) and
+                  (int(vtecRecords[highIndex]['etn']) - int(vtecRecords[lowIndex]['etn'])) > 50):
                    lowIndexTemp = lowIndex
                    lowIndex = highIndex
                    highIndex = lowIndexTemp
                            
-        lowStart = hazardTable[lowIndex]['startTime']
-        lowEnd = hazardTable[lowIndex]['endTime']
-        highStart = hazardTable[highIndex]['startTime']
-        highEnd = hazardTable[highIndex]['endTime']
+        lowStart = vtecRecords[lowIndex]['startTime']
+        lowEnd = vtecRecords[lowIndex]['endTime']
+        highStart = vtecRecords[highIndex]['startTime']
+        highEnd = vtecRecords[highIndex]['endTime']
                                                                                 
         # first check to see if high pri completely covers low pri
         if highStart <= lowStart and highEnd >= lowEnd:  # remove low priority
-            del hazardTable[lowIndex]
+            del vtecRecords[lowIndex]
                                                                                 
         # next check to see if high pri lies within low pri
         elif lowStart <= highStart and lowEnd >= highEnd:  # high pri in middle
             if lowStart < highStart:
-                h = copy.deepcopy(hazardTable[lowIndex])
+                h = copy.deepcopy(vtecRecords[lowIndex])
                 # trim the early piece
-                hazardTable[lowIndex]['endTime'] = highStart
+                vtecRecords[lowIndex]['endTime'] = highStart
                 if lowEnd > highEnd:
                     # make a new end piece
                     h['startTime'] = highEnd
-                    hazardTable.append(h)
+                    vtecRecords.append(h)
             elif lowStart == highStart:
-                hazardTable[lowIndex]['startTime'] = highEnd
+                vtecRecords[lowIndex]['startTime'] = highEnd
                                                                                 
         elif highEnd >= lowStart:
-            hazardTable[lowIndex]['startTime'] = highEnd  # change low start
+            vtecRecords[lowIndex]['startTime'] = highEnd  # change low start
                                                                                 
         elif highStart <= lowEnd:
-            hazardTable[lowIndex]['endTime'] = highStart  # change low end
+            vtecRecords[lowIndex]['endTime'] = highStart  # change low end
 
         return True
     
 
-    def filterAllowedHazards(self, hazardTable):
-        '''Removes all entries of the specified hazardTable that are not
+    def filterAllowedHazards(self, vtecRecords):
+        '''Removes all entries of the specified vtecRecords that are not
         in the allowedHazards list.
 
         Keyword Arguments:
-        hazardTable -- list of dictionaries represent hazards in the vtec
-          record format.
+        vtecRecords -- list of dictionaries in the vtec record format.
 
-        Returns the modified hazardTable.
+        Returns the modified vtecRecords.
         '''
 
         allowedHazardList = self.getAllowedHazardList()
-        return [h for h in hazardTable if h['key'] in allowedHazardList]
+        return [v for v in vtecRecords if v['key'] in allowedHazardList]
 
-    def filterEventIDs(self, hazardTable, limitEventIDs):
-        '''Removes all entries of the specified hazardTable whose EventIDs
+    def filterEventIDs(self, vtecRecords, limitEventIDs):
+        '''Removes all entries of the specified vtecRecords whose EventIDs
         are not in the list of limitEventIDs. If limitEventIDs is None, then
         no filtering is performed.
 
         Keyword Arguments:
-        hazardTable -- list of dictionaries representing hazards in the
-          vtec record format.
+        vtecRecords -- list of dictionaries in the vtec record format.
         limitEventIDs -- None for no filtering, otherwise a list of eventIDs
           that are to be retained.
 
-        Returns the modified hazardTable.
+        Returns the modified vtecRecords.
         '''
         
         if limitEventIDs:
-            return [h for h in hazardTable if h['eventID'] in limitEventIDs]
+            return [v for v in vtecRecords if v['eventID'] in limitEventIDs]
         else:
-            return hazardTable
+            return vtecRecords
 
-    def filterGeoZones(self, hazardTable, limitGeoZones):
-        '''Removes all entries of the specified hazardTable whose geo id
+    def filterGeoZones(self, vtecRecords, limitGeoZones):
+        '''Removes all entries of the specified vtecRecords whose geo id
         are not in the list of limitGeoZones. If limitGeoZones is None, then
         no filtering is performed. 
 
         Keyword Arguments:
-        hazardTable -- list of dictionaries representing hazards in the
-          vtec record format. Must not be in consolidated by id format.
+        vtecRecords -- list of dictionaries in the vtec record format. 
+            Must not be in consolidated by id format.
         limitGeoZones -- None for no filtering, otherwise a list of geo
           identifiers that are to be retained.
 
-        Returns the modified hazardTable.
+        Returns the modified vtecRecords.
         '''
 
         if limitGeoZones:
-            table = [h for h in hazardTable if h['geoId'] in limitGeoZones]
+            table = [h for h in vtecRecords if h['id'] in limitGeoZones]
         else:
-            return hazardTable
+            return vtecRecords
 
     # This method filters out 'T' vtec records, or keeps just 'T' vtec records
-    def filterTestMode(self, hazardTable, testMode):
-        '''Removes all entries of the specified hazardTable whose vtec
+    def filterTestMode(self, vtecRecords, testMode):
+        '''Removes all entries of the specified vtecRecords whose vtec
         mode represent test or not, depending upon the testMode flag.
 
         Keyword Arguments:
-        hazardTable -- list of dictionaries representing hazards in the
-          vtec record format.
+        vtecRecords -- list of dictionaries in the vtec record format.
         testMode -- True to only keep test mode records, False to keep all
           records except for test mode records.
 
-        Returns the modified hazardTable.
+        Returns the modified vtecRecords.
         '''
         if testMode:
-            return [a for a in hazardTable if a['vtecstr'][0:3] == '/T.']
+            return [a for a in vtecRecords if a['vtecstr'][0:3] == '/T.']
         else:
-            return [a for a in hazardTable if a['vtecstr'][0:3] != '/T.']
+            return [a for a in vtecRecords if a['vtecstr'][0:3] != '/T.']
                                         
-    def filterZoneHazards(self, zone, hazardTable):
-        '''This method searches all entries of the specified hazardTable for
+    def filterByZone(self, zone, vtecRecords):
+        '''This method searches all entries of the specified vtecRecords for
         entries matching the specified zone.  Then for each entry it finds
         it looks for a conflicting entry in time.  If it finds one, it calls
-        fixHazardsConflict, which fixes the table and then calls itself again
+        fixRecordConflict, which fixes the table and then calls itself again
         recursively with the fixed table.
 
         Keyword Arguments:
         zone -- geographic identifier to match.
-        hazardTable -- input/output list of dictionaries representing hazards
+        vtecRecords -- input/output list of dictionaries representing hazards
           in the non-consolidated by id vtec record format.
 
         '''
 
-        for i in range(len(hazardTable)):
-            if hazardTable[i]['geoId'] == zone:
-                for j in range(i + 1, len(hazardTable)):
-                    if hazardTable[j]['geoId'] == zone and i != j:
-                        if self._hazardsOverlap(hazardTable[i], hazardTable[j]):
-                            if self.fixHazardConflict(i, j, hazardTable):
-                                self.filterZoneHazards(zone, hazardTable)
+        for i in range(len(vtecRecords)):
+            if vtecRecords[i]['id'] == zone:
+                for j in range(i + 1, len(vtecRecords)):
+                    if vtecRecords[j]['id'] == zone and i != j:
+                        if self._vtecRecordsOverlap(vtecRecords[i], vtecRecords[j]):
+                            if self.fixRecordConflict(i, j, vtecRecords):
+                                self.filterByZone(zone, vtecRecords)
                                 return
 
 
-    def filterLowerPriorityHazards(self, hazardTable):
-        '''Main method that drives the code to filter hazards that conflict
+    def filterLowerPriority(self, vtecRecords):
+        '''Main method that drives the code to filter vtecRecords that conflict
         in time. Only one hazard of the same phenomenon is allowed per zone
         per time.  This method processes the table, removing any time
         conflicts, so the one-hazard-per-zone-time rule is adhered to.
 
         Keyword Arguments:
-        hazardTable -- input/output list of dictionaries representing hazards
-          in the non-consolidated by id vtec record format.
+        vtecRecords -- input/output list of dictionaries in the non-consolidated by 
+            id vtec record format.
 
-        Returns the modified hazardTable.
+        Returns the modified vtecRecords.
         '''
 
         # get a raw list of unique edit areas
-        zoneList = set([a['geoId'] for a in hazardTable])
+        zoneList = set([a['id'] for a in vtecRecords])
         for zone in zoneList:
             # Remove lower priority hazards of the same type
-            self.filterZoneHazards(zone, hazardTable)
+            self.filterByZone(zone, vtecRecords)
 
-        return hazardTable
+        return vtecRecords
 
 
     #-------------------------------------------------------------
@@ -1646,39 +1664,38 @@ class VTECEngine(VTECTableUtil):
                 a['act'] = 'CON'
         return aTable
 
-    def _checkForMergedEvents(self, proposedTable, vtecRecords):
-        '''Checks and corrects for events that have merged together.
+    def _checkForMergedRecords(self, proposedTable, activeVtecRecords):
+        '''Checks and corrects for vtecRecords that have merged together.
 
         Keyword Arguments:
-        proposedTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
-        vtecRecords -- active set of vtecRecords, in non-consolidated format.
+        proposedTable -- proposed set of vtecRecords, non-consolidated by ID.
+        activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
 
-        Returns the modified proposed table and the modified vtecRecords table.
+        Returns the modified proposed table and the modified activeVtecRecords table.
         '''
 
-        # Checks for events that have merged together.  This could result
+        # Checks for vtecRecords that have merged together.  This could result
         # in dropped VTEC entries so we need to EXT one and CAN the other.
         # We remove entries from the active table (memory copy) and generate
-        # additional CAN events.
-        compare = ['geoId','phen','sig']
+        # additional CAN vtecRecords.
+        compare = ['id','phen','sig']
 
         createdCANEntries = []
 
         for proposed in proposedTable:
             matches = []
  
-            #record match and time overlaps for real events
-            for active in vtecRecords:
-                if self.hazardCompare(proposed, active, compare) and \
+            #record match and time overlaps for real vtecRecords
+            for active in activeVtecRecords:
+                if self.vtecRecordCompare(proposed, active, compare) and \
                   active['act'] not in ['CAN','UPG','EXP'] and \
                   active['endTime'] > self._time and \
                   proposed['startTime'] <= active['endTime'] and \
                   proposed['endTime'] >= active['startTime']:
                     matches.append(active)
 
-            #if multiple records match, we have a merged event
-            #we need to find the highest etn for the event matches
+            #if multiple records match, we have a merged record
+            #we need to find the highest etn for the record matches
             if len(matches) > 1:
                 highestETN = 0
                 for m in matches:
@@ -1691,39 +1708,39 @@ class VTECEngine(VTECTableUtil):
                         canEntry = copy.deepcopy(m)
                         canEntry['act'] = 'CAN'
                         createdCANEntries.append(canEntry)
-                        del vtecRecords[vtecRecords.index(m)]
+                        del activeVtecRecords[activeVtecRecords.index(m)]
 
         #return the modified set of records
-        return (proposedTable + createdCANEntries, vtecRecords)
+        return (proposedTable + createdCANEntries, activeVtecRecords)
 
 
-    def _checkForCONEXT(self, proposedTable, vtecRecords):
-        '''Checks for events that are CON or EXT.
+    def _checkForCONEXT(self, proposedTable, activeVtecRecords):
+        '''Checks for vtecRecords that are CON or EXT.
 
         Keyword Arguments:
-        proposedTable -- proposed set of events in the vtecRecord format,
+        proposedTable -- proposed set of vtecRecords,
           non-consolidated by ID.
-        vtecRecords -- active set of vtecRecords, in non-consolidated format.
+        activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
 
         Returns the modified proposed table.
         '''
 
-        # An event is considered continued if two hazards have the same
-        # id, phen, sig, and if the end times match.  An event
-        # is considered to be extended in time if the event overlaps
+        # A record is considered continued if two records have the same
+        # id, phen, sig, and if the end times match.  A record
+        # is considered to be extended in time if the record overlaps
         # in time.
-        compare = ['eventID', 'geoId', 'key', 'officeid']  #considered equal
+        compare = ['eventID', 'id', 'key', 'officeid']  #considered equal
 
         for proposed in proposedTable:
 
             if proposed['act'] == 'CAN':
-                continue   #only occurs with merged events
+                continue   #only occurs with merged vtecRecords
 
             if proposed['endTime'] <= self._time:
-                continue   #occurs with events that are ending right now
+                continue   #occurs with vtecRecords that are ending right now
 
-            for active in vtecRecords:
-                if self.hazardCompare(proposed, active, compare) and \
+            for active in activeVtecRecords:
+                if self.vtecRecordCompare(proposed, active, compare) and \
                   active['act'] not in ['CAN', 'UPG', 'EXP'] and \
                   not self._separateETNtrack(proposed, active):
 
@@ -1747,17 +1764,17 @@ class VTECEngine(VTECTableUtil):
                         proposed['act'] = 'CON'
                         proposed['etn'] = active['etn']
 
-                    # special case of event ended already, don't
+                    # special case of vtecRecord ended already, don't
                     # assign "EXT" even with overlap
                     elif self._time >= active['endTime']:
-                        pass   #force of a new event since it ended
+                        pass   #force of a new vtecRecord since it ended
 
                     # start and/or end times overlap, "EXT" case
                     # except when user changed the start time
-                    # of an event has gone into effect.  "EXT" has
+                    # of a vtecRecord has gone into effect.  "EXT" has
                     # to be allowed.
 
-                    elif self._hazardsOverlap(proposed, active):
+                    elif self._vtecRecordsOverlap(proposed, active):
                         if not self._allowTimeChange(proposed['key']):
                             raise Exception("Illegal to adjust time for "
                               " hazard {k}. \nProposed Record=\n{p}"
@@ -1781,32 +1798,31 @@ class VTECEngine(VTECTableUtil):
                             proposed['previousStart'] = active['startTime']
                             proposed['previousEnd'] = active['endTime']
 
-        self._removeFieldFromTable(vtecRecords, 'conexted')
+        self._removeFieldFromTable(activeVtecRecords, 'conexted')
 
         return proposedTable
 
-    def _checkForCANEXPUPG(self, pTable, vtecRecords, endedEventIDs=[]):
-        '''Checks for events that are CAN, EXP, UPG (ended).
+    def _checkForCANEXPUPG(self, pTable, activeVtecRecords, endedEventIDs=[]):
+        '''Checks for vtecRecords that are CAN, EXP, UPG (ended).
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
-        vtecRecords -- active set of vtecRecords, in non-consolidated format.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
+        activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
         endedEventIDs -- list of eventIDs that have state='ended'.  These 
           records have already been removed from the pTable.
 
         Returns the modified proposed table.
         '''
 
-        compare1 = ['geoId', 'phen', 'sig']
+        compare1 = ['id', 'phen', 'sig']
         newEntries = []
         
-        for active in vtecRecords:
+        for active in activeVtecRecords:
             if active['officeid'] != self._siteID4:
                 continue   #for a different site
 
             if active['act'] in ['CAN', 'UPG', 'EXP']:
-                continue   #skip these records, event already over
+                continue   #skip these records, vtecRecord already over
 
             cancel_needed = 1
 
@@ -1819,14 +1835,14 @@ class VTECEngine(VTECTableUtil):
                 # is already in active and the times overlap, and the active
                 # ending time is still in the future
                 for proposed in pTable:
-                    if self.hazardCompare(active, proposed, compare1):
-                        if self._hazardsOverlap(proposed, active) and \
+                    if self.vtecRecordCompare(active, proposed, compare1):
+                        if self._vtecRecordsOverlap(proposed, active) and \
                           self._time < active['endTime']:
 
-                            # active event is in effect and proposed event is
+                            # active vtecRecord is in effect and proposed vtecRecord is
                             # in future
 
-                            # cancel active event
+                            # cancel active vtecRecord
                             if active['startTime'] <= self._time and \
                                    proposed['startTime'] > self._time:
                                 break
@@ -1856,10 +1872,10 @@ class VTECEngine(VTECTableUtil):
 
                 for proposed in pTable:
                     #find matches in area, do phen later
-                    if self.hazardCompare(active, proposed, ['geoId']):
+                    if self.vtecRecordCompare(active, proposed, ['id']):
 
                         #find overlaps in time
-                        if self._hazardsOverlap(proposed, active):
+                        if self._vtecRecordsOverlap(proposed, active):
 
                             if self._isUpgrade(proposed, active):
                                 active['act'] = 'UPG'
@@ -1883,7 +1899,7 @@ class VTECEngine(VTECTableUtil):
                         cancel_needed = 0
 
                 # Final Case - CAN
-                # Only Allow "CAN" entries if the event is still ongoing, 
+                # Only Allow "CAN" entries if the vtecRecord is still ongoing, 
                 # otherwise ignore the entry.
                 if cancel_needed == 1:
                     if self._time < active['endTime']:
@@ -1896,18 +1912,17 @@ class VTECEngine(VTECTableUtil):
         # return the composite table of the modified proposed and new entries
         return pTable + newEntries
 
-    def _checkForEXAEXB(self, pTable, vtecRecords):
-        '''Checks for events that are EXA and EXB.
+    def _checkForEXAEXB(self, pTable, activeVtecRecords):
+        '''Checks for vtecRecords that are EXA and EXB.
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
-        vtecRecords -- active set of vtecRecords, in non-consolidated format.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
+        activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
 
         Returns the modified proposed table.
         '''
 
-        compare1 = ['geoId', 'phen', 'sig', 'etn', 'officeid']
+        compare1 = ['id', 'phen', 'sig', 'etn', 'officeid']
         compare2 = ['phen', 'sig']
 
         for proposed in pTable:
@@ -1919,7 +1934,7 @@ class VTECEngine(VTECTableUtil):
             # first check to see if we have already assigned an action.
             # This is a special case for SPC watches that now appear in the
             # proposed table, but haven't been issued yet.  In this case,
-            # we skip processing this record. Other events may have already
+            # we skip processing this record. Other vtecRecords may have already
             # been assigned actions by this point.
             if proposed['act'] != "???":
                 continue
@@ -1929,11 +1944,11 @@ class VTECEngine(VTECTableUtil):
 
             #if we find a match, and it overlaps in time, 
             #then it isn't an EXA, EXB
-            for active in vtecRecords:
-                if self.hazardCompare(proposed, active, compare1):
+            for active in activeVtecRecords:
+                if self.vtecRecordCompare(proposed, active, compare1):
                     #if proposed['startTime'] <= active['endTime'] and 
                     #  proposed['endTime'] >= active['startTime'] and 
-                    if self._hazardsOverlap(proposed, active) and \
+                    if self._vtecRecordsOverlap(proposed, active) and \
                       active['act'] not in ['CAN','EXP','UPG']:
                         exaexb_flag = 0
             
@@ -1942,8 +1957,8 @@ class VTECEngine(VTECTableUtil):
             if exaexb_flag == 1:
                 #first check for EXA, must check ALL records before
                 #deciding it isn't an EXA
-                for active in vtecRecords:
-                    if self.hazardCompare(proposed, active, compare2) and \
+                for active in activeVtecRecords:
+                    if self.vtecRecordCompare(proposed, active, compare2) and \
                       not self._separateETNtrack(proposed, active):
                         if active['act'] not in ['CAN', 'UPG', 'EXP']:
 
@@ -1974,26 +1989,25 @@ class VTECEngine(VTECTableUtil):
                 #if it isn't an EXA, now we check the records again, but
                 #check for overlapping or adjacent times, that do
                 #not occur in the past in the active table, but ensure
-                #that there is an event in the proposed that overlaps
+                #that there is a vtecRecords in the proposed that overlaps
                 #with time. Results in EXB
                 if proposed['act'] == "???":
-                    for active in vtecRecords:
-                        if self.hazardCompare(proposed, active, compare2) and \
-                          not self._separateETNtrack(proposed, active):
+                    for active in activeVtecRecords:
+                        if self.vtecRecordCompare(proposed, active, compare2) : #and \
+                          # not self._separateETNtrack(proposed, active):
                             if active['act'] not in ['CAN', 'UPG', 'EXP']:
-                                #if self._hazardsOverlap(proposed, active) and
+                                #if self._vtecRecordsOverlap(proposed, active) and
                                 if proposed['startTime'] <= active['endTime'] and \
                                   proposed['endTime'] >= active['startTime'] and \
                                   active['endTime'] > self._time:
                                     if proposed['etn'] == "???" or \
                                       proposed['etn'] == active['etn']:
-                                        #ensure record overlaps with proposed
-                                        #event
+                                        #ensure record overlaps with proposed vtecRecords
                                         for p1 in pTable:
                                             if p1 == proposed:
                                                 continue  #skip itself
-                                            if self.hazardCompare(p1, proposed,
-                                              compare2) and self._hazardsOverlap(p1, proposed):
+                                            if self.vtecRecordCompare(p1, proposed,
+                                              compare2) and self._vtecRecordsOverlap(p1, proposed):
                                                 proposed['exaexb'] = 'EXB'
                                                 proposed['active'] = active
                                                 break
@@ -2003,19 +2017,19 @@ class VTECEngine(VTECTableUtil):
         # there is already a CAN/EXP/UPG record with the same ETN
         # for the same phen/sig in the same zone
 
-        # Organize hazards by zone
-        eventDict = self._organizeByZone(pTable)
-        for zone, hazards in eventDict.iteritems():
+        # Organize vtecRecords by zone
+        zoneDict = self._organizeByZone(pTable)
+        for zone, vtecRecords in zoneDict.iteritems():
             # then organize by hazard key
-            hazards = self._organizeByKey(hazards)
-            for key, hzds in hazards.iteritems():
-                for proposed in hzds:
+            vtecRecords = self._organizeByKey(vtecRecords)
+            for key, recs in vtecRecords.iteritems():
+                for proposed in recs:
 
                     if proposed.has_key('exaexb'):
                         act = proposed.pop('exaexb')
                         active = proposed.pop('active')
                         # checking if the etn is used
-                        for p in hzds:
+                        for p in recs:
                             if p['etn'] == active['etn'] and \
                               p['act'] != '???':
                                 break
@@ -2036,19 +2050,18 @@ class VTECEngine(VTECTableUtil):
         return pTable
 
 
-    def _checkForNEW(self, pTable, vtecRecords):
+    def _checkForNEW(self, pTable, activeVtecRecords):
         '''Assigns NEW to remaining records and calculates the correct
         ETN number.
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
-        vtecRecords -- active set of vtecRecords, in non-consolidated format.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
+        activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
 
         Returns the modified proposed table.
         '''
 
-        compare = ['geoId', 'key', 'officeid', 'eventID']
+        compare = ['id', 'key', 'officeid', 'eventID']
 
         #check for any remaining records that have an undefined action
         #these records must be "NEW".  Need to allocate a new etn, except
@@ -2063,12 +2076,12 @@ class VTECEngine(VTECTableUtil):
             if proposed['act'] == '???':
                 if proposed['etn'] == "???":
                     #check in active table for a match (from other product),
-                    #with events that still are occurring
+                    #with vtecRecords that still are occurring
                     etn = 0
-                    for act in vtecRecords:
-                        if self._hazardsOverlap(proposed, act) and \
+                    for act in activeVtecRecords:
+                        if self._vtecRecordsOverlap(proposed, act) and \
                           act['act'] in allowedActions and \
-                          self.hazardCompare(proposed, act, compare) and \
+                          self.vtecRecordCompare(proposed, act, compare) and \
                           act['endTime'] > self._time:
                             etn = act['etn']
                             break
@@ -2081,8 +2094,8 @@ class VTECEngine(VTECTableUtil):
 
                 proposed['act'] = "NEW"
 
-                # adjust starting time of new events to prevent them from
-                # starting in the past and for ending events
+                # adjust starting time of new vtecRecords to prevent them from
+                # starting in the past and for ending vtecRecords
                 if proposed['startTime'] < self._time:
                     if self._time <= proposed['endTime']:
                         proposed['startTime'] = self._time
@@ -2090,7 +2103,7 @@ class VTECEngine(VTECTableUtil):
                         proposed['startTime'] = proposed['endTime']
 
         # determine any new ETNs
-        self._assignNewETNs(vtecRecords)
+        self._assignNewETNs(activeVtecRecords)
         LogStream.logDebug("New ETN cache: ", self._etnCache)
 
         # process again for records that are now marked NEW, but no etn
@@ -2104,8 +2117,7 @@ class VTECEngine(VTECTableUtil):
         '''Adds for inappropriate extensions.
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
 
         Throws exception if not proper extended in area.
         '''
@@ -2114,7 +2126,7 @@ class VTECEngine(VTECTableUtil):
         compare = ['key', 'officeid', 'startTime', 'endTime', 'eventID']
         for p1 in pTable:
             for p2 in pTable:
-                if self.hazardCompare(p1, p2, compare):
+                if self.vtecRecordCompare(p1, p2, compare):
                     if not self._allowAreaChange(p2['key']):
                         if ((p1['act'] == '???' and p2['act'] != '???') or
                           (p1['act'] != '???' and p2['act'] == '???')):
@@ -2124,133 +2136,128 @@ class VTECEngine(VTECTableUtil):
                               p2=self.printEntry(p2)))
 
     def _addEXPCodes(self, pTable):
-        '''Adds in EXP codes (instead of CON) for events ready to expire.
+        '''Adds in EXP codes (instead of CON) for vtecRecords ready to expire.
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
 
         Returns the modified proposed table.
         '''
 
-        compare = ['geoId', 'key', 'officeid', 'eventID']
+        compare = ['id', 'key', 'officeid', 'eventID']
         
-        #looks for events that have "CON", but are within 'expTimeLimit' 
-        #minutes of event ending time and converts those events to EXP. 
+        #looks for vtecRecords that have "CON", but are within 'expTimeLimit' 
+        #minutes of vtecRecord ending time and converts those vtecRecords to EXP. 
         for each_hazard in pTable:
             if each_hazard['act'] == 'CON':
                 timeFromEnd = self._time - each_hazard['endTime']   # +after
                 expFromEnd = self._getExpirationLimits(
                   each_hazard['key']).beforeMinutes
-                if timeFromEnd >= expFromEnd*60*1000 and timeFromEnd <= 0:
+                if timeFromEnd >= expFromEnd*60 and timeFromEnd <= 0:
                     each_hazard['act'] = 'EXP'   #convert to expired
 
         return pTable
         
     def _removeEXPWithOngoingCodes(self, pTable):
-        '''Remove EXP codes when another event with same phen/sig is now
+        '''Remove EXP codes when another vtecRecord with same phen/sig is now
         ongoing for this issuance year.
 
         Keyword Arguments:
-        pTable -- proposed set of events in the vtecRecord format,
-          non-consolidated by ID.
+        pTable -- proposed set of vtecRecords, non-consolidated by ID.
 
         Returns the modified proposed table.
         '''
-        compare = ['phen','sig','etn','geoId']
+        compare = ['phen','sig','etn','id']
         tmp = []
-        for h in pTable:
+        for p in pTable:
             removeIt = False
-            #events with EXP, and after ending time
-            if h['act'] == 'EXP' and self._time >= h['endTime']:
-                hIssueT = h.get('issueTime', self._time)
-                hIssueYear = self.gmtime_fromMS(hIssueT)[0]
-                for h1 in pTable:
-                    #active event with same phen/sig/etn
-                    h1IssueT = h1.get('issueTime', self._time)
-                    h1IssueYear = self.gmtime_fromMS(h1IssueT)[0]
-                    if h1['act'] in ['CON','EXA','EXB','EXT'] and \
-                      self.hazardCompare(h, h1, compare) and \
-                      h1IssueYear == hIssueYear:
+            #vtecRecords with EXP, and after ending time
+            if p['act'] == 'EXP' and self._time >= p['endTime']:
+                pIssueT = p.get('issueTime', self._time)
+                pIssueYear = self.gmtime_fromMS(pIssueT)[0]
+                for p1 in pTable:
+                    #active vtecRecord with same phen/sig/etn
+                    p1IssueT = p1.get('issueTime', self._time)
+                    p1IssueYear = self.gmtime_fromMS(p1IssueT)[0]
+                    if p1['act'] in ['CON','EXA','EXB','EXT'] and \
+                      self.vtecRecordCompare(p, p1, compare) and \
+                      p1IssueYear == pIssueYear:
                         removeIt = True
                         break
             if not removeIt:
-                tmp.append(h)
+                tmp.append(p)
         return tmp
 
     def _adjustStartTimesBasedOnNow(self, pTable):
-        '''Adjusts the starting/ending times of the events to ensure they
+        '''Adjusts the starting/ending times of the vtecRecords to ensure they
         don't start in the past, and that the starting time is never past
-        the ending time of the event.
+        the ending time of the vtecRecord.
 
         Keyword Arguments:
-        pTable -- list of dictionaries representing events in the vtecRecord
-          format.
+        pTable -- list of dictionaries in the vtecRecord format.
 
-        Returns the modified event table.
+        Returns the modified vtecRecord table.
         '''
 
-        for h in pTable:
-            # adjust time of NEW events to ensure they don't start
+        for p in pTable:
+            # adjust time of NEW vtecRecords to ensure they don't start
             # earlier than now
-            if h['startTime'] < self._time:
-                if self._time <= h['endTime']:
-                    h['startTime'] = self._time
+            if p['startTime'] < self._time:
+                if self._time <= p['endTime']:
+                    p['startTime'] = self._time
                 else:
-                    h['startTime'] = h['endTime']
+                    p['startTime'] = p['endTime']
         return pTable
             
     def _addVTECStrings(self, pTable):
-        '''Add VTEC strings to all events.
+        '''Add VTEC strings to all vtecRecords.
 
         Keyword Arguments:
-        pTable -- list of dictionaries representing events in the vtecRecord
-          format.
+        pTable -- list of dictionaries in the vtecRecord format.
 
-        Returns the modified event table.
+        Returns the modified vtecRecord table.
         '''
-        for h in pTable:
+        for p in pTable:
 
             # get the VTEC Mode
             if self._vtecMode is None:
-                h['vtecstr'] = ""
+                p['vtecstr'] = ""
                 continue
 
             # use 00000000 or explicit times for the start time?  Use all
-            # zeros for ongoing events and for HY.S events.
-            if (h['act'] is 'NEW' or \
-              (h['act'] == 'EXT' and h['previousStart'] > self._time) or \
-              (h['act'] == 'EXB' and h['previousStart'] > self._time) or \
-              (h['startTime'] > self._time)) and h['key'] != 'HY.S':
-                startStr = self._vtecTimeStr(h['startTime'])
+            # zeros for ongoing vtecRecords and for HY.S events.
+            if (p['act'] is 'NEW' or \
+              (p['act'] == 'EXT' and p['previousStart'] > self._time) or \
+              (p['act'] == 'EXB' and p['previousStart'] > self._time) or \
+              (p['startTime'] > self._time)) and p['key'] != 'HY.S':
+                startStr = self._vtecTimeStr(p['startTime'])
             else:
                 startStr = self._vtecTimeStr(None)
 
             # use 00000000 if event is "Until Further notice"
-            if h.get('ufn', 0) or h['key'] == 'HY.S':
+            if p.get('ufn', 0) or p['key'] == 'HY.S':
                 endStr = self._vtecTimeStr(None)
             else:
-                endStr = self._vtecTimeStr(h['endTime'])
+                endStr = self._vtecTimeStr(p['endTime'])
 
             # format the beastly string
             vfmt = '/{vm}.{act}.{site}.{phen}.{sig}.{etn:04d}.{start}-{end}/'
-            h['vtecstr'] = vfmt.format(vm=self._vtecMode, site=h['officeid'],
-              phen=h['phen'], sig=h['sig'], etn=h['etn'], start=startStr,
-              end=endStr, act=h['act'])
+            p['vtecstr'] = vfmt.format(vm=self._vtecMode, site=p['officeid'],
+              phen=p['phen'], sig=p['sig'], etn=p['etn'], start=startStr,
+              end=endStr, act=p['act'])
 
 
     # generate H-VTEC strings for hazards
     def _addHVTECStrings(self, pTable):
-        '''Add HVTEC strings to all appropriate events.
+        '''Add HVTEC strings to all appropriate vtecRecords.
 
         Keyword Arguments:
-        pTable -- list of dictionaries representing events in the vtecRecord
-          format.
+        pTable -- list of dictionaries in the vtecRecord format.
 
-        Returns the modified event table.
+        Returns the modified vtecRecord table.
         '''
-        for h in pTable:
-            hvtec = h.get('hvtec')   # must have hvtec dictionary defined
+        for p in pTable:
+            hvtec = p.get('hvtec')   # must have hvtec dictionary defined
             if hvtec:
 
                 # determine the time strings
@@ -2275,15 +2282,15 @@ class VTECEngine(VTECTableUtil):
                 idStr = hvtec.get('pointID') if self._geoType == 'point' else "00000"
                 
                 hfmt = '/{id}.{sev}.{ic}.{beg}.{crest}.{end}.{fr}/'
-                h['hvtecstr'] = hfmt.format(id=idStr, sev=sev, ic=ic, fr=fr,
+                p['hvtecstr'] = hfmt.format(id=idStr, sev=sev, ic=ic, fr=fr,
                   beg=startStr, crest=crestStr, end=endStr)
 
             else:
-                h['hvtecstr'] = None
+                p['hvtecstr'] = None
 
 
     # Add in headlines if missing in the table, note that headlines
-    # are not added for situations of merged events, i.e., an event
+    # are not added for situations of merged vtecRecords, i.e., an vtecRecord
     # that has a CAN and a ongoing with same phen/sig and overlapping time.
     # Leaving 'hdln' blank indicates no headline and no mention in hazard
     # products.
@@ -2291,38 +2298,37 @@ class VTECEngine(VTECTableUtil):
         '''Add headlines to vtec records if missing.
 
         Keyword Arguments:
-        pTable -- list of dictionaries representing events in the vtecRecord
-          format.
+        pTable -- list of dictionaries in vtecRecord format.
 
-        Returns the modified event table.
+        Returns the modified vtecRecord table.
         '''
 
        
-        compare = ['geoId','phen','sig']
+        compare = ['id','phen','sig']
         ongoingAct = ['EXT','EXB','CON','NEW','EXA']
-        for h in pTable:
+        for v in pTable:
 
 #TODO: Not clear if this will ever run, since apparently all entries in the
 #pTable have a 'hdln' key.  
-            if h.has_key('hdln'):
+            if v.has_key('hdln'):
                 continue
-            phensig = h['phen'] + '.' + h['sig']
+            phensig = v['phen'] + '.' + v['sig']
 
             #ongoing (merged) and CAN situation?
             mergedFound = False
-            for h1 in pTable:
-                if self.hazardCompare(h, h1, compare) and \
-                  h['act'] == 'CAN' and h1['act'] in ongoingAct and \
-                  h1['endTime'] > self._time and \
-                  h['startTime'] <= h1['endTime'] and \
-                  h['endTime'] >= h1['startTime']:
+            for v1 in pTable:
+                if self.vtecRecordCompare(v, v1, compare) and \
+                  v['act'] == 'CAN' and v1['act'] in ongoingAct and \
+                  v1['endTime'] > self._time and \
+                  v['startTime'] <= v1['endTime'] and \
+                  v['endTime'] >= v1['startTime']:
                       mergedFound = True
-                      h['hdln'] = ""
+                      v['hdln'] = ""
 
             if mergedFound:
-                h['hdln'] = ""
+                v['hdln'] = ""
             else:
-                h['hdln'] = self._vtecDef.hazards[phensig]['hdln']
+                v['hdln'] = self._vtecDef.hazards[phensig]['hdln']
 
     def _vtecTimeStr(self, t):
         '''Returns a formatted vtec/htec time string.
@@ -2378,10 +2384,9 @@ class VTECEngine(VTECTableUtil):
         different times. Result is only to have 1 record per ID for phen/sig.
 
         Keyword Arguments:
-        pTable -- list of dictionaries representing events in the vtecRecord
-          format.
+        pTable -- list of dictionaries in the vtecRecord format.
 
-        Returns the modified event table.
+        Returns the modified vtecRecord table.
         '''
 
         #step 1: reorganize the proposed table by zone, then by phen/sig.
@@ -2391,7 +2396,7 @@ class VTECEngine(VTECTableUtil):
         orgMaxSeg = {}  #key:phensig, value: max seg number
         for p in pTable:
             phensig = (p['phen'], p['sig'])
-            id = p['geoId']
+            id = p['id']
             if orgHaz.has_key(id):
                 psOrgHaz = orgHaz[id]
                 if psOrgHaz.has_key(phensig):
@@ -2484,7 +2489,7 @@ class VTECEngine(VTECTableUtil):
                     #and key
                     for y in xrange(x+1, len(updatedList)):
                         p1 = updatedList[y]
-                        if self.hazardCompare(p, p1, compare) and \
+                        if self.vtecRecordCompare(p, p1, compare) and \
                           p1['seg'] > orgMax:
                             p1['seg'] = p['seg']
                             p1['phensig'] = p1['phen'] + '.' + p1['sig'] + \
@@ -2569,21 +2574,21 @@ class VTECEngine(VTECTableUtil):
         errorLine = '**************************************************\n'
         currentYear = self.gmtime_fromMS(self._time)[0]
         for key in byZones:
-            for h in byZones[key]:
-                if (h['phen'], h['sig']) not in self._ncKeys:
+            for v in byZones[key]:
+                if (v['phen'], v['sig']) not in self._ncKeys:
                     continue   #only interested in checking national keys
-                if h['act'] in ['EXP','UPG','CAN']:
-                    hissueTime = h.get('issueTime', 0)
+                if v['act'] in ['EXP','UPG','CAN']:
+                    hissueTime = v.get('issueTime', 0)
                     hissueYear = self.gmtime_fromMS(hissueTime)[0] #issueYear
-                    for h1 in byZones[key]:
-                        if self.hazardCompare(h, h1, compare) and \
-                          h1['act'] in ['NEW','CON','EXA','EXT','EXB'] and \
+                    for v1 in byZones[key]:
+                        if self.vtecRecordCompare(v, v1, compare) and \
+                          v1['act'] in ['NEW','CON','EXA','EXT','EXB'] and \
                           currentYear == hissueYear:
                             raise Exception, "\n\n" + errorLine + "\n" +\
                              "ABORTING: Found VTEC Error"\
                              " with same ETN, same hazard, conflicting "\
-                             "actions.\n" + self.printVtecRecords(h) + \
-                             self.printVtecRecords(h1) + "\n" + \
+                             "actions.\n" + self.printVtecRecords(v) + \
+                             self.printVtecRecords(v1) + "\n" + \
                              "Fix, if convective watch, by coordinating "\
                              "with SPC. Otherwise serious software error.\n"\
                              "Cannot have new hazard with same ETN as one "\
@@ -2602,7 +2607,8 @@ class VTECEngine(VTECTableUtil):
         newTable = []
         for p in pTable:
             timeLimit = self._getExpirationLimits(p['key']).afterMinutes
-            if p['act'] != 'EXP' or self._time - p['endTime'] <= timeLimit*60*1000:
+            #if p['act'] != 'EXP' or self._time - p['endTime'] <= timeLimit*60*1000:
+            if p['act'] != 'EXP' or self._time - p['endTime'] <= timeLimit*60:
                 newTable.append(p)
         return newTable
 
@@ -2616,22 +2622,22 @@ class VTECEngine(VTECTableUtil):
         Returns the modified list of hazard records.
         '''
         keyetnmax = {}
-        compare = ['etn', 'phen', 'sig', 'geoId']
+        compare = ['etn', 'phen', 'sig', 'id']
         compare2 = ['phen', 'sig']
         for p in pTable:
-            #look for all events to get max etn for each phen/sig
+            #look for all vtecRecords to get max etn for each phen/sig
             vteckey = p['phen'] + p['sig']
             if not keyetnmax.has_key(vteckey):
                 etn_max = 0
                 for e in pTable:
-                    if self.hazardCompare(p, e, compare2) and \
+                    if self.vtecRecordCompare(p, e, compare2) and \
                        e['etn'] > etn_max:
                         etn_max = e['etn']
                 keyetnmax[vteckey]= etn_max
 
         assigned = {}
         for p in pTable:
-            #only look for EXT, EXA, EXB events
+            #only look for EXT, EXA, EXB vtecRecords
             if p['act'] in ['NEW', 'EXP', 'UPG', 'CAN', 'CON']:
                 continue
             vteckey = p['phen'] + p['sig']
@@ -2639,7 +2645,7 @@ class VTECEngine(VTECTableUtil):
             for p1 in pTable:
                 #check for matching id,etn,phen,sig,act combinations, these
                 #are the ones that need to be reassigned. 
-                if self.hazardCompare(p, p1, compare) and \
+                if self.vtecRecordCompare(p, p1, compare) and \
                   p['startTime'] > p1['endTime']:
                     #found a newer record that needs to be reassigned
                     #see if we have already reassigned one that overlaps in time
@@ -2710,7 +2716,7 @@ class VTECEngine(VTECTableUtil):
         Returns the modified list of hazard records.
         '''
 
-        compare = ['geoId', 'officeid']
+        compare = ['id', 'officeid']
         fields = ['etn', 'startTime', 'endTime', 'key', 'phen', 'sig', 'seg', 'act',
           'subtype']
 
@@ -2718,8 +2724,8 @@ class VTECEngine(VTECTableUtil):
             if rec['act'] == 'NEW':
                 for checkR in proposedTable:
                     if checkR['act'] in ['CAN', 'UPG']:
-                        if self._hazardsOverlap(checkR, rec) and \
-                           self.hazardCompare(checkR, rec, compare):
+                        if self._vtecRecordsOverlap(checkR, rec) and \
+                           self.vtecRecordCompare(checkR, rec, compare):
                             if self._isDowngrade(rec, checkR):
                                rec['downgradeFrom'] = \
                                  self._copyFields(checkR, fields)
@@ -2731,63 +2737,62 @@ class VTECEngine(VTECTableUtil):
 
         
     
-    def _calcAnalyzedTable(self, pTable, vtecRecords, endedEventIDs,
+    def _calcAnalyzedTable(self, pTable, activeVtecRecords, endedEventIDs,
       combinableSegments):
         '''Main routine to calculate the analyzed table from the proposed
         and active vtecRecords.
 
         Keyword Arguments:
-        pTable -- list of proposed hazards in the vtecRecord format.
-        vtecRecords -- list of already issued hazards in the vtecRecord format.
+        pTable -- list of proposed vtecRecords in the vtecRecord format.
+        activeVtecRecords -- list of already issued vtecRecords.
         endedEventIDs -- list of eventIDs that are marked 'ended'.
         combinableSegments -- True if hazards can be combined into the
           same segment; otherwise False if the hazards must be maintained as
           separate segments.
 
-        Returns the analyzed list of hazard records representing the new
-        set of vtec records and hazards.
+        Returns the analyzed list of vtecRecords representing the new
+        set of records and hazards.
         '''
-
-        
+       
         # special code for HY.S
         pTable = self._handleHYS(pTable)
         LogStream.logDebug("Analyzed Table -- After handleHYS:", 
           self.printVtecRecords(pTable, combine=True))
 
         # convert active table EXP still in effect to CON
-        vtecRecords = self._convertEXPtoCON(vtecRecords)
+        activeVtecRecords = self._convertEXPtoCON(activeVtecRecords)
         LogStream.logDebug("Analyzed Table -- After convertEXPtoCON:", 
           self.printVtecRecords(pTable, combine=True))
 
         if (combinableSegments):
-            # Drop multiple segments for same phen/sig in same "geoId"
+            # Drop multiple segments for same phen/sig in same "id"
             pTable = self._checkForMultipleSegsInSameID(pTable)
             LogStream.logDebug("Analyzed Table -- After checkForMultipleSegsInSameID:", 
               self.printVtecRecords(pTable, combine=True))
        
             # Check for Merged Events
-            pTable, vtecRecords = self._checkForMergedEvents(pTable,
-              vtecRecords)
+            pTable, activeVtecRecords = self._checkForMergedRecords(pTable,
+              activeVtecRecords)
             LogStream.logDebug("Analyzed Table -- After checkForMergedEvents:", 
               self.printVtecRecords(pTable, combine=True))
 
         # Check for CON and EXT actions
-        pTable = self._checkForCONEXT(pTable, vtecRecords)
+        pTable = self._checkForCONEXT(pTable, activeVtecRecords)
         LogStream.logDebug("Analyzed Table -- After checkForCONEXT:", 
           self.printVtecRecords(pTable, combine=True))
 
         # Check for CAN, EXP, and UPG
-        pTable = self._checkForCANEXPUPG(pTable, vtecRecords, endedEventIDs)
+        pTable = self._checkForCANEXPUPG(pTable, activeVtecRecords, endedEventIDs)
         LogStream.logDebug("Analyzed Table -- After checkForCANEXPUPG:", 
           self.printVtecRecords(pTable, combine=True))
 
         # Check for EXA/EXB
-        pTable = self._checkForEXAEXB(pTable, vtecRecords)
+        pTable = self._checkForEXAEXB(pTable, activeVtecRecords)
         LogStream.logDebug("Analyzed Table -- After checkForEXAEXB:", 
           self.printVtecRecords(pTable, combine=True))
 
         # Assign NEW to remaining records
-        pTable = self._checkForNEW(pTable, vtecRecords)
+        pTable = self._checkForNEW(pTable, activeVtecRecords)
         LogStream.logDebug("Analyzed Table -- After checkForNEW:", 
           self.printVtecRecords(pTable, combine=True))
 
@@ -2871,13 +2876,13 @@ class VTECEngine(VTECTableUtil):
             return False;
 
     def _separateETNtrack(self, rec1, rec2):
-        '''Determine whether the two hazard records must follow a separate
+        '''Determine whether the two vtecRecords must follow a separate
         set of ETNs and actions, even though the phens and sigs may be
         the same.
 
         Keyword Arguments:
-        rec1 -- hazard record in the vtecRecord format -- non-consolidated.
-        rec2 -- hazard record in the vtecRecord format -- non-consolidated.
+        rec1 -- vtecRecord format -- non-consolidated.
+        rec2 -- vtecRecord format -- non-consolidated.
 
         Returns True if the two records should follow separate action and etn
         tracks.
@@ -2897,8 +2902,8 @@ class VTECEngine(VTECTableUtil):
             # tropical?
             if ps1 in self._tpcKeys:
                 # one a marine zone, the other not?, that requires sepa track
-                return (self._isMarineZone(rec1['geoId']) != \
-                  self._isMarineZone(rec2['geoId']))
+                return (self._isMarineZone(rec1['id']) != \
+                  self._isMarineZone(rec2['id']))
             else:
                 return False   #same phen/sig, not tpc, so. non separate track
         else:

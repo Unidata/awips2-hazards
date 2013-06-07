@@ -30,6 +30,8 @@ class HazardServicesGenericHazards:
     The hazardBodyText method is used in AWIPS 2 GHG products: CFW, MWS, MWW, NPW, RFW, WSW.
     It is included since we are building the foundation of all of Phase 1 Hazard Services 
     which will include these programs.
+    
+    NOTE: Times are in ms -- vtecRecords are assumed to have been converted to ms.
     '''  
     def __init__(self):
         self._tpc = TextProductCommon()
@@ -85,21 +87,21 @@ class HazardServicesGenericHazards:
     # The method hazardBodyText creates an attribution phrase
     #
 
-    def hazardBodyText(self, hazardList, creationTime, testMode):
+    def hazardBodyText(self, vtecRecords, creationTime, testMode):
 
         bulletProd = self._bulletProd
         hazardBodyPhrase = ''
 
         #
-        # First, sort the hazards for this segment by importance
+        # First, sort the vtecRecords for this segment by importance
         #
         
-        sortedHazardList = []
+        sortedRecords = []
         for each in ['W', 'Y', 'A', 'O', 'S']:
-            for eachHazard in hazardList:
-                if eachHazard['sig'] == each:
-                   if eachHazard not in sortedHazardList:
-                       sortedHazardList.append(eachHazard)
+            for vtecRecord in vtecRecords:
+                if vtecRecord['sig'] == each:
+                   if vtecRecord not in sortedRecords:
+                       sortedRecords.append(vtecRecord)
  
       #
       # Next, break them into individual lists based on action 
@@ -113,21 +115,21 @@ class HazardServicesGenericHazards:
         upgList = []
         statementList = []
 
-        for eachHazard in sortedHazardList:
-            if eachHazard['sig'] in ['S']and eachHazard['phen'] in ['CF', 'LS']:
-                statementList.append(eachHazard)
-            elif eachHazard['act'] in ['NEW', 'EXA', 'EXB']:
-                newList.append(eachHazard)
-            elif eachHazard['act'] in ['CAN']:
-                canList.append(eachHazard)
-            elif eachHazard['act'] in ['EXP']:
-                expList.append(eachHazard)
-            elif eachHazard['act'] in ['EXT']:
-                extList.append(eachHazard)
-            elif eachHazard['act'] in ['UPG']:
-                upgList.append(eachHazard)
+        for vtecRecord in sortedRecords:
+            if vtecRecord['sig'] in ['S']and vtecRecord['phen'] in ['CF', 'LS']:
+                statementList.append(vtecRecord)
+            elif vtecRecord['act'] in ['NEW', 'EXA', 'EXB']:
+                newList.append(vtecRecord)
+            elif vtecRecord['act'] in ['CAN']:
+                canList.append(vtecRecord)
+            elif vtecRecord['act'] in ['EXP']:
+                expList.append(vtecRecord)
+            elif vtecRecord['act'] in ['EXT']:
+                extList.append(vtecRecord)
+            elif vtecRecord['act'] in ['UPG']:
+                upgList.append(vtecRecord)
             else:
-                conList.append(eachHazard)
+                conList.append(vtecRecord)
 
         #
         # Now, go through each list and build the phrases
@@ -141,13 +143,13 @@ class HazardServicesGenericHazards:
         
         phraseCount = 0
         lastHdln = None
-        for eachHazard in newList:
-            hdln = eachHazard['hdln']
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in newList:
+            hdln = vtecRecord['hdln']
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
-            endTimePhrase = self.hazardTimePhrases(eachHazard, creationTime)
-            hazNameA = self.hazardName(eachHazard['hdln'], testMode, True)
-            hazName = self.hazardName(eachHazard['hdln'], testMode, False)
+            endTimePhrase = self.hazardTimePhrases(vtecRecord, creationTime)
+            hazNameA = self.hazardName(vtecRecord['hdln'], testMode, True)
+            hazName = self.hazardName(vtecRecord['hdln'], testMode, False)
 
             if hazName == "WINTER WEATHER ADVISORY" or hazName == "WINTER STORM WARNING":
                 forPhrase = " FOR |* ENTER HAZARD TYPE *|"
@@ -181,10 +183,10 @@ class HazardServicesGenericHazards:
         # This is for the can hazards
         #
         
-        for eachHazard in canList:
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in canList:
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
-            hazName = self.hazardName(eachHazard['hdln'], testMode, False)
+            hazName = self.hazardName(vtecRecord['hdln'], testMode, False)
             if nwsIntroUsed == 0:
                 hazardBodyPhrase = "THE NATIONAL WEATHER SERVICE IN " +\
                   self._wfoCity
@@ -200,18 +202,18 @@ class HazardServicesGenericHazards:
         #
         
         phraseCount = 0
-        for eachHazard in expList:
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in expList:
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
             if self._bulletProd:
                 continue   # No attribution for this case if it is a bullet product
-            hazName = self.hazardName(eachHazard['hdln'], testMode, False)
-            if eachHazard['endTime'] <= creationTime:
+            hazName = self.hazardName(vtecRecord['hdln'], testMode, False)
+            if vtecRecord['endTime'] <= creationTime:
                 hazardBodyPhrase = hazardBodyPhrase + "THE " + hazName + \
                   " IS NO LONGER IN EFFECT. "
             else:
                expTimeCurrent = creationTime
-               timeWords = self.getTimingPhrase(eachHazard, expTimeCurrent)
+               timeWords = self.getTimingPhrase(vtecRecord, expTimeCurrent)
                                          
                hazardBodyPhrase = hazardBodyPhrase + "THE " + hazName + \
                  " WILL EXPIRE " + timeWords + ". "
@@ -220,13 +222,13 @@ class HazardServicesGenericHazards:
         # This is for ext hazards
         #
         
-        for eachHazard in extList:
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in extList:
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
             if self._bulletProd:
                 continue   # No attribution for this case if it is a bullet product
-            endTimePhrase = self.hazardTimePhrases(eachHazard, creationTime)
-            hazName = self.hazardName(eachHazard['hdln'], creationTime, False)
+            endTimePhrase = self.hazardTimePhrases(vtecRecord, creationTime)
+            hazName = self.hazardName(vtecRecord['hdln'], creationTime, False)
             
             hazardBodyPhrase = hazardBodyPhrase + "THE " + hazName + \
               " IS NOW IN EFFECT" + endTimePhrase + ". "
@@ -235,10 +237,10 @@ class HazardServicesGenericHazards:
         # This is for upgrade hazards
         #
 
-        for eachHazard in upgList:
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in upgList:
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
-            hazName = self.hazardName(eachHazard['hdln'], testMode, False)
+            hazName = self.hazardName(vtecRecord['hdln'], testMode, False)
             hazardBodyPhrase = hazardBodyPhrase + "THE " + hazName + \
               " IS NO LONGER IN EFFECT. "
 
@@ -246,13 +248,13 @@ class HazardServicesGenericHazards:
         # This is for con hazards
         #
 
-        for eachHazard in conList:
-            if len(eachHazard['hdln']) == 0:
+        for vtecRecord in conList:
+            if len(vtecRecord['hdln']) == 0:
                 continue   #no defined headline, skip phrase
             if self._bulletProd:
                 continue   # No attribution for this case if it is a bullet product
-            endTimePhrase = self.hazardTimePhrases(eachHazard, creationTime)
-            hazNameA = self.hazardName(eachHazard['hdln'], testMode, True)
+            endTimePhrase = self.hazardTimePhrases(vtecRecord, creationTime)
+            hazNameA = self.hazardName(vtecRecord['hdln'], testMode, True)
             hazardBodyPhrase = hazardBodyPhrase + hazNameA + \
               " REMAINS IN EFFECT" + endTimePhrase + ". "
 
@@ -260,7 +262,7 @@ class HazardServicesGenericHazards:
         # This is for statement hazards
         #
 
-        for eachHazard in statementList:
+        for vtecRecord in statementList:
             hazardBodyPhrase = "...|* ADD STATEMENT HEADLINE *|...\n\n"
                         
         #
@@ -283,10 +285,10 @@ class HazardServicesGenericHazards:
 
         
         foundCTAs = []
-        for eachHazard in sortedHazardList:
-            if eachHazard.has_key('prevText'):
-                prevText = eachHazard['prevText']
-                if eachHazard['pil'] == 'MWS':
+        for vtecRecord in sortedRecords:
+            if vtecRecord.has_key('prevText'):
+                prevText = vtecRecord['prevText']
+                if vtecRecord['pil'] == 'MWS':
                     startPara = 0
                 else:
                     startPara = 1
@@ -315,9 +317,9 @@ class HazardServicesGenericHazards:
         # we may have to add bullets.
         #
         if incTextFlag and bulletProd:
-            for eachHazard in sortedHazardList:
-                if not eachHazard.has_key('prevText'):
-                    newBullets = string.split(self._bulletDict().get(eachHazard['phen']),",")
+            for vtecRecord in sortedRecords:
+                if not vtecRecord.has_key('prevText'):
+                    newBullets = string.split(self._bulletDict().get(vtecRecord['phen']),",")
                     for bullet in newBullets:
                         if not "* " + bullet + "..." in segmentText:
                             start = self._bulletOrder().index(bullet) + 1
@@ -342,17 +344,17 @@ class HazardServicesGenericHazards:
         if incTextFlag and bulletProd:
             # First make list of bullets that we need to keep.
             keepBulletList = []
-            for eachHazard in sortedHazardList:
-                if eachHazard['act'] not in ["CAN","EXP"]:
-                    saveBullets = string.split(self._bulletDict().get(eachHazard['phen']),",")
+            for vtecRecord in sortedRecords:
+                if vtecRecord['act'] not in ["CAN","EXP"]:
+                    saveBullets = string.split(self._bulletDict().get(vtecRecord['phen']),",")
                     for saveBullet in saveBullets:
                         if saveBullet not in keepBulletList:
                             keepBulletList.append(saveBullet)
             # Now determine which bullets we have to remove.
             removeBulletList = []
-            for eachHazard in sortedHazardList:
-                if eachHazard['act'] in ["CAN","EXP"]:
-                    canBullets = string.split(self._bulletDict().get(eachHazard['phen']),",")
+            for vtecRecord in sortedRecords:
+                if vtecRecord['act'] in ["CAN","EXP"]:
+                    canBullets = string.split(self._bulletDict().get(vtecRecord['phen']),",")
                     for canBullet in canBullets:
                         if canBullet not in keepBulletList and canBullet not in removeBulletList:
                             removeBulletList.append(canBullet)
@@ -384,10 +386,10 @@ class HazardServicesGenericHazards:
 
         elif bulletProd:
             bulletFlag = 0
-            if eachHazard['act'] == 'CAN':
+            if vtecRecord['act'] == 'CAN':
                 hazardBodyPhrase = hazardBodyPhrase + \
                   "\n\n|* WRAP-UP TEXT GOES HERE *|.\n"
-            elif eachHazard['act'] == 'EXP':
+            elif vtecRecord['act'] == 'EXP':
                 hazardBodyPhrase = hazardBodyPhrase + \
                   "\n\n|* WRAP-UP TEXT GOES HERE *|.\n"
             else:
@@ -395,9 +397,9 @@ class HazardServicesGenericHazards:
             if bulletFlag:
                 newBulletList = []
                 bullets = ""
-                for eachHazard in sortedHazardList:
+                for vtecRecord in sortedRecords:
                 ### get the default bullets for all hazards from the bullet diction
-                    newBullets = string.split(self._bulletDict().get(eachHazard['phen']),",")
+                    newBullets = string.split(self._bulletDict().get(vtecRecord['phen']),",")
                     for newBullet in newBullets:
                         if newBullet not in newBulletList:
                             newBulletList.append(newBullet)
@@ -438,8 +440,8 @@ class HazardServicesGenericHazards:
         hazardBodyPhrase = hazardBodyPhrase + '\n\n'
         ctas = []
         for (phen,sig) in forceCTAList:
-            hazardPhenSig = phen + "." + sig
-            cta = self.defaultCTA(hazardPhenSig)
+            phenSig = phen + "." + sig
+            cta = self.defaultCTA(phenSig)
             if cta not in ctas:
                 ctas.append(cta)
 
@@ -478,22 +480,22 @@ class HazardServicesGenericHazards:
         else:
             return self.__overviewText
 
-    def overviewText(self, hazardList, pil):
+    def overviewText(self, vtecRecords, pil):
 
         #
         # This method finds an overview in the previous product
         #
         
         overview = ""
-        for each in hazardList:
-            if (each.has_key('prevOverviewText') and
-                each.has_key('pil') and
-                each.has_key('endTime') and
-                each.has_key('act')):
-                if (each['pil'] == pil and
-                  each['endTime'] > self._currentTime and
-                  each['act'] not in ['CAN', 'EXP']):
-                    overview = each['prevOverviewText']
+        for vtecRecord in vtecRecords:
+            if (vtecRecord.has_key('prevOverviewText') and
+                vtecRecord.has_key('pil') and
+                vtecRecord.has_key('endTime') and
+                vtecRecord.has_key('act')):
+                if (vtecRecord['pil'] == pil and
+                  vtecRecord['endTime'] > self._currentTime and
+                  vtecRecord['act'] not in ['CAN', 'EXP']):
+                    overview = vtecRecord['prevOverviewText']
                     self.__overviewText, dummy = self.cleanCapturedText(
                       overview, 0)
                     break

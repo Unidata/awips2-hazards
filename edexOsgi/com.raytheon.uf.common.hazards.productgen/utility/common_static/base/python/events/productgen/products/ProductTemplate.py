@@ -356,9 +356,9 @@ class Product(object):
         # Determine if EAS message should be generated
         useEAS = 0
         for segment in segments:
-            hazardList = self._vtecEngine.getHazardList(segment)
-            for hazard in hazardList:
-                if self._useEAS(hazard):
+            vtecRecords = self.getVtecRecords(segment)
+            for vtecRecord in vtecRecords:
+                if self._useEAS(vtecRecord):
                     useEAS = 1
                     break
 
@@ -444,11 +444,14 @@ class Product(object):
             self._ugcs = self.segmentEventDict.get("ugcs", [])
             
         self._ugcs.sort()
+        
+        # Change times from seconds to milliseconds
+        self._segmentVtecRecords = self.getVtecRecords(segment)
             
         self._timeZones = self._tpc.hazardTimeZones(self._ugcs)
         self._expireTime = self._tpc.getExpireTime(
                     self._creationTime, self._purgeHours, 
-                    self._vtecEngine.getHazardList(segment))
+                    self._segmentVtecRecords)
         
         self._ugcHeader = self._tpc.formatUGCs(self._ugcs, self._expireTime)
         textStr += self._ugcHeader + "\n"                
@@ -494,23 +497,20 @@ class Product(object):
         '''       
         methodName = "ProductGeneratorTemplate:makeSegment"
         textStr = ""        
-                              
-        hazardList = self._vtecEngine.getHazardList(segment)
-        for hazard in hazardList:
-            hazard['pil'] = self._productID
-        
+                                      
         # Headlines for the segment 
         '''
         ...FLOOD WATCH IN EFFECT LATE MONDAY NIGHT...
         THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
         '''
-        textStr = textStr + self._tpc.getHeadlines(hazardList, self._productID, self._creationTime)
+        
+        textStr = textStr + self._tpc.getHeadlines(self._segmentVtecRecords, self._productID, self._creationTime)
         replacedBy = self.segmentEventDict.get("replacedBy")
         if replacedBy:
-            textStr = textStr + "...REPLACED BY " + replacedBy + "...\n"
+            textStr = textStr + "...REPLACED BY " + replacedBy + "...\n\n"
         replaces = self.segmentEventDict.get("replaces")
         if replaces:
-            textStr = textStr + "...REPLACES " + replaces + "...\n"
+            textStr = textStr + "...REPLACES " + replaces + "...\n\n"
         #
         # This section generates the attribution statements and calls-to-action
         #
@@ -520,16 +520,16 @@ class Product(object):
         # NEW/EXA/EXB/EXT
         #
         includeText, includeFrameCodes, skipCTAs, forceCTAList = \
-          self._gh.useCaptureText(hazardList)
+          self._gh.useCaptureText(self._segmentVtecRecords)
 
         # sort the sections within the segment
-        hazardList.sort(self._tpc.sortSection)
+        self._segmentVtecRecords.sort(self._tpc.sortSection)
 
         # find any "CAN" with non-CAN for reasons of text capture
-        canHazard = None
-        for hazard in hazardList:
-            if hazard['act'] in ['CAN','EXP','UPG']:
-                canHazard = hazard
+        canVtecRecord = None
+        for vtecRecord in self._segmentVtecRecords:
+            if vtecRecord['act'] in ['CAN','EXP','UPG']:
+                canVtecRecord = vtecRecord
                 break  #take the first one
 
         # Make Area Phrase
@@ -542,19 +542,19 @@ class Product(object):
         # Process each part of the section
         testMode = self._sessionDict.get("testMode", 0)
         self._callsToAction = []
-        for hazard in hazardList:
-            if hazard['act'] in ['CAN','EXP','UPG']:
+        for vtecRecord in self._segmentVtecRecords:
+            if vtecRecord['act'] in ['CAN','EXP','UPG']:
                 aPhrase = areaPhraseShort
-                canHazard = None
+                canVtecRecord = None
             else:
                 aPhrase = areaPhrase
-            eventID = hazard.get("eventID")
+            eventID = vtecRecord.get("eventID")
 
             try:
                 eventDict = self.getEventDicts(self._eventDicts, [eventID])[0]
             except:
                 continue
-            phrase = self.makeSection(hazard, canHazard, areaPhrase, self._geoType, eventDict, self.metaDataList,
+            phrase = self.makeSection(vtecRecord, canVtecRecord, areaPhrase, self._geoType, eventDict, self.metaDataList,
                                            self._creationTime_secs, testMode, self._wfoCity)
             textStr = textStr + phrase + "\n\n"
 
@@ -596,7 +596,7 @@ class Product(object):
         testMode = self._sessionDict.get("testMode", 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID, 
-               eventDicts, vtecMode='0', creationTime=self._creationTime, 
+               eventDicts, vtecMode='O', creationTime=self._creationTime_secs, 
                testHarnessMode=testMode)
         try :
             pass
@@ -605,6 +605,18 @@ class Product(object):
             self.logger.info(msg)
         self._vtecEngine = self._vtecEngineWrapper.engine()
         self._wrappers.append(self._vtecEngineWrapper)
+        
+    def getVtecRecords(self, segment, vtecEngine=None):
+        if not vtecEngine:
+            vtecEngine = self._vtecEngine
+        vtecRecords = copy.deepcopy(vtecEngine.getVtecRecords(segment))
+        # Change times to milliseconds
+        for vtecRecord in vtecRecords:
+            for key in ['startTime', 'endTime', 'riseAbove', 'crest', 'fallBelow', 'issueTime']:
+                value = vtecRecord.get(key)
+                if value:
+                    vtecRecord[key] = value * 1000
+        return vtecRecords
 
     def getIssuedByString(self, words = "ISSUED BY NATIONAL WEATHER SERVICE "):
         '''
@@ -676,14 +688,14 @@ class Product(object):
    
         return newEventDicts
     
-    def _useEAS(self, hazard):
+    def _useEAS(self, vtecRecord):
         '''
         Return True if we should use an EAS phrase
-        @param hazard vtec record
+        @param vtec record
         @return boolean 
         '''
-        if (hazard['act'] in ['NEW', 'EXA', 'EXB', 'EXT'] and
-            (hazard['phen'] == 'FF' or hazard['phen'] == 'FA') or hazard['phen'] == "FL"):
+        if (vtecRecord['act'] in ['NEW', 'EXA', 'EXB', 'EXT'] and
+            (vtecRecord['phen'] == 'FF' or vtecRecord['phen'] == 'FA') or vtecRecord['phen'] == "FL"):
             return True
         else:
             return False
@@ -798,12 +810,12 @@ class Product(object):
     #### 
     ## Make Section 
 
-    def makeSection(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def makeSection(self, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69):
         '''
          Creates a section of the product.  
-        @param hazard: The hazard record is passed in.  
-        @param canHazard: any associated CAN/EXP/UPG hazard, 
+        @param vtecRecord: The vtec record is passed in.  
+        @param canVtecRecord: any associated CAN/EXP/UPG vtecRecord, 
         @param areaPhrase: area description for the segment.
         @param eventType: "area" or "point"
         @param eventDict:  Hazard Event information
@@ -815,16 +827,16 @@ class Product(object):
         
         @return ascii text version of section
         '''        
-        attribution, headPhrase, attributionPhrase = self.getAttributionPhrase(hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+        attribution, headPhrase, attributionPhrase = self.getAttributionPhrase(vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
-        hazardTimePhrases = self.getHazardTimePhrases(hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+        hazardTimePhrases = self.getHazardTimePhrases(vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
         if eventType == "point":
-            pointPhrase = self.getPointPhrase(hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+            pointPhrase = self.getPointPhrase(vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
         else:
             pointPhrase = ""
-        metaDataPhrase = self.getMetaDataPhrase(attribution, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+        metaDataPhrase = self.getMetaDataPhrase(attribution, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
                 
         if headPhrase:
@@ -835,7 +847,7 @@ class Product(object):
 
         return attrPhrase  
         
-    def getAttributionPhrase(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getAttributionPhrase(self, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69):
         '''
         THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
@@ -851,42 +863,42 @@ class Product(object):
         headPhrase = None
         attribution = ''
 
-        hazName = self._tpc.hazardName(hazard['hdln'], testMode, False)
+        hazName = self._tpc.hazardName(vtecRecord['hdln'], testMode, False)
         
-        if len(hazard['hdln']):
-            if hazard['act'] == 'NEW':
+        if len(vtecRecord['hdln']):
+            if vtecRecord['act'] == 'NEW':
                 attribution = nwsPhrase + "ISSUED A"
                 headPhrase =  "* " + hazName + " FOR " + areaPhrase + "."
     
-            elif hazard['act'] == 'CON':
+            elif vtecRecord['act'] == 'CON':
                 attribution = "THE " + hazName + " CONTINUES FOR"
                 headPhrase =  "* " + areaPhrase + "."
     
-            elif hazard['act'] == 'EXA':
+            elif vtecRecord['act'] == 'EXA':
                 attribution = nwsPhrase + "EXPANDED THE"
                 headPhrase =  "* " + hazName + " TO INCLUDE " + areaPhrase + "."
     
-            elif hazard['act'] == 'EXT':
+            elif vtecRecord['act'] == 'EXT':
                 attribution = 'THE ' + hazName + " IS NOW IN EFFECT FOR" 
                 headPhrase = "* " + areaPhrase + "."
                     
-            elif hazard['act'] == 'EXB':
+            elif vtecRecord['act'] == 'EXB':
                 attribution = nwsPhrase + "EXPANDED THE"
                 headPhrase =  "* " + hazName + " TO INCLUDE " + areaPhrase + "."
     
-            elif hazard['act'] == 'CAN':
+            elif vtecRecord['act'] == 'CAN':
                 attribution = "THE " + hazName + \
                    " FOR " + areaPhrase + " HAS BEEN CANCELLED. " + \
                    "|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|\n\n"
     
-            elif hazard['act'] == 'EXP':
+            elif vtecRecord['act'] == 'EXP':
                 expTimeCurrent = creationTime
-                if hazard['endTime'] <= expTimeCurrent:
+                if vtecRecord['endTime'] <= expTimeCurrent:
                     attribution = "THE " + hazName + \
                       " FOR " + areaPhrase + " HAS EXPIRED. " + \
                       "|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|"
                 else:
-                   timeWords = self._tpc.getTimingPhrase(hazard, expTimeCurrent)
+                   timeWords = self._tpc.getTimingPhrase(vtecRecord, expTimeCurrent)
                    attribution = "THE " + hazName + \
                       " FOR " + areaPhrase + " WILL EXPIRE " + timeWords + \
                       ". " + \
@@ -901,17 +913,17 @@ class Product(object):
 
         return attribution, headPhrase, attribution + '\n\n' + headPhrase
     
-    def getHazardTimePhrases(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getHazardTimePhrases(self, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69 ):
         '''
         LATE MONDAY NIGHT
         '''
-        endTimePhrase = self._tpc.hazardTimePhrases(hazard, creationTime, prefixSpace=False)
+        endTimePhrase = self._tpc.hazardTimePhrases(vtecRecord, creationTime, prefixSpace=False)
         endTimePhrase = self._tpc.substituteBulletedText(endTimePhrase,
                 "TIME IS MISSING", "DefaultOnly", lineLength)
         return endTimePhrase
     
-    def getPointPhrase(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getPointPhrase(self, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69 ):
         # Add in the point information                
         '''
@@ -954,15 +966,15 @@ class Product(object):
         pointPhrase = stagePhrase + severityPhrase + floodStagePhrase + crestPhrase + "\n"
         return pointPhrase
     
-    def getMetaDataPhrase(self, attribution, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getMetaDataPhrase(self, attribution, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69 ):
         
-        basisPhrase, multRecords, impact, remainder = self.getBasisPhrase(hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+        basisPhrase, multRecords, impact, remainder = self.getBasisPhrase(vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
-        if hazard['act'] not in ["CAN", "EXP"]:
-            impactsPhrase = self.getImpactsPhrase(multRecords, impact, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+        if vtecRecord['act'] not in ["CAN", "EXP"]:
+            impactsPhrase = self.getImpactsPhrase(multRecords, impact, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
-            ctaBodyPhrase = self.getCTAsPhrase(attribution, remainder, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+            ctaBodyPhrase = self.getCTAsPhrase(attribution, remainder, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69)
         else:
             impactsPhrase = ""
@@ -970,13 +982,13 @@ class Product(object):
         
         return basisPhrase + '\n' + impactsPhrase + '\n'
         
-    def getBasisPhrase(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getBasisPhrase(self, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69 ):
         # Basis bullet
-        if hazard['act'] == "NEW" and canHazard:
-            capText = canHazard.get('prevText', None)
+        if vtecRecord['act'] == "NEW" and canVtecRecord:
+            capText = canVtecRecord.get('prevText', None)
         else:
-            capText = hazard.get('prevText', None)
+            capText = vtecRecord.get('prevText', None)
         (haz, timeB, basis, impact, remainder, multRecords) = \
             self._tpc.decodeBulletedText(capText)
 
@@ -988,17 +1000,17 @@ class Product(object):
             'EXA': ("BASIS FOR EXPANSION OF THE WATCH", "DefaultOnly"),
             'CAN': ("BASIS FOR CANCELLATION OF THE WATCH", "DefaultOnly"),
             }
-        b = defaultBasis[hazard['act']]
+        b = defaultBasis[vtecRecord['act']]
         if multRecords == 0:
             basisPhrase = self._tpc.substituteBulletedText(basis, b[0], b[1], lineLength)
         else:
             basisPhrase = self._tpc.substituteBulletedText(basis, b[0], "Always", lineLength)
         return basisPhrase, multRecords, impact, remainder
     
-    def getImpactsPhrase(self, multRecords, impact, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getImpactsPhrase(self, multRecords, impact, vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69):       
         # Impacts bullet
-        if (hazard['act'] == "NEW" and canHazard) or multRecords:
+        if (vtecRecord['act'] == "NEW" and canVtecRecord) or multRecords:
             framing = "Always"
         else:
             framing = "DefaultOnly"
@@ -1007,7 +1019,7 @@ class Product(object):
         
         return impactsPhrase
     
-    def getCTAsPhrase(self, attribution, remainder,  hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
+    def getCTAsPhrase(self, attribution, remainder,  vtecRecord, canVtecRecord, areaPhrase, eventType, eventDict, metaDataList, 
                     creationTime, testMode, wfoCity, lineLength=69):
 
         # CTA's -- remainder of text
@@ -1015,8 +1027,8 @@ class Product(object):
         addCTA = False
         ctaBodyPhrase = ''
         if remainder is not None and \
-            (canHazard or hazard['act'] != "NEW"):
-            if canHazard is None:
+            (canVtecRecord or vtecRecord['act'] != "NEW"):
+            if canVtecRecord is None:
                 general = remainder  #use all
             else:
                 #frame the text, without the ctas
@@ -1033,9 +1045,10 @@ class Product(object):
 
         # add in call to actions
         if addCTA:
-            key = hazard['phen'] + '.' + hazard['sig']
+            key = vtecRecord['phen'] + '.' + vtecRecord['sig']
             cta = self._cta.defaultCTA(key)
-            self._callsToAction.append(cta)
+            if len(cta) > 0:
+                self._callsToAction.append(cta)
         else:
             cta = ''
 
@@ -1212,6 +1225,7 @@ class Product(object):
         for vtecString in self._vtecEngine.getVTECString(segment):
             vtecString = vtecString.strip('/')
             parts = vtecString.split('.')
+            vtecString = '/'+vtecString+'/'
             vtecDict = collections.OrderedDict()
             if len(parts[0]) > 1:  
                 vtecDict['vtecRecordType'] = 'hvtecRecordType'

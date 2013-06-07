@@ -377,6 +377,7 @@ class SessionManager(object):
             # Check to see if new event required for a time change
             if self.newEventNeededForTimeChange(updateDict, curDict, ignoreKeys):
                 curDict = self.makeNewCopyOfSelectedEvent(curDict, updateDict)
+                curDict[STATE] = PENDING
                 eventID = curDict.get(EVENT_ID)
                 
             # Update curDict with the updateDict fields
@@ -422,6 +423,7 @@ class SessionManager(object):
         # Check to see if new event required for area change
         if self.newEventNeededForAreaChange(eventDict):
             eventDict = self.makeNewCopyOfSelectedEvent(eventDict, modifyDict)
+            eventDict[STATE] = PENDING
             eventID = eventDict.get(EVENT_ID)
         
         shapeType = modifyDict.get(SHAPE_TYPE)
