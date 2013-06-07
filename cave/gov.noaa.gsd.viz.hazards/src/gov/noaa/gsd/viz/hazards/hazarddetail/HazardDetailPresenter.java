@@ -135,5 +135,15 @@ public class HazardDetailPresenter extends
         getView().initialize(this, basicInfo, metadataMegawidgets,
                 Long.parseLong(getModel().getTimeLineEarliestVisibleTime()),
                 Long.parseLong(getModel().getTimeLineLatestVisibleTime()));
+
+        // Update the view with the currently selected hazard events,
+        // if any.
+        getView()
+                .updateHazardDetail(
+                        DictList.getInstance(getModel()
+                                .getComponentData(
+                                        HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
+                                        "all")),
+                        getModel().getLastSelectedEventID());
     }
 }
