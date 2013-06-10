@@ -10,9 +10,13 @@ Require-Bundle: org.jep;bundle-version="1.0.0",
  com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
  com.raytheon.uf.common.python.concurrent;bundle-version="1.0.0",
  com.raytheon.uf.common.localization;bundle-version="1.12.1174",
- com.raytheon.uf.common.localization.python;bundle-version="1.0.0"
+ com.raytheon.uf.common.localization.python;bundle-version="1.0.0",
+ com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
+ com.raytheon.uf.common.serialization;bundle-version="1.12.1174"
 Import-Package: com.raytheon.uf.common.dataplugin.events,
  com.raytheon.uf.common.status,
  com.raytheon.uf.common.util,
  javax.measure.unit
-Export-Package: com.raytheon.uf.common.recommenders
+Export-Package: com.raytheon.uf.common.recommenders,
+ com.raytheon.uf.common.recommenders.executors,
+ com.raytheon.uf.common.recommenders.requests
