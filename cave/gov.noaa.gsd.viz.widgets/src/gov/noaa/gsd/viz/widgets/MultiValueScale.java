@@ -45,7 +45,14 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jun 10, 2013            Chris.Golden      Added method to dispose of track
+ *                                           images upon a thumb range color
+ *                                           change in order to fix bug that
+ *                                           caused such color changes to not
+ *                                           show up when repainting. Also
+ *                                           fixed minor painting bug causing
+ *                                           colored tracks to not fill the
+ *                                           track all the way to the right.
  * </pre>
  * 
  * @author Chris.Golden
@@ -512,10 +519,11 @@ public class MultiValueScale extends MultiValueLinearControl {
             }
         }
 
-        // Turn off interpolation so that the stretched track images
-        // used below do not get translucent parts at their edges.
-        int interpolation = e.gc.getInterpolation();
-        e.gc.setInterpolation(SWT.NONE);
+        // Turn off the GC's advanced mode so that the stretched track
+        // images used below do not get translucent or transparent
+        // parts at their edges.
+        boolean advanced = e.gc.getAdvanced();
+        e.gc.setAdvanced(false);
 
         // Iterate through the gaps between the thumbs and between the
         // start and end thumbs and their respective ends of the track,
@@ -563,9 +571,9 @@ public class MultiValueScale extends MultiValueLinearControl {
                     startX, yTrack, endX + 1 - startX, trackThickness - 2);
         }
 
-        // Set interpolation back to what it was before drawing track
-        // images.
-        e.gc.setInterpolation(interpolation);
+        // Turn GC advanced mode back on now that image stretching is
+        // done.
+        e.gc.setAdvanced(advanced);
 
         // Draw the border around the track area.
         e.gc.setForeground(TRACK_BORDER_COLOR);
@@ -705,6 +713,22 @@ public class MultiValueScale extends MultiValueLinearControl {
         TRACK_BORDER_COLOR.dispose();
         TRACK_BORDER_SHADOW_COLOR.dispose();
         TRACK_BORDER_HIGHLIGHT_COLOR.dispose();
+    }
+
+    /**
+     * Respond to the thumb range color at the specified index changing.
+     * 
+     * @param index
+     *            Index of the range that changed color.
+     * @param color
+     *            New color.
+     */
+    @Override
+    protected final void constrainedThumbRangeColorChanged(int index,
+            Color color) {
+        while (trackTileImages.size() > index) {
+            trackTileImages.remove(index);
+        }
     }
 
     // Private Methods

@@ -78,7 +78,16 @@ import org.eclipse.swt.widgets.ToolTip;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jun 10, 2013            Chris.Golden      Added overrideable methods that
+ *                                           allow subclasses to react to
+ *                                           color changes by clearing or
+ *                                           recreating subclass-specific
+ *                                           resources, etc. Also fixed bug
+ *                                           in mapValueToPixel() that
+ *                                           caused mis-mappings when
+ *                                           converted values fell outside
+ *                                           the range representable by
+ *                                           integers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1282,6 +1291,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setConstrainedMarkedValueColor(int index, Color color) {
         ensureIndexIsWithinBounds(index, getConstrainedMarkedValueCount());
         updateConstrainedMarkedValueColor(index, color);
+        constrainedMarkedValueColorChanged(index, color);
         redraw();
     }
 
@@ -1322,6 +1332,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setFreeMarkedValueColor(int index, Color color) {
         ensureIndexIsWithinBounds(index, getFreeMarkedValueCount());
         updateFreeMarkedValueColor(index, color);
+        freeMarkedValueColorChanged(index, color);
         redraw();
     }
 
@@ -1368,6 +1379,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setConstrainedMarkedRangeColor(int index, Color color) {
         ensureIndexIsWithinBounds(index, getConstrainedMarkedValueCount() + 1);
         updateRangeColor(constrainedMarkedRangeColors, index, color);
+        constrainedMarkedRangeColorChanged(index, color);
         redraw();
     }
 
@@ -1414,6 +1426,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setConstrainedThumbRangeColor(int index, Color color) {
         ensureIndexIsWithinBounds(index, getConstrainedThumbValueCount() + 1);
         updateRangeColor(constrainedThumbRangeColors, index, color);
+        constrainedThumbRangeColorChanged(index, color);
         redraw();
     }
 
@@ -1632,6 +1645,66 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            Disposal event that triggered this invocation.
      */
     protected void widgetDisposed(DisposeEvent e) {
+
+        // No action.
+    }
+
+    /**
+     * Respond to the free marked value color at the specified index changing.
+     * The default implementation does nothing, but may be overridden to
+     * recreate any resources associated with this value.
+     * 
+     * @param index
+     *            Index of the value that changed color.
+     * @param color
+     *            New color.
+     */
+    protected void freeMarkedValueColorChanged(int index, Color color) {
+
+        // No action.
+    }
+
+    /**
+     * Respond to the constrained marked value color at the specified index
+     * changing. The default implementation does nothing, but may be overridden
+     * to recreate any resources associated with this value.
+     * 
+     * @param index
+     *            Index of the value that changed color.
+     * @param color
+     *            New color.
+     */
+    protected void constrainedMarkedValueColorChanged(int index, Color color) {
+
+        // No action.
+    }
+
+    /**
+     * Respond to the marked range color at the specified index changing. The
+     * default implementation does nothing, but may be overridden to recreate
+     * any resources associated with this range.
+     * 
+     * @param index
+     *            Index of the range that changed color.
+     * @param color
+     *            New color.
+     */
+    protected void constrainedMarkedRangeColorChanged(int index, Color color) {
+
+        // No action.
+    }
+
+    /**
+     * Respond to the thumb range color at the specified index changing. The
+     * default implementation does nothing, but may be overridden to recreate
+     * any resources associated with this range.
+     * 
+     * @param index
+     *            Index of the range that changed color.
+     * @param color
+     *            New color.
+     */
+    protected void constrainedThumbRangeColorChanged(int index, Color color) {
 
         // No action.
     }
@@ -1870,8 +1943,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         if (mustBeVisible && (x >= leftInset + lastWidth)) {
             x = leftInset + lastWidth - 1;
         }
-        return ((long) ((((double) (x - leftInset))
-                * ((double) (upperVisibleValue + 1L - lowerVisibleValue)) / (lastWidth - 1.0)) + 0.5))
+        return Math.round(((double) (x - leftInset))
+                * ((double) (upperVisibleValue + 1L - lowerVisibleValue))
+                / (lastWidth - 1.0))
                 + lowerVisibleValue;
     }
 
@@ -1888,8 +1962,17 @@ public abstract class MultiValueLinearControl extends Canvas {
         if (lastWidth == 0) {
             return 0;
         }
-        return ((int) (((((value - lowerVisibleValue)) * (lastWidth - 1.0)) / ((upperVisibleValue + 1L - lowerVisibleValue))) + 0.5))
+        long result = Math
+                .round(((value - lowerVisibleValue) * (lastWidth - 1.0))
+                        / (upperVisibleValue + 1L - lowerVisibleValue))
                 + leftInset;
+        if (result < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        } else if (result > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        } else {
+            return (int) result;
+        }
     }
 
     /**
@@ -1904,8 +1987,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         if (lastWidth == 0) {
             return 0L;
         }
-        return (long) ((((double) width)
-                * ((double) (upperVisibleValue + 1L - lowerVisibleValue)) / lastWidth) + 0.5);
+        return Math.round(((double) width)
+                * ((double) (upperVisibleValue + 1L - lowerVisibleValue))
+                / lastWidth);
     }
 
     /**
@@ -1917,7 +2001,15 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @return Width.
      */
     protected final int mapValueDeltaToPixelWidth(long delta) {
-        return (int) ((((double) delta) * ((double) lastWidth) / ((upperVisibleValue + 1L - lowerVisibleValue))) + 0.5);
+        long result = Math.round(((double) delta) * ((double) lastWidth)
+                / (upperVisibleValue + 1L - lowerVisibleValue));
+        if (result < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        } else if (result > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        } else {
+            return (int) result;
+        }
     }
 
     /**
@@ -2082,7 +2174,7 @@ public abstract class MultiValueLinearControl extends Canvas {
 
             // Determine how large the new viewport should be as a
             // value delta.
-            long valueRange = (long) ((valueDeltaPerPixel * clientArea.width) + 0.5);
+            long valueRange = Math.round(valueDeltaPerPixel * clientArea.width);
 
             // Get the lower and upper bounds of the viewport, adjust-
             // ing them if they go beyond the allowable values.
