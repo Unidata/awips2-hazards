@@ -449,8 +449,8 @@ public final class HazardServicesMessageHandler {
      * 
      * @throws VizException
      */
-    public void updateSelectedEvents(final String eventIDs,
-            boolean multipleSelection, String originator) throws VizException {
+    public void updateSelectedEvents(final String eventIDs, String originator)
+            throws VizException {
         Boolean found = model.checkForEventsWithState(eventIDs,
                 Utilities.HAZARD_EVENT_STATE_POTENTIAL);
 
@@ -468,8 +468,7 @@ public final class HazardServicesMessageHandler {
             }
         }
 
-        String updateTime = model.updateSelectedEvents(eventIDs,
-                multipleSelection, originator);
+        String updateTime = model.updateSelectedEvents(eventIDs, originator);
 
         if (updateTime.contains(SINGLE_SELECTED_TIME)) {
             appBuilder.notifyModelChanged(EnumSet
@@ -609,45 +608,6 @@ public final class HazardServicesMessageHandler {
 
         notifyModelEventsChanged();
 
-        if (resultJSON != null) {
-
-            Dict resultDict = Dict.getInstance(resultJSON);
-            Dict metaData = (Dict) resultDict.get(META_DATA);
-
-            /*
-             * 
-             * If the return type is Graph Data, launch the grapher.
-             */
-            if (metaData != null) {
-                String returnType = (String) metaData.get(RETURN_TYPE);
-                String eventState = (String) metaData.get(EVENT_STATE);
-
-                if (returnType.equals(EVENT_DICTS_RETURN_TYPE)) {
-                    if (eventState != null
-                            && eventState
-                                    .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_POTENTIAL)) {
-                        notifyModelEventsChanged();
-                    } else {
-                        String eventIDs = sessionManager.getSelectedEvents();
-
-                        if (eventIDs != "[]") {
-                            try {
-                                updateSelectedEvents(eventIDs, false,
-                                        RECOMMENDER);
-
-                            } catch (VizException e) {
-                                statusHandler
-                                        .error("Error updating Hazard Services Spatial Display",
-                                                e);
-                            }
-                        }
-                    }
-
-                }
-
-            }
-        }
-
     }
 
     /**
@@ -668,46 +628,6 @@ public final class HazardServicesMessageHandler {
                 eventList);
 
         notifyModelEventsChanged();
-
-        if (resultJSON != null) {
-
-            Dict resultDict = Dict.getInstance(resultJSON);
-            Dict metaData = (Dict) resultDict.get(META_DATA);
-
-            /*
-             * 
-             * If the return type is Graph Data, launch the grapher.
-             */
-            if (metaData != null) {
-                String returnType = (String) metaData.get(RETURN_TYPE);
-                String eventState = (String) metaData.get(EVENT_STATE);
-
-                if (returnType.equals(EVENT_DICTS_RETURN_TYPE)
-                        || returnType.equals(IEVENT_LIST_RETURN_TYPE)) {
-                    if (eventState != null
-                            && eventState
-                                    .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_POTENTIAL)) {
-                        notifyModelEventsChanged();
-                    } else {
-                        String eventIDs = model.getSelectedEvents();
-
-                        if (eventIDs != "[]") {
-                            try {
-                                updateSelectedEvents(eventIDs, false,
-                                        RECOMMENDER);
-
-                            } catch (VizException e) {
-                                statusHandler
-                                        .error("Error updating Hazard Services Spatial Display",
-                                                e);
-                            }
-                        }
-                    }
-
-                }
-
-            }
-        }
 
     }
 
@@ -1058,16 +978,7 @@ public final class HazardServicesMessageHandler {
         if (eventID == null) {
             eventID = model.newEvent(eventArea);
         }
-
-        try {
-            updateSelectedEvents(convertEventIDs(new String[] { eventID }),
-                    false, originator);
-
-        } catch (VizException e) {
-            statusHandler
-                    .error("In HazardServicesMessageHandler: newEventArea(): error updating selected events.",
-                            e);
-        }
+        notifyModelEventsChanged();
 
         return eventID;
     }

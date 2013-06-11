@@ -99,7 +99,7 @@ class Product(ProductTemplate.Product):
                        "geoType": "area",
                        "vtecEngine": self._vtecEngine,
                        "mapType": "counties",
-                       "segmented": True, #False,
+                       "segmented": False,
                        "etn":etn,
                        "formatPolygon": True,
                        "segments": [segment]

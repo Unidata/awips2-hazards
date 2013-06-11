@@ -125,7 +125,7 @@ public class HazardServicesMessageListener {
                         .convertEventIDs(spatialDisplayAction
                                 .getSelectedEventIDs());
                 messageHandler.updateSelectedEvents(convertedEventIDs,
-                        spatialDisplayAction.isMultipleSelection(), "Spatial");
+                        "Spatial");
 
             } catch (VizException e) {
                 statusHandler.error("HazardServicesMessageListener."
@@ -252,8 +252,7 @@ public class HazardServicesMessageListener {
             try {
                 String eventIDsString = HazardServicesMessageHandler
                         .convertEventIDs(consoleAction.getSelectedEventIDs());
-                messageHandler.updateSelectedEvents(eventIDsString, false,
-                        "Temporal");
+                messageHandler.updateSelectedEvents(eventIDsString, "Temporal");
 
             } catch (VizException e) {
                 statusHandler.error("Error updating selected events", e);

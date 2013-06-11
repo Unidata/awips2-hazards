@@ -564,14 +564,14 @@ HazardTypes = {
               'expirationTime': (-30, 30)
               },
     'TO.W' : {'headline': 'TORNADO WARNING',
-              'subType':'' ,
+              '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
               'combinableSegments': False,
               'allowAreaChange': False,
               'allowTimeChange': False,
               'expirationTime': (-10, 10)
               },
     'TR.A' : {'headline': 'TROPICAL STORM WATCH',
-              'subType':'' ,
+              '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
               'combinableSegments': True,
               'allowAreaChange': True,
               'allowTimeChange': True,

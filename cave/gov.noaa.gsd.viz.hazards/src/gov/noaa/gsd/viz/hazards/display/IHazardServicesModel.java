@@ -92,17 +92,14 @@ public interface IHazardServicesModel {
      * 
      * @param eventIDsJSON
      *            : A JSON list containing the ids of the selected events
-     * @param multipleSelection
-     *            : Flag indicating whether or not this is a multiple selection
-     *            action
+     * 
      * @param originator
      *            : Where this event came from, e.g. "Spatial" or "Temporal"
      * @return updateTime -- IF the current selected time does not overlap the
      *         first selected event, return the new selected time otherwise,
      *         return "None"
      */
-    public String updateSelectedEvents(String eventIDs,
-            boolean multipleSelection, String originator);
+    public String updateSelectedEvents(String eventIDs, String originator);
 
     /**
      * setAddToSelected -- Turn on / off the AddToSelected Mode

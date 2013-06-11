@@ -56,8 +56,6 @@ public class SpatialDisplayAction implements IAction {
 
     private double dragToLongitude = 0;
 
-    private boolean multipleSelection = false;
-
     public SpatialDisplayAction(String actionType) {
         this.actionType = actionType;
     }
@@ -99,11 +97,9 @@ public class SpatialDisplayAction implements IAction {
         this.mapsDbTableName = mapsDbTableName;
     }
 
-    public SpatialDisplayAction(String actionType, String[] selectedEventIds,
-            boolean multipleSelection) {
+    public SpatialDisplayAction(String actionType, String[] selectedEventIds) {
         this(actionType);
         this.selectedEventIDs = selectedEventIds;
-        this.multipleSelection = multipleSelection;
     }
 
     public SpatialDisplayAction(String actionType, int menuPosition,
@@ -227,21 +223,6 @@ public class SpatialDisplayAction implements IAction {
      */
     public String getEventID() {
         return eventID;
-    }
-
-    /**
-     * @param multipleSelection
-     *            the multipleSelection to set
-     */
-    public void setMultipleSelection(boolean multipleSelection) {
-        this.multipleSelection = multipleSelection;
-    }
-
-    /**
-     * @return the multipleSelection
-     */
-    public boolean isMultipleSelection() {
-        return multipleSelection;
     }
 
 }
