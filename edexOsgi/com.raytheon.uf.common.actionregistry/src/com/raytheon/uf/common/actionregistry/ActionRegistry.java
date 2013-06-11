@@ -64,6 +64,12 @@ public class ActionRegistry {
         return instance;
     }
 
+    /**
+     * Registers text and an action with the ActionRegistry
+     * @param action
+     * @param actionable
+     * @return
+     */
     public IActionable register(String action, IActionable actionable) {
         actionableMap.put(action, actionable);
         return actionable;
@@ -73,12 +79,11 @@ public class ActionRegistry {
      * Takes an action name and executes every action associated with that name
      * 
      * @param action
+     * @param arguments
      */
     public void postAction(String action, PluginDataObject[] arguments) {
         Collection<IActionable> actions = actionableMap.get(action);
-        Iterator<IActionable> iterator = actions.iterator();
-        while (iterator.hasNext()) {
-            IActionable actionable = iterator.next();
+        for (IActionable actionable : actions) {
             actionable.handleAction(arguments);
         }
     }
