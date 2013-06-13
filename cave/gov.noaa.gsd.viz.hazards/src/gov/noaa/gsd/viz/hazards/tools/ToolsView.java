@@ -44,7 +44,11 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jun 13, 2013   1282     Chris.Golden      Fixed bug causing tool menu to
+ *                                           remain unchanged when an empty
+ *                                           tool list was provided, and made
+ *                                           tool menu button disabled in such
+ *                                           cases.
  * </pre>
  * 
  * @author Chris.Golden
@@ -97,6 +101,7 @@ public class ToolsView implements
             super("");
             setImageDescriptor(getImageDescriptorForFile("tools.png"));
             setToolTipText("Tools");
+            toolsChanged();
         }
 
         // Public Methods
@@ -106,6 +111,7 @@ public class ToolsView implements
          */
         public void toolsChanged() {
             toolsChanged = true;
+            setEnabled(toolNames.size() > 0);
         }
 
         // Protected Methods
@@ -290,8 +296,8 @@ public class ToolsView implements
 
         // Get the dictionary list from the JSON.
         DictList tools = DictList.getInstance(jsonTools);
-        if ((tools == null) || (tools.size() < 1)) {
-            return;
+        if (tools == null) {
+            tools = new DictList();
         }
 
         // Get the names and identifiers of the tools.
