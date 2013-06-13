@@ -168,13 +168,10 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
         // at this point.
         if ((alreadyClosed == false) && (viewPart != null)) {
             try {
-                IWorkbenchPage page = getActiveWorkbenchPage(true);
-                if (page.isPartVisible(viewPart)) {
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                            .getActivePage().hideView(viewPart);
-                    statusHandler
-                            .debug("ViewPartDelegatorView.dispose(): Closing view part.");
-                }
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                        .getActivePage().hideView(viewPart);
+                statusHandler
+                        .debug("ViewPartDelegatorView.dispose(): Closing view part.");
             } catch (Exception e) {
                 statusHandler
                         .info("ViewPartDelegatorView.dispose(): Could not close view: "
