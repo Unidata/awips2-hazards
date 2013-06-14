@@ -24,23 +24,19 @@ import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayProperties;
 import gov.noaa.nws.ncep.ui.pgen.display.ElementContainerFactory;
-import gov.noaa.nws.ncep.ui.pgen.display.IDisplayable;
 import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
-import gov.noaa.nws.ncep.ui.pgen.elements.SymbolLocationSet;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +47,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
@@ -63,6 +61,7 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
+import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
 import com.raytheon.uf.viz.core.PixelExtent;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
@@ -80,8 +79,6 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.CoordinateArrays;
-import com.vividsolutions.jts.geom.CoordinateList;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
@@ -103,6 +100,9 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                        deselection of hazards.
  * Jun 04, 2013            Bryon.Lawrence Added support for events with multiple
  *                                        hazard polygons.
+ * Jun 14, 2013            Bryon.Lawrence Modified the drawing of the polygon
+ *                                        handlebars to use IGraphicsTarget.drawPoints
+ *                                        to improve drawing performance.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -123,6 +123,11 @@ public class ToolLayer extends
     public static final String IS_SELECTED_KEY = "isSelected";
 
     public static double VERTEX_CIRCLE_RADIUS = 2;
+
+    /**
+     * Controls the relative size of the handlebars drawn on selected hazards.
+     */
+    public static final float HANDLEBAR_MAGNIFICATION = 1.0f;
 
     /*
      * keep track of the previous zoom level for purposes of redrawing PGEN
@@ -154,12 +159,6 @@ public class ToolLayer extends
     private final List<AbstractDrawableComponent> elSelected;
 
     private AbstractDrawableComponent selectedHazardIHISLayer = null;
-
-    /*
-     * selected elements that should be displayed with a marker other than the
-     * default gray "DOT"
-     */
-    private Map<AbstractDrawableComponent, Symbol> selectedSymbol = null;
 
     private GeometryFactory geoFactory = null;
 
@@ -201,6 +200,20 @@ public class ToolLayer extends
      */
     private List<String> selectedEventIDs = null;
 
+    /*
+     * Color of the selection handlebars. Since PGEN uses AWT colors, there are
+     * areas in this module which use the AWT Color class. Hence, I needed to
+     * specify the full package here for the SWT Color class.
+     */
+    private final org.eclipse.swt.graphics.Color handleBarColor;
+
+    /*
+     * Contains the vertices of the currently selected hazard converted to world
+     * pixels. This recomputed once per change in selected hazard for
+     * efficiency.
+     */
+    private final ArrayList<double[]> handleBarPoints = Lists.newArrayList();
+
     /**
      * Constructor.
      * 
@@ -216,7 +229,6 @@ public class ToolLayer extends
 
         displayMap = new ConcurrentHashMap<DrawableElement, AbstractElementContainer>();
         elSelected = new ArrayList<AbstractDrawableComponent>();
-        selectedSymbol = new HashMap<AbstractDrawableComponent, Symbol>();
         geoFactory = new GeometryFactory();
         drawableBuilder = new HazardServicesDrawableBuilder();
         dataManager = new ToolLayerDataManager();
@@ -224,6 +236,9 @@ public class ToolLayer extends
         dataTimes = new ArrayList<DataTime>();
         eventBus = EventBusSingleton.getInstance();
         selectedEventIDs = Lists.newArrayList();
+
+        Display display = Display.getCurrent();
+        handleBarColor = display.getSystemColor(SWT.COLOR_GRAY);
     }
 
     /**
@@ -352,7 +367,7 @@ public class ToolLayer extends
                     drawingAttributes = drawableBuilder.getDrawingAttributes();
 
                     if (drawingAttributes.getLineWidth() == 4.0) {
-                        selectedHazardIHISLayer = drawableComponent;
+                        setSelectedHazardIHISLayer(drawableComponent);
                     }
 
                     addElement(drawableComponent);
@@ -405,7 +420,6 @@ public class ToolLayer extends
 
             @Override
             protected IStatus run(IProgressMonitor monitor) {
-                // TODO Auto-generated method stub
                 LinePatternManager.getInstance();
                 return Status.OK_STATUS;
             }
@@ -1069,7 +1083,6 @@ public class ToolLayer extends
                 menuManager.add(new Action(contextMenuEntry) {
                     @Override
                     public void run() {
-                        // TODO Auto-generated method stub
                         super.run();
                         fireContextMenuItemSelected(getText());
                     }
@@ -1115,7 +1128,23 @@ public class ToolLayer extends
      * @return
      */
     public void setSelectedHazardIHISLayer(AbstractDrawableComponent comp) {
+
         selectedHazardIHISLayer = comp;
+
+        /*
+         * Update the list of world pixels associated with this hazard. We only
+         * need to do this computation once. This is especially useful for
+         * drawing hazard selection handlebars.
+         */
+        handleBarPoints.clear();
+
+        if (comp != null) {
+            for (Coordinate point : comp.getPoints()) {
+                double[] pixelPoint = descriptor.worldToPixel(new double[] {
+                        point.x, point.y });
+                handleBarPoints.add(pixelPoint);
+            }
+        }
     }
 
     /**
@@ -1129,82 +1158,30 @@ public class ToolLayer extends
     }
 
     /**
-     * Draws "PGEN handle bars" on the selected hazard geometry. These show
-     * where vertices are for vertex editing operations.
+     * Draws "handle bars" on the selected hazard geometry. These show where
+     * vertices are for vertex editing operations.
      * 
      * @param target
      *            The target to draw to.
      * @param paintProps
      *            Describes how drawables appear on the target.
      * @return
+     * 
+     * @throws VizException
+     *             An exception was encountered while drawing the handle bar
+     *             points on the target graphic
      */
-    private void drawSelected(IGraphicsTarget target, PaintProperties paintProps) {
+    private void drawSelected(IGraphicsTarget target, PaintProperties paintProps)
+            throws VizException {
 
         if ((selectedHazardIHISLayer != null) && (drawSelectedHandleBars)) {
             if (((IHazardServicesShape) selectedHazardIHISLayer)
                     .canVerticesBeEdited()) {
-                DisplayElementFactory df = new DisplayElementFactory(target,
-                        descriptor);
-                List<IDisplayable> displayEls = new ArrayList<IDisplayable>();
-                HashMap<Symbol, CoordinateList> map = new HashMap<Symbol, CoordinateList>();
 
-                Symbol defaultSymbol = new Symbol(null,
-                        new Color[] { Color.lightGray }, 2.5f, 7.5, false,
-                        null, "Marker", "DOT");
-                Symbol selectSymbol = new Symbol(null,
-                        new Color[] { Color.red }, 2.5f, 7.5, false, null,
-                        "Marker", "DOT");
+                if (!handleBarPoints.isEmpty()) {
 
-                CoordinateList defaultPts = new CoordinateList();
-                CoordinateList selectPts = new CoordinateList();
-
-                AbstractDrawableComponent el = selectedHazardIHISLayer;
-
-                if (selectedSymbol.containsKey(el)) {
-                    Symbol currSym = selectedSymbol.get(el);
-                    Coordinate[] pts = CoordinateArrays.toCoordinateArray(el
-                            .getPoints());
-                    if (map.containsKey(currSym)) {
-                        map.get(currSym).add(pts, true);
-                    } else {
-                        map.put(currSym, new CoordinateList(pts));
-                    }
-                } else {
-                    for (Coordinate point : el.getPoints()) {
-                        /*
-                         * if (inSelectedIndex(pointIdx)) { selectPts.add(point,
-                         * true); } else {
-                         */
-                        defaultPts.add(point, true);
-                        /* } */
-                    }
-                }
-
-                if (!defaultPts.isEmpty()) {
-                    SymbolLocationSet symset = new SymbolLocationSet(
-                            defaultSymbol, defaultPts.toCoordinateArray());
-                    displayEls.addAll(df.createDisplayElements(symset,
-                            paintProps));
-                }
-                if (!selectPts.isEmpty()) {
-                    SymbolLocationSet symset = new SymbolLocationSet(
-                            selectSymbol, selectPts.toCoordinateArray());
-                    displayEls.addAll(df.createDisplayElements(symset,
-                            paintProps));
-                }
-                if (!map.isEmpty()) {
-                    for (Symbol sym : map.keySet()) {
-                        SymbolLocationSet symset = new SymbolLocationSet(sym,
-                                map.get(sym).toCoordinateArray());
-                        displayEls.addAll(df.createDisplayElements(symset,
-                                paintProps));
-                    }
-                }
-
-                // drawElement( target, paintProps, df, symset );
-                for (IDisplayable each : displayEls) {
-                    each.draw(target, paintProps);
-                    each.dispose();
+                    target.drawPoints(handleBarPoints, handleBarColor.getRGB(),
+                            PointStyle.DISC, HANDLEBAR_MAGNIFICATION);
                 }
             }
         }
@@ -1248,7 +1225,6 @@ public class ToolLayer extends
 
     @Override
     public void toolChanged() {
-        // TODO Auto-generated method stub
 
     }
 
@@ -1271,27 +1247,23 @@ public class ToolLayer extends
     @Override
     protected boolean isClicked(IDisplayPaneContainer container,
             Coordinate mouseLoc, AbstractDrawableComponent object) {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     protected AbstractDrawableComponent makeLive(
             AbstractDrawableComponent object) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     protected AbstractDrawableComponent move(Coordinate lastMouseLoc,
             Coordinate mouseLoc, AbstractDrawableComponent object) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     protected String getDefaultName() {
-        // TODO Auto-generated method stub
         return null;
     }
 
