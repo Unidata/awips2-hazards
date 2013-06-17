@@ -421,8 +421,11 @@ public final class HazardServicesMessageHandler {
             String currentTime, String staticSettingID,
             String dynamicSettingJSON, String state) {
         this.appBuilder = appBuilder;
-        model = new ModelDecorator(instantiateModel());
-
+        if (false) {
+            model = new ModelDecorator(new ModelAdapter());
+        } else {
+            model = new ModelDecorator(instantiateModel());
+        }
         IHazardEventManager hazardEventManager = new HazardEventManager(
                 HazardEventManager.Mode.PRACTICE);
         model.setHazardEventManager(hazardEventManager);

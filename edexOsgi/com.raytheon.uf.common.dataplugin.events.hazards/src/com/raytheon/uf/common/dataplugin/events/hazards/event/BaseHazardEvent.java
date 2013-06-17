@@ -103,7 +103,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
-            setHazardAttributes(event.getHazardAttributes());
+            getHazardAttributes().putAll(event.getHazardAttributes());
         }
     }
 
@@ -126,7 +126,7 @@ public class BaseHazardEvent implements IHazardEvent {
     public void setGeometry(String geom) {
         WKTReader reader = new WKTReader();
         try {
-            this.geometry = reader.read(geom);
+            setGeometry(reader.read(geom));
         } catch (ParseException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to read in geometry text", e);
@@ -165,8 +165,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Deprecated
     public void setState(String state) {
-        this.hazardState = HazardState.valueOf(String.valueOf(state)
-                .toUpperCase());
+        setState(HazardState.valueOf(String.valueOf(state).toUpperCase()));
     }
 
     @Override
@@ -237,14 +236,13 @@ public class BaseHazardEvent implements IHazardEvent {
     @Deprecated
     public void setHazardMode(String mode) {
         try {
-            this.hazardMode = HazardConstants
-                    .productClassFromAbbreviation(mode);
+            setHazardMode(HazardConstants.productClassFromAbbreviation(mode));
         } catch (IllegalArgumentException e) {
             try {
-                this.hazardMode = HazardConstants.productClassFromName(mode);
+                setHazardMode(HazardConstants.productClassFromName(mode));
             } catch (IllegalArgumentException f) {
                 // default to test
-                this.hazardMode = ProductClass.TEST;
+                setHazardMode(ProductClass.TEST);
             }
         }
     }

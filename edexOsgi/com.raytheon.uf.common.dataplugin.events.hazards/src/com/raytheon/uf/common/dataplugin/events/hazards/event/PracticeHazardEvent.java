@@ -193,7 +193,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
-            setHazardAttributes(event.getHazardAttributes());
+            setHazardAttributes(new HashMap<String, Serializable>(
+                    event.getHazardAttributes()));
         }
     }
 
