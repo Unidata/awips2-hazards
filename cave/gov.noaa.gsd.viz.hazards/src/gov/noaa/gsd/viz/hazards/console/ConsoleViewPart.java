@@ -170,6 +170,11 @@ public class ConsoleViewPart extends ViewPart {
      */
     private TemporalDisplay temporalDisplay = null;
 
+    /**
+     * Mode listener, used to respond to CAVE mode changes.
+     */
+    private ModeListener modeListener = null;
+
     // Public Methods
 
     /**
@@ -222,7 +227,7 @@ public class ConsoleViewPart extends ViewPart {
         // mode whenever a paint event occurs. This is done with the
         // grandparent of this parent, because this ensures that the
         // part's toolbar gets colored appropriately as well.
-        new ModeListener(parent.getParent().getParent());
+        modeListener = new ModeListener(parent.getParent().getParent());
     }
 
     /**
@@ -261,6 +266,15 @@ public class ConsoleViewPart extends ViewPart {
     @Override
     public void setFocus() {
         temporalDisplay.setFocus();
+    }
+
+    /**
+     * Dispose of this view part.
+     */
+    @Override
+    public void dispose() {
+        modeListener.dispose();
+        super.dispose();
     }
 
     /**
