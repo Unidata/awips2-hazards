@@ -1,0 +1,15 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd">
+
+	<bean id="warningActionableRegistry"
+		class="com.raytheon.uf.common.hazards.warnings.WarningActionable" />
+
+	<bean id="hazardWarningNotifier"
+		class="com.raytheon.uf.common.hazards.warnings.HazardWarningNotifier" />
+
+	<bean factory-bean="actionRegistry" factory-method="register">
+		<constructor-arg value="warngen" />
+		<constructor-arg ref="warningActionableRegistry" />
+	</bean>
+</beans>
