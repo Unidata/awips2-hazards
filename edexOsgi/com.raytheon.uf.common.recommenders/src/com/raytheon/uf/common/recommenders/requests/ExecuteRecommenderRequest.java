@@ -24,7 +24,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
 /**
- * TODO Add Description
+ * Request for EDEX to execute recommenders.
  * 
  * <pre>
  * 

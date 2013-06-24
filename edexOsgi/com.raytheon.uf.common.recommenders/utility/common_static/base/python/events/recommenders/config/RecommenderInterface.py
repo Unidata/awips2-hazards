@@ -47,7 +47,9 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         
     def getScriptMetadata(self, moduleName, className, **kwargs):
         val = self.runMethod(moduleName, className, "defineScriptMetadata", **kwargs)
-        return JUtil.pyValToJavaObj(val)
+        if val is not None :
+            val = JUtil.pyValToJavaObj(val)
+        return val
     
     def execute(self, moduleName, className, **kwargs):
         javaDialogInput = kwargs['dialogInputMap']
@@ -60,12 +62,18 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
         kwargs['eventSet'] = EventSet(kwargs['eventSet'])
         
         val = self.runMethod(moduleName, className, "execute", **kwargs)
-        return JUtil.pyValToJavaObj(val)
+        if val is not None :
+            val = JUtil.pyValToJavaObj(val)
+        return val
     
     def getDialogInfo(self, moduleName, className, **kwargs):
         val = self.runMethod(moduleName, className, "defineDialog", **kwargs)
-        return JUtil.pyValToJavaObj(val)
+        if val is not None :
+            val = JUtil.pyValToJavaObj(val)
+        return val
     
     def getSpatialInfo(self, moduleName, className, **kwargs):
         val = self.runMethod(moduleName, className, "defineSpatialInfo", **kwargs)
-        return JUtil.pyValToJavaObj(val)
+        if val is not None :
+            val = JUtil.pyValToJavaObj(val)
+        return val

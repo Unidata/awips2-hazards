@@ -364,7 +364,8 @@ public abstract class AbstractRecommenderScriptManager extends
             events.addAll((List<IEvent>) obj);
         } else if (obj instanceof IEvent) {
             events.add((IEvent) obj);
-            return events;
+        } else if (obj == null) {
+            // do nothing, we just want to return an empty events
         } else {
             statusHandler.handle(Priority.CRITICAL,
                     "Must return a single event or multiple event objects");
