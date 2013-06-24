@@ -58,6 +58,9 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 29, 2013            bryon.lawrence      Initial creation
+ * Jun 24, 2013            bryon.lawrence      Removed the 'Move Entire Element'
+ *                                             option from the right-click context
+ *                                             menu.
  * 
  * </pre>
  * 
@@ -155,8 +158,6 @@ public final class HazardServicesMessageHandler {
     private final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 
     private final String CONTEXT_MENU_DELETE = "Delete";
-
-    private final String CONTEXT_MENU_MOVE_ENTIRE_ELEMENT = "Move Entire Element";
 
     private final String CONTEXT_MENU_ADD_POINT = "Add Point";
 
@@ -1109,8 +1110,6 @@ public final class HazardServicesMessageHandler {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_POINT);
         } else if (label.equals(CONTEXT_MENU_ADD_POINT)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.ADD_POINT);
-        } else if (label.equals(CONTEXT_MENU_MOVE_ENTIRE_ELEMENT)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.MOVE_ELEMENT);
         } else if (label.contains(CONTEXT_MENU_DELETE)) {
             deleteEvent(model.getSelectedEvents());
         } else if (label.contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {

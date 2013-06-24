@@ -103,6 +103,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jun 14, 2013            Bryon.Lawrence Modified the drawing of the polygon
  *                                        handlebars to use IGraphicsTarget.drawPoints
  *                                        to improve drawing performance.
+ * Jun 24, 2013            Bryon.Lawrence Removed the 'Move Entire Element' option from
+ *                                        from the right-click context menu.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1114,7 +1116,6 @@ public class ToolLayer extends
         } else if (SpatialViewCursorTypes.MOVE_POLYGON_CURSOR.isCurrentCursor()
                 || SpatialViewCursorTypes.DRAW_CURSOR.isCurrentCursor()) {
             entryList.add("Add Point");
-            entryList.add("Move Entire Element");
         }
 
         return entryList;

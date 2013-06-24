@@ -35,6 +35,10 @@ import com.vividsolutions.jts.geom.Point;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
+ * Jun 24, 2013            Bryon Lawrence     Changed how the move element
+ *                                            function works. It is now based
+ *                                            on click point versus geometry
+ *                                            centroid.
  * 
  * </pre>
  * 
@@ -137,11 +141,8 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
                 return true;
 
             } else {
-
                 return true;
-
             }
-
         }
 
         /*
@@ -164,8 +165,6 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
             AbstractDrawableComponent elSelected = getDrawingLayer()
                     .getSelectedDE();
 
-            // AbstractDrawableComponent elSelected =
-            // getDrawingLayer().getSelectedHazardIHISLayer();
             Color ghostColor = new java.awt.Color(255, 255, 255);
             double distanceToSelect = 20;
 
@@ -175,11 +174,10 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
                     GeometryFactory gf = new GeometryFactory();
                     Point clickPoint = gf.createPoint(loc);
                     double distance;
-                    Point centroid;
 
                     if (elSelected instanceof HazardServicesSymbol) {
-                        centroid = gf
-                                .createPoint(elSelected.getPoints().get(0));
+                        Point centroid = gf.createPoint(elSelected.getPoints()
+                                .get(0));
                         distance = centroid.distance(clickPoint);
                     } else {
                         List<Coordinate> drawnPoints = elSelected.getPoints();
@@ -195,13 +193,12 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
 
                         LineString ls = gf.createLineString(copyOfCoords);
 
-                        centroid = ls.getCentroid();
                         distance = ls.distance(clickPoint);
                     }
 
                     if (distance < distanceToSelect) {
-                        ptSelected = new Coordinate(centroid.getX(),
-                                centroid.getY());
+                        ptSelected = new Coordinate(clickPoint.getX(),
+                                clickPoint.getY());
                         ghostEl = getDrawingLayer().getSelectedDE().copy();
 
                     }
