@@ -92,7 +92,7 @@ class LocalizationInterface():
                 self.__lfi = AppFileInstaller(caveEdexHost)
             return
         caveEdexHost = ""
-        prefspath = os.environ["HOME"] + "/caveData/.metadata/.plugins/" + \
+        prefspath = os.environ["HOME"] + "/caveData/.metadata/.plugins" + \
            "/org.eclipse.core.runtime/.settings/localization.prefs"
         try :
             ffff = open(prefspath)
@@ -106,7 +106,7 @@ class LocalizationInterface():
                 if i<0 :
                     break
                 j = i+3
-                while prefsData[j].isalpha() :
+                while prefsData[j]!="\\" and prefsData[j]!=":" :
                     j = j+1
                 caveEdexHost = prefsData[i+2:j]
                 break
