@@ -21,6 +21,8 @@ package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,8 +35,17 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import com.raytheon.uf.common.dataplugin.text.AfosWmoIdDataContainer;
+import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
+import com.raytheon.uf.common.dataplugin.text.request.GetAfosIdRequest;
+import com.raytheon.uf.common.dissemination.OUPRequest;
+import com.raytheon.uf.common.dissemination.OUPResponse;
+import com.raytheon.uf.common.dissemination.OfficialUserProduct;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.time.SimulatedTime;
 
 /**
  * Utility class to help display generated products.
@@ -46,6 +57,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 11, 2013            jsanchez     Initial creation
+ * Jun 20, 2013 1122       jsanchez     Added a disseminate method.
  * 
  * </pre>
  * 
@@ -84,6 +96,9 @@ public class ProductUtils {
     // list of areas pattern
     private static final Pattern listOfAreaNamePtrn = Pattern
             .compile("^((((\\w+\\s{1})+\\w{2}-)*((\\w+\\s{1})+\\w{2}-)))");
+
+    private static Pattern wmoHeaderPattern = Pattern
+            .compile("(\\w{4}\\d{2}) (\\w{4})");
 
     /**
      * Transforms the xml into a human readable format indenting sub tags by two
@@ -219,5 +234,61 @@ public class ProductUtils {
         }
 
         return wrapDefaultPtrn;
+    }
+
+    /**
+     * Disseminates the text product via the OUPRequest.
+     * 
+     * @param product
+     * @return 'true' if successful. Otherwise, 'false'.
+     */
+    public static boolean disseminate(String product) {
+
+        try {
+            String awipsWanPil = null;
+            String awipsID = null;
+
+            Matcher m = wmoHeaderPattern.matcher(product);
+
+            if (m.find()) {
+                GetAfosIdRequest afosIdRequest = new GetAfosIdRequest();
+                afosIdRequest.setTtaaii(m.group(1));
+                afosIdRequest.setCccc(m.group(2));
+                AfosWmoIdDataContainer container = (AfosWmoIdDataContainer) RequestRouter
+                        .route(afosIdRequest);
+                if (container != null && !container.getIdList().isEmpty()) {
+                    AfosToAwips item = container.getIdList().get(0);
+                    awipsID = item.getAfosid().substring(3);
+                    awipsWanPil = m.group(2) + awipsID;
+                }
+            }
+
+            SimpleDateFormat formatter = new SimpleDateFormat("ddHHmm");
+            formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+            String userDateTimeStamp = formatter.format(SimulatedTime
+                    .getSystemTime().getTime());
+
+            OfficialUserProduct oup = new OfficialUserProduct();
+            oup.setAwipsWanPil(awipsWanPil);
+            oup.setNeedsWmoHeader(false);
+            oup.setProductText(product);
+            oup.setSource("HazardServices");
+            oup.setWmoType("");
+            oup.setUserDateTimeStamp(userDateTimeStamp);
+            oup.setFilename(awipsID + ".wan"
+                    + (System.currentTimeMillis() / 1000));
+            oup.setAddress("ALL");
+
+            OUPRequest req = new OUPRequest();
+            req.setCheckBBB(true);
+            req.setProduct(oup);
+            OUPResponse resp = (OUPResponse) RequestRouter.route(req);
+            return !resp.hasFailure();
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Error transmitting text product", e);
+        }
+
+        return false;
     }
 }
