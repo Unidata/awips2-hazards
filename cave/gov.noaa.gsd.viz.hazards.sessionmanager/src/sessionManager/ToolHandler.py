@@ -151,8 +151,9 @@ class ToolHandler(object):
             elif returnType == "TextProduct":
                 return resultDictList
             elif returnType == "ModifiedEventDict":
-                modifyInfoDict = resultDictList
-                newEventDict = modifyInfoDict.get("eventDict")
+                # JER 20130625; get newEventDict from first item of list rather
+                # than attempting to lookup on the "eventDict" key.
+                newEventDict = resultDictList[0]
                 self.sessionManager.updateEventData(newEventDict)
             else:
                 # GraphData

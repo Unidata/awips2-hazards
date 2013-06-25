@@ -471,9 +471,12 @@ class SessionManager(object):
             #    "pointID":1297140191000}
             #
             modifyCallbackToolName = eventDict.get("modifyCallbackToolName")
-            
+
+            # JER 20130625; change "modifyDict" key to "spatialInfo", so that
+            # is where that information gets sent to the execute method for
+            # modify tools.
             if modifyCallbackToolName is not None:
-                modifyInfo = { "eventDict":eventDict, "modifyDict":modifyDict, EVENT_ID:eventID }
+                modifyInfo = { "eventDict":eventDict, "spatialInfo":modifyDict, EVENT_ID:eventID }
                 self.toolHandler.runTool(modifyCallbackToolName, runData=json.dumps(modifyInfo))                       
                 
     def newEventNeededForTimeChange(self, updateDict, curDict, ignoreKeys):
