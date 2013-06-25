@@ -27,8 +27,8 @@ import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 
 /**
- * Description: Extends the Base Hazard Event class. Adds a constructor which
- * takes a map of values for initialization.
+ * Description: Provides a utility method which creates a BaseHazardEvent object
+ * from a map of hazard attributes.
  * 
  * <pre>
  * 
@@ -38,13 +38,23 @@ import com.vividsolutions.jts.geom.Polygon;
  * Mar 26, 2013            Bryon.Lawrence      Initial creation
  * Jun 04, 2013            Bryon.Lawrence      Added support for events
  *                                             with multiple polygons.
+ * Jun 25, 2013            Bryon.Lawrence      Added a static method 
+ *                                             which builds 
+ *                                             a Base Hazard Event object
+ *                                             from a map.
+ * Jun 27, 2013            Bryon.Lawrence      Removed everything but the
+ *                                             static method which builds
+ *                                             a Base Hazard Event object
+ *                                             from a map. This class
+ *                                             no longer extends 
+ *                                             BaseHazardEvent.
  * 
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public class HazardServicesEvent extends BaseHazardEvent {
+public class HazardServicesEvent {
 
     /**
      * Used for creating geometry objects.
@@ -52,60 +62,57 @@ public class HazardServicesEvent extends BaseHazardEvent {
     private static GeometryFactory geoFactory = new GeometryFactory();
 
     /**
-     * Constructs an empty instance of a HazardServicesEvent.
-     */
-    public HazardServicesEvent() {
-        super();
-    }
-
-    /**
-     * Initializes this hazard event from a map. This map could have been
+     * Initializes a new Base Hazard Event from a map. This map could have been
      * constructed from a python dict.
      * 
      * @param attributeMap
      *            Map of attributes
-     * @return
+     * @return An initialized BaseHazardEvent
      */
-    public void initializeFromMap(Map<String, Serializable> attributeMap) {
+    public static BaseHazardEvent buildBaseHazardEventFromMap(
+            Map<String, Serializable> attributeMap) {
+
+        BaseHazardEvent baseEvent = new BaseHazardEvent();
+
         Set<String> keySet = attributeMap.keySet();
 
         for (String key : keySet) {
             Serializable attribute = attributeMap.get(key);
 
             if (key.equals(Utilities.HAZARD_EVENT_IDENTIFIER)) {
-                setEventID((String) attribute);
+                baseEvent.setEventID((String) attribute);
             } else if (key.equals(Utilities.HAZARD_EVENT_STATE)) {
                 String state = (String) attribute;
 
                 if (state
                         .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_PENDING)) {
-                    setState(HazardState.PENDING);
+                    baseEvent.setState(HazardState.PENDING);
                 } else if (state
                         .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_PROPOSED)) {
-                    setState(HazardState.PROPOSED);
+                    baseEvent.setState(HazardState.PROPOSED);
                 } else if (state
                         .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_ISSUED)) {
-                    setState(HazardState.ISSUED);
+                    baseEvent.setState(HazardState.ISSUED);
                 } else if (state
                         .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_ENDED)) {
-                    setState(HazardState.ENDED);
+                    baseEvent.setState(HazardState.ENDED);
                 }
             } else if (key.equals(Utilities.HAZARD_EVENT_PHEN)) {
-                setPhenomenon((String) attribute);
+                baseEvent.setPhenomenon((String) attribute);
             } else if (key.equals(Utilities.HAZARD_EVENT_SIG)) {
-                setSignificance((String) attribute);
+                baseEvent.setSignificance((String) attribute);
             } else if (key.equals(Utilities.HAZARD_EVENT_SUB_TYPE)) {
-                setSubtype((String) attribute);
+                baseEvent.setSubtype((String) attribute);
             } else if (key.equals(Utilities.HAZARD_EVENT_START_TIME)) {
                 long startInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(startInMillis);
-                setStartTime(cal.getTime());
+                baseEvent.setStartTime(cal.getTime());
             } else if (key.equals(Utilities.HAZARD_EVENT_END_TIME)) {
                 long endInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(endInMillis);
-                setEndTime(cal.getTime());
+                baseEvent.setEndTime(cal.getTime());
             } else if (key.equals(Utilities.HAZARD_EVENT_SHAPES)) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Serializable>> shapesList = (List<Map<String, Serializable>>) attribute;
@@ -151,11 +158,13 @@ public class HazardServicesEvent extends BaseHazardEvent {
 
                 Geometry geometry = geoFactory.createMultiPolygon(polygonList
                         .toArray(new Polygon[0]));
-                setGeometry(geometry);
+                baseEvent.setGeometry(geometry);
 
             } else {
-                addHazardAttribute(key, attribute);
+                baseEvent.addHazardAttribute(key, attribute);
             }
         }
+
+        return baseEvent;
     }
 }

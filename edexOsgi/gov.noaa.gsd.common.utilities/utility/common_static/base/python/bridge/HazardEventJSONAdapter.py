@@ -23,6 +23,9 @@ import datetime
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    Feb 21, 2013           daniel.s.schaffer@noaa.gov       Initial Creation.
+#    Jun 25, 2013           blawrenc                         Removed reference
+#                                                            to HazardServicesEvent
+#                                                            java class.
 #
 
 
@@ -71,8 +74,7 @@ def hazardHistoryConverter(obj):
 
 def eventConverter(javaEvent):
     objtype = javaEvent.jclassname
-    if objtype in ["com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent",
-                   "gov.noaa.gsd.viz.hazards.events.HazardServicesEvent"]:
+    if objtype in ["com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent"]:
         eventID = javaEvent.getEventID()
         event = dict()
         event[EVENT_ID] = eventID

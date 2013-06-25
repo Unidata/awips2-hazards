@@ -28,7 +28,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/22/13                      mnash        Initial Creation.
-#    
+#    06/25/13                      blawrenc     Changed to event.getPath()
+#                                               getFilePath() does not exist.
 # 
 #
 
@@ -54,7 +55,7 @@ def findConverter(eventSet):
         # for each python module in the directory
         if events is not None :
             for event in events :
-                importedEvent = LocalizationUtil.loadModule(event.getFilePath())
+                importedEvent = LocalizationUtil.loadModule(event.getPath())
                 if hasattr(importedEvent,'canConvert'):
                     if importedEvent.canConvert(next) :
                         return importedEvent

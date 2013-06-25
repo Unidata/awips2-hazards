@@ -202,8 +202,7 @@ class ScriptAdapter:
 
             for eventDict in eventDicts:
                 javaMap = JUtil.pyDictToJavaMap(eventDict)
-                javaEvent = HazardServicesEvent()
-                javaEvent.initializeFromMap(javaMap)
+                javaEvent = HazardServicesEvent.buildBaseHazardEventFromMap(javaMap)
                 eventSet.add(javaEvent)
         return eventSet
         

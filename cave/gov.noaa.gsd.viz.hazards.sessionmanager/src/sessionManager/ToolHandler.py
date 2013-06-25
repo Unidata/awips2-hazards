@@ -39,8 +39,14 @@ class ToolHandler(object):
             runDict = {}
 
         # Add CAVE session information to the tool's rundata
-        
         sessionDict = {}
+        
+        #
+        # Pass in all of the current events to the recommender
+        # An example of a recommender which needs this information
+        # is the modifyStormTrackTool
+        eventDicts = self.sessionManager.findSessionEventDicts()
+        runDict["eventDicts"] = eventDicts
 
         if self.sessionManager.selectedEventIDs is not None and len(self.sessionManager.selectedEventIDs) > 0:           
             selectedEventID = self.sessionManager.selectedEventIDs[0]
