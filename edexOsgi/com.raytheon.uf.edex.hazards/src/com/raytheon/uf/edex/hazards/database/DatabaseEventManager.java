@@ -31,6 +31,7 @@ import org.hibernate.criterion.Criterion;
 import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEventPK;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
+import com.raytheon.uf.edex.hazards.HazardNotifier;
 import com.raytheon.uf.edex.hazards.IHazardStorageManager;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -94,6 +96,8 @@ public class DatabaseEventManager implements
         dao.create(event);
         statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully stored to database");
+
+        HazardNotifier.notify(event, NotificationType.STORE);
     }
 
     /*
@@ -108,6 +112,9 @@ public class DatabaseEventManager implements
         dao.delete(event);
         statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully deleted from database");
+
+        // need to not send the notification if this doesn't delete anything.
+        HazardNotifier.notify(event, NotificationType.DELETE);
     }
 
     /*
@@ -122,6 +129,8 @@ public class DatabaseEventManager implements
         dao.update(event);
         statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully updated in database");
+
+        HazardNotifier.notify(event, NotificationType.UPDATE);
     }
 
     /*
