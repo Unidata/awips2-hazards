@@ -51,7 +51,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurati
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
@@ -70,6 +69,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
+ * Jul 19, 2013 1257       bsteffen    Notification support for session manager.
  * 
  * </pre>
  * 
@@ -77,7 +77,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * @version 1.0
  */
 
-public class SessionEventManager implements ISessionEventManager {
+public class SessionEventManager extends AbstractSessionEventManager {
 
     private final ISessionTimeManager timeManager;
 
@@ -101,6 +101,7 @@ public class SessionEventManager implements ISessionEventManager {
         this.timeManager = timeManager;
         this.dbManager = dbManager;
         this.notificationSender = notificationSender;
+        new SessionHazardNotificationListener(this);
     }
 
     @Subscribe
@@ -183,7 +184,7 @@ public class SessionEventManager implements ISessionEventManager {
                     // already have this one.
                     continue;
                 }
-                event = addEvent(event, false, false);
+                event = addEvent(event, false);
                 for(IHazardEvent histEvent : list){
                     if(histEvent.getState() == HazardState.ISSUED){
                         event.addHazardAttribute(ATTR_ISSUED, true);
@@ -196,14 +197,27 @@ public class SessionEventManager implements ISessionEventManager {
 
     @Override
     public IHazardEvent addEvent(IHazardEvent event) {
-        return addEvent(event, true, true);
+        HazardState state = event.getState();
+        if (state == null || state == HazardState.PENDING
+                || state == HazardState.POTENTIAL) {
+            return addEvent(event, true);
+        } else {
+            List<IHazardEvent> list = new ArrayList<IHazardEvent>();
+            list.add(event);
+            filterEventsForConfig(list);
+            if (!list.isEmpty()) {
+                return addEvent(event, false);
+            } else {
+                return null;
+            }
+        }
     }
 
     protected IHazardEvent addEvent(IHazardEvent event,
-            boolean modifySelection, boolean setEventId) {
+ boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
-        if (setEventId) {
+        if (localEvent) {
             oevent.setEventID(generateEventID(), false);
         }
 
@@ -240,7 +254,7 @@ public class SessionEventManager implements ISessionEventManager {
         // TODO operational.
         oevent.setHazardMode(ProductClass.TEST, false);
         synchronized (events) {
-            if (modifySelection
+            if (localEvent
                     && !Boolean.TRUE.equals(settings.getAddToSelected())) {
                 for (IHazardEvent e : events) {
                     e.addHazardAttribute(ATTR_SELECTED, false);
@@ -254,7 +268,7 @@ public class SessionEventManager implements ISessionEventManager {
                 oevent.getState().equals(HazardState.ISSUED), false);
         notificationSender
                 .postNotification(new SessionEventAdded(this, oevent));
-        if (modifySelection) {
+        if (localEvent) {
             oevent.addHazardAttribute(ATTR_SELECTED, true);
         }
         oevent.addHazardAttribute(ATTR_CHECKED, true);
@@ -290,74 +304,6 @@ public class SessionEventManager implements ISessionEventManager {
     public Collection<IHazardEvent> getEvents() {
         synchronized (events) {
             return new ArrayList<IHazardEvent>(events);
-        }
-    }
-
-    @Override
-    public IHazardEvent getEventById(String eventId) {
-        synchronized (events) {
-            for (IHazardEvent event : events) {
-                if (event.getEventID().equals(eventId)) {
-                    return event;
-                }
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Collection<IHazardEvent> getEventsByState(HazardState state) {
-        synchronized (events) {
-            Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
-                    this.events.size());
-            for (IHazardEvent event : this.events) {
-                if (event.getState().equals(state)) {
-                    events.add(event);
-                }
-            }
-            return events;
-        }
-    }
-
-    @Override
-    public Collection<IHazardEvent> getSelectedEvents() {
-        synchronized (events) {
-            Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
-                    this.events.size());
-            for (IHazardEvent event : this.events) {
-                if (Boolean.TRUE
-                        .equals(event.getHazardAttribute(ATTR_SELECTED))) {
-                    events.add(event);
-                }
-            }
-            return events;
-        }
-    }
-
-    @Override
-    public void setSelectedEvents(Collection<IHazardEvent> selectedEvents) {
-        for (IHazardEvent event : getSelectedEvents()) {
-            if (!selectedEvents.contains(event.getEventID())) {
-                event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED,
-                        false);
-            }
-        }
-        for (IHazardEvent event : selectedEvents) {
-            event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
-        }
-    }
-
-    @Override
-    public Collection<IHazardEvent> getCheckedEvents() {
-        synchronized (events) {
-            Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
-                    this.events.size());
-            for (IHazardEvent event : this.events) {
-                if (Boolean.TRUE.equals(event.getHazardAttribute(ATTR_CHECKED))) {
-                    events.add(event);
-                }
-            }
-            return events;
         }
     }
 
