@@ -20,6 +20,7 @@ Import-Package: com.raytheon.uf.common.dataplugin.events,
  com.raytheon.uf.common.geospatial,
  com.raytheon.uf.common.registry,
  com.raytheon.uf.common.registry.ebxml,
+ com.raytheon.uf.common.registry.ebxml.encoder,
  com.raytheon.uf.common.registry.handler,
  com.raytheon.uf.common.status,
  com.vividsolutions.jts.geom
