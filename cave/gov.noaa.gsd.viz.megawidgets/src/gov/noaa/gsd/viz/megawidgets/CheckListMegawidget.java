@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.TableItem;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -65,6 +66,22 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
      * Deslect all items button.
      */
     private final Button noneButton;
+
+    /**
+     * Last position of the vertical scrollbar. This is used whenever the
+     * choices are being changed via <code>setChoices()</code> or one of the
+     * mutable property manipulation methods, in order to keep a similar visual
+     * state to what came before.
+     */
+    private int scrollPosition = 0;
+
+    /**
+     * Identifier of the node that was last selected in the choices list. This
+     * is used whenever the choices are being changed via <code>setChoices()
+     * </code> or one of the mutable property manipulation methods, in order to
+     * keep a similar visual state to what came before.
+     */
+    private String selectedChoiceIdentifier;
 
     // Protected Constructors
 
@@ -117,14 +134,10 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
         table.setEnabled(specifier.isEnabled());
         gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         table.setLayoutData(gridData);
-        TableColumn column = new TableColumn(table, SWT.NONE);
+        new TableColumn(table, SWT.NONE);
 
         // Add all the choices to the table.
-        for (String choice : specifier.getChoiceNames()) {
-            TableItem item = new TableItem(table, SWT.NONE);
-            item.setText(0, choice);
-        }
-        column.pack();
+        createTableItemsForChoices();
 
         // Determine the height of the table. This must
         // be done after the above to ensure it will have
@@ -155,7 +168,9 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
                 public void widgetSelected(SelectionEvent e) {
                     ChoicesMegawidgetSpecifier specifier = getSpecifier();
                     state.clear();
-                    state.addAll(specifier.choices);
+                    for (Object choice : choices) {
+                        state.add(specifier.getIdentifierOfNode(choice));
+                    }
                     setAllItemsCheckedState(true);
                     notifyListeners();
                 }
@@ -195,9 +210,7 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
                 // the state change; otherwise, undo
                 // what was just done.
                 if (isEditable()) {
-                    String choice = ((ChoicesMegawidgetSpecifier) getSpecifier())
-                            .getChoiceFromLongVersion(((TableItem) e.item)
-                                    .getText(0));
+                    String choice = (String) ((TableItem) e.item).getData();
                     int index = state.indexOf(choice);
                     if (index == -1) {
                         state.add(choice);
@@ -222,32 +235,86 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    // Protected Methods
+    // Public Methods
 
     /**
-     * Receive notification that the widget's state has changed.
+     * Get the available choices hierarchy.
      * 
-     * @param state
-     *            New state.
+     * @return Available choices hierarchy.
      */
-    @Override
-    protected final void megawidgetStateChanged(List<String> state) {
-        ChoicesMegawidgetSpecifier specifier = getSpecifier();
-        for (int line = 0; line < table.getItemCount(); line++) {
-            TableItem item = table.getItem(line);
-            String choice = specifier.getChoiceFromLongVersion(item.getText(0));
-            item.setChecked(state.contains(choice));
-        }
+    public final List<?> getChoices() {
+        return doGetChoices();
     }
 
     /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
+     * Set the choices to those specified. If the current state is not a subset
+     * of the new choices, the state will be set to <code>null</code>.
      * 
-     * @param enable
-     *            Flag indicating whether the widget components are to be
-     *            enabled or disabled.
+     * @param value
+     *            List of new choices.
+     * @throws MegawidgetPropertyException
+     *             If the choices are invalid.
      */
+    public final void setChoices(Object value)
+            throws MegawidgetPropertyException {
+        doSetChoices(value);
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final boolean isChoicesListMutable() {
+        return true;
+    }
+
+    @Override
+    protected final void prepareForChoicesChange() {
+
+        // Remember the scrollbar position so that it can be approximately
+        // restored.
+        scrollPosition = table.getVerticalBar().getSelection();
+
+        // Remember the identifier of the currently selected choice, if any.
+        TableItem[] selectedItems = table.getSelection();
+        selectedChoiceIdentifier = (selectedItems.length > 0 ? (String) selectedItems[0]
+                .getData() : null);
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
+
+        // Remove all the previous table items.
+        table.removeAll();
+
+        // Create the new table items.
+        createTableItemsForChoices();
+
+        // Select the appropriate choice, if one with the same identifier
+        // as the one selected before is found.
+        if (selectedChoiceIdentifier != null) {
+            for (TableItem item : table.getItems()) {
+                if (item.getData().equals(selectedChoiceIdentifier)) {
+                    table.setSelection(item);
+                    break;
+                }
+            }
+        }
+
+        // Ensure that the new table items are synced with the old state.
+        synchronizeWidgetsToState();
+
+        // Set the scrollbar position to be similar to what it was before.
+        table.getVerticalBar().setSelection(scrollPosition);
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToState() {
+        for (int line = 0; line < table.getItemCount(); line++) {
+            TableItem item = table.getItem(line);
+            item.setChecked(state.contains(item.getData()));
+        }
+    }
+
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -260,14 +327,6 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the widget components are to be
-     *            editable or read-only.
-     */
     @Override
     protected final void doSetEditable(boolean editable) {
         table.setBackground(getBackgroundColor(editable, table, label));
@@ -278,6 +337,19 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
     }
 
     // Private Methods
+
+    /**
+     * Create the table items for the choices.
+     */
+    private void createTableItemsForChoices() {
+        CheckListSpecifier specifier = getSpecifier();
+        for (Object choice : choices) {
+            TableItem item = new TableItem(table, SWT.NONE);
+            item.setText(0, specifier.getNameOfNode(choice));
+            item.setData(specifier.getIdentifierOfNode(choice));
+        }
+        table.getColumn(0).pack();
+    }
 
     /**
      * Set the checked state for all the items in the list to the specified

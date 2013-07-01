@@ -35,14 +35,6 @@ public interface INotifierSpecifier {
     // Public Static Constants
 
     /**
-     * Megawidget notify parameter name; a widget may include a boolean (0 or 1)
-     * value associated with this name to indicate whether or not it must notify
-     * a listener when it changes state or is invoked. If not specified, the
-     * default is 0 (false).
-     */
-    public static final String MEGAWIDGET_NOTIFY = "notify";
-
-    /**
      * Megawidget callback parameter name; a megawidget may include an arbitrary
      * string value associated with this name as extra information to be passed
      * back with a notification. If <code>MEGAWIDGET_NOTIFY</code> is false,
@@ -52,15 +44,6 @@ public interface INotifierSpecifier {
     public static final String MEGAWIDGET_CALLBACK_DATA = "callback";
 
     // Public Methods
-
-    /**
-     * Get the flag indicating whether or not the megawidget should notify its
-     * listener (if any) when it is invoked by the user.
-     * 
-     * @return Flag indicating whether not the megawidget should notify
-     *         listeners.
-     */
-    public boolean isToNotify();
 
     /**
      * Get the extra callback information to be passed back with a notification,

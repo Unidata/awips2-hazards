@@ -9,7 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Stateful megawidget created by a megawidget specifier.
@@ -20,6 +24,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -29,6 +34,19 @@ import java.util.Map;
  */
 public abstract class StatefulMegawidget extends NotifierMegawidget implements
         IStateful {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<String>(
+                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
+        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+    };
 
     // Protected Variables
 
@@ -57,7 +75,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected StatefulMegawidget(MegawidgetSpecifier specifier,
+    protected StatefulMegawidget(StatefulMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
         stateChangeListener = (IStateChangeListener) paramMap
@@ -67,9 +85,89 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
     // Public Methods
 
     /**
+     * Get the mutable property names for this megawidget.
+     * 
+     * @return Set of names for all mutable properties for this megawidget.
+     */
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    /**
+     * Get the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @return Mutable property value.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property.
+     */
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+            Map<String, Object> map = new HashMap<String, Object>();
+            for (String identifier : ((StatefulMegawidgetSpecifier) getSpecifier())
+                    .getStateIdentifiers()) {
+                try {
+                    map.put(identifier, getState(identifier));
+                } catch (MegawidgetStateException e) {
+                    throw new MegawidgetPropertyException(getSpecifier()
+                            .getIdentifier(), name, getSpecifier().getType(),
+                            null, "querying valid state identifier \""
+                                    + identifier + "\" caused internal error",
+                            e);
+                }
+            }
+            return map;
+        } else {
+            return super.getMutableProperty(name);
+        }
+    }
+
+    /**
+     * Set the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @param value
+     *            New mutable property value to be used.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property, or if the value
+     *             is invalid.
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+
+            // Ensure that the value is a map of state identifiers to
+            // their values.
+            Map<String, Object> map = null;
+            try {
+                map = (HashMap<String, Object>) value;
+                if (map == null) {
+                    throw new NullPointerException();
+                }
+            } catch (Exception e) {
+                throw new MegawidgetPropertyException(getSpecifier()
+                        .getIdentifier(), name, getSpecifier().getType(),
+                        value, "bad map of values", e);
+            }
+
+            // Set the states to match the values given.
+            setStates(map);
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    /**
      * Get the current state for the specified identifier.
      * 
-     * @param identifier
+     * @param identifiere
      *            Identifier for which state is desired.
      * @return Object making up the current state for that identifier.
      * @throws MegawidgetStateException
@@ -173,7 +271,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      * @param identifier
      *            Identifier for which state is desired. Implementations may
      *            assume that the state identifier supplied by this parameter is
-     *            valid for this widget.
+     *            valid for this megawidget.
      * @return Object making up the current state for the specified identifier.
      */
     protected abstract Object doGetState(String identifier);
@@ -209,7 +307,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      * @param identifier
      *            Identifier to which the state would be assigned.
      *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this widget.
+     *            by this parameter is valid for this megawidget.
      * @param state
      *            State for which to generate a shortened description.
      * @return Description of the specified state.
@@ -219,6 +317,38 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      */
     protected abstract String doGetStateDescription(String identifier,
             Object state) throws MegawidgetStateException;
+
+    /**
+     * Set the states to the values in the specified map.
+     * 
+     * @param states
+     *            Map containing keys drawn from the set of all valid state
+     *            identifiers, with associated values being the new values for
+     *            the states. Any state with a identifier-value pair found
+     *            within this map is set to the given value; all states for
+     *            which no identifier-value pairs exist remain as they were
+     *            before.
+     * @throws MegawidgetPropertyException
+     *             If at least one identifier specifies a nonexistent state, or
+     *             if at least one value is invalid.
+     */
+    protected void setStates(Map<String, Object> states)
+            throws MegawidgetPropertyException {
+
+        // Iterate through the pairs, setting each value as the state
+        // for the corresponding identifier.
+        for (String identifier : states.keySet()) {
+            try {
+                setState(identifier, states.get(identifier));
+            } catch (MegawidgetStateException e) {
+                throw new MegawidgetPropertyException(getSpecifier()
+                        .getIdentifier(),
+                        StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES,
+                        getSpecifier().getType(), states, "bad map of values",
+                        e);
+            }
+        }
+    }
 
     /**
      * Get an integer from the specified object as a value for the specified
@@ -408,6 +538,39 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
             throws MegawidgetStateException {
         try {
             return getSpecifier().getBooleanObjectFromObject(object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(identifier, e.getType(),
+                    e.getBadValue(), e.getMessage(), e.getCause());
+        }
+    }
+
+    /**
+     * Get a dynamically typed object from the specified object as a value for
+     * the specified state identifier. The object must be either <code>null
+     * </code> (only allowed if <code>defValue</code> is not <code>null</code>),
+     * or an object of dynamic type <code>T</code>.
+     * 
+     * @param object
+     *            Object to be cast or converted.
+     * @param identifier
+     *            State identifier for which this object could be state.
+     * @param requiredClass
+     *            Class to which this object must be cast or converted.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Object of the specified dynamic type.
+     * @throws MegawidgetStateException
+     *             If the state value is invalid.
+     */
+    protected final <T> T getStateDynamicallyTypedObjectFromObject(
+            Object object, String identifier, Class<T> requiredClass, T defValue)
+            throws MegawidgetStateException {
+        try {
+            return getSpecifier().getDynamicallyTypedObjectFromObject(object,
+                    requiredClass, defValue);
         } catch (MegawidgetException e) {
             throw new MegawidgetStateException(identifier, e.getType(),
                     e.getBadValue(), e.getMessage(), e.getCause());

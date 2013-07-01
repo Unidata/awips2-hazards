@@ -20,6 +20,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -27,7 +28,7 @@ import java.util.Map;
  * @version 1.0
  * @see RadioButtonsMegawidget
  */
-public class RadioButtonsSpecifier extends ChoicesMegawidgetSpecifier {
+public class RadioButtonsSpecifier extends FlatChoicesMegawidgetSpecifier {
 
     // Public Constructors
 

@@ -24,6 +24,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -53,8 +54,8 @@ public abstract class ExplicitCommitStatefulMegawidget extends
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected ExplicitCommitStatefulMegawidget(MegawidgetSpecifier specifier,
-            Map<String, Object> paramMap) {
+    protected ExplicitCommitStatefulMegawidget(
+            StatefulMegawidgetSpecifier specifier, Map<String, Object> paramMap) {
         super(specifier, paramMap);
         uncommittedStatesForIds = new HashMap<String, Object>();
     }
@@ -179,4 +180,38 @@ public abstract class ExplicitCommitStatefulMegawidget extends
     protected abstract void doCommitStateChanges(
             Map<String, Object> newStatesForIds)
             throws MegawidgetStateException;
+
+    /**
+     * Set the states to the values in the specified map.
+     * 
+     * @param states
+     *            Map containing keys drawn from the set of all valid state
+     *            identifiers, with associated values being the new values for
+     *            the states. Any state with a identifier-value pair found
+     *            within this map is set to the given value; all states for
+     *            which no identifier-value pairs exist remain as they were
+     *            before.
+     * @throws MegawidgetPropertyException
+     *             If at least one identifier specifies a nonexistent state, or
+     *             if at least one value is invalid.
+     */
+    @Override
+    protected void setStates(Map<String, Object> states)
+            throws MegawidgetPropertyException {
+
+        // Iterate through the pairs, setting each value as the uncommitted
+        // state for the corresponding identifier, and then committing them
+        // all at once.
+        try {
+            for (String identifier : states.keySet()) {
+                setUncommittedState(identifier, states.get(identifier));
+            }
+            commitStateChanges();
+        } catch (MegawidgetStateException e) {
+            throw new MegawidgetPropertyException(getSpecifier()
+                    .getIdentifier(),
+                    StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES,
+                    getSpecifier().getType(), states, "bad map of values", e);
+        }
+    }
 }

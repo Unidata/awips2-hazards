@@ -17,10 +17,13 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 
 import org.eclipse.swt.SWT;
@@ -46,6 +49,7 @@ import org.eclipse.swt.widgets.Text;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -54,6 +58,20 @@ import org.eclipse.swt.widgets.Text;
  * @see TimeScaleSpecifier
  */
 public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<String>(
+                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
+        names.add(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
+        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+    };
 
     // Private Static Constants
 
@@ -393,7 +411,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
 
         // Set the thumb values for the scale again in
         // order to trigger updates of the text widgets
-        // to match said values.
+        // to match said values, now that the above
+        // listener has been installed.
         scale.setConstrainedThumbValues(startingValues);
 
         // Iterate through the state identifiers,
@@ -429,6 +448,129 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
     // Public Methods
 
     /**
+     * Get the mutable property names for this megawidget.
+     * 
+     * @return Set of names for all mutable properties for this megawidget.
+     */
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    /**
+     * Get the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @return Mutable property value.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property.
+     */
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
+            return getLowerVisibleTime();
+        } else if (name.equals(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)) {
+            return getUpperVisibleTime();
+        } else {
+            return super.getMutableProperty(name);
+        }
+    }
+
+    /**
+     * Set the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @param value
+     *            New mutable property value to be used.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property, or if the value
+     *             is invalid.
+     */
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
+            setVisibleTimeRange(
+                    getPropertyLongValueFromObject(value, name, null),
+                    getUpperVisibleTime());
+        } else if (name.equals(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)) {
+            setVisibleTimeRange(getLowerVisibleTime(),
+                    getPropertyLongValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    /**
+     * Set the mutable properties of this megawidget.
+     * 
+     * @param properties
+     *            Map containing keys drawn from the set of all valid property
+     *            names, with associated values being the new values for the
+     *            properties. Any property with a name-value pair found within
+     *            this map is set to the given value; all properties for which
+     *            no name-value pairs exist remain as they were before.
+     * @throws MegawidgetPropertyException
+     *             If at least one name specifies a nonexistent property, or if
+     *             at least one value is invalid.
+     */
+    @Override
+    public void setMutableProperties(Map<String, Object> properties)
+            throws MegawidgetPropertyException {
+
+        // If the minimum or maximum visible times are being set, set them
+        // first, ensuring that the two boundaries are set in the order that
+        // will allow the set to occur without error (if they are allowable).
+        Object minValueObj = properties
+                .get(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
+        Object maxValueObj = properties
+                .get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
+        if ((minValueObj != null) && (maxValueObj != null)) {
+            if ((minValueObj instanceof Number) == false) {
+                TimeScaleSpecifier specifier = getSpecifier();
+                throw new MegawidgetPropertyException(
+                        specifier.getIdentifier(),
+                        (minValueObj instanceof Number ? TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME
+                                : TimeScaleSpecifier.MINIMUM_VISIBLE_TIME),
+                        specifier.getType(),
+                        (minValueObj instanceof Number ? maxValueObj
+                                : minValueObj), "must be long integer");
+            }
+            if (((Number) minValueObj).longValue() >= scale
+                    .getUpperVisibleValue()) {
+                setMutableProperty(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                        maxValueObj);
+                setMutableProperty(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                        minValueObj);
+            } else {
+                setMutableProperty(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                        minValueObj);
+                setMutableProperty(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                        maxValueObj);
+            }
+        } else if (minValueObj != null) {
+            setMutableProperty(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                    minValueObj);
+        } else if (maxValueObj != null) {
+            setMutableProperty(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                    maxValueObj);
+        }
+
+        // Do what would have been done by the superclass method, except for
+        // ignoring any minimum or maximum visible time setting, as that has
+        // already been done above.
+        for (String name : properties.keySet()) {
+            if (!name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)
+                    && !name.equals(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)) {
+                setMutableProperty(name, properties.get(name));
+            }
+        }
+    }
+
+    /**
      * Determine the left decoration width for this megawidget, if the widget
      * has a decoration (label, etc.) to the left of its main component
      * widget(s). This is used to query all sibling megawidgets to determine
@@ -457,6 +599,24 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         if ((labels != null) && (labels.size() > 0)) {
             setWidgetsWidth(width, labels.toArray(new Label[labels.size()]));
         }
+    }
+
+    /**
+     * Get the lower end of the visible time range.
+     * 
+     * @return Lower end of the visible time range.
+     */
+    public long getLowerVisibleTime() {
+        return scale.getLowerVisibleValue();
+    }
+
+    /**
+     * Get the upper end of the visible time range.
+     * 
+     * @return Upper end of the visible time range.
+     */
+    public long getUpperVisibleTime() {
+        return scale.getUpperVisibleValue();
     }
 
     /**

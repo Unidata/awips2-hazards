@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -106,11 +107,12 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
 
         // For each value, add a checkbox.
         List<Button> checkBoxes = new ArrayList<Button>();
-        for (int j = 0; j < specifier.getChoiceNames().size(); j++) {
+        for (Object choice : choices) {
 
             // Create the checkbox.
             Button checkBox = new Button(panel, SWT.CHECK);
-            checkBox.setText(specifier.getChoiceNames().get(j));
+            checkBox.setText(specifier.getNameOfNode(choice));
+            checkBox.setData(specifier.getIdentifierOfNode(choice));
             checkBox.setEnabled(specifier.isEnabled());
 
             // Place the widget in the grid.
@@ -126,8 +128,7 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 Button checkBox = (Button) e.widget;
-                String choice = ((ChoicesMegawidgetSpecifier) getSpecifier())
-                        .getChoiceFromLongVersion(checkBox.getText());
+                String choice = (String) checkBox.getData();
                 if (checkBox.getSelection()) {
                     state.add(choice);
                 } else {
@@ -150,29 +151,30 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
 
     // Protected Methods
 
-    /**
-     * Receive notification that the megawidget's state has changed.
-     * 
-     * @param state
-     *            New state.
-     */
     @Override
-    protected final void megawidgetStateChanged(List<String> state) {
+    protected final boolean isChoicesListMutable() {
+        return false;
+    }
+
+    @Override
+    protected final void prepareForChoicesChange() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for checkboxes megawidget");
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for checkboxes megawidget");
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToState() {
         for (Button checkBox : checkBoxes) {
-            checkBox.setSelection(state
-                    .contains(((ChoicesMegawidgetSpecifier) getSpecifier())
-                            .getChoiceFromLongVersion(checkBox.getText())));
+            checkBox.setSelection(state.contains(checkBox.getData()));
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -183,14 +185,6 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
     @Override
     protected final void doSetEditable(boolean editable) {
         if (checkBoxes.size() > 0) {

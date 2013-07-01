@@ -24,6 +24,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -31,7 +32,7 @@ import java.util.Map;
  * @version 1.0
  * @see ChoicesMegawidgetSpecifier
  */
-public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
+public abstract class MultipleChoicesMegawidget extends ChoicesMegawidget {
 
     // Protected Variables
 
@@ -39,7 +40,7 @@ public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
      * List of strings making up the current state; the strings are the choices
      * currently selected.
      */
-    protected List<String> state = new ArrayList<String>();
+    protected final List<String> state = new ArrayList<String>();
 
     // Protected Constructors
 
@@ -52,7 +53,7 @@ public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected MultipleChoicesMegawidget(MegawidgetSpecifier specifier,
+    protected MultipleChoicesMegawidget(ChoicesMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
     }
@@ -72,7 +73,7 @@ public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
      */
     @Override
     protected final Object doGetState(String identifier) {
-        return state;
+        return new ArrayList<String>(state);
     }
 
     /**
@@ -99,42 +100,32 @@ public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
             throws MegawidgetStateException {
 
         // Set the state to that supplied.
-        if (state == null) {
-            if (this.state == null) {
-                this.state = new ArrayList<String>();
-            } else {
-                this.state.clear();
-            }
-        } else if (state instanceof String) {
-            this.state = new ArrayList<String>();
+        this.state.clear();
+        if (state instanceof String) {
             this.state.add((String) state);
-        } else if (state instanceof List) {
+        } else if (state != null) {
             try {
-                this.state = (List<String>) state;
-            } catch (Exception e) {
-                throw new MegawidgetStateException(identifier, getSpecifier()
-                        .getType(), state, "must be list of choices");
-            }
-        } else {
-            try {
-                this.state = new ArrayList<String>((Collection<String>) state);
+                this.state.addAll((Collection<? extends String>) state);
             } catch (Exception e) {
                 throw new MegawidgetStateException(identifier, getSpecifier()
                         .getType(), state, "must be list of choices");
             }
         }
+        if (getChoiceIdentifiers().containsAll(this.state) == false) {
+            this.state.clear();
+            throw new MegawidgetStateException(identifier, getSpecifier()
+                    .getType(), state, "must be subset of ["
+                    + getChoicesAsString() + "]");
+        }
 
-        // Notify the widget itself that the state has
-        // changed.
-        megawidgetStateChanged(this.state);
+        // Synchronize the widgets to the new state.
+        synchronizeWidgetsToState();
     }
 
     /**
      * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by
-     * <code>getStateDescription() only after
-     * the latter has ensured that the supplied state
-     * identifier is valid.
+     * identifier. This method is called by <code>getStateDescription() only
+     * after the latter has ensured that the supplied state identifier is valid.
      * 
      * @param identifier
      *            Identifier to which the state would be assigned.
@@ -169,12 +160,4 @@ public abstract class MultipleChoicesMegawidget extends StatefulMegawidget {
             }
         }
     }
-
-    /**
-     * Receive notification that the megawidget's state has changed.
-     * 
-     * @param state
-     *            New state.
-     */
-    protected abstract void megawidgetStateChanged(List<String> state);
 }

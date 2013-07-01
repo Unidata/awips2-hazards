@@ -11,8 +11,11 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.TimeDeltaSpecifier.Unit;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -35,6 +38,7 @@ import org.eclipse.swt.widgets.Spinner;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -42,7 +46,20 @@ import org.eclipse.swt.widgets.Spinner;
  * @version 1.0
  * @see TimeDeltaSpecifier
  */
-public class TimeDeltaMegawidget extends StatefulMegawidget {
+public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<String>(
+                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE);
+        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+    };
 
     // Private Variables
 
@@ -57,7 +74,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
     private final Spinner spinner;
 
     /**
-     * Units combo box component associated with this megawidget, if any.
+     * } Units combo box component associated with this megawidget, if any.
      */
     private final Combo combo;
 
@@ -70,11 +87,6 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
      * Currently selected unit.
      */
     private Unit unit = null;
-
-    /**
-     * Current value in milliseconds.
-     */
-    private Long state = null;
 
     // Protected Constructors
 
@@ -131,11 +143,11 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
         // Create the spinner.
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
         spinner.setTextLimit(Math.max(
-                getDigitsForValue(specifier.getMinimumValue(), specifier
-                        .getUnits().get(0)),
-                getDigitsForValue(specifier.getMaximumValue(), specifier
-                        .getUnits().get(0))));
-        setSpinnerParameters(spinner, specifier.getStartingUnit());
+                getDigitsForValue(getMinimumValue(), specifier.getUnits()
+                        .get(0)),
+                getDigitsForValue(getMaximumValue(), specifier.getUnits()
+                        .get(0))));
+        setSpinnerParameters(specifier.getCurrentUnit());
         spinner.setEnabled(specifier.isEnabled());
 
         // Place the spinner in the panel's grid.
@@ -156,7 +168,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
             int selectedIndex = -1;
             for (int j = 0; j < units.size(); j++) {
                 unitIdentifiers[j] = units.get(j).getIdentifier();
-                if (units.get(j) == specifier.getStartingUnit()) {
+                if (units.get(j) == specifier.getCurrentUnit()) {
                     selectedIndex = j;
                 }
             }
@@ -172,8 +184,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
             // Create the label.
             combo = null;
             unitLabel = new Label(panel, SWT.NONE);
-            unitLabel
-                    .setText(" " + specifier.getStartingUnit().getIdentifier());
+            unitLabel.setText(" " + specifier.getCurrentUnit().getIdentifier());
             unitLabel.setEnabled(specifier.isEnabled());
 
             // Place the combo box in the panel's grid.
@@ -182,7 +193,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
         }
 
         // Remember the starting unit.
-        this.unit = specifier.getStartingUnit();
+        this.unit = specifier.getCurrentUnit();
 
         // Bind the spinner selection event to trigger a
         // change in the state.
@@ -212,26 +223,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
             combo.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    TimeDeltaMegawidget.this.unit = Unit
-                            .get(TimeDeltaMegawidget.this.combo
-                                    .getItem(TimeDeltaMegawidget.this.combo
-                                            .getSelectionIndex()));
-                    setSpinnerParameters(TimeDeltaMegawidget.this.spinner,
-                            TimeDeltaMegawidget.this.unit);
-                    if (state == null) {
-                        TimeDeltaSpecifier specifier = getSpecifier();
-                        state = Long.valueOf(specifier.getStateUnit()
-                                .convertUnitToMilliseconds(
-                                        specifier.getMinimumValue()));
-                    }
-                    int spinnerValue = TimeDeltaMegawidget.this.unit
-                            .convertMillisecondsToUnit(state);
-                    state = TimeDeltaMegawidget.this.unit
-                            .convertUnitToMilliseconds(spinnerValue);
-                    TimeDeltaMegawidget.this.spinner
-                            .setSelection(TimeDeltaMegawidget.this.unit
-                                    .convertMillisecondsToUnit(state));
-                    notifyListener();
+                    unitChanged(true);
                 }
             });
         }
@@ -243,6 +235,56 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
     }
 
     // Public Methods
+
+    /**
+     * Get the mutable property names for this megawidget.
+     * 
+     * @return Set of names for all mutable properties for this megawidget.
+     */
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    /**
+     * Get the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @return Mutable property value.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property.
+     */
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
+            return getCurrentUnit();
+        } else {
+            return super.getMutableProperty(name);
+        }
+    }
+
+    /**
+     * Set the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @param value
+     *            New mutable property value to be used.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property, or if the value
+     *             is invalid.
+     */
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
+            setCurrentUnit(value);
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
 
     /**
      * Determine the left decoration width for this megawidget, if the widget
@@ -308,7 +350,77 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
         }
     }
 
+    /**
+     * Get the current unit.
+     * 
+     * @return Identifier of the current unit.
+     */
+    public final String getCurrentUnit() {
+        return unit.getIdentifier();
+    }
+
+    /**
+     * Set the current unit.
+     * 
+     * @param value
+     *            New current unit, specified as a string holding the identifier
+     *            of the unit. The unit so identified must be one of the unit
+     *            choices available to this megawidget.
+     * @throws MegawidgetPropertyException
+     *             If the object does not identify a unit, or if said unit is
+     *             not one of the choices available to this megawidget.
+     */
+    public final void setCurrentUnit(Object value)
+            throws MegawidgetPropertyException {
+
+        // Ensure a unit is specified, and that said unit is one of the valid
+        // choices for this megawidget.
+        Unit newUnit = null;
+        if (value instanceof String) {
+            newUnit = Unit.get((String) value);
+        }
+        TimeDeltaSpecifier specifier = getSpecifier();
+        List<Unit> units = specifier.getUnits();
+        if ((newUnit == null) || (units.contains(newUnit) == false)) {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (Unit aUnit : units) {
+                if (stringBuilder.length() > 0) {
+                    stringBuilder.append(", ");
+                }
+                stringBuilder.append(aUnit.getIdentifier());
+            }
+            throw new MegawidgetPropertyException(specifier.getIdentifier(),
+                    TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE,
+                    specifier.getType(), value, "must be one of ["
+                            + stringBuilder + "]");
+        }
+
+        // Set the unit to the new unit.
+        if (newUnit != unit) {
+            combo.select(units.indexOf(newUnit));
+            unitChanged(false);
+        }
+    }
+
     // Protected Methods
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current boundaries.
+     */
+    @Override
+    protected final void synchronizeWidgetsToBounds() {
+        setSpinnerParameters(unit);
+    }
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current state.
+     */
+    @Override
+    protected final void synchronizeWidgetsToState() {
+        spinner.setSelection(unit.convertMillisecondsToUnit(state));
+    }
 
     /**
      * Change the component widgets to ensure their state matches that of the
@@ -390,18 +502,21 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
+
+        // Ensure that the specified state is a valid long value.
         TimeDeltaSpecifier specifier = getSpecifier();
-        int value = getStateIntegerValueFromObject(state, identifier,
-                specifier.getMinimumValue());
-        if ((value < specifier.getMinimumValue())
-                || (value > specifier.getMaximumValue())) {
+        long value = getStateLongValueFromObject(state, identifier,
+                getMinimumValue());
+        if ((value < getMinimumValue()) || (value > getMaximumValue())) {
             throw new MegawidgetStateException(identifier, specifier.getType(),
-                    value, "out of bounds (minimum = "
-                            + specifier.getMinimumValue() + ", maximum = "
-                            + specifier.getMaximumValue() + " (inclusive))");
+                    value, "out of bounds (minimum = " + getMinimumValue()
+                            + ", maximum = " + getMaximumValue()
+                            + " (inclusive))");
         }
         this.state = specifier.getStateUnit().convertUnitToMilliseconds(value);
-        spinner.setSelection(unit.convertMillisecondsToUnit(this.state));
+
+        // Synchronize the widgets to the new state.
+        synchronizeWidgetsToState();
     }
 
     /**
@@ -410,6 +525,13 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
      * after the latter has ensured that the supplied state identifier is valid.
      * 
      * @param identifier
+     *            int minValue = getMinimumValue(); int maxValue =
+     *            getMaximumValue(); spinner.setMinimum(minValue);
+     *            spinner.setMaximum(maxValue); if (scale != null) {
+     *            scale.setMinimum(minValue); scale.setMaximum(maxValue); }
+     *            spinner.setTextLimit(Math.max(getDigitsForValue(minValue),
+     *            getDigitsForValue(maxValue)));
+     * 
      *            Identifier to which the state would be assigned.
      *            Implementations may assume that the state identifier supplied
      *            by this parameter is valid for this megawidget.
@@ -442,7 +564,7 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
      * @return Number of characters required to show the specified number using
      *         the specified unit in base 10.
      */
-    private int getDigitsForValue(int value, Unit unit) {
+    private int getDigitsForValue(long value, Unit unit) {
         return ((int) Math
                 .floor(Math.log10(unit
                         .convertMillisecondsToUnit(((TimeDeltaSpecifier) getSpecifier())
@@ -452,22 +574,40 @@ public class TimeDeltaMegawidget extends StatefulMegawidget {
     }
 
     /**
-     * Set the value bounds and the page increment for the specified spinner
-     * using the specified unit.
+     * Respond to the current unit having changed within the unit combo box.
      * 
-     * @param spinner
-     *            Spinner.
+     * @param notify
+     *            Flag indicating whether or not notification should occur.
+     */
+    private void unitChanged(boolean notify) {
+        unit = Unit.get(combo.getItem(combo.getSelectionIndex()));
+        setSpinnerParameters(unit);
+        if (state == null) {
+            TimeDeltaSpecifier specifier = getSpecifier();
+            state = Long.valueOf(specifier.getStateUnit()
+                    .convertUnitToMilliseconds(getMinimumValue()));
+        }
+        int spinnerValue = unit.convertMillisecondsToUnit(state);
+        state = unit.convertUnitToMilliseconds(spinnerValue);
+        spinner.setSelection(unit.convertMillisecondsToUnit(state));
+        if (notify) {
+            notifyListener();
+        }
+    }
+
+    /**
+     * Set the value bounds and the page increment for the pinner using the
+     * specified unit.
+     * 
      * @param unit
      *            Unit.
      */
-    private void setSpinnerParameters(Spinner spinner, Unit unit) {
+    private void setSpinnerParameters(Unit unit) {
         TimeDeltaSpecifier specifier = (TimeDeltaSpecifier) getSpecifier();
         spinner.setMinimum(unit.convertMillisecondsToUnit(specifier
-                .getStateUnit().convertUnitToMilliseconds(
-                        specifier.getMinimumValue())));
+                .getStateUnit().convertUnitToMilliseconds(getMinimumValue())));
         spinner.setMaximum(unit.convertMillisecondsToUnit(specifier
-                .getStateUnit().convertUnitToMilliseconds(
-                        specifier.getMaximumValue())));
+                .getStateUnit().convertUnitToMilliseconds(getMaximumValue())));
         spinner.setPageIncrement(unit.getPageIncrement());
     }
 }

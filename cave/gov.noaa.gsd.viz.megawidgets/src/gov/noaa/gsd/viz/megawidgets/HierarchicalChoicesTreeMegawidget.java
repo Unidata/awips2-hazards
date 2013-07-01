@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.swt.widgets.Widget;
 
 /**
  * Choices tree megawidget, allowing the selection of zero or more choices in a
@@ -36,6 +38,7 @@ import org.eclipse.swt.widgets.TreeItem;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -45,6 +48,22 @@ import org.eclipse.swt.widgets.TreeItem;
  */
 public class HierarchicalChoicesTreeMegawidget extends
         HierarchicalChoicesMegawidget {
+
+    // Private Classes
+
+    /**
+     * Nodes map, a map in which the key is a choice identifier and the value is
+     * either <code>null</code>, meaning that there are no child nodes
+     * associated with the key, or a node map holding child choice identifier
+     * mappings.
+     */
+    private class NodesMap extends HashMap<String, NodesMap> {
+
+        /**
+         * Serial version UID.
+         */
+        private static final long serialVersionUID = 1L;
+    };
 
     // Private Variables
 
@@ -67,6 +86,40 @@ public class HierarchicalChoicesTreeMegawidget extends
      * Deselect all items button, if any.
      */
     private final Button noneButton;
+
+    /**
+     * Last position of the vertical scrollbar. This is used whenever the
+     * choices are being changed via <code>setChoices()</code> or one of the
+     * mutable property manipulation methods, in order to keep a similar visual
+     * state to what came before.
+     */
+    private int scrollPosition = 0;
+
+    /**
+     * List of zero or more identifiers indicating what node in the hierarchy,
+     * if any, was last selected. If the list is not empty, the identifiers are
+     * specified in order from topmost branch to leaf, providing the full
+     * hierarchy of the identifiers. Thus, if the last selected node had the
+     * identifier "bar" and was the child of a parent node "foo", the list would
+     * contain two elements, "foo" and "bar", respectively. This list is used
+     * whenever the choices are being changed via <code>setChoices()</code> or
+     * one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
+     */
+    private final List<String> selectedNodeIdentifiers = new ArrayList<String>();
+
+    /**
+     * Map of choice identifiers that were last found to be expanded to
+     * sub-maps, with each of the latter being in turn a mapping of child choice
+     * identifiers that were found to be expanded to sub-sub-maps, and so on.
+     * The value in each mapping may also be <code>null</code>, which simply
+     * means that while the parent choice identifier was found to be expanded,
+     * none of its children were. This map is used whenever the choices are
+     * being changed via <code>setChoices()</code> or one of the mutable
+     * property manipulation methods, in order to keep a similar visual state to
+     * what came before.
+     */
+    private final NodesMap expandedNodes = new NodesMap();
 
     // Protected Constructors
 
@@ -123,8 +176,8 @@ public class HierarchicalChoicesTreeMegawidget extends
         gridData.heightHint = (specifier.getNumVisibleLines() * tree
                 .getItemHeight()) + 7;
         tree.setLayoutData(gridData);
-        for (Object choice : specifier.getChoices()) {
-            convertStateToTree(tree, choice);
+        for (Object choice : choices) {
+            convertStateToTree(tree, choice, null);
         }
 
         // Add the Select All and Select None buttons, if appropriate.
@@ -142,9 +195,8 @@ public class HierarchicalChoicesTreeMegawidget extends
             allButton.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    HierarchicalChoicesTreeSpecifier specifier = getSpecifier();
                     state.clear();
-                    state.addAll(specifier.choicesList);
+                    state.addAll(choices);
                     setAllItemsCheckedState(
                             HierarchicalChoicesTreeMegawidget.this.tree
                                     .getItems(), true);
@@ -255,6 +307,86 @@ public class HierarchicalChoicesTreeMegawidget extends
     }
 
     /**
+     * Prepare for the choices list to be changed.
+     */
+    @Override
+    protected final void prepareForChoicesChange() {
+
+        // Remember the scrollbar position so that it can be approximately
+        // restored.
+        scrollPosition = tree.getVerticalBar().getSelection();
+
+        // Remember the identifiers in hierarchical order of the selected
+        // node, if any.
+        TreeItem[] selectedItems = tree.getSelection();
+        if (selectedItems.length > 0) {
+            for (TreeItem item = selectedItems[0]; item != null; item = item
+                    .getParentItem()) {
+                selectedNodeIdentifiers.add((String) item.getData());
+            }
+            Collections.reverse(selectedNodeIdentifiers);
+        }
+
+        // Determine what nodes from the soon-to-be-removed hierarchy are
+        // expanded, so that any nodes with the same identifiers at the
+        // same levels in the new hierarchy may be expanded at creation
+        // time.
+        recordExpandedNodes(tree.getItems(), expandedNodes);
+    }
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current choices.
+     */
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
+
+        // Remove all the previous tree items.
+        tree.removeAll();
+
+        // Create the new tree items.
+        for (Object choice : choices) {
+            convertStateToTree(tree, choice, expandedNodes);
+        }
+
+        // Select the appropriate node, if one that has the same place in
+        // the old hierarchy is found.
+        TreeItem itemToSelect = null;
+        for (String identifier : selectedNodeIdentifiers) {
+            TreeItem[] items = (itemToSelect == null ? tree.getItems()
+                    : itemToSelect.getItems());
+            if (items == null) {
+                break;
+            }
+            boolean foundMatch = false;
+            for (TreeItem item : items) {
+                if (item.getData().equals(identifier)) {
+                    itemToSelect = item;
+                    foundMatch = true;
+                    break;
+                }
+            }
+            if (foundMatch == false) {
+                break;
+            }
+        }
+        if (itemToSelect != null) {
+            tree.setSelection(itemToSelect);
+        }
+
+        // Clear the expanded nodes map and selected node list, as they
+        // are no longer needed.
+        expandedNodes.clear();
+        selectedNodeIdentifiers.clear();
+
+        // Ensure that the new tree items are synced with the old state.
+        synchronizeWidgetsToState();
+
+        // Set the scrollbar position to be similar to what it was before.
+        tree.getVerticalBar().setSelection(scrollPosition);
+    }
+
+    /**
      * Synchronize the user-facing widgets making up this megawidget to the
      * current state.
      */
@@ -283,7 +415,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      *            item (if of type <code>TreeItem</code>) to have the selection
      *            state of all its items cleared.
      */
-    private void clearSelection(Object tree) {
+    private void clearSelection(Widget tree) {
 
         // Get the children of the tree or tree item.
         TreeItem[] items = null;
@@ -322,7 +454,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      *            latter. If <code>null</code>, all leaves in <code>tree</code>
      *            are to be selected.
      */
-    private void setLeafSelectionToMatchState(Object tree, List<?> state) {
+    private void setLeafSelectionToMatchState(Widget tree, List<?> state) {
 
         // Get the children of the tree or tree item.
         TreeItem[] items = null;
@@ -378,49 +510,73 @@ public class HierarchicalChoicesTreeMegawidget extends
     }
 
     /**
-     * Turn the specified trees into a single hierarchy of tree items. If there
-     * are two trees, combine them, using the second one's choices as long
-     * versions of the first one's choices.
+     * Turn the specified state hierarchy into a tree item hierarchy.
      * 
      * @param parent
      *            Parent tree (if the parameter is of type <code>Tree</code>) or
-     *            tree item (if the parameter is of type <code>
-     *                TreeItem</code).
+     *            tree item (if the parameter is of type <code>TreeItem</code).
      * @param tree
      *            State hierarchy to be converted.
+     * @param expandedMap
+     *            Map with key-value pairs for all nodes that were expanded at
+     *            this level of the previous hierarchy, with each key being the
+     *            identifier of an old node that was expanded, and each value
+     *            being a sub-map for its children, or <code>null</code> if none
+     *            of the old node's children were expanded.
      * @return Tree item hierarchy resulting from the conversion.
      */
-    private TreeItem convertStateToTree(Object parent, Object tree) {
+    private TreeItem convertStateToTree(Widget parent, Object tree,
+            NodesMap expandedMap) {
+
+        // If the node is a string, just create a leaf; otherwise, create a node
+        // that may be a leaf or a branch, depending upon whether or not it has
+        // children.
         if (tree instanceof String) {
             return createTreeItem(parent, (String) tree, null);
         } else {
+
+            // Get the name and/or identifier of the node.
             Map<?, ?> dict = (Map<?, ?>) tree;
             String name = (String) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_NAME);
             String identifier = (String) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_IDENTIFIER);
+
+            // Create the tree item for the node.
             TreeItem item = createTreeItem(parent, name, identifier);
 
+            // If the newly-created node should have children, create them.
             List<?> children = (List<?>) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN);
             if (children != null) {
+
+                // Determine whether or not an old node at this level in the
+                // old hierarchy with the same identifier was expanded, and
+                // if so, expand the new node after creating the node's
+                // children.
+                String key = (identifier == null ? name : identifier);
+                boolean expanded = (expandedMap == null ? false : expandedMap
+                        .containsKey(key));
+                NodesMap childExpandedMap = (expanded ? expandedMap.get(key)
+                        : null);
                 for (Object child : children) {
-                    convertStateToTree(item, child);
+                    convertStateToTree(item, child, childExpandedMap);
                 }
+                item.setExpanded(expanded);
             }
             return item;
         }
     }
 
     /**
-     * Turn the specified tree into a state hierarchy.
+     * Turn the specified tree or tree item into a state hierarchy.
      * 
      * @param tree
-     *            Tree to be converted; must be a <code>
-     *              Tree</code> or a <code>TreeItem</code>.
+     *            Tree to be converted; must be a <code>Tree</code> or a
+     *            <code>TreeItem</code>.
      * @return State hierarchy resulting from the conversion.
      */
-    private List<Object> convertTreeToState(Object tree) {
+    private List<Object> convertTreeToState(Widget tree) {
 
         // Get the child items from this tree or tree item.
         TreeItem[] items = null;
@@ -468,7 +624,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      *            which case the name will be used as the identifier.
      * @return Created tree item.
      */
-    private TreeItem createTreeItem(Object parent, String name,
+    private TreeItem createTreeItem(Widget parent, String name,
             String identifier) {
         TreeItem item = (parent instanceof Tree ? new TreeItem((Tree) parent,
                 SWT.NONE) : new TreeItem((TreeItem) parent, SWT.NONE));
@@ -486,7 +642,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      *            states to reflect the states of the leaves; must be a
      *            <code>Tree</code> or a <code>TreeItem</code>.
      */
-    private void updateNonLeafStates(Object tree) {
+    private void updateNonLeafStates(Widget tree) {
 
         // Get the child items from this tree or tree
         // item.
@@ -608,5 +764,32 @@ public class HierarchicalChoicesTreeMegawidget extends
             childItem.setGrayed(false);
             updateDescendantStates(childItem);
         }
+    }
+
+    /**
+     * Record any nodes (items) that are currently expanded, returning a nodes
+     * map of any that are.
+     * 
+     * @param items
+     *            Items to be checked to see if they are expanded.
+     * @param map
+     *            Map in which to place any expanded items, or <code>null
+     *            </code> if the map should be created only if expanded nodes
+     *            are found.
+     * @return Provided map of expanded nodes, or if no such map was provided,
+     *         then a newly created map containing expanded nodes, or
+     *         <code>null</code> if no expanded nodes were found.
+     */
+    private NodesMap recordExpandedNodes(TreeItem[] items, NodesMap map) {
+        for (TreeItem item : items) {
+            if (item.getExpanded()) {
+                if (map == null) {
+                    map = new NodesMap();
+                }
+                NodesMap childMap = recordExpandedNodes(item.getItems(), null);
+                map.put((String) item.getData(), childMap);
+            }
+        }
+        return map;
     }
 }

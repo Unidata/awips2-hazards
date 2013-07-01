@@ -20,19 +20,14 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Time delta specifier, an extension of the <code>
- * IntegerMegawidgetSpecifier</code>. A megawidget created by this specifier
- * expresses its state as a standard integer (not a long integer) in
- * milliseconds, or if given a parameter value keyed to the <code>
- * MEGAWIDGET_STATE_UNIT</code> key, in the specified unit. The <code>
- * MEGAWIDGET_MIN_VALUE</code> and <code>MEGAWIDGET_MAX_VALUE</code> are
- * expressed in the state unit, so if for example the <code>
- * MEGAWIDGET_STATE_UNIT</code> is given as "minutes", then the minimum and
- * maximum values are treated as minutes.
- * <p>
- * Note that instances of this class ignore the any parameter value keyed to the
- * <code>MEGAWIDGET_INCREMENT_DELTA</code> or <code>MEGAWIDGET_SHOW_SCALE</code>
- * keys.
+ * Time delta specifier, used to create a spinner-based megawidget that allows
+ * manipulation of time deltas. megawidget created by this specifier expresses
+ * its state as a standard integer (not a long integer) in milliseconds, or if
+ * given a parameter value keyed to the <code>MEGAWIDGET_STATE_UNIT</code> key,
+ * in the specified unit. The <code>MEGAWIDGET_MIN_VALUE</code> and <code>
+ * MEGAWIDGET_MAX_VALUE</code> are expressed in the state unit, so if for
+ * example the <code>MEGAWIDGET_STATE_UNIT</code> is given as "minutes", then
+ * the minimum and maximum values are treated as minutes.
  * 
  * <pre>
  * 
@@ -40,6 +35,7 @@ import java.util.concurrent.TimeUnit;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -47,7 +43,7 @@ import java.util.concurrent.TimeUnit;
  * @version 1.0
  * @see TimeDeltaMegawidget
  */
-public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
+public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
 
     // Public Static Constants
 
@@ -57,34 +53,33 @@ public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
      * "seconds", "minutes", "hours", and "days". These indicate which units may
      * be used within the megawidget's GUI to specify the state value; if, for
      * example, the user chooses to use "minutes", then this label will be
-     * displayed next to the integer spinner, and the number entered will be
-     * multiplied by 60000 in order to yield the state value in milliseconds.
+     * displayed next to the spinner, and the number entered will be multiplied
+     * by 60000 in order to yield the state value in milliseconds.
      */
     public static final String MEGAWIDGET_UNIT_CHOICES = "unitChoices";
 
     /**
-     * Starting value unit parameter name; a megawidget may include a string
+     * Current value unit parameter name; a megawidget may include a string
      * associated with this name. The string may be any string specified in the
      * array associated with <code>MEGAWIDGET_UNIT_CHOICES</code>. If not
      * specified, it is assumed to be the smallest unit provided in said array.
      */
-    public static final String MEGAWIDGET_STARTING_UNIT_CHOICE = "startingUnit";
+    public static final String MEGAWIDGET_CURRENT_UNIT_CHOICE = "currentUnit";
 
     /**
      * Megawidget state unit parameter name; a megawidget may include one of the
      * following strings associated with this name: "ms", "seconds", "minutes",
      * "hours", or "days". The specified unit is the one in which the state will
-     * be specified when queried via a created megawidget's
-     * <code>getState()</code> or passed via callback to a state change
-     * listener. If not specified, it is assumed to be "ms", meaning the state
-     * value will always be given in milliseconds. If the unit is anything other
-     * than "ms", then any remainders will be dropped when the state value is
-     * converted to the specified unit; for example, if the state is 1500 and
-     * the state unit is "seconds", the provided state will be 1. Note that the
-     * time slice represented by the state unit must be less than or equal to
-     * the time slice represented by the smallest unit provided in the
-     * <code>MEGAWIDGET_UNIT_CHOICES
-     * </code> list.
+     * be specified when queried via a created megawidget's <code>getState()
+     * </code> or passed via callback to a state change listener. If not
+     * specified, it is assumed to be "ms", meaning the state value will always
+     * be given in milliseconds. If the unit is anything other than "ms", then
+     * any remainders will be dropped when the state value is converted to the
+     * specified unit; for example, if the state is 1500 and the state unit is
+     * "seconds", the provided state will be 1. Note that the time slice
+     * represented by the state unit must be less than or equal to the time
+     * slice represented by the smallest unit provided in the <code>
+     * MEGAWIDGET_UNIT_CHOICES</code> list.
      */
     public static final String MEGAWIDGET_STATE_UNIT = "valueUnit";
 
@@ -259,7 +254,7 @@ public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
     /**
      * Unit to be used when megawidget is first created.
      */
-    private final Unit startingUnit;
+    private final Unit currentUnit;
 
     /**
      * Unit to be used for the state value.
@@ -280,7 +275,7 @@ public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
      */
     public TimeDeltaSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, Long.class, 0L, null);
 
         // Ensure that the possible units are present as an
         // array of strings.
@@ -311,30 +306,30 @@ public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
         Collections.sort(units);
         this.units = Collections.unmodifiableList(units);
 
-        // Ensure that if a starting unit choice was given,
+        // Ensure that if a current unit choice was given,
         // it is valid.
         String value = null;
         try {
-            value = (String) parameters.get(MEGAWIDGET_STARTING_UNIT_CHOICE);
+            value = (String) parameters.get(MEGAWIDGET_CURRENT_UNIT_CHOICE);
         } catch (Exception e) {
             throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_STARTING_UNIT_CHOICE,
-                    parameters.get(MEGAWIDGET_STARTING_UNIT_CHOICE),
+                    getType(), MEGAWIDGET_CURRENT_UNIT_CHOICE,
+                    parameters.get(MEGAWIDGET_CURRENT_UNIT_CHOICE),
                     "must be unit choice");
         }
         if (value == null) {
-            startingUnit = units.get(0);
+            currentUnit = units.get(0);
         } else {
-            startingUnit = Unit.get(value);
-            if (startingUnit == null) {
+            currentUnit = Unit.get(value);
+            if (currentUnit == null) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
-                        getType(), MEGAWIDGET_STARTING_UNIT_CHOICE, value,
+                        getType(), MEGAWIDGET_CURRENT_UNIT_CHOICE, value,
                         "invalid unit choice");
             }
-            if (units.contains(startingUnit) == false) {
+            if (units.contains(currentUnit) == false) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
-                        getType(), MEGAWIDGET_STARTING_UNIT_CHOICE, value,
-                        "starting unit choice must be found within "
+                        getType(), MEGAWIDGET_CURRENT_UNIT_CHOICE, value,
+                        "current unit choice must be found within "
                                 + MEGAWIDGET_UNIT_CHOICES + " list");
             }
         }
@@ -386,12 +381,12 @@ public class TimeDeltaSpecifier extends IntegerSpinnerSpecifier {
     }
 
     /**
-     * Get the starting unit.
+     * Get the current unit.
      * 
-     * @return Starting unit.
+     * @return current unit.
      */
-    public final Unit getStartingUnit() {
-        return startingUnit;
+    public final Unit getCurrentUnit() {
+        return currentUnit;
     }
 
     /**

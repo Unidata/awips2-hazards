@@ -28,6 +28,7 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -35,7 +36,8 @@ import org.eclipse.swt.widgets.Composite;
  * @version 1.0
  * @see ContainerMegawidgetSpecifier
  */
-public class ContainerMegawidget extends Megawidget implements IContainer {
+public abstract class ContainerMegawidget extends Megawidget implements
+        IContainer {
 
     // Protected Variables
 
@@ -57,7 +59,7 @@ public class ContainerMegawidget extends Megawidget implements IContainer {
      * @param specifier
      *            Specifier.
      */
-    protected ContainerMegawidget(MegawidgetSpecifier specifier) {
+    protected ContainerMegawidget(ContainerMegawidgetSpecifier specifier) {
         super(specifier);
     }
 
@@ -66,12 +68,11 @@ public class ContainerMegawidget extends Megawidget implements IContainer {
     /**
      * Get the list of child megawidgets of this megawidget.
      * 
-     * @return List of child megawidgets of this megawidget. The list must not
-     *         be modified by the caller.
+     * @return List of child megawidgets of this megawidget.
      */
     @Override
     public final List<Megawidget> getChildren() {
-        return children;
+        return new ArrayList<Megawidget>(children);
     }
 
     // Protected Methods

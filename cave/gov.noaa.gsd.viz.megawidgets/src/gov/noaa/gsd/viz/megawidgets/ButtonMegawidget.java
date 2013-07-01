@@ -27,6 +27,7 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -71,16 +72,14 @@ public class ButtonMegawidget extends NotifierMegawidget {
         gridData.verticalIndent = specifier.getSpacing();
         button.setLayoutData(gridData);
 
-        // If the button should notify a listener when
-        // it is invoked, set up a listener to do so.
-        if (specifier.isToNotify()) {
-            button.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    notifyListener();
-                }
-            });
-        }
+        // Set up a selection listener that notifies a listener when
+        // the button is invoked.
+        button.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                notifyListener();
+            }
+        });
 
         // Disable the button if not editable.
         if (isEditable() == false) {

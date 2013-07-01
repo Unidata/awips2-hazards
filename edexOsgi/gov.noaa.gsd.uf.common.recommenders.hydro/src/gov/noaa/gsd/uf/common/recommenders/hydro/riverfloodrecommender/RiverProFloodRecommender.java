@@ -32,6 +32,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * June 2012               Bryon.Lawrence    Initial creation
+ * Jun 20, 2013   1277     Chris.Golden      Fixed bug that could cause
+ *                                           exception due to Float being found
+ *                                           where Integer was expected.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -555,7 +558,7 @@ public class RiverProFloodRecommender {
         /*
          * Check the runData for a forecast confidence percentage.
          */
-        Integer percentageNumber = (Integer) dialogInputMap
+        Number percentageNumber = (Number) dialogInputMap
                 .get("forecastConfidencePercentage");
 
         if (percentageNumber != null) {

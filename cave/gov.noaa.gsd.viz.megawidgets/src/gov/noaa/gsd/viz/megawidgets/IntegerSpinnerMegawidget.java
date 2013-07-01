@@ -9,7 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -30,6 +33,7 @@ import org.eclipse.swt.widgets.Spinner;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -37,7 +41,20 @@ import org.eclipse.swt.widgets.Spinner;
  * @version 1.0
  * @see IntegerSpinnerSpecifier
  */
-public class IntegerSpinnerMegawidget extends StatefulMegawidget {
+public class IntegerSpinnerMegawidget extends BoundedValueMegawidget<Integer> {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<String>(
+                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA);
+        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+    };
 
     // Protected Variables
 
@@ -55,11 +72,6 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
      * Scale component associated with this megawidget, if any.
      */
     private final Scale scale;
-
-    /**
-     * Current value.
-     */
-    private Integer state;
 
     /**
      * Flag indicating whether or not a programmatic change to component values
@@ -124,9 +136,9 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
         spinner.setTextLimit(Math.max(
                 getDigitsForValue(specifier.getMinimumValue()),
                 getDigitsForValue(specifier.getMaximumValue())));
-        spinner.setMinimum(specifier.getMinimumValue());
-        spinner.setMaximum(specifier.getMaximumValue());
-        spinner.setPageIncrement(specifier.getIncrementDelta());
+        spinner.setMinimum(getMinimumValue());
+        spinner.setMaximum(getMaximumValue());
+        spinner.setPageIncrement(getIncrementDelta());
         spinner.setEnabled(specifier.isEnabled());
 
         // Place the spinner in the parent's grid.
@@ -139,9 +151,9 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
 
             // Create the scale.
             scale = new Scale(panel, SWT.HORIZONTAL);
-            scale.setMinimum(specifier.getMinimumValue());
-            scale.setMaximum(specifier.getMaximumValue());
-            scale.setPageIncrement(specifier.getIncrementDelta());
+            scale.setMinimum(getMinimumValue());
+            scale.setMaximum(getMaximumValue());
+            scale.setPageIncrement(getIncrementDelta());
             scale.setEnabled(specifier.isEnabled());
 
             // Place the spinner in the parent's grid.
@@ -237,6 +249,54 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
     // Public Methods
 
     /**
+     * Get the mutable property names for this megawidget.
+     * 
+     * @return Set of names for all mutable properties for this megawidget.
+     */
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    /**
+     * Get the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @return Mutable property value.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property.
+     */
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA)) {
+            return getIncrementDelta();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    /**
+     * Set the current mutable property value for the specified name.
+     * 
+     * @param name
+     *            Name of the mutable property value to be fetched.
+     * @param value
+     *            New mutable property value to be used.
+     * @throws MegawidgetPropertyException
+     *             If the name specifies a nonexistent property, or if the value
+     *             is invalid.
+     */
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA)) {
+            setIncrementDelta(value);
+        }
+        super.setMutableProperty(name, value);
+    }
+
+    /**
      * Determine the left decoration width for this megawidget, if the widget
      * has a decoration (label, etc.) to the left of its main component
      * widget(s). This is used to query all sibling megawidgets to determine
@@ -266,7 +326,70 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
         }
     }
 
+    /**
+     * Get the increment delta.
+     * 
+     * @return Increment delta.
+     */
+    public final int getIncrementDelta() {
+        return spinner.getPageIncrement();
+    }
+
+    /**
+     * Set the increment delta.
+     * 
+     * @param value
+     *            New increment delta; must be a positive integer.
+     * @throws MegawidgetPropertyException
+     *             If the object is not a positive integer.
+     */
+    public final void setIncrementDelta(Object value)
+            throws MegawidgetPropertyException {
+        int incrementDelta = getPropertyIntegerValueFromObject(value,
+                IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA, null);
+        if (incrementDelta < 1) {
+            IntegerSpinnerSpecifier specifier = getSpecifier();
+            throw new MegawidgetPropertyException(specifier.getIdentifier(),
+                    IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA,
+                    specifier.getType(), value, "must be positive integer");
+        }
+        spinner.setPageIncrement(incrementDelta);
+        if (scale != null) {
+            scale.setPageIncrement(incrementDelta);
+        }
+    }
+
     // Protected Methods
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current boundaries.
+     */
+    @Override
+    protected final void synchronizeWidgetsToBounds() {
+        int minValue = getMinimumValue();
+        int maxValue = getMaximumValue();
+        spinner.setMinimum(minValue);
+        spinner.setMaximum(maxValue);
+        if (scale != null) {
+            scale.setMinimum(minValue);
+            scale.setMaximum(maxValue);
+        }
+        spinner.setTextLimit(Math.max(getDigitsForValue(minValue),
+                getDigitsForValue(maxValue)));
+    }
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current state.
+     */
+    @Override
+    protected final void synchronizeWidgetsToState() {
+        spinner.setSelection(state);
+        if (scale != null) {
+            scale.setSelection(state);
+        }
+    }
 
     /**
      * Change the component widgets to ensure their state matches that of the
@@ -299,84 +422,6 @@ public class IntegerSpinnerMegawidget extends StatefulMegawidget {
     protected final void doSetEditable(boolean editable) {
         spinner.getParent().setEnabled(editable);
         spinner.setBackground(getBackgroundColor(editable, spinner, label));
-    }
-
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
-    @Override
-    protected final Object doGetState(String identifier) {
-        return state;
-    }
-
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
-    @Override
-    protected final void doSetState(String identifier, Object state)
-            throws MegawidgetStateException {
-        IntegerSpinnerSpecifier specifier = getSpecifier();
-        int value = getStateIntegerValueFromObject(state, identifier,
-                specifier.getMinimumValue());
-        if ((value < specifier.getMinimumValue())
-                || (value > specifier.getMaximumValue())) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    value, "out of bounds (minimum = "
-                            + specifier.getMinimumValue() + ", maximum = "
-                            + specifier.getMaximumValue() + " (inclusive))");
-        }
-        this.state = value;
-        spinner.setSelection(value);
-        if (scale != null) {
-            scale.setSelection(value);
-        }
-    }
-
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by
-     * <code>getStateDescription() only after
-     * the latter has ensured that the supplied state
-     * identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
-    @Override
-    protected final String doGetStateDescription(String identifier, Object state)
-            throws MegawidgetStateException {
-        return (state == null ? null : state.toString());
     }
 
     // Private Methods

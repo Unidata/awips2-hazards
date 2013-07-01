@@ -53,13 +53,23 @@ import org.eclipse.swt.widgets.Widget;
  * manipulation of the state element takes a string as its megawidget state,
  * these methods would be overridden to perform these conversions in both
  * directions.
+ * <p>
+ * When constructed, the manager may be provided a side effects applier if
+ * desired. The latter has a method invoked to apply any side effects it deems
+ * appropriate whenever a notifier megawidget is invoked; said method is passed
+ * all the current values of all managed megawidgets' mutable properties, and is
+ * allowed to change these properties as it sees fit. If no side effects applier
+ * is supplied, the manager assumes no side effects are desired when megawidgets
+ * are invoked.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 2013                Chris.Golden      Initial creation.
+ * Mar 1, 2013             Chris.Golden      Initial creation.
+ * May 6, 2013    1277     Chris.Golden      Added support for mutable properties,
+ *                                           and side effect application execution.
  * 
  * </pre>
  * 
@@ -69,6 +79,7 @@ import org.eclipse.swt.widgets.Widget;
  * @see MegawidgetSpecifier
  * @see IStateful
  * @see IStatefulSpecifier
+ * @see ISideEffectsApplier
  */
 public abstract class MegawidgetManager {
 
@@ -83,7 +94,7 @@ public abstract class MegawidgetManager {
     /**
      * Set of all megawidgets being managed.
      */
-    private final Set<IMegawidget> megawidgets = new HashSet<IMegawidget>();
+    private final Map<String, IMegawidget> megawidgetsForIdentifiers = new HashMap<String, IMegawidget>();
 
     /**
      * Map pairing megawidget identifiers with their corresponding stateful
@@ -97,10 +108,23 @@ public abstract class MegawidgetManager {
     private final Set<TimeScaleMegawidget> timeScaleMegawidgets = new HashSet<TimeScaleMegawidget>();
 
     /**
+     * Side effects applier, or <code>null</code> if there are no side effects
+     * to be applied.
+     */
+    private final ISideEffectsApplier sideEffectsApplier;
+
+    /**
      * Flag indicating whether or not the managed megawidgets are currently
      * enabled.
      */
     private boolean enabled = true;
+
+    /**
+     * Flag indicating whether or not the mutable properties of any megawidget
+     * may have been changed programmatically since the last non-programmatic
+     * change.
+     */
+    private boolean propertyProgrammaticallyChanged = true;
 
     /**
      * Notification listener.
@@ -108,6 +132,18 @@ public abstract class MegawidgetManager {
     private final INotificationListener notificationListener = new INotificationListener() {
         @Override
         public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
+
+            // If a side effects applier is available and the invoked mega-
+            // widget is not stateful, apply side effects before sending
+            // along the notification of the invocation. Stateful mega-
+            // widgets do not get side effects applied here because the
+            // latter has already been done when they experienced the
+            // state change that preceded this notification.
+            if ((sideEffectsApplier != null)
+                    && ((megawidget instanceof IStateful) == false)) {
+                applySideEffects(megawidget.getSpecifier().getIdentifier(),
+                        false);
+            }
             commandInvoked(megawidget.getSpecifier().getIdentifier(),
                     extraCallback);
         }
@@ -127,7 +163,12 @@ public abstract class MegawidgetManager {
             // Remember the new state.
             commitStateElementChange(identifier, state);
 
-            // Allow the subclass to respond as appropriate to the state change.
+            // If a side effects applier is available, apply side effects
+            // before sending along the notification of the state change.
+            if (sideEffectsApplier != null) {
+                applySideEffects(megawidget.getSpecifier().getIdentifier(),
+                        true);
+            }
             stateElementChanged(identifier, state);
         }
     };
@@ -136,7 +177,7 @@ public abstract class MegawidgetManager {
 
     /**
      * Construct a standard instance for managing megawidgets that exist within
-     * a menu widget.
+     * a menu widget with no side effecs applier.
      * 
      * @param parent
      *            Parent menu in which the megawidgets are to be created.
@@ -161,12 +202,47 @@ public abstract class MegawidgetManager {
     public MegawidgetManager(Menu parent,
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state) throws MegawidgetException {
+        this(parent, specifiers, state, null);
+    }
+
+    /**
+     * Construct a standard instance for managing megawidgets that exist within
+     * a menu widget.
+     * 
+     * @param parent
+     *            Parent menu in which the megawidgets are to be created.
+     * @param specifiers
+     *            List of maps, each of the latter holding the parameters of a
+     *            megawidget specifier. Each megawidget specifier must have an
+     *            identifier that is unique within this list.
+     * @param state
+     *            State to be viewed and/or modified via the megawidgets that
+     *            are constructed. Each megawidget specifier defined by <code>
+     *            specifiers</code> should have an entry in this map, mapping
+     *            the specifier's identifier to the value that the megawidget
+     *            will take on (with conversions between megawidget state and
+     *            state element being performed by <code>
+     *            convertStateElementToMegawidgetState()</code> and <code>
+     *            convertMegawidgetStateToStateElement()</code>).
+     * @param sideEffectsApplier
+     *            Side effects applier to be used, or <code>null</code> if no
+     *            side effects application is to be done by the manager.
+     * @throws MegawidgetException
+     *             If one of the megawidget specifiers is invalid, or if an
+     *             error occurs while creating or initializing one of the
+     *             megawidgets.
+     */
+    public MegawidgetManager(Menu parent,
+            List<? extends Map<String, Object>> specifiers,
+            Map<String, Object> state, ISideEffectsApplier sideEffectsApplier)
+            throws MegawidgetException {
+        this.sideEffectsApplier = sideEffectsApplier;
         construct(parent, specifiers, state, 0L, 0L, 0L, 0L);
     }
 
     /**
      * Construct a standard instance for managing megawidgets that exist within
-     * a composite widget.
+     * a composite widget with no side effects applier.
      * 
      * @param parent
      *            Parent composite in which the megawidgets are to be created.
@@ -211,6 +287,61 @@ public abstract class MegawidgetManager {
             Map<String, Object> state, long minTime, long maxTime,
             long minVisibleTime, long maxVisibleTime)
             throws MegawidgetException {
+        this(parent, specifiers, state, minTime, maxTime, minVisibleTime,
+                maxVisibleTime, null);
+    }
+
+    /**
+     * Construct a standard instance for managing megawidgets that exist within
+     * a composite widget.
+     * 
+     * @param parent
+     *            Parent composite in which the megawidgets are to be created.
+     * @param specifiers
+     *            List of maps, each of the latter holding the parameters of a
+     *            megawidget specifier. Each megawidget specifier must have an
+     *            identifier that is unique within this list.
+     * @param state
+     *            State to be viewed and/or modified via the megawidgets that
+     *            are constructed. Each megawidget specifier defined by <code>
+     *            specifiers</code> should have an entry in this map, mapping
+     *            the specifier's identifier to the value that the megawidget
+     *            will take on (with conversions between megawidget state and
+     *            state element being performed by <code>
+     *            convertStateElementToMegawidgetState()</code> and <code>
+     *            convertMegawidgetStateToStateElement()</code>).
+     * @param minTime
+     *            Minimum time that may be used by any time scale megawidgets
+     *            specified within <code>specifiers</code>. If no time scale
+     *            megawidgets are included in <code>specifiers</code>, this is
+     *            ignored.
+     * @param maxTime
+     *            Maximum time that may be used by any time scale megawidgets
+     *            specified within <code>specifiers</code>. If no time scale
+     *            megawidgets are included in <code>specifiers</code>, this is
+     *            ignored.
+     * @param minVisibleTime
+     *            Minimum visible time for any time scale megawidgets specified
+     *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param maxVisibleTime
+     *            Maximum visible time for any time scale megawidgets specified
+     *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param sideEffectsApplier
+     *            Side effects applier to be used, or <code>null</code> if no
+     *            side effects application is to be done by the manager.
+     * @throws MegawidgetException
+     *             If one of the megawidget specifiers is invalid, or if an
+     *             error occurs while creating or initializing one of the
+     *             megawidgets.
+     */
+    public MegawidgetManager(Composite parent,
+            List<? extends Map<String, Object>> specifiers,
+            Map<String, Object> state, long minTime, long maxTime,
+            long minVisibleTime, long maxVisibleTime,
+            ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
+        this.sideEffectsApplier = sideEffectsApplier;
 
         // Ensure that the parent has the properly configured layout manager.
         Layout layout = parent.getLayout();
@@ -251,8 +382,85 @@ public abstract class MegawidgetManager {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        for (IMegawidget megawidget : megawidgets) {
+        for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
             megawidget.setEnabled(enabled);
+        }
+        propertyProgrammaticallyChanged = true;
+    }
+
+    /**
+     * Get the mutable properties of all megawidgets tracked by the manager.
+     * 
+     * @return Map of the identifiers of all megawidgets being managed to
+     *         submaps holding the megawidgets' mutable properties. Each of the
+     *         latter maps the mutable property names to their current values.
+     */
+    public final Map<String, Map<String, Object>> getMutableProperties() {
+        Map<String, Map<String, Object>> mutableProperties = new HashMap<String, Map<String, Object>>();
+        for (String identifier : megawidgetsForIdentifiers.keySet()) {
+            mutableProperties.put(identifier,
+                    megawidgetsForIdentifiers.get(identifier)
+                            .getMutableProperties());
+        }
+        return mutableProperties;
+    }
+
+    /**
+     * Set the specified mutable properties of the specified megawidgets to the
+     * given values.
+     * 
+     * @param mutableProperties
+     *            Map of the identifiers of all megawidgets for which mutable
+     *            properties are to be changed to submaps holding the new
+     *            mutable properties. Each of the latter maps the names of any
+     *            mutable properties being changed to their new values.
+     */
+    @SuppressWarnings("unchecked")
+    public final void setMutableProperties(
+            Map<String, Map<String, Object>> mutableProperties)
+            throws MegawidgetPropertyException {
+
+        // Iterate through the mutable properties map, setting the properties
+        // for each megawidget in turn.
+        for (String identifier : mutableProperties.keySet()) {
+
+            // Ensure that the megawidget exists.
+            IMegawidget megawidget = megawidgetsForIdentifiers.get(identifier);
+            if (megawidget == null) {
+                throw new MegawidgetPropertyException(identifier, null, null,
+                        null, "no megawidget for identifier \"" + identifier
+                                + "\"");
+            }
+
+            // Set the megawidget's mutable properties.
+            Map<String, Object> megawidgetMutableProperties = mutableProperties
+                    .get(identifier);
+            megawidget.setMutableProperties(megawidgetMutableProperties);
+
+            // Ensure that the state, if changed, is kept track of within
+            // this instance's state variable.
+            if (megawidgetMutableProperties
+                    .containsKey(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+                Map<String, Object> map = null;
+                try {
+                    map = (HashMap<String, Object>) megawidgetMutableProperties
+                            .get(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
+                } catch (Exception e) {
+                    throw new IllegalStateException("Should not occur; state "
+                            + "values should have already been checked by "
+                            + "megawidget.setMutableProperties()");
+                }
+
+                // Iterate through the state identifiers, setting each
+                // value as the state for the corresponding identifier.
+                for (String stateIdentifier : map.keySet()) {
+                    Object value = convertMegawidgetStateToStateElement(
+                            stateIdentifier, map.get(stateIdentifier));
+                    commitStateElementChange(stateIdentifier, value);
+                }
+            }
+
+            propertyProgrammaticallyChanged = true;
         }
     }
 
@@ -274,7 +482,7 @@ public abstract class MegawidgetManager {
      *            Identifier of the state element for which the value is to be
      *            retrieved.
      * @return State value, or <code>null</code> if no such value is found.
-     * @throws MegawidgetStateException
+     * @throws MegawidgetStateExceptionsideEffectMutablePropertyChangeErrorOccurred
      *             If a non-map object is found when a nested map is expected
      *             while fetching a state element that is nested.
      */
@@ -295,6 +503,9 @@ public abstract class MegawidgetManager {
         // the value for the megawidget's state.
         Map<?, ?> map = state;
         for (int j = 0; j < keys.length; j++) {
+            if (map == null) {
+                return null;
+            }
             Object value = map.get(keys[j]);
             if (j == keys.length - 1) {
                 return value;
@@ -344,6 +555,7 @@ public abstract class MegawidgetManager {
         for (IStateful megawidget : statefulMegawidgetsForIdentifiers.values()) {
             setState(megawidget, false);
         }
+        propertyProgrammaticallyChanged = true;
     }
 
     /**
@@ -360,6 +572,7 @@ public abstract class MegawidgetManager {
         for (TimeScaleMegawidget megawidget : timeScaleMegawidgets) {
             megawidget.setVisibleTimeRange(minVisibleTime, maxVisibleTime);
         }
+        propertyProgrammaticallyChanged = true;
     }
 
     // Protected Methods
@@ -386,6 +599,22 @@ public abstract class MegawidgetManager {
      *            New value of the state element.
      */
     protected abstract void stateElementChanged(String identifier, Object state);
+
+    /**
+     * Respond to an error occurring as a result of a mutable property change
+     * triggered by a side effects application. Subclasses may assume that this
+     * method will only be invoked if a <code>ISideEffectsApplier</code> was
+     * supplied at construction time, and thus only requires overriding if the
+     * latter is the case.
+     * 
+     * @param exception
+     *            Exception that occurred as a result of the error.
+     */
+    protected void sideEffectMutablePropertyChangeErrorOccurred(
+            MegawidgetPropertyException e) {
+
+        // No action.
+    }
 
     /**
      * Convert the specified value for the specified state identifier to a form
@@ -533,10 +762,12 @@ public abstract class MegawidgetManager {
      * @param megawidget
      *            Megawidget to be remembered, along with any descendants.
      */
-    private void rememberMegawidgets(IMegawidget widget) {
-        megawidgets.add(widget);
-        if (widget instanceof IContainer) {
-            for (Megawidget childWidget : ((IContainer) widget).getChildren()) {
+    private void rememberMegawidgets(IMegawidget megawidget) {
+        megawidgetsForIdentifiers.put(
+                megawidget.getSpecifier().getIdentifier(), megawidget);
+        if (megawidget instanceof IContainer) {
+            for (Megawidget childWidget : ((IContainer) megawidget)
+                    .getChildren()) {
                 rememberMegawidgets(childWidget);
             }
         }
@@ -566,7 +797,9 @@ public abstract class MegawidgetManager {
         // one which is to be set to the new value.
         Map<String, Object> map = state;
         for (int j = 0; j < keys.length; j++) {
-            if (j == keys.length - 1) {
+            if (map == null) {
+                return;
+            } else if (j == keys.length - 1) {
 
                 // Set the map value to match the new value.
                 map.put(keys[j], value);
@@ -717,5 +950,29 @@ public abstract class MegawidgetManager {
         if (enabled == false) {
             megawidget.setEnabled(false);
         }
+    }
+
+    /**
+     * Apply side effects resulting from the specified megawidget experiencing a
+     * state change or invocation.
+     * 
+     * @param identifier
+     *            Identifier of the megawidget that underwent a state change or
+     *            was invoked.
+     */
+    private void applySideEffects(String identifier, boolean stateChangeOccurred) {
+        Map<String, Map<String, Object>> changedProperties = sideEffectsApplier
+                .applySideEffects(
+                        identifier,
+                        getMutableProperties(),
+                        (stateChangeOccurred || propertyProgrammaticallyChanged));
+        if (changedProperties != null) {
+            try {
+                setMutableProperties(changedProperties);
+            } catch (MegawidgetPropertyException e) {
+                sideEffectMutablePropertyChangeErrorOccurred(e);
+            }
+        }
+        propertyProgrammaticallyChanged = false;
     }
 }

@@ -19,6 +19,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 24, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -39,6 +40,11 @@ public class MegawidgetException extends Exception {
     // Private Constants
 
     /**
+     * Identifier.
+     */
+    private final String identifier;
+
+    /**
      * Type of the megawidget or specifier suffering the problem, or <code>null
      * </code> if the type was not able to be determined.
      */
@@ -54,6 +60,9 @@ public class MegawidgetException extends Exception {
     /**
      * Construct a standard instance.
      * 
+     * @param identifier
+     *            Identifier associated with the problem, or <code>null</code>
+     *            if the identifier was not able to be determined.
      * @param type
      *            Type of the megawidget or specifier suffering the problem, or
      *            <code>null</code> if the type was not able to be determined.
@@ -63,13 +72,17 @@ public class MegawidgetException extends Exception {
      *            Description of the problem, or <code>null</code> if none is
      *            required.
      */
-    public MegawidgetException(String type, Object badValue, String message) {
-        this(type, badValue, message, null);
+    public MegawidgetException(String identifier, String type, Object badValue,
+            String message) {
+        this(identifier, type, badValue, message, null);
     }
 
     /**
      * Construct a standard instance that was caused by another throwable.
      * 
+     * @param identifier
+     *            Identifier associated with the problem, or <code>null</code>
+     *            if the identifier was not able to be determined.
      * @param type
      *            Type of the megawidget or specifier suffering the problem, or
      *            <code>null</code> if the type was not able to be determined.
@@ -83,14 +96,24 @@ public class MegawidgetException extends Exception {
      *            Nested cause of this problem, or <code>null</code> if there is
      *            none.
      */
-    public MegawidgetException(String type, Object badValue, String message,
-            Throwable cause) {
+    public MegawidgetException(String identifier, String type, Object badValue,
+            String message, Throwable cause) {
         super(message, cause);
+        this.identifier = identifier;
         this.type = type;
         this.badValue = badValue;
     }
 
     // Public Methods
+
+    /**
+     * Get the state identifier.
+     * 
+     * @return State identifier.
+     */
+    public String getIdentifier() {
+        return identifier;
+    }
 
     /**
      * Get the type of the problematic specification.

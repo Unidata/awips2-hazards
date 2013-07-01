@@ -31,6 +31,7 @@ import org.eclipse.swt.widgets.MenuItem;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -55,6 +56,11 @@ public class HierarchicalChoicesMenuMegawidget extends
      */
     private final List<MenuItem> items;
 
+    /**
+     * Listener for menu items.
+     */
+    private final SelectionListener listener;
+
     // Protected Constructors
 
     /**
@@ -74,7 +80,7 @@ public class HierarchicalChoicesMenuMegawidget extends
         super(specifier, paramMap);
 
         // Create the checked menu item selection listener.
-        SelectionListener listener = new SelectionAdapter() {
+        listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 state.clear();
@@ -110,8 +116,8 @@ public class HierarchicalChoicesMenuMegawidget extends
         // Create menu items and any nested submenus required
         // for the hierarchical state choices.
         items = new ArrayList<MenuItem>();
-        for (Object choice : specifier.getChoices()) {
-            items.add(convertStateToMenuItem(menu, choice, listener));
+        for (Object choice : choices) {
+            items.add(convertStateToMenuItem(menu, -1, choice, listener));
         }
     }
 
@@ -150,6 +156,45 @@ public class HierarchicalChoicesMenuMegawidget extends
         // Not supported for menu-based megawidgets.
         throw new UnsupportedOperationException(
                 "cannot change editability of menu-based megawidget");
+    }
+
+    /**
+     * Prepare for the choices list to be changed.
+     */
+    @Override
+    protected final void prepareForChoicesChange() {
+
+        // No action.
+    }
+
+    /**
+     * Synchronize the user-facing widgets making up this megawidget to the
+     * current choices.
+     */
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
+
+        // Find the parent menu of the items, and if the parent menu is not
+        // a submenu build explicitly for this megawidget, the index at
+        // which to start adding new menu items.
+        Menu menu = (topItem == null ? items.get(0).getParent() : topItem
+                .getMenu());
+        int index = (topItem == null ? menu.indexOf(items.get(0)) : -1);
+
+        // Dispose of the old menu items.
+        for (MenuItem item : items) {
+            item.dispose();
+        }
+        items.clear();
+
+        // Create the new menu items.
+        for (Object choice : choices) {
+            items.add(convertStateToMenuItem(menu,
+                    (index == -1 ? -1 : index++), choice, listener));
+        }
+
+        // Ensure that the new menu items are synced with the old state.
+        synchronizeWidgetsToState();
     }
 
     /**
@@ -224,16 +269,19 @@ public class HierarchicalChoicesMenuMegawidget extends
      * 
      * @param parent
      *            Parent menu.
+     * @param index
+     *            Index at which to create the menu item, or <code>-1</code> if
+     *            the menu item is to be appended.
      * @param tree
      *            State hierarchy to be converted.
      * @param listener
      *            Selection listener for the checked menu items.
      * @return Menu item hierarchy resulting from the conversion.
      */
-    private MenuItem convertStateToMenuItem(Menu parent, Object tree,
-            SelectionListener listener) {
+    private MenuItem convertStateToMenuItem(Menu parent, int index,
+            Object tree, SelectionListener listener) {
         if (tree instanceof String) {
-            return createMenuItem(parent, (String) tree, null, listener);
+            return createMenuItem(parent, index, (String) tree, null, listener);
         } else {
             Map<?, ?> map = (Map<?, ?>) tree;
             String name = (String) map
@@ -242,13 +290,13 @@ public class HierarchicalChoicesMenuMegawidget extends
                     .get(HierarchicalChoicesMenuSpecifier.CHOICE_IDENTIFIER);
             List<?> children = (List<?>) map
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN);
-            MenuItem item = createMenuItem(parent, name, identifier,
+            MenuItem item = createMenuItem(parent, index, name, identifier,
                     (children == null ? listener : null));
             if (children != null) {
                 Menu menu = new Menu(parent);
                 item.setMenu(menu);
                 for (Object child : children) {
-                    convertStateToMenuItem(menu, child, listener);
+                    convertStateToMenuItem(menu, -1, child, listener);
                 }
             }
             return item;
@@ -293,6 +341,9 @@ public class HierarchicalChoicesMenuMegawidget extends
      * 
      * @param parent
      *            Parent menu.
+     * @param index
+     *            Index at which to create the menu item, or <code>-1</code> if
+     *            the menu item is to be appended.
      * @param name
      *            Choice name.
      * @param identifier
@@ -304,10 +355,11 @@ public class HierarchicalChoicesMenuMegawidget extends
      *            must be of the style <code>SWT.CASCADE</code>.
      * @return Created menu item.
      */
-    private MenuItem createMenuItem(Menu parent, String name,
+    private MenuItem createMenuItem(Menu parent, int index, String name,
             String identifier, SelectionListener listener) {
-        MenuItem item = new MenuItem(parent, (listener == null ? SWT.CASCADE
-                : SWT.CHECK));
+        int style = (listener == null ? SWT.CASCADE : SWT.CHECK);
+        MenuItem item = (index == -1 ? new MenuItem(parent, style)
+                : new MenuItem(parent, style, index));
         item.setText(name);
         item.setData(identifier != null ? identifier : name);
         if (listener != null) {

@@ -23,6 +23,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -35,12 +36,6 @@ public abstract class NotifierMegawidgetSpecifier extends MegawidgetSpecifier
         implements INotifierSpecifier {
 
     // Private Variables
-
-    /**
-     * Flag indicating whether or not the widget should notify listeners
-     * whenever it changes state or is invoked by the user.
-     */
-    private final boolean notify;
 
     /**
      * Extra callback information, or <code>null</code> if none exists for this
@@ -64,12 +59,6 @@ public abstract class NotifierMegawidgetSpecifier extends MegawidgetSpecifier
             throws MegawidgetSpecificationException {
         super(parameters);
 
-        // Ensure that the notify flag, if present, is accep-
-        // table, and if not present is assigned a default
-        // value.
-        notify = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_NOTIFY), MEGAWIDGET_NOTIFY, false);
-
         // Ensure that the extra callback data, if present, is
         // acceptable.
         try {
@@ -82,18 +71,6 @@ public abstract class NotifierMegawidgetSpecifier extends MegawidgetSpecifier
     }
 
     // Public Methods
-
-    /**
-     * Get the flag indicating whether or not the megawidget should notify its
-     * listener (if any) when it is invoked by the user.
-     * 
-     * @return Flag indicating whether not the megawidget should notify
-     *         listeners.
-     */
-    @Override
-    public final boolean isToNotify() {
-        return notify;
-    }
 
     /**
      * Get the extra callback information to be passed back with a notification,

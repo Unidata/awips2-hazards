@@ -22,6 +22,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -29,28 +30,10 @@ import java.util.Map;
  * @version 1.0
  * @see IntegerSpinnerMegawidget
  */
-public class IntegerSpinnerSpecifier extends StatefulMegawidgetSpecifier {
+public class IntegerSpinnerSpecifier extends
+        BoundedValueMegawidgetSpecifier<Integer> {
 
     // Public Static Constants
-
-    /**
-     * Minimum megawidget state value parameter name; a megawidget may include
-     * an integer as the value associated with this name. If it does, this acts
-     * as the minimum value that the state is allowed to take on. If not
-     * specified, it is assumed to be 0.
-     */
-    public static final String MEGAWIDGET_MIN_VALUE = "minValue";
-
-    /**
-     * Maximum megawidget state value parameter name; a megawidget may include
-     * an integer as the value associated with this name. If it does, this acts
-     * as the maximum value that the state is allowed to take on. This value
-     * must be greater than the value given for <code>
-     * MEGAWIDGET_MIN_VALUE</code> (or greater than 0 if the latter is not
-     * specified). If not specified, it is assumed to be the maximum value an
-     * integer can take on.
-     */
-    public static final String MEGAWIDGET_MAX_VALUE = "maxValue";
 
     /**
      * State value increment parameter name; a megawidget may include an integer
@@ -70,16 +53,6 @@ public class IntegerSpinnerSpecifier extends StatefulMegawidgetSpecifier {
     public static final String MEGAWIDGET_SHOW_SCALE = "showScale";
 
     // Private Variables
-
-    /**
-     * Minimum allowable value.
-     */
-    private final int minimumValue;
-
-    /**
-     * Maximum allowable value.
-     */
-    private final int maximumValue;
 
     /**
      * Value increment.
@@ -104,28 +77,7 @@ public class IntegerSpinnerSpecifier extends StatefulMegawidgetSpecifier {
      */
     public IntegerSpinnerSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
-
-        // If the minimum value is present, ensure that it
-        // is an integer.
-        minimumValue = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_MIN_VALUE), MEGAWIDGET_MIN_VALUE, 0);
-
-        // If the maximum value is present, ensure that it
-        // is an integer.
-        maximumValue = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_MAX_VALUE), MEGAWIDGET_MAX_VALUE,
-                Integer.MAX_VALUE);
-
-        // Ensure that the minimum and maximum values are
-        // valid relative to one another.
-        if (minimumValue >= maximumValue) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), null, null,
-                    "minimum value must be less than maximum (minimum = "
-                            + minimumValue + ", maximum = " + maximumValue
-                            + ")");
-        }
+        super(parameters, Integer.class, null, null);
 
         // If the increment delta is present, ensure that it
         // is a positive integer.
@@ -146,24 +98,6 @@ public class IntegerSpinnerSpecifier extends StatefulMegawidgetSpecifier {
     }
 
     // Public Methods
-
-    /**
-     * Get the minimum value.
-     * 
-     * @return Minimum value.
-     */
-    public final int getMinimumValue() {
-        return minimumValue;
-    }
-
-    /**
-     * Get the maximum value.
-     * 
-     * @return Maximum value.
-     */
-    public final int getMaximumValue() {
-        return maximumValue;
-    }
 
     /**
      * Get the increment delta.

@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
+ * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * 
  * </pre>
  * 
@@ -103,11 +104,12 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
 
         // For each value, add a radio button.
         List<Button> radioButtons = new ArrayList<Button>();
-        for (int j = 0; j < specifier.getChoiceNames().size(); j++) {
+        for (Object choice : choices) {
 
             // Create the radio button.
             Button radioButton = new Button(subParent, SWT.RADIO);
-            radioButton.setText(specifier.getChoiceNames().get(j));
+            radioButton.setText(specifier.getNameOfNode(choice));
+            radioButton.setData(specifier.getIdentifierOfNode(choice));
             radioButton.setEnabled(specifier.isEnabled());
 
             // Place the widget in the grid.
@@ -126,8 +128,7 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
                 if (radioButton.getSelection() == false) {
                     return;
                 }
-                state = ((ChoicesMegawidgetSpecifier) getSpecifier())
-                        .getChoiceFromLongVersion(radioButton.getText());
+                state = (String) radioButton.getData();
                 notifyListener(getSpecifier().getIdentifier(), state);
                 notifyListener();
             }
@@ -146,18 +147,27 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
 
     // Protected Methods
 
-    /**
-     * Receive notification that the megawidget's state has changed.
-     * 
-     * @param state
-     *            New state.
-     */
     @Override
-    protected final void megawidgetStateChanged(String state) {
-        state = ((ChoicesMegawidgetSpecifier) getSpecifier())
-                .getLongVersionFromChoice(state);
+    protected final boolean isChoicesListMutable() {
+        return false;
+    }
+
+    @Override
+    protected final void prepareForChoicesChange() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for radio buttons megawidget");
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToChoices() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for radio buttons megawidget");
+    }
+
+    @Override
+    protected final void synchronizeWidgetsToState() {
         for (Button radioButton : radioButtons) {
-            radioButton.setSelection(radioButton.getText().equals(state));
+            radioButton.setSelection(radioButton.getData().equals(state));
         }
     }
 

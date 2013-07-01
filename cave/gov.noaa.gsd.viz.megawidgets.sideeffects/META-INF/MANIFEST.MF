@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: gov.noaa.gsd.viz.megawidgets.sideeffects
+Bundle-SymbolicName: gov.noaa.gsd.viz.megawidgets.sideeffects
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: GSD
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Export-Package: gov.noaa.gsd.viz.megawidgets.sideeffects
+Import-Package: com.google.gson,
+ com.google.gson.reflect,
+ com.raytheon.uf.common.status,
+ gov.noaa.gsd.viz.megawidgets,
+ jep
