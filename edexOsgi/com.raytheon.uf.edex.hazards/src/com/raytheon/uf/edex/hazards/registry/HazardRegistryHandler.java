@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.registry.RegistryManager;
 import com.raytheon.uf.common.registry.RegistryQueryResponse;
 import com.raytheon.uf.common.registry.handler.BaseRegistryObjectHandler;
 import com.raytheon.uf.common.registry.handler.RegistryHandlerException;
@@ -81,8 +80,8 @@ public class HazardRegistryHandler extends
             throws RegistryHandlerException {
         HazardQuery query = getQuery();
         query.setFilters(filters);
-        RegistryQueryResponse<HazardEvent> response = RegistryManager
-                .getRegistyObjects(query);
+        RegistryQueryResponse<HazardEvent> response = registryHandler
+                .getObjects(query);
         checkResponse(response, "getByFilter");
         return response.getResults();
     }
@@ -124,8 +123,8 @@ public class HazardRegistryHandler extends
             throws RegistryHandlerException {
         HazardQuery query = getQuery();
         query.setGeometry(geometry);
-        RegistryQueryResponse<HazardEvent> response = RegistryManager
-                .getRegistyObjects(query);
+        RegistryQueryResponse<HazardEvent> response = registryHandler
+                .getObjects(query);
         checkResponse(response, "getByGeometry");
         return response.getResults();
     }

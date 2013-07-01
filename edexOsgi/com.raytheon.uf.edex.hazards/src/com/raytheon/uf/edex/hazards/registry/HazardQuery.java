@@ -29,8 +29,8 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.registry.IResultFormatter;
 import com.raytheon.uf.common.registry.ebxml.AdhocRegistryQuery;
-import com.raytheon.uf.common.registry.ebxml.RegistryUtil;
 import com.raytheon.uf.common.registry.ebxml.StringAttribute;
+import com.raytheon.uf.common.registry.ebxml.encoder.IRegistryEncoder;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -87,9 +87,9 @@ public class HazardQuery extends AdhocRegistryQuery<HazardEvent> implements
      * .tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType)
      */
     @Override
-    public HazardEvent decodeObject(RegistryObjectType registryObjectType)
-            throws SerializationException {
-        HazardEvent object = (HazardEvent) RegistryUtil
+    public HazardEvent decodeObject(RegistryObjectType registryObjectType,
+            IRegistryEncoder encoder) throws SerializationException {
+        HazardEvent object = (HazardEvent) encoder
                 .decodeObject(registryObjectType);
         if (geometry != null && object.getGeometry() != null
                 && geometry.intersects(object.getGeometry()) == false) {

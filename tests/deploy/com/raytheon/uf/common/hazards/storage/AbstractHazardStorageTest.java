@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.common.hazards.storage;
 
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -42,7 +44,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryB
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.edex.ebxml.registry.RegistryManagerDeployTest;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -90,7 +91,6 @@ public abstract class AbstractHazardStorageTest {
 
     @Before
     public void setUp() {
-        RegistryManagerDeployTest.setDeployInstance();
     }
 
     public IHazardEvent createNewEvent() {
