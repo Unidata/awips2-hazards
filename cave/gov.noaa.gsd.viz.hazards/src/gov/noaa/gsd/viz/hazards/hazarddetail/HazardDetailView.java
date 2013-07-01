@@ -37,6 +37,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
+ * Jun 25, 2013            Chris.Golden      Changed to allow hazard metadata
+ *                                           changes to be pushed to the event bus
+ *                                           if so desired by the view part.
  * 
  * </pre>
  * 
@@ -462,9 +465,12 @@ public class HazardDetailView extends
      * 
      * @param action
      *            Action.
+     * @param force
+     *            Flag indicating whether or not the firing should be forced
+     *            even if normally the event would not be forwarded.
      */
-    void fireAction(HazardDetailAction action) {
-        if (doNotForwardActions == false) {
+    void fireAction(HazardDetailAction action, boolean force) {
+        if (force || (doNotForwardActions == false)) {
             presenter.fireAction(action);
         }
     }

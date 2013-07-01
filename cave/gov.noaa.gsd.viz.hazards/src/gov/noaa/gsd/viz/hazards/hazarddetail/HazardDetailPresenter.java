@@ -29,7 +29,9 @@ import java.util.EnumSet;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
- * 
+ * Jun 25, 2013            Chris.Golden      Added code to prevent reentrant
+ *                                           behavior when receiving an event-
+ *                                           changed notification.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,6 +39,14 @@ import java.util.EnumSet;
  */
 public class HazardDetailPresenter extends
         HazardServicesPresenter<IHazardDetailView<?, ?>> {
+
+    // Private Variables
+
+    /**
+     * Flag indicating whether or not an event change notification is being
+     * processed.
+     */
+    private boolean eventChange = false;
 
     // Public Constructors
 
@@ -71,11 +81,13 @@ public class HazardDetailPresenter extends
                             Long.parseLong(getModel()
                                     .getTimeLineLatestVisibleTime()));
         }
-        if (changed.contains(Element.EVENTS)) {
+        if (changed.contains(Element.EVENTS) && (eventChange == false)) {
+            eventChange = true;
             getView().updateHazardDetail(
                     DictList.getInstance(getModel().getComponentData(
                             HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
                             "all")), getModel().getLastSelectedEventID());
+            eventChange = false;
         }
     }
 

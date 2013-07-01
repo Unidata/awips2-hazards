@@ -86,9 +86,13 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 10, 2013            Chris.Golden      Initial creation
- * June 4, 2013            Chris.Golden      Added support for changing background
+ * Jun 04, 2013            Chris.Golden      Added support for changing background
  *                                           and foreground colors in order to stay
  *                                           in synch with CAVE mode.
+ * Jun 25, 2013            Chris.Golden      Added functionality that uses the default
+ *                                           value for any metadata megawidget as the
+ *                                           value for any identifier that has no
+ *                                           entry yet in the event dictionary.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2712,8 +2716,25 @@ public class HazardDetailViewPart extends ViewPart implements
             Map<String, Object> paramValues) {
 
         // If there are initial state values, set the
-        // widgets to match them.
+        // widgets to match them. If there is no state
+        // value for a particular state identifier and
+        // the widget has a default value for it, make
+        // an entry in the hazard event mapping that
+        // identifier to the default value. This ensures
+        // that default values for megawidgets are used
+        // as default values for hazard events.
         if ((paramValues != null) && (widgetsForIds != null)) {
+
+            // Iterate through the widgets, finding any
+            // that are stateful and for those, setting
+            // the states to match those given in the
+            // parameter values dictionary, or if the
+            // latter has no value for a given state
+            // identifier and the widget has a starting
+            // value, adding a mapping for that state
+            // identifier and default value to the
+            // dictionary.
+            Set<String> identifiersGivenDefaultValues = new HashSet<String>();
             Set<IExplicitCommitStateful> widgetsNeedingCommit = new HashSet<IExplicitCommitStateful>();
             for (String widgetIdentifier : widgetsForIds.keySet()) {
                 Megawidget widget = widgetsForIds.get(widgetIdentifier);
@@ -2725,15 +2746,8 @@ public class HazardDetailViewPart extends ViewPart implements
                     if (paramValues.containsKey(identifier)) {
                         Object value = paramValues.get(identifier);
                         try {
-                            if (widget instanceof IExplicitCommitStateful) {
-                                ((IExplicitCommitStateful) widget)
-                                        .setUncommittedState(identifier, value);
-                                widgetsNeedingCommit
-                                        .add((IExplicitCommitStateful) widget);
-                            } else {
-                                ((IStateful) widget)
-                                        .setState(identifier, value);
-                            }
+                            setWidgetState((IStateful) widget, identifier,
+                                    value, widgetsNeedingCommit);
                         } catch (Exception e) {
                             statusHandler
                                     .error("HazardDetailViewPart.setWidgetsStates(): "
@@ -2741,9 +2755,55 @@ public class HazardDetailViewPart extends ViewPart implements
                                             + identifier + " to " + value + ".",
                                             e);
                         }
+                    } else {
+                        try {
+
+                            // Use the default (starting) value of the
+                            // megawidget specifier, not the current
+                            // value of the megawidget itself, since
+                            // it may have been changed by other
+                            // events previously. If a default value
+                            // exists, make this the current value of
+                            // the event dictionary for that identifier,
+                            // and set the megawidget to match. If no
+                            // default starting value is found, use
+                            // the current value of the megawidget in-
+                            // stead.
+                            Object defaultValue = ((IStatefulSpecifier) widget
+                                    .getSpecifier())
+                                    .getStartingState(identifier);
+                            if (defaultValue != null) {
+                                identifiersGivenDefaultValues.add(identifier);
+                                paramValues.put(identifier, defaultValue);
+                                Object widgetState = ((IStateful) widget)
+                                        .getState(identifier);
+                                if ((widgetState == null)
+                                        || (widgetState.equals(defaultValue) == false)) {
+                                    setWidgetState((IStateful) widget,
+                                            identifier, defaultValue,
+                                            widgetsNeedingCommit);
+                                }
+                            } else {
+                                defaultValue = ((IStateful) widget)
+                                        .getState(identifier);
+                                if (defaultValue != null) {
+                                    identifiersGivenDefaultValues
+                                            .add(identifier);
+                                    paramValues.put(identifier, defaultValue);
+                                }
+                            }
+                        } catch (Exception e) {
+                            statusHandler
+                                    .error("HazardDetailViewPart.setWidgetsStates(): "
+                                            + "Unable to fetch default state for "
+                                            + identifier + ".", e);
+                        }
                     }
                 }
             }
+
+            // Commit changes to any widgets that must
+            // be explicitly commit.
             for (IExplicitCommitStateful widget : widgetsNeedingCommit) {
                 try {
                     widget.commitStateChanges();
@@ -2754,7 +2814,62 @@ public class HazardDetailViewPart extends ViewPart implements
                                     + widget.getSpecifier().getIdentifier(), e);
                 }
             }
+
+            // If any default values were taken from the
+            // widgets and placed in the event dictionary,
+            // send off a notification that these values
+            // changed.
+            if (identifiersGivenDefaultValues.size() > 0) {
+                Dict eventInfo = new Dict();
+                eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER,
+                        paramValues.get(Utilities.HAZARD_EVENT_IDENTIFIER));
+                for (String identifier : identifiersGivenDefaultValues) {
+                    eventInfo.put(identifier, paramValues.get(identifier));
+                }
+                String jsonText = null;
+                try {
+                    jsonText = eventInfo.toJSONString();
+                } catch (Exception e) {
+                    statusHandler
+                            .error("HazardDetailViewPart.setWidgetsStates(): conversion "
+                                    + "of event info to JSON string failed.", e);
+                }
+                hazardDetailView.fireAction(new HazardDetailAction(
+                        "updateEventMetadata", jsonText), true);
+            }
         }
+    }
+
+    /**
+     * Set the specified stateful megawidget to hold the specified value for the
+     * specified state identifier, recording it as requiring an explicit commit
+     * if this is the case.
+     * 
+     * @param widget
+     *            Megawidget to have its state set.
+     * @param identifier
+     *            State identifier to be set.
+     * @param value
+     *            New value of the state identifier.
+     * @param widgetsNeedingCommit
+     *            Set of megawidgets needing an explicit commit; <code>widget
+     *            </code> will be added to this set by this invocation if it is
+     *            an <code>IExplicitCommitStateful</code> instance.
+     * @throws MegawidgetStateException
+     *             If a state exception occurs while attempting to set the
+     *             megawidget's state.
+     */
+    private void setWidgetState(IStateful widget, String identifier,
+            Object value, Set<IExplicitCommitStateful> widgetsNeedingCommit)
+            throws MegawidgetStateException {
+        if (widget instanceof IExplicitCommitStateful) {
+            ((IExplicitCommitStateful) widget).setUncommittedState(identifier,
+                    value);
+            widgetsNeedingCommit.add((IExplicitCommitStateful) widget);
+        } else {
+            widget.setState(identifier, value);
+        }
+
     }
 
     /**
@@ -2812,7 +2927,7 @@ public class HazardDetailViewPart extends ViewPart implements
      * listeners.
      */
     private void fireHIDAction(HazardDetailAction action) {
-        hazardDetailView.fireAction(action);
+        hazardDetailView.fireAction(action, false);
     }
 
     /**
