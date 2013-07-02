@@ -21,7 +21,12 @@ ProductGeneratorTable = {
              ('FF.W.Convective',     "Flood"),
              ('FF.W.NonConvective',  "Flood"),             
              ] 
-            },            
+            }, 
+        "ESF_ProductGenerator": {
+            "allowedHazards": [
+             ('HY.O',     "Flood"),           
+             ] 
+            },           
 #        "FFW_FFS_Convective_ProductGenerator" : {
 #            "allowedHazards": [
 #             ('FF.W.Convective',     "Flood"),
@@ -32,8 +37,7 @@ ProductGeneratorTable = {
 #             ('FF.W.NonConvective',  "Flood"),             
 #             ] 
 #            },
-        #"WSW_ProductGenerator" : {
-        "WSW_Tool" : {
+        "WSW_ProductGenerator" : {
             "allowedHazards": [
             ('BZ.W', 'WinterWx'),     # BLIZZARD WARNING
             ('IS.W', 'WinterWx'),     # ICE STORM WARNING

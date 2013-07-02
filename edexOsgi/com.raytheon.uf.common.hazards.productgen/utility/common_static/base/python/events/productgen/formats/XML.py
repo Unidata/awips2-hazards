@@ -50,6 +50,97 @@ class Format(FormatTemplate.Formatter):
 
         return tostring(xml)
     
+    def xmlKeys(self): 
+        return [   
+        'disclaimer',
+        'senderName',
+        'productName',
+        'productID',
+        'wmoHeader',
+        'TTAAii',
+        'originatingOffice',
+        'productID',
+        'siteID',
+        'wmoHeaderLine',
+        'awipsIdentifierLine',
+        'overview',
+        'synopsis',
+        'segments',
+        'segment',
+        'description',
+        'ugcCodes',
+        'ugcCode',
+        'state',
+        'type',
+        'number',
+        'text',
+        'subArea',
+        'ugcHeader',
+        'areaString',
+        'cityString',
+        'areaType',
+        'expireTime',
+        'vtecRecords',
+        'vtecRecordType',
+        'name',
+        'productClass',
+        'action',
+        'site',
+        'phenomenon',
+        'significance',
+        'eventTrackingNumber',
+        'startTimeVTEC',
+        'startTime',
+        'endTimeVTEC',
+        'endTime',
+        'vtecString',
+        'nwsli',
+        'floodSeverity',
+        'immediateCause',
+        'floodBeginTimeVTEC',
+        'floodCrestTimeVTEC',
+        'floodEndTimeVTEC',
+        'floodBeginTime',
+        'floodCrestTime',
+        'floodEndTime',
+        'floodRecordStatus',
+        'polygons',
+        'polygon',
+        'point',
+        'latitude',
+        'longitude',
+        'timeMotionLocation',
+        'impactedLocations',
+        'location',
+        'locationName',
+        'observations',
+        'callsToAction',
+        'callToAction',
+        'polygonText',
+        'easActivationRequested',
+        'sentTimeZ',
+        'sentTimeLocal',
+        'disclaimer',
+        'senderName',
+        'productName',
+        'productID',
+        'wmoHeader',
+        'TTAAii',
+        'originatingOffice',
+        'productID',
+        'siteID',
+        'wmoHeaderLine',
+        'awipsIdentifierLine',
+        'overview',
+        'synopsis',
+        'callsToAction',
+        'callToAction',
+        'polygonText',
+        'easActivationRequested',
+        'sentTimeZ',
+        'sentTimeLocal',
+        ]
+    
     def dictionary(self, xml, data):
         '''
         Returns the dictionary in XML format.
@@ -58,8 +149,8 @@ class Format(FormatTemplate.Formatter):
         '''   
         if data is not None:
             for key in data: 
-                if ':skip' in key:
-                    continue       
+                if key not in self.xmlKeys():
+                    continue  
                 value = data[key]
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)

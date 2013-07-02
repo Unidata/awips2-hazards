@@ -561,27 +561,7 @@ class Format(FormatTemplate.Formatter):
         if 'ugcCodes' in segDict:
             ugcs = segDict['ugcCodes']['ugcCode']
             for ugcDict in ugcs:
-                self.createBlock(areaElement, 'geocode', {'valueName':'UGC', 'value':ugcDict.get('text')} )
-     
-    def createIdentifier(self, prodDict, segDict, infoDict): 
-        # TODO identifier 
-        self.identifier = 'NOAA-NWS-ALERTS-FL20110125203700FlashFloodWarning20110125213000FL.TBWSVRTBW.f809e7f8ffe0c3658e925873d720fe9c' 
-        areaElement = SubElement(xml, 'area')
-        self.xmlSubElement(areaElement, 'areaDesc', segDict.get('areaString'))
-        if prodDict['productID'] in ['TOR', 'SVR', 'SVS', 'SMW', 'MWS', 'FFW', 'FFS', 'FLS', 'EWW']:
-            polyStr = ''
-            polygons = segDict.get('polygons')
-            polyList = polygons.get('polygon')
-            if polyList:
-                for polygon in polyList:
-                    for point in polygon.get('point'):
-                        polyStr += point.get('latitude')+', '+point.get('longitude') + ' '                    
-                    self.xmlSubElement(areaElement, 'polygon', polyStr)
-        # geoCodes
-        if 'ugcCodes' in segDict:
-            ugcs = segDict['ugcCodes']['ugcCode']
-            for ugcDict in ugcs:
-                self.createBlock(areaElement, 'geocode', {'valueName':'UGC', 'value':ugcDict.get('text')} )
+                self.createBlock(areaElement, 'geocode', {'valueName':'UGC', 'value':ugcDict.get('text')} )     
      
     def createIdentifier(self, prodDict, segDict, infoDict): 
         # TODO identifier 
@@ -639,6 +619,18 @@ class Format(FormatTemplate.Formatter):
         #if self.msgType in ['Update', 'Cancel']:
         #    reference = 'w-nws.webmaster@noaa.gov, '+self.identifier + ', '+prodDict.get('sentTimeLocal')
         return reference
+
+    def createEvent(self, prodDict, segDict, infoDict):
+        '''
+        e.g. Flash Flood Warning
+
+        @prodDict: dictionary values provided by the product generator
+        @segDict: dictionary of values for a segment of the legacy product
+        @infoDict: dictionary of values for an info section. 
+
+        '''
+        self.event = self._tpc.getVal(segDict, "headlines")[0]
+        return self.event
     
     def createOnset(self, prodDict, segDict, infoDict):
         '''
@@ -654,12 +646,14 @@ class Format(FormatTemplate.Formatter):
         dt = self._tpc.getVal(segDict, 'expireTime_datetime')
         return self._tpc.formatDatetime(dt, timeZone=self._tz)
     
+    
     def createHeadline(self, prodDict, segDict, infoDict):
         # TODO Outstanding issue: Handle multiple events per segment
         '''
-        'Flash Flood Warning issued January 25 at 3:37PM EST expiring January 25 at 4:30PM EST by NWS Tampa Bay'
-        
+        "Flash Flood Warning issued January 25 at 3:37PM EST expiring January 25 at 4:30PM EST by NWS Tampa Bay"
+
         <headline>WWA issued Month DD at hh:mmAM/PM LST/LDT until Month DD at hh:mmAM/PM LST/LDT by NWS Office</headline>
+                
         WWA = Watch, Warning, Advisory, or special statement 
         MONTH = Month spelled out 
         DD = Day (1-31) 
@@ -711,4 +705,3 @@ class Format(FormatTemplate.Formatter):
         sub = SubElement(xml, tag, attrs)
         if text is not None:
             sub.text = text
-              

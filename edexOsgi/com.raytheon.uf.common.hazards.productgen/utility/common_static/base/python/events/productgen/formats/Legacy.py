@@ -27,7 +27,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    03/14/13                      jsanchez       Initial Creation.
-#    
+#    07/08/13        784,1290      Tracy.L.Hansen Added ProductParts and changes for ESF product generator
 # 
 #
 import FormatTemplate
@@ -46,25 +46,62 @@ class Format(FormatTemplate.Formatter):
         '''
         self._tpc = TextProductCommon()        
         data = self.cleanDictKeys(data)
-        text = ''
-
-        text += self.processWmoHeader(data['wmoHeader']) + '\n'
-        easMessage = self.processEAS(data)
-        if easMessage is not None:
-            text += easMessage + '\n'
-        text += data['productName'] + '\n'
-        text += data['senderName'] + '\n'
-        sentTimeZ = self._tpc.getVal(data, 'sentTimeZ_datetime')
-        timeZones = self._tpc.getVal(data, 'timeZones')
-        for timeZone in timeZones:
-            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %b %Y', timeZone) + '\n'
-        text += '\n'        
-        # Test if this is a watch
-        text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
-        text += self.processSegments(data['segments'])
+        self.data = data 
+        text = self._processProductParts(data, self._tpc.getVal(data, 'productParts', []))
         return str(text.upper())
     
-    
+    def _processProductParts(self, dataDict, productParts, skipParts=[]):
+        '''
+        Adds the product parts to the product
+        @param dataDict -- dictionary of information -- could be the product dictionary or a sub-part such as a segment
+        @param skipParts -- necessary to avoid repetition when calling this method recursively
+        @param productParts -- list of instances of the ProductPart class with information about how to format each product part
+        @return text -- product string
+        '''
+        text = ''
+        for productPart in productParts: 
+            name = productPart.getName()
+            if name == 'wmoHeader': text += self.processWmoHeader(dataDict['wmoHeader']) + '\n'
+            elif name == 'wmoHeader_noCR': text += self.processWmoHeader(dataDict['wmoHeader'])
+            elif name == 'easMessage':
+                easMessage = self.processEAS(dataDict)
+                if easMessage is not None:
+                    text += easMessage + '\n'
+            elif name == 'productHeader':
+                text += dataDict['productName'] + '\n'
+                text += dataDict['senderName'] + '\n'
+                text += self.formatIssueTime()
+            elif name == 'overview':
+                text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
+            elif name == 'segments':
+                text += self.processSegments(dataDict['segments'], productPart.getProductParts()) 
+            elif name == 'vtecRecords':
+                if 'vtecRecords' in dataDict:
+                    vtecRecords = dataDict['vtecRecords']
+                    for vtecRecord in vtecRecords:
+                        text += vtecRecord['vtecString'] + '\n'
+            elif name == 'issuanceTimeDate':
+                text += self.formatIssueTime()
+            elif name == 'callsToAction':
+                if 'callsToAction' in dataDict and dataDict['callsToAction']:
+                    callsToAction = dataDict['callsToAction']
+                    text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
+                    for cta in callsToAction['callToAction']:
+                        text += cta + '\n\n'
+                    text += '&&\n\n'
+            elif name == 'polygonText':
+                if 'polygonText' in dataDict and dataDict['polygonText']:
+                    text += dataDict['polygonText'] + '\n\n'
+            elif name == 'end':
+                text += '$$' 
+            elif name == 'CR':
+                text += '\n'
+            else:
+                textStr = self._tpc.getVal(dataDict, name)
+                if textStr:
+                    text += textStr + '\n'                    
+        return text
+        
     def processWmoHeader(self, wmoHeader):
         text = wmoHeader['wmoHeaderLine'] + '\n'
         text += wmoHeader['awipsIdentifierLine'] + '\n'
@@ -83,44 +120,29 @@ class Format(FormatTemplate.Formatter):
                         return 'URGENT - IMMEDIATE BROADCAST REQUESTED'
                 return 'BULLETIN - EAS ACTIVATION REQUESTED'       
         return None
+    
+    def formatIssueTime(self):  
+        text = ''  
+        sentTimeZ = self._tpc.getVal(self.data, 'sentTimeZ_datetime')
+        timeZones = self._tpc.getVal(self.data, 'timeZones')
+        for timeZone in timeZones:
+            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %b %Y', timeZone) + '\n'
+        return text + '\n'
         
-    def processSegments(self, segments):
-        '''
+    def processSegments(self, segments, segmentParts):
+        """
         Generates Legacy text from a list of segments
         @param data: a list of dictionaries 
         @return: Returns the legacy text of the segments.
-        '''  
-        text = ''
+        """
+        text = ''  
         for segment in segments['segment']:
-            text += segment['ugcHeader'] + '\n'
-            if 'vtecRecords' in segment:
-                vtecRecords = segment['vtecRecords']
-                for vtecRecord in vtecRecords:
-                    text += vtecRecord['vtecString'] + '\n'
-            areaString = segment.get('areaString', '')
-            if areaString:
-                text += areaString + '\n'
-            cityString = segment.get('cityString', '')
-            if cityString:
-                text += cityString + '\n'              
-            text += strftime('%H%M %p %Z %a %b %Y', gmtime()) + '\n\n'
-
-            text += segment['description'] + '\n'
-
-            if 'callsToAction' in segment and segment['callsToAction']:
-                callsToAction = segment['callsToAction']
-                text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
-                for cta in callsToAction['callToAction']:
-                    text += cta + '\n\n'
-                text += '&&\n\n'
-            
-            if 'polygonText' in segment and segment['polygonText']:
-                text += segment['polygonText'] + '\n\n'
-                
-            text += '$$'
+            text += self._processProductParts(segment, segmentParts)
         return text
         
     def cleanDictKeys(self, data):
+        '''
+        '''
         temp = collections.OrderedDict()
         for key in data:
             d = data[key]
@@ -147,3 +169,5 @@ class Format(FormatTemplate.Formatter):
                     item = self.cleanDictKeys(item)
             temp.append(item)
         return temp
+    
+    

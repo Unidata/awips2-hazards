@@ -324,6 +324,13 @@ HazardTypes = {
               'allowTimeChange': True,
               'expirationTime': (-30, 30),
               },
+    'HY.O' : {'headline': 'HYDROLOGIC OUTLOOK',  
+              '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
+              'combinableSegments': False,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              },
     'HY.S' : {'headline': '',  # No headline for this VTEC
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
               'combinableSegments': False,

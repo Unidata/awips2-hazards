@@ -90,14 +90,6 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                 generatedProduct = GeneratedProduct(productID)
                 products = {}
                 for format in formats:
-                    module = __import__(format)
-                    instance = getattr(module, 'Format')()
-                    result = instance.execute(data)
-                    if type(result) is list:
-                        product = result
-                    else:
-                        product = [result] 
-                    products[format] = product
                     try:
                         module = importlib.import_module(format) 
                         instance = getattr(module, 'Format')()

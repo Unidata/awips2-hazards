@@ -64,7 +64,8 @@ import json
 #------------------------------------------------------------------
 class VTECEngineWrapper(object):
     def __init__(self, bridge, productCategory, siteID4, eventDicts = [],
-      vtecMode = 'O', creationTime=None, limitGeoZones=None, testHarnessMode=0):
+      vtecMode = 'O', creationTime=None, limitGeoZones=None, testHarnessMode=0,
+      vtecProduct=True):
         '''Constructor for VTEC Engine Wrapper
         Once instantiated, it will run the VTEC Engine.  Then the user can
         access the output through different functions.
@@ -90,20 +91,20 @@ class VTECEngineWrapper(object):
         else:
             self.vtecRecordType = "vtecRecords"
             
+        self.vtecProduct = vtecProduct
+            
         # Access to VTEC Table and VTEC records
         if bridge is None:
             from bridge.Bridge import Bridge
             bridge = Bridge()
         self.bridge = bridge
-        vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
-        
-        print "\nVTEC Wrapper Raw Vtec Records", vtecRecords
-        self.flush()
-        
+        if self.vtecProduct:
+            vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
+        else:
+            vtecRecords = []
+                
         # Hazard Types
         self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
-        print "\n VTEC Wrapper Hazard Types", self.hazardTypes 
-        self.flush()      
         # ProductGeneratorTable
         ProductGeneratorTable = json.loads(self.bridge.getData('{"dataType":"productGeneratorTable"}'))
 
@@ -139,6 +140,9 @@ class VTECEngineWrapper(object):
 
     def mergeResults(self):
         '''Merges the VTECEngine results with the existing vtec records'''
+        if not self.vtecProduct: 
+            return
+        
         vtecDicts = self._engine.analyzedTable()
 
 #TESTING CODE BEGIN for standalone (no bridge)
@@ -165,9 +169,6 @@ class VTECEngineWrapper(object):
 # Write out final results to database.  Replace with bridge code.
         #self._io.writeVtecRecords(mergedRecords)
 #END TESTING CODE
-
-        print "\nMerged vtecRecords", mergedRecords
-        self.flush()
 
         criteria = {
                     "dataType": self.vtecRecordType,

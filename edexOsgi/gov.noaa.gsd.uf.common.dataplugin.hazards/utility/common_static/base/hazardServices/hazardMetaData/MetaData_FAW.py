@@ -20,7 +20,6 @@ MetaData_FAW = [
              "fieldType":"RadioButtons",
              "fieldName": "include",
              "label": "Include:",
-             "values": "ER",
              "choices": [ 
                      {"displayString": "Small streams",},
                      {"displayString": "Urban areas and small streams",}

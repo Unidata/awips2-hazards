@@ -6,10 +6,11 @@
     ------------ ---------- ----------- --------------------------
     April 5, 2013            Tracy.L.Hansen      Initial creation
     July  1, 2013  648       Tracy.L.Hansen      Added CAP fields to dictionary
+    July  8, 2013  784,1290  Tracy.L.Hansen      Added ProductParts and changes for ESF product generator
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
-    '''
+'''
 
 try:
     import JUtil
@@ -22,6 +23,7 @@ from LocalizationInterface import *
 from HazardServicesGenericHazards import HazardServicesGenericHazards
 from TextProductCommon import TextProductCommon
 from TextProductCommon import CallToActions
+from ProductPart import ProductPart
 
 import logging, UFStatusHandler
 from MapInfo import MapInfo
@@ -77,8 +79,10 @@ class Product(object):
         self.logger = logging.getLogger('ProductGeneratorTemplate')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'com.raytheon.uf.common.hazards.productgen', 'ProductGeneratorTemplate', level=logging.INFO))
-        self.logger.setLevel(logging.INFO)         
-
+        self.logger.setLevel(logging.INFO)  
+        
+        # Default is True -- Products which are not VTEC can override and set to False
+        self._vtecProduct = True       
 
     def getScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -98,6 +102,31 @@ class Product(object):
         Must be overridden by the Product Generator
         '''
         pass
+    
+    def _productParts(self, productID):
+        '''
+        List of product parts in the order they appear in the product
+        Order and defines the Product Parts for the given productID
+        This is a generic product format, however, it can be overridden by the Product Generator.
+        '''
+        segmentParts = [
+            ProductPart('ugcHeader'),
+            ProductPart('vtecRecords'),
+            ProductPart('areaString'),
+            ProductPart('cityString'),
+            ProductPart('issuanceTimeDate'),
+            ProductPart('description'),
+            ProductPart('callsToAction'),
+            ProductPart('polygonText'),
+            ProductPart('end'),                                    
+            ]
+        return [
+            ProductPart('wmoHeader'),
+            ProductPart('easMessage'),
+            ProductPart('productHeader'),
+            ProductPart('overview'),
+            ProductPart('segments', productParts=segmentParts),
+            ]
         
     def _getVariables(self, hazardEventSet): 
         '''
@@ -173,7 +202,7 @@ class Product(object):
         '''
         methodName = 'ProductGeneratorTemplate:makeProducts_FromHazardEvents'
         
-        # Determine the list of segments given the hazard events              
+        # Determine the list of segments given the hazard events        
         segments = self._getSegments(eventDicts)
         self.logger.info(methodName + ' len(segments)='+str(len(segments)))
          
@@ -307,7 +336,8 @@ class Product(object):
                 self._pointVtecEngine = self._vtecEngine
             else:                     
                 self._areaSegments = segments
-                self._areaVtecEngine = self._vtecEngine                  
+                self._areaVtecEngine = self._vtecEngine   
+               
         return self._pointSegments + self._areaSegments
             
     def _groupSegments(self, segments):
@@ -518,13 +548,16 @@ class Product(object):
         THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
         '''
         
-        textStr = textStr + self._tpc.getHeadlines(self._segmentVtecRecords, self._productID, self._creationTime)
+        textStr = textStr + self._tpc.getHeadlines(self._segmentVtecRecords, self._productID, self._creationTime_secs)
+                
         replacedBy = self.segmentEventDict.get('replacedBy')
+        replaces = self.segmentEventDict.get('replaces')
         if replacedBy:
             textStr = textStr + '...REPLACED BY ' + replacedBy + '...\n\n'
-        replaces = self.segmentEventDict.get('replaces')
-        if replaces:
+        elif replaces:
             textStr = textStr + '...REPLACES ' + replaces + '...\n\n'
+        else:
+            textStr = textStr + '\n'        
         #
         # This section generates the attribution statements and calls-to-action
         #
@@ -570,7 +603,7 @@ class Product(object):
                 continue
             phrase = self.makeSection(vtecRecord, canVtecRecord, areaPhrase, self._geoType, eventDict, self.metaDataList,
                                            self._creationTime_secs, testMode, self._wfoCity)
-            textStr = textStr + phrase + '\n\n'
+            textStr = textStr + phrase
 
         self._description = textStr
        
@@ -611,7 +644,7 @@ class Product(object):
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID, 
                eventDicts, vtecMode='O', creationTime=self._creationTime_secs, 
-               testHarnessMode=testMode)
+               testHarnessMode=testMode, vtecProduct=self._vtecProduct)
         try :
             pass
         except :
@@ -1184,6 +1217,7 @@ class Product(object):
         productDict['senderName'] = 'NATIONAL WEATHER SERVICE ' + self._wfoCityState
         productDict['productName'] = self._productName
         productDict['productID'] = self._productID
+        productDict['productParts'] = self._productParts(self._productID)
 
         # wmoHeader
         headerDict = collections.OrderedDict()
@@ -1202,10 +1236,12 @@ class Product(object):
     def _createSentTimes(self, productDict):    
         productDict['easActivationRequested'] = self._easActivationRequested  # Set in preProcessProduct
         productDict['sentTimeZ'] = self._convertToISO(self._creationTime)
-        productDict['sentTimeZ_datetime:skip'] = self._convertToDatetime(self._creationTime)
+        productDict['sentTimeZ_datetime'] = self._convertToDatetime(self._creationTime)
         productDict['sentTimeLocal'] = self._convertToISO(self._creationTime, local=True)
-        productDict['timeZones:skip'] = self._productTimeZones
+        productDict['timeZones'] = self._productTimeZones
+        self._addToProductDict(productDict)
         return productDict
+    
         
     def _createSegment(self, segment):
         segmentEntry = collections.OrderedDict()
@@ -1216,9 +1252,9 @@ class Product(object):
         segmentEntry['cityString'] = self._cityString
         segmentEntry['areaType'] = self._geoType
         segmentEntry['expireTime'] = self._convertToISO(self._expireTime)
-        segmentEntry['expireTime_datetime:skip'] = self._convertToDatetime(self._expireTime)
+        segmentEntry['expireTime_datetime'] = self._convertToDatetime(self._expireTime)
         segmentEntry['vtecRecords'] = self._vtecRecordEntries(segment)
-        segmentEntry['headlines:skip'] = self._headlines
+        segmentEntry['headlines'] = self._headlines
         segmentEntry['polygons'] = self._createPolygonEntries()
         segmentEntry['timeMotionLocation'] = self._createTimeMotionLocationEntry()
         segmentEntry['impactedLocations'] = self._createImpactedLocationEntries(segment)
@@ -1227,13 +1263,13 @@ class Product(object):
         callsToAction['callToAction'] = self._callsToAction # Set in makeSegment, makeSection
         segmentEntry['callsToAction'] = callsToAction
         segmentEntry['polygonText'] = self._polygonText
-        segmentEntry['timeZones:skip'] = self._timeZones   
+        segmentEntry['timeZones'] = self._timeZones   
         
         # CAP Specific Fields -- must skip for Partner XML        
-        segmentEntry['status:skip']= 'Actual' 
-        segmentEntry['CAP_areaString:skip'] = self._tpc.formatUGC_namesWithState(self._ugcs, separator='; ') 
+        segmentEntry['status']= 'Actual' 
+        segmentEntry['CAP_areaString'] = self._tpc.formatUGC_namesWithState(self._ugcs, separator='; ') 
         infoDict = collections.OrderedDict()
-        segmentEntry['info:skip'] = [infoDict]
+        segmentEntry['info'] = [infoDict]
         infoDict['category'] = 'Met'
         infoDict['responseType']=self.segmentEventDict.get('responseType', '') # 'Avoid'
         infoDict['urgency']=self.segmentEventDict.get('urgency', '') # 'Immediate'
@@ -1246,8 +1282,21 @@ class Product(object):
         infoDict['event'] = self.segmentEventDict.get('headline')
         endTime = self.segmentEventDict.get('endTime') 
         if endTime: 
-            infoDict['eventEndingTime_datetime'] = self._convertToDatetime(endTime)        
+            infoDict['eventEndingTime_datetime'] = self._convertToDatetime(endTime)  
+        self._addToSegmentEntry(segmentEntry)      
         return segmentEntry
+       
+    def _addToProductDict(self, productDict):
+        '''
+        This method can be overridden by the Product Generators to add specific product information to the productDict
+        '''
+        pass
+    
+    def _addToSegmentEntry(self, segmentEntry):
+        '''
+        This method can be overridden by the Product Generators to add specific product information to the segmentEntry
+        '''
+        pass
     
     def _formatUGC_entries(self, segment):
         ugcDict = collections.OrderedDict()
@@ -1303,7 +1352,7 @@ class Product(object):
                 vtecDict = collections.OrderedDict()
                 vtecDict['vtecRecordType'] = 'pvtecRecord'
                 vtecDict['name']= 'pvtecRecord'
-                productClass, action, site, phenomena, significance, eventTrackingNumber, timeVTEC = parts
+                productClass, action, site, phenomenon, significance, eventTrackingNumber, timeVTEC = parts
                 startTimeVTEC, endTimeVTEC = timeVTEC.split('-')
                 vtecDict['productClass'] = productClass
                 vtecDict['action'] = action

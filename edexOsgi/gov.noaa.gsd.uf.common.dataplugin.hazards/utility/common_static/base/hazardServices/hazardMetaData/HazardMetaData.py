@@ -19,49 +19,20 @@ from MetaData_HydroPoint import MetaData_HydroPoint
 #   so the Hazard Information Dialog needs to 
 #   process the list in this order taking the first definition of options for FA", "A", "
 HazardMetaData =[
+                {"hazardTypes": [("FF", "W", "Convective")],"metaData": MetaData_FFW_Convective,},
+                {"hazardTypes": [("FF", "W", "NonConvective")],"metaData": MetaData_FFW_NonConvective,},
+                {"hazardTypes": [("FA", "Y")],"metaData": MetaData_FAY, },
+                {"hazardTypes": [("FA", "W")],"metaData": MetaData_FAW,},
+                {"hazardTypes": [("FF", "A")],"metaData": MetaData_FFA,},
+                {"hazardTypes": [("FA", "A")],"metaData": MetaData_FAA,},
+                {"hazardTypes": [("FL", "A")],"metaData": MetaData_FLA,},
+                {"hazardTypes": [("FL", "W")],"metaData": MetaData_FLW,},
+                {"hazardTypes": [("FL", "Y")],"metaData": MetaData_FLY,},
+                {"hazardTypes": [("HY", "O")],"metaData": [],},
+                {"hazardTypes": HazardCategories.get("Convective"),"metaData": MetaData_ShortFused,},
                 {
-                "hazardTypes": [("FF", "W", "Convective")],
-                "metaData": MetaData_FFW_Convective,
-                },
-                {
-                "hazardTypes": [("FF", "W", "NonConvective")],
-                "metaData": MetaData_FFW_NonConvective,
-                },
-                {
-                "hazardTypes": [("FA", "Y")],
-                "metaData": MetaData_FAY, 
-                 },
-                {
-                "hazardTypes": [("FA", "W")],
-                "metaData": MetaData_FAW,
-                },
-                {
-                "hazardTypes": [("FF", "A")],
-                "metaData": MetaData_FFA,
-                },
-                {
-                "hazardTypes": [("FA", "A")],
-                "metaData": MetaData_FAA,
-                },
-                {
-                "hazardTypes": [("FL", "A")],
-                "metaData": MetaData_FLA,
-                },
-                {
-                "hazardTypes": [("FL", "W")],
-                "metaData": MetaData_FLW,
-                },
-                {
-                "hazardTypes": [("FL", "Y")],
-                "metaData": MetaData_FLY,
-                },
-               {
-               "hazardTypes": HazardCategories.get("Convective"),
-               "metaData": MetaData_ShortFused,
-               },
-               {
                 "hazardTypes":  HazardCategories.get("Winter Weather") +  HazardCategories.get("Coastal Flood") + HazardCategories.get("Fire Weather") +\
                                 HazardCategories.get("Marine") + HazardCategories.get("Non Precip") + HazardCategories.get("Tropical"),
                 "metaData": [], # empty for now -- MetaData_LongFused,
-               },
+                },
 ]

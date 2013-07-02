@@ -62,7 +62,7 @@ class TextProductCommon(object):
         else:
             return new_time.strftime(format)  
  
-    def getVal(self, dictionary, key):
+    def getVal(self, dictionary, key, default=None):
         '''
         Convenience method to access dictionary keys and account for :skip and :editable suffixes
         
@@ -73,8 +73,8 @@ class TextProductCommon(object):
         for dictKey in [key, key+':skip', key+':editable']:
             if dictionary.get(dictKey): 
                 return dictionary.get(dictKey)
-       
-        
+        return default
+               
     def setSiteID(self, siteID):
         self._siteID = siteID
          
@@ -783,7 +783,7 @@ class TextProductCommon(object):
                 hList.sort(self.marineSortHazardAlg)
             else:
                 hList.sort(self.regularSortHazardAlg)
-                            
+                                           
         while len(hList) > 0:
             vtecRecord = hList[0]
             
@@ -810,7 +810,7 @@ class TextProductCommon(object):
             # add on the action
             actionWords = self.actionControlWord(vtecRecord, creationTime)
             hazStr = hazStr + ' ' + actionWords
-
+            
             #get the timing words
             timeWords = self.getTimingPhrase(vtecRecord, creationTime)
             if len(timeWords):
@@ -825,6 +825,7 @@ class TextProductCommon(object):
                 
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
+            
         return headlineStr 
         
     def getTimingPhrase(self, vtecRecord, issueTime, stype=None, etype=None):
