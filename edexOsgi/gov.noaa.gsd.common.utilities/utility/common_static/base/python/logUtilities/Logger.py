@@ -8,13 +8,16 @@ import logging.handlers
 #setup for the logger, simply importing this module will set up the
 #logging for the server.
 #-------------------------------------------------------------------------
+#logging.addLevelName(10, "DEBUG")
 logging.addLevelName(15, "VERBOSE")
 logging.addLevelName(75, "INFO")
 
 logger = logging.getLogger("logger")
 logger.VERBOSE = 15
+#logger.DEBUG = 10
 
 loggingLevel = logger.VERBOSE
+#loggingLevel = logger.DEBUG
 
 logger.setLevel(loggingLevel)   #set to DEBUG to log practically everything
 

@@ -14,7 +14,7 @@
 #                         Omaha, NE 68106
 #                         402.291.0100
 #
-# See the AWIPS II Master Rights File ("Master Rights File.pdf") for
+# See the AWIPS II Master Rights File ('Master Rights File.pdf') for
 # further licensing information.   
 # #
 
@@ -40,24 +40,26 @@ import os, collections
 class Format(FormatTemplate.Formatter):
     
     def execute(self, data):
-        """
+        '''
         Main method of execution to generate XML
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in XML format.
-        """        
+        '''        
         xml = Element('product')
         self.dictionary(xml, data)
 
         return tostring(xml)
     
     def dictionary(self, xml, data):
-        """
+        '''
         Returns the dictionary in XML format.
         @param data: dictionary values
         @return: Returns the dictionary in XML format.
-        """   
+        '''   
         if data is not None:
-            for key in data:        
+            for key in data: 
+                if ':skip' in key:
+                    continue       
                 value = data[key]
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)
@@ -75,11 +77,11 @@ class Format(FormatTemplate.Formatter):
                         subElement.attrib['editable'] = 'true'
     
     def list(self, xml, key, data):
-        """
+        '''
         Returns the list in XML format.
         @param data: list of values
         @return: Returns the list in XML format.
-        """
+        '''
         editable = False
         if ':editable' in key:
             key = key[:-9]

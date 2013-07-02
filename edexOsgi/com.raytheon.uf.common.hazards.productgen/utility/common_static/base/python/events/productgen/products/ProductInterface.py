@@ -32,7 +32,7 @@
 # 
 #
 import RollbackMasterInterface
-import JUtil
+import JUtil, importlib
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct
@@ -90,8 +90,16 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                 generatedProduct = GeneratedProduct(productID)
                 products = {}
                 for format in formats:
+                    module = __import__(format)
+                    instance = getattr(module, 'Format')()
+                    result = instance.execute(data)
+                    if type(result) is list:
+                        product = result
+                    else:
+                        product = [result] 
+                    products[format] = product
                     try:
-                        module = __import__(format)
+                        module = importlib.import_module(format) 
                         instance = getattr(module, 'Format')()
                         result = instance.execute(data)
                         if type(result) is list:

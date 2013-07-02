@@ -1,11 +1,11 @@
-"""
+'''
  Handles the input and output of Recommenders and Product Generators.
  
 Python is used for this module to work efficiently with 
 non-homogeneous data structures. 
  @since: March 2012
  @author: GSD Hazard Services Team
-"""
+'''
 
 import os, json, types
 import logging, UFStatusHandler
@@ -16,13 +16,13 @@ class ToolHandler(object):
     def __init__(self, bridge, sessionManager):
         self.bridge = bridge
         self.sessionManager = sessionManager
-        self.logger = logging.getLogger("ToolHandler")
+        self.logger = logging.getLogger('ToolHandler')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
-            "gov.noaa.gsd.viz.hazards.sessionmanager", "ToolHandler", level=logging.INFO))
+            'gov.noaa.gsd.viz.hazards.sessionmanager', 'ToolHandler', level=logging.INFO))
         self.logger.setLevel(logging.INFO)   
                 
-    def runTool(self, toolID, toolType = "Recommender", runData=None):
-        """
+    def runTool(self, toolID, toolType = 'Recommender', runData=None):
+        '''
         Runs a tool and stores the results.
         @param toolID: The name of the tool to run
         @param runData: JSON string containing any information required
@@ -30,7 +30,7 @@ class ToolHandler(object):
                   
         @return: A JSON string containing the tool meta information and
                  result data.
-        """
+        '''
 
         # Add to runData...
         if runData is not None:
@@ -46,28 +46,28 @@ class ToolHandler(object):
         # An example of a recommender which needs this information
         # is the modifyStormTrackTool
         eventDicts = self.sessionManager.findSessionEventDicts()
-        runDict["eventDicts"] = eventDicts
+        runDict['eventDicts'] = eventDicts
 
         if self.sessionManager.selectedEventIDs is not None and len(self.sessionManager.selectedEventIDs) > 0:           
             selectedEventID = self.sessionManager.selectedEventIDs[0]
             selectedEventDicts = self.sessionManager.findSessionEventDicts([selectedEventID])
             
             if selectedEventDicts is not None and len(selectedEventDicts) > 0:    
-                sessionDict["selectedEventDict"] = selectedEventDicts[0]
+                sessionDict['selectedEventDict'] = selectedEventDicts[0]
         
-        sessionDict["selectedTime"] = self.sessionManager.selectedTime
-        sessionDict["currentTime"] = self.sessionManager.currentTime
+        sessionDict['selectedTime'] = self.sessionManager.selectedTime
+        sessionDict['currentTime'] = self.sessionManager.currentTime
         
         framesInfo = {}
-        framesInfo["frameCount"] = self.sessionManager.frameCount
-        framesInfo["frameIndex"] = self.sessionManager.frameIndex
-        framesInfo["frameTimeList"] = self.sessionManager.frameTimeList
+        framesInfo['frameCount'] = self.sessionManager.frameCount
+        framesInfo['frameIndex'] = self.sessionManager.frameIndex
+        framesInfo['frameTimeList'] = self.sessionManager.frameTimeList
         
-        sessionDict["framesInfo"] = framesInfo
+        sessionDict['framesInfo'] = framesInfo
 
 
-        sessionDict["staticSettings"]=self.sessionManager.staticSettings
-        runDict["sessionDict"] = sessionDict
+        sessionDict['staticSettings']=self.sessionManager.staticSettings
+        runDict['sessionDict'] = sessionDict
         runData = json.dumps(runDict)
         # This is important...We need to remove any potential events
         # from a previous tool's run.
@@ -75,55 +75,55 @@ class ToolHandler(object):
         
         # Run Tool with required input
         result = self.bridge.runTool(toolID, toolType, runData)
-        self.logger.debug("Tool result for running tool " + toolID)
-        self.logger.debug("runData is " + runData)
+        self.logger.debug('Tool result for running tool ' + toolID)
+        self.logger.debug('runData is ' + runData)
         
-        if result is not None and result is not "NONE":
-            self.logger.debug("result is " + result)
+        if result is not None and result is not 'NONE':
+            self.logger.debug('result is ' + result)
         else:
             return None
            
         metaData = self.bridge.getMetaData(toolID, toolType)
         
-        self.logger.debug( "MetaData: " + str(type(metaData)))
+        self.logger.debug( 'MetaData: ' + str(type(metaData)))
         if metaData is not None:
             if type(metaData) is types.StringType:
                 metaDict = json.loads(metaData)
             else:
                 metaDict = metaData
                  
-            returnType = metaDict.get("returnType")
-            outputFormat = metaDict.get("outputFormat")
-            eventState = metaDict.get("eventState")
+            returnType = metaDict.get('returnType')
+            outputFormat = metaDict.get('outputFormat')
+            eventState = metaDict.get('eventState')
         
-            if returnType == "EventDicts_List":
+            if returnType == 'EventDicts_List':
                 resultDict = json.loads(result)
                 resultDict = resultDict[0]
                 
-                toolDict = {"metaData" : metaDict, "resultData" : resultDict}
-                if eventState == "Potential":
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDict}
+                if eventState == 'Potential':
                     self.sessionManager.removeEvents(STATE, POTENTIAL)
                 self.sessionManager.addEvents(resultDict)                                        
                 return json.dumps(toolDict)
             
-            elif returnType== "EventDicts" or returnType == "IEvent List":
+            elif returnType== 'EventDicts' or returnType == 'IEvent List':
                 resultDict = json.loads(result)
-                toolDict = {"metaData" : metaDict, "resultData" : resultDict}
-                if eventState == "Potential":
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDict}
+                if eventState == 'Potential':
                     self.sessionManager.removeEvents(STATE, POTENTIAL)
                 self.sessionManager.addEvents(resultDict)                    
                 return json.dumps(toolDict)                
                 
-            elif returnType == "TextProduct":
+            elif returnType == 'TextProduct':
                 return result
-            elif returnType == "ModifiedEventDict":
+            elif returnType == 'ModifiedEventDict':
                 modifyInfoDict = json.loads(result)
-                newEventDict = modifyInfoDict.get("eventDict")
+                newEventDict = modifyInfoDict.get('eventDict')
                 self.sessionManager.updateEventData(newEventDict)
             else:
                 # GraphData
                 resultDict = json.loads(result)
-                toolDict = {"metaData" : metaDict, "resultData" : resultDict}
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDict}
                 return json.dumps(toolDict)
         
     def handleRecommenderResult(self, toolID, eventList):
@@ -132,47 +132,47 @@ class ToolHandler(object):
         if resultDictList is None:
             return None
            
-        metaDict = self.bridge.getMetaData(toolID, "Recommender")
+        metaDict = self.bridge.getMetaData(toolID, 'Recommender')
         if metaDict is not None:
-            returnType = metaDict.get("returnType")
-            outputFormat = metaDict.get("outputFormat")
-            eventState = metaDict.get("eventState")
+            returnType = metaDict.get('returnType')
+            outputFormat = metaDict.get('outputFormat')
+            eventState = metaDict.get('eventState')
         
-            if returnType == "EventDicts_List":
+            if returnType == 'EventDicts_List':
                 resultDict = resultDictList[0]
                 
-                toolDict = {"metaData" : metaDict, "resultData" : resultDict}
-                if eventState == "Potential":
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDict}
+                if eventState == 'Potential':
                     self.sessionManager.removeEvents(STATE, POTENTIAL)
                 self.sessionManager.addEvents(resultDict)                                        
                 return json.dumps(toolDict)
             
-            elif returnType== "EventDicts" or returnType == "IEvent List":
-                toolDict = {"metaData" : metaDict, "resultData" : resultDictList}
-                if eventState == "Potential":
+            elif returnType== 'EventDicts' or returnType == 'IEvent List':
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDictList}
+                if eventState == 'Potential':
                     self.sessionManager.removeEvents(STATE, POTENTIAL)
                 self.sessionManager.addEvents(resultDictList)                    
                 return json.dumps(toolDict)                
                 
-            elif returnType == "TextProduct":
+            elif returnType == 'TextProduct':
                 return resultDictList
-            elif returnType == "ModifiedEventDict":
+            elif returnType == 'ModifiedEventDict':
                 # JER 20130625; get newEventDict from first item of list rather
-                # than attempting to lookup on the "eventDict" key.
+                # than attempting to lookup on the 'eventDict' key.
                 newEventDict = resultDictList[0]
                 self.sessionManager.updateEventData(newEventDict)
             else:
                 # GraphData
-                toolDict = {"metaData" : metaDict, "resultData" : resultDictList}
+                toolDict = {'metaData' : metaDict, 'resultData' : resultDictList}
                 return json.dumps(toolDict)
     
-    def getDialogInfo(self, toolID, toolType="Recommender", runData=None):
-        """
+    def getDialogInfo(self, toolID, toolType='Recommender', runData=None):
+        '''
         @param toolID: The tool to retrieve dialog info for.
         @param runData: Run data (generally session info) which 
                         will help the tool produce the dialog info.
         @return: JSON containing GUI building instructions or None
-        """
+        '''
         if runData is not None:
             runDict = json.loads(runData)
         else:
@@ -181,8 +181,8 @@ class ToolHandler(object):
         # Add CAVE session information to the tool's rundata
         sessionDict = {}
         
-        sessionDict["selectedTime"] = self.sessionManager.selectedTime
-        sessionDict["currentTime"] = self.sessionManager.currentTime
+        sessionDict['selectedTime'] = self.sessionManager.selectedTime
+        sessionDict['currentTime'] = self.sessionManager.currentTime
 
         #
         # The FollowUpRecommender needs this information passed into its
@@ -193,38 +193,44 @@ class ToolHandler(object):
             selectedEventDicts = self.sessionManager.findSessionEventDicts([selectedEventID])
             
             if selectedEventDicts is not None and len(selectedEventDicts) > 0:    
-                sessionDict["selectedEventDict"] = selectedEventDicts[0]
+                sessionDict['selectedEventDict'] = selectedEventDicts[0]
 
-        sessionDict["staticSettings"]=self.sessionManager.staticSettings
-        runDict["sessionDict"] = sessionDict
+        sessionDict['staticSettings']=self.sessionManager.staticSettings
+        runDict['sessionDict'] = sessionDict
         runData = json.dumps(runDict)
         
         result = self.bridge.getDialogInfo(toolID, runData)
         return result
 
-    def getSpatialInfo(self, toolID, toolType="Recommender", runData=None):
-        """
+    def getSpatialInfo(self, toolID, toolType='Recommender', runData=None):
+        '''
         @param toolID: The tool to retrieve dialog info for.
         @param runData: Run data (generally session info) which 
         @return: JSON containing the what spatial information this
                  tool needs to run or None.
-        """
-        self.logger.debug( "In ModelDelegator: getSpatialInfo: ToolID: " + toolID)
+        '''
+        self.logger.debug( 'In ModelDelegator: getSpatialInfo: ToolID: ' + toolID)
         result = self.bridge.getSpatialInfo(toolID, toolType, runData)
         return result
     
-    def getMetaData(self, toolID, toolType="Recommender", runData=None):
-        """
+    def getMetaData(self, toolID, toolType='Recommender', runData=None):
+        '''
         @param toolID: The tool to retrieve dialog info for.
         @param runData: Run data (generally session info) which 
                         will help the tool produce the dialog info.
         @return: JSON containing the meta data describing this tool's
                  services
-        """
+        '''
         result = self.bridge.getMetaData(toolID, toolType, runData)
         return result
     
     #  Product Generation   
+    def issueFormats(self):
+        return [LEGACY_FORMAT, XML_FORMAT, CAP_FORMAT]
+    
+    def previewFormats(self):
+        return [LEGACY_FORMAT]
+    
     class HazardEventSet:
         '''
         There will be one HazardEventSet per product generator
@@ -235,7 +241,6 @@ class ToolHandler(object):
             self.parent = parent
             self.productGenerator = productGenerator
             self.eventIDsWithStatus = []
-            self.formats = [LEGACY_FORMAT, XML_FORMAT]
             self.combinable = False
             self.dialogInfo = {}
                  
@@ -244,16 +249,10 @@ class ToolHandler(object):
         
         def getEventIDsWithStatus(self):
             return self.eventIDsWithStatus
-        
-        def formats(self):
-            return self.formats
-        
+                
         def setIssueFlag(self, issueFlag):
             self.issueFlag = issueFlag
-        
-        def setFormats(self, formats):
-            self.formats = formats
-            
+                    
         def addEventIDsWithStatus(self, eventIDsWithStatus):
             # [(eventID, label, status)]
             self.eventIDsWithStatus += eventIDsWithStatus                        
@@ -273,7 +272,7 @@ class ToolHandler(object):
         def getChosenEventIDs(self):
             eventIDs = []
             for eventID, label, status in self.eventIDsWithStatus:
-                if status == "ON":
+                if status == 'ON':
                     eventIDs.append(eventID)
             return eventIDs
 
@@ -289,26 +288,30 @@ class ToolHandler(object):
             eventDicts = self.getChosenEventDicts()
             for eventDict in eventDicts:
                 if eventDict.get(FORECAST_POINT):
-                    eventDict["geoType"] = POINT
+                    eventDict['geoType'] = POINT
                 else:
-                    eventDict["geoType"] = "area" 
+                    eventDict['geoType'] = 'area' 
             sessionDict = {
-                           "testMode": self.parent.sessionManager.caveMode,
-                           "experimentalMode": 0
+                           'testMode': self.parent.sessionManager.caveMode,
+                           'experimentalMode': 0
                            }
             if self.dialogInfo is not None:
-                valueDict = self.dialogInfo.get("valueDict")
+                valueDict = self.dialogInfo.get('valueDict')
             else:
                 valueDict = {}
+            if self.issueFlag:
+                formats = self.parent.issueFormats()
+            else:
+                formats = self.parent.previewFormats()
             hazardEventSet = {
-                              "eventDicts":eventDicts,
-                              "valueDict":valueDict,
-                              "formats": self.formats,
-                              "issueFlag": self.issueFlag,
-                              "currentTime":self.parent.sessionManager.currentTime,
+                              'eventDicts':eventDicts,
+                              'valueDict':valueDict,
+                              'formats': formats,
+                              'issueFlag': self.issueFlag,
+                              'currentTime':self.parent.sessionManager.currentTime,
                               SITE_ID: self.parent.sessionManager.wfoSiteID,
                               BACKUP_SITE_ID: self.parent.sessionManager.backupSiteID, 
-                              "sessionDict": sessionDict,                             
+                              'sessionDict': sessionDict,                             
                               }
             return hazardEventSet  
 
@@ -328,19 +331,19 @@ class ToolHandler(object):
             'productGenerator': u'FFA_ProductGenerator'}
             ]}
             '''
-            eventID_field = stagedSet.get("fields")[0]
-            valueDict = stagedSet.get("valueDict")
-            self.setDialogInfo(stagedSet.get("dialogInfo"))
+            eventID_field = stagedSet.get('fields')[0]
+            valueDict = stagedSet.get('valueDict')
+            self.setDialogInfo(stagedSet.get('dialogInfo'))
             
-            chosenEventIDs = valueDict.get("eventIDs")
+            chosenEventIDs = valueDict.get('eventIDs')
             eventIDsWithStatus = []
-            for choice in eventID_field.get("choices"):
-                eventID = choice.get("identifier")
+            for choice in eventID_field.get('choices'):
+                eventID = choice.get('identifier')
                 if eventID in chosenEventIDs:
-                    status = "ON"
+                    status = 'ON'
                 else:
-                    status = "OFF"
-                label = choice.get("displayString")
+                    status = 'OFF'
+                label = choice.get('displayString')
                 eventIDsWithStatus.append((eventID, label, status))
             self.addEventIDsWithStatus(eventIDsWithStatus)
         
@@ -353,29 +356,29 @@ class ToolHandler(object):
             choices = []
             chosen = []
             for eventID, label, status in self.eventIDsWithStatus:
-                choices.append({"identifier":eventID, "displayString":label})
-                if status == "ON":
+                choices.append({'identifier':eventID, 'displayString':label})
+                if status == 'ON':
                     chosen.append(eventID)
             stagingFields = [
                            {
-                            "fieldType":"CheckList",
-                            "label":"When issuing this hazard, there are other related hazards that could be included in the legacy product:",
-                            "fieldName": "eventIDs",
-                            "choices":choices,
-                            "lines": len(choices)
+                            'fieldType':'CheckList',
+                            'label':'When issuing this hazard, there are other related hazards that could be included in the legacy product:',
+                            'fieldName': 'eventIDs',
+                            'choices':choices,
+                            'lines': len(choices)
                             }
                            ]
-            stagingValueDict = {"eventIDs":chosen}
+            stagingValueDict = {'eventIDs':chosen}
             stagingInfo = {
-                           "stagingInfo": {
-                                           "fields": stagingFields,
-                                           "valueDict": stagingValueDict,
+                           'stagingInfo': {
+                                           'fields': stagingFields,
+                                           'valueDict': stagingValueDict,
                                            },
-                           "dialogInfo":self.dialogInfo,
-                           "productGenerator": self.productGenerator,
+                           'dialogInfo':self.dialogInfo,
+                           'productGenerator': self.productGenerator,
                            }
-            self.parent.logger.debug( "Dialog info" + json.dumps(self.dialogInfo) +" "+ str(type(self.dialogInfo)))
-            self.parent.logger.debug( "Staging info" + json.dumps(stagingInfo))
+            self.parent.logger.debug( 'Dialog info' + json.dumps(self.dialogInfo) +' '+ str(type(self.dialogInfo)))
+            self.parent.logger.debug( 'Staging info' + json.dumps(stagingInfo))
             return stagingInfo                                                          
 
     def convertHazardEventSets_toJson(self, hazardEventSets):
@@ -386,13 +389,13 @@ class ToolHandler(object):
         
     def convertHazardEventSets_fromJson(self, hazardEventSets_json, issueFlag):
         stagingInfo = json.loads(hazardEventSets_json)
-        stagedSets = stagingInfo.get("hazardEventSets")
-        generatedProducts = stagingInfo.get("generatedProducts", "")
+        stagedSets = stagingInfo.get('hazardEventSets')
+        generatedProducts = stagingInfo.get('generatedProducts', '')
             
         stagedEventSets = []
         for stagedSet in stagedSets:
-            productGenerator = stagedSet.get("productGenerator")
-            stagedEventSet = stagedSet.get("stagingInfo")
+            productGenerator = stagedSet.get('productGenerator')
+            stagedEventSet = stagedSet.get('stagingInfo')
             newSet = self.HazardEventSet(self, productGenerator)
             newSet.fromStagedSet(stagedEventSet)
             newSet.setIssueFlag(issueFlag)
@@ -408,7 +411,7 @@ class ToolHandler(object):
         @ issueFlag -- if True -- issue the hazard set
 
         '''
-        self.logger.debug("ToolHandler:createProductsFromEventIDs issueFlag "+str(issueFlag))    
+        self.logger.debug('ToolHandler:createProductsFromEventIDs issueFlag '+str(issueFlag))    
         eventDicts = self.sessionManager.findSessionEventDicts(self.sessionManager.selectedEventIDs)      
         hazardEventSets = self.getHazardEventSets(issueFlag, eventDicts)  
         stagingDialogFlag = self.stagingDialogFlag(hazardEventSets) 
@@ -416,8 +419,8 @@ class ToolHandler(object):
         if stagingDialogFlag:
             # Return information for Product Staging Dialog
             sets = self.convertHazardEventSets_toJson(hazardEventSets)
-            stagingInfo = {"returnType":"stagingInfo", "hazardEventSets":sets}
-            self.logger.debug("ToolHandler createProductsFromEventIDs stagingInfo" + json.dumps(stagingInfo))
+            stagingInfo = {'returnType':'stagingInfo', 'hazardEventSets':sets}
+            self.logger.debug('ToolHandler createProductsFromEventIDs stagingInfo' + json.dumps(stagingInfo))
             return json.dumps(stagingInfo)            
         else:
             return self.createProductsFromHazardEventSets(issueFlag, hazardEventSets)
@@ -426,7 +429,7 @@ class ToolHandler(object):
         '''
         Call the appropriate product generator for each hazardEventSet.
         If issueFlag is False (Preview), 
-                return the resulting list of "previewXML"'s                
+                return the resulting list of 'previewXML''s                
         If issueFlag is True (Issue), 
                 generate and issue the XML and ASCII formats 
         '''        
@@ -435,8 +438,10 @@ class ToolHandler(object):
             hazardEventSets, generatedProducts = self.convertHazardEventSets_fromJson(hazardEventSets, issueFlag)
 
         for hazardEventSet in hazardEventSets:
-            self.logger.debug( "ToolHandler createProductsFromHazardEventSets hazardEventSet" + \
+            self.logger.debug( 'ToolHandler createProductsFromHazardEventSets hazardEventSet' + \
                               json.dumps(hazardEventSet.generateProduct_info()))
+            print "\nHazard events", json.dumps(hazardEventSet.generateProduct_info())
+            self.flush()
 
         products = []
         self.issueFlag = issueFlag
@@ -447,26 +452,24 @@ class ToolHandler(object):
         runningAsynch = False
         for hazardEventSet in self.hazardEventSets:
             productGenerator = hazardEventSet.getProductGenerator()
-            #self.logger.info("ToolHandler calling " + productGenerator +" "+ \
-            #                   str(hazardEventSet.generateProduct_info()))
             runData = json.dumps(hazardEventSet.generateProduct_info())
-            resultProducts = self.bridge.runTool(productGenerator, "ProductGenerator", runData)
-            self.logger.debug( "resultProducts" + json.dumps(resultProducts))
+            resultProducts = self.bridge.runTool(productGenerator, 'ProductGenerator', runData)
+            self.logger.debug( 'resultProducts' + json.dumps(resultProducts))
             if resultProducts is None: 
                 runningAsynch = True 
                 continue       
             products += resultProducts
             
         if runningAsynch:
-            return json.dumps({"returnType": "NONE"})
+            return json.dumps({'returnType': 'NONE'})
 
-        if issueFlag == "True":
+        if issueFlag == 'True':
             self.issueFromHazardEventSets(hazardEventSets, products, ISSUED) 
-            return json.dumps({"returnType": "NONE"})         
+            return json.dumps({'returnType': 'NONE'})         
         else:
             hazardEventSets_json = self.convertHazardEventSets_toJson(hazardEventSets)
-            generatedProducts = {"returnType":"generatedProducts", "generatedProducts":products, 
-                                 "hazardEventSets":hazardEventSets_json}
+            generatedProducts = {'returnType':'generatedProducts', 'generatedProducts':products, 
+                                 'hazardEventSets':hazardEventSets_json}
             return json.dumps(generatedProducts)                        
 
     def handleProductGeneratorResult(self, toolID, generatedProducts): 
@@ -480,11 +483,11 @@ class ToolHandler(object):
         if generatedProducts is None:
             return 
         generatedProducts = self.bridge.handleProductGeneratorResult(toolID, generatedProducts)
-        self.logger.info( "ToolHandler generatedProducts converted" + json.dumps(generatedProducts, indent=4))
+        self.logger.info( 'ToolHandler generatedProducts converted' + json.dumps(generatedProducts, indent=4))
         if not generatedProducts:
             emptyProduct = {
                 'productID': 'EMPTY',
-                'entries':{LEGACY_FORMAT:[" EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. "]}
+                'entries':{LEGACY_FORMAT:[' EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. ']}
                 }
             generatedProducts = [emptyProduct]
         self.productsReceived += generatedProducts
@@ -493,21 +496,21 @@ class ToolHandler(object):
         if not self.productGeneratorsReceived == self.numberOfProductGenerators:
             return
         
-        if self.issueFlag == "True":
+        if self.issueFlag == 'True':
             self.issueFromHazardEventSets(self.hazardEventSets, self.productsReceived, ISSUED) 
-            return json.dumps({"returnType": None})        
+            return json.dumps({'returnType': None})        
         else:
             products = []
             
             for product in self.productsReceived:
-                entries = product.get("entries")
-                productID = product.get("productID")
+                entries = product.get('entries')
+                productID = product.get('productID')
                 legacyText = entries.get(LEGACY_FORMAT)[0]
-                products.append({"productID":productID, LEGACY_FORMAT: legacyText})
+                products.append({'productID':productID, LEGACY_FORMAT: legacyText})
             hazardEventSets_json = self.convertHazardEventSets_toJson(self.hazardEventSets)
-            generatedProducts = {"returnType":"generatedProducts", 
-                                 "generatedProducts":products, 
-                                 "hazardEventSets":hazardEventSets_json}
+            generatedProducts = {'returnType':'generatedProducts', 
+                                 'generatedProducts':products, 
+                                 'hazardEventSets':hazardEventSets_json}
 
             return json.dumps(generatedProducts)
 
@@ -517,21 +520,21 @@ class ToolHandler(object):
         combinableFlags = {}
         productStates = [PENDING, PROPOSED, ISSUED, ENDED]
         # Determine the set of product generators and associated eventIDs
-        #   { "FFA_ProductGenerator": [(eventID, label, status)]
-        self.logger.debug( "ToolHandler getHazardEventSets " + json.dumps(eventDicts))
+        #   { 'FFA_ProductGenerator': [(eventID, label, status)]
+        self.logger.debug( 'ToolHandler getHazardEventSets ' + json.dumps(eventDicts))
         for eventDict in eventDicts:
             if eventDict.get(STATE) not in productStates:
                 continue
             eventID = eventDict.get(EVENT_ID)
             hazardKey = eventDict.get(HAZARD_TYPE) 
             for productKey in productGeneratorTable:
-                allowedHazards = productGeneratorTable[productKey].get("allowedHazards")
+                allowedHazards = productGeneratorTable[productKey].get('allowedHazards')
                 for hazardType, category in allowedHazards:
                     if hazardKey == hazardType:
-                        productGenerators.setdefault(productKey, []).append((eventID, eventID+" "+hazardType, "ON"))
-                        # If any of the hazard types for this product are "combinableSegments", then 
+                        productGenerators.setdefault(productKey, []).append((eventID, eventID+' '+hazardType, 'ON'))
+                        # If any of the hazard types for this product are 'combinableSegments', then 
                         # set the flag for the product 
-                        if self.sessionManager.hazardTypes.get(hazardKey).get("combinableSegments") == True:
+                        if self.sessionManager.hazardTypes.get(hazardKey).get('combinableSegments') == True:
                             combinableFlags[productKey] = allowedHazards 
                                                     
         # Add in related hazards if there are combinableSegments 
@@ -545,7 +548,7 @@ class ToolHandler(object):
                         hType = eventDict.get(HAZARD_TYPE)
                         eventID = eventDict.get(EVENT_ID)
                         if hType in allowedTypes and eventID not in self.sessionManager.selectedEventIDs:
-                            productGenerators.setdefault(productKey, []).append((eventID, eventID+" "+hType, "OFF"))
+                            productGenerators.setdefault(productKey, []).append((eventID, eventID+' '+hType, 'OFF'))
                 # TO DO:  Add in from Hazard Database -- will need to bring into the session if not there already                  
                              
         # Create the hazardEventSets
@@ -554,10 +557,6 @@ class ToolHandler(object):
             hazardEventSet = self.HazardEventSet(self, productKey)
             hazardEventSet.addEventIDsWithStatus(productGenerators[productKey])
             hazardEventSet.setIssueFlag(issueFlag)
-            if issueFlag:
-                hazardEventSet.setFormats([XML_FORMAT, LEGACY_FORMAT])
-            else:
-                hazardEventSet.setFormat([LEGACY_FORMAT])
             if productGenerators.get(productKey) is not None:
                 hazardEventSet.setCombinable(True)
             hazardEventSets.append(hazardEventSet)
@@ -570,10 +569,11 @@ class ToolHandler(object):
         Determine if a Staging Dialog is necessary
         Conditions: We need a staging dialog if any of the product generators:
           Need user input (getDialogInfo)  OR 
-          Are working with "combinableSegments" hazards AND
+          Are working with 'combinableSegments' hazards AND
              Have an eventID that is not selected  AND
-             That eventID is in a state of PENDING or PROPOSED
-               (Once ISSUED, the user cannot chose to remove them from the product
+             That eventID is in a state of PENDING, PROPOSED, OR ISSUED
+               (Once ISSUED, if the user wishes to CONTINUE, they should not include
+               the hazard in the product)
              (Alternative: if there is more than one eventID....)           
         ''' 
         for hazardEventSet in hazardEventSets:
@@ -583,7 +583,7 @@ class ToolHandler(object):
                     for eventID, label, status in idsWithStatus:
                         if eventID not in self.sessionManager.selectedEventIDs:
                             eventDict = self.sessionManager.findSessionEventDicts([eventID])[0]
-                            if eventDict.get(STATE) != ISSUED:
+                            if eventDict.get(STATE) in [PENDING, ISSUED, PROPOSED]:
                                 return True
             if hazardEventSet.getDialogInfo() != {}:
                 return True 
@@ -600,6 +600,6 @@ class ToolHandler(object):
             self.sessionManager.changeState(eventIDs, state)
                 
     def flush(self):
-        """ Flush the print buffer """
+        ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
         

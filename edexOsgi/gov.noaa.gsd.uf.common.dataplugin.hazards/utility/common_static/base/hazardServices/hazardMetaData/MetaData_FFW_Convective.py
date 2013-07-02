@@ -1,82 +1,41 @@
 
 
+from CAP_Fields import CAP_Fields
+
+# Set the defaults for the CAP Fields
+for entry in CAP_Fields:
+    for fieldName, values in [
+                ("urgency", "Immediate"),
+                ("responseType", "Avoid"),
+                ("severity", "Severe"),
+                ("certainty", "Likely"),
+                ("WEA_Text", "Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS"),
+                ]:
+        if entry["fieldName"] == fieldName:
+            entry["values"] = values            
+ 
 MetaData_FFW_Convective = [
             {             
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
-            "shortValueLabels":"Cau",
+            "values": "ER",
             "choices": [
-                {
-                 "displayString": "ER (Excessive Rainfall)",
-                 "productString": "ER",
-                 "identifier": "ER",
-                },
-                {
-                 "displayString": "SM (Snow Melt)", 
-                 "productString": "SM",
-                 "identifier": "SM",
-                },
-                {
-                 "displayString": "RS (Rain and Snow Melt)", 
-                 "productString": "RS",
-                 "identifier": "RS",
-                },
-                {
-                 "displayString": "DM (Dam or Levee Failure)",
-                 "productString": "DM",
-                 "identifier": "DM",
-                },
-                {
-                 "displayString": "DR (Upstream Dam Release)",
-                 "productString": "DR",
-                 "identifier": "DR",
-                },
-                {
-                 "displayString": "GO (Glacier-Dammed Lake Outburst)",
-                 "productString": "GO",
-                 "identifier": "GO",
-                },
-                {
-                 "displayString": "IJ (Ice Jam)", 
-                 "productString": "IJ",
-                 "identifier": "IJ",
-                },
-                {
-                 "displayString": "IC (Rain and/or Snow melt and/or Ice Jam)",
-                 "productString": "IC",
-                 "identifier": "IC",
-                },
-                {
-                 "displayString": "FS (Upstream Flooding plus Storm Surge)", 
-                 "productString": "FS",
-                 "identifier": "FS",
-                },
-                {
-                 "displayString": "FT (Upstream Flooding plus Tidal Effects)",
-                 "productString": "FT",
-                 "identifier": "FT",
-                },
-                {
-                 "displayString": "ET (Elevated Upstream Flow plus Tidal Effects)",
-                 "productString": "ET",
-                 "identifier": "ET",
-                },
-                {
-                 "displayString": "WT (Wind and/or Tidal Effects)",
-                 "productString": "WT",
-                 "identifier": "WT",
-                },
-                {
-                 "displayString": "OT (Other Effects)",
-                 "identifier": "OT",
-                 "productString": "OT",
-                },
-                {
-                 "displayString": "UU (Unknown)", 
-                 "productString": "UU",
-                 "identifier": "UU",
-                },
+                {"displayString": "ER (Excessive Rainfall)","productString": "ER","identifier": "ER",},
+                {"displayString": "SM (Snow Melt)", "productString": "SM","identifier": "SM",},
+                {"displayString": "RS (Rain and Snow Melt)", "productString": "RS","identifier": "RS",},
+                {"displayString": "DM (Dam or Levee Failure)","productString": "DM","identifier": "DM",},
+                {"displayString": "DR (Upstream Dam Release)","productString": "DR","identifier": "DR",},
+                {"displayString": "GO (Glacier-Dammed Lake Outburst)","productString": "GO","identifier": "GO",},
+                {"displayString": "IJ (Ice Jam)", "productString": "IJ","identifier": "IJ",},
+                {"displayString": "IC (Rain and/or Snow melt and/or Ice Jam)","productString": "IC","identifier": "IC",},
+                {"displayString": "FS (Upstream Flooding plus Storm Surge)", "productString": "FS","identifier": "FS",},
+                {"displayString": "FT (Upstream Flooding plus Tidal Effects)","productString": "FT","identifier": "FT",},
+                {"displayString": "ET (Elevated Upstream Flow plus Tidal Effects)","productString": "ET","identifier": "ET",},
+                {"displayString": "WT (Wind and/or Tidal Effects)","productString": "WT","identifier": "WT",},
+                {"displayString": "OT (Other Effects)","identifier": "OT","productString": "OT",},
+                {"displayString": "MC (Other Multiple Causes)","identifier": "MC"},
+                {"displayString": "UU (Unknown)", "productString": "UU","identifier": "UU",},
                 ],
            },
            {             
@@ -85,14 +44,8 @@ MetaData_FFW_Convective = [
              "fieldName": "include",
              "label": "",
              "choices": [
-                {
-                  "displayString": "Also Snow Melt", 
-                  "productString": "RAPID SNOW MELT IS CAUSING FLOODING.",
-                 },
-                 {
-                  "displayString": "Flooding not directly reported, only heavy rain",
-                  "productString": "FLOODING IS NOT DIRECTLY REPORTED, ONLY HEAVY RAINS.",
-                 },
+                {"displayString": "Also Snow Melt","productString": "RAPID SNOW MELT IS CAUSING FLOODING.",},
+                {"displayString": "Flooding not directly reported, only heavy rain","productString": "FLOODING IS NOT DIRECTLY REPORTED, ONLY HEAVY RAINS.",},
                  ],
             },
             # BASIS
@@ -101,26 +54,11 @@ MetaData_FFW_Convective = [
              "fieldName": "basis",
              "label": "Reported By (Choose 1):",
              "choices": [    
-                     {
-                      "displayString": "Doppler Radar indicated...", 
-                      "productString": "Doppler Radar indicated",
-                     },
-                     {
-                      "displayString": "Local law enforcement reported...", 
-                      "productString": "Local law enforcement reported...",
-                     },
-                     {
-                      "displayString": "Trained weather spotters reported...", 
-                      "productString": "Trained weather spotters reported...",
-                     },
-                     {
-                      "displayString": "Public reported...", 
-                      "productString": "Public reported...",
-                     },
-                     {
-                      "displayString": "pathcast",
-                      "productString": "",
-                     }
+                     {"displayString": "Doppler Radar indicated...", "productString": "Doppler Radar indicated",},
+                     {"displayString": "Local law enforcement reported...", "productString": "Local law enforcement reported...",},
+                     {"displayString": "Trained weather spotters reported...", "productString": "Trained weather spotters reported...",},
+                     {"displayString": "Public reported...", "productString": "Public reported...",},
+                     {"displayString": "pathcast","productString": "",}
                    ], 
             },
            # CALLS TO ACTION
@@ -130,6 +68,7 @@ MetaData_FFW_Convective = [
            "fieldName": "cta",
            "choices": [
                {
+                "identifier": "noCall",
                 "displayString": "No call to action",
                 "productString": ""
                 },{
@@ -172,5 +111,5 @@ MetaData_FFW_Convective = [
                 "displayString": "Report flooding to local law enforcement",
                 "productString": "TO REPORT FLOODING...HAVE THE NEAREST LAW ENFORCEMENT AGENCY RELAY YOUR REPORT TO THE NATIONAL WEATHER SERVICE FORECAST OFFICE."
                 }]
-           }  
-]
+           },
+        ] + CAP_Fields

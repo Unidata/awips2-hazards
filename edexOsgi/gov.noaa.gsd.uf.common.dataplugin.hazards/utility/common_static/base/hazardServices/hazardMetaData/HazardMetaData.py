@@ -3,7 +3,11 @@
 from HazardCategories import HazardCategories
 from MetaData_FAY import MetaData_FAY
 from MetaData_FFA import MetaData_FFA
+from MetaData_FAA import MetaData_FAA
 from MetaData_FAW import MetaData_FAW
+from MetaData_FLA import MetaData_FLA
+from MetaData_FLW import MetaData_FLW
+from MetaData_FLY import MetaData_FLY
 from MetaData_FFW_Convective import MetaData_FFW_Convective
 from MetaData_FFW_NonConvective import MetaData_FFW_NonConvective
 from MetaData_ShortFused import MetaData_ShortFused
@@ -32,8 +36,24 @@ HazardMetaData =[
                 "metaData": MetaData_FAW,
                 },
                 {
-                "hazardTypes": [("FF", "A"), ("FA", "A")],
+                "hazardTypes": [("FF", "A")],
                 "metaData": MetaData_FFA,
+                },
+                {
+                "hazardTypes": [("FA", "A")],
+                "metaData": MetaData_FAA,
+                },
+                {
+                "hazardTypes": [("FL", "A")],
+                "metaData": MetaData_FLA,
+                },
+                {
+                "hazardTypes": [("FL", "W")],
+                "metaData": MetaData_FLW,
+                },
+                {
+                "hazardTypes": [("FL", "Y")],
+                "metaData": MetaData_FLY,
                 },
                {
                "hazardTypes": HazardCategories.get("Convective"),
@@ -43,9 +63,5 @@ HazardMetaData =[
                 "hazardTypes":  HazardCategories.get("Winter Weather") +  HazardCategories.get("Coastal Flood") + HazardCategories.get("Fire Weather") +\
                                 HazardCategories.get("Marine") + HazardCategories.get("Non Precip") + HazardCategories.get("Tropical"),
                 "metaData": [], # empty for now -- MetaData_LongFused,
-               },
-               {
-                "hazardTypes": HazardCategories.get("Hydrology"),  # FL.A, FL.W, FL.Y
-                "metaData": MetaData_HydroPoint,
                },
 ]

@@ -355,6 +355,8 @@ class SessionManager(object):
                              
         """
         self.logger.debug("SM -- updateEventData" + json.dumps(updateDicts))
+        print "SM UpdateEventData", updateDicts
+        self.flush()
         if type(updateDicts) is types.StringType:
             updateDicts = json.loads(updateDicts)
         if type(updateDicts) is not types.ListType:
