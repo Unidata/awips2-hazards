@@ -29,12 +29,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.registry.handler.RegistryHandlerException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.hazards.HazardNotifier;
 import com.raytheon.uf.edex.hazards.IHazardStorageManager;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -81,6 +83,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.store(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully stored to registry");
+            HazardNotifier.notify(event, NotificationType.STORE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
@@ -97,6 +100,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.update(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully updated in registry");
+            HazardNotifier.notify(event, NotificationType.UPDATE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
@@ -112,6 +116,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.delete(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully deleted from registry");
+            HazardNotifier.notify(event, NotificationType.DELETE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
