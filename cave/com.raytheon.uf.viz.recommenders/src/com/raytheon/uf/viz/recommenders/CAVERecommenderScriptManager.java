@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +43,10 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 24, 2013            mnash     Initial creation
+ * Jan 24, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -83,7 +87,7 @@ public class CAVERecommenderScriptManager extends
                 if (isInstantiated(recName) == false) {
                     instantiatePythonScript(recName);
                 }
-                Map<String, String> dialogValues = getInfo(recName,
+                Map<String, Serializable> dialogValues = getInfo(recName,
                         "getDialogInfo");
                 showDialog(dialogValues);
                 Map<String, String> spatialValues = getInfo(recName,
@@ -98,7 +102,7 @@ public class CAVERecommenderScriptManager extends
         return null;
     }
 
-    private void showDialog(Map<String, String> dialogValues) {
+    private void showDialog(Map<String, Serializable> dialogValues) {
         // TODO, call megawidgets
         // MegawidgetSpecifierFactory factory = new
         // MegawidgetSpecifierFactory();

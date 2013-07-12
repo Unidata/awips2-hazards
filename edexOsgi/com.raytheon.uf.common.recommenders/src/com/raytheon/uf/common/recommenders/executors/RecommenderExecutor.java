@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +37,10 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 5, 2013            mnash     Initial creation
+ * Feb 05, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -49,7 +53,7 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
 
     private Map<String, String> spatialInfo;
 
-    private Map<String, String> dialogInfo;
+    private Map<String, Serializable> dialogInfo;
 
     private EventSet<IEvent> eventSet;
 
@@ -59,7 +63,7 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
      */
     public RecommenderExecutor(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, String> spatialInfo,
-            Map<String, String> dialogInfo) {
+            Map<String, Serializable> dialogInfo) {
         super(recommenderName);
         this.eventSet = eventSet;
         this.spatialInfo = spatialInfo;

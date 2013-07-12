@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.recommenders;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +58,10 @@ import com.raytheon.uf.common.util.FileUtil;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 17, 2013            mnash     Initial creation
+ * Jan 17, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -211,7 +215,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     public List<IEvent> executeRecommender(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, String> dialogValues,
+            EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
             Map<String, String> spatialValues) {
         final Map<String, Object> args = getStarterMap(recommenderName);
         args.put("eventSet", eventSet);
@@ -236,7 +240,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     @SuppressWarnings("unchecked")
-    public Map<String, String> getInfo(String recName, String methodName) {
+    public <T> Map<String, T> getInfo(String recName, String methodName) {
         Object retVal = null;
         try {
             final Map<String, Object> args = getStarterMap(recName);
@@ -246,15 +250,14 @@ public abstract class AbstractRecommenderScriptManager extends
                     + methodName, e);
         }
         if (retVal == null) {
-            retVal = new HashMap<String, String>();
+            retVal = new HashMap<String, T>();
         }
-        return (Map<String, String>) retVal;
+        return (Map<String, T>) retVal;
     }
 
     /**
      * Retrieve the recommenders based on the file name
      */
-    @SuppressWarnings("unchecked")
     private void retrieveRecommenderList() {
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationFile[] lFiles = manager.listStaticFiles(

@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
@@ -33,7 +34,10 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
+ * Feb 06, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -42,7 +46,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  */
 
 public class RecommenderDialogInfoExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, Map<String, String>> {
+        extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
 
     /**
 * 
@@ -52,7 +56,7 @@ public class RecommenderDialogInfoExecutor<P extends AbstractRecommenderScriptMa
     }
 
     @Override
-    public Map<String, String> execute(P script) {
+    public Map<String, Serializable> execute(P script) {
         return script.getInfo(recommenderName, "getDialogInfo");
     }
 }

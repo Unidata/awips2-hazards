@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,10 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 6, 2013            mnash     Initial creation
+ * Mar 06, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -102,7 +106,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      */
     public void runExecuteRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, String> spatialInfo,
-            Map<String, String> dialogInfo,
+            Map<String, Serializable> dialogInfo,
             IPythonJobListener<List<IEvent>> listener) {
         IPythonExecutor<P, List<IEvent>> executor = new RecommenderExecutor<P>(
                 recommenderName, eventSet, spatialInfo, dialogInfo);
@@ -124,8 +128,8 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param recommenderName
      * @return
      */
-    public Map<String, String> getDialogInfo(String recommenderName) {
-        IPythonExecutor<P, Map<String, String>> executor = new RecommenderDialogInfoExecutor<P>(
+    public Map<String, Serializable> getDialogInfo(String recommenderName) {
+        IPythonExecutor<P, Map<String, Serializable>> executor = new RecommenderDialogInfoExecutor<P>(
                 recommenderName);
         try {
             return coordinator.submitSyncJob(executor);

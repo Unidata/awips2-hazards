@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +42,10 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 23, 2013            mnash     Initial creation
+ * May 23, 2013            mnash       Initial creation
+ * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -82,7 +86,7 @@ public class EDEXRecommenderScriptManager extends
                     instantiatePythonScript(recName);
                 }
                 // do nothing with these for now, may read from config file
-                Map<String, String> dialogValues = null;
+                Map<String, Serializable> dialogValues = null;
                 Map<String, String> spatialValues = null;
                 // using a new EventSet<IEvent> for now, but will need something
                 // different for future
