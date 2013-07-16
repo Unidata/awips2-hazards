@@ -51,10 +51,8 @@ public class HazardNotifier {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardNotifier.class);
 
-    private static final String HAZARD_TOPIC = "edex.alerts.hazards";
-
-    private static final String SEND_URI = "jms-generic:topic:" + HAZARD_TOPIC
-            + "?timeToLive=60000";
+    private static final String SEND_URI = "jms-generic:topic:"
+            + HazardNotification.HAZARD_TOPIC + "?timeToLive=60000";
 
     public static void notify(IHazardEvent event, NotificationType type) {
         try {
