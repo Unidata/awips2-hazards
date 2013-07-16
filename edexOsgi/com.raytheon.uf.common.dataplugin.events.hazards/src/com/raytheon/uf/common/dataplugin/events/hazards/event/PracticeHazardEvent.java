@@ -154,7 +154,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     private ProductClass hazardMode;
 
     @Column(name = "geometry", columnDefinition = "geometry")
-    @Type(type = "com.raytheon.edex.db.objects.hibernate.GeometryType")
+    @Type(type = "org.hibernatespatial.GeometryUserType")
     @XmlJavaTypeAdapter(value = GeometryAdapter.class)
     @DynamicSerializeElement
     @XmlElement

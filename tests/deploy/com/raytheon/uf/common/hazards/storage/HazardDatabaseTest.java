@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.common.hazards.storage;
 
+import org.junit.BeforeClass;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
 
 /**
  * Tests database interaction of IHazardEvents
@@ -39,6 +42,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
  */
 
 public class HazardDatabaseTest extends AbstractHazardStorageTest {
+
+    @BeforeClass
+    public static void classSetUp() {
+        RequestRouterTest.setDeployInstance();
+    }
+
     /*
      * (non-Javadoc)
      * 
