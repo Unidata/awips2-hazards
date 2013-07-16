@@ -18,7 +18,6 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
@@ -32,6 +31,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.swt.widgets.Display;
 import org.osgi.framework.Bundle;
 
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
@@ -63,8 +63,11 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jun 24, 2013            bryon.lawrence      Removed the 'Move Entire Element'
  *                                             option from the right-click context
  *                                             menu.
- * Jul 19, 2013 1257       bsteffen    Notification support for session manager.
- * 
+ * Jul 19, 2013   1257     bsteffen            Notification support for session manager.
+ * Jul 20, 2013    585     Chris.Golden        Changed to support loading from bundle,
+ *                                             including making the model and JEP
+ *                                             instances be member variables instead
+ *                                             of class-scoped.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -72,7 +75,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  */
 public final class HazardServicesMessageHandler {
 
-    // Private Variables
+    // Private Constants
 
     /**
      * Key indicating that an event has ended and that the cancellation or
@@ -197,6 +200,8 @@ public final class HazardServicesMessageHandler {
      */
     private final String META_DATA = "metaData";
 
+    // Private Static Constants
+
     /**
      * Logging mechanism.
      */
@@ -204,20 +209,6 @@ public final class HazardServicesMessageHandler {
             .getHandler(HazardServicesMessageHandler.class);
 
     // Private Static Variables
-
-    /**
-     * Interface to SessionManager (via proxy).
-     */
-    private static ModelDecorator model = null;
-
-    /**
-     * JEP connection. Allows Java to run Python and Python to run Java.
-     */
-    private static Jep jep;
-
-    private static String caveMode;
-
-    private static String siteID;
 
     /**
      * Resolved path of SessionManager code.
@@ -274,6 +265,22 @@ public final class HazardServicesMessageHandler {
         }
     }
 
+    // Private Variables
+
+    /**
+     * Interface to SessionManager (via proxy).
+     */
+    private ModelDecorator model = null;
+
+    /**
+     * JEP connection. Allows Java to run Python and Python to run Java.
+     */
+    private Jep jep;
+
+    private final String caveMode;
+
+    private final String siteID;
+
     /**
      * An instance of the Hazard Services app builder.
      */
@@ -286,7 +293,7 @@ public final class HazardServicesMessageHandler {
      * 
      * @return Model proxy.
      */
-    public static IHazardServicesModel getModelProxy() {
+    public IHazardServicesModel getModelProxy() {
         return model;
     }
 
@@ -324,7 +331,7 @@ public final class HazardServicesMessageHandler {
      * 
      * @return A Model object.
      */
-    private static IHazardServicesModel instantiateModel() {
+    private IHazardServicesModel instantiateModel() {
         try {
             /*
              * Retrieve the class loader used to find classes in this plug-in.
@@ -443,7 +450,8 @@ public final class HazardServicesMessageHandler {
         siteID = LocalizationManager.getInstance().getCurrentSite();
 
         model.initialize(currentTime, currentTime, staticSettingID,
-                dynamicSettingJSON, caveMode, siteID, state);
+                dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus(),
+                state);
     }
 
     // Methods
@@ -809,7 +817,8 @@ public final class HazardServicesMessageHandler {
             boolean eventsChanged) {
 
         model.initialize(model.getSelectedTime(), model.getCurrentTime(),
-                settingID, "", caveMode, siteID, model.getState(saveEvents));
+                settingID, "", caveMode, siteID, appBuilder.getEventBus(),
+                model.getState(saveEvents));
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
                 IHazardServicesModel.Element.EVENTS,
@@ -966,7 +975,8 @@ public final class HazardServicesMessageHandler {
         sessionManager.initialize(sessionManager.getSelectedTime(),
                 sessionManager.getCurrentTime(),
                 sessionManager.getCurrentSettingsID(), jsonDynamicSetting,
-                caveMode, siteID, sessionManager.getState(true));
+                caveMode, siteID, appBuilder.getEventBus(),
+                sessionManager.getState(true));
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.DYNAMIC_SETTING));
     }
@@ -1054,7 +1064,7 @@ public final class HazardServicesMessageHandler {
             DataTime[] dataFrames = framesInfo.getFrameTimes();
 
             if (frameIndex >= 0) {
-                final List<Long> dataTimeList = new ArrayList<Long>();
+                final List<Long> dataTimeList = Lists.newArrayList();
 
                 if (dataFrames != null) {
                     for (DataTime dataTime : dataFrames) {
@@ -1165,11 +1175,12 @@ public final class HazardServicesMessageHandler {
      * Closes the JEP connection and frees up the JEP resources. There may be
      * some leaked memory associated with numpy.
      */
-    public void closeJepConnection() {
+    public void prepareForShutdown() {
         if (jep != null) {
             jep.close();
             jep = null;
         }
+        model = null;
     }
 
     /**

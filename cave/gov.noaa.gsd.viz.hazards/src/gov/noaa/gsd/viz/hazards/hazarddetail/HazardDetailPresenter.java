@@ -18,6 +18,8 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.EnumSet;
 
+import com.google.common.eventbus.EventBus;
+
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
  * detail view.
@@ -32,6 +34,10 @@ import java.util.EnumSet;
  * Jun 25, 2013            Chris.Golden      Added code to prevent reentrant
  *                                           behavior when receiving an event-
  *                                           changed notification.
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,10 +63,12 @@ public class HazardDetailPresenter extends
      *            Model to be handled by this presenter.
      * @param view
      *            Hazard detail view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
     public HazardDetailPresenter(IHazardServicesModel model,
-            IHazardDetailView<?, ?> view) {
-        super(model, view);
+            IHazardDetailView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods
@@ -118,14 +126,9 @@ public class HazardDetailPresenter extends
 
     /**
      * Hide the hazard detail subview.
-     * 
-     * @param force
-     *            Flag indicating whether or not to force the hiding of the
-     *            subview. This may be used as a hint by views if they are
-     *            considering not hiding the subview for whatever reason.
      */
-    public final void hideHazardDetail(boolean force) {
-        getView().hideHazardDetail(force);
+    public final void hideHazardDetail() {
+        getView().hideHazardDetail(false);
     }
 
     // Protected Methods

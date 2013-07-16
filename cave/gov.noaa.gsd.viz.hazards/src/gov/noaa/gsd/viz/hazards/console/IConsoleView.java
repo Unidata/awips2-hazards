@@ -24,7 +24,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -75,6 +75,11 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void acceptContributionsToMainUI(
             List<? extends IView<C, E>> contributors, E type);
+
+    /**
+     * Ensure the view is visible.
+     */
+    public void ensureVisible();
 
     /**
      * Update the current time.

@@ -16,6 +16,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
 import java.util.EnumSet;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -27,8 +28,11 @@ import com.raytheon.uf.common.status.UFStatus;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Feb 18, 2013            Bryon.Lawrence    Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -76,10 +80,12 @@ public class ProductStagingPresenter extends
      *            Model to be handled by this presenter.
      * @param view
      *            Product staging view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
     public ProductStagingPresenter(IHazardServicesModel model,
-            IProductStagingView<?, ?> view) {
-        super(model, view);
+            IProductStagingView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods

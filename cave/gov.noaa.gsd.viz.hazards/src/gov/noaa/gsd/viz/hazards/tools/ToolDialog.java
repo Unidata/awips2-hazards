@@ -19,7 +19,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -30,6 +29,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -48,8 +48,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * <dt><code>sideEffectsScript</code></dt>
  * <dd>Optional string which, if provided, is used as the Python script that
  * defines the <code>applySideEffects()</code> method required by
- * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}. If not
- * provided, no side effects are applied when megawidgets are invoked or
+ * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}. If
+ * not provided, no side effects are applied when megawidgets are invoked or
  * experience state changes.</dd>
  * <dt><code>runToolTriggers</code></dt>
  * <dd>Optional list of megawidget identifier strings indicating which of the
@@ -86,6 +86,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           effects applier for the
  *                                           megawidgets showing in the
  *                                           tool dialog.
+ * Jul 18, 2013    585     Chris Golden      Changed to support loading
+ *                                           from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -99,6 +101,11 @@ class ToolDialog extends BasicDialog {
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ToolDialog.class);
+
+    /**
+     * OK button text.
+     */
+    private static final String OK_BUTTON_TEXT = "Run";
 
     // Private Variables
 
@@ -200,7 +207,7 @@ class ToolDialog extends BasicDialog {
         try {
             triggers = dialogDict.getDynamicallyTypedValue("runToolTriggers");
             if (triggers == null) {
-                triggers = new ArrayList<String>();
+                triggers = Lists.newArrayList();
             }
         } catch (Exception e) {
             statusHandler
@@ -345,7 +352,7 @@ class ToolDialog extends BasicDialog {
         // Python side effects script was supplied as part of the
         // dialog parameters, create a Python side effects applier
         // object and pass it to the megawidget manager.
-        List<Dict> megawidgetSpecifiersList = new ArrayList<Dict>();
+        List<Dict> megawidgetSpecifiersList = Lists.newArrayList();
         for (Object specifier : megawidgetSpecifiers) {
             megawidgetSpecifiersList.add((Dict) specifier);
         }
@@ -399,7 +406,7 @@ class ToolDialog extends BasicDialog {
     protected void createButtonsForButtonBar(Composite parent) {
         super.createButtonsForButtonBar(parent);
         Button ok = getButton(IDialogConstants.OK_ID);
-        ok.setText("Run");
+        ok.setText(OK_BUTTON_TEXT);
         setButtonLayoutData(ok);
     }
 

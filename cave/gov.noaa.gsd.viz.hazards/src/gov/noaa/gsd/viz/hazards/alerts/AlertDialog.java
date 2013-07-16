@@ -15,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.setting.SettingsView;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.IInputValidator;
@@ -31,6 +30,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -43,7 +43,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            daniel.s.schaffer      Initial induction into repo
- * 
+ * Jul 18, 2013    585     Chris.Golden           Changed to support loading from bundle.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -260,7 +260,7 @@ class AlertDialog extends BasicDialog {
         // Create a megawidget manager, which will create the mega-
         // widgets and manage their displaying, and allowing of mani-
         // pulation, of the the dictionary values.
-        List<Dict> fieldsList = new ArrayList<Dict>();
+        List<Dict> fieldsList = Lists.newArrayList();
         for (Object field : fields) {
             fieldsList.add((Dict) field);
         }

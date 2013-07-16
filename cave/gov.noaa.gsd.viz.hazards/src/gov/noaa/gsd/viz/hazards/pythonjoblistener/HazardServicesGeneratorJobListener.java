@@ -9,7 +9,6 @@ package gov.noaa.gsd.viz.hazards.pythonjoblistener;
 
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 
 import java.util.List;
 
@@ -29,8 +28,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 19, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Mar 19, 2013            Bryon.Lawrence    Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -38,6 +37,8 @@ import com.raytheon.uf.viz.core.VizApp;
  */
 public class HazardServicesGeneratorJobListener implements
         IPythonJobListener<List<IGeneratedProduct>> {
+    private final EventBus eventBus;
+
     private final String toolID;
 
     /**
@@ -47,10 +48,13 @@ public class HazardServicesGeneratorJobListener implements
             .getHandler(HazardServicesGeneratorJobListener.class);
 
     /**
+     * @param eventBus
+     *            Event bus to use to transmit messages.
      * @param toolID
      *            The name of the tool which produced this recommendation.
      */
-    public HazardServicesGeneratorJobListener(String toolID) {
+    public HazardServicesGeneratorJobListener(EventBus eventBus, String toolID) {
+        this.eventBus = eventBus;
         this.toolID = toolID;
     }
 
@@ -72,8 +76,6 @@ public class HazardServicesGeneratorJobListener implements
 
             @Override
             public void run() {
-                EventBus eventBus = EventBusSingleton.getInstance();
-
                 ToolAction action = new ToolAction(
                         ToolActionEnum.PRODUCTS_GENERATED, toolID, result);
                 eventBus.post(action);

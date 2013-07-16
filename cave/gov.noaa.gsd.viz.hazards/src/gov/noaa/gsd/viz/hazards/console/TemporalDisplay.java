@@ -12,13 +12,11 @@ package gov.noaa.gsd.viz.hazards.console;
 import gov.noaa.gsd.common.utilities.DateStringComparator;
 import gov.noaa.gsd.common.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
@@ -44,12 +42,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.text.Collator;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,9 +56,6 @@ import javax.imageio.ImageIO;
 
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.ActionContributionItem;
-import org.eclipse.jface.action.IToolBarManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.TableEditor;
 import org.eclipse.swt.events.ControlEvent;
@@ -106,7 +98,6 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.ToolTip;
-import org.eclipse.ui.IActionBars;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -133,7 +124,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           up area around timeline ruler to make
  *                                           the column header border show up around
  *                                           it as it should.
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -141,12 +132,130 @@ import com.raytheon.uf.common.status.UFStatus;
  */
 class TemporalDisplay {
 
+    // Public Static Constants
+
+    /**
+     * Selected time mode tooltip text.
+     */
+    public static final String SELECTED_TIME_MODE_TEXT = "Selected Time Mode";
+
+    /**
+     * Single selected time mode.
+     */
+    public static final String SELECTED_TIME_MODE_SINGLE = "Single";
+
+    /**
+     * Range selected time mode.
+     */
+    public static final String SELECTED_TIME_MODE_RANGE = "Range";
+
+    /**
+     * Selected time mode choices.
+     */
+    public static final List<String> SELECTED_TIME_MODE_CHOICES = Collections
+            .unmodifiableList(Lists.newArrayList(SELECTED_TIME_MODE_SINGLE,
+                    SELECTED_TIME_MODE_RANGE));
+
+    /**
+     * Toolbar button icon image file names.
+     */
+    public static final List<String> TOOLBAR_BUTTON_IMAGE_FILE_NAMES = Collections
+            .unmodifiableList(Lists.newArrayList("timeZoomOut.png",
+                    "timeJumpBackward.png", "timeBackward.png",
+                    "timeCurrent.png", "timeForward.png",
+                    "timeJumpForward.png", "timeZoomIn.png"));
+
+    /**
+     * Descriptions of the toolbar buttons, each of which corresponds to the
+     * file name of the button at the same index in <code>
+     * TOOLBAR_BUTTON_IMAGE_FILE_NAMES</code>.
+     */
+    public static final List<String> TOOLBAR_BUTTON_DESCRIPTIONS = Collections
+            .unmodifiableList(Lists.newArrayList("Zoom Out Timeline",
+                    "Page Back Timeline", "Pan Back Timeline",
+                    "Show Current Time", "Pan Forward Timeline",
+                    "Page Forward Timeline", "Zoom In Timeline"));
+
+    /**
+     * Zoom out button identifier.
+     */
+    public static final String BUTTON_ZOOM_OUT = "zoomOut";
+
+    /**
+     * Pan back one day button identifier.
+     */
+    public static final String BUTTON_PAGE_BACKWARD = "backwardDay";
+
+    /**
+     * Pan back button identifier.
+     */
+    public static final String BUTTON_PAN_BACKWARD = "backward";
+
+    /**
+     * Center on current time button identifier.
+     */
+    public static final String BUTTON_CURRENT_TIME = "currentTime";
+
+    /**
+     * Pan forward button identifier.
+     */
+    public static final String BUTTON_PAN_FORWARD = "forward";
+
+    /**
+     * Pan forward one day button identifier.
+     */
+    public static final String BUTTON_PAGE_FORWARD = "forwardDay";
+
+    /**
+     * Zoom in button identifier.
+     */
+    public static final String BUTTON_ZOOM_IN = "zoomIn";
+
+    /**
+     * List of button image names, each of which is also the name of the image
+     * file (without its type specifier suffix), for the buttons.
+     */
+    public static final List<String> BUTTON_IMAGE_NAMES = Collections
+            .unmodifiableList(Lists.newArrayList(BUTTON_ZOOM_OUT,
+                    BUTTON_PAGE_BACKWARD, BUTTON_PAN_BACKWARD,
+                    BUTTON_CURRENT_TIME, BUTTON_PAN_FORWARD,
+                    BUTTON_PAGE_FORWARD, BUTTON_ZOOM_IN));
+
+    /**
+     * Descriptions of the buttons, each of which corresponds to the button at
+     * the same index in <code>BUTTON_IMAGE_NAMES</code>.
+     */
+    public static final List<String> BUTTON_DESCRIPTIONS = Collections
+            .unmodifiableList(Lists.newArrayList("Zoom Out", "Page Back",
+                    "Pan Back", "Show Current Time", "Pan Forward",
+                    "Page Forward", "Zoom In"));
+
     // Private Static Constants
+
+    /**
+     * PNG file name suffix.
+     */
+    private static final String PNG_FILE_NAME_SUFFIX = ".png";
+
+    /**
+     * Date-time format string.
+     */
+    private static final String DATE_TIME_FORMAT_STRING = "EEE dd-MMM HH:mm";
+
+    /**
+     * Filter menu name.
+     */
+    private static final String FILTER_MENU_NAME = "Filter";
 
     /**
      * Text displayed in the column header for the time scale widgets.
      */
     private static final String TIME_SCALE_COLUMN_NAME = "Time Scale";
+
+    /**
+     * Show time under mouse toggle menu text.
+     */
+    private static final String SHOW_TIME_UNDER_MOUSE_TOGGLE_MENU_TEXT = "Show Time Under Mouse";
 
     /**
      * Width in pixels of the margin used in the form layout.
@@ -264,22 +373,6 @@ class TemporalDisplay {
     private static final String COLUMN_NAME = "columnName";
 
     /**
-     * Single selected time mode.
-     */
-    private static final String SELECTED_TIME_MODE_SINGLE = "Single";
-
-    /**
-     * Range selected time mode.
-     */
-    private static final String SELECTED_TIME_MODE_RANGE = "Range";
-
-    /**
-     * Selected time mode choices.
-     */
-    private static final String[] SELECTED_TIME_MODE_CHOICES = {
-            SELECTED_TIME_MODE_SINGLE, SELECTED_TIME_MODE_RANGE };
-
-    /**
      * Path to icons.
      */
     private static final String ICONS_PATH;
@@ -307,205 +400,6 @@ class TemporalDisplay {
      * Down sort arrow image file.
      */
     private static final String DOWN_SORT_ARROW_IMAGE_FILE_NAME = "downSortArrow.png";
-
-    /**
-     * Zoom out button identifier.
-     */
-    private static final String BUTTON_ZOOM_OUT = "zoomOut";
-
-    /**
-     * Pan back one day button identifier.
-     */
-    private static final String BUTTON_PAGE_BACKWARD = "backwardDay";
-
-    /**
-     * Pan back button identifier.
-     */
-    private static final String BUTTON_PAN_BACKWARD = "backward";
-
-    /**
-     * Center on current time button identifier.
-     */
-    private static final String BUTTON_CURRENT_TIME = "currentTime";
-
-    /**
-     * Pan forward button identifier.
-     */
-    private static final String BUTTON_PAN_FORWARD = "forward";
-
-    /**
-     * Pan forward one day button identifier.
-     */
-    private static final String BUTTON_PAGE_FORWARD = "forwardDay";
-
-    /**
-     * Zoom in button identifier.
-     */
-    private static final String BUTTON_ZOOM_IN = "zoomIn";
-
-    /**
-     * List of button image names, each of which is also the name of the image
-     * file (without its type specifier suffix), for the buttons.
-     */
-    private static final String[] BUTTON_IMAGE_NAMES = { BUTTON_ZOOM_OUT,
-            BUTTON_PAGE_BACKWARD, BUTTON_PAN_BACKWARD, BUTTON_CURRENT_TIME,
-            BUTTON_PAN_FORWARD, BUTTON_PAGE_FORWARD, BUTTON_ZOOM_IN };
-
-    /**
-     * Descriptions of the buttons, each of which corresponds to the button at
-     * the same index in <code>BUTTON_IMAGE_NAMES</code>.
-     */
-    private static final String[] BUTTON_DESCRIPTIONS = { "Zoom Out",
-            "Page Back", "Pan Back", "Show Current Time", "Pan Forward",
-            "Page Forward", "Zoom In" };
-
-    /**
-     * Toolbar button icon image file names.
-     */
-    private static final String[] TOOLBAR_BUTTON_IMAGE_FILE_NAMES = {
-            "timeZoomOut.png", "timeJumpBackward.png", "timeBackward.png",
-            "timeCurrent.png", "timeForward.png", "timeJumpForward.png",
-            "timeZoomIn.png" };
-
-    /**
-     * Descriptions of the toolbar buttons, each of which corresponds to the
-     * file name of the button at the same index in <code>
-     * TOOLBAR_BUTTON_IMAGE_FILE_NAMES</code>.
-     */
-    private static final String[] TOOLBAR_BUTTON_DESCRIPTIONS = {
-            "Zoom Out Timeline", "Page Back Timeline", "Pan Back Timeline",
-            "Show Current Time", "Pan Forward Timeline",
-            "Page Forward Timeline", "Zoom In Timeline" };
-
-    // Private Classes
-
-    /**
-     * Timeline navigation action. Each instance is for one of the navigation
-     * buttons in the toolbar.
-     */
-    private class NavigationAction extends BasicAction {
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param iconFileName
-         *            File name of the icon to be displayed.
-         * @param toolTipText
-         *            Tool tip text, or <code>null</code> if none is required.
-         */
-        public NavigationAction(String iconFileName, String toolTipText) {
-            super("", iconFileName, Action.AS_PUSH_BUTTON, toolTipText);
-        }
-
-        // Public Methods
-
-        /**
-         * Run the action.
-         */
-        @Override
-        public void run() {
-            if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[0])) {
-                zoomTimeOut();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[1])) {
-                pageTimeBack();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[2])) {
-                panTimeBack();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[3])) {
-                showCurrentTime();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[4])) {
-                panTimeForward();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[5])) {
-                pageTimeForward();
-            } else if (getToolTipText().equals(TOOLBAR_BUTTON_DESCRIPTIONS[6])) {
-                zoomTimeIn();
-            }
-        }
-    }
-
-    /**
-     * Selected time mode combo action.
-     */
-    private class SelectedTimeModeAction extends ComboAction {
-
-        // Private Variables
-
-        /**
-         * Listener for menu item invocations.
-         */
-        private final SelectionListener listener = new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent event) {
-
-                // If the menu item has been selected (not
-                // deselected), then a selected time mode has been
-                // chosen.
-                MenuItem item = (MenuItem) event.widget;
-                if (item.getSelection()) {
-
-                    // Update the visuals to indicate the new time
-                    // mode name.
-                    setSelectedChoice(item.getText());
-
-                    // Remember the newly selected time mode name and
-                    // fire off the action.
-                    setSelectedTimeMode(item.getText());
-                }
-            }
-        };
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param toolBarManager
-         *            Toolbar manager.
-         */
-        public SelectedTimeModeAction(IToolBarManager toolBarManager) {
-            super("Selected Time Mode", toolBarManager);
-        }
-
-        // Protected Methods
-
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
-        @Override
-        protected Menu doGetMenu(Control parent, Menu menu) {
-
-            // If the menu has not yet been created, do so now;
-            // otherwise, just update it to ensure the right
-            // menu item is selected.
-            if (menu == null) {
-                menu = new Menu(parent);
-                for (int j = 0; j < SELECTED_TIME_MODE_CHOICES.length; j++) {
-                    MenuItem item = new MenuItem(menu, SWT.RADIO, j);
-                    item.setText(SELECTED_TIME_MODE_CHOICES[j]);
-                    item.addSelectionListener(listener);
-                    if (SELECTED_TIME_MODE_CHOICES[j].equals(selectedTimeMode)) {
-                        item.setSelection(true);
-                    }
-                }
-            } else {
-                for (MenuItem item : menu.getItems()) {
-                    item.setSelection(item.getText().equals(selectedTimeMode));
-                }
-            }
-
-            // Return the menu.
-            return menu;
-        }
-    }
 
     // Private Constants
 
@@ -551,14 +445,14 @@ class TemporalDisplay {
      * Set of basic resources created for use in this window, to be disposed of
      * when this window is disposed of.
      */
-    private final Set<Resource> resources = new HashSet<Resource>();
+    private final Set<Resource> resources = Sets.newHashSet();
 
     /**
      * Map of RGB triplets, each consisting of a string of three integers each
      * separated from the next by a space, to the corresponding colors created
      * for use as visual time range indicators. .
      */
-    private final Map<String, Color> timeRangeColorsForRGBs = new HashMap<String, Color>();
+    private final Map<String, Color> timeRangeColorsForRGBs = Maps.newHashMap();
 
     /**
      * Selected time mode combo box.
@@ -588,22 +482,19 @@ class TemporalDisplay {
     /**
      * Map of button identifiers to the associated navigation buttons.
      */
-    private final Map<String, Button> buttonsForIdentifiers = new HashMap<String, Button>();
-
-    /**
-     * Selected time mode combo action.
-     */
-    private SelectedTimeModeAction selectedTimeModeAction = null;
+    private final Map<String, Button> buttonsForIdentifiers = Maps.newHashMap();
 
     /**
      * Map of button identifiers to the associated toolbar navigation actions.
      */
-    private final Map<String, Action> actionsForButtonIdentifiers = new HashMap<String, Action>();
+    private final Map<String, Action> actionsForButtonIdentifiers = Maps
+            .newHashMap();
 
     /**
-     * List of toolbar actions.
+     * Selected time mode action, built for the toolbar and passed to this
+     * object if appropriate.
      */
-    private final List<ActionContributionItem> toolBarItems = new ArrayList<ActionContributionItem>();
+    private ComboAction selectedTimeModeAction = null;
 
     /**
      * Time line ruler widget.
@@ -788,13 +679,6 @@ class TemporalDisplay {
     private ConsolePresenter presenter = null;
 
     /**
-     * Flag indicating whether the controls (navigation buttons, etc.) are to be
-     * shown in the toolbar. If <code>false</code>, they are provided at the
-     * bottom of this composite instead.
-     */
-    private boolean showControlsInToolBar;
-
-    /**
      * Flag indicating whether or not a notification of dynamic setting
      * modification is scheduled to occur.
      */
@@ -904,24 +788,25 @@ class TemporalDisplay {
      * Thumb tooltip text provider for the time line ruler.
      */
     private final IMultiValueTooltipTextProvider thumbTooltipTextProvider = new IMultiValueTooltipTextProvider() {
-        private final String[] selectedTimeText = { "Selected Time:", null };
+        private final String[] SELECTED_TIME_TEXT = { "Selected Time:", null };
 
-        private final String[] timeRangeStartText = { "Time Range Start:", null };
+        private final String[] TIME_RANGE_START_TEXT = { "Time Range Start:",
+                null };
 
-        private final String[] timeRangeEndText = { "Time Range End:", null };
+        private final String[] TIME_RANGE_END_TEXT = { "Time Range End:", null };
 
-        private final String[] startTimeText = { "Event Start Time:", null };
+        private final String[] START_TIME_TEXT = { "Event Start Time:", null };
 
-        private final String[] endTimeText = { "Event End Time:", null };
+        private final String[] END_TIME_TEXT = { "Event End Time:", null };
 
-        private final String[] otherValueText = { null };
+        private final String[] OTHER_VALUE_TEXT = { null };
 
         @Override
         public String[] getTooltipTextForValue(MultiValueLinearControl widget,
                 long value) {
             if ((widget == ruler) && showRulerToolTipsForAllTimes) {
-                otherValueText[0] = getDateTimeString(value);
-                return otherValueText;
+                OTHER_VALUE_TEXT[0] = getDateTimeString(value);
+                return OTHER_VALUE_TEXT;
             } else {
                 return null;
             }
@@ -930,9 +815,9 @@ class TemporalDisplay {
         @Override
         public String[] getTooltipTextForConstrainedThumb(
                 MultiValueLinearControl widget, int index, long value) {
-            String[] text = (widget == ruler ? (index == 0 ? timeRangeStartText
-                    : timeRangeEndText) : (index == 0 ? startTimeText
-                    : endTimeText));
+            String[] text = (widget == ruler ? (index == 0 ? TIME_RANGE_START_TEXT
+                    : TIME_RANGE_END_TEXT)
+                    : (index == 0 ? START_TIME_TEXT : END_TIME_TEXT));
             text[1] = getDateTimeString(value);
             return text;
         }
@@ -940,8 +825,8 @@ class TemporalDisplay {
         @Override
         public String[] getTooltipTextForFreeThumb(
                 MultiValueLinearControl widget, int index, long value) {
-            selectedTimeText[1] = getDateTimeString(value);
-            return selectedTimeText;
+            SELECTED_TIME_TEXT[1] = getDateTimeString(value);
+            return SELECTED_TIME_TEXT;
         }
     };
 
@@ -1353,7 +1238,7 @@ class TemporalDisplay {
         tableEditorsForIdentifiers = Maps.newHashMap();
 
         // Configure the date-time formatter.
-        dateTimeFormatter = new SimpleDateFormat("EEE dd-MMM HH:mm");
+        dateTimeFormatter = new SimpleDateFormat(DATE_TIME_FORMAT_STRING);
         dateTimeFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
@@ -1387,7 +1272,6 @@ class TemporalDisplay {
 
         // Remember the presenter.
         this.presenter = presenter;
-        this.showControlsInToolBar = showControlsInToolBar;
 
         // If the controls are to be shown in the toolbar, hide the
         // ones in the composite; otherwise, delete the ones in the
@@ -1440,6 +1324,30 @@ class TemporalDisplay {
         // Add the mouse wheel filter, used to handle mouse wheel
         // events properly when they should apply to the table.
         table.getDisplay().addFilter(SWT.MouseWheel, mouseWheelFilter);
+    }
+
+    /**
+     * Set the map of toolbar widget identifiers to their actions and the
+     * selected time mode action. These are constructed elsewhere and provided
+     * to this object if appropriate.
+     * 
+     * @param map
+     *            Map of toolbar widget identifiers to their actions.
+     * @param selectedTimeModeAction
+     *            Selected time mode action.
+     */
+    public void setToolBarActions(final Map<String, Action> map,
+            ComboAction selectedTimeModeAction) {
+        actionsForButtonIdentifiers.clear();
+        actionsForButtonIdentifiers.putAll(map);
+        for (Action action : actionsForButtonIdentifiers.values()) {
+            ((ConsoleView.ITemporalDisplayAware) action)
+                    .setTemporalDisplay(this);
+        }
+        this.selectedTimeModeAction = selectedTimeModeAction;
+        ((ConsoleView.ITemporalDisplayAware) this.selectedTimeModeAction)
+                .setTemporalDisplay(this);
+        this.selectedTimeModeAction.setSelectedChoice(selectedTimeMode);
     }
 
     /**
@@ -1797,63 +1705,122 @@ class TemporalDisplay {
     }
 
     /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
-     * @param type
-     *            type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
-     */
-    public boolean contributeToMainUI(IActionBars mainUI,
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-
-            // Only contribute if controls are to be in the main
-            // toolbar.
-            if (showControlsInToolBar) {
-
-                // Create the selected time mode action.
-                IToolBarManager toolBarManager = mainUI.getToolBarManager();
-                toolBarManager.add(new Separator());
-                selectedTimeModeAction = new SelectedTimeModeAction(
-                        toolBarManager);
-                selectedTimeModeAction.setSelectedChoice(selectedTimeMode);
-                ActionContributionItem item = new ActionContributionItem(
-                        selectedTimeModeAction);
-                toolBarItems.add(item);
-                toolBarManager.add(item);
-
-                // Create the navigation actions for the toolbar.
-                toolBarManager.add(new Separator());
-                for (int j = 0; j < TOOLBAR_BUTTON_IMAGE_FILE_NAMES.length; j++) {
-                    Action action = new NavigationAction(
-                            TOOLBAR_BUTTON_IMAGE_FILE_NAMES[j],
-                            TOOLBAR_BUTTON_DESCRIPTIONS[j]);
-                    actionsForButtonIdentifiers.put(BUTTON_IMAGE_NAMES[j],
-                            action);
-                    item = new ActionContributionItem(action);
-                    toolBarItems.add(item);
-                    toolBarManager.add(item);
-                }
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * Set the focus to the table.
      */
     public void setFocus() {
         table.setFocus();
+    }
+
+    // Package Methods
+
+    /**
+     * Get the currently selected time mode.
+     * 
+     * @return Currently selected time mode.
+     */
+    String getSelectedTimeMode() {
+        return selectedTimeMode;
+    }
+
+    /**
+     * Zoom the visible time range out by one level.
+     */
+    void zoomTimeOut() {
+        long newVisibleTimeRange = getZoomedOutRange();
+        if (newVisibleTimeRange <= MAX_VISIBLE_TIME_RANGE) {
+            zoomVisibleTimeRange(newVisibleTimeRange);
+        }
+    }
+
+    /**
+     * Page the time range backward.
+     */
+    void pageTimeBack() {
+        panTime(PAGE_TIME_DELTA_MULTIPLIER * -1.0f);
+    }
+
+    /**
+     * Pan the time range backward.
+     */
+    void panTimeBack() {
+        panTime(PAN_TIME_DELTA_MULTIPLIER * -1.0f);
+    }
+
+    /**
+     * Pan the time line to ensure that the current time is shown.
+     */
+    void showCurrentTime() {
+        long centerTime = ruler.getFreeMarkedValue(0);
+        long lower = centerTime - (visibleTimeRange / 8L);
+        long upper = lower + visibleTimeRange - 1L;
+        setVisibleTimeRange(lower, upper, true);
+    }
+
+    /**
+     * Pan the time range forward.
+     */
+    void panTimeForward() {
+        panTime(PAN_TIME_DELTA_MULTIPLIER);
+    }
+
+    /**
+     * Page the time range forward.
+     */
+    void pageTimeForward() {
+        panTime(PAGE_TIME_DELTA_MULTIPLIER);
+    }
+
+    /**
+     * Zoom the visible time range in by one level.
+     */
+    void zoomTimeIn() {
+        long newVisibleTimeRange = getZoomedInRange();
+        if (newVisibleTimeRange >= MIN_VISIBLE_TIME_RANGE) {
+            zoomVisibleTimeRange(newVisibleTimeRange);
+        }
+    }
+
+    /**
+     * Set the selected time mode.
+     * 
+     * @param mode
+     *            New selected time mode.
+     */
+    void setSelectedTimeMode(String mode) {
+        if (selectedTimeMode.equals(mode)) {
+            return;
+        }
+        selectedTimeMode = mode;
+        if (mode.equals(SELECTED_TIME_MODE_SINGLE)) {
+            ruler.setConstrainedThumbValues();
+            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
+                ((MultiValueScale) tableEditor.getEditor())
+                        .setConstrainedMarkedValues();
+            }
+            fireConsoleActionOccurred(new ConsoleAction(
+                    "SelectedTimeRangeChanged", Long.toString(-1L),
+                    Long.toString(-1L)));
+        } else {
+            if (timeRangeStart == -1) {
+                timeRangeStart = selectedTime;
+                timeRangeEnd = selectedTime + (HOUR_INTERVAL * 4L);
+            }
+            ruler.setConstrainedThumbValues(timeRangeStart, timeRangeEnd);
+            ruler.setConstrainedThumbColor(0, timeRangeEdgeColor);
+            ruler.setConstrainedThumbColor(1, timeRangeEdgeColor);
+            ruler.setConstrainedThumbRangeColor(1, timeRangeFillColor);
+            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
+                MultiValueScale scale = (MultiValueScale) tableEditor
+                        .getEditor();
+                scale.setConstrainedMarkedValues(timeRangeStart, timeRangeEnd);
+                scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
+                scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
+                scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
+            }
+            fireConsoleActionOccurred(new ConsoleAction(
+                    "SelectedTimeRangeChanged", Long.toString(timeRangeStart),
+                    Long.toString(timeRangeEnd)));
+        }
     }
 
     // Private Methods
@@ -1911,8 +1878,8 @@ class TemporalDisplay {
             // names and the filter, and then make one more menu with
             // just the column names checklist for all the columns that
             // do not have associated filters.
-            headerMenusForColumnNames = new HashMap<String, Menu>();
-            headerMegawidgetManagersForColumnNames = new HashMap<String, MegawidgetManager>();
+            headerMenusForColumnNames = Maps.newHashMap();
+            headerMegawidgetManagersForColumnNames = Maps.newHashMap();
             for (int j = 0; j < filters.size() + 1; j++) {
 
                 // If there are no more columns needing menus, do nothing
@@ -1928,7 +1895,8 @@ class TemporalDisplay {
                 if (j < filters.size()) {
                     filter = filters.getDynamicallyTypedValue(j);
                     filter.put(IMenuSpecifier.MEGAWIDGET_SHOW_SEPARATOR, true);
-                    filter.put(MegawidgetSpecifier.MEGAWIDGET_LABEL, "Filter");
+                    filter.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                            FILTER_MENU_NAME);
                     filterColumnName = filter
                             .getDynamicallyTypedValue(COLUMN_NAME);
                 }
@@ -2291,49 +2259,6 @@ class TemporalDisplay {
     }
 
     /**
-     * Set the selected time mode.
-     * 
-     * @param mode
-     *            New selected time mode.
-     */
-    private void setSelectedTimeMode(String mode) {
-        if (selectedTimeMode.equals(mode)) {
-            return;
-        }
-        selectedTimeMode = mode;
-        if (mode.equals(SELECTED_TIME_MODE_SINGLE)) {
-            ruler.setConstrainedThumbValues();
-            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
-                ((MultiValueScale) tableEditor.getEditor())
-                        .setConstrainedMarkedValues();
-            }
-            fireConsoleActionOccurred(new ConsoleAction(
-                    "SelectedTimeRangeChanged", Long.toString(-1L),
-                    Long.toString(-1L)));
-        } else {
-            if (timeRangeStart == -1) {
-                timeRangeStart = selectedTime;
-                timeRangeEnd = selectedTime + (HOUR_INTERVAL * 4L);
-            }
-            ruler.setConstrainedThumbValues(timeRangeStart, timeRangeEnd);
-            ruler.setConstrainedThumbColor(0, timeRangeEdgeColor);
-            ruler.setConstrainedThumbColor(1, timeRangeEdgeColor);
-            ruler.setConstrainedThumbRangeColor(1, timeRangeFillColor);
-            for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
-                MultiValueScale scale = (MultiValueScale) tableEditor
-                        .getEditor();
-                scale.setConstrainedMarkedValues(timeRangeStart, timeRangeEnd);
-                scale.setConstrainedMarkedValueColor(0, timeRangeEdgeColor);
-                scale.setConstrainedMarkedValueColor(1, timeRangeEdgeColor);
-                scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
-            }
-            fireConsoleActionOccurred(new ConsoleAction(
-                    "SelectedTimeRangeChanged", Long.toString(timeRangeStart),
-                    Long.toString(timeRangeEnd)));
-        }
-    }
-
-    /**
      * Get a color to be used for visual time range indication matching the
      * specified RGB triplet.
      * 
@@ -2534,7 +2459,7 @@ class TemporalDisplay {
                         }
                     } else {
                         TableItem[] selectedItems = table.getSelection();
-                        List<String> selectedIdentifiers = new ArrayList<String>();
+                        List<String> selectedIdentifiers = Lists.newArrayList();
                         for (int j = 0; j < selectedItems.length; j++) {
                             TableItem item = selectedItems[j];
                             selectedIdentifiers.add((String) item.getData());
@@ -2898,7 +2823,7 @@ class TemporalDisplay {
         // Create the selected time mode combo box.
         selectedTimeModeCombo = new Combo(comboBoxPanel, SWT.READ_ONLY);
         selectedTimeModeCombo.removeAll();
-        selectedTimeModeCombo.setToolTipText("Selected Time Mode");
+        selectedTimeModeCombo.setToolTipText(SELECTED_TIME_MODE_TEXT);
         for (String choice : SELECTED_TIME_MODE_CHOICES) {
             selectedTimeModeCombo.add(choice);
         }
@@ -2951,7 +2876,7 @@ class TemporalDisplay {
         }
 
         // Create the time line ruler's hatch mark groups.
-        List<IHatchMarkGroup> hatchMarkGroups = new ArrayList<IHatchMarkGroup>();
+        List<IHatchMarkGroup> hatchMarkGroups = Lists.newArrayList();
         hatchMarkGroups.add(new DayHatchMarkGroup());
         hatchMarkGroups.add(new TimeHatchMarkGroup(6L * HOUR_INTERVAL, 0.25f,
                 hatchMarkColors[0], null));
@@ -3101,7 +3026,7 @@ class TemporalDisplay {
 
         Menu contextMenu = new Menu(ruler);
         MenuItem item = new MenuItem(contextMenu, SWT.CHECK);
-        item.setText("Show Time Under Mouse");
+        item.setText(SHOW_TIME_UNDER_MOUSE_TOGGLE_MENU_TEXT);
         item.setSelection(true);
         item.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -3159,29 +3084,30 @@ class TemporalDisplay {
         SelectionListener buttonListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[0])) {
+                if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(0))) {
                     zoomTimeOut();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[1])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(1))) {
                     pageTimeBack();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[2])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(2))) {
                     panTimeBack();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[3])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(3))) {
                     showCurrentTime();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[4])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(4))) {
                     panTimeForward();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[5])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(5))) {
                     pageTimeForward();
-                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES[6])) {
+                } else if (e.widget.getData().equals(BUTTON_IMAGE_NAMES.get(6))) {
                     zoomTimeIn();
                 }
             }
         };
-        for (int j = 0; j < BUTTON_IMAGE_NAMES.length; j++) {
+        for (int j = 0; j < BUTTON_IMAGE_NAMES.size(); j++) {
             Image image = new Image(Display.getCurrent(), ICONS_PATH
-                    + File.separator + BUTTON_IMAGE_NAMES[j] + ".png");
+                    + File.separator + BUTTON_IMAGE_NAMES.get(j)
+                    + PNG_FILE_NAME_SUFFIX);
             resources.add(image);
-            createCommandButton(buttonsPanel, BUTTON_IMAGE_NAMES[j], image,
-                    BUTTON_DESCRIPTIONS[j], buttonListener);
+            createCommandButton(buttonsPanel, BUTTON_IMAGE_NAMES.get(j), image,
+                    BUTTON_DESCRIPTIONS.get(j), buttonListener);
         }
         FormData buttonFormData = new FormData();
         buttonFormData.left = new FormAttachment(comboBoxPanel, 20);
@@ -3509,64 +3435,6 @@ class TemporalDisplay {
     }
 
     /**
-     * Zoom the visible time range out by one level.
-     */
-    private void zoomTimeOut() {
-        long newVisibleTimeRange = getZoomedOutRange();
-        if (newVisibleTimeRange <= MAX_VISIBLE_TIME_RANGE) {
-            zoomVisibleTimeRange(newVisibleTimeRange);
-        }
-    }
-
-    /**
-     * Page the time range backward.
-     */
-    private void pageTimeBack() {
-        panTime(PAGE_TIME_DELTA_MULTIPLIER * -1.0f);
-    }
-
-    /**
-     * Pan the time range backward.
-     */
-    private void panTimeBack() {
-        panTime(PAN_TIME_DELTA_MULTIPLIER * -1.0f);
-    }
-
-    /**
-     * Pan the time line to ensure that the current time is shown.
-     */
-    private void showCurrentTime() {
-        long centerTime = ruler.getFreeMarkedValue(0);
-        long lower = centerTime - (visibleTimeRange / 8L);
-        long upper = lower + visibleTimeRange - 1L;
-        setVisibleTimeRange(lower, upper, true);
-    }
-
-    /**
-     * Pan the time range forward.
-     */
-    private void panTimeForward() {
-        panTime(PAN_TIME_DELTA_MULTIPLIER);
-    }
-
-    /**
-     * Page the time range forward.
-     */
-    private void pageTimeForward() {
-        panTime(PAGE_TIME_DELTA_MULTIPLIER);
-    }
-
-    /**
-     * Zoom the visible time range in by one level.
-     */
-    private void zoomTimeIn() {
-        long newVisibleTimeRange = getZoomedInRange();
-        if (newVisibleTimeRange >= MIN_VISIBLE_TIME_RANGE) {
-            zoomVisibleTimeRange(newVisibleTimeRange);
-        }
-    }
-
-    /**
      * Pan the time range by an amount equal to the current visible time range
      * multiplied by the specified value.
      * 
@@ -3717,7 +3585,7 @@ class TemporalDisplay {
         // sizing to be applied in order from largest to smallest
         // columns, ensuring a good distribution of the delta.
         int totalWidth = 0;
-        List<ColumnIndexAndWidth> columnIndicesAndWidths = new ArrayList<ColumnIndexAndWidth>();
+        List<ColumnIndexAndWidth> columnIndicesAndWidths = Lists.newArrayList();
         for (int j = 0; j < columns.length; j++) {
 
             // Only add a record for this column if it is not

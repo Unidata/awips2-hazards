@@ -31,7 +31,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 19, 2013      585   Chris.Golden      Replaced string literals in
+ *                                           code with constants.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,6 +47,11 @@ public abstract class BasicAction extends Action {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(BasicAction.class);
 
+    /**
+     * Icons directory name.
+     */
+    private static final String ICONS_DIRECTORY_NAME = "icons";
+
     // Private Static Constants
 
     /**
@@ -58,7 +64,8 @@ public abstract class BasicAction extends Action {
         URL iconsURL = null;
         try {
             iconsURL = FileLocator.find(HazardServicesActivator.getDefault()
-                    .getBundle(), new Path("icons" + File.separator), null);
+                    .getBundle(), new Path(ICONS_DIRECTORY_NAME
+                    + File.separator), null);
         } catch (Exception e) {
             statusHandler.error(
                     "BasicAction.<static init>: Will not be able to "

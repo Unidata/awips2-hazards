@@ -26,20 +26,21 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData;
 import gov.noaa.gsd.viz.hazards.timer.HazardServicesTimer;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 import gov.noaa.gsd.viz.mvp.IView;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.ui.IActionBars;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IPerspectiveListener4;
 import org.eclipse.ui.IWorkbench;
@@ -50,6 +51,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -58,7 +60,9 @@ import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
+import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.editor.AbstractEditor;
 
 /**
  * Description: Builder of the Hazard Services application and its components
@@ -84,6 +88,10 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * Jun 20, 2013   1277     Chris.Golden        Added code to support the specification
  *                                             of a Python side effects applier anywhere
  *                                             in Hazard Services.
+ * Jul 09, 2013    585     Chris.Golden        Changed to support loading from bundle,
+ *                                             including making this class no longer a
+ *                                             singleton, and ensuring that any previously
+ *                                             class-scoped variables are now member data.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -93,6 +101,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         IGlobalChangedListener, IWorkbenchListener {
 
     // Public Static Constants
+
+    /**
+     * Preferences key used to determine whether or not to start off the views
+     * as hidden when loaded from a bundle.
+     */
+    private static final String START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE = "startViewsHiddenWhenLoadedFromBundle";
 
     /**
      * Timer interval in milliseconds.
@@ -137,19 +151,17 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardServicesAppBuilder.class);
 
-    // Private Static Variables
+    // Private Variables
 
     /**
-     * Single instance of the app builder.
+     * Event bus.
      */
-    private static HazardServicesAppBuilder appBuilderInstance = null;
+    private EventBus eventBus;
 
     /**
      * Message handler for all incoming messages.
      */
-    private static HazardServicesMessageHandler messageHandler;
-
-    // Private Variables
+    private HazardServicesMessageHandler messageHandler;
 
     /**
      * Console presenter.
@@ -195,7 +207,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * List of all presenters.
      */
-    private final List<HazardServicesPresenter<?>> presenters = new ArrayList<HazardServicesPresenter<?>>();
+    private final List<HazardServicesPresenter<?>> presenters = Lists
+            .newArrayList();
 
     /**
      * Descriptor of the current CAVE perspective.
@@ -229,22 +242,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private String currentTime;
 
-    // Public Static Methods
-
     /**
-     * Create an instance of the HazardServicesAppBuilder. Only one instance of
-     * the app builder is allowed.
-     * 
-     * @return Single instance of this class.
-     * @throws VizException
+     * Viz resource associated with this builder.
      */
-    public static HazardServicesAppBuilder getInstance() throws VizException {
-        if (appBuilderInstance == null) {
-            appBuilderInstance = new HazardServicesAppBuilder();
-            appBuilderInstance.initialize();
-        }
-        return appBuilderInstance;
-    }
+    private ToolLayer toolLayer;
+
+    // Public Static Methods
 
     /**
      * Get a true/false, or OK/cancel, or yes/no answer from the user.
@@ -270,14 +273,21 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Private Constructors
 
     /**
-     * This is private to force object instantiation using the getInstance()
-     * method.
+     * Consruct a standard instance.
      * 
+     * @param toolLayer
+     *            Viz resource associated with this app builder, if a new one is
+     *            to be created.
+     * @param loadedFromBundle
+     *            Flag indicating whether or not Hazard Services is being
+     *            instantiated as a result of a bundle load.
      * @throws VizException
+     *             If an exception occurs while attempting to build the Hazard
+     *             Services application.
      */
-    private HazardServicesAppBuilder() throws VizException {
-
-        // No action.
+    public HazardServicesAppBuilder(ToolLayer toolLayer,
+            boolean loadedFromBundle) throws VizException {
+        initialize(toolLayer, loadedFromBundle);
     }
 
     // Methods
@@ -285,10 +295,22 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Initializes an instance of the HazardServicesAppBuilder
      * 
+     * @param toolLayer
+     *            Tool layer to be used with this builder.
+     * @param loadedFromBundle
+     *            Flag indicating whether or not Hazard Services is being
+     *            instantiated as a result of a bundle load.
      * @throws VizException
+     *             If an error occurs while attempting to initialize.
      */
-    private void initialize() throws VizException {
+    private void initialize(ToolLayer toolLayer, boolean loadedFromBundle)
+            throws VizException {
         currentTime = null;
+        this.toolLayer = toolLayer;
+        this.eventBus = new EventBus();
+
+        ((ToolLayerResourceData) toolLayer.getResourceData())
+                .setAppBuilder(this);
 
         PlatformUI.getWorkbench().addWorkbenchListener(this);
 
@@ -323,19 +345,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         } else if (currentPerspectiveDescriptor.getId().contains("MPE")) {
             initialSetting = "Flood";
         }
-        messageHandler = new HazardServicesMessageHandler(appBuilderInstance,
-                currentTime, initialSetting, "", "{}");
-        new HazardServicesMessageListener(messageHandler);
+        messageHandler = new HazardServicesMessageHandler(this, currentTime,
+                initialSetting, "", "{}");
+        new HazardServicesMessageListener(messageHandler, eventBus);
 
         /*
          * Create the Spatial Display layer in the active CAVE editor. This is
          * what hazards will be drawn on.
          */
 
-        createSpatialDisplay();
+        createSpatialDisplay(toolLayer);
+
+        // Determine whether or not views are to be hidden at first if this
+        // app builder is being created as the result of a bundle load.
+        IPreferenceStore preferenceStore = HazardServicesActivator.getDefault()
+                .getPreferenceStore();
+        loadedFromBundle = (loadedFromBundle && ((preferenceStore
+                .contains(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE) == false) || preferenceStore
+                .getBoolean(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE)));
 
         // Open the console.
-        createConsole();
+        createConsole(loadedFromBundle);
 
         // Create the settings view.
         createSettingsDisplay();
@@ -344,7 +374,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         createToolsDisplay();
 
         // Create the hazard detail view.
-        createHazardDetailDisplay();
+        createHazardDetailDisplay(loadedFromBundle);
 
         // Create the alerts view.
         createAlertsDisplay();
@@ -395,7 +425,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         messageHandler.sendFrameInformationToSessionManager();
 
         // Start the current time update timer.
-        timer = new HazardServicesTimer(TIMER_UPDATE_MS, true);
+        timer = new HazardServicesTimer(TIMER_UPDATE_MS, true, eventBus);
         timer.start();
 
     }
@@ -405,7 +435,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void buildMenuBar() {
         ConsoleView consoleView = (ConsoleView) consolePresenter.getView();
-        List<IView<IActionBars, RCPMainUserInterfaceElement>> contributors = Lists
+        List<IView<Action, RCPMainUserInterfaceElement>> contributors = Lists
                 .newArrayList();
         contributors.add(consoleView);
         consoleView.acceptContributionsToMainUI(contributors,
@@ -417,7 +447,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void buildToolBar() {
         ConsoleView consoleView = (ConsoleView) consolePresenter.getView();
-        List<IView<IActionBars, RCPMainUserInterfaceElement>> contributors = Lists
+        List<IView<Action, RCPMainUserInterfaceElement>> contributors = Lists
                 .newArrayList();
         contributors.add((SettingsView) settingsPresenter.getView());
         contributors.add((ToolsView) toolsPresenter.getView());
@@ -431,15 +461,19 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     /**
      * Create (or if already created, recreate) the console.
+     * 
+     * @param loadedFromBundle
+     *            Flag indicating whether or not this display is being
+     *            instantiated as a result of a bundle load.
      */
-    private void createConsole() {
+    private void createConsole(boolean loadedFromBundle) {
         if (consolePresenter == null) {
             consolePresenter = new ConsolePresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new ConsoleView());
+                    messageHandler.getModelProxy(), new ConsoleView(
+                            loadedFromBundle), eventBus);
             presenters.add(consolePresenter);
         } else {
-            consolePresenter.setView(new ConsoleView());
+            consolePresenter.setView(new ConsoleView(loadedFromBundle));
         }
     }
 
@@ -464,23 +498,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (alertsPresenter == null) {
 
             alertsPresenter = new AlertsPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new AlertsView());
+                    messageHandler.getModelProxy(), new AlertsView(), eventBus);
             presenters.add(alertsPresenter);
         }
     }
 
     /**
      * Create the hazard detail view and presenter.
+     * 
+     * @param loadedFromBundle
+     *            Flag indicating whether or not this display is being
+     *            instantiated as a result of a bundle load.
      */
-    private void createHazardDetailDisplay() {
+    private void createHazardDetailDisplay(boolean loadedFromBundle) {
         if (hazardDetailPresenter == null) {
             hazardDetailPresenter = new HazardDetailPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new HazardDetailView());
+                    messageHandler.getModelProxy(), new HazardDetailView(
+                            loadedFromBundle), eventBus);
             presenters.add(hazardDetailPresenter);
         } else {
-            hazardDetailPresenter.setView(new HazardDetailView());
+            hazardDetailPresenter
+                    .setView(new HazardDetailView(loadedFromBundle));
         }
     }
 
@@ -494,8 +532,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (settingsPresenter == null) {
 
             settingsPresenter = new SettingsPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new SettingsView());
+                    messageHandler.getModelProxy(), new SettingsView(),
+                    eventBus);
             presenters.add(settingsPresenter);
         }
     }
@@ -505,9 +543,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createToolsDisplay() {
         if (toolsPresenter == null) {
-            toolsPresenter = new ToolsPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new ToolsView());
+            toolsPresenter = new ToolsPresenter(messageHandler.getModelProxy(),
+                    new ToolsView(), eventBus);
             presenters.add(toolsPresenter);
         }
     }
@@ -517,15 +554,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * <p>
      * We'll have to see if we ever want to recreate it.
      */
-    private void createSpatialDisplay() {
+    private void createSpatialDisplay(ToolLayer toolLayer) {
         if (spatialPresenter == null) {
             spatialPresenter = new SpatialPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new SpatialView());
+                    messageHandler.getModelProxy(), new SpatialView(toolLayer),
+                    eventBus);
             presenters.add(spatialPresenter);
         } else {
             spatialPresenter.getView().dispose();
-            spatialPresenter.setView(new SpatialView());
+            spatialPresenter.setView(new SpatialView(toolLayer));
         }
     }
 
@@ -535,8 +572,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createProductStagingDisplay() {
         if (productStagingPresenter == null) {
             productStagingPresenter = new ProductStagingPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new ProductStagingView());
+                    messageHandler.getModelProxy(), new ProductStagingView(),
+                    eventBus);
             presenters.add(productStagingPresenter);
         } else {
             productStagingPresenter.getView().dispose();
@@ -550,8 +587,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createProductEditorDisplay() {
         if (productEditorPresenter == null) {
             productEditorPresenter = new ProductEditorPresenter(
-                    HazardServicesMessageHandler.getModelProxy(),
-                    new ProductEditorView());
+                    messageHandler.getModelProxy(), new ProductEditorView(),
+                    eventBus);
             presenters.add(productEditorPresenter);
         } else {
             productEditorPresenter.getView().dispose();
@@ -565,6 +602,53 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public void dispose() {
         closeHazardServices(null);
+    }
+
+    /**
+     * Ensure that the views are visible.
+     */
+    public void ensureViewsVisible() {
+        consolePresenter.getView().ensureVisible();
+        hazardDetailPresenter.showHazardDetail(false);
+    }
+
+    /**
+     * Get the event bus.
+     * 
+     * @return Event bus.
+     */
+    public EventBus getEventBus() {
+        return eventBus;
+    }
+
+    /**
+     * Get context menu entries.
+     * 
+     * @return JSON string containing the list of context menu entries.
+     */
+    public String getContextMenuEntries() {
+        return messageHandler.getModelProxy().getContextMenuEntries();
+    }
+
+    /**
+     * Get the current setting.
+     * 
+     * @return JSON string containing the mapping of key-value pairs defining
+     *         the setting.
+     */
+    public String getSetting() {
+        return messageHandler.getModelProxy().getDynamicSettings();
+    }
+
+    /**
+     * Set the current setting.
+     * 
+     * @param setting
+     *            JSON string containing the mapping of key-value pairs defining
+     *            the setting.
+     */
+    public void setSetting(String setting) {
+        messageHandler.dynamicSettingChanged(setting);
     }
 
     /**
@@ -623,7 +707,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Hide the hazard detail subview.
      */
     public void hideHazardDetail() {
-        hazardDetailPresenter.hideHazardDetail(false);
+        // hazardDetailPresenter.hideHazardDetail(false);
+        hazardDetailPresenter.hideHazardDetail();
     }
 
     /**
@@ -659,8 +744,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
 
         // Recreate the console and the hazard detail views.
-        createConsole();
-        createHazardDetailDisplay();
+        createConsole(false);
+        createHazardDetailDisplay(false);
 
         /*
          * Retrieve and store the descriptor of the newly activated perspective.
@@ -678,9 +763,24 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
         });
 
-        // We always keep the same spatial display resource.
-        // We must unload it from and load it to the new editor.
-        // Must also handle the selectable geometry display.
+        // Get the tool layer data from the old tool layer, and delete the
+        // latter.
+        toolLayer.perspectiveChanging();
+        ToolLayerResourceData toolLayerResourceData = (ToolLayerResourceData) toolLayer
+                .getResourceData();
+        toolLayer.dispose();
+
+        // Create a new tool layer for the new perspective.
+        try {
+            toolLayer = toolLayerResourceData.construct(new LoadProperties(),
+                    ((AbstractEditor) VizWorkbenchManager.getInstance()
+                            .getActiveEditor()).getActiveDisplayPane()
+                            .getDescriptor());
+        } catch (VizException e1) {
+            statusHandler.error("Error creating spatial display", e1);
+        }
+
+        // Create a new spatial view for the new tool layer.
         addSpatialDisplayResourceToPerspective();
         spatialPresenter.getView().addGeometryDisplayResourceToPerspective();
 
@@ -868,7 +968,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Add the spatial display to the current perspective.
      */
     private void addSpatialDisplayResourceToPerspective() {
-        createSpatialDisplay();
+        createSpatialDisplay(toolLayer);
 
         // Set the default mouse listener; this is the select mouse handler.
         spatialPresenter.getView().setMouseHandler(
@@ -889,11 +989,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
         disposing = true;
 
+        ((ToolLayerResourceData) toolLayer.getResourceData())
+                .setAppBuilder(null);
+
         /*
          * Notify any objects interested in the shutting down of Hazard
          * Services.
          */
-        EventBusSingleton.getInstance().post(new HazardServicesCloseAction());
+        eventBus.post(new HazardServicesCloseAction());
 
         boolean showMessageBox = ((message != null) || (forcedShutdown == false));
         boolean saveSessionData = (forcedShutdown || (showMessageBox && MessageDialog
@@ -927,8 +1030,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         spatialPresenter.getView().unregisterCurrentMouseHandler();
 
-        appBuilderInstance = null;
-
         for (HazardServicesPresenter<?> presenter : presenters) {
             if ((presenter instanceof ConsolePresenter) == false) {
                 presenter.getView().dispose();
@@ -954,7 +1055,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         statusHandler.debug(messageHandler.getBenchmarkingStats());
 
         // Close the Jep connection.
-        messageHandler.closeJepConnection();
+        messageHandler.prepareForShutdown();
 
         // Prepare the Python side effects applier for shutdown.
         PythonSideEffectsApplier.prepareForShutDown();

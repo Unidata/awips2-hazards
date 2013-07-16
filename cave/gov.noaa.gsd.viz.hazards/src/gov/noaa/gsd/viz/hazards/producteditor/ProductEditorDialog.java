@@ -59,11 +59,14 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * 04/23/2013              B. Lawrence Made fixes based on code review responses.
  * 06/04/2013              C. Golden   Added support for changing background and foreground
  *                                     colors in order to stay in synch with CAVE mode.
+ * Jul 19, 2013      585   C. Golden   Replaced string literals in code with constants.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 class ProductEditorDialog extends BasicDialog {
+
+    // Private Static Constants
 
     /**
      * For logging...
@@ -72,33 +75,51 @@ class ProductEditorDialog extends BasicDialog {
             .getHandler(ProductEditorDialog.class);
 
     /**
+     * The title to associate with the editor.
+     * */
+    private static final String DIALOG_TITLE_TEXT = "Product Editor";
+
+    /**
+     * Issue button text.
+     */
+    private static final String ISSUE_BUTTON_TEXT = "Issue";
+
+    /**
+     * Dismiss button text.
+     */
+    private static final String DISMISS_BUTTON_TEXT = "Dismiss";
+
+    /**
      * The maximum characters per line in the product editor dialog.
      */
-    private final int MAX_CHARACTERS_PER_LINE = 70;
+    private static final int MAX_CHARACTERS_PER_LINE = 70;
 
     /**
      * Factor to adjust the width of 70 characters displayed in this dialog.
      */
-    private final double WIDTH_ADJUSTMENT_FACTOR = 1.3;
+    private static final double WIDTH_ADJUSTMENT_FACTOR = 1.3;
 
     /**
      * The height of this dialog. Note that the width of this dialog is
      * dynamically determined by average font width and the maximum number of
      * characters per line.
      */
-    private final int DIALOG_HEIGHT = 600;
+    private static final int DIALOG_HEIGHT = 600;
 
-    /** The 'Issue' button */
-    private final int ISSUE_ID = 2;
+    /**
+     * The 'Issue' button identifier
+     */
+    private static final int ISSUE_ID = 2;
 
-    /** The 'Dismiss' button */
-    private final int DISMISS_ID = 3;
+    /**
+     * The 'Dismiss' button identifier
+     */
+    private static final int DISMISS_ID = 3;
+
+    // Private Variables
 
     /** The body of the dialog */
     private Composite[] body = null;
-
-    /** The title to associate with the editor. */
-    private final String dialogTitle = "Product Editor";
 
     /**
      * Flag indicating whether or not to show the Issue, Propose and Dismiss
@@ -279,14 +300,13 @@ class ProductEditorDialog extends BasicDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-        Button issueButton = createButton(parent, ISSUE_ID, "Issue", false);
-        issueButton.setVisible(true);
-        issueButton.setToolTipText("Issue the Event");
-
-        Button dismissButton = createButton(parent, DISMISS_ID, "Dismiss",
+        Button issueButton = createButton(parent, ISSUE_ID, ISSUE_BUTTON_TEXT,
                 false);
+        issueButton.setVisible(true);
+
+        Button dismissButton = createButton(parent, DISMISS_ID,
+                DISMISS_BUTTON_TEXT, false);
         dismissButton.setVisible(true);
-        dismissButton.setToolTipText("Dismiss this Window");
     }
 
     @Override
@@ -304,7 +324,7 @@ class ProductEditorDialog extends BasicDialog {
     @Override
     protected void configureShell(Shell shell) {
         super.configureShell(shell);
-        shell.setText(dialogTitle);
+        shell.setText(DIALOG_TITLE_TEXT);
     }
 
     @Override

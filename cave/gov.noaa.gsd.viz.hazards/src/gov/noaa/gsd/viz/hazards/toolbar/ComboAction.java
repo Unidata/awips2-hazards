@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.toolbar;
 
-import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.action.IContributionManager;
 
 /**
  * Abstract class from which may be derived classes encapsulating toolbar combo
@@ -20,13 +20,36 @@ import org.eclipse.jface.action.IToolBarManager;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Apr 04, 2013            Chris.Golden      Initial induction into repo.
+ * Jul 15, 2013      585   Chris.Golden      Added code to allow toolbar manager
+ *                                           to be set after construction, so
+ *                                           that this action may be created
+ *                                           before the toolbar manager to which
+ *                                           it will be assigned exists.
  * </pre>
  * 
  * @author Chris.Golden
  */
-public abstract class ComboAction extends PulldownAction {
+public abstract class ComboAction extends PulldownAction implements
+        IContributionManagerAware {
+
+    // Private Static Constants
+
+    /**
+     * Placeholder text.
+     */
+    private static final String PLACEHOLDER_TEXT = "(none)";
+
+    /**
+     * Description-value separator text.
+     */
+    private static final String DESCRIPTION_VALUE_SEPARATOR_TEXT = ": ";
+
+    /**
+     * Placeholder tooltip text suffix.
+     */
+    private static final String PLACEHOLDER_TOOLTIP_TEXT_SUFFIX = DESCRIPTION_VALUE_SEPARATOR_TEXT
+            + "(none)";
 
     // Private Variables
 
@@ -36,9 +59,9 @@ public abstract class ComboAction extends PulldownAction {
     private final String description;
 
     /**
-     * Toolbar manager.
+     * Contribution manager.
      */
-    private final IToolBarManager toolBarManager;
+    private IContributionManager contributionManager;
 
     // Public Constructors
 
@@ -47,17 +70,19 @@ public abstract class ComboAction extends PulldownAction {
      * 
      * @param description
      *            Description of this action.
-     * @param toolBarManager
-     *            Toolbar manager to which this action will be added.
      */
-    public ComboAction(String description, IToolBarManager toolBarManager) {
-        super("(none)");
+    public ComboAction(String description) {
+        super(PLACEHOLDER_TEXT);
         this.description = description;
-        this.toolBarManager = toolBarManager;
-        setToolTipText(description + ": (none)");
+        setToolTipText(description + PLACEHOLDER_TOOLTIP_TEXT_SUFFIX);
     }
 
     // Public Methods
+
+    @Override
+    public void setContributionManager(IContributionManager contributionManager) {
+        this.contributionManager = contributionManager;
+    }
 
     /**
      * Set the visual state to indicate the specified choice is the current
@@ -69,12 +94,15 @@ public abstract class ComboAction extends PulldownAction {
     public void setSelectedChoice(String choiceText) {
 
         // Set the text of the action to the newly selected choice,
-        // and force the toolbar manager to update; without the
+        // and force the contribution manager to update; without the
         // latter, the drop-down widget disappears from the toolbar.
         setText(choiceText);
-        toolBarManager.update(true);
+        if (contributionManager != null) {
+            contributionManager.update(true);
+        }
 
         // Set the tooltip text to include the choice.
-        setToolTipText(description + ": " + choiceText);
+        setToolTipText(description + DESCRIPTION_VALUE_SEPARATOR_TEXT
+                + choiceText);
     }
 }

@@ -9,21 +9,28 @@
  */
 package gov.noaa.gsd.viz.mvp;
 
+import java.util.List;
+
 /**
  * Interface describing the methods that must be implemented in order to create
- * a view. The parameter <code>C</code> is the class used in implementations as
- * a main user-interface contribution manager, allowing each view to contribute
- * to the main UI if appropriate. The parameter <code>E</code> is an enumerated
- * type used in implementations to indicate which portion of the main UI is
- * being contributed to when the method <code>contributeToMainUI()</code> is
- * invoked.
+ * a view. The parameter <code>C</code> is the class used in implementations for
+ * main UI contributions returned by <code>contributeToMainUI()</code>. The
+ * parameter <code>E</code> is an enumerated type used in implementations to
+ * indicate which portion of the main UI is being contributed to when the method
+ * <code>contributeToMainUI()</code> is invoked.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * 
+ * Jul 15, 2013     585    Chris.Golden     Changed to have contributions to
+ *                                          main UI be returned instead of made
+ *                                          directly by the contribute method.
+ *                                          This allows for delayed use of said
+ *                                          contributions in case the main UI
+ *                                          is not available at the time the
+ *                                          method is called.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,17 +46,15 @@ public interface IView<C, E extends Enum<E>> {
     public void dispose();
 
     /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
+     * Get any contributions to the main UI that the implementation desires to
+     * make. Note that this method may be called multiple times per <code>type
+     * </code> to (re)populate the main UI with the specified <code>type</code>;
+     * implementations are responsible for cleaning up after contributed items
+     * that may exist from a previous call with the same <code>type</code>.
      * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
      * @param type
      *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
+     * @return List of contributions; this may be empty if none are to be made.
      */
-    public boolean contributeToMainUI(C mainUI, E type);
+    public List<? extends C> contributeToMainUI(E type);
 }

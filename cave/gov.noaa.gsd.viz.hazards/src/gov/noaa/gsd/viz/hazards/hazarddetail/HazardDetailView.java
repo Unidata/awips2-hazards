@@ -16,13 +16,17 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -40,7 +44,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jun 25, 2013            Chris.Golden      Changed to allow hazard metadata
  *                                           changes to be pushed to the event bus
  *                                           if so desired by the view part.
- * 
+ * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,15 +53,25 @@ import com.raytheon.uf.common.status.UFStatus;
 @SuppressWarnings("restriction")
 public class HazardDetailView extends
         ViewPartDelegatorView<HazardDetailViewPart> implements
-        IHazardDetailView<IActionBars, RCPMainUserInterfaceElement> {
+        IHazardDetailView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
     /**
-     * Prefix for the preferences key used to determine whether or not to use
+     * Name of the file holding the image for the alerts toolbar button icon.
+     */
+    private static final String HAZARD_DETAIL_TOOLBAR_IMAGE_FILE_NAME = "hazardInfo.png";
+
+    /**
+     * Text describing the hazard detail toolbar button.
+     */
+    private static final String HAZARD_DETAIL_TEXT = "Hazard Information";
+
+    /**
+     * Suffix for the preferences key used to determine whether or not to use
      * the previous size and position of the view part when showing it.
      */
-    private static final String USE_PREVIOUS_SIZE_AND_POSITION_KEY_PREFIX = "usePreviousHazardDetailViewPartSizeAndPosition.";
+    private static final String USE_PREVIOUS_SIZE_AND_POSITION_KEY_SUFFIX = ".usePreviousHazardDetailViewPartSizeAndPosition";
 
     /**
      * Logging mechanism.
@@ -118,7 +132,7 @@ public class HazardDetailView extends
 
         @Override
         public void partClosed(IWorkbenchPartReference partRef) {
-            if (partRef.getId().equals(HazardDetailViewPart.ID)) {
+            if (partRef == getViewPartReference()) {
                 if (hazardDetailToggleAction != null) {
                     hazardDetailToggleAction.setEnabled(true);
                     hazardDetailToggleAction.setChecked(false);
@@ -190,8 +204,12 @@ public class HazardDetailView extends
 
     /**
      * Construct a standard instance.
+     * 
+     * @param loadedFromBundle
+     *            Flag indicating whether or not the view is being instantiated
+     *            as a result of a bundle load.
      */
-    public HazardDetailView() {
+    public HazardDetailView(final boolean loadedFromBundle) {
         super(HazardDetailViewPart.ID, HazardDetailViewPart.class);
 
         // Determine whether the view part uses its previous size
@@ -200,37 +218,54 @@ public class HazardDetailView extends
         // in the preferences so that future invocations of the
         // hazard detail view use previous size and position.
         WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(true);
-        String usePreviousSizeAndPositionKey = USE_PREVIOUS_SIZE_AND_POSITION_KEY_PREFIX
-                + page.getPerspective().getId();
+        String usePreviousSizeAndPositionKey = page.getPerspective().getId()
+                + USE_PREVIOUS_SIZE_AND_POSITION_KEY_SUFFIX;
         IPreferenceStore preferenceStore = HazardServicesActivator.getDefault()
                 .getPreferenceStore();
         usePreviousSizeAndPosition = preferenceStore
                 .contains(usePreviousSizeAndPositionKey);
         if (usePreviousSizeAndPosition == false) {
-            preferenceStore.putValue(usePreviousSizeAndPositionKey, "true");
+            preferenceStore.setValue(usePreviousSizeAndPositionKey, true);
         }
 
         // Show the view part.
         showViewPart();
 
-        // If previous size and position is not to be used, detach
-        // the view, as this is the default starting state. It would
-        // be nice if this were possible via the plugin.xml perspec-
-        // tive extension entry for this view, but apparently it can
-        // only be started off detached programmatically.
-        if ((usePreviousSizeAndPosition == false) && (page != null)) {
-            page.detachView(page.findViewReference(HazardDetailViewPart.ID));
-        }
+        // Execute further manipulation of the view part immediately,
+        // or delay such execution until the view part is created if
+        // it has not yet been created yet.
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
 
-        // Set the use previous size and position flag to true so
-        // that any future showings of the view part by this view
-        // come up with previous dimensions.
-        usePreviousSizeAndPosition = true;
+                // If previous size and position is not to be used,
+                // detach the view, as this is the default starting
+                // state. It would be nice if this were possible via
+                // the plugin.xml perspective extension entry for this
+                // view, but apparently it can only be started off de-
+                // tached programmatically. If the view is not being
+                // detached, then if it is being instantiated as a
+                // result of a bundle load, minimize it.
+                WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(true);
+                if ((usePreviousSizeAndPosition == false) && (page != null)) {
+                    page.detachView(page
+                            .findViewReference(HazardDetailViewPart.ID));
+                } else if (loadedFromBundle && isViewPartDocked()) {
+                    setViewPartVisible(false);
+                    viewPartShowing = false;
+                }
 
-        // Register the part listener for view part events so that
-        // the closing of the hazard detail view part may be re-
-        // sponded to.
-        setPartListener(partListener);
+                // Set the use previous size and position flag to true
+                // so that any future showings of the view part by
+                // this view come up with previous dimensions.
+                usePreviousSizeAndPosition = true;
+
+                // Register the part listener for view part events so
+                // that the closing of the hazard detail view part may
+                // be responded to.
+                setPartListener(partListener);
+            }
+        });
     }
 
     // Public Methods
@@ -260,15 +295,26 @@ public class HazardDetailView extends
         this.jsonMetadataWidgets = jsonMetadataWidgets;
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
-
-        // If undocked, hide the view part, since it is empty; otherwise,
-        // initialize the view part.
-        if (isViewPartDocked() == false) {
-            hideViewPart(false);
-        } else {
-            getViewPart().initialize(this, jsonGeneralWidgets,
-                    jsonMetadataWidgets, minVisibleTime, maxVisibleTime);
+        if (minVisibleTime == maxVisibleTime) {
+            this.maxVisibleTime = this.minVisibleTime
+                    + TimeUnit.DAYS.toMillis(1);
         }
+
+        // Execute manipulation of the view part immediately, or delay such
+        // execution until the view part is created if it has not yet been
+        // created yet.
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
+                // If undocked, hide the view part, since it is empty; other-
+                // wise, initialize the view part.
+                if (isViewPartDocked() == false) {
+                    hideViewPart(false);
+                } else {
+                    initializeViewPart();
+                }
+            }
+        });
     }
 
     /**
@@ -278,20 +324,20 @@ public class HazardDetailView extends
      * cleaning up after contributed items that may exist from a previous call
      * with the same <code>type</code>.
      * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
      * @param type
      *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
 
             // Create the actions.
-            hazardDetailToggleAction = new BasicAction("", "hazardInfo.png",
-                    Action.AS_CHECK_BOX, "Hazard Information") {
+            boolean showing = isViewPartVisible();
+            hazardDetailToggleAction = new BasicAction("",
+                    HAZARD_DETAIL_TOOLBAR_IMAGE_FILE_NAME, Action.AS_CHECK_BOX,
+                    HAZARD_DETAIL_TEXT) {
                 @Override
                 public void run() {
                     boolean showing = isViewPartVisible();
@@ -302,13 +348,11 @@ public class HazardDetailView extends
                     }
                 }
             };
-            boolean showing = isViewPartVisible();
             hazardDetailToggleAction.setEnabled(showing);
             hazardDetailToggleAction.setChecked(showing);
-            mainUI.getToolBarManager().add(hazardDetailToggleAction);
-            return true;
+            return Lists.newArrayList(hazardDetailToggleAction);
         }
-        return false;
+        return Collections.emptyList();
     }
 
     /**
@@ -328,50 +372,70 @@ public class HazardDetailView extends
      *            considering not showing the subview for whatever reason.
      */
     @Override
-    public final void showHazardDetail(DictList eventValuesList,
-            String topEventID, boolean force) {
+    public final void showHazardDetail(final DictList eventValuesList,
+            final String topEventID, final boolean force) {
 
         // If there are no events to be shown, do nothing.
-        if ((force == false) && (eventValuesList == null)) {
+        if ((force == false)
+                && ((eventValuesList == null) || (eventValuesList.size() == 0))) {
             statusHandler
                     .error("HazardDetailView.showHazardDetail(): No event "
                             + "dictionaries, so not opening the view.");
             return;
         }
 
-        // Set the flag indicating that HID actions should be ignored
-        // while setting the dialog info and opening it.
-        doNotForwardActions = true;
+        System.err.println("Show hazard detail called, events = "
+                + (eventValuesList == null ? "null" : eventValuesList.size())
+                + " (top event = " + topEventID + "), force = " + force);
 
         // If the view part does not exist, show it.
-        if (getViewPart() == null) {
+        final boolean needsInitializing = (getViewPart() == null);
+        if (needsInitializing) {
             viewPartShowing = true;
             showViewPart();
-            getViewPart().initialize(this, jsonGeneralWidgets,
-                    jsonMetadataWidgets, minVisibleTime, maxVisibleTime);
         }
 
-        // Give the dialog the event information.
-        if (eventValuesList != null) {
-            getViewPart().setHidEventInfo(eventValuesList, topEventID);
-        }
-        int numEvents = getViewPart().getEventCount();
+        // Execute further manipulation of the view part immediately,
+        // or delay such execution until the view part is created if
+        // it has not yet been created yet.
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
 
-        // Ensure that the view part is visible.
-        if ((isViewPartVisible() == false)
-                && ((numEvents > 0) || force || isViewPartDocked())) {
-            setViewPartVisible(true);
-        }
+                // Set the flag indicating that HID actions should be
+                // ignored while setting the dialog info and opening
+                // it.
+                doNotForwardActions = true;
 
-        // Enable and check the hazard detail checkbox.
-        if (hazardDetailToggleAction != null) {
-            hazardDetailToggleAction.setEnabled(true);
-            hazardDetailToggleAction.setChecked(true);
-        }
+                // Initialize the view part if necessary.
+                if (needsInitializing) {
+                    initializeViewPart();
+                }
 
-        // Reset the ignore HID actions flag, indicating that actions
-        // from the dialog should no longer be ignored.
-        doNotForwardActions = false;
+                // Give the view part the event information.
+                if ((eventValuesList != null) && (eventValuesList.size() > 0)) {
+                    getViewPart().setHidEventInfo(eventValuesList, topEventID);
+                }
+                int numEvents = getViewPart().getEventCount();
+
+                // Ensure that the view part is visible.
+                if ((isViewPartVisible() == false)
+                        && ((numEvents > 0) || force || isViewPartDocked())) {
+                    setViewPartVisible(true);
+                }
+
+                // Enable and check the hazard detail checkbox.
+                if (hazardDetailToggleAction != null) {
+                    hazardDetailToggleAction.setEnabled(true);
+                    hazardDetailToggleAction.setChecked(true);
+                }
+
+                // Reset the ignore HID actions flag, indicating that
+                // actions from the dialog should no longer be ig-
+                // nored.
+                doNotForwardActions = false;
+            }
+        });
     }
 
     /**
@@ -390,6 +454,10 @@ public class HazardDetailView extends
     public final void updateHazardDetail(DictList eventValuesList,
             String topEventID) {
 
+        System.err.println("Update hazard detail called, events = "
+                + (eventValuesList == null ? "null" : eventValuesList.size())
+                + " (top event = " + topEventID + ").");
+
         // If the view part exists, update it; otherwise, if there
         // is at least one event to show, show the view part.
         if (getViewPart() != null) {
@@ -407,10 +475,11 @@ public class HazardDetailView extends
 
             // If the event values list is empty and the view part is
             // not docked, hide the view.
-            if ((eventValuesList == null) && (isViewPartDocked() == false)) {
-                hideHazardDetail(true);
+            if (((eventValuesList == null) || (eventValuesList.size() == 0))
+                    && (isViewPartDocked() == false)) {
+                hideHazardDetail(false);
             }
-        } else if (eventValuesList != null) {
+        } else if ((eventValuesList != null) && (eventValuesList.size() > 0)) {
             showHazardDetail(eventValuesList, topEventID, true);
         }
     }
@@ -425,19 +494,45 @@ public class HazardDetailView extends
      */
     @Override
     public final void hideHazardDetail(boolean force) {
-        int numEvents = getViewPart().getEventCount();
-        if ((numEvents == 0) || force) {
-            if (isViewPartDocked()) {
-                if (isViewPartVisible()) {
-                    setViewPartVisible(false);
-                }
-            } else {
-                if (getViewPart() != null) {
-                    hideViewPart(false);
-                }
-            }
+
+        System.err.println("Hide hazard detail called, view part (docked = "
+                + isViewPartDocked()
+                + ", visible = "
+                + isViewPartVisible()
+                + ") = "
+                + (getViewPart() == null ? "null" : Integer
+                        .toString(getViewPart().getEventCount())));
+
+        // If the view part is not showing, it may have been meant to
+        // be showing, but was unable to because its instantiation was
+        // delayed by another view part with the same identifier already
+        // existing. If this is the case, clear the jobs queue for the
+        // view part, as it should now no longer be brought up once the
+        // old view part disappears. Otherwise, if the view part is show-
+        // ing but the event count is zero or a forced hide should occur,
+        // minimize it if it is docked, or hide it otherwise.
+        boolean hidden = true;
+        if (getViewPart() == null) {
+            hideViewPart(true);
+        } else if (isViewPartDocked() == false) {
+            hideViewPart(false);
+        } else if (force) {
+            setViewPartVisible(false);
+        } else {
+            hidden = false;
+            // if ((getViewPart().getEventCount() == 0) || force) {
+            // if (isViewPartDocked()) {
+            // if (isViewPartVisible()) {
+            // setViewPartVisible(false);
+            // }
+            // } else {
+            // hideViewPart(false);
+            // }
+            // }
         }
-        hazardDetailToggleAction.setChecked(false);
+        if (hidden) {
+            hazardDetailToggleAction.setChecked(false);
+        }
     }
 
     /**
@@ -453,6 +548,11 @@ public class HazardDetailView extends
             long maxVisibleTime) {
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
+
+        // Only set the visible time range of the view part if it exists;
+        // no need to schedule an execution of this if the view part is
+        // not yet showing, as when it is shown, it will pick up this
+        // visible time range from the initialization it undergoes.
         if (getViewPart() != null) {
             getViewPart().setVisibleTimeRange(minVisibleTime, maxVisibleTime);
         }
@@ -475,30 +575,14 @@ public class HazardDetailView extends
         }
     }
 
-    /**
-     * Determine whether or not to use previous size and position for the view
-     * part from the moment the latter is created.
-     * 
-     * @return True if previous size and position should be used from the first
-     *         moment of instantiation, false otherwise.
-     */
-    boolean alwaysUsePreviousSizeAndPosition() {
-        return usePreviousSizeAndPosition;
-    }
-
     // Private Methods
 
     /**
-     * Change the view part's visibility.
-     * 
-     * @param visible
-     *            Flag indicating whether or not the view should be visible.
+     * Initialize the view part.
      */
-    private void setViewPartVisible(boolean visible) {
-        getActiveWorkbenchPage(true).setPartState(
-                getViewPartReference(),
-                (visible ? WorkbenchPage.STATE_RESTORED
-                        : WorkbenchPage.STATE_MINIMIZED));
+    private void initializeViewPart() {
+        getViewPart().initialize(this, jsonGeneralWidgets, jsonMetadataWidgets,
+                minVisibleTime, maxVisibleTime);
     }
 
     /**

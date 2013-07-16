@@ -52,17 +52,27 @@ import com.raytheon.uf.common.status.UFStatus;
  * written with the assumption that only the <code>applySideEffects()</code>
  * method will be guaranteed to be run each time side effects are to be applied.
  * <p>
- * <strong>Note</code>: This class is not thread-safe, and furthermore, all
- * instances (and static methods) must be accessed via the same thread. Failure
- * to do this will result in unpredictable behavior.
+ * <strong>Note</code>: The <code>initialize()</code> and <code>
+ * prepareForShutdown()</code> static methods are thread-safe; multiple threads
+ * may call these class-scoped methods without danger. Additionally, calls to
+ * <code>applySideEffects()</code> are also thread safe, as they are
+ * synchronized at the class (not merely object) level.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 6, 2013    1277     Chris.Golden      Initial creation
- * 
+ * May 06, 2013    1277    Chris.Golden      Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to ensure that if initialize
+ *                                           and shutdown methods are called out
+ *                                           of order (e.g. first two calls to
+ *                                           initialize, then two to shutdown),
+ *                                           the class will always be initialized
+ *                                           unless the number of calls to the
+ *                                           latter equal or exceed the number of
+ *                                           the former. Also added synchronization
+ *                                           for thread safety.
  * </pre>
  * 
  * @author Chris.Golden
@@ -186,6 +196,12 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             .getHandler(PythonSideEffectsApplier.class);
 
     /**
+     * Counter indicating the total number of initializations requested minus
+     * the total number of shutdowns requested.
+     */
+    private static int requestCounter = 0;
+
+    /**
      * Single Jep instance, shared between the instances of this class. It is
      * created by <code>initialize()</code> and disposed of via <code>
      * prepareForShutDown()</code>.
@@ -194,8 +210,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Gson converter. As with <code>jep</code>, it is created by <code>
-     * initialize()</code> and disposed of via <code>
-     * prepareForShutDown()</code>.
+     * initialize()</code> and disposed of via <code>prepareForShutDown()
+     * </code>.
      */
     private static Gson gson;
 
@@ -233,32 +249,42 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * Initialize the single instance of this class.
      */
     public static void initialize() {
-        try {
-            jep = new Jep(false);
-            jep.eval(INITIALIZE);
-            jep.eval(DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD);
-            jep.eval(DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD);
-        } catch (JepException e) {
-            statusHandler.error("Internal error while initializing Python "
-                    + "side effects applier.", e);
+        synchronized (PythonSideEffectsApplier.class) {
+            if ((++requestCounter == 1) && (jep == null)) {
+                try {
+                    jep = new Jep(false);
+                    jep.eval(INITIALIZE);
+                    jep.eval(DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD);
+                    jep.eval(DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD);
+                } catch (JepException e) {
+                    statusHandler.error(
+                            "Internal error while initializing Python "
+                                    + "side effects applier.", e);
+                }
+                gson = new Gson();
+            }
         }
-        gson = new Gson();
     }
 
     /**
      * Dispose of the single instance of this class.
      */
     public static void prepareForShutDown() {
-        lastApplier = null;
-        gson = null;
-        try {
-            jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD);
-            jep.eval(CLEANUP_FOR_SHUTDOWN);
-            jep.close();
-            jep = null;
-        } catch (JepException e) {
-            statusHandler.error("Internal error while preparing for shutdown "
-                    + "of Python side effects applier.", e);
+        synchronized (PythonSideEffectsApplier.class) {
+            if ((--requestCounter < 1) && (jep != null)) {
+                lastApplier = null;
+                gson = null;
+                try {
+                    jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD);
+                    jep.eval(CLEANUP_FOR_SHUTDOWN);
+                    jep.close();
+                    jep = null;
+                } catch (JepException e) {
+                    statusHandler.error(
+                            "Internal error while preparing for shutdown "
+                                    + "of Python side effects applier.", e);
+                }
+            }
         }
     }
 
@@ -316,121 +342,134 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             String triggerIdentifier,
             Map<String, Map<String, Object>> mutableProperties,
             boolean propertiesMayHaveChanged) {
+        synchronized (PythonSideEffectsApplier.class) {
 
-        // Ensure that the the Jep instance has been initialized.
-        ensureClassInitialized();
+            // Ensure that the the Jep instance has been initialized.
+            ensureClassInitialized();
 
-        // Ensure that side effects are not already in the process of being
-        // applied, and set the application-occurring flag.
-        if (sideEffectsBeingApplied) {
-            throw new IllegalStateException(
-                    "Illegal reentry to applySideEffects().");
-        }
-        sideEffectsBeingApplied = true;
+            // Ensure that side effects are not already in the process of being
+            // applied, and set the application-occurring flag.
+            if (sideEffectsBeingApplied) {
+                throw new IllegalStateException(
+                        "Illegal reentry to applySideEffects().");
+            }
+            sideEffectsBeingApplied = true;
 
-        // If this method has not been run by any instance of this class since
-        // initialization, or if the last instance that ran it is not the same
-        // as this instance, perform a Jep context switch.
-        if ((lastApplier == null) || (lastApplier.get() != this)) {
+            // If this method has not been run by any instance of this class
+            // since
+            // initialization, or if the last instance that ran it is not the
+            // same
+            // as this instance, perform a Jep context switch.
+            if ((lastApplier == null) || (lastApplier.get() != this)) {
 
-            // Remember that this instance is the last to have had this method
-            // invoked.
-            lastApplier = new WeakReference<PythonSideEffectsApplier>(this);
+                // Remember that this instance is the last to have had this
+                // method
+                // invoked.
+                lastApplier = new WeakReference<PythonSideEffectsApplier>(this);
 
-            // Clean up to prepare for the context switch.
-            try {
-                jep.eval(DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_METHOD);
-                jep.eval(CLEANUP_FOR_CONTEXT_SWITCH);
-            } catch (JepException e) {
-                statusHandler.error("Internal error while cleaning up "
-                        + "before context switch of Python side effects "
-                        + "applier.", e);
-                sideEffectsBeingApplied = false;
-                return null;
+                // Clean up to prepare for the context switch.
+                try {
+                    jep.eval(DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_METHOD);
+                    jep.eval(CLEANUP_FOR_CONTEXT_SWITCH);
+                } catch (JepException e) {
+                    statusHandler.error("Internal error while cleaning up "
+                            + "before context switch of Python side effects "
+                            + "applier.", e);
+                    sideEffectsBeingApplied = false;
+                    return null;
+                }
+
+                // Switch context by running the script for this instance. The
+                // script has to define the Python applySideEffects() method.
+                // The script is either evaluated directly, if it was supplied
+                // as a string, or run from a file, if a path was supplied.
+                try {
+                    if (script != null) {
+                        if (jep.eval(script) == false) {
+                            throw new JepException(
+                                    "script incomplete and/or not executed");
+                        }
+                    } else {
+                        jep.runScript(scriptPath);
+                    }
+                } catch (JepException e) {
+                    statusHandler.error("Internal error while performing "
+                            + "context switch of Python side effects applier.",
+                            e);
+                    sideEffectsBeingApplied = false;
+                    return null;
+                }
+
+                // Ensure that the Python method applySideEffects() has been
+                // defined by the script that was run above.
+                Object result = null;
+                try {
+                    result = jep.invoke(NAME_IS_SIDE_EFFECTS_METHOD_DEFINED);
+                } catch (JepException e) {
+                    statusHandler.error("Internal error while checking for "
+                            + "presence of Python script for application "
+                            + "of side effects within Python side "
+                            + "effects applier.", e);
+                    sideEffectsBeingApplied = false;
+                    return null;
+                }
+                if ((result == null) || !(result instanceof Boolean)) {
+                    statusHandler
+                            .error("Internal error while checking for "
+                                    + "presence of Python script for application of "
+                                    + "side effects within Python side effects applier.",
+                                    new IllegalStateException(
+                                            "Could not execute Python "
+                                                    + "method "
+                                                    + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED
+                                                    + "()"));
+                    sideEffectsBeingApplied = false;
+                    return null;
+                } else if ((Boolean) result == false) {
+                    statusHandler.error("Could not find Python method "
+                            + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED
+                            + "() defined "
+                            + "within Python side effects applier.");
+                    sideEffectsBeingApplied = false;
+                    return null;
+                }
+
+                // Set the flag indicating that properties have changed since
+                // the last invocation, since owing to the context switch the
+                // mutable properties will certainly need to be reloaded into
+                // the Jep instance.
+                propertiesMayHaveChanged = true;
             }
 
-            // Switch context by running the script for this instance. The
-            // script has to define the Python applySideEffects() method.
-            // The script is either evaluated directly, if it was supplied
-            // as a string, or run from a file, if a path was supplied.
+            // Invoke the side effects wrapper and get the result.
+            Map<String, Map<String, Object>> resultMap = null;
             try {
-                if (script != null) {
-                    if (jep.eval(script) == false) {
-                        throw new JepException(
-                                "script incomplete and/or not executed");
-                    }
-                } else {
-                    jep.runScript(scriptPath);
+                Object result = jep.invoke(NAME_APPLY_SIDE_EFFECTS_WRAPPER,
+                        triggerIdentifier, gson.toJson(mutableProperties),
+                        propertiesMayHaveChanged);
+                if (result != null) {
+                    Type type = new TypeToken<HashMap<String, HashMap<String, Object>>>() {
+                    }.getType();
+                    resultMap = gson.fromJson((String) result, type);
                 }
             } catch (JepException e) {
-                statusHandler.error("Internal error while performing "
-                        + "context switch of Python side effects applier.", e);
-                sideEffectsBeingApplied = false;
-                return null;
+                statusHandler
+                        .error("Python script error occurred;"
+                                + "Python method applySideEffects() should either "
+                                + "return None or else a dictionary mapping "
+                                + "megawidget identifiers to dictionaries holding "
+                                + "name-value pairs for changed mutable properties.",
+                                e);
             }
 
-            // Ensure that the Python method applySideEffects() has been
-            // defined by the script that was run above.
-            Object result = null;
-            try {
-                result = jep.invoke(NAME_IS_SIDE_EFFECTS_METHOD_DEFINED);
-            } catch (JepException e) {
-                statusHandler.error("Internal error while checking for "
-                        + "presence of Python script for application "
-                        + "of side effects within Python side "
-                        + "effects applier.", e);
-                sideEffectsBeingApplied = false;
-                return null;
-            }
-            if ((result == null) || !(result instanceof Boolean)) {
-                statusHandler.error("Internal error while checking for "
-                        + "presence of Python script for application of "
-                        + "side effects within Python side effects applier.",
-                        new IllegalStateException("Could not execute Python "
-                                + "method "
-                                + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED + "()"));
-                sideEffectsBeingApplied = false;
-                return null;
-            } else if ((Boolean) result == false) {
-                statusHandler.error("Could not find Python method "
-                        + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED + "() defined "
-                        + "within Python side effects applier.");
-                sideEffectsBeingApplied = false;
-                return null;
-            }
-
-            // Set the flag indicating that properties have changed since
-            // the last invocation, since owing to the context switch the
-            // mutable properties will certainly need to be reloaded into
-            // the Jep instance.
-            propertiesMayHaveChanged = true;
+            // Reset the application-occurring flag and return the result, which
+            // is either null if the side effects did not affect the
+            // megawidgets,
+            // or a map of megawidget identifiers to maps of mutable properties
+            // that have changed.
+            sideEffectsBeingApplied = false;
+            return resultMap;
         }
-
-        // Invoke the side effects wrapper and get the result.
-        Map<String, Map<String, Object>> resultMap = null;
-        try {
-            Object result = jep.invoke(NAME_APPLY_SIDE_EFFECTS_WRAPPER,
-                    triggerIdentifier, gson.toJson(mutableProperties),
-                    propertiesMayHaveChanged);
-            if (result != null) {
-                Type type = new TypeToken<HashMap<String, HashMap<String, Object>>>() {
-                }.getType();
-                resultMap = gson.fromJson((String) result, type);
-            }
-        } catch (JepException e) {
-            statusHandler.error("Python script error occurred;"
-                    + "Python method applySideEffects() should either "
-                    + "return None or else a dictionary mapping "
-                    + "megawidget identifiers to dictionaries holding "
-                    + "name-value pairs for changed mutable properties.", e);
-        }
-
-        // Reset the application-occurring flag and return the result, which
-        // is either null if the side effects did not affect the megawidgets,
-        // or a map of megawidget identifiers to maps of mutable properties
-        // that have changed.
-        sideEffectsBeingApplied = false;
-        return resultMap;
     }
 
     // Private Methods

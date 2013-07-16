@@ -20,15 +20,17 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapRes
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
+import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IToolBarManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -39,10 +41,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -67,7 +70,6 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
-import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -80,89 +82,56 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SpatialView implements
-        ISpatialView<IActionBars, RCPMainUserInterfaceElement>,
+        ISpatialView<Action, RCPMainUserInterfaceElement>,
         IFrameChangedListener, IDisposeListener {
-    static public enum SpatialViewCursorTypes {
-        MOVE_POLYGON_CURSOR, MOVE_POINT_CURSOR, ARROW_CURSOR, DRAW_CURSOR, WAIT_CURSOR;
 
-        /*
-         * The current instantiated cursor for this enum type.
-         */
-        private Cursor cursor = null;
+    // Public Enumerated Types
 
-        /**
-         * @param cursor
-         *            the cursor to set
-         */
-        public void setCursor(Cursor cursor) {
-            this.cursor = cursor;
-        }
+    /**
+     * Types of cursors.
+     */
+    public static enum SpatialViewCursorTypes {
 
-        /**
-         * @return the cursor
-         */
-        public Cursor getCursor() {
-            return cursor;
-        }
+        // Types of cursors.
+        MOVE_POLYGON_CURSOR(SWT.CURSOR_SIZEALL), MOVE_POINT_CURSOR(
+                SWT.CURSOR_HAND), ARROW_CURSOR(SWT.CURSOR_ARROW), DRAW_CURSOR(
+                SWT.CURSOR_CROSS), WAIT_CURSOR(SWT.CURSOR_WAIT);
+
+        // Private Variables
 
         /**
-         * Dispose of the memory allocated to the cursor.
+         * SWT cursor type that goes with this cursor.
+         */
+        private int swtType;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
          * 
-         * @param
-         * @return
+         * @param swtType
+         *            SWT type of cursor.
          */
-        public void dispose() {
-            cursor.dispose();
-            cursor = null;
+        private SpatialViewCursorTypes(int swtType) {
+            this.swtType = swtType;
         }
 
+        // Public Methods
+
         /**
-         * Tests the current CAVE cursor.
+         * Get the SWT cursor type.
          * 
-         * @param The
-         *            cursor type to test against.
-         * @return true - the cursors match, false the cursors don't match
+         * @return SWT cursor type.
          */
-        public boolean isCurrentCursor() {
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-
-            Cursor currentCursor = shell.getCursor();
-
-            return currentCursor == this.cursor;
-
-            // switch (cursorType)
-            // {
-            // case ARROW_CURSOR:
-            // return currentCursor == arrowCursor;
-            //
-            // case DRAW_CURSOR:
-            // return currentCursor == drawCursor;
-            //
-            // case MOVE_POINT_CURSOR:
-            // return currentCursor == movePointCursor;
-            //
-            // case MOVE_POLYGON_CURSOR:
-            // return currentCursor == movePolygonCursor;
-            //
-            // case WAIT_CURSOR:
-            // return currentCursor == waitCursor;
-            //
-            // default:
-            // statusHandler
-            // .debug("In SpatialView.isCurrentCursor(): Unrecognized cursor type: "
-            // + cursorType);
-            // break;
-            // }
-            //
-            // return false;
+        public int getSwtType() {
+            return swtType;
         }
     };
 
@@ -481,6 +450,12 @@ public class SpatialView implements
     // Private Variables
 
     /**
+     * Map of cursor types to the corresponding cursors.
+     */
+    private final Map<SpatialViewCursorTypes, Cursor> cursorsForCursorTypes = Maps
+            .newEnumMap(SpatialViewCursorTypes.class);
+
+    /**
      * The current mouse handler. The mouse handler selection is driven by the
      * toolbar option chosen. The mouse handler controls how the user interacts
      * with the Hazard Services display.
@@ -552,16 +527,16 @@ public class SpatialView implements
     private SelectByAreaDbMapResource selectableGeometryDisplay = null;
 
     // Mouse handler factory.
-    MouseHandlerFactory mouseFactory = null;
+    private MouseHandlerFactory mouseFactory = null;
 
     // Public Constructors
 
     /**
      * Construct a standard instance.
      */
-    public SpatialView() {
-
-        // No action.
+    public SpatialView(ToolLayer toolLayer) {
+        this.spatialDisplay = toolLayer;
+        toolLayer.setSpatialView(this);
     }
 
     // Public Methods
@@ -598,16 +573,6 @@ public class SpatialView implements
         }
 
         try {
-
-            GenericToolsResourceData<ToolLayer> HSToolLayerResourceData = new GenericToolsResourceData<ToolLayer>(
-                    ToolLayer.DEFAULT_NAME, ToolLayer.class);
-            spatialDisplay = HSToolLayerResourceData.construct(
-                    new LoadProperties(), desc);
-        } catch (VizException e1) {
-            statusHandler.error("Error creating spatial display", e1);
-        }
-
-        try {
             desc.getResourceList().add(spatialDisplay);
             spatialDisplay.initInternal(editor.getActiveDisplayPane()
                     .getTarget());
@@ -615,21 +580,14 @@ public class SpatialView implements
             statusHandler.error("Error initializing spatial display", e);
         }
 
-        spatialDisplay.getDescriptor().addFrameChangedListener(this);
+        idesc.addFrameChangedListener(this);
 
-        // Create the cursors that will be used by Hazard Services
+        // Create the cursors that will be used by Hazard Services.
         Display display = Display.getCurrent();
-
-        SpatialViewCursorTypes.MOVE_POLYGON_CURSOR.setCursor(new Cursor(
-                display, SWT.CURSOR_SIZEALL));
-        SpatialViewCursorTypes.MOVE_POINT_CURSOR.setCursor(new Cursor(display,
-                SWT.CURSOR_HAND));
-        SpatialViewCursorTypes.ARROW_CURSOR.setCursor(new Cursor(display,
-                SWT.CURSOR_ARROW));
-        SpatialViewCursorTypes.DRAW_CURSOR.setCursor(new Cursor(display,
-                SWT.CURSOR_CROSS));
-        SpatialViewCursorTypes.WAIT_CURSOR.setCursor(new Cursor(display,
-                SWT.CURSOR_WAIT));
+        for (SpatialViewCursorTypes cursor : SpatialViewCursorTypes.values()) {
+            cursorsForCursorTypes.put(cursor,
+                    display.getSystemCursor(cursor.getSwtType()));
+        }
     }
 
     /**
@@ -638,6 +596,8 @@ public class SpatialView implements
     @Override
     public final void dispose() {
         removeListeners();
+
+        setMouseHandler(null);
 
         if (spatialDisplay != null) {
             if (spatialDisplay.getDescriptor() != null) {
@@ -649,11 +609,19 @@ public class SpatialView implements
         }
 
         removeGeometryDisplay();
+    }
 
-        for (SpatialViewCursorTypes cursorType : SpatialViewCursorTypes
-                .values()) {
-            cursorType.dispose();
-        }
+    /**
+     * Set the setting.
+     * 
+     * @param setting
+     *            JSON string containing the mapping of key-value pairs making
+     *            up the setting.
+     */
+    @Override
+    public void setSetting(String setting) {
+        ((ToolLayerResourceData) spatialDisplay.getResourceData())
+                .setSetting(setting);
     }
 
     @Override
@@ -739,7 +707,7 @@ public class SpatialView implements
     }
 
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
 
@@ -774,26 +742,18 @@ public class SpatialView implements
                     Action.AS_RADIO_BUTTON, "Draw Point", "Drawing",
                     "DrawPoint");
             drawPointChoiceAction.setEnabled(false);
-
-            // Add the actions to the toolbar.
-            IToolBarManager toolBarManager = mainUI.getToolBarManager();
-            toolBarManager.add(undoCommandAction);
-            toolBarManager.add(redoCommandAction);
-            toolBarManager.add(new Separator());
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
-            toolBarManager.add(addToSelectedToggleAction);
-            toolBarManager.add(new Separator());
-            toolBarManager.add(moveAndSelectChoiceAction);
-            toolBarManager.add(drawNodedPolygonChoiceAction);
-            toolBarManager.add(drawFreehandPolygonChoiceAction);
-            toolBarManager.add(drawNodedPathChoiceAction);
-            toolBarManager.add(drawPointChoiceAction);
-            toolBarManager.add(new Separator());
-            toolBarManager.add(selectByAreaMapsPulldownAction);
-            return true;
-        } else {
-            return false;
+
+            // Return the list.
+            return Lists.newArrayList(undoCommandAction, redoCommandAction,
+                    new SeparatorAction(), addToSelectedToggleAction,
+                    new SeparatorAction(), moveAndSelectChoiceAction,
+                    drawNodedPolygonChoiceAction,
+                    drawFreehandPolygonChoiceAction, drawNodedPathChoiceAction,
+                    drawPointChoiceAction, new SeparatorAction(),
+                    selectByAreaMapsPulldownAction);
         }
+        return Collections.emptyList();
     }
 
     // Private Methods
@@ -930,7 +890,7 @@ public class SpatialView implements
         }
 
         if (loadMouseHandler) {
-            IInputHandler mouseHandler = mouseFactory.createMouseHandler(
+            IInputHandler mouseHandler = mouseFactory.getMouseHandler(
                     mouseHandlerType, args);
 
             if (mouseHandler != null) {
@@ -947,7 +907,7 @@ public class SpatialView implements
 
         switch (drawingAction) {
         case ADD_POINT:
-            IInputHandler mouseHandler = mouseFactory.createMouseHandler(
+            IInputHandler mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
             SelectionHandler addMouseHandler = (SelectionHandler) mouseHandler;
@@ -955,7 +915,7 @@ public class SpatialView implements
             break;
 
         case DELETE_POINT:
-            mouseHandler = mouseFactory.createMouseHandler(
+            mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
 
@@ -964,7 +924,7 @@ public class SpatialView implements
             break;
 
         case MOVE_ELEMENT:
-            mouseHandler = mouseFactory.createMouseHandler(
+            mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
             SelectionHandler moveMouseHandler = (SelectionHandler) mouseHandler;
@@ -1364,8 +1324,7 @@ public class SpatialView implements
 
         for (int i = 0; i < eventIDs.size(); ++i) {
             final String eventID = eventIDs.getDynamicallyTypedValue(i);
-            String selectedEventJSON = HazardServicesMessageHandler
-                    .getModelProxy().getComponentData("Spatial", eventID);
+            String selectedEventJSON = presenter.getEvents(eventID);
 
             DictList selectedEventDictList = DictList
                     .getInstance(selectedEventJSON);
@@ -1430,13 +1389,26 @@ public class SpatialView implements
      * 
      * @param cursorType
      *            The type of cursor to set.
-     * @return
      */
     @Override
     public void setCursor(SpatialViewCursorTypes cursorType) {
         Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                 .getShell();
-        shell.setCursor(cursorType.getCursor());
+        shell.setCursor(cursorsForCursorTypes.get(cursorType));
+    }
+
+    /**
+     * Determine whether this cursor is the current cursor.
+     * 
+     * @param cursorType
+     *            The type of cursor against which to check.
+     * @return True if the current cursor is of the specified type, false
+     *         otherwise.
+     */
+    public boolean isCurrentCursor(SpatialViewCursorTypes cursorType) {
+        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                .getShell();
+        return (shell.getCursor() == cursorsForCursorTypes.get(cursorType));
     }
 
     /**

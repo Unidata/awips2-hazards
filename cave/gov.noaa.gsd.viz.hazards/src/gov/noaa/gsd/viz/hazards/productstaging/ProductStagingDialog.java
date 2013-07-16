@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -33,6 +32,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -57,7 +57,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jun 04, 2013            Chris G.    Added support for changing background
  *                                     and foreground colors in order to stay
  *                                     in synch with CAVE mode.
- * 
+ * Jul 18, 2013    585     Chris G.    Changed to support loading from bundle.
  * </pre>
  * 
  * @author shouming.wei
@@ -70,7 +70,27 @@ class ProductStagingDialog extends BasicDialog {
     /**
      * Dialog title.
      */
-    static private final String DIALOG_TITLE = "Product Staging";
+    private static final String DIALOG_TITLE = "Product Staging";
+
+    /**
+     * Tab text prefix.
+     */
+    private static final String TAB_TEXT_PREFIX = "Product : ";
+
+    /**
+     * OK button text.
+     */
+    private static final String OK_BUTTON_TEXT = "Continue...";
+
+    /**
+     * Events section text.
+     */
+    private static final String EVENTS_SECTION_TEXT = "Events";
+
+    /**
+     * Parameters section text.
+     */
+    private static final String PARAMETERS_SECTION_TEXT = "Product Generator Parameters";
 
     /**
      * Logging mechanism.
@@ -258,7 +278,7 @@ class ProductStagingDialog extends BasicDialog {
         for (int i = 0; i < hazardEventSetList.size(); i++) {
             Dict tabInfo = hazardEventSetList.get(i);
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
-            tabItem.setText("Product : "
+            tabItem.setText(TAB_TEXT_PREFIX
                     + tabInfo.get("productGenerator").toString());
             Control control = createTabFolderPage(tabFolder, tabInfo);
             tabItem.setControl(control);
@@ -270,7 +290,7 @@ class ProductStagingDialog extends BasicDialog {
     protected void createButtonsForButtonBar(Composite parent) {
         super.createButtonsForButtonBar(parent);
         Button ok = getButton(IDialogConstants.OK_ID);
-        ok.setText("Continue...");
+        ok.setText(OK_BUTTON_TEXT);
         setButtonLayoutData(ok);
     }
 
@@ -341,7 +361,7 @@ class ProductStagingDialog extends BasicDialog {
         Dict stagingInfoDict = tabInfo.getDynamicallyTypedValue("stagingInfo");
         if (stagingInfoDict != null && stagingInfoDict.size() > 0) {
             Group fieldsGroup = new Group(tabPage, SWT.NONE);
-            fieldsGroup.setText("Events");
+            fieldsGroup.setText(EVENTS_SECTION_TEXT);
             fieldsGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                     false));
             stagingMegawidgetManager = buildMegawidgets(fieldsGroup,
@@ -366,7 +386,7 @@ class ProductStagingDialog extends BasicDialog {
         Dict productInfoDict = tabInfo.getDynamicallyTypedValue("dialogInfo");
         if (productInfoDict != null && productInfoDict.size() > 0) {
             Group productInfoGroup = new Group(tabPage, SWT.NONE);
-            productInfoGroup.setText("Product Generator Parameters");
+            productInfoGroup.setText(PARAMETERS_SECTION_TEXT);
             productInfoGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
                     true, false));
             dialogMegawidgetManager = buildMegawidgets(productInfoGroup,
@@ -418,7 +438,7 @@ class ProductStagingDialog extends BasicDialog {
 
         // Create the megawidget manager, which will in turn create the mega-
         // widgets and bind them to the values dictionary, and return it.
-        List<Dict> specifiersList = new ArrayList<Dict>();
+        List<Dict> specifiersList = Lists.newArrayList();
         for (Object specifier : specifiers) {
             specifiersList.add((Dict) specifier);
         }

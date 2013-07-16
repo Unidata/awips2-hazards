@@ -11,94 +11,84 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.Lists;
 
 /**
- * Description:  Test implementation of the 
- *               product editor view.
+ * Description: Test implementation of the product editor view.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * March 01, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Mar 01, 2013            Bryon.Lawrence      Initial creation
+ * Jul 15, 2013     585    Chris.Golden        Changed to use new version of IView.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public class TestProductEditorView implements IProductEditorView<DummyToolBarContributionManager, RCPMainUserInterfaceElement>
-{
-    
+public class TestProductEditorView implements
+        IProductEditorView<Object, RCPMainUserInterfaceElement> {
+
     /**
-     * Product information passed into the 
-     * product staging dialog.
+     * Product information passed into the product staging dialog.
      */
-     String productStagingInfo    = null;
-    
+    String productStagingInfo = null;
+
     /**
      * Dismiss command invocation handler.
      */
-    private ICommandInvocationHandler               dismissHandler            = null;
-    
+    private ICommandInvocationHandler dismissHandler = null;
+
     /**
      * Issue command invocation handler.
      */
-    private ICommandInvocationHandler               issueHandler            = null;
+    private ICommandInvocationHandler issueHandler = null;
 
     /**
      * Shell closed command invocation handler.
      */
-    private ICommandInvocationHandler               shellCloseHandler            = null;
+    private ICommandInvocationHandler shellCloseHandler = null;
 
     /**
-     * Dismiss command invoker. 
+     * Dismiss command invoker.
      */
-    private ICommandInvoker                         dismissInvoker            = new ICommandInvoker()
-    {
+    private final ICommandInvoker dismissInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler)
-        {
+                ICommandInvocationHandler handler) {
             dismissHandler = handler;
         }
     };
-    
 
     /**
-     * Dismiss command invoker. 
+     * Dismiss command invoker.
      */
-    private ICommandInvoker                         issueInvoker            = new ICommandInvoker()
-    {
+    private final ICommandInvoker issueInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler)
-        {
+                ICommandInvocationHandler handler) {
             issueHandler = handler;
         }
     };
 
     /**
-     * Shell Closed command invoker. 
+     * Shell Closed command invoker.
      */
-    private ICommandInvoker                         shellClosedInvoker            = new ICommandInvoker()
-    {
+    private final ICommandInvoker shellClosedInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler)
-        {
+                ICommandInvocationHandler handler) {
             shellCloseHandler = handler;
         }
     };
-
 
     /**
      * @param
@@ -107,57 +97,49 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
     @Override
     public void dispose() {
     }
-   
+
     /**
-     * Contribute to the main UI, if desired. Note that this
-     * method may be called multiple times per <code>type
-     * </code> to (re)populate the main UI with the specified
-     * <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist
-     * from a previous call with the same <code>type</code>. 
+     * Get any contributions to the main UI that the implementation desires to
+     * make. Note that this method may be called multiple times per <code>type
+     * </code> to (re)populate the main UI with the specified <code>type</code>;
+     * implementations are responsible for cleaning up after contributed items
+     * that may exist from a previous call with the same <code>type</code>.
      * 
-     * @param  mainUI Main user interface to which to
-     *                contribute.
-     * @param  type   Type of contribution to be made to the
-     *                main user interface.
-     * @return True if items were contributed, otherwise
-     *         false.
+     * @param type
+     *            Type of contribution to be made to the main user interface.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(DummyToolBarContributionManager toolBarManager,
+    public final List<Object> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
-	return false;
+        return Collections.emptyList();
     }
 
-    
     /**
      * 
      * @param
      * @return
      */
-    public void dismissButtonPressed ()
-    {
-	dismissHandler.commandInvoked("Dismiss");
+    public void dismissButtonPressed() {
+        dismissHandler.commandInvoked("Dismiss");
     }
-    
+
     /**
      * 
      * @param
      * @return
      */
-    public void issueButtonPressed ()
-    {
-	issueHandler.commandInvoked("Issue");
+    public void issueButtonPressed() {
+        issueHandler.commandInvoked("Issue");
     }
-    
+
     /**
      * 
      * @param
      * @return
      */
-    public void shellClosed()
-    {
-	shellCloseHandler.commandInvoked("Shell Closed");
+    public void shellClosed() {
+        shellCloseHandler.commandInvoked("Shell Closed");
     }
 
     /**
@@ -174,8 +156,8 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
      */
     @Override
     public boolean showProductEditorDetail(String productInfo) {
-	this.productStagingInfo = productInfo;
-	return true;
+        this.productStagingInfo = productInfo;
+        return true;
     }
 
     /**
@@ -185,14 +167,14 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
     @Override
     public void closeProductEditorDialog() {
     }
-    
+
     /**
      * @param
      * @return
      */
     @Override
     public List<Dict> getGeneratedProductsDictList() {
-	return Lists.newArrayList() ;
+        return Lists.newArrayList();
     }
 
     /**
@@ -201,7 +183,7 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
      */
     @Override
     public List<Dict> getHazardEventSetsList() {
-	return Lists.newArrayList();
+        return Lists.newArrayList();
     }
 
     /**
@@ -210,7 +192,7 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
      */
     @Override
     public ICommandInvoker getIssueInvoker() {
-	return issueInvoker;
+        return issueInvoker;
     }
 
     /**
@@ -219,7 +201,7 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
      */
     @Override
     public ICommandInvoker getDismissInvoker() {
-	return dismissInvoker;
+        return dismissInvoker;
     }
 
     /**
@@ -228,8 +210,8 @@ public class TestProductEditorView implements IProductEditorView<DummyToolBarCon
      */
     @Override
     public ICommandInvoker getShellClosedInvoker() {
-	
-	return shellClosedInvoker;
+
+        return shellClosedInvoker;
     }
 
 }

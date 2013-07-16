@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
@@ -39,22 +38,16 @@ import com.vividsolutions.jts.geom.Point;
  *                                            function works. It is now based
  *                                            on click point versus geometry
  *                                            centroid.
- * 
+ * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
 public class CopyEventDrawingAction extends AbstractMouseHandler {
-    private static CopyEventDrawingAction copyDrawingAction = null;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
 
     public static final String pgenType = "TornadoWarning";
 
     public static final String pgenCategory = "MET";
-
-    protected SpatialPresenter spatialPresenter = null;
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
@@ -62,36 +55,13 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
      * @param spatialPresenter
      * 
      */
-    public static CopyEventDrawingAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (copyDrawingAction == null) {
-            copyDrawingAction = new CopyEventDrawingAction(spatialPresenter);
-        } else {
-            copyDrawingAction.spatialPresenter = spatialPresenter;
-            copyDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-        }
-
-        return copyDrawingAction;
+    public static CopyEventDrawingAction getInstance() {
+        return new CopyEventDrawingAction();
     }
 
-    public CopyEventDrawingAction(SpatialPresenter spatialPresenter) {
-        super();
-        this.spatialPresenter = spatialPresenter;
-        drawingLayer = spatialPresenter.getView().getSpatialDisplay();
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
     @Override
-    public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new CopyHandler();
-        }
-        return theHandler;
+    protected IInputHandler createMouseHandler() {
+        return new CopyHandler();
     }
 
     public class CopyHandler extends InputHandlerDefaultImpl {
@@ -293,12 +263,12 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
                 // mouse over it?
                 if (nadc != null) {
                     // Set the mouse cursor to a move symbol
-                    spatialPresenter.getView().setCursor(
+                    getSpatialPresenter().getView().setCursor(
                             SpatialViewCursorTypes.MOVE_POLYGON_CURSOR);
 
                 } else {
                     // Set the mouse cursor to an arrow
-                    spatialPresenter.getView().setCursor(
+                    getSpatialPresenter().getView().setCursor(
                             SpatialViewCursorTypes.ARROW_CURSOR);
                 }
 

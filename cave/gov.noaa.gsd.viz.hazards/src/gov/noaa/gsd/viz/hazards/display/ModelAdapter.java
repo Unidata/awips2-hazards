@@ -24,6 +24,7 @@ import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobLi
 
 import java.util.List;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -39,7 +40,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
- * 
+ * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * </pre>
  * 
  * @author bsteffen
@@ -50,17 +51,27 @@ public class ModelAdapter extends
         com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ModelAdapter
         implements IHazardServicesModel {
 
+    private EventBus eventBus;
+
+    @Deprecated
+    @Override
+    public void initialize(String selectedTime, String currentTime,
+            String staticSettingID, String dynamicSetting_json,
+            String caveMode, String siteID, EventBus eventBus, String state) {
+        this.eventBus = eventBus;
+        super.initialize(selectedTime, currentTime, staticSettingID,
+                dynamicSetting_json, caveMode, siteID, eventBus, state);
+    }
 
     @Override
     protected IPythonJobListener<List<IEvent>> getRecommenderListener(
             String toolName) {
-        return new HazardServicesRecommenderJobListener(toolName);
+        return new HazardServicesRecommenderJobListener(eventBus, toolName);
     }
 
     @Override
     protected IPythonJobListener<List<IGeneratedProduct>> getProductGenerationListener(
             String toolName) {
-        return new HazardServicesGeneratorJobListener(toolName);
+        return new HazardServicesGeneratorJobListener(eventBus, toolName);
     }
-
 }

@@ -9,16 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import static org.junit.Assert.*;
-
-import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
+import static org.junit.Assert.*
+import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
-
 import spock.lang.*
 
 import com.google.common.eventbus.EventBus
-import com.google.common.eventbus.Subscribe;
+import com.google.common.eventbus.Subscribe
 
 /**
  * Description: Tests the product staging dialog. Simulates 
@@ -31,7 +28,7 @@ import com.google.common.eventbus.Subscribe;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 06, 2012            bryon.lawrence      Initial creation
- * 
+ * Jul 15, 2013     585    Chris.Golden        Changed to use non-singleton event bus.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -47,14 +44,14 @@ class ProductStagingTest extends spock.lang.Specification {
 
     def setupSpec() {
         testView = new TestProductStagingView();
-        eventBus = EventBusSingleton.getInstance();
+        eventBus = new EventBus();
         eventBus.register(this);
         testDict = Dict.getInstance(testProductJSONString);
     }
 
     def "Continue Button Pressed"() {
 
-        ProductStagingPresenter presenter = new ProductStagingPresenter(null, testView);
+        ProductStagingPresenter presenter = new ProductStagingPresenter(null, testView, createEventBus());
         presenter.showProductStagingDetail(true, testDict);
 
         when:"The user presses the continue button"
@@ -82,7 +79,13 @@ class ProductStagingTest extends spock.lang.Specification {
 
     @Subscribe
     public void productStagingActionOccurred(
-    ProductStagingAction action) {
+            ProductStagingAction action) {
         this.action = action;
+    }
+
+    private EventBus createEventBus() {
+        EventBus eventBus = new EventBus();
+        eventBus.register(this);
+        return eventBus;
     }
 }

@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.hazards.display;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
+import com.google.common.eventbus.EventBus;
+
 /**
  * Superclass from which to derive presenters for specific types of views for
  * Hazard Services.
@@ -22,7 +24,10 @@ import gov.noaa.gsd.viz.mvp.Presenter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,8 +45,11 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
      *            Model to be handled by this presenter.
      * @param view
      *            View to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public HazardServicesPresenter(IHazardServicesModel model, V view) {
-        super(model, view);
+    public HazardServicesPresenter(IHazardServicesModel model, V view,
+            EventBus eventBus) {
+        super(model, view, eventBus);
     }
 }

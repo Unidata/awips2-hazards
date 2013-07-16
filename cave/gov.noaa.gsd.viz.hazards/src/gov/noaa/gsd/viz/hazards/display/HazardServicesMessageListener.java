@@ -19,7 +19,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.timer.TimerAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 
 import java.util.List;
 
@@ -48,8 +47,11 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 28, 2013            bryon.lawrence      Initial creation
- * 
+ * Jan 28, 2013            bryon.lawrence    Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -90,10 +92,12 @@ public class HazardServicesMessageListener {
      *            An instance of the hazard services message handler. This
      *            object mediates the display interactions according to the
      *            forecast process.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
     public HazardServicesMessageListener(
-            HazardServicesMessageHandler messageHandler) {
-        this.eventBus = EventBusSingleton.getInstance();
+            HazardServicesMessageHandler messageHandler, EventBus eventBus) {
+        this.eventBus = eventBus;
         this.eventBus.register(this);
         this.messageHandler = messageHandler;
     }

@@ -8,6 +8,18 @@ Python is used for this module to work efficiently with
 non-homogeneous data structures. 
  @since: March 2012
  @author: GSD Hazard Services Team 
+
+ Jul 15, 2013     585    Chris.Golden Added passing of event bus
+                                      to job listeners, since event
+                                      bus is no longer a singleton.
+                                      Also fixed incidental bug that
+                                      caused the HID to change tabs
+                                      if multiple tabs were showing
+                                      and the user was changing meta-
+                                      data in the tab that was not
+                                      the last selected item; which-
+                                      ever one is being altered is
+                                      now made the last selected one.
 """
 
 from Bridge import Bridge
@@ -43,7 +55,7 @@ class SessionManager(object):
     
     ## Session State   
     def initialize(self, selectedTime, currentTime, staticSettingsID, dynamicSettings_json, 
-                   caveMode, siteID, sessionState):
+                   caveMode, siteID, eventBus, sessionState):
         """
         Initializes the SessionManager.
         
@@ -52,6 +64,7 @@ class SessionManager(object):
         @param staticSettingsID: Sets the initial settings, e.g., "Canned TOR", "TOR", "Canned WSW", "WSW"
                        "Canned Flood", "Flood".  This can be the "displayName" OR the staticSettingsID.
         @param dynamicSettings_json: Dynamic settings
+        @param eventBus: Event bus
         @param sessionState: saved session state to initialize from previous session
         """
         
@@ -73,7 +86,7 @@ class SessionManager(object):
         
         self.logger.info("Session Manager initialize" + str(os.environ['PYTHONPATH'].split(os.pathsep)))
 
-        self.bridge = Bridge()
+        self.bridge = Bridge(eventBus)
         if self.hazardEventManager is not None:
             self.bridge.setHazardEventManager(self.hazardEventManager)
         self.toolHandler = ToolHandler(self.bridge, self)
@@ -367,6 +380,8 @@ class SessionManager(object):
             if not eventID:
                 self.logger.error("Session Manager updateEventData -- no eventID!")
                 # Need to crash here to catch this problem
+            if source == "HID":
+                self.lastSelectedEventID = eventID 
 
             curDicts = self.findSessionEventDicts([eventID])
             if not curDicts: return

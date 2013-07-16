@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.timer;
 
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
-
 import java.util.Calendar;
 import java.util.Date;
 
@@ -27,7 +25,11 @@ import com.raytheon.uf.viz.core.VizApp;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * 5/1/12                  Bryon.Lawrence    Initial creation
+ * May 01, 2012            Bryon.Lawrence    Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -52,9 +54,12 @@ public class HazardServicesTimer extends Thread {
      *            The elapsed time after which to notify clients (ms)
      * @param repeat
      *            true - repeat, false - one time notification.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public HazardServicesTimer(long elapsedTime, boolean repeat) {
-        this.eventBus = EventBusSingleton.getInstance();
+    public HazardServicesTimer(long elapsedTime, boolean repeat,
+            EventBus eventBus) {
+        this.eventBus = eventBus;
         this.elapsedTime = elapsedTime;
         this.repeat = repeat;
     }

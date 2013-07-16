@@ -18,6 +18,7 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.EnumSet;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -32,7 +33,10 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,10 +67,12 @@ public class SettingsPresenter extends
      *            Model to be handled by this presenter.
      * @param view
      *            Settings view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
     public SettingsPresenter(IHazardServicesModel model,
-            ISettingsView<?, ?> view) {
-        super(model, view);
+            ISettingsView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods

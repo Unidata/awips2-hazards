@@ -17,6 +17,8 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.google.common.eventbus.EventBus;
+
 /**
  * Description: Product Editor presenter, used to mediate between the model and
  * the product editor view.
@@ -26,8 +28,11 @@ import java.util.List;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer       Description
  * ------------ ---------- -------------- --------------------------
- * Feb 19, 2013            bryon.lawrence Initial creation
- * 
+ * Feb 19, 2013            bryon.lawrence    Initial creation
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -45,10 +50,12 @@ public class ProductEditorPresenter extends
      *            Model to be handled by this presenter.
      * @param view
      *            Product editor view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
     public ProductEditorPresenter(IHazardServicesModel model,
-            IProductEditorView<?, ?> view) {
-        super(model, view);
+            IProductEditorView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods

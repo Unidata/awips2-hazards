@@ -25,7 +25,9 @@ import com.google.common.eventbus.EventBus;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * 
+ * Jul 15, 2013     585    Chris.Golden   Changed to have event bus passed
+ *                                        in so that it did not have to be a
+ *                                        singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,7 +48,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
     private M model = null;
 
     /**
-     * Event bus.
+     * Event bus used to signal changes.
      */
     private EventBus eventBus = null;
 
@@ -59,14 +61,14 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
      *            Model to be handled by this presenter.
      * @param view
      *            View to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public Presenter(M model, V view) {
+    public Presenter(M model, V view, EventBus eventBus) {
 
-        // Remember the model.
+        // Remember the model and the event bus.
         this.model = model;
-
-        // Get the event bus, used for communicating state changes.
-        eventBus = EventBusSingleton.getInstance();
+        this.eventBus = eventBus;
 
         // Set the view to that specified and initialize it.
         setView(view);

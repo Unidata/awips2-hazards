@@ -38,38 +38,32 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
- * 
+ * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton,
+ *                                            and to subclass AbstractMouseHandler
+ *                                            so as to make usage less special-case.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
-public class SelectByAreaDrawingActionGeometryResource {
-    /*
-     * This map will keep track of the geometries for each hazard that is
-     * created by the select-by-area drawing tool.
-     */
-    private static Map<String, List<Geometry>> hazardGeometryList;
+public class SelectByAreaDrawingActionGeometryResource extends
+        AbstractMouseHandler {
 
     private enum Mode {
         CREATE, ADD_TO_ZONE, REMOVE, NONE
     };
 
-    private static SelectByAreaDrawingActionGeometryResource selectByAreaDrawingAction = null;
+    private String eventID = null;
 
-    private static String eventID = null;
-
-    private static boolean modifyingEvent = false;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
+    private boolean modifyingEvent = false;
 
     /** The displayed resource */
     protected SelectByAreaDbMapResource zoneDisplay;
 
-    /**
-     * The message handler
+    /*
+     * This map will keep track of the geometries for each hazard that is
+     * created by the select-by-area drawing tool.
      */
-    private SpatialPresenter spatialPresenter;
+    private final Map<String, List<Geometry>> hazardGeometryList;
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
@@ -77,80 +71,61 @@ public class SelectByAreaDrawingActionGeometryResource {
      * @param zoneDisplay
      * @return SelectByAreaDrawingActionGeometryResource
      */
-    public static SelectByAreaDrawingActionGeometryResource getInstance(
-            SelectByAreaDbMapResource zoneDisplay,
-            SpatialPresenter spatialPresenter) {
-        modifyingEvent = false;
-
-        if (selectByAreaDrawingAction == null) {
-            selectByAreaDrawingAction = new SelectByAreaDrawingActionGeometryResource(
-                    zoneDisplay, spatialPresenter);
-        } else {
-            selectByAreaDrawingAction.setDrawingLayer(zoneDisplay);
-            selectByAreaDrawingAction.setMessageHandler(spatialPresenter);
-        }
-
-        return selectByAreaDrawingAction;
-
+    public static SelectByAreaDrawingActionGeometryResource getInstance() {
+        return new SelectByAreaDrawingActionGeometryResource();
     }
 
-    public static SelectByAreaDrawingActionGeometryResource getInstance(
-            SelectByAreaDbMapResource zoneDisplay,
-            SpatialPresenter spatialPresenter, String eventID) {
-
-        SelectByAreaDrawingActionGeometryResource.getInstance(zoneDisplay,
-                spatialPresenter);
-        modifyingEvent = true;
-        SelectByAreaDrawingActionGeometryResource.eventID = eventID;
-
-        return selectByAreaDrawingAction;
+    @Override
+    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
+        super.setSpatialPresenter(spatialPresenter);
+        zoneDisplay = spatialPresenter.getView().getSelectableGeometryDisplay();
     }
 
-    private void setDrawingLayer(SelectByAreaDbMapResource zoneDisplay) {
-        this.zoneDisplay = zoneDisplay;
-    }
-
-    private SelectByAreaDrawingActionGeometryResource(
-            SelectByAreaDbMapResource zoneDisplay,
-            SpatialPresenter spatialPresenter) {
-        super();
-        this.zoneDisplay = zoneDisplay;
-        this.spatialPresenter = spatialPresenter;
+    private SelectByAreaDrawingActionGeometryResource() {
         hazardGeometryList = new HashMap<String, List<Geometry>>();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
+    @Override
+    protected IInputHandler createMouseHandler() {
+        return new SelectionHandler();
+    }
+
+    @Override
     public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new SelectionHandler();
-        }
+        IInputHandler handler = super.getMouseHandler();
 
         /*
          * We need to initialize the handler if an existing select-by-area
          * object is being edited.
          */
         if (modifyingEvent) {
-            ((SelectionHandler) theHandler).setSelectedGeoms(eventID);
+            ((SelectionHandler) handler).setSelectedGeoms(eventID);
         } else {
             /*
              * Clear any cached geometries
              */
-            ((SelectionHandler) theHandler).selectedGeoms.clear();
+            ((SelectionHandler) handler).selectedGeoms.clear();
         }
 
-        return theHandler;
+        return handler;
     }
 
     /**
-     * @param spatialPresenter
-     *            the messageHandler to set
+     * Reset the modifying event flag.
      */
-    public void setMessageHandler(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
+    public void resetModifyingEvent() {
+        modifyingEvent = false;
+    }
+
+    /**
+     * Set the event identifier.
+     * 
+     * @param eventID
+     *            Event identifier.
+     */
+    public void setEventIdentifier(String eventID) {
+        this.eventID = eventID;
+        modifyingEvent = true;
     }
 
     public class SelectionHandler extends InputHandlerDefaultImpl {
@@ -309,14 +284,14 @@ public class SelectByAreaDrawingActionGeometryResource {
                         // the selected geometries.
                         zoneDisplay.setSelectedGeometries(selectedGeoms);
                         String eventAreaJSON = eventAreaObject.toJSONString();
-                        eventID = spatialPresenter
-                                .getNewEventAreaId(eventAreaJSON);
+                        eventID = getSpatialPresenter().getNewEventAreaId(
+                                eventAreaJSON);
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
                                 "newEventArea");
                         action.setJSON(eventAreaJSON);
                         action.setEventID(eventID);
-                        spatialPresenter.fireAction(action);
+                        getSpatialPresenter().fireAction(action);
 
                         hazardGeometryList.put(eventID, copyGeometriesList);
 
@@ -339,7 +314,7 @@ public class SelectByAreaDrawingActionGeometryResource {
                         geoReferenceDict.put("contextMenu", contextMenuDict);
                         action = new SpatialDisplayAction("updateEventData");
                         action.setJSON(geoReferenceDict.toJSONString());
-                        spatialPresenter.fireAction(action);
+                        getSpatialPresenter().fireAction(action);
                     } else {
                         /*
                          * Construct a modified event message and pass it on to
@@ -359,13 +334,13 @@ public class SelectByAreaDrawingActionGeometryResource {
                                 "ModifyEventArea");
                         action.setModifyEventJSON(modifiedEventAreaObject
                                 .toJSONString());
-                        spatialPresenter.fireAction(action);
+                        getSpatialPresenter().fireAction(action);
 
                     }
 
                     // Let the IHIS layer know that this drawing
                     // action is complete.
-                    spatialPresenter.getView().drawingActionComplete();
+                    getSpatialPresenter().getView().drawingActionComplete();
 
                 }
 

@@ -14,13 +14,16 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.eclipse.jface.action.Action;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -34,16 +37,26 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class AlertsView implements
-        IAlertsView<IActionBars, RCPMainUserInterfaceElement> {
+        IAlertsView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
+
+    /**
+     * Name of the file holding the image for the alerts toolbar button icon.
+     */
+    private static final String ALERTS_TOOLBAR_IMAGE_FILE_NAME = "alerts.png";
+
+    /**
+     * Text description of the alerts toolbar button for its tooltip.
+     */
+    private static final String ALERTS_TOOLTIP_DESCRIPTION = "Alerts Configuration";
 
     /**
      * Logging mechanism.
@@ -117,20 +130,17 @@ public class AlertsView implements
      * cleaning up after contributed items that may exist from a previous call
      * with the same <code>type</code>.
      * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
      * @param type
      *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-
-            // Create the actions.
-            alertsToggleAction = new BasicAction("", "alerts.png",
-                    Action.AS_CHECK_BOX, "Alerts") {
+            alertsToggleAction = new BasicAction("",
+                    ALERTS_TOOLBAR_IMAGE_FILE_NAME, Action.AS_CHECK_BOX,
+                    ALERTS_TOOLTIP_DESCRIPTION) {
                 @Override
                 public void run() {
                     if (isChecked() && (alertDialog == null)) {
@@ -141,13 +151,9 @@ public class AlertsView implements
                 }
             };
             alertsToggleAction.setEnabled(false);
-
-            // Add the actions to the toolbar.
-            mainUI.getToolBarManager().add(alertsToggleAction);
-            return true;
-        } else {
-            return false;
+            return Lists.newArrayList(alertsToggleAction);
         }
+        return Collections.emptyList();
     }
 
     /**

@@ -15,6 +15,8 @@ import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 
 import java.util.EnumSet;
 
+import com.google.common.eventbus.EventBus;
+
 /**
  * Settings presenter, used to mediate between the model and the settings view.
  * 
@@ -24,7 +26,10 @@ import java.util.EnumSet;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,9 +46,12 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            Model to be handled by this presenter.
      * @param view
      *            Tools view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public ToolsPresenter(IHazardServicesModel model, IToolsView<?, ?> view) {
-        super(model, view);
+    public ToolsPresenter(IHazardServicesModel model, IToolsView<?, ?> view,
+            EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods

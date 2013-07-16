@@ -21,13 +21,12 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.action.Action;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -37,9 +36,11 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -53,14 +54,14 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SettingsView implements
-        ISettingsView<IActionBars, RCPMainUserInterfaceElement> {
+        ISettingsView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -71,10 +72,26 @@ public class SettingsView implements
     private static final String DISPLAY_NAME = "displayName";
 
     /**
+     * Edit menu item text.
+     */
+    private static final String EDIT_COMMAND_MENU_TEXT = "&Edit...";
+
+    /**
      * Array of settings dropdown menu items.
      */
-    private static final String[] SETTINGS_DROPDOWN_MENU_ITEMS = { "&Open...",
-            "&Save", "Save &As...", "&Delete...", "&Edit..." };
+    private static final List<String> SETTINGS_DROPDOWN_MENU_ITEMS = Collections
+            .unmodifiableList(Lists.newArrayList("&Open...", "&Save",
+                    "Save &As...", "&Delete...", EDIT_COMMAND_MENU_TEXT));
+
+    /**
+     * Settings toolbar menu button text.
+     */
+    private static final String SETTINGS_TOOLBAR_BUTTON_TEXT = "Settings";
+
+    /**
+     * Filters toolbar menu button text.
+     */
+    private static final String FILTERS_TOOLBAR_BUTTON_TEXT = "Filters";
 
     /**
      * Logging mechanism.
@@ -103,7 +120,8 @@ public class SettingsView implements
         private final SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (((MenuItem) event.widget).getText().equals("&Edit...")) {
+                if (((MenuItem) event.widget).getText().equals(
+                        EDIT_COMMAND_MENU_TEXT)) {
                     presenter.showSettingDetail();
                 } else if (event.widget.getData() != null) {
 
@@ -122,7 +140,7 @@ public class SettingsView implements
          * Construct a standard instance.
          */
         public SettingsPulldownAction() {
-            super("Settings");
+            super(SETTINGS_TOOLBAR_BUTTON_TEXT);
         }
 
         // Public Methods
@@ -214,7 +232,7 @@ public class SettingsView implements
          * Construct a standard instance.
          */
         public FiltersPulldownAction() {
-            super("Filters");
+            super(FILTERS_TOOLBAR_BUTTON_TEXT);
         }
 
         // Public Methods
@@ -254,7 +272,7 @@ public class SettingsView implements
             // If the menu has not yet been created, create it now.
             if (menu == null) {
                 menu = new Menu(parent);
-                List<Dict> fieldsList = new ArrayList<Dict>();
+                List<Dict> fieldsList = Lists.newArrayList();
                 for (Object field : filterMegawidgetSpecifiers) {
                     fieldsList.add((Dict) field);
                 }
@@ -332,12 +350,13 @@ public class SettingsView implements
     /**
      * List of setting names.
      */
-    private final List<String> settingNames = new ArrayList<String>();
+    private final List<String> settingNames = Lists.newArrayList();
 
     /**
      * Map of setting names to their associated identifiers.
      */
-    private final Map<String, String> settingIdentifiersForNames = new HashMap<String, String>();
+    private final Map<String, String> settingIdentifiersForNames = Maps
+            .newHashMap();
 
     /**
      * List of filter menu-based megawidget specifiers.
@@ -389,8 +408,8 @@ public class SettingsView implements
     public static void translateHazardCategoriesAndTypesToOldLists(Dict map) {
         List<Object> treeState = map
                 .getDynamicallyTypedValue(Utilities.SETTING_HAZARD_CATEGORIES_AND_TYPES);
-        List<String> categories = new ArrayList<String>();
-        Set<String> typesSet = new HashSet<String>();
+        List<String> categories = Lists.newArrayList();
+        Set<String> typesSet = Sets.newHashSet();
         for (int j = 0; j < treeState.size(); j++) {
             Map<?, ?> category = (Map<?, ?>) treeState.get(j);
             categories.add((String) category
@@ -406,7 +425,7 @@ public class SettingsView implements
                 }
             }
         }
-        List<String> types = new ArrayList<String>();
+        List<String> types = Lists.newArrayList();
         for (String type : typesSet) {
             types.add(type);
         }
@@ -467,29 +486,20 @@ public class SettingsView implements
      * cleaning up after contributed items that may exist from a previous call
      * with the same <code>type</code>.
      * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
      * @param type
      *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-
-            // Create the actions.
             settingsPulldownAction = new SettingsPulldownAction();
             filtersPulldownAction = new FiltersPulldownAction();
-
-            // Add the actions to the toolbar.
-            IToolBarManager toolBarManager = mainUI.getToolBarManager();
-            toolBarManager.add(settingsPulldownAction);
-            toolBarManager.add(filtersPulldownAction);
-            return true;
-        } else {
-            return false;
+            return Lists.newArrayList(settingsPulldownAction,
+                    filtersPulldownAction);
         }
+        return Collections.emptyList();
     }
 
     /**

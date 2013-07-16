@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesCircle;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
@@ -46,7 +45,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * November 2011           Bryon.Lawrence    Initial creation
+ * November 2011             Bryon.Lawrence   Initial creation
+ * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -66,49 +66,21 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
     }
 
     /**
-     * Singleton instance of the selection mouse handler.
-     */
-    private static SelectionDrawingAction selectionDrawingAction = null;
-
-    /**
-     * The presenter responsible for the display of hazards in CAVE.
-     */
-    private SpatialPresenter spatialPresenter;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
-
-    /**
      * Call this function to retrieve an instance of the SelectionDrawingAction.
-     * 
-     * @param spatialPresenter
-     *            The spatial presenter instance
-     * @return SelectionDrawingAction
      */
-    public static SelectionDrawingAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (selectionDrawingAction == null) {
-            selectionDrawingAction = new SelectionDrawingAction(
-                    spatialPresenter);
-        } else {
-            selectionDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-            selectionDrawingAction.setSpatialPresenter(spatialPresenter);
-        }
-
-        return selectionDrawingAction;
-
+    public static SelectionDrawingAction getInstance() {
+        return new SelectionDrawingAction();
     }
 
     /**
-     * Private constructor. This class is a singleton.
-     * 
-     * @param spatialPresenter
+     * Private constructor.
      */
-    private SelectionDrawingAction(SpatialPresenter spatialPresenter) {
-        super(spatialPresenter);
-        drawingLayer = spatialPresenter.getView().getSpatialDisplay();
-        this.spatialPresenter = spatialPresenter;
+    private SelectionDrawingAction() {
+    }
+
+    @Override
+    protected IInputHandler createMouseHandler() {
+        return new SelectionHandler();
     }
 
     /**
@@ -116,36 +88,15 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
      */
     @Override
     public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new SelectionHandler();
-        }
+        IInputHandler handler = super.getMouseHandler();
 
         /*
          * Ensure key state variables are set to false.
          */
-        ((SelectionHandler) theHandler).shiftKeyIsDown = false;
-        ((SelectionHandler) theHandler).ctrlKeyIsDown = false;
+        ((SelectionHandler) handler).shiftKeyIsDown = false;
+        ((SelectionHandler) handler).ctrlKeyIsDown = false;
 
-        return theHandler;
-    }
-
-    /**
-     * 
-     * @param spatialPresenter
-     *            The spatial presenter
-     * @return
-     */
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    /**
-     * 
-     * @param
-     * @return The spatial presenter
-     */
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+        return handler;
     }
 
     /**
@@ -282,7 +233,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                         .getSelectedHazardIHISLayer();
 
                 if (selectedElement != null) {
-                    String selectedElementEventID = drawingLayer
+                    String selectedElementEventID = getDrawingLayer()
                             .elementClicked((DrawableElement) selectedElement,
                                     false, false);
 
@@ -295,7 +246,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     for (AbstractDrawableComponent comp : containingComponentsList) {
                         if (comp instanceof HazardServicesCircle
                                 || comp instanceof HazardServicesSymbol) {
-                            String containingComponentEventID = drawingLayer
+                            String containingComponentEventID = getDrawingLayer()
                                     .elementClicked((DrawableElement) comp,
                                             false, false);
 
@@ -311,7 +262,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     if (nadc == null && containingComponentsList.size() > 0) {
                         AbstractDrawableComponent comp = containingComponentsList
                                 .get(0);
-                        String containingComponentEventID = drawingLayer
+                        String containingComponentEventID = getDrawingLayer()
                                 .elementClicked((DrawableElement) comp, false,
                                         false);
 
@@ -360,7 +311,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                 }
             } else if (isVertexMove) {
                 // Was this part of a vertex move operation?
-                drawingLayer.setSelectedDE(null);
+                getDrawingLayer().setSelectedDE(null);
 
                 isVertexMove = false;
 
@@ -374,13 +325,13 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             eventArea,
                             getPolygonsForEvent(eventArea.getEventID()),
                             selectedElement.getPoints());
-                    drawingLayer.notifyModifiedEvent(jsonString);
+                    getDrawingLayer().notifyModifiedEvent(jsonString);
                 }
 
             }
 
             if (ghostEl != null) {
-                DrawableElement selectedDE = drawingLayer.getSelectedDE();
+                DrawableElement selectedDE = getDrawingLayer().getSelectedDE();
 
                 if (selectedDE instanceof HazardServicesCircle) {
                     Line movedCircle = (Line) ghostEl;
@@ -408,8 +359,8 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     newLonLat[1] = newCoord.y;
                     modifiedAreaObject.put("newLonLat", newLonLat);
 
-                    drawingLayer.notifyModifiedEvent(modifiedAreaObject
-                            .toJSONString());
+                    getDrawingLayer().notifyModifiedEvent(
+                            modifiedAreaObject.toJSONString());
                 } else if (selectedDE instanceof HazardServicesPolygon) {
                     Line movedPolygon = (Line) ghostEl;
                     HazardServicesPolygon origPolygon = (HazardServicesPolygon) selectedDE;
@@ -418,7 +369,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             origPolygon,
                             getPolygonsForEvent(origPolygon.getEventID()),
                             movedPolygon.getPoints());
-                    drawingLayer.notifyModifiedEvent(jsonString);
+                    getDrawingLayer().notifyModifiedEvent(jsonString);
                 } else if (selectedDE instanceof HazardServicesSymbol) {
                     Symbol movedSymbol = (Symbol) ghostEl;
 
@@ -446,24 +397,25 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     newLonLat[1] = newCoord.y;
                     modifiedAreaObject.put("newLonLat", newLonLat);
 
-                    drawingLayer.notifyModifiedEvent(modifiedAreaObject
-                            .toJSONString());
+                    getDrawingLayer().notifyModifiedEvent(
+                            modifiedAreaObject.toJSONString());
                 }
 
             } else if (!allowPanning) {
                 /*
                  * Treat this has a hazard selection.
                  */
-                drawingLayer.elementClicked(drawingLayer.getSelectedDE(),
+                getDrawingLayer().elementClicked(
+                        getDrawingLayer().getSelectedDE(),
                         shiftKeyIsDown || ctrlKeyIsDown, true);
             }
 
-            drawingLayer.removeGhostLine();
+            getDrawingLayer().removeGhostLine();
 
-            drawingLayer.setSelectedDE(null);
+            getDrawingLayer().setSelectedDE(null);
             ghostEl = null;
 
-            drawingLayer.issueRefresh();
+            getDrawingLayer().issueRefresh();
 
             movePointIndex = -1;
             moveType = null;
@@ -494,13 +446,13 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     || containingComponentsList.size() == 0) {
 
                 if (shiftKeyIsDown) {
-                    spatialPresenter.getView().setMouseHandler(
+                    getSpatialPresenter().getView().setMouseHandler(
                             HazardServicesMouseHandlers.SELECTION_RECTANGLE,
                             new String[] {});
                     return true;
 
                 } else if (ctrlKeyIsDown) {
-                    spatialPresenter.getView().setMouseHandler(
+                    getSpatialPresenter().getView().setMouseHandler(
                             HazardServicesMouseHandlers.MULTI_SELECTION,
                             new String[] {});
                     return true;
@@ -541,11 +493,11 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
              * Are we trying to move something that is not currently selected?
              * Then allow panning.
              */
-            AbstractDrawableComponent selectedComponent = drawingLayer
+            AbstractDrawableComponent selectedComponent = getDrawingLayer()
                     .getSelectedDE();
 
             if (selectedComponent != null
-                    && (selectedComponent != drawingLayer
+                    && (selectedComponent != getDrawingLayer()
                             .getSelectedHazardIHISLayer())
                     && !(selectedComponent instanceof HazardServicesCircle)
                     && !(selectedComponent instanceof HazardServicesSymbol)) {
@@ -591,7 +543,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             .getSelectedHazardIHISLayer();
 
                     if (selectedElement != null) {
-                        String selectedElementEventID = drawingLayer
+                        String selectedElementEventID = getDrawingLayer()
                                 .elementClicked(
                                         (DrawableElement) selectedElement,
                                         false, false);
@@ -604,7 +556,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                                 .getContainingComponents(loc);
 
                         for (AbstractDrawableComponent comp : containingComponentList) {
-                            String containingComponentEventID = drawingLayer
+                            String containingComponentEventID = getDrawingLayer()
                                     .elementClicked((DrawableElement) comp,
                                             false, false);
 
@@ -617,7 +569,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                                  * reflects the correct geometry.
                                  */
                                 if (!comp.equals(selectedElement)) {
-                                    drawingLayer
+                                    getDrawingLayer()
                                             .setSelectedHazardIHISLayer(comp);
                                 }
                                 /*
@@ -640,7 +592,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
 
                             if (comp != null) {
 
-                                String containingComponentEventID = drawingLayer
+                                String containingComponentEventID = getDrawingLayer()
                                         .elementClicked((DrawableElement) comp,
                                                 false, false);
 
@@ -702,7 +654,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                                 double dist = clickPointScreen.distance(ls2);
 
                                 if (dist <= SELECTION_DISTANCE_PIXELS) {
-                                    spatialPresenter.getView().setCursor(
+                                    getSpatialPresenter().getView().setCursor(
                                             SpatialViewCursorTypes.DRAW_CURSOR);
                                 }
 
@@ -856,7 +808,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             getPolygonsForEvent(eventArea.getEventID()),
                             Arrays.asList(coords2));
 
-                    drawingLayer.notifyModifiedEvent(jsonString);
+                    getDrawingLayer().notifyModifiedEvent(jsonString);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -889,7 +841,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             eventArea,
                             getPolygonsForEvent(eventArea.getEventID()),
                             selectedElement.getPoints());
-                    drawingLayer.notifyModifiedEvent(jsonString);
+                    getDrawingLayer().notifyModifiedEvent(jsonString);
 
                     movePointIndex = -1;
                     moveType = null;
@@ -905,9 +857,9 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
          */
         public void setMoveEntireElement() {
             moveType = MoveType.ALL_POINTS;
-            AbstractDrawableComponent selectedElement = drawingLayer
+            AbstractDrawableComponent selectedElement = getDrawingLayer()
                     .getSelectedHazardIHISLayer();
-            drawingLayer.setSelectedDE(selectedElement);
+            getDrawingLayer().setSelectedDE(selectedElement);
         }
 
         /**

@@ -7,10 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
@@ -26,21 +24,16 @@ import com.vividsolutions.jts.geom.Coordinate;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
- * 
+ * Apr 04, 2013            Xiangbao Jing     Initial induction into repo
+ * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle
+ *                                           and to no longer be a singleton.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
 public class DragDropDrawingAction extends CopyEventDrawingAction {
-    private static DragDropDrawingAction moveDrawingAction = null;
-
-    private SpatialPresenter spatialPresenter = null;
 
     private String toolName = null;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
 
     public static final String pgenType = "TornadoWarning";
 
@@ -48,53 +41,17 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param ihisDrawingLayer
-     * @param ihisMenuBar
      */
-    public static DragDropDrawingAction getInstance(
-            SpatialPresenter spatialPresenter, String toolName) {
-        if (moveDrawingAction == null) {
-            moveDrawingAction = new DragDropDrawingAction(spatialPresenter,
-                    toolName);
-        } else {
-            moveDrawingAction.setSpatialPresenter(spatialPresenter);
-            moveDrawingAction.setToolName(toolName);
-            moveDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-        }
-
-        return moveDrawingAction;
-
+    public static DragDropDrawingAction getInstance() {
+        return new DragDropDrawingAction();
     }
 
-    public DragDropDrawingAction(SpatialPresenter spatialPresenter,
-            String toolName) {
-        super(spatialPresenter);
-        drawingLayer = spatialPresenter.getView().getSpatialDisplay();
-        this.toolName = toolName;
-        this.spatialPresenter = spatialPresenter;
+    private DragDropDrawingAction() {
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
     @Override
-    public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new MoveHandler();
-        }
-        return theHandler;
-    }
-
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+    protected IInputHandler createMouseHandler() {
+        return new MoveHandler();
     }
 
     public void setToolName(String toolName) {
@@ -128,8 +85,7 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
                     return false;
                 }
 
-                long selectedTime = Long.parseLong(HazardServicesMessageHandler
-                        .getModelProxy().getSelectedTime());
+                long selectedTime = getSpatialPresenter().getSelectedTime();
 
                 selectedTime /= 1000;
                 String json = JSONUtilities.createDragDropPointJSON(coord.y,
@@ -137,24 +93,24 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
 
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         "runTool", toolName, json);
-                spatialPresenter.fireAction(action);
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().fireAction(action);
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
-            drawingLayer.removeGhostLine();
-            drawingLayer.removeEvent("DragDropDot");
-            drawingLayer.setSelectedDE(null);
+            getDrawingLayer().removeGhostLine();
+            getDrawingLayer().removeEvent("DragDropDot");
+            getDrawingLayer().setSelectedDE(null);
             ghostEl = null;
 
             // We are done dragging the storm dot. Switch back
             // to the previously used mouse handler.
-            spatialPresenter.getView().drawingActionComplete();
-            spatialPresenter.getView().setCursor(
+            getSpatialPresenter().getView().drawingActionComplete();
+            getSpatialPresenter().getView().setCursor(
                     SpatialViewCursorTypes.ARROW_CURSOR);
 
             // Tell the Spatial Display to fire a DMTS message
 
-            drawingLayer.issueRefresh();
+            getDrawingLayer().issueRefresh();
 
             return true;
 

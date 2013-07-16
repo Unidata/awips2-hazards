@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory
 import java.util.Date;
 import java.util.EnumSet;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -29,7 +30,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 12, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,29 +59,26 @@ public class SpatialPresenter extends
     private final static String[] ZOOM_PARAM_NAMES = { "lon", "lat", "zoom" };
 
     /**
+     * Mouse handler factory.
+     */
+    private MouseHandlerFactory mouseFactory = null;
+
+    /**
      * Construct a standard instance.
      * 
      * @param model
      *            Model to be handled by this presenter.
      * @param view
      *            Spatial view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public SpatialPresenter(IHazardServicesModel model, ISpatialView<?, ?> view) {
-        super(model, view);
+    public SpatialPresenter(IHazardServicesModel model,
+            ISpatialView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
-    @Override
-    protected void initialize(ISpatialView<?, ?> view) {
-        MouseHandlerFactory mouseFactory = new MouseHandlerFactory(this);
-        getView().initialize(this, mouseFactory);
-        updateSpatialDisplay();
-    }
+    // Public Methods
 
     /**
      * Receive notification of a model change.
@@ -90,6 +91,9 @@ public class SpatialPresenter extends
         if (changed.contains(IHazardServicesModel.Element.SETTINGS)) {
             String settingID = getModel().getCurrentSettingsID();
             useSettingZoomParameters(settingID);
+        } else if (changed
+                .contains(IHazardServicesModel.Element.DYNAMIC_SETTING)) {
+            getView().setSetting(getModel().getDynamicSettings());
         } else if (changed.contains(IHazardServicesModel.Element.CAVE_TIME)) {
             updateCaveSelectedTime();
         }
@@ -108,13 +112,77 @@ public class SpatialPresenter extends
     }
 
     /**
+     * Updates the CAVE time.
+     * 
+     * @param selectedTime_ms
+     *            The Hazard Services selected time in milliseconds.
+     * @return
+     */
+    public void updateCaveSelectedTime() {
+        long selectedTime = Long.parseLong(getModel().getSelectedTime());
+        getView().manageViewFrames(new Date(selectedTime));
+    }
+
+    /**
+     * Creates a new event area and returns its id.
+     * 
+     * @param
+     * @return
+     */
+    public String getNewEventAreaId(String eventAreaJSON) {
+        return getModel().newEvent(eventAreaJSON);
+    }
+
+    /**
+     * Get the selected time.
+     * 
+     * @return Selected time.
+     */
+    public long getSelectedTime() {
+        return Long.parseLong(getModel().getSelectedTime());
+    }
+
+    // Protected Methods
+
+    /**
+     * Initialize the specified view in a subclass-specific manner.
+     * 
+     * @param view
+     *            View to be initialized.
+     */
+    @Override
+    protected void initialize(ISpatialView<?, ?> view) {
+        if (mouseFactory == null) {
+            mouseFactory = new MouseHandlerFactory(this);
+        }
+        getView().initialize(this, mouseFactory);
+        updateSpatialDisplay();
+    }
+
+    // Package Methods
+
+    /**
+     * Get the hazard events with the specified identifier.
+     * 
+     * @param eventId
+     *            Event identifier.
+     * @return JSON string containing a list of key-value mappings that define
+     *         the events.
+     */
+    String getEvents(String eventId) {
+        return getModel().getComponentData("Spatial", eventId);
+    }
+
+    // Private Methods
+
+    /**
      * Use the specified setting's zoom parameters.
      * 
      * @param settingID
      *            Identifier of setting that is to supply the setting
      *            parameters.
      */
-    public void useSettingZoomParameters(String settingID) {
+    private void useSettingZoomParameters(String settingID) {
 
         // Get the new setting parameters, and from them, get the
         // zoom parameters.
@@ -142,27 +210,4 @@ public class SpatialPresenter extends
                     zoomParams[2]);
         }
     }
-
-    /**
-     * Updates the CAVE time.
-     * 
-     * @param selectedTime_ms
-     *            The Hazard Services selected time in milliseconds.
-     * @return
-     */
-    public void updateCaveSelectedTime() {
-        long selectedTime = Long.parseLong(getModel().getSelectedTime());
-        getView().manageViewFrames(new Date(selectedTime));
-    }
-
-    /**
-     * Creates a new event area and returns its id.
-     * 
-     * @param
-     * @return
-     */
-    public String getNewEventAreaId(String eventAreaJSON) {
-        return getModel().newEvent(eventAreaJSON);
-    }
-
 }

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Maps;
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -31,7 +32,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * DEC 06, 2012            daniel.s.schaffer      Initial creation
- * 
+ * Jul 15, 2013      585   Chris.Golden           Changed to take event bus so as
+ *                                                to avoid the latter being a
+ *                                                singleton.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -92,7 +95,7 @@ public class ModelDecorator implements IHazardServicesModel {
     @Override
     public void initialize(String selectedTime, String currentTime,
             String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, String state) {
+            String caveMode, String siteID, EventBus eventBus, String state) {
         final String methodName = "initialize";
         logCallingMethod(methodName);
         log(String.format("selectedTime: %s", selectedTime));
@@ -104,7 +107,7 @@ public class ModelDecorator implements IHazardServicesModel {
         log(String.format("state: %s", state));
         benchmarkStart(methodName);
         decorated.initialize(selectedTime, currentTime, staticSettingID,
-                dynamicSetting_json, caveMode, siteID, state);
+                dynamicSetting_json, caveMode, siteID, eventBus, state);
         benchmarkStop(methodName);
     }
 

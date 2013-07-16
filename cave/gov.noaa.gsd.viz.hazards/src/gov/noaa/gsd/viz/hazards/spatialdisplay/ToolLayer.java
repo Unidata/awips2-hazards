@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
@@ -18,7 +18,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSy
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionDrawingAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayElementFactory;
@@ -33,12 +32,14 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -59,6 +60,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
@@ -73,7 +75,6 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
-import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
@@ -105,6 +106,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                        to improve drawing performance.
  * Jun 24, 2013            Bryon.Lawrence Removed the 'Move Entire Element' option from
  *                                        from the right-click context menu.
+ * Jul 10, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -130,6 +132,11 @@ public class ToolLayer extends
      * Controls the relative size of the handlebars drawn on selected hazards.
      */
     public static final float HANDLEBAR_MAGNIFICATION = 1.0f;
+
+    /**
+     * A reference to an instance of app builder.
+     */
+    private HazardServicesAppBuilder appBuilder;
 
     /*
      * keep track of the previous zoom level for purposes of redrawing PGEN
@@ -196,6 +203,11 @@ public class ToolLayer extends
      */
     private EventBus eventBus = null;
 
+    /**
+     * Spatial view.
+     */
+    private SpatialView spatialView;
+
     /*
      * List of the currently selected events. This is needed for the case of
      * "multiple-deselection".
@@ -207,7 +219,12 @@ public class ToolLayer extends
      * areas in this module which use the AWT Color class. Hence, I needed to
      * specify the full package here for the SWT Color class.
      */
-    private final org.eclipse.swt.graphics.Color handleBarColor;
+    private org.eclipse.swt.graphics.Color handleBarColor;
+
+    /**
+     * Flag indicating whether or not the perspective is currently changing.
+     */
+    private boolean perspectiveChanging = false;
 
     /*
      * Contains the vertices of the currently selected hazard converted to world
@@ -223,11 +240,34 @@ public class ToolLayer extends
      *            The resource data for the display
      * @param loadProperties
      *            The properties describing this resource.
+     * @param loadedFromBundle
+     *            Flag indicating whether or not this tool layer is being
+     *            instantiated as a result of a bundle load.
+     * @param appBuilder
+     *            App builder that already exists, if any. If <code>null</code>,
+     *            an app builder will be created as part of ths construction.
      */
-    public ToolLayer(GenericToolsResourceData<ToolLayer> resourceData,
-            LoadProperties loadProperties) {
+    public ToolLayer(ToolLayerResourceData resourceData,
+            LoadProperties loadProperties, final boolean loadedFromBundle,
+            final HazardServicesAppBuilder appBuilder) {
 
         super(resourceData, loadProperties);
+
+        /*
+         * Test if the developer/user wants to set the CAVE clock to the canned
+         * data time. This is really for developers to facilitate their testing
+         * during development. This will be removed for IOC.
+         */
+        String useCannedTime = System.getenv("HAZARD_SERVICES_USE_CANNED_TIME");
+        if (useCannedTime != null && useCannedTime.equalsIgnoreCase("true")) {
+            Date date = new Date();
+            date.setTime(Long.parseLong(HazardServicesAppBuilder.CANNED_TIME));
+            Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
+                    .getTimeZone("UTC"));
+            simulatedDate.setTime(date);
+            SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
+            SimulatedTime.getSystemTime().setFrozen(true);
+        }
 
         displayMap = new ConcurrentHashMap<DrawableElement, AbstractElementContainer>();
         elSelected = new ArrayList<AbstractDrawableComponent>();
@@ -236,11 +276,78 @@ public class ToolLayer extends
         dataManager = new ToolLayerDataManager();
 
         dataTimes = new ArrayList<DataTime>();
-        eventBus = EventBusSingleton.getInstance();
         selectedEventIDs = Lists.newArrayList();
 
-        Display display = Display.getCurrent();
-        handleBarColor = display.getSystemColor(SWT.COLOR_GRAY);
+        // The tool layer may be instantiated from within the UI thread, or
+        // from another thread (for example, a non-UI thread is used for
+        // creating the tool layer as part of a bundle load). Ensure that
+        // the rest of the initialization happens on the UI thread.
+        Runnable initializationFinisher = new Runnable() {
+            @Override
+            public void run() {
+                handleBarColor = Display.getCurrent().getSystemColor(
+                        SWT.COLOR_GRAY);
+
+                // Create an app builder if one has not already been pro-
+                // vided.
+                if (appBuilder != null) {
+                    ToolLayer.this.appBuilder = appBuilder;
+                } else {
+                    try {
+                        ToolLayer.this.appBuilder = new HazardServicesAppBuilder(
+                                ToolLayer.this, loadedFromBundle);
+                    } catch (VizException e) {
+                        statusHandler.error(
+                                "Could not create or get the app builder.", e);
+                    }
+                }
+                eventBus = ToolLayer.this.appBuilder.getEventBus();
+
+                // If the resource data has a setting to be used, use
+                // that; otherwise, give the resource data the setting
+                // already in use by the app builder so that it will
+                // have it in case it is saved as part of a bundle.
+                String setting = ((ToolLayerResourceData) getResourceData())
+                        .getSetting();
+                if (setting != null) {
+                    ToolLayer.this.appBuilder.setSetting(setting);
+                } else {
+                    ((ToolLayerResourceData) getResourceData())
+                            .setSetting(ToolLayer.this.appBuilder.getSetting());
+                }
+            }
+        };
+        if (Display.getDefault().getThread() == Thread.currentThread()) {
+            initializationFinisher.run();
+        } else {
+            Display.getDefault().asyncExec(initializationFinisher);
+        }
+    }
+
+    /**
+     * Get the app builder.
+     * 
+     * @return App builder.
+     */
+    public HazardServicesAppBuilder getAppBuilder() {
+        return appBuilder;
+    }
+
+    /**
+     * Set the spatial view.
+     * 
+     * @param view
+     *            New spatial view.
+     */
+    public void setSpatialView(SpatialView view) {
+        spatialView = view;
+    }
+
+    /**
+     * Receive notification that the perspective is changing.
+     */
+    public void perspectiveChanging() {
+        perspectiveChanging = true;
     }
 
     /**
@@ -498,10 +605,15 @@ public class ToolLayer extends
      */
     @Override
     protected void disposeInternal() {
+        appBuilder = null;
+
         super.disposeInternal();
 
-        // Fire a spatial display dispose event...
-        fireSpatialDisplayDisposedActionOccurred();
+        // Fire a spatial display dispose event if the perspective is not
+        // changing, since this means that Hazard Services should close.
+        if (perspectiveChanging == false) {
+            fireSpatialDisplayDisposedActionOccurred();
+        }
     }
 
     /**
@@ -1103,18 +1215,20 @@ public class ToolLayer extends
      */
     private List<String> getContextMenuEntries() {
         List<String> entryList = new ArrayList<String>();
-        String jsonString = HazardServicesMessageHandler.getModelProxy()
-                .getContextMenuEntries();
+        String jsonString = appBuilder.getContextMenuEntries();
 
         JsonParser parser = new JsonParser();
 
         JsonElement jsonElement = parser.parse(jsonString);
         entryList = new Gson().fromJson(jsonElement, entryList.getClass());
 
-        if (SpatialViewCursorTypes.MOVE_POINT_CURSOR.isCurrentCursor()) {
+        if (spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_POINT_CURSOR)) {
             entryList.add("Delete Point");
-        } else if (SpatialViewCursorTypes.MOVE_POLYGON_CURSOR.isCurrentCursor()
-                || SpatialViewCursorTypes.DRAW_CURSOR.isCurrentCursor()) {
+        } else if (spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_POLYGON_CURSOR)
+                || spatialView
+                        .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR)) {
             entryList.add("Add Point");
         }
 

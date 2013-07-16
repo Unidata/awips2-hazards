@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
@@ -34,7 +33,6 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
-import com.raytheon.viz.ui.input.InputAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -52,6 +50,7 @@ import com.vividsolutions.jts.geom.LinearRing;
  *  Date         Ticket#    Engineer    Description
  *  ------------ ---------- ----------- --------------------------
  * 07/15/2012                Xiangbao Jing    Initial creation
+ * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Xiangbao jing
@@ -63,13 +62,6 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(MultiSelectionAction.class);
 
-    private static MultiSelectionAction selectionDrawingAction = null;
-
-    private SpatialPresenter spatialPresenter;
-
-    /** The mouse handler */
-    protected InputAdapter mouseHandler;
-
     protected AttrDlg drawingAttributes = null;
 
     public static final String pgenType = "TornadoWarning";
@@ -78,57 +70,29 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param ihisDrawingLayer
-     * @param ihisMenuBar
-     * @return SelectionDrawingAction
      */
-    public static MultiSelectionAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (selectionDrawingAction == null) {
-            selectionDrawingAction = new MultiSelectionAction(spatialPresenter);
-        } else {
-            selectionDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-            selectionDrawingAction.setSpatialPresenter(spatialPresenter);
-        }
-
-        return selectionDrawingAction;
+    public static MultiSelectionAction getInstance() {
+        return new MultiSelectionAction();
     }
 
-    private MultiSelectionAction(SpatialPresenter spatialPresenter) {
-        super(spatialPresenter);
-        drawingLayer = spatialPresenter.getView().getSpatialDisplay();
-        this.spatialPresenter = spatialPresenter;
+    private MultiSelectionAction() {
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
     @Override
     public IInputHandler getMouseHandler() {
-        if (mouseHandler == null) {
-            mouseHandler = new SelectionHandler();
-        }
-
+        IInputHandler handler = super.getMouseHandler();
         try {
-            ((SelectionHandler) mouseHandler).drawingAttributes = new SelectionRectangleDrawingAttributes(
+            ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
                     null);
         } catch (VizException e) {
             statusHandler.error("MultiSelectionAction.getMouseHandler(): ", e);
         }
-
-        return mouseHandler;
+        return handler;
     }
 
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+    @Override
+    public IInputHandler createMouseHandler() {
+        return new SelectionHandler();
     }
 
     public class SelectionHandler extends CopyEventDrawingAction.CopyHandler {
@@ -176,7 +140,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                 if (isSelectByArea) {
                     handleSelectByArea(null);
                 } else {
-                    spatialPresenter.getView().drawingActionComplete();
+                    getSpatialPresenter().getView().drawingActionComplete();
                 }
 
                 return true;
@@ -251,7 +215,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                     // the list,
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
-                        String selectedElementEventID = drawingLayer
+                        String selectedElementEventID = getDrawingLayer()
                                 .elementClicked(
                                         (DrawableElement) drawableComponent,
                                         false, false);
@@ -282,12 +246,13 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                  * HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    drawingLayer.multipleElementsClicked(clickedElementList);
+                    getDrawingLayer().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 
                 // Give the control to single selection as the default.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
             // Set the flag to the clicking selection status??????????????
@@ -348,8 +313,9 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
-                        String selectedEventId = drawingLayer.elementClicked(
-                                (DrawableElement) comp, false, false);
+                        String selectedEventId = getDrawingLayer()
+                                .elementClicked((DrawableElement) comp, false,
+                                        false);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {
@@ -365,12 +331,13 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                  * from here to the HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    drawingLayer.multipleElementsClicked(clickedElementList);
+                    getDrawingLayer().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 
                 // Give the control to single selection as the default.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
             isSelectByArea = false;

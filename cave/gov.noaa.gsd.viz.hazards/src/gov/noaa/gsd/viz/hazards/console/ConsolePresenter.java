@@ -16,10 +16,11 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Maps;
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -32,7 +33,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ *                                           including the passing in of the event
+ *                                           bus so that the latter is no longer a
+ *                                           singleton.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,9 +63,12 @@ public class ConsolePresenter extends
      *            Model to be handled by this presenter.
      * @param view
      *            Console view to be handled by this presenter.
+     * @param eventBus
+     *            Event bus used to signal changes.
      */
-    public ConsolePresenter(IHazardServicesModel model, IConsoleView<?, ?> view) {
-        super(model, view);
+    public ConsolePresenter(IHazardServicesModel model,
+            IConsoleView<?, ?> view, EventBus eventBus) {
+        super(model, view, eventBus);
     }
 
     // Public Methods
@@ -115,9 +122,10 @@ public class ConsolePresenter extends
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.
         boolean temporalControlsInToolBar = true;
-        Dict startUpConfig = Dict.getInstance(getModel().getConfigItem(
-                Utilities.START_UP_CONFIG));
-        if (startUpConfig != null) {
+        String jsonStartUpConfig = getModel().getConfigItem(
+                Utilities.START_UP_CONFIG);
+        if (jsonStartUpConfig != null) {
+            Dict startUpConfig = Dict.getInstance(jsonStartUpConfig);
             Dict consoleConfig = startUpConfig
                     .getDynamicallyTypedValue(Utilities.START_UP_CONFIG_CONSOLE);
             if (consoleConfig != null) {
@@ -177,8 +185,8 @@ public class ConsolePresenter extends
         boolean eventsListUnchanged = (newEventsList.size() == oldEventsList
                 .size());
         if (eventsListUnchanged) {
-            oldEventsMap = new HashMap<String, Dict>();
-            newEventsMap = new HashMap<String, Dict>();
+            oldEventsMap = Maps.newHashMap();
+            newEventsMap = Maps.newHashMap();
             for (int j = 0; j < newEventsList.size(); j++) {
                 Dict event = oldEventsList.get(j);
                 oldEventsMap.put(

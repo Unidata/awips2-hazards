@@ -17,7 +17,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.IInputValidator;
@@ -33,6 +33,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -44,8 +45,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Apr 04, 2013            Chris.Golden    Initial induction into repo
+ * Jul 18, 2013    585     Chris Golden    Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,21 +63,38 @@ class SettingDialog extends BasicDialog {
             .getHandler(SettingDialog.class);
 
     /**
+     * Dialog title prefix.
+     */
+    private static final String DIALOG_TITLE_PREFIX = "Settings: ";
+
+    /**
      * Key into a setting dictionary where the displayable name of the setting
      * is found as a value.
      */
     private static final String DISPLAY_NAME = "displayName";
 
     /**
+     * File menu text.
+     */
+    private static final String FILE_MENU_TEXT = "&File";
+
+    /**
+     * Edit menu text.
+     */
+    private static final String EDIT_MENU_TEXT = "&Edit";
+
+    /**
      * File menu item names.
      */
-    private static final String[] FILE_MENU_ITEM_NAMES = { "&New", "&Save",
-            "Save &As", "&Delete", null, "&Close" };
+    private static final List<String> FILE_MENU_ITEM_NAMES = Collections
+            .unmodifiableList(Lists.newArrayList("&New", "&Save", "Save &As",
+                    "&Delete", null, "&Close"));;
 
     /**
      * Edit menu item names.
      */
-    private static final String[] EDIT_MENU_ITEM_NAMES = { "&Revert" };
+    private static final List<String> EDIT_MENU_ITEM_NAMES = Collections
+            .unmodifiableList(Lists.newArrayList("&Revert"));
 
     // Private Constants
 
@@ -87,33 +105,36 @@ class SettingDialog extends BasicDialog {
      * implement non-standard behavior; or <code>null</code> for any menu item
      * that has no effect.
      */
-    private final Object[] FILE_MENU_ITEM_ACTIONS = {
-            new SettingsAction("New", null), new Runnable() {
-                @Override
-                public void run() {
-                    fireAction(new SettingsAction("Save", getState()));
-                }
-            }, new Runnable() {
-                private final IInputValidator validator = new IInputValidator() {
-                    @Override
-                    public String isValid(String text) {
-                        return (text.length() < 1 ? "The name must contain at least one character."
-                                : null);
-                    }
-                };
+    private final List<?> FILE_MENU_ITEM_ACTIONS = Collections
+            .unmodifiableList(Lists.newArrayList(
+                    new SettingsAction("New", null), new Runnable() {
+                        @Override
+                        public void run() {
+                            fireAction(new SettingsAction("Save", getState()));
+                        }
+                    }, new Runnable() {
+                        private final IInputValidator validator = new IInputValidator() {
+                            @Override
+                            public String isValid(String text) {
+                                return (text.length() < 1 ? "The name must contain at least one character."
+                                        : null);
+                            }
+                        };
 
-                @Override
-                public void run() {
-                    InputDialog inputDialog = new InputDialog(getShell(),
-                            "Hazard Services", "Enter the new setting name: ",
-                            "", validator);
-                    if (inputDialog.open() == InputDialog.OK) {
-                        values.put(DISPLAY_NAME, inputDialog.getValue());
-                        setDialogName(getShell());
-                        fireAction(new SettingsAction("Save As", getState()));
-                    }
-                }
-            }, new SettingsAction("Dialog", "Delete"), null, "Close" };
+                        @Override
+                        public void run() {
+                            InputDialog inputDialog = new InputDialog(
+                                    getShell(), "Hazard Services",
+                                    "Enter the new setting name: ", "",
+                                    validator);
+                            if (inputDialog.open() == InputDialog.OK) {
+                                values.put(DISPLAY_NAME, inputDialog.getValue());
+                                setDialogName(getShell());
+                                fireAction(new SettingsAction("Save As",
+                                        getState()));
+                            }
+                        }
+                    }, new SettingsAction("Dialog", "Delete"), null, "Close"));
 
     /**
      * Edit menu item actions; each is either a <code>SettingsAction</code>,
@@ -122,8 +143,9 @@ class SettingDialog extends BasicDialog {
      * implement non-standard behavior; or <code>null</code> for any menu item
      * that has no effect.
      */
-    private final Object[] EDIT_MENU_ITEM_ACTIONS = { new SettingsAction(
-            "Revert", null) };
+    private final List<?> EDIT_MENU_ITEM_ACTIONS = Collections
+            .unmodifiableList(Lists.newArrayList(new SettingsAction("Revert",
+                    null)));
 
     // Private Variables
 
@@ -253,9 +275,9 @@ class SettingDialog extends BasicDialog {
         super.configureShell(shell);
         setDialogName(shell);
         Menu menuBar = new Menu(shell, SWT.BAR);
-        createCascadeMenu(menuBar, "&File", FILE_MENU_ITEM_NAMES,
+        createCascadeMenu(menuBar, FILE_MENU_TEXT, FILE_MENU_ITEM_NAMES,
                 FILE_MENU_ITEM_ACTIONS);
-        createCascadeMenu(menuBar, "&Edit", EDIT_MENU_ITEM_NAMES,
+        createCascadeMenu(menuBar, EDIT_MENU_TEXT, EDIT_MENU_ITEM_NAMES,
                 EDIT_MENU_ITEM_ACTIONS);
         shell.setMenuBar(menuBar);
     }
@@ -282,7 +304,7 @@ class SettingDialog extends BasicDialog {
         // the command invocation response method is empty. State
         // changes cause the entire setting definition to be sent as
         // part of a settings change action.
-        List<Dict> fieldsList = new ArrayList<Dict>();
+        List<Dict> fieldsList = Lists.newArrayList();
         for (Object field : fields) {
             fieldsList.add((Dict) field);
         }
@@ -339,7 +361,7 @@ class SettingDialog extends BasicDialog {
      */
     private void setDialogName(Shell shell) {
         String settingName = values.getDynamicallyTypedValue(DISPLAY_NAME);
-        shell.setText("Settings: " + settingName);
+        shell.setText(DIALOG_TITLE_PREFIX + settingName);
     }
 
     /**
@@ -362,18 +384,18 @@ class SettingDialog extends BasicDialog {
      *            it is passed to the presenter.
      */
     private void createCascadeMenu(Menu menuBar, String name,
-            String[] itemNames, Object[] itemActions) {
+            List<String> itemNames, List<?> itemActions) {
         MenuItem cascade = new MenuItem(menuBar, SWT.CASCADE);
         cascade.setText(name);
         Menu dropDown = new Menu(menuBar);
         cascade.setMenu(dropDown);
-        for (int j = 0; j < itemNames.length; j++) {
+        for (int j = 0; j < itemNames.size(); j++) {
             MenuItem item = new MenuItem(dropDown,
-                    (itemNames[j] == null ? SWT.SEPARATOR : SWT.PUSH));
-            if (itemNames[j] != null) {
-                item.setText(itemNames[j]);
-                if (itemActions[j] != null) {
-                    item.setData(itemActions[j]);
+                    (itemNames.get(j) == null ? SWT.SEPARATOR : SWT.PUSH));
+            if (itemNames.get(j) != null) {
+                item.setText(itemNames.get(j));
+                if (itemActions.get(j) != null) {
+                    item.setData(itemActions.get(j));
                     item.addSelectionListener(menuBarListener);
                 }
             }

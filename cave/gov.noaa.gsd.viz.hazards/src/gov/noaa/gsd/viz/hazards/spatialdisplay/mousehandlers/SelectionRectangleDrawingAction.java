@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
@@ -33,7 +32,6 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
-import com.raytheon.viz.ui.input.InputAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
@@ -51,6 +49,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *  Date         Ticket#    Engineer    Description
  *  ------------ ---------- ----------- --------------------------
  * 07/15/2012                Xiangbao Jing    Initial creation
+ * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -62,15 +61,6 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SelectionRectangleDrawingAction.class);
 
-    private static SelectionRectangleDrawingAction selectionRectangleDrawingAction = null;
-
-    private SpatialPresenter spatialPresenter;
-
-    /** The mouse handler */
-
-    // protected IInputHandler mouseHandler;
-    protected InputAdapter mouseHandler;
-
     protected AttrDlg attrDlg = null;
 
     public static final String pgenType = "TornadoWarning";
@@ -79,30 +69,12 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param ihisDrawingLayer
-     * @param ihisMenuBar
-     * @return SelectionDrawingAction
      */
-    public static SelectionRectangleDrawingAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (selectionRectangleDrawingAction == null) {
-            selectionRectangleDrawingAction = new SelectionRectangleDrawingAction(
-                    spatialPresenter);
-        } else {
-            selectionRectangleDrawingAction.setDrawingLayer(spatialPresenter
-                    .getView().getSpatialDisplay());
-            selectionRectangleDrawingAction
-                    .setSpatialPresenter(spatialPresenter);
-        }
-
-        return selectionRectangleDrawingAction;
+    public static SelectionRectangleDrawingAction getInstance() {
+        return new SelectionRectangleDrawingAction();
     }
 
-    private SelectionRectangleDrawingAction(SpatialPresenter spatialPresenter) {
-        super(spatialPresenter);
-        drawingLayer = spatialPresenter.getView().getSpatialDisplay();
-        this.spatialPresenter = spatialPresenter;
+    private SelectionRectangleDrawingAction() {
     }
 
     /*
@@ -111,36 +83,29 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
      * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
      */
     @Override
-    public IInputHandler getMouseHandler() {
-        if (mouseHandler == null) {
-            mouseHandler = new SelectionHandler();
-
-            try {
-                ((SelectionHandler) mouseHandler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                        null);
-            } catch (VizException e) {
-                statusHandler
-                        .error("In SelectionRectangleDrawingAction.getMouseHandler():",
-                                e);
-            }
+    protected IInputHandler createMouseHandler() {
+        IInputHandler handler = new SelectionHandler();
+        try {
+            ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
+                    null);
+        } catch (VizException e) {
+            statusHandler.error(
+                    "In SelectionRectangleDrawingAction.getMouseHandler():", e);
         }
+        return handler;
+    }
+
+    @Override
+    public IInputHandler getMouseHandler() {
+        IInputHandler handler = super.getMouseHandler();
 
         /*
-         * Since this is a singleton, make sure state variables are properly
-         * initialized.
+         * Make sure state variables are properly initialized.
          */
-        ((SelectionHandler) mouseHandler).anchorCorner = null;
-        ((SelectionHandler) mouseHandler).dragCorner = null;
+        ((SelectionHandler) handler).anchorCorner = null;
+        ((SelectionHandler) handler).dragCorner = null;
 
-        return mouseHandler;
-    }
-
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+        return handler;
     }
 
     public class SelectionHandler extends CopyEventDrawingAction.CopyHandler {
@@ -198,7 +163,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                 if (isSelectByArea) {
                     handleSelectByArea(null);
                 } else {
-                    spatialPresenter.getView().drawingActionComplete();
+                    getSpatialPresenter().getView().drawingActionComplete();
                 }
 
                 return true;
@@ -267,7 +232,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                     // the list,
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
-                        String selectedElementEventID = drawingLayer
+                        String selectedElementEventID = getDrawingLayer()
                                 .elementClicked(
                                         (DrawableElement) drawableComponent,
                                         false, false);
@@ -301,12 +266,13 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                 if (clickedElementList != null)
 
                 {
-                    drawingLayer.multipleElementsClicked(clickedElementList);
+                    getDrawingLayer().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 
                 // Give the control to single selection as the default.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
             // Set the flag to the clicking selection status??????????????
@@ -362,8 +328,9 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
-                        String selectedEventId = drawingLayer.elementClicked(
-                                (DrawableElement) comp, false, false);
+                        String selectedEventId = getDrawingLayer()
+                                .elementClicked((DrawableElement) comp, false,
+                                        false);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {
@@ -379,12 +346,13 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                  * from here to the HazardServicesAppBuilder..
                  */
                 if (clickedElementList != null) {
-                    drawingLayer.multipleElementsClicked(clickedElementList);
+                    getDrawingLayer().multipleElementsClicked(
+                            clickedElementList);
                     clickedElementList.clear();
                 }
 
                 // Give the control to single selection as the default.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
             isSelectByArea = false;

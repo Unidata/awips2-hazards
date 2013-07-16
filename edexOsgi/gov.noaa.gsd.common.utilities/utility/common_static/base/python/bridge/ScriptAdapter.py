@@ -3,6 +3,11 @@ Adapter to the recommender framework
 
 Created on Mar 20, 2013
 @author: blawrenc
+
+ Jul 15, 2013     585    Chris.Golden Added passing of event bus
+                                      to job listeners, since event
+                                      bus is no longer a singleton.
+
 """
 import json, traceback
 import os
@@ -206,24 +211,26 @@ class ScriptAdapter:
                 eventSet.add(javaEvent)
         return eventSet
         
-    def buildRecommenderJobListener(self, toolID):
+    def buildRecommenderJobListener(self, eventBus, toolID):
         """
         Constructs a python job listener for the specified
         tool name.
+        @param eventBus: Event bus to be used
         @param toolID: The name of the tool
         @return The Python Job listener 
         """       
-        return HazardServicesRecommenderJobListener(toolID)
+        return HazardServicesRecommenderJobListener(eventBus, toolID)
 
-    def buildGeneratorJobListener(self, toolID):
+    def buildGeneratorJobListener(self, eventBus, toolID):
         """
         Constructs a python job listener for the specified
         tool name.
+        @param eventBus: Event bus to be used
         @param toolID: The name of the tool
         @return The Python Job listener 
         """       
         toolID = str(toolID)
-        return HazardServicesGeneratorJobListener(toolID)
+        return HazardServicesGeneratorJobListener(eventBus, toolID)
          
     def flush(self):
         """ Flush the print buffer """

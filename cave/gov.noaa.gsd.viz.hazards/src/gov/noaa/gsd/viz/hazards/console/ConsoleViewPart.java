@@ -7,20 +7,18 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.part.ViewPart;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -40,24 +38,15 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * June 4, 2013            Chris.Golden      Added support for changing background
  *                                           and foreground colors in order to stay
  *                                           in synch with CAVE mode.
+ * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ConsoleViewPart extends ViewPart {
+public class ConsoleViewPart extends DockTrackingViewPart {
 
     // Public Static Constants
-
-    /**
-     * Action detail indicating settings are to be reset.
-     */
-    public static final String SETTINGS = "Settings";
-
-    /**
-     * Action detail indicating events are to be reset.
-     */
-    public static final String EVENTS = "Events";
 
     /**
      * Identifier of the view.
@@ -79,81 +68,7 @@ public class ConsoleViewPart extends ViewPart {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ConsoleViewPart.class);
 
-    // Private Classes
-
-    /**
-     * Standard action.
-     */
-    private class BasicConsoleAction extends BasicAction {
-
-        // Private Variables
-
-        /**
-         * Action type.
-         */
-        private final String actionType;
-
-        /**
-         * Action name.
-         */
-        private final String actionName;
-
-        // Public Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param text
-         *            Text to be displayed.
-         * @param iconFileName
-         *            File name of the icon to be displayed, or
-         *            <code>null</code> if no icon is to be associated with this
-         *            action.
-         * @param style
-         *            Style; one of the <code>IAction</code> style constants.
-         * @param toolTipText
-         *            Tool tip text, or <code>null</code> if none is required.
-         * @param actionType
-         *            Type of action to be taken when this action is invoked.
-         * @param actionName
-         *            Name of action to be taken when this action is invoked;
-         *            ignored for actions of checkbox style, since they always
-         *            send "on" or "off" as their action name.
-         */
-        public BasicConsoleAction(String text, String iconFileName, int style,
-                String toolTipText, String actionType, String actionName) {
-            super(text, iconFileName, style, toolTipText);
-            this.actionType = actionType;
-            this.actionName = actionName;
-        }
-
-        // Public Methods
-
-        /**
-         * Run the action.
-         */
-        @Override
-        public void run() {
-            fireConsoleAction(actionType, actionName);
-        }
-    }
-
     // Private Variables
-
-    /**
-     * Presenter managing this view part.
-     */
-    private ConsolePresenter presenter = null;
-
-    /**
-     * Reset events command action.
-     */
-    private Action resetEventsCommandAction = null;
-
-    /**
-     * Reset settings command action.
-     */
-    private Action resetSettingsCommandAction = null;
 
     /**
      * Name of the currently selected setting.
@@ -203,7 +118,6 @@ public class ConsoleViewPart extends ViewPart {
             long currentTime, long visibleTimeRange, String hazardEvents,
             String jsonSettings, String jsonFilters,
             boolean temporalControlsInToolBar) {
-        this.presenter = presenter;
         setSettings(jsonSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
                 visibleTimeRange, hazardEvents, jsonFilters,
@@ -218,6 +132,9 @@ public class ConsoleViewPart extends ViewPart {
      */
     @Override
     public void createPartControl(Composite parent) {
+        super.createPartControl(parent);
+
+        // Get the action bars and create the body of this view part.
         actionBars = getViewSite().getActionBars();
         temporalDisplay = new TemporalDisplay();
         temporalDisplay.createDisplayComposite(parent);
@@ -228,36 +145,6 @@ public class ConsoleViewPart extends ViewPart {
         // grandparent of this parent, because this ensures that the
         // part's toolbar gets colored appropriately as well.
         modeListener = new ModeListener(parent.getParent().getParent());
-    }
-
-    /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
-     */
-    public final boolean contributeToMainUI(IActionBars mainUI,
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-            return temporalDisplay.contributeToMainUI(mainUI, type);
-        } else {
-            resetEventsCommandAction = new BasicConsoleAction("Reset Events",
-                    null, Action.AS_PUSH_BUTTON, null, "Reset", EVENTS);
-            resetSettingsCommandAction = new BasicConsoleAction(
-                    "Reset Settings", null, Action.AS_PUSH_BUTTON, null,
-                    "Reset", SETTINGS);
-            IMenuManager menuManager = mainUI.getMenuManager();
-            menuManager.add(resetEventsCommandAction);
-            menuManager.add(resetSettingsCommandAction);
-            return true;
-        }
     }
 
     /**
@@ -284,6 +171,21 @@ public class ConsoleViewPart extends ViewPart {
      */
     public IActionBars getMainActionBarsManager() {
         return actionBars;
+    }
+
+    /**
+     * Set the map of toolbar widget identifiers to their actions and the
+     * selected time mode action. These are constructed elsewhere and provided
+     * to this object if appropriate.
+     * 
+     * @param map
+     *            Map of toolbar widget identifiers to their actions.
+     * @param selectedTimeModeAction
+     *            Selected time mode action.
+     */
+    public void setToolBarActions(final Map<String, Action> map,
+            ComboAction selectedTimeModeAction) {
+        temporalDisplay.setToolBarActions(map, selectedTimeModeAction);
     }
 
     /**
@@ -462,17 +364,5 @@ public class ConsoleViewPart extends ViewPart {
             titlePrefix = titlePrefix.substring(0, colonIndex + 2);
         }
         setPartName(titlePrefix + selectedSettingName);
-    }
-
-    /**
-     * Fire a console action event to its listener.
-     * 
-     * @param actionType
-     *            Type of action.
-     * @param actionName
-     *            Name of action.
-     */
-    private void fireConsoleAction(String actionType, String actionName) {
-        presenter.fireAction(new ConsoleAction(actionType, actionName));
     }
 }

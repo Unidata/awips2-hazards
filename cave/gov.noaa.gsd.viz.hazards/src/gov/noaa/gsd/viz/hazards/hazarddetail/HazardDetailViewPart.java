@@ -10,6 +10,7 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
@@ -32,10 +33,7 @@ import gov.noaa.gsd.viz.megawidgets.StatefulMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,8 +67,10 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Widget;
-import org.eclipse.ui.part.ViewPart;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -94,12 +94,13 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           value for any metadata megawidget as the
  *                                           value for any identifier that has no
  *                                           entry yet in the event dictionary.
+ * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardDetailViewPart extends ViewPart implements
+public class HazardDetailViewPart extends DockTrackingViewPart implements
         INotificationListener, IStateChangeListener {
 
     // Public Static Constants
@@ -159,6 +160,81 @@ public class HazardDetailViewPart extends ViewPart implements
      * Preview button identifier.
      */
     private static final int PREVIEW_ID = 3;
+
+    /**
+     * Hazard type section text.
+     */
+    private static final String HAZARD_TYPE_SECTION_TEXT = "Hazard Type";
+
+    /**
+     * Hazard category text.
+     */
+    private static final String HAZARD_CATEGORY_TEXT = "Hazard Category:";
+
+    /**
+     * Hazard category text.
+     */
+    private static final String HAZARD_TYPE_TEXT = "Hazard Type:";
+
+    /**
+     * Hazard time range section text.
+     */
+    private static final String TIME_RANGE_SECTION_TEXT = "Time Range";
+
+    /**
+     * Start time text.
+     */
+    private static final String START_TIME_TEXT = "Start Time:";
+
+    /**
+     * End time text.
+     */
+    private static final String END_TIME_TEXT = "End Time:";
+
+    /**
+     * Preview button text.
+     */
+    private static final String PREVIEW_BUTTON_TEXT = "  Preview...  ";
+
+    /**
+     * Propose button text.
+     */
+    private static final String PROPOSE_BUTTON_TEXT = "  Propose  ";
+
+    /**
+     * Issue button text.
+     */
+    private static final String ISSUE_BUTTON_TEXT = "  Issue...  ";
+
+    /**
+     * Preview button tooltip text.
+     */
+    private static final String PREVIEW_BUTTON_TOOLTIP_TEXT = "Preview the text product";
+
+    /**
+     * Propose button tooltip text.
+     */
+    private static final String PROPOSE_BUTTON_TOOLTIP_TEXT = "Propose the event";
+
+    /**
+     * Issue button tooltip text.
+     */
+    private static final String ISSUE_BUTTON_TOOLTIP_TEXT = "Issue the event";
+
+    /**
+     * Details section text.
+     */
+    private static final String DETAILS_SECTION_TEXT = "Details";
+
+    /**
+     * Area details tab text.
+     */
+    private static final String AREA_DETAILS_TAB_TEXT = " Area Details ";
+
+    /**
+     * Points details tab text.
+     */
+    private static final String POINTS_DETAILS_TAB_TEXT = "Points Details";
 
     // Private Classes
 
@@ -307,7 +383,7 @@ public class HazardDetailViewPart extends ViewPart implements
             // in the current state, and the values be-
             // ing the hash table pairing that point's
             // field names and values.
-            Map<String, Map<String, Object>> state = new HashMap<String, Map<String, Object>>();
+            Map<String, Map<String, Object>> state = Maps.newHashMap();
 
             // Iterate through the lines, adding points
             // to the list.
@@ -318,7 +394,7 @@ public class HazardDetailViewPart extends ViewPart implements
                 // iterate through the columns, adding
                 // all these pairings to the table.
                 TableItem item = table.getItem(line);
-                Map<String, Object> map = new HashMap<String, Object>();
+                Map<String, Object> map = Maps.newHashMap();
                 String name = null;
                 for (int col = 0; col < table.getColumnCount(); col++) {
                     String columnIdentifier = (String) table.getColumn(col)
@@ -460,11 +536,6 @@ public class HazardDetailViewPart extends ViewPart implements
     // Private Variables
 
     /**
-     * Parent composite.
-     */
-    private Composite parent = null;
-
-    /**
      * Tab folder holding the different hazard events, one per tab page.
      */
     private CTabFolder eventTabFolder = null;
@@ -521,7 +592,7 @@ public class HazardDetailViewPart extends ViewPart implements
     /**
      * Set of all time scale widgets currently in existence.
      */
-    private final Set<TimeScaleMegawidget> timeScaleWidgets = new HashSet<TimeScaleMegawidget>();
+    private final Set<TimeScaleMegawidget> timeScaleWidgets = Sets.newHashSet();
 
     /**
      * Content panel that holds whichever metadata panel is currently displayed.
@@ -543,79 +614,88 @@ public class HazardDetailViewPart extends ViewPart implements
     /**
      * List of hazard category identifiers.
      */
-    private final List<String> categories = new ArrayList<String>();
+    private final List<String> categories = Lists.newArrayList();
 
     /**
      * Hash table pairing categories with lists of hazard type identifiers.
      */
-    private final Map<String, List<String>> typesForCategories = new HashMap<String, List<String>>();
+    private final Map<String, List<String>> typesForCategories = Maps
+            .newHashMap();
 
     /**
      * Hash table pairing hazard types with categories.
      */
-    private final Map<String, String> categoriesForTypes = new HashMap<String, String>();
+    private final Map<String, String> categoriesForTypes = Maps.newHashMap();
 
     /**
      * Hash table pairing widget creation time parameter identifiers with their
      * corresponding values.
      */
-    private final Map<String, Object> widgetCreationParams = new HashMap<String, Object>();
+    private final Map<String, Object> widgetCreationParams = Maps.newHashMap();
 
     /**
      * Hash table pairing hazard types with lists of the associated widget
      * specifiers.
      */
-    private final Map<String, List<MegawidgetSpecifier>> widgetsForTypes = new HashMap<String, List<MegawidgetSpecifier>>();
+    private final Map<String, List<MegawidgetSpecifier>> widgetsForTypes = Maps
+            .newHashMap();
 
     /**
      * Hash table pairing hazard types with lists of the associated widget
      * specifiers for the individual points of the hazard.
      */
-    private final Map<String, List<MegawidgetSpecifier>> pointWidgetsForTypes = new HashMap<String, List<MegawidgetSpecifier>>();
+    private final Map<String, List<MegawidgetSpecifier>> pointWidgetsForTypes = Maps
+            .newHashMap();
 
     /**
      * Hash table pairing hazard types with metadata panels used by those types.
      */
-    private final Map<String, Composite> panelsForTypes = new HashMap<String, Composite>();
+    private final Map<String, Composite> panelsForTypes = Maps.newHashMap();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * metadata widget identifiers with their associated widgets.
      */
-    private final Map<String, Map<String, Megawidget>> widgetsForIdsForTypes = new HashMap<String, Map<String, Megawidget>>();
+    private final Map<String, Map<String, Megawidget>> widgetsForIdsForTypes = Maps
+            .newHashMap();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * point-specific metadata widget identifiers with their associated widgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointWidgetsForIdsForTypes = new HashMap<String, Map<String, Megawidget>>();
+    private final Map<String, Map<String, Megawidget>> pointWidgetsForIdsForTypes = Maps
+            .newHashMap();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * point-specific metadata state identifiers with their associated widgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointWidgetsForStateIdsForTypes = new HashMap<String, Map<String, Megawidget>>();
+    private final Map<String, Map<String, Megawidget>> pointWidgetsForStateIdsForTypes = Maps
+            .newHashMap();
 
     /**
      * List of event dictionaries for the primary shape(s) in the events, each
      * dictionary being in the form of a hash table that maps identifier keys to
      * values that are to be used for various parameters of the hazard.
      */
-    private final List<Map<String, Object>> primaryParamValues = new ArrayList<Map<String, Object>>();
+    private final List<Map<String, Object>> primaryParamValues = Lists
+            .newArrayList();
 
     /**
      * List of lists of event dictionaries for the auxiliary shapes in the
      * events, if any, each of which is a hash table mapping identifier keys to
      * values that are to be used for various parameters of the hazard.
      */
-    private final List<List<Map<String, Object>>> auxiliaryParamValues = new ArrayList<List<Map<String, Object>>>();
+    private final List<List<Map<String, Object>>> auxiliaryParamValues = Lists
+            .newArrayList();
 
     /**
      * List of lists of event dictionaries for the points in the events, if any,
      * each of which is a hash table mapping identifier keys to values that are
      * to be used for various parameters of the individual points of the hazard.
      */
-    private final List<List<Map<String, Object>>> pointsParamValues = new ArrayList<List<Map<String, Object>>>();
+    private final List<List<Map<String, Object>>> pointsParamValues = Lists
+            .newArrayList();
 
     /**
      * Propose button.
@@ -641,7 +721,8 @@ public class HazardDetailViewPart extends ViewPart implements
      * Map of hazard event identifiers to the scrolled composite origins; the
      * latter are recorded each time the scrolled composite is scrolled.
      */
-    private final Map<String, Point> scrollOriginsForEventIDs = new HashMap<String, Point>();
+    private final Map<String, Point> scrollOriginsForEventIDs = Maps
+            .newHashMap();
 
     /**
      * Flag indicating whether or not the scrolled composite is having its
@@ -665,11 +746,6 @@ public class HazardDetailViewPart extends ViewPart implements
      * Hazard detail view that is managing this part.
      */
     private HazardDetailView hazardDetailView = null;
-
-    /**
-     * Flag indicating whether or not this view part is currently docked.
-     */
-    private boolean docked;
 
     // Public Methods
 
@@ -706,9 +782,6 @@ public class HazardDetailViewPart extends ViewPart implements
             widget.setVisibleTimeRange(minimumVisibleTime, maximumVisibleTime);
         }
 
-        // Determine whether or not the view is currently docked.
-        docked = determineWhetherDocked();
-
         // Parse the strings into a JSON object and a JSON array.
         Dict jsonGeneralWidgets = null;
         DictList jsonHazardWidgets = null;
@@ -744,7 +817,7 @@ public class HazardDetailViewPart extends ViewPart implements
             // array will contain dictionaries which in turn hold
             // strings as one of their values naming the types; the
             // resulting list must then be alphabetized.
-            List<String> types = new ArrayList<String>();
+            List<String> types = Lists.newArrayList();
             for (Object child : (List<?>) jsonItem
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN)) {
                 types.add((String) ((Map<?, ?>) child)
@@ -787,12 +860,12 @@ public class HazardDetailViewPart extends ViewPart implements
             // considered to be the set in which it actually
             // belongs.
             Dict jsonItem = jsonHazardWidgets.getDynamicallyTypedValue(j);
-            List<String> types = new ArrayList<String>();
+            List<String> types = Lists.newArrayList();
             for (Object child : (List<?>) jsonItem
                     .get(Utilities.HAZARD_INFO_METADATA_TYPES)) {
                 types.add((String) child);
             }
-            Set<String> typesSet = new HashSet<String>();
+            Set<String> typesSet = Sets.newHashSet();
             for (String type : types) {
                 if (widgetsForTypes.containsKey(type) == false) {
                     typesSet.add(type);
@@ -808,7 +881,8 @@ public class HazardDetailViewPart extends ViewPart implements
 
                 // Create the widget specifiers for the event
                 // type as a whole.
-                List<MegawidgetSpecifier> widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
+                List<MegawidgetSpecifier> widgetSpecifiers = Lists
+                        .newArrayList();
                 List<Dict> objects = getJsonObjectList(jsonItem
                         .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
@@ -836,7 +910,7 @@ public class HazardDetailViewPart extends ViewPart implements
                 Object pointObject = jsonItem
                         .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
                 if (pointObject != null) {
-                    widgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
+                    widgetSpecifiers = Lists.newArrayList();
                     objects = getJsonObjectList(pointObject);
                     Dict tableObject = new Dict();
                     tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -885,30 +959,13 @@ public class HazardDetailViewPart extends ViewPart implements
      */
     @Override
     public void createPartControl(Composite parent) {
+        super.createPartControl(parent);
 
         // Create a CAVE mode listener, which will
         // set the foreground and background colors
         // appropriately according to the CAVE mode
         // whenever a paint event occurs.
         new ModeListener(parent);
-
-        // Remember the parent for use later, and
-        // keep track of resize events to determine
-        // whether or not the part is currently
-        // docked.
-        this.parent = parent;
-        parent.addControlListener(new ControlAdapter() {
-            @Override
-            public void controlResized(ControlEvent e) {
-
-                // Determine whether or not the part
-                // is now docked.
-                boolean docked = determineWhetherDocked();
-                if (docked != HazardDetailViewPart.this.docked) {
-                    HazardDetailViewPart.this.docked = docked;
-                }
-            }
-        });
 
         // Configure the parent layout.
         parent.setLayout(new GridLayout(1, false));
@@ -1011,7 +1068,7 @@ public class HazardDetailViewPart extends ViewPart implements
         // a read-only status without making
         // them look disabled.
         Group hazardGroup = new Group(top, SWT.NONE);
-        hazardGroup.setText("Hazard Type");
+        hazardGroup.setText(HAZARD_TYPE_SECTION_TEXT);
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.widthHint = 426;
         hazardGroup.setLayoutData(gridData);
@@ -1023,7 +1080,7 @@ public class HazardDetailViewPart extends ViewPart implements
 
         // Create the hazard category combo box.
         Label categoryLabel = new Label(hazardSubGroup, SWT.NONE);
-        categoryLabel.setText("Hazard Category:");
+        categoryLabel.setText(HAZARD_CATEGORY_TEXT);
         gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         categoryLabel.setLayoutData(gridData);
         categoryCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
@@ -1039,7 +1096,7 @@ public class HazardDetailViewPart extends ViewPart implements
 
         // Create the hazard type combo box.
         Label label = new Label(hazardSubGroup, SWT.NONE);
-        label.setText("Hazard Type:");
+        label.setText(HAZARD_TYPE_TEXT);
         gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
         label.setLayoutData(gridData);
         typeCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
@@ -1064,7 +1121,7 @@ public class HazardDetailViewPart extends ViewPart implements
 
         // Create the time range panel.
         Group timeRangePanel = new Group(top, SWT.NONE);
-        timeRangePanel.setText("Time Range");
+        timeRangePanel.setText(TIME_RANGE_SECTION_TEXT);
         gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         timeRangePanel.setLayoutData(gridData);
         gridLayout = new GridLayout();
@@ -1076,9 +1133,9 @@ public class HazardDetailViewPart extends ViewPart implements
             Dict scaleObject = new Dict();
             scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                     TIME_RANGE_IDENTIFIER);
-            Map<String, String> stateLabels = new HashMap<String, String>();
-            stateLabels.put(START_TIME_STATE, "Start Time:");
-            stateLabels.put(END_TIME_STATE, "End Time:");
+            Map<String, String> stateLabels = Maps.newHashMap();
+            stateLabels.put(START_TIME_STATE, START_TIME_TEXT);
+            stateLabels.put(END_TIME_STATE, END_TIME_TEXT);
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
                     stateLabels);
             scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
@@ -1295,70 +1352,20 @@ public class HazardDetailViewPart extends ViewPart implements
     @Override
     public void megawidgetInvoked(INotifier widget, String extraCallback) {
 
-        // If there are no event dictionaries, do
-        // nothing.
-        if (primaryParamValues.size() == 0) {
+        // If there are no event dictionaries or if the
+        // megawidget is stateful, do nothing.
+        if ((primaryParamValues.size() == 0) || (widget instanceof IStateful)) {
             return;
         }
 
         // Create an event dictionary and add the event
-        // identifier to it.
+        // identifier to it. Add any extra callback info
+        // as well if it exists.
         Dict eventInfo = new Dict();
         eventInfo
                 .put(Utilities.HAZARD_EVENT_IDENTIFIER,
                         primaryParamValues.get(visibleHazardIndex).get(
                                 Utilities.HAZARD_EVENT_IDENTIFIER));
-
-        // If the widget that was invoked is stateful,
-        // get its state's value and place it in the
-        // dictionary.
-        if (widget instanceof IStateful) {
-            List<String> identifiers = ((IStatefulSpecifier) widget
-                    .getSpecifier()).getStateIdentifiers();
-
-            // If the widget has one state identifier,
-            // just place the state directly in the
-            // dictionary; otherwise, create a sub-
-            // dictionary that holds each state
-            // identifier and the corresponding state
-            // as key-value pairs, and place the sub-
-            // dictionary in the dictionary.
-            if (identifiers.size() == 1) {
-                try {
-                    eventInfo.put("value", ((IStateful) widget).getState(widget
-                            .getSpecifier().getIdentifier()));
-                } catch (Exception e) {
-                    statusHandler
-                            .error("HazardDetailViewPart.megawidgetInvoked(): "
-                                    + "Error: Could not get value for state identifier \""
-                                    + widget.getSpecifier().getIdentifier()
-                                    + "\" for " + "megawidget \""
-                                    + widget.getSpecifier().getIdentifier()
-                                    + "\".", e);
-                }
-            } else {
-                Dict stateInfo = new Dict();
-                for (String identifier : identifiers) {
-                    try {
-                        stateInfo.put(identifier,
-                                ((IStateful) widget).getState(identifier));
-                    } catch (Exception e) {
-                        statusHandler
-                                .error("HazardDetailViewPart.megawidgetInvoked(): "
-                                        + "Error: Could not get value for state "
-                                        + "identifier \""
-                                        + identifier
-                                        + "\" for "
-                                        + "widget \""
-                                        + widget.getSpecifier().getIdentifier()
-                                        + "\".", e);
-                    }
-                    eventInfo.put("value", stateInfo);
-                }
-            }
-        }
-
-        // Add in callback information if provided.
         if (extraCallback != null) {
             eventInfo.put("callback", extraCallback);
         }
@@ -1551,8 +1558,8 @@ public class HazardDetailViewPart extends ViewPart implements
 
         // Parse the passed-in JSON and configure the
         // widgets accordingly.
-        List<String> eventIDs = new ArrayList<String>();
-        List<String> types = new ArrayList<String>();
+        List<String> eventIDs = Lists.newArrayList();
+        List<String> types = Lists.newArrayList();
         try {
 
             // Determine whether the events should be
@@ -1673,12 +1680,12 @@ public class HazardDetailViewPart extends ViewPart implements
                         }
                         if (listAsPoint) {
                             if (thisPointsParamValues == null) {
-                                thisPointsParamValues = new ArrayList<Map<String, Object>>();
+                                thisPointsParamValues = Lists.newArrayList();
                             }
                             thisPointsParamValues.add(auxiliary);
                         } else {
                             if (thisAuxiliaryParamValues == null) {
-                                thisAuxiliaryParamValues = new ArrayList<Map<String, Object>>();
+                                thisAuxiliaryParamValues = Lists.newArrayList();
                             }
                             thisAuxiliaryParamValues.add(auxiliary);
                         }
@@ -1794,17 +1801,6 @@ public class HazardDetailViewPart extends ViewPart implements
         }
     }
 
-    // Package Methods
-
-    /**
-     * Determine whether or not the view is currently docked.
-     * 
-     * @return True if the view is currently docked, false otherwise.
-     */
-    final boolean isDocked() {
-        return docked;
-    }
-
     // Private Methods
 
     /**
@@ -1836,15 +1832,15 @@ public class HazardDetailViewPart extends ViewPart implements
                 }
             }
         }
-        previewButton = createButton(buttonBar, PREVIEW_ID, "  Preview...  ");
+        previewButton = createButton(buttonBar, PREVIEW_ID, PREVIEW_BUTTON_TEXT);
         previewButton.setEnabled(enable);
-        previewButton.setToolTipText("Preview the text product");
-        proposeButton = createButton(buttonBar, PROPOSE_ID, "  Propose  ");
+        previewButton.setToolTipText(PREVIEW_BUTTON_TOOLTIP_TEXT);
+        proposeButton = createButton(buttonBar, PROPOSE_ID, PROPOSE_BUTTON_TEXT);
         proposeButton.setEnabled(enable);
-        proposeButton.setToolTipText("Propose the event");
-        issueButton = createButton(buttonBar, ISSUE_ID, "  Issue...  ");
+        proposeButton.setToolTipText(PROPOSE_BUTTON_TOOLTIP_TEXT);
+        issueButton = createButton(buttonBar, ISSUE_ID, ISSUE_BUTTON_TEXT);
         issueButton.setEnabled(enable);
-        issueButton.setToolTipText("Issue the event");
+        issueButton.setToolTipText(ISSUE_BUTTON_TOOLTIP_TEXT);
     }
 
     /**
@@ -1886,15 +1882,6 @@ public class HazardDetailViewPart extends ViewPart implements
         } else if (buttonId == PREVIEW_ID) {
             fireHIDAction(new HazardDetailAction("Preview"));
         }
-    }
-
-    /**
-     * Determine whether or not the view is now docked.
-     * 
-     * @return True if the view is docked, false otherwise.
-     */
-    private boolean determineWhetherDocked() {
-        return (parent.getShell().getText().length() > 0);
     }
 
     /**
@@ -2193,7 +2180,7 @@ public class HazardDetailViewPart extends ViewPart implements
         // Iterate through the point widgets, setting
         // their states to match the states found in
         // the selected row of the table.
-        Set<IExplicitCommitStateful> widgetsNeedingCommit = new HashSet<IExplicitCommitStateful>();
+        Set<IExplicitCommitStateful> widgetsNeedingCommit = Sets.newHashSet();
         for (String identifier : widgetsForIds.keySet()) {
             if ((widgetsForIds.get(identifier) instanceof IStateful) == false) {
                 continue;
@@ -2408,9 +2395,9 @@ public class HazardDetailViewPart extends ViewPart implements
                 // Create the area tab page to hold the
                 // general area widgets.
                 CTabItem tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
-                tabItem.setText(" Area Details ");
+                tabItem.setText(AREA_DETAILS_TAB_TEXT);
                 Composite areaPage = new Composite(panel, SWT.NONE);
-                Map<String, Megawidget> widgetsForIds = new HashMap<String, Megawidget>();
+                Map<String, Megawidget> widgetsForIds = Maps.newHashMap();
                 addWidgetsToPanel(widgetsForTypes.get(type), areaPage,
                         widgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2420,10 +2407,10 @@ public class HazardDetailViewPart extends ViewPart implements
                 // Create points tab page to hold the
                 // points-specific widgets.
                 tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
-                tabItem.setText("Points Details");
+                tabItem.setText(POINTS_DETAILS_TAB_TEXT);
                 Composite pointsPage = new Composite(panel, SWT.NONE);
-                widgetsForIds = new HashMap<String, Megawidget>();
-                Map<String, Megawidget> widgetsForStateIds = new HashMap<String, Megawidget>();
+                widgetsForIds = Maps.newHashMap();
+                Map<String, Megawidget> widgetsForStateIds = Maps.newHashMap();
                 addWidgetsToPanel(
                         pointWidgetSpecifiers,
                         pointsPage,
@@ -2449,8 +2436,8 @@ public class HazardDetailViewPart extends ViewPart implements
                 // Create the group panel to hold all the
                 // widgets.
                 panel = new Group(metadataContentPanel, SWT.NONE);
-                ((Group) panel).setText("Details");
-                Map<String, Megawidget> widgetsForIds = new HashMap<String, Megawidget>();
+                ((Group) panel).setText(DETAILS_SECTION_TEXT);
+                Map<String, Megawidget> widgetsForIds = Maps.newHashMap();
                 addWidgetsToPanel(widgetsForTypes.get(type), panel,
                         widgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2665,7 +2652,7 @@ public class HazardDetailViewPart extends ViewPart implements
         // add entries to the other table pairing
         // them with their states, one entry per
         // state that each contains.
-        Set<Megawidget> megawidgets = new HashSet<Megawidget>();
+        Set<Megawidget> megawidgets = Sets.newHashSet();
         for (MegawidgetSpecifier widgetSpecifier : widgetSpecifiers) {
             Megawidget widget = null;
             try {
@@ -2735,8 +2722,9 @@ public class HazardDetailViewPart extends ViewPart implements
             // value, adding a mapping for that state
             // identifier and default value to the
             // dictionary.
-            Set<String> identifiersGivenDefaultValues = new HashSet<String>();
-            Set<IExplicitCommitStateful> widgetsNeedingCommit = new HashSet<IExplicitCommitStateful>();
+            Set<String> identifiersGivenDefaultValues = Sets.newHashSet();
+            Set<IExplicitCommitStateful> widgetsNeedingCommit = Sets
+                    .newHashSet();
             for (String widgetIdentifier : widgetsForIds.keySet()) {
                 Megawidget widget = widgetsForIds.get(widgetIdentifier);
                 if ((widget instanceof IStateful) == false) {
@@ -2883,7 +2871,7 @@ public class HazardDetailViewPart extends ViewPart implements
      * @return List of JSON objects.
      */
     private List<Dict> getJsonObjectList(Object object) {
-        List<Dict> objects = new ArrayList<Dict>();
+        List<Dict> objects = Lists.newArrayList();
         if (object instanceof Dict) {
             objects.add((Dict) object);
         } else {

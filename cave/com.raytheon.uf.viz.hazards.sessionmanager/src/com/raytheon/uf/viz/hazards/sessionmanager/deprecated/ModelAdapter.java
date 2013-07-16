@@ -41,6 +41,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 
+import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -80,7 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
- * 
+ * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * </pre>
  * 
  * @author bsteffen
@@ -118,7 +119,7 @@ public abstract class ModelAdapter {
     @Deprecated
     public void initialize(String selectedTime, String currentTime,
             String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, String state) {
+            String caveMode, String siteID, EventBus eventBus, String state) {
         model.getTimeManager().setSelectedTime(toDate(selectedTime));
         model.getConfigurationManager().setSiteID(siteID);
         model.getConfigurationManager().changeSettings(staticSettingID);

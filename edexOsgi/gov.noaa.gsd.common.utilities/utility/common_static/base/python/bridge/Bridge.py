@@ -17,10 +17,13 @@
  History:
  Date         Ticket#    Engineer    Description
  ------------ ---------- ----------- --------------------------
- Apr 19, 2013            blawrenc    Made fixes for code review
-                                     Replaced most string literals
-                                     with constants from
-                                     HazardConstants.py
+ Apr 19, 2013            blawrenc     Made fixes for code review
+                                      Replaced most string literals
+                                      with constants from
+                                      HazardConstants.py
+ Jul 15, 2013     585    Chris.Golden Added passing of event bus
+                                      to job listeners, since event
+                                      bus is no longer a singleton.
 """
 
 import logging, UFStatusHandler
@@ -47,9 +50,10 @@ except:
 
 class Bridge:
 
-    def __init__(self):                       
+    def __init__(self, eventBus=None):                       
+        self.eventBus = eventBus
         self.DatabaseStorage = DatabaseStorage.DatabaseStorage()
-
+        
         self.logger = logging.getLogger("Bridge")
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             "gov.noaa.gsd.common.utilities", "Bridge", level=logging.INFO))
@@ -92,10 +96,10 @@ class Bridge:
         @return: The result of running this tool.
         """
         if toolType == PRODUCT_GENERATOR_TOOL:
-            pythonJobListener = self.generatorScriptAdapter.buildGeneratorJobListener(toolID)
+            pythonJobListener = self.generatorScriptAdapter.buildGeneratorJobListener(self.eventBus, toolID)
             self.generatorScriptAdapter.executeProductGeneratorScript(toolID, pythonJobListener, runData)
         elif toolType == RECOMMENDER_TOOL:
-            pythonJobListener = self.recommenderScriptAdapter.buildRecommenderJobListener(toolID)
+            pythonJobListener = self.recommenderScriptAdapter.buildRecommenderJobListener(self.eventBus, toolID)
             self.recommenderScriptAdapter.executeRecommenderScript(toolID, pythonJobListener, runData)
             
         return None   

@@ -13,9 +13,10 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.Collections;
 import java.util.List;
 
-import org.eclipse.ui.IActionBars;
+import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -29,15 +30,16 @@ import com.raytheon.uf.common.status.UFStatus;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan, 2013               Bryon.Lawrence Initial induction into repo
- * Feb 19, 2013            Bryon.Lawrence Converted MVP architecture
+ * Jan, 2013               Bryon.Lawrence    Initial induction into repo.
+ * Feb 19, 2013            Bryon.Lawrence    Converted MVP architecture.
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public final class ProductEditorView implements
-        IProductEditorView<IActionBars, RCPMainUserInterfaceElement> {
+        IProductEditorView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -82,9 +84,9 @@ public final class ProductEditorView implements
     }
 
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
-        return false;
+        return Collections.emptyList();
     }
 
     @Override

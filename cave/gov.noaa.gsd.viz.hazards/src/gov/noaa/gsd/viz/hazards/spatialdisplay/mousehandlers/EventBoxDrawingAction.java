@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
@@ -39,16 +38,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  * by the forecaster becomes a vertex in the polygon. The forecaster closes the
  * polygon via a single right mouse click.
  * 
- * This is a singleton object. Only one instance is created during the lifetime
- * of the Hazard Services program.
- * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 2011                Bryon.Lawrence      Initial creation
- * 
+ * Jul 15, 2013      585   Chris.Golden        Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -59,11 +55,6 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(EventBoxDrawingAction.class);
 
-    private static EventBoxDrawingAction eventBoxDrawingAction = null;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
-
     /**
      * The PGEN drawing attributes which define how the initial hazard will
      * appear.
@@ -71,43 +62,17 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
     protected AttrDlg drawingAttributes = null;
 
     /**
-     * The presenter responsible for communicating with the spatial view and
-     * receiving events from it.
-     */
-    private SpatialPresenter spatialPresenter;
-
-    /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param ihisDrawingLayer
-     * @param spatialPresenter
      */
-    public static EventBoxDrawingAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (eventBoxDrawingAction == null) {
-            eventBoxDrawingAction = new EventBoxDrawingAction(spatialPresenter);
-        } else {
-            eventBoxDrawingAction.setSpatialPresenter(spatialPresenter);
-            eventBoxDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-        }
-
-        return eventBoxDrawingAction;
-
+    public static EventBoxDrawingAction getInstance() {
+        return new EventBoxDrawingAction();
     }
 
     /**
-     * Private constructor which enforces that this is a singleton
-     * 
-     * @param spatialPresenter
-     *            The presenter responsible for the hazard services spatial
-     *            display.
+     * Private constructor.
      */
-    private EventBoxDrawingAction(SpatialPresenter spatialPresenter) {
+    private EventBoxDrawingAction() {
         super();
-
-        this.spatialPresenter = spatialPresenter;
-        this.drawingLayer = spatialPresenter.getView().getSpatialDisplay();
 
         /*
          * Create the attribute container.
@@ -122,38 +87,9 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
     @Override
-    public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new EventBoxDrawingHandler();
-        }
-        return theHandler;
-    }
-
-    /**
-     * Setter for spatial presenter. The spatial presenter is responsible for
-     * the spatial view and display of hazard information in CAVE.
-     * 
-     * @param spatialPresenter
-     * @return
-     */
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    /**
-     * Getter for spatial presenter.
-     * 
-     * @param
-     * @return The spatial presenter being used by this mouse handler object.
-     */
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+    protected IInputHandler createMouseHandler() {
+        return new EventBoxDrawingHandler();
     }
 
     /**
@@ -251,7 +187,7 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
                         getDrawingLayer().issueRefresh();
 
                         // Indicate that this drawing action is done.
-                        spatialPresenter.getView().drawingActionComplete();
+                        getSpatialPresenter().getView().drawingActionComplete();
                     } else {
                         points.add(loc);
                         getDrawingLayer().removeGhostLine();
@@ -266,10 +202,10 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
                         SpatialDisplayAction action = new SpatialDisplayAction(
                                 "newEventArea");
                         action.setJSON(jsonString);
-                        spatialPresenter.fireAction(action);
+                        getSpatialPresenter().fireAction(action);
 
                         // Indicate that this drawing action is done.
-                        spatialPresenter.getView().drawingActionComplete();
+                        getSpatialPresenter().getView().drawingActionComplete();
                     }
                 }
 

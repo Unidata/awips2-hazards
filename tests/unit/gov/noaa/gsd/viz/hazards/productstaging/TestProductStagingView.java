@@ -14,50 +14,48 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
- * Description:  Test implementation of the 
- *               product staging view.
+ * Description: Test implementation of the product staging view.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * March 01, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Mar 01, 2013            Bryon.Lawrence      Initial creation
+ * Jul 15, 2013     585    Chris.Golden        Changed to use new version of IView.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public class TestProductStagingView implements IProductStagingView<DummyToolBarContributionManager, RCPMainUserInterfaceElement>
-{
+public class TestProductStagingView implements
+        IProductStagingView<Object, RCPMainUserInterfaceElement> {
     /**
-     * Flag indicating whether or not a product
-     * should be issued.
+     * Flag indicating whether or not a product should be issued.
      */
     private boolean toBeIssued = false;
-    
+
     /**
-     * Product information passed into the 
-     * product staging dialog.
+     * Product information passed into the product staging dialog.
      */
-    Dict productStagingInfo    = null;
-    
+    Dict productStagingInfo = null;
+
     /**
      * Continue command invocation handler.
      */
-    private ICommandInvocationHandler               continueHandler            = null;
-    
+    private ICommandInvocationHandler continueHandler = null;
+
     /**
-     * Continue command invoker. 
+     * Continue command invoker.
      */
-    private ICommandInvoker                         continueInvoker            = new ICommandInvoker()
-    {
+    private final ICommandInvoker continueInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler)
-        {
+                ICommandInvocationHandler handler) {
             continueHandler = handler;
         }
     };
@@ -71,24 +69,20 @@ public class TestProductStagingView implements IProductStagingView<DummyToolBarC
     }
 
     /**
-     * Contribute to the main UI, if desired. Note that this
-     * method may be called multiple times per <code>type
-     * </code> to (re)populate the main UI with the specified
-     * <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist
-     * from a previous call with the same <code>type</code>. 
+     * Get any contributions to the main UI that the implementation desires to
+     * make. Note that this method may be called multiple times per <code>type
+     * </code> to (re)populate the main UI with the specified <code>type</code>;
+     * implementations are responsible for cleaning up after contributed items
+     * that may exist from a previous call with the same <code>type</code>.
      * 
-     * @param  mainUI Main user interface to which to
-     *                contribute.
-     * @param  type   Type of contribution to be made to the
-     *                main user interface.
-     * @return True if items were contributed, otherwise
-     *         false.
+     * @param type
+     *            Type of contribution to be made to the main user interface.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(DummyToolBarContributionManager toolBarManager,
+    public final List<Object> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
-	return false;
+        return Collections.emptyList();
     }
 
     /**
@@ -97,10 +91,10 @@ public class TestProductStagingView implements IProductStagingView<DummyToolBarC
      */
     @Override
     public void showProductStagingDetail(boolean toBeIssued,
-	    Dict productStagingInfo) {
-	
-	this.toBeIssued = toBeIssued;
-	this.productStagingInfo = productStagingInfo;
+            Dict productStagingInfo) {
+
+        this.toBeIssued = toBeIssued;
+        this.productStagingInfo = productStagingInfo;
     }
 
     /**
@@ -109,7 +103,7 @@ public class TestProductStagingView implements IProductStagingView<DummyToolBarC
      */
     @Override
     public ICommandInvoker getContinueInvoker() {
-	return continueInvoker;
+        return continueInvoker;
     }
 
     /**
@@ -118,7 +112,7 @@ public class TestProductStagingView implements IProductStagingView<DummyToolBarC
      */
     @Override
     public boolean isToBeIssued() {
-	return toBeIssued;
+        return toBeIssued;
     }
 
     /**
@@ -127,17 +121,16 @@ public class TestProductStagingView implements IProductStagingView<DummyToolBarC
      */
     @Override
     public Dict getProductInfo() {
-	return productStagingInfo;
+        return productStagingInfo;
     }
-    
+
     /**
      * 
      * @param
      * @return
      */
-    public void continueButtonPressed ()
-    {
-	continueHandler.commandInvoked("Continue");
+    public void continueButtonPressed() {
+        continueHandler.commandInvoked("Continue");
     }
 
 }

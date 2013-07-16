@@ -9,16 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import static org.junit.Assert.*;
-
+import static org.junit.Assert.*
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction
-import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
-import gov.noaa.gsd.viz.mvp.EventBusSingleton;
-
 import spock.lang.*
 
 import com.google.common.eventbus.EventBus
-import com.google.common.eventbus.Subscribe;
+import com.google.common.eventbus.Subscribe
 
 /**
  * Description: Tests the product display dialog. Simulates 
@@ -31,7 +27,7 @@ import com.google.common.eventbus.Subscribe;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 06, 2012            bryon.lawrence      Initial creation
- * 
+ * Jul 15, 2013     585    Chris.Golden        Changed to use non-singleton event bus.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -52,7 +48,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def setupSpec() {
         testView = new TestProductEditorView();
-        eventBus = EventBusSingleton.getInstance();
+        eventBus = new EventBus();
         eventBus.register(this);
     }
 
@@ -65,7 +61,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Issue Button Pressed"() {
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView);
+        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user presses the issue button"
@@ -90,7 +86,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Dismiss Button Pressed" (){
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView);
+        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user presses the dismiss button"
@@ -113,7 +109,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Shell Closed" (){
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView);
+        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user closes the shell"
@@ -133,7 +129,13 @@ class ProductEditorTest extends spock.lang.Specification {
 
     @Subscribe
     public void productStagingActionOccurred(
-    ProductEditorAction action) {
+            ProductEditorAction action) {
         this.action = action;
+    }
+
+    private EventBus createEventBus() {
+        EventBus eventBus = new EventBus();
+        eventBus.register(this);
+        return eventBus;
     }
 }

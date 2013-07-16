@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
@@ -47,7 +46,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
- * 
+ * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -60,14 +59,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandHazardDrawingAction.class);
 
-    private static FreeHandHazardDrawingAction eventBoxDrawingAction = null;
-
-    /** The mouse handler */
-    protected IInputHandler theHandler;
-
     protected AttrDlg attrDlg = null;
-
-    private SpatialPresenter spatialPresenter;
 
     public static final String pgenType = "TornadoWarning";
 
@@ -75,33 +67,13 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param ihisDrawingLayer
-     * @param spatialPresenter
-     * @return FreeHandHazardDrawingAction
      */
-    public static FreeHandHazardDrawingAction getInstance(
-            SpatialPresenter spatialPresenter) {
-        if (eventBoxDrawingAction == null) {
-            eventBoxDrawingAction = new FreeHandHazardDrawingAction(
-                    spatialPresenter);
-        } else {
-            eventBoxDrawingAction.setSpatialPresenter(spatialPresenter);
-            eventBoxDrawingAction.setDrawingLayer(spatialPresenter.getView()
-                    .getSpatialDisplay());
-        }
-
-        return eventBoxDrawingAction;
-
+    public static FreeHandHazardDrawingAction getInstance() {
+        return new FreeHandHazardDrawingAction();
     }
 
-    private FreeHandHazardDrawingAction(SpatialPresenter spatialPresenter)
-
-    {
+    private FreeHandHazardDrawingAction() {
         super();
-
-        this.spatialPresenter = spatialPresenter;
-        this.drawingLayer = spatialPresenter.getView().getSpatialDisplay();
 
         /*
          * Create the attribute container.
@@ -115,25 +87,9 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.drawing.AbstractDrawingTool#getMouseHandler()
-     */
     @Override
-    public IInputHandler getMouseHandler() {
-        if (theHandler == null) {
-            theHandler = new FreeHandHazardDrawingHandler();
-        }
-        return theHandler;
-    }
-
-    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
-        this.spatialPresenter = spatialPresenter;
-    }
-
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
+    protected IInputHandler createMouseHandler() {
+        return new FreeHandHazardDrawingHandler();
     }
 
     public class FreeHandHazardDrawingHandler extends InputHandlerDefaultImpl {
@@ -186,7 +142,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 getDrawingLayer().issueRefresh();
 
                 // Indicate that this drawing action is done.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             } else {
                 points.add(loc);
 
@@ -226,10 +182,10 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         "newEventArea");
                 action.setJSON(jsonString);
-                spatialPresenter.fireAction(action);
+                getSpatialPresenter().fireAction(action);
 
                 // Indicate that this drawing action is done.
-                spatialPresenter.getView().drawingActionComplete();
+                getSpatialPresenter().getView().drawingActionComplete();
             }
 
             return false;

@@ -10,6 +10,9 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 
+import java.util.Map;
+
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
@@ -23,7 +26,8 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 28, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Jul 15, 2013      585   Chris.Golden        Changed so that various handlers
+ *                                             are no longer singletons.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -37,20 +41,34 @@ public class MouseHandlerFactory {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(MouseHandlerFactory.class);
 
-    /*
-     * Private member variables
+    // Private Variables
+
+    /**
+     * Spatial presenter.
      */
     private SpatialPresenter presenter = null;
 
     /**
-     * Creates an instance of the mouse handler factory.
+     * Map of mouse handler types to the corresponding handlers. As mouse
+     * handlers of different types are constructed, they are cached here.
+     */
+    private final Map<HazardServicesMouseHandlers, AbstractMouseHandler> mouseHandlersForTypes = Maps
+            .newEnumMap(HazardServicesMouseHandlers.class);
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param presenter
+     *            Spatial presenter.
      */
     public MouseHandlerFactory(SpatialPresenter presenter) {
         this.presenter = presenter;
     }
 
     /**
-     * Creates the specified mouse handler. Returns the current mouse handler if
+     * Gets the specified mouse handler. Returns the current mouse handler if
      * the requested mouse handler is not recognized.
      * 
      * @param mouseHandler
@@ -60,63 +78,64 @@ public class MouseHandlerFactory {
      * 
      * @return An instance of the requested mouse handler.
      */
-    public IInputHandler createMouseHandler(
+    public IInputHandler getMouseHandler(
             HazardServicesMouseHandlers mouseHandler, String... args) {
 
+        // Get the handler action, creating it if it does not already exist.
+        AbstractMouseHandler handler = mouseHandlersForTypes.get(mouseHandler);
+        if (handler == null) {
+            switch (mouseHandler) {
+            case SINGLE_SELECTION:
+                handler = SelectionDrawingAction.getInstance();
+                break;
+            case MULTI_SELECTION:
+                handler = MultiSelectionAction.getInstance();
+                break;
+            case SELECTION_RECTANGLE:
+                handler = SelectionRectangleDrawingAction.getInstance();
+                break;
+            case EVENTBOX_DRAWING:
+                handler = EventBoxDrawingAction.getInstance();
+                break;
+            case FREEHAND_DRAWING:
+                handler = FreeHandHazardDrawingAction.getInstance();
+                break;
+            case DRAG_DROP_DRAWING:
+                handler = DragDropDrawingAction.getInstance();
+                break;
+            case DRAW_BY_AREA:
+                handler = SelectByAreaDrawingActionGeometryResource
+                        .getInstance();
+                break;
+            default:
+                statusHandler
+                        .debug("In MouseHandlerFactor: Unrecognized mouse handler: "
+                                + mouseHandler);
+                break;
+            }
+            mouseHandlersForTypes.put(mouseHandler, handler);
+        }
+        handler.setSpatialPresenter(presenter);
+
+        // Perform any handler-specific configuration that might be required.
         switch (mouseHandler) {
-        case SINGLE_SELECTION:
-            return SelectionDrawingAction.getInstance(presenter)
-                    .getMouseHandler();
-
-        case MULTI_SELECTION:
-            return MultiSelectionAction.getInstance(presenter)
-                    .getMouseHandler();
-
-        case SELECTION_RECTANGLE:
-            return SelectionRectangleDrawingAction.getInstance(presenter)
-                    .getMouseHandler();
-
-        case EVENTBOX_DRAWING:
-            return EventBoxDrawingAction.getInstance(presenter)
-                    .getMouseHandler();
-
-        case FREEHAND_DRAWING:
-            return FreeHandHazardDrawingAction.getInstance(presenter)
-                    .getMouseHandler();
-
         case DRAG_DROP_DRAWING:
-            return DragDropDrawingAction.getInstance(presenter, args[0])
-                    .getMouseHandler();
-
-        case DRAW_BY_AREA:
-            // Make sure this geometry can be used in select by area
-            // operations.
-
-            String eventID = null;
-
-            if (args.length == 3) {
-                eventID = args[2];
-            }
-
-            if (eventID == null) {
-                return SelectByAreaDrawingActionGeometryResource.getInstance(
-                        presenter.getView().getSelectableGeometryDisplay(),
-                        presenter).getMouseHandler();
-            } else {
-                return SelectByAreaDrawingActionGeometryResource.getInstance(
-                        presenter.getView().getSelectableGeometryDisplay(),
-                        presenter, eventID).getMouseHandler();
-            }
-
-        default:
-
-            statusHandler
-                    .debug("In MouseHandlerFactor: Unrecognized mouse handler: "
-                            + mouseHandler);
+            ((DragDropDrawingAction) handler).setToolName(args[0]);
             break;
-
+        case DRAW_BY_AREA:
+            if (args.length == 3) {
+                ((SelectByAreaDrawingActionGeometryResource) handler)
+                        .setEventIdentifier(args[2]);
+            } else {
+                ((SelectByAreaDrawingActionGeometryResource) handler)
+                        .resetModifyingEvent();
+            }
+            break;
+        default:
+            break;
         }
 
-        return null;
+        // Return the mouse handler.
+        return handler.getMouseHandler();
     }
 }

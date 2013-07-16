@@ -14,11 +14,11 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -28,9 +28,10 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -49,13 +50,14 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           tool list was provided, and made
  *                                           tool menu button disabled in such
  *                                           cases.
+ * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class ToolsView implements
-        IToolsView<IActionBars, RCPMainUserInterfaceElement> {
+        IToolsView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -65,6 +67,16 @@ public class ToolsView implements
     @SuppressWarnings("unused")
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ToolsView.class);
+
+    /**
+     * Name of the file holding the image for the tools toolbar button icon.
+     */
+    private static final String TOOLS_TOOLBAR_IMAGE_FILE_NAME = "tools.png";
+
+    /**
+     * Tools toolbar button tooltip text.
+     */
+    private static final String TOOLS_TOOLBAR_BUTTON_TOOLTIP_TEXT = "Tools";
 
     // Private Classes
 
@@ -99,8 +111,8 @@ public class ToolsView implements
          */
         public ToolsPulldownAction() {
             super("");
-            setImageDescriptor(getImageDescriptorForFile("tools.png"));
-            setToolTipText("Tools");
+            setImageDescriptor(getImageDescriptorForFile(TOOLS_TOOLBAR_IMAGE_FILE_NAME));
+            setToolTipText(TOOLS_TOOLBAR_BUTTON_TOOLTIP_TEXT);
             toolsChanged();
         }
 
@@ -171,12 +183,13 @@ public class ToolsView implements
     /**
      * Array of tool names.
      */
-    private final List<String> toolNames = new ArrayList<String>();
+    private final List<String> toolNames = Lists.newArrayList();
 
     /**
      * Map of tool names to their associated identifiers.
      */
-    private final Map<String, String> toolIdentifiersForNames = new HashMap<String, String>();;
+    private final Map<String, String> toolIdentifiersForNames = Maps
+            .newHashMap();;
 
     /**
      * Tools pulldown action.
@@ -242,25 +255,18 @@ public class ToolsView implements
      * cleaning up after contributed items that may exist from a previous call
      * with the same <code>type</code>.
      * 
-     * @param mainUI
-     *            Main user interface to which to contribute.
      * @param type
      *            Type of contribution to be made to the main user interface.
-     * @return True if items were contributed, otherwise false.
+     * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final boolean contributeToMainUI(IActionBars mainUI,
+    public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
-
-            // Create the action.
             toolsPulldownAction = new ToolsPulldownAction();
-
-            // Add the action to the toolbar.
-            mainUI.getToolBarManager().add(toolsPulldownAction);
-            return true;
+            return Lists.newArrayList(toolsPulldownAction);
         }
-        return false;
+        return Collections.emptyList();
     }
 
     /**

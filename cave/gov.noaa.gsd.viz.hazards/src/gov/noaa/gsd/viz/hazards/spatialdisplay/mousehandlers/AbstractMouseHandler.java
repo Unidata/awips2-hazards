@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
@@ -19,23 +20,44 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 21, 2011            Xiangbao    Initial creation
- * 
+ * Jun 21, 2011            Xiangbao         Initial creation
+ * Jul 15, 2013      585   Chris.Golden     Changed to support subclasses
+ *                                          no longer being singletons.
  * </pre>
  * 
  * @author Xiangbao Jing
  * @version 1.0
  */
 public abstract class AbstractMouseHandler {
-    protected ToolLayer drawingLayer;
+    private ToolLayer drawingLayer;
 
-    public abstract IInputHandler getMouseHandler();
+    private SpatialPresenter spatialPresenter;
 
-    public void setDrawingLayer(ToolLayer drawingLayer) {
-        this.drawingLayer = drawingLayer;
+    private IInputHandler mouseHandler;
+
+    protected abstract IInputHandler createMouseHandler();
+
+    public IInputHandler getMouseHandler() {
+        if (mouseHandler == null) {
+            mouseHandler = createMouseHandler();
+        }
+        return mouseHandler;
+    }
+
+    protected final void setMouseHandler(IInputHandler mouseHandler) {
+        this.mouseHandler = mouseHandler;
     }
 
     public ToolLayer getDrawingLayer() {
         return drawingLayer;
+    }
+
+    public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
+        this.spatialPresenter = spatialPresenter;
+        this.drawingLayer = spatialPresenter.getView().getSpatialDisplay();
+    }
+
+    public SpatialPresenter getSpatialPresenter() {
+        return spatialPresenter;
     }
 }

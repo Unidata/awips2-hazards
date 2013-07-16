@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.List;
 
+import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
@@ -26,7 +27,9 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Tracy.L.Hansen      Initial induction into repo
- * 
+ * Jul 15, 2013      585   Chris.Golden        Changed to take an event bus so as
+ *                                             to avoid having the latter be a
+ *                                             singleton.
  * </pre>
  * 
  * @author Tracy.L.Hansen
@@ -57,12 +60,14 @@ public interface IHazardServicesModel {
      *            "displayName" OR the staticSettingsID.
      * @param dynamicSettings_json
      *            : Dynamic settings
+     * @param eventBus
+     *            : Event bus.
      * @param sessionState
      *            : saved session state to initialize from previous session
      */
     public void initialize(String selectedTime, String currentTime,
             String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, String state);
+            String caveMode, String siteID, EventBus eventBus, String state);
 
     /**
      * getState: Returns the current session state

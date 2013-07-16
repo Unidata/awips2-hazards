@@ -28,7 +28,7 @@ import com.raytheon.uf.viz.core.map.MapDescriptor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,9 +43,20 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
+     * @param mouseFactory
+     *            Mouse handler factory.
      */
     public void initialize(SpatialPresenter presenter,
             MouseHandlerFactory mouseFactory);
+
+    /**
+     * Set the setting.
+     * 
+     * @param setting
+     *            JSON string containing the mapping of key-value pairs making
+     *            up the setting.
+     */
+    public void setSetting(String setting);
 
     /**
      * Draw events on the view.

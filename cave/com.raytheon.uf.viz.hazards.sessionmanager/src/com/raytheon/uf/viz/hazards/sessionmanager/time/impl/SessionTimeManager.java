@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -43,7 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
- * 
+ * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * </pre>
  * 
  * @author bsteffen
@@ -58,7 +59,7 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     private TimeRange selectedTimeRange;
 
-    private TimeRange visibleRange;
+    private TimeRange visibleRange = new TimeRange(0, TimeUnit.DAYS.toMillis(1));
 
     public SessionTimeManager(ISessionNotificationSender notificationSender) {
         this.notificationSender = notificationSender;
