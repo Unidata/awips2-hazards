@@ -32,10 +32,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.registry.RegistryHandler;
 import com.raytheon.uf.common.registry.handler.RegistryHandlerException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.hazards.HazardNotifier;
 import com.raytheon.uf.edex.hazards.IHazardStorageManager;
 import com.vividsolutions.jts.geom.Geometry;
@@ -62,7 +64,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RegistryEventManager.class);
 
-    private HazardRegistryHandler handler;
+    private final HazardRegistryHandler handler;
 
     private static RegistryEventManager instance;
 
@@ -75,6 +77,8 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
 
     private RegistryEventManager() {
         handler = new HazardRegistryHandler();
+        handler.setRegistryHandler(EDEXUtil.getESBComponent(
+                RegistryHandler.class, "registryHandler"));
     }
 
     @Override
@@ -198,10 +202,10 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             }
             for (HazardEvent event : listEvents) {
                 if (events.containsKey(event.getEventID())) {
-                    events.get(event.getEventID()).add((HazardEvent) event);
+                    events.get(event.getEventID()).add(event);
                 } else {
                     HazardHistoryList list = new HazardHistoryList();
-                    list.add((HazardEvent) event);
+                    list.add(event);
                     events.put(event.getEventID(), list);
                 }
             }
