@@ -42,6 +42,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class HazardNotification {
 
+    public static final String HAZARD_TOPIC = "edex.alerts.hazards";
+
     public static enum NotificationType {
         STORE, UPDATE, DELETE;
     }
