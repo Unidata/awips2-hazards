@@ -19,9 +19,10 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 import gov.noaa.gsd.viz.hazards.utilities.FileUtilities;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +46,10 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 27, 2013            mnash     Initial creation
+ * Feb 27, 2013            mnash       Initial creation
+ * Jul 19, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -90,11 +94,11 @@ public abstract class AbstractRecommenderTest {
         return null;
     }
 
-    public Map<String, String> getDialogInfo(String name) {
+    public Map<String, Serializable> getDialogInfo(String name) {
         try {
             for (EventRecommender rec : engine.getInventory()) {
                 if (rec.getName().equals(name)) {
-                    Map<String, String> vals = engine.getDialogInfo(name);
+                    Map<String, Serializable> vals = engine.getDialogInfo(name);
                     return vals;
                 }
             }

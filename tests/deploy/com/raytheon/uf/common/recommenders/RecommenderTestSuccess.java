@@ -19,9 +19,14 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +45,10 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            mnash     Initial creation
+ * Feb 18, 2013            mnash       Initial creation
+ * Jul 19, 2013 1257       bsteffen    Convert recommender dialog info to use
+ *                                     Serializeables for values instead of
+ *                                     Strings.
  * 
  * </pre>
  * 
@@ -76,16 +84,16 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
     public void runGetDialogInfo() {
-        Map<String, String> vals = getDialogInfo("RecommenderSuccess");
+        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);
-        assertThat(vals.get("test"), equalTo("value"));
+        assertThat((String) vals.get("test"), equalTo("value"));
     }
 
     @Test
     public void runGetSpatialInfo() {
-        Map<String, String> vals = getDialogInfo("RecommenderSuccess");
+        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);
-        assertThat(vals.get("test"), equalTo("value"));
+        assertThat((String) vals.get("test"), equalTo("value"));
     }
 
 }
