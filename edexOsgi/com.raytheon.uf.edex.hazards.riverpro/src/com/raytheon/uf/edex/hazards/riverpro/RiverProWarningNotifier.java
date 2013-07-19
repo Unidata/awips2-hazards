@@ -17,9 +17,9 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.riverpro;
+package com.raytheon.uf.edex.hazards.riverpro;
 
-import com.raytheon.uf.common.actionregistry.IActionable;
+import com.raytheon.uf.common.actionregistry.ActionRegistry;
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
 
 /**
@@ -31,7 +31,7 @@ import com.raytheon.uf.common.dataplugin.PluginDataObject;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013            mnash     Initial creation
+ * Jul 11, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -39,18 +39,15 @@ import com.raytheon.uf.common.dataplugin.PluginDataObject;
  * @version 1.0
  */
 
-public class RiverProActionable implements IActionable {
+public class RiverProWarningNotifier {
 
-    /*
-     * (non-Javadoc)
+    /**
      * 
-     * @see
-     * com.raytheon.uf.common.actionregistry.IActionable#handleAction(com.raytheon
-     * .uf.common.actionregistry.PluginDataObject[])
      */
-    @Override
-    public void handleAction(PluginDataObject[] arguments) {
-
+    public RiverProWarningNotifier() {
     }
 
+    public void postToRegistry(PluginDataObject[] objects) {
+        ActionRegistry.getInstance().postAction("riverpro", objects);
+    }
 }

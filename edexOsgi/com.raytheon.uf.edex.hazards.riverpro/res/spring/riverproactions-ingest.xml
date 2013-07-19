@@ -1,0 +1,29 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="riverproActionableRegistry"
+		class="com.raytheon.uf.edex.hazards.riverpro.RiverProActionable" />
+
+	<bean id="riverProNotifier"
+		class="com.raytheon.uf.edex.hazards.riverpro.RiverProWarningNotifier" />
+
+	<bean factory-bean="pluginNotifier" factory-method="register">
+		<constructor-arg value="warning" />
+		<constructor-arg value="direct-vm:riverproFound" />
+	</bean>
+
+	<bean factory-bean="actionRegistry" factory-method="register">
+		<constructor-arg value="riverpro" />
+		<constructor-arg ref="riverproActionableRegistry" />
+	</bean>
+
+	<camelContext id="riverproactions-camel" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<route id="riverproFound">
+			<from uri="direct-vm:riverproFound" />
+			<bean ref="riverProNotifier" method="postToRegistry" />
+		</route>
+	</camelContext>
+</beans>

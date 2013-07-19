@@ -34,4 +34,4 @@
  * @version 1.0	
  */
 
-package com.raytheon.uf.common.hazards.riverpro;
+package com.raytheon.uf.edex.hazards.riverpro;
