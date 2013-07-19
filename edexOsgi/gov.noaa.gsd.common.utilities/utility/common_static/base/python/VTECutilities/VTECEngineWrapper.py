@@ -58,7 +58,7 @@ import json
 #------------------------------------------------------------------
 #  VTEC Engine Wrapper
 #------------------------------------------------------------------
-# This is the object that is normally instaniated.  Its main purpose is
+# This is the object that is normally instantiated.  Its main purpose is
 # to access the information required to run the VTECEngine and to
 # provide all i/o needed.
 #------------------------------------------------------------------
@@ -97,8 +97,13 @@ class VTECEngineWrapper(object):
         self.bridge = bridge
         vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
         
+        print "\nVTEC Wrapper Raw Vtec Records", vtecRecords
+        self.flush()
+        
         # Hazard Types
-        self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}'))        
+        self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
+        print "\n VTEC Wrapper Hazard Types", self.hazardTypes 
+        self.flush()      
         # ProductGeneratorTable
         ProductGeneratorTable = json.loads(self.bridge.getData('{"dataType":"productGeneratorTable"}'))
 
@@ -160,6 +165,9 @@ class VTECEngineWrapper(object):
 # Write out final results to database.  Replace with bridge code.
         #self._io.writeVtecRecords(mergedRecords)
 #END TESTING CODE
+
+        print "\nMerged vtecRecords", mergedRecords
+        self.flush()
 
         criteria = {
                     "dataType": self.vtecRecordType,

@@ -1,4 +1,4 @@
-"""
+'''
 10    Description: Provides classes and methods for creating and
 11     manipulating projections.
 12    
@@ -9,12 +9,14 @@
 17    
 18    @author Tracy.L.Hansen@noaa.gov
 19    @version 1.0
-20    """
+20    '''
 
 import cPickle, os, types, string, copy
 import sys, gzip, time, re
 import logging, UFStatusHandler
 from MapInfo import MapInfo
+from datetime import datetime
+from dateutil import tz
 
 class TextProductCommon(object):
     
@@ -38,10 +40,40 @@ class TextProductCommon(object):
         self._root = None
         self._mapInfo = MapInfo()
         self._cta = CallToActions()
-        self.logger = logging.getLogger("TextProductCommon")
+        self.logger = logging.getLogger('TextProductCommon')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
-            "gov.noaa.gsd.common.utilities", "TextProductCommon", level=logging.INFO))
-        self.logger.setLevel(logging.INFO)         
+            'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
+        self.logger.setLevel(logging.INFO)  
+                
+    def formatDatetime(self, dt, format='ISO', timeZone=None):
+        '''
+        @param dt: datetime object
+        @param format: format string e.g. '%H%M %p %Z %a %b %Y'
+        @param zone: time zone e.g.'CST7CDT'.   If None use UTC 
+        @return datetime formatted with time zone e.g. '1400 PM CST Mon Feb 2011'
+        '''
+        from_zone = tz.tzutc()
+        new_time = dt.replace(tzinfo=from_zone)
+        if timeZone is not None:
+            to_zone = tz.gettz(timeZone)
+            new_time = new_time.astimezone(to_zone)
+        if format == 'ISO':
+            return new_time.isoformat()
+        else:
+            return new_time.strftime(format)  
+ 
+    def getVal(self, dictionary, key):
+        '''
+        Convenience method to access dictionary keys and account for :skip and :editable suffixes
+        
+        @param dictionary 
+        @param key, potentially without a suffix e.g. 'info'
+        @return the key value accounting for suffixes e.g. 'info:skip'
+        '''        
+        for dictKey in [key, key+':skip', key+':editable']:
+            if dictionary.get(dictKey): 
+                return dictionary.get(dictKey)
+       
         
     def setSiteID(self, siteID):
         self._siteID = siteID
@@ -58,7 +90,7 @@ class TextProductCommon(object):
         reverse.append((lon, lat))
         return reverse
  
-    def getFormattedTime(self, ctime, format="%I%M %p %Z %a %b %d %Y",
+    def getFormattedTime(self, ctime, format='%I%M %p %Z %a %b %d %Y',
                         shiftToLocal=1, upperCase=0, stripLeading=1):
         '''
          Return a text string of the current time in the given format
@@ -71,37 +103,67 @@ class TextProductCommon(object):
         else:
             curTime = time.gmtime(ctime)
             localTime = time.localtime(ctime)
-            zoneName = time.strftime("%Z",localTime)
+            zoneName = time.strftime('%Z',localTime)
         timeStr = time.strftime(format, curTime)
         if shiftToLocal == 0:
-            timeStr = string.replace(timeStr, zoneName, "GMT")
-        if stripLeading==1 and (timeStr[0] == "0" or timeStr[0] == " "):
+            timeStr = string.replace(timeStr, zoneName, 'GMT')
+        if stripLeading==1 and (timeStr[0] == '0' or timeStr[0] == ' '):
             timeStr = timeStr[1:]
         if upperCase == 1:
             timeStr = string.upper(timeStr)
-        timeStr = string.replace(timeStr, "  ", " ")
+        timeStr = string.replace(timeStr, '  ', ' ')
         return timeStr
 
-    def formatUGC_names(self, ugcs, alphabetize=0):
+    def formatUGC_names(self, ugcs, alphabetize=False, separator='-'):
+        '''
+        For example: Saunders-Douglas-Sarpy-Lancaster-Cass-Otoe-
+        '''
         nameList = []
         for ugc in ugcs:
             entry = self._areaDictionary.get(ugc)
-            nameList.append(entry.get("ugcName", ugc))
+            nameList.append(entry.get('ugcName', ugc))
         if alphabetize:
-            nameList.sort()
-        nameString = ""
+            nameList.sort()                            
+        return self.formatNameString(nameList, separator) 
+    
+    def formatNameString(self, nameList, separator, state=None):                                   
+        nameString = ''
         for name in nameList:
-            nameString+= name + "-"
+            nameString+= name + separator
+        if state:
+            nameString = nameString.rstrip(separator) + ' ('+state+') '
         return nameString
     
+    def formatUGC_namesWithState(self, ugcs, alphabetize=False, separator='; '):
+        '''
+        For example: Citrus; Hernando; Pasco (Florida)
+        '''
+        nameList = []
+        nameStrings = []
+        curState = None
+        for ugc in ugcs:
+            entry = self._areaDictionary.get(ugc)
+            nameList.append(entry.get('ugcName', ugc))
+            if alphabetize:
+                nameList.sort()
+            stateName = entry.get('fullStateName').lower().capitalize()
+            if curState is None:
+                curState = stateName
+            elif stateName != curState:
+                nameStrings.append(self.formatNameString(nameList, separator, curState))
+                curState = stateName
+                nameList = []
+        nameStrings.append(self.formatNameString(nameList, separator, curState))
+        return self.formatNameString(nameStrings, separator = '')
+        
     def formatUGC_cities(self, ugcs, alphabetize=0):
         cityList = []
         for ugc in ugcs:
             entry = self._areaDictionary.get(ugc)
-            cityList.append(entry.get("ugcCityString", ugc))
+            cityList.append(entry.get('ugcCityString', ugc))
         if alphabetize:
             cityList.sort()
-        cityString = ""
+        cityString = ''
         for cityStr in cityList:
             cityString+= cityStr
         return cityString
@@ -113,8 +175,8 @@ class TextProductCommon(object):
         '''
         ugcStr = self.makeUGCString(ugcs)
         ddhhmmTime = self.getFormattedTime(
-              expireTime/1000, "%d%H%M", shiftToLocal=0, stripLeading=0).upper()
-        ugcStr = ugcStr + "-" + ddhhmmTime + "-"
+              expireTime/1000, '%d%H%M', shiftToLocal=0, stripLeading=0).upper()
+        ugcStr = ugcStr + '-' + ddhhmmTime + '-'
         return ugcStr
 
     def makeUGCList(self, areaList):
@@ -133,7 +195,7 @@ class TextProductCommon(object):
         for areaName in areaList:
             if areaName in areaDict.keys():
                 ugc = areaDict[areaName]['ugcCode']
-                if ugc.find("-") >= 0 or ugc.find(">") >= 0:
+                if ugc.find('-') >= 0 or ugc.find('>') >= 0:
                     ugcs = self.expandComplexUgc(ugc)
                     for ugc in ugcs:
                         areaUgcList.append((areaName, ugc))
@@ -143,7 +205,7 @@ class TextProductCommon(object):
         # Sort this list in ugc order
         areaUgcList.sort(self.ugcSort)
 
-        # Make new "parallel" lists of areaNames and ugcCodes
+        # Make new 'parallel' lists of areaNames and ugcCodes
         ugcList = []
         newAreaList = []
         for areaName, ugcCode in areaUgcList:
@@ -159,13 +221,13 @@ class TextProductCommon(object):
         '''
         # if nothing in the list, return empty string
         if len(ugcs) == 0:
-            return ""
+            return ''
         ugcList = copy.deepcopy(ugcs)
         # Remove any blank UGC lines from the list
         listsize=len(ugcList)
         j=0
         while j < listsize:
-            if ugcList[j] == "":
+            if ugcList[j] == '':
                 del ugcList[j]
             j=j+1
 
@@ -194,15 +256,15 @@ class TextProductCommon(object):
                         ugcStr = ugcStr[:len(ugcStr)-3] + ugcNumStr
                         inSeq += 1
                     else:
-                        ugcStr += ">" + ugcNumStr
+                        ugcStr += '>' + ugcNumStr
                         inSeq = 1
                 else:  # num != lastNum + 1
                     ugcStr = self.checkLastArrow(inSeq, ugcStr)
                     inSeq = 0  # reset sequence when number not in sequence
-                    ugcStr += "-" + ugcNumStr
+                    ugcStr += '-' + ugcNumStr
             else:
                 ugcStr = self.checkLastArrow(inSeq, ugcStr)
-                ugcStr += "-" + ugc
+                ugcStr += '-' + ugc
                 curState = ugcState
                 inSeq = 0   #reset sequence when switching states
             lastNum = num
@@ -220,29 +282,29 @@ class TextProductCommon(object):
             # Change the last arrow to - since
             # we only had 2 in the sequence e.g.
             # 062>063  should be   062-063
-            arrowIndex = ugcStr.rfind(">")
+            arrowIndex = ugcStr.rfind('>')
             if arrowIndex >= 0:
-                ugcStr = ugcStr[:arrowIndex] + "-" + ugcStr[arrowIndex+1:]
+                ugcStr = ugcStr[:arrowIndex] + '-' + ugcStr[arrowIndex+1:]
         return ugcStr    
  
-    def getLocations(self, polygon, ugcs, mapType, joinStr="..."):
+    def getLocations(self, polygon, ugcs, mapType, joinStr='...'):
         '''
         Provides more description
          e.g. NORTHEASTERN WELD instead of just WELD for counties
          Zones will always use the national code
         '''
         locationNames = []
-        if mapType == "counties" and polygon is not None:
+        if mapType == 'counties' and polygon is not None:
             locationNames = self._mapInfo.getDescriptions(polygon)
         if len(locationNames) <= 0:
             # This will work nationally
             locationNames = self.getUGCnames(mapType, ugcs)
-        if mapType == "publicZones":
+        if mapType == 'publicZones':
             newNames = []
             for locName in locationNames:
-                newNames.append(locName.replace(" County",""))
+                newNames.append(locName.replace(' County',''))
             locationNames = newNames                                              
-        locationList = joinStr.join(locationNames)+ "."
+        locationList = joinStr.join(locationNames)+ '.'
         return locationList.upper()
          
     def getUGCnames(self, mapType, ugcs):
@@ -252,13 +314,13 @@ class TextProductCommon(object):
          @param mapType -- counties or zones
          @param ugcs -- list of UGC codes
         '''
-        if mapType == "counties":
+        if mapType == 'counties':
             mapAtt = 'countyname'
-            code = "C"
+            code = 'C'
             filtFunc = self.filtFunc_counties
         else:
             mapAtt = 'shortname'
-            code = "Z"            
+            code = 'Z'            
             filtFunc = self.filtFunc_zones
         geometries = self._mapInfo.getMapPolygons(mapType, filtFunc=filtFunc, compareToken=ugcs)
         nameList = []
@@ -314,7 +376,7 @@ class TextProductCommon(object):
                 names.sort()
                 out.append((state, partOfState, names))
             elif len(out) == 0 or state != out[-1][0]:  #new state 
-                out.append((state, "", names))   #leave out partOfState
+                out.append((state, '', names))   #leave out partOfState
             else:    #same state as before
                 nmeList = out[-1][2]
                 for n in names:
@@ -331,76 +393,76 @@ class TextProductCommon(object):
         '''
         areaGroupLen = len(areaGroups)
         if areaGroupLen == 1:
-            areaPhrase = "A PORTION OF "
+            areaPhrase = 'A PORTION OF '
         else:
-            areaPhrase = "PORTIONS OF "
+            areaPhrase = 'PORTIONS OF '
 
         #parts of the states
         areaGroupCount = 0
         for state, partOfState, names in areaGroups:
             areaGroupCount = areaGroupCount + 1
             if areaGroupCount == 1:
-                conn = ""
+                conn = ''
             elif areaGroupCount == areaGroupLen:
-                conn = " AND "
+                conn = ' AND '
             else:
-                conn = "..."
+                conn = '...'
 
             if partOfState == '' or partOfState == ' ':
                 areaPhrase = areaPhrase + conn + state
             else:
-                areaPhrase = areaPhrase + conn + partOfState + " " + state
+                areaPhrase = areaPhrase + conn + partOfState + ' ' + state
 
         #including phrase, have to count what we have
-        d = {'INDEPENDENT CITY': ("INDEPENDENT CITY", "INDEPENDENT CITIES"),
-             'PARISH': ("PARISH", "PARISHES"),
-             'COUNTY': ("COUNTY", "COUNTIES"),
-             'ZONE':   ("AREA", "AREAS")  }
+        d = {'INDEPENDENT CITY': ('INDEPENDENT CITY', 'INDEPENDENT CITIES'),
+             'PARISH': ('PARISH', 'PARISHES'),
+             'COUNTY': ('COUNTY', 'COUNTIES'),
+             'ZONE':   ('AREA', 'AREAS')  }
         icCnt = 0
         parishCnt = 0
         zoneCnt = 0
         countyCnt = 0
         for state, partOfState, names in areaGroups:
             for name,nameType in names:
-                if nameType == "ZONE":
+                if nameType == 'ZONE':
                     zoneCnt = zoneCnt + 1
-                elif nameType == "COUNTY":
+                elif nameType == 'COUNTY':
                     countyCnt = countyCnt + 1
-                elif nameType == "INDEPENDENT CITY":
+                elif nameType == 'INDEPENDENT CITY':
                     icCnt = icCnt + 1
-                elif nameType == "PARISH":
+                elif nameType == 'PARISH':
                     parishCnt = parishCnt + 1
 
         incPhrases = []
         if zoneCnt == 1:
-            incPhrases.append("AREA")
+            incPhrases.append('AREA')
         elif zoneCnt > 1:
-            incPhrases.append("AREAS")
+            incPhrases.append('AREAS')
         if countyCnt == 1:
-            incPhrases.append("COUNTY")
+            incPhrases.append('COUNTY')
         elif countyCnt > 1:
-            incPhrases.append("COUNTIES")
+            incPhrases.append('COUNTIES')
         if icCnt == 1:
-            incPhrases.append("INDEPENDENT CITY")
+            incPhrases.append('INDEPENDENT CITY')
         elif icCnt > 1:
-            incPhrases.append("INDEPENDENT CITIES")
+            incPhrases.append('INDEPENDENT CITIES')
         if parishCnt == 1:
-            incPhrases.append("PARISH")
+            incPhrases.append('PARISH')
         elif parishCnt > 1:
-            incPhrases.append("PARISHES")
-        incPhrase = " AND ".join(incPhrases)
+            incPhrases.append('PARISHES')
+        incPhrase = ' AND '.join(incPhrases)
 
         if generalOnly:
             return areaPhrase
 
              
-        areaPhrase = areaPhrase + "...INCLUDING THE FOLLOWING " + \
-          incPhrase + "..."
+        areaPhrase = areaPhrase + '...INCLUDING THE FOLLOWING ' + \
+          incPhrase + '...'
 
         #list of the specific areas
         for i in xrange(len(areaGroups)):
             state, partOfState, names = areaGroups[i]
-            if state == "THE DISTRICT OF COLUMBIA":
+            if state == 'THE DISTRICT OF COLUMBIA':
                 areaPhrase = areaPhrase + state
             else:
                 # extract out the names
@@ -410,18 +472,18 @@ class TextProductCommon(object):
 
                 # single (don't mention state, partOfState again)
                 if len(areaGroups) == 1:
-                    phrase = "...".join(snames[0:-1])
+                    phrase = '...'.join(snames[0:-1])
                 # complex phrasing (state, partOfState, and names)
                 else:
-                    phrase = "IN "
+                    phrase = 'IN '
                     if partOfState != '' and partOfState != ' ':
                         phrase = phrase + partOfState + ' '
-                    phrase = phrase + state + "..." + "...".join(snames[0:-1])
+                    phrase = phrase + state + '...' + '...'.join(snames[0:-1])
 
                 if len(snames) == 1:
                     phrase = phrase + snames[-1]
                 else:
-                    phrase = phrase + " AND " + snames[-1]
+                    phrase = phrase + ' AND ' + snames[-1]
                 areaPhrase = areaPhrase + phrase
             if i != len(areaGroups) - 1:
                 areaPhrase = areaPhrase + '. '  #another one coming, add period
@@ -447,40 +509,40 @@ class TextProductCommon(object):
         '''
         timeWords = self.getTimingPhrase(vtecRecord, creationTime)
         if prefixSpace and len(timeWords):
-            timeWords = " " + timeWords   #add a leading space
+            timeWords = ' ' + timeWords   #add a leading space
         return timeWords
 
-    def substituteBulletedText(self, capText, defaultText, frameit="Never", lineLength=69):
+    def substituteBulletedText(self, capText, defaultText, frameit='Never', lineLength=69):
         '''
         Returns a properly formatted bulleted text based on
         the capText variable.  If capText is None or 0 length, then
-        the default text is used.  frameit can be "Never", in which
-        nothing is wrapped in framing codes, "Always" in which the 
+        the default text is used.  frameit can be 'Never', in which
+        nothing is wrapped in framing codes, 'Always' in which the 
         text (default or cap) is wrapped in framing codes, or 
-        DefaultOnly" in which just the default text is wrapped.
+        DefaultOnly' in which just the default text is wrapped.
         '''
         if capText is not None and len(capText):
             textToUse = capText
-            if frameit == "Always":
-                textToUse = "|* " + textToUse + " *|"
+            if frameit == 'Always':
+                textToUse = '|* ' + textToUse + ' *|'
         else:
             textToUse = defaultText
-            if frameit == "Always" or frameit == "DefaultOnly":
-                textToUse = "|* " + textToUse + " *|"
+            if frameit == 'Always' or frameit == 'DefaultOnly':
+                textToUse = '|* ' + textToUse + ' *|'
 
         # add bullet codes
-        textToUse = "* " + textToUse
+        textToUse = '* ' + textToUse
 
         # format it
         return self.indentText(textToUse, indentFirstString = '',
           indentNextString = '  ', maxWidth=lineLength,
-          breakStrings=[" ", "-", "..."])
+          breakStrings=[' ', '-', '...'])
 
     def decodeBulletedText(self, prevText):
         '''
         Returns the bullet paragraph text or None, returns the
         regular text after the bullets.  The afterText is text up to
-        the next bullet or up to "THE NATIONAL WEATHER SERVICE". Note
+        the next bullet or up to 'THE NATIONAL WEATHER SERVICE'. Note
         that this only correctly handles the 1st set of entries in 
         a segment, thus double events will only decode the first set
         of bullets and text. The multipleRecords is set to 1 in the
@@ -506,7 +568,7 @@ class TextProductCommon(object):
 
         # find only the bulleted text, defined by the double line feed term.
         # of the text
-        regText = ""   #regular text after bullets
+        regText = ''   #regular text after bullets
         for x in xrange(1, len(bullets)):
             index = bullets[x].find('\n\n')
             if index != -1:
@@ -525,7 +587,7 @@ class TextProductCommon(object):
             if lines[x].find('THE NATIONAL WEATHER SERVICE') == 0:
                 lines = lines[0:x]  #eliminate following lines
                 break
-        regText = ("\n").join(lines)
+        regText = ('\n').join(lines)
 
         # now clean up the text
         for x in xrange(len(bullets)):
@@ -559,19 +621,19 @@ class TextProductCommon(object):
 
     ######## From GHG DiscretePhrases
     def messageTESTcheck(self, sessionDict, str):
-        if sessionDict.get("testMode", 0):
+        if sessionDict.get('testMode', 0):
             lines = str.split('\n')
-            str = "...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n"
+            str = '...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
             for x in xrange(len(lines)-1):   #-1 for trailing new line
                 line = lines[x]
 
                 #beginning of line
-                if line.find("...") == 0:
-                    line = line[0:3] + "TEST " + line[3:]
+                if line.find('...') == 0:
+                    line = line[0:3] + 'TEST ' + line[3:]
                 #end of line
-                index = line.rfind("...")
+                index = line.rfind('...')
                 if index != 0 and index == len(line)-3:
-                    line = line[0:-3] + " TEST..." 
+                    line = line[0:-3] + ' TEST...' 
 
                 lines[x] = line
 
@@ -589,8 +651,8 @@ class TextProductCommon(object):
             return 1
         
         #2nd by action
-        actionCodeOrder = ["CAN", "EXP", "UPG", "NEW", "EXB", "EXA",
-                           "EXT", "ROU", "CON"]
+        actionCodeOrder = ['CAN', 'EXP', 'UPG', 'NEW', 'EXB', 'EXA',
+                           'EXT', 'ROU', 'CON']
         try:
             aIndex = actionCodeOrder.index(r1['act'])
         except:
@@ -629,8 +691,8 @@ class TextProductCommon(object):
         return 0    
         
     def regularSortHazardAlg(self, r1, r2):
-        actActions = ["NEW", "EXB", "EXA", "EXT", "ROU", "CON"]
-        inactActions = ["CAN", "EXP", "UPG"]
+        actActions = ['NEW', 'EXB', 'EXA', 'EXT', 'ROU', 'CON']
+        inactActions = ['CAN', 'EXP', 'UPG']
         actionCodeOrder = actActions + inactActions
 
         # 1st by general action category
@@ -689,32 +751,32 @@ class TextProductCommon(object):
          specified vtecRecord.
         '''
         if not vtecRecord.has_key('act'):
-            self.logger.error("Error!  No field act in vtec record.")
-            return "<noaction>"
+            self.logger.error('Error!  No field act in vtec record.')
+            return '<noaction>'
             
         actionCode = vtecRecord['act']
-        if actionCode in ["NEW", "EXA", "EXB"]:
-            return "in effect"
-        elif actionCode == "CON":
-            return "remains in effect"
-        elif actionCode == "CAN":
-            return "is cancelled"
-        elif actionCode == "EXT":
-            return "now in effect"
-        elif actionCode == "EXP":
+        if actionCode in ['NEW', 'EXA', 'EXB']:
+            return 'in effect'
+        elif actionCode == 'CON':
+            return 'remains in effect'
+        elif actionCode == 'CAN':
+            return 'is cancelled'
+        elif actionCode == 'EXT':
+            return 'now in effect'
+        elif actionCode == 'EXP':
             deltaTime = issuanceTime - vtecRecord['endTime']
             if deltaTime >= 0:
-                return "has expired"
+                return 'has expired'
             else:
-                return "will expire"
-        elif actionCode == "UPG":
-            return "no longer in effect"
+                return 'will expire'
+        elif actionCode == 'UPG':
+            return 'no longer in effect'
         else:
-            self.logger.info(actionCode + "not recognized in actionControlWord.")
-            return "<actionControlWord>"
+            self.logger.info(actionCode + 'not recognized in actionControlWord.')
+            return '<actionControlWord>'
 
     def getHeadlines(self, vtecRecords, productID, creationTime):
-        headlineStr = ""
+        headlineStr = ''
         hList = copy.deepcopy(vtecRecords)
         if len(hList):
             if productID in ['CWF','NSH','OFF','GLF']:
@@ -726,7 +788,7 @@ class TextProductCommon(object):
             vtecRecord = hList[0]
             
             # Can't make phrases with vtecRecords with no 'hdln' entry 
-            if vtecRecord['hdln'] == "":
+            if vtecRecord['hdln'] == '':
                 hList.remove(vtecRecord)
                 continue
 
@@ -741,9 +803,9 @@ class TextProductCommon(object):
             #hazStr = self.convertToLower(hazStr)
 
             # if the vtecRecord is a convective watch, tack on the etn
-            phenSig = vtecRecord['phen'] + "." + vtecRecord['sig']
-            if phenSig in ["TO.A", "SV.A"]:
-                hazStr = hazStr + " " + str(vtecRecord["etn"])
+            phenSig = vtecRecord['phen'] + '.' + vtecRecord['sig']
+            if phenSig in ['TO.A', 'SV.A']:
+                hazStr = hazStr + ' ' + str(vtecRecord['etn'])
 
             # add on the action
             actionWords = self.actionControlWord(vtecRecord, creationTime)
@@ -759,7 +821,7 @@ class TextProductCommon(object):
                 localStr = self.hazard_hook(
                   None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
                   vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
-                headlineStr = headlineStr + "..." + hazStr + localStr + "...\n"
+                headlineStr = headlineStr + '...' + hazStr + localStr + '...\n'
                 
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
@@ -776,7 +838,7 @@ class TextProductCommon(object):
             stype, etype = self.getTimingType(vtecRecord, issueTime)
 
         # Get the time zones for the areas
-        timeZones = self.hazardTimeZones(vtecRecord['officeid'])
+        timeZones = self.hazardTimeZones(vtecRecord['id'])
 
         # Get the starting time
         stext = []
@@ -787,25 +849,25 @@ class TextProductCommon(object):
                 if info is not None and info not in stext:
                     stext.append(info)
             stype = newType
-        elif stype == "EXPLICIT":
+        elif stype == 'EXPLICIT':
             for tz in timeZones:
                 info = self.timingWordTableEXPLICIT(issueTime, 
                   vtecRecord['startTime'], tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
-        elif stype == "FUZZY4":
+        elif stype == 'FUZZY4':
             for tz in timeZones:
                 info = self.timingWordTableFUZZY4(issueTime, 
                   vtecRecord['startTime'], tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
-        elif stype == "FUZZY8":
+        elif stype == 'FUZZY8':
             for tz in timeZones:
                 info = self.timingWordTableFUZZY8(issueTime, 
                   vtecRecord['startTime'], tz, 'startTime')
                 if info not in stext:
                     stext.append(info)
-        elif stype == "DAY_NIGHT_ONLY":
+        elif stype == 'DAY_NIGHT_ONLY':
             for tz in timeZones:
                 info = self.timingWordTableDAYNIGHT(issueTime, 
                   vtecRecord['startTime'], tz, 'startTime')
@@ -821,25 +883,25 @@ class TextProductCommon(object):
                 if info is not None and info not in etext:
                     etext.append(info)
             etype = newType
-        elif etype == "EXPLICIT":
+        elif etype == 'EXPLICIT':
             for tz in timeZones:
                 info = self.timingWordTableEXPLICIT(issueTime, 
                   vtecRecord['endTime'], tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
-        elif etype == "FUZZY4":
+        elif etype == 'FUZZY4':
             for tz in timeZones:
                 info = self.timingWordTableFUZZY4(issueTime, 
                   vtecRecord['endTime'], tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
-        elif etype == "FUZZY8":
+        elif etype == 'FUZZY8':
             for tz in timeZones:
                 info = self.timingWordTableFUZZY8(issueTime, 
                   vtecRecord['endTime'], tz, 'endTime')
                 if info not in etext:
                     etext.append(info)
-        elif etype == "DAY_NIGHT_ONLY":
+        elif etype == 'DAY_NIGHT_ONLY':
             for tz in timeZones:
                 info = self.timingWordTableDAYNIGHT(issueTime, 
                   vtecRecord['endTime'], tz, 'endTime')
@@ -880,11 +942,11 @@ class TextProductCommon(object):
     
         # record in the past, ignore
         if deltaTend <= 0:
-            return ("NONE", "NONE")
+            return ('NONE', 'NONE')
     
         # upgrades and cancels
         if vtecRecord['act'] in ['UPG', 'CAN']:
-            return ("NONE", "NONE")   #upgrades/cancels never get timing phrases
+            return ('NONE', 'NONE')   #upgrades/cancels never get timing phrases
     
         # expirations EXP codes are always expressed explictly, only end time
         if vtecRecord['act'] == 'EXP':
@@ -906,7 +968,7 @@ class TextProductCommon(object):
             return ('NONE', 'NONE')
     
         # special marine case?
-        marineHazList = ["SC.Y", "SW.Y", "GL.W", "SR.W", 'HF.W', 'BW.Y',
+        marineHazList = ['SC.Y', 'SW.Y', 'GL.W', 'SR.W', 'HF.W', 'BW.Y',
           'UP.W', 'UP.Y', 'RB.Y', 'SE.W', 'SI.Y']  #treat like watches
         marinePils = ['CWF', 'OFF', 'NSH', 'GLF']  #specific marine pils
         oconusSites = ['PGUM','PHFO','PAFC','PAJK','PAFG']
@@ -1067,61 +1129,64 @@ class TextProductCommon(object):
             locEnd = None
         else:
             locStart, locEnd = headlinesTiming
-            if locStart == "FUZZY":
-                locStart = "FUZZY4"
-            if locEnd == "FUZZY":
-                locEnd = "FUZZY4"
+            if locStart == 'FUZZY':
+                locStart = 'FUZZY4'
+            if locEnd == 'FUZZY':
+                locEnd = 'FUZZY4'
         return locStart, locEnd
 
     def headlinesTiming(self, tree, node, key, timeRange, areaLabel, issuanceTime):
         # Return
-        #  "startPhraseType" and "endPhraseType"
+        #  'startPhraseType' and 'endPhraseType'
         #   Each can be one of these phraseTypes: 
-        #      "EXPLICIT" will return words such as "5 PM"
-        #      "FUZZY4" will return words such as "THIS EVENING"
-        #      "DAY_NIGHT_ONLY" use only weekday or weekday "NIGHT" e.g.
-        #         "SUNDAY" or "SUNDAY NIGHT" or "TODAY" or "TONIGHT"
+        #      'EXPLICIT' will return words such as '5 PM'
+        #      'FUZZY4' will return words such as 'THIS EVENING'
+        #      'DAY_NIGHT_ONLY' use only weekday or weekday 'NIGHT' e.g.
+        #         'SUNDAY' or 'SUNDAY NIGHT' or 'TODAY' or 'TONIGHT'
         #         Note: You will probably want to set both the
         #         startPhraseType and endPhraseType to DAY_NIGHT_ONLY to
         #         have this work correctly.
-        #      "NONE" will result in no words
+        #      'NONE' will result in no words
         #   OR a method which takes arguments:
         #        issueTime, eventTime, timeZone, and timeType
         #     and returns:
         #        phraseType, (hourStr, hourTZstr, description)
-        #     You can use "timingWordTableFUZZY8" as an example to
+        #     You can use 'timingWordTableFUZZY8' as an example to
         #     write your own method.
         # 
         # If you simply return None, no timing words will be used.
 
         # Note that you can use the information given to determine which
-        # timing phrases to use. In particular, the "key" is the Hazard
+        # timing phrases to use. In particular, the 'key' is the Hazard
         # key so different local headlines can use different timing.
         #  
-        startPhraseType = "FUZZY"
-        endPhraseType = "FUZZY"
+        startPhraseType = 'FUZZY'
+        endPhraseType = 'FUZZY'
 
         #Example code -- NOTE: need to convert to unixTime manually
         #startTime = timeRange.startTime().unixTime()
         #if startTime <= issuanceTime + 12 * 3600:   # 12 hours past issuance
-            #startPhraseType = "EXPLICIT"
+            #startPhraseType = 'EXPLICIT'
         #endTime = timeRange.endTime().unixTime()
         #if endTime <= issuanceTime + 12 * 3600:   # 12 hours past issuance
-            #endPhraseType = "EXPLICIT"
+            #endPhraseType = 'EXPLICIT'
 
         #return startPhraseType, endPhraseType
         return None, None
     
     def hazardTimeZones(self, areaList):
-        #returns list of time zones for the starting time
-        #and list of time zones for the ending time.  The areaList provides
-        #a complete list of areas for this headline. startT, endT are the
-        #hazard times.
+        '''
+        Returns list of time zones for the starting time
+        and list of time zones for the ending time.  
+        
+        The areaList provides a complete list of areas for this headline. 
+        startT, endT are the hazard times.
+        '''
         
         # get this time zone
-        thisTimeZone = os.environ.get("TZ")
+        thisTimeZone = os.environ.get('TZ')
         if thisTimeZone is None:
-            thisTimeZone = "GMT"
+            thisTimeZone = 'GMT'
             
         zoneList = []
         areaDict = self._areaDictionary
@@ -1130,13 +1195,13 @@ class TextProductCommon(object):
         for areaName in areaList:
             if areaName in areaDict.keys():
                 entry = areaDict[areaName]
-                if not entry.has_key("ugcTimeZone"): #add your site id
+                if not entry.has_key('ugcTimeZone'): #add your site id
                     if thisTimeZone not in zoneList:
                         zoneList.append(thisTimeZone)
                     continue  # skip it
-                timeZoneList = entry["ugcTimeZone"]
-                if type(timeZoneList) == types.StringType:  # a single value
-                    timeZoneList = [timeZoneList]   # make it into a list
+                timeZoneList = entry['ugcTimeZone']
+                if type(timeZoneList) is not types.ListType:  # a single value
+                    timeZoneList = [str(timeZoneList)]   # make it into a list
                 for timeZone in timeZoneList:
                     if timeZone not in zoneList:
                         zoneList.append(timeZone)
@@ -1157,6 +1222,10 @@ class TextProductCommon(object):
 
         return zoneList
     
+    def flush(self):
+        ''' Flush the print buffer '''
+        os.sys.__stdout__.flush()    
+    
     def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone, 
       timeType='startTime'):
         #returns (timeValue, timeZone, descriptiveWord).  
@@ -1165,33 +1234,33 @@ class TextProductCommon(object):
 
         HR=3600
         sameDay = [
-          (0*HR,       6*HR,     "early this morning"), #midnght-559am
-          (6*HR,      12*HR-1,   "this morning"),       #600am-1159am
-          (12*HR,     12*HR+1,   "today"),               #noon
-          (12*HR+1,   18*HR-1,   "this afternoon"),     #1201pm-559pm
-          (18*HR,     24*HR,     "this evening")]       #6pm-1159pm
+          (0*HR,       6*HR,     'early this morning'), #midnght-559am
+          (6*HR,      12*HR-1,   'this morning'),       #600am-1159am
+          (12*HR,     12*HR+1,   'today'),               #noon
+          (12*HR+1,   18*HR-1,   'this afternoon'),     #1201pm-559pm
+          (18*HR,     24*HR,     'this evening')]       #6pm-1159pm
 
         nextDay = [
-          (0*HR,       0*HR+1,   "tonight"),            #midnght
-          (0*HR,      24*HR,     "<dayOfWeek>"),]       #midnght-1159pm
+          (0*HR,       0*HR+1,   'tonight'),            #midnght
+          (0*HR,      24*HR,     '<dayOfWeek>'),]       #midnght-1159pm
 
         subsequentDay = [
-          (0*HR,       0*HR+1,   "<dayOfWeek-1> Night"),  #midnght
-          (0*HR,      24*HR,     "<dayOfWeek>"),]         #midnght-1159pm
+          (0*HR,       0*HR+1,   '<dayOfWeek-1> Night'),  #midnght
+          (0*HR,      24*HR,     '<dayOfWeek>'),]         #midnght-1159pm
 
 
         #determine local time
-        myTimeZone = os.environ.get("TZ", "GMT")  # save the defined time zone
-        os.environ["TZ"] = timezone    # set the new time zone
+        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
+        os.environ['TZ'] = timezone    # set the new time zone
         ltissue = time.localtime(issueTime/1000) # issuance local time
         ltevent = time.localtime(eventTime/1000) # event local time
         #get the hour string (e.g., 8 PM)
-        hourStr = time.strftime("%I %p", ltevent)
+        hourStr = time.strftime('%I %p', ltevent)
         if hourStr[0] == '0':
             hourStr = hourStr[1:]  #eliminate leading zero
 
         #get the time zone (e.g., MDT)
-        hourTZstr = time.strftime("%Z", ltevent)
+        hourTZstr = time.strftime('%Z', ltevent)
 
         #determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  #julian day
@@ -1199,7 +1268,7 @@ class TextProductCommon(object):
             diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
 
         #get description time phrase
-        description = "<day>"
+        description = '<day>'
         hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
@@ -1228,20 +1297,20 @@ class TextProductCommon(object):
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
                 dowMinusOne = 6   #week wraparound
-            description = string.replace(description, "<dayOfWeek>",
+            description = string.replace(description, '<dayOfWeek>',
               self.asciiDayOfWeek(dow))   #day of week
-            description = string.replace(description, "<dayOfWeek-1>",
+            description = string.replace(description, '<dayOfWeek-1>',
               self.asciiDayOfWeek(dowMinusOne))   #day of week
 
         #special cases NOON
-        if hourStr == "12 PM" and description == "today":
-            hourStr = "Noon"
+        if hourStr == '12 PM' and description == 'today':
+            hourStr = 'Noon'
 
         #special cases MIDNIGHT
-        if hourStr == "12 AM":
-            hourStr = "Midnight"
+        if hourStr == '12 AM':
+            hourStr = 'Midnight'
 
-        os.environ["TZ"] = myTimeZone  # reset the defined time zone
+        os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
         return (hourStr, hourTZstr, description)
 
@@ -1254,30 +1323,30 @@ class TextProductCommon(object):
         #table is local time, start, end, descriptive phrase
         HR=3600
         sameDay = [
-          (0*HR,       6*HR,     "early this morning"), #midnght-559am
-          (6*HR,      12*HR,     "this morning"),       #600am-noon
-          (12*HR,     18*HR,     "this afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "this evening")]       #6pm-1159pm
+          (0*HR,       6*HR,     'early this morning'), #midnght-559am
+          (6*HR,      12*HR,     'this morning'),       #600am-noon
+          (12*HR,     18*HR,     'this afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     'this evening')]       #6pm-1159pm
 
         nextDay = [
-          (0*HR,       0*HR,     "this evening"),              #midnght tonight
-          (0*HR,       6*HR,     "late tonight"),              #midnght-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> evening")]       #6pm-1159pm
+          (0*HR,       0*HR,     'this evening'),              #midnght tonight
+          (0*HR,       6*HR,     'late tonight'),              #midnght-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
 
         subsequentDay = [
-          (0*HR,       0*HR,     "<dayOfWeek-1> evening"),     #midnght ystdy 
-          (0*HR,       6*HR,     "late <dayOfWeek-1> night"),  #midnght-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> evening")]       #6pm-1159pm
+          (0*HR,       0*HR,     '<dayOfWeek-1> evening'),     #midnght ystdy 
+          (0*HR,       6*HR,     'late <dayOfWeek-1> night'),  #midnght-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
 
 
         #determine local time
        
-        myTimeZone = os.environ.get("TZ", "GMT")  # save the defined time zone
-        os.environ["TZ"] = timeZone    # set the new time zone        
+        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
+        os.environ['TZ'] = timeZone    # set the new time zone        
     
         ltissue = time.localtime(issueTime/1000) # issuance local time
         ltevent = time.localtime(eventTime/1000) # event local time
@@ -1288,7 +1357,7 @@ class TextProductCommon(object):
             diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
 
         #get description time phrase
-        description = "<day>"
+        description = '<day>'
         hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
@@ -1317,12 +1386,12 @@ class TextProductCommon(object):
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
                 dowMinusOne = 6   #week wraparound
-            description = string.replace(description, "<dayOfWeek>",
+            description = string.replace(description, '<dayOfWeek>',
               self.asciiDayOfWeek(dow))   #day of week
-            description = string.replace(description, "<dayOfWeek-1>",
+            description = string.replace(description, '<dayOfWeek-1>',
               self.asciiDayOfWeek(dowMinusOne))   #day of week
 
-        os.environ["TZ"] = myTimeZone  # reset the defined time zone
+        os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
         hourStr = None
         hourTZstr = None
@@ -1337,47 +1406,47 @@ class TextProductCommon(object):
   
         HR=3600
         sameDay = [
-          (0*HR,       3*HR,     "late <dayOfWeek-1> night"), #midnght-259am
-          (3*HR,       6*HR,     "early this morning"),    #300am-559am
-          (6*HR,       9*HR,     "this morning"),          #600am-859am
-          (9*HR,      12*HR,     "late this morning"),     #900am-1159am
-          (12*HR,     15*HR,     "early this afternoon"),  #noon-259pm
-          (15*HR,     18*HR,     "late this afternoon"),   #300pm-559pm
-          (18*HR,     21*HR,     "this evening"),          #600pm-859pm
-          (21*HR,     24*HR,     "tonight")]               #900pm-1159pm
+          (0*HR,       3*HR,     'late <dayOfWeek-1> night'), #midnght-259am
+          (3*HR,       6*HR,     'early this morning'),    #300am-559am
+          (6*HR,       9*HR,     'this morning'),          #600am-859am
+          (9*HR,      12*HR,     'late this morning'),     #900am-1159am
+          (12*HR,     15*HR,     'early this afternoon'),  #noon-259pm
+          (15*HR,     18*HR,     'late this afternoon'),   #300pm-559pm
+          (18*HR,     21*HR,     'this evening'),          #600pm-859pm
+          (21*HR,     24*HR,     'tonight')]               #900pm-1159pm
 
         nextDayStart = [
-          (0*HR,       3*HR,     "late <dayOfWeek-1> night"),  #midnght-259am
-          (3*HR,       6*HR,     "early <dayOfWeek> morning"), #300am-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> evening")]       #6pm-1159pm
+          (0*HR,       3*HR,     'late <dayOfWeek-1> night'),  #midnght-259am
+          (3*HR,       6*HR,     'early <dayOfWeek> morning'), #300am-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
 
         nextDayEnd = [
-          (0*HR,       0*HR,     "tonight"),                   #midnght tonight
-          (0*HR,       3*HR,     "late <dayOfWeek-1> night"), #midnght-259am
-          (3*HR,       6*HR,     "early <dayOfWeek> morning"), #300am-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> night")]         #6pm-1159pm
+          (0*HR,       0*HR,     'tonight'),                   #midnght tonight
+          (0*HR,       3*HR,     'late <dayOfWeek-1> night'), #midnght-259am
+          (3*HR,       6*HR,     'early <dayOfWeek> morning'), #300am-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> night')]         #6pm-1159pm
 
         subsequentDayStart =  [
-          (0*HR,       6*HR,     "late <dayOfWeek-1> night"),  #midnght-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> evening")]       #6pm-1159pm
+          (0*HR,       6*HR,     'late <dayOfWeek-1> night'),  #midnght-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> evening')]       #6pm-1159pm
 
         subsequentDayEnd = [
-          (0*HR,       0*HR,     "<dayOfWeek-1> night"),       #midnght tonight
-          (0*HR,       6*HR,     "early <dayOfWeek> morning"), #midnght-559am
-          (6*HR,      12*HR,     "<dayOfWeek> morning"),       #600am-noon
-          (12*HR,     18*HR,     "<dayOfWeek> afternoon"),     #1200pm-559pm
-          (18*HR,     24*HR,     "<dayOfWeek> night")]         #6pm-1159pm
+          (0*HR,       0*HR,     '<dayOfWeek-1> night'),       #midnght tonight
+          (0*HR,       6*HR,     'early <dayOfWeek> morning'), #midnght-559am
+          (6*HR,      12*HR,     '<dayOfWeek> morning'),       #600am-noon
+          (12*HR,     18*HR,     '<dayOfWeek> afternoon'),     #1200pm-559pm
+          (18*HR,     24*HR,     '<dayOfWeek> night')]         #6pm-1159pm
 
 
         #determine local time
-        myTimeZone = os.environ.get("TZ", "GMT")  # save the defined time zone
-        os.environ["TZ"] = timeZone    # set the new time zone
+        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
+        os.environ['TZ'] = timeZone    # set the new time zone
         ltissue = time.localtime(issueTime/1000) # issuance local time
         ltevent = time.localtime(eventTime/1000) # event local time
 
@@ -1387,7 +1456,7 @@ class TextProductCommon(object):
             diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
 
         #get description time phrase
-        description = "<day>"
+        description = '<day>'
         hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
@@ -1424,12 +1493,12 @@ class TextProductCommon(object):
         dowMinusOne = ltevent[6] - 1
         if dowMinusOne < 0:
             dowMinusOne = 6   #week wraparound
-        description = string.replace(description, "<dayOfWeek>",
+        description = string.replace(description, '<dayOfWeek>',
           self.asciiDayOfWeek(dow))   #day of week
-        description = string.replace(description, "<dayOfWeek-1>",
+        description = string.replace(description, '<dayOfWeek-1>',
           self.asciiDayOfWeek(dowMinusOne))   #day of week
 
-        os.environ["TZ"] = myTimeZone  # reset the defined time zone
+        os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
         hourStr = None
         hourTZstr = None
@@ -1443,23 +1512,23 @@ class TextProductCommon(object):
         #table is local time, start, end, descriptive phrase
         HR=3600
         sameDay = [
-          (0*HR,         self.DAY()*HR,   "early today"), #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, "today"),       #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        "tonight")]     #6pm-midnight
+          (0*HR,         self.DAY()*HR,   'early today'), #midnght-559am
+          (self.DAY()*HR,   self.NIGHT()*HR, 'today'),       #600am-6pm
+          (self.NIGHT()*HR, 24*HR,        'tonight')]     #6pm-midnight
 
         nextDay = [
-          (0*HR,         self.DAY()*HR,   "tonight"),           #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, "<dayOfWeek>"),       #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        "<dayOfWeek> night")] #6pm-midnight
+          (0*HR,         self.DAY()*HR,   'tonight'),           #midnght-559am
+          (self.DAY()*HR,   self.NIGHT()*HR, '<dayOfWeek>'),       #600am-6pm
+          (self.NIGHT()*HR, 24*HR,        '<dayOfWeek> night')] #6pm-midnight
 
         subsequentDay = [
-          (0*HR,         self.DAY()*HR,   "<dayOfWeek-1> night"), #midnght-559am
-          (self.DAY()*HR,   self.NIGHT()*HR, "<dayOfWeek>"),         #600am-6pm
-          (self.NIGHT()*HR, 24*HR,        "<dayOfWeek> night")]   #6pm-midnight
+          (0*HR,         self.DAY()*HR,   '<dayOfWeek-1> night'), #midnght-559am
+          (self.DAY()*HR,   self.NIGHT()*HR, '<dayOfWeek>'),         #600am-6pm
+          (self.NIGHT()*HR, 24*HR,        '<dayOfWeek> night')]   #6pm-midnight
 
         #determine local time
-        myTimeZone = os.environ.get("TZ", "GMT")  # save the defined time zone
-        os.environ["TZ"] = timeZone    # set the new time zone
+        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
+        os.environ['TZ'] = timeZone    # set the new time zone
         ltissue = time.localtime(issueTime/1000) # issuance local time
         ltevent = time.localtime(eventTime/1000) # event local time
 
@@ -1469,7 +1538,7 @@ class TextProductCommon(object):
             diffDays = ltevent[2] + 31 - ltissue[2]  #day of month
 
         #get description time phrase
-        description = "<day>"
+        description = '<day>'
         hourmin = ltevent[3]*3600 + ltevent[4]*60   #hour, minute
         if diffDays == 0:
             for (startT, endT, desc) in sameDay:
@@ -1498,12 +1567,12 @@ class TextProductCommon(object):
             dowMinusOne = ltevent[6] - 1
             if dowMinusOne < 0:
                 dowMinusOne = 6   #week wraparound
-            description = string.replace(description, "<dayOfWeek>",
+            description = string.replace(description, '<dayOfWeek>',
               self.asciiDayOfWeek(dow))   #day of week
-            description = string.replace(description, "<dayOfWeek-1>",
+            description = string.replace(description, '<dayOfWeek-1>',
               self.asciiDayOfWeek(dowMinusOne))   #day of week
 
-        os.environ["TZ"] = myTimeZone  # reset the defined time zone
+        os.environ['TZ'] = myTimeZone  # reset the defined time zone
 
         hourStr = None
         hourTZstr = None
@@ -1516,94 +1585,94 @@ class TextProductCommon(object):
         if number >= 0 and number < 7:
             return days[number]
         else:
-            return "?" + `number` + "?"
+            return '?' + `number` + '?'
     
     def getTimingConnectorType(self, timingType, action):
         '''
          Returns the start and end prefix for the given start and end phrase
          type and action code.
         '''
-        d = {("NONE", "NONE"):           (None, None),
-             ("NONE", "EXPLICIT"):       (None, "until"),
-             ("NONE", "FUZZY4"):         (None, "through"),
-             ("NONE", "FUZZY8"):         (None, "through"),
-             ("EXPLICIT", "EXPLICIT"):   ("from", "to"),
-             ("EXPLICIT", "FUZZY4"):     ("from", "through"),
-             ("EXPLICIT", "FUZZY8"):     ("from", "through"),
-             ("FUZZY4", "FUZZY4"):       ("from", "through"),
-             ("FUZZY4", "FUZZY8"):       ("from", "through"),
-             ("FUZZY8", "FUZZY4"):       ("from", "through"),
-             ("FUZZY8", "FUZZY8"):       ("from", "through"),
-             ("NONE", "DAY_NIGHT_ONLY"):          (None, "through"),
-             ("EXPLICIT", "DAY_NIGHT_ONLY"):      ("from", "through"),
-             ("FUZZY4", "DAY_NIGHT_ONLY"):        ("from", "through"),
-             ("FUZZY8", "DAY_NIGHT_ONLY"):        ("from", "through"),
-             ("DAY_NIGHT_ONLY", "DAY_NIGHT_ONLY"): ("from", "through"),
-             ("DAY_NIGHT_ONLY", "NONE"):          ("from", None),
-             ("DAY_NIGHT_ONLY", "EXPLICIT"):      ("from", "to"),
-             ("DAY_NIGHT_ONLY", "FUZZY4"):        ("from", "through"),
-             ("DAY_NIGHT_ONLY", "FUZZY8"):        ("from", "through"),
+        d = {('NONE', 'NONE'):           (None, None),
+             ('NONE', 'EXPLICIT'):       (None, 'until'),
+             ('NONE', 'FUZZY4'):         (None, 'through'),
+             ('NONE', 'FUZZY8'):         (None, 'through'),
+             ('EXPLICIT', 'EXPLICIT'):   ('from', 'to'),
+             ('EXPLICIT', 'FUZZY4'):     ('from', 'through'),
+             ('EXPLICIT', 'FUZZY8'):     ('from', 'through'),
+             ('FUZZY4', 'FUZZY4'):       ('from', 'through'),
+             ('FUZZY4', 'FUZZY8'):       ('from', 'through'),
+             ('FUZZY8', 'FUZZY4'):       ('from', 'through'),
+             ('FUZZY8', 'FUZZY8'):       ('from', 'through'),
+             ('NONE', 'DAY_NIGHT_ONLY'):          (None, 'through'),
+             ('EXPLICIT', 'DAY_NIGHT_ONLY'):      ('from', 'through'),
+             ('FUZZY4', 'DAY_NIGHT_ONLY'):        ('from', 'through'),
+             ('FUZZY8', 'DAY_NIGHT_ONLY'):        ('from', 'through'),
+             ('DAY_NIGHT_ONLY', 'DAY_NIGHT_ONLY'): ('from', 'through'),
+             ('DAY_NIGHT_ONLY', 'NONE'):          ('from', None),
+             ('DAY_NIGHT_ONLY', 'EXPLICIT'):      ('from', 'to'),
+             ('DAY_NIGHT_ONLY', 'FUZZY4'):        ('from', 'through'),
+             ('DAY_NIGHT_ONLY', 'FUZZY8'):        ('from', 'through'),
             }
 
         # special case for expirations.
         if action == 'EXP':
-            return (None, "AT")
+            return (None, 'AT')
 
-        return d.get(timingType, ("<startPrefix?>", "<endPrefix?>"))
+        return d.get(timingType, ('<startPrefix?>', '<endPrefix?>'))
 
     # calculates the timing phrase based on the timing type, the calculated
     # timing words, and the prefixes
     def calculateTimingPhrase(self, stype, etype, stext, etext, startPrefix,
       endPrefix):
 
-        if (stype, etype) == ("NONE", "NONE"):
-            return ""  #no timing phrase
+        if (stype, etype) == ('NONE', 'NONE'):
+            return ''  #no timing phrase
 
-        elif (stype, etype) in [("NONE", "EXPLICIT")]:
+        elif (stype, etype) in [('NONE', 'EXPLICIT')]:
             return self.ctp_NONE_EXPLICIT(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("NONE", "FUZZY4"), ("NONE", "FUZZY8")]:
+        elif (stype, etype) in [('NONE', 'FUZZY4'), ('NONE', 'FUZZY8')]:
             return self.ctp_NONE_FUZZY(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("EXPLICIT", "EXPLICIT")]:
+        elif (stype, etype) in [('EXPLICIT', 'EXPLICIT')]:
             return self.ctp_EXPLICIT_EXPLICIT(stext,etext,startPrefix,
               endPrefix)
 
-        elif (stype, etype) in [("EXPLICIT", "FUZZY4"), ("EXPLICIT", "FUZZY8")]:
+        elif (stype, etype) in [('EXPLICIT', 'FUZZY4'), ('EXPLICIT', 'FUZZY8')]:
             return self.ctp_EXPLICIT_FUZZY(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("FUZZY4", "FUZZY4"), ("FUZZY8", "FUZZY4"),
-          ("FUZZY4", "FUZZY8"), ("FUZZY8", "FUZZY8")]:
+        elif (stype, etype) in [('FUZZY4', 'FUZZY4'), ('FUZZY8', 'FUZZY4'),
+          ('FUZZY4', 'FUZZY8'), ('FUZZY8', 'FUZZY8')]:
             return self.ctp_FUZZY_FUZZY(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("NONE", "DAY_NIGHT_ONLY")]:
+        elif (stype, etype) in [('NONE', 'DAY_NIGHT_ONLY')]:
             return self.ctp_NONE_DAYNIGHT(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("EXPLICIT", "DAY_NIGHT_ONLY")]:
+        elif (stype, etype) in [('EXPLICIT', 'DAY_NIGHT_ONLY')]:
             return self.ctp_EXPLICIT_DAYNIGHT(stext,etext,startPrefix,
               endPrefix)
 
-        elif (stype, etype) in [("FUZZY4", "DAY_NIGHT_ONLY"), 
-          ("FUZZY8", "DAY_NIGHT_ONLY")]:
+        elif (stype, etype) in [('FUZZY4', 'DAY_NIGHT_ONLY'), 
+          ('FUZZY8', 'DAY_NIGHT_ONLY')]:
             return self.ctp_FUZZY_DAYNIGHT(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("DAY_NIGHT_ONLY", "DAY_NIGHT_ONLY")]:
+        elif (stype, etype) in [('DAY_NIGHT_ONLY', 'DAY_NIGHT_ONLY')]:
             return self.ctp_DAYNIGHT_DAYNIGHT(stext,etext,startPrefix,
               endPrefix)
 
-        elif (stype, etype) in [("DAY_NIGHT_ONLY", "NONE")]:
+        elif (stype, etype) in [('DAY_NIGHT_ONLY', 'NONE')]:
             return self.ctp_DAYNIGHT_NONE(stext,etext,startPrefix,endPrefix)
 
-        elif (stype, etype) in [("DAY_NIGHT_ONLY", "EXPLICIT")]:
+        elif (stype, etype) in [('DAY_NIGHT_ONLY', 'EXPLICIT')]:
             return self.ctp_DAYNIGHT_EXPLICIT(stext,etext,startPrefix,
               endPrefix)
 
-        elif (stype, etype) in [("DAY_NIGHT_ONLY", "FUZZY4"),
-          ("DAY_NIGHT_ONLY", "FUZZY8")]:
+        elif (stype, etype) in [('DAY_NIGHT_ONLY', 'FUZZY4'),
+          ('DAY_NIGHT_ONLY', 'FUZZY8')]:
             return self.ctp_DAYNIGHT_FUZZY(stext,etext,startPrefix,endPrefix)
 
         else:
-            return "<UnknownPhraseType-" + stype + "/" + etype + ">"
+            return '<UnknownPhraseType-' + stype + '/' + etype + '>'
 
     #calculates the NONE/EXPLICIT timing phrase
     def ctp_NONE_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
@@ -1611,8 +1680,8 @@ class TextProductCommon(object):
         if len(etext) == 1:
             hourStr, hourTZstr, description = etext[0]
             #special cases NOON
-            if hourStr == "12 PM":
-               hourStr = "Noon"
+            if hourStr == '12 PM':
+               hourStr = 'Noon'
             return endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' + \
               description
         
@@ -1620,15 +1689,15 @@ class TextProductCommon(object):
         elif len(etext) > 1:
             hourStr, hourTZstr, description = etext[0]
             #special cases NOON
-            if hourStr == "12 PM":
-               hourStr = "Noon"
+            if hourStr == '12 PM':
+               hourStr = 'Noon'
             s = endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, othDescription = etext[x]
                 #special cases NOON
-                if hourStr == "12 PM":
-                   hourStr = "Noon"
-                s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+                if hourStr == '12 PM':
+                   hourStr = 'Noon'
+                s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + description
             return s
     
@@ -1651,18 +1720,18 @@ class TextProductCommon(object):
         ehourStr, ehourTZstr, edescription = etext[0]  #ending text
 
         #special cases NOON
-        if shourStr == "12 PM":
-           shourStr = "Noon"
+        if shourStr == '12 PM':
+           shourStr = 'Noon'
 
         #special cases NOON
-        if ehourStr == "12 PM":
-           ehourStr = "Noon"
+        if ehourStr == '12 PM':
+           ehourStr = 'Noon'
 
         # special case EARLY THIS MORNING and THIS MORNING, replace with
         # just THIS MORNING
-        if sdescription == "early this morning" and \
-          edescription == "this morning":
-            sdescription = "this morning"  #combine two phrases
+        if sdescription == 'early this morning' and \
+          edescription == 'this morning':
+            sdescription = 'this morning'  #combine two phrases
  
 
         # single time zone, same time zone for start/end times - same day
@@ -1684,16 +1753,16 @@ class TextProductCommon(object):
             for x in xrange(1, len(stext)):
                 hourStr, hourTZstr, description = stext[x]
                 #special cases NOON
-                if hourStr == "12 PM":
-                   hourStr = "Noon"
-                s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+                if hourStr == '12 PM':
+                   hourStr = 'Noon'
+                s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + endPrefix + ' ' + ehourStr + ' ' + ehourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, description = etext[x]
                 #special cases NOON
-                if hourStr == "12 PM":
-                   hourStr = "Noon"
-                s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+                if hourStr == '12 PM':
+                   hourStr = 'Noon'
+                s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + edescription
             return s
 
@@ -1703,17 +1772,17 @@ class TextProductCommon(object):
             for x in xrange(1, len(stext)):
                 hourStr, hourTZstr, description = stext[x]
                 #special cases NOON
-                if hourStr == "12 PM":
-                   hourStr = "Noon"
-                s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+                if hourStr == '12 PM':
+                   hourStr = 'Noon'
+                s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + sdescription + ' ' + endPrefix + ' ' + ehourStr + \
               ' ' + ehourTZstr + ' '
             for x in xrange(1, len(etext)):
                 hourStr, hourTZstr, description = etext[x]
                 #special cases NOON
-                if hourStr == "12 PM":
-                   hourStr = "Noon"
-                s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+                if hourStr == '12 PM':
+                   hourStr = 'Noon'
+                s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
             s = s + edescription
             return s
     
@@ -1726,15 +1795,15 @@ class TextProductCommon(object):
         #start phrase
         hourStr, hourTZstr, description0 = stext[0]
         #special cases NOON
-        if hourStr == "12 PM":
-           hourStr = "Noon"
+        if hourStr == '12 PM':
+           hourStr = 'Noon'
         s = startPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(stext)):
             hourStr, hourTZstr, description = stext[x]
             #special cases NOON
-            if hourStr == "12 PM":
-               hourStr = "Noon"
-            s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+            if hourStr == '12 PM':
+               hourStr = 'Noon'
+            s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
         s = s + description0 + ' '
 
         #end phrase
@@ -1778,15 +1847,15 @@ class TextProductCommon(object):
         #start phrase
         hourStr, hourTZstr, description0 = stext[0]
         #special cases NOON
-        if hourStr == "12 PM":
-           hourStr = "Noon"
+        if hourStr == '12 PM':
+           hourStr = 'Noon'
         s = startPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(stext)):
             hourStr, hourTZstr, description = stext[x]
             #special cases NOON
-            if hourStr == "12 PM":
-               hourStr = "Noon"
-            s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+            if hourStr == '12 PM':
+               hourStr = 'Noon'
+            s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
         s = s + description0 + ' '
 
         #end phrase
@@ -1839,15 +1908,15 @@ class TextProductCommon(object):
         #end phrase
         hourStr, hourTZstr, description0 = etext[0]
         #special cases NOON
-        if hourStr == "12 PM":
-           hourStr = "Noon"
+        if hourStr == '12 PM':
+           hourStr = 'Noon'
         s = s + endPrefix + ' ' + hourStr + ' ' + hourTZstr + ' ' 
         for x in xrange(1, len(etext)):
             hourStr, hourTZstr, description = etext[x]
             #special cases NOON
-            if hourStr == "12 PM":
-               hourStr = "Noon"
-            s = s + "/" + hourStr + ' ' + hourTZstr + "/ "
+            if hourStr == '12 PM':
+               hourStr = 'Noon'
+            s = s + '/' + hourStr + ' ' + hourTZstr + '/ '
         s = s + description0 + ' '
 
         return s
@@ -1879,7 +1948,7 @@ class TextProductCommon(object):
 
 
     # utility for attribution, takes hazard description ['hdln'] field and
-    # adds TEST if appropriate in test mode, adds "A" or "AN" as appropriate
+    # adds TEST if appropriate in test mode, adds 'A' or 'AN' as appropriate
     # if desired. 
     def hazardName(self, name, testMode, addA=False):
  
@@ -1888,16 +1957,16 @@ class TextProductCommon(object):
 
         # test mode
         if testMode:
-            phrase = 'TEST ' + name   #test mode, prepend "TEST"
+            phrase = 'TEST ' + name   #test mode, prepend 'TEST'
         else:
             phrase = name
 
         # want A or AN?
         if addA:
             if phrase[0] in ['A','E','I','O','U','a','e','i','o','u']:
-                phrase = "AN " + phrase
+                phrase = 'AN ' + phrase
             else:
-                phrase = "A " + phrase
+                phrase = 'A ' + phrase
         return phrase
     
     
@@ -1910,8 +1979,7 @@ class TextProductCommon(object):
         returns the appropriate expiration time.  Expiration time is the
         earliest of the specified expiration time, 1 hr if a CAN code
         is detected, or the ending time of ongoing events (CON, EXT, EXB, NEW).
-        The issueTime and expireTime are ints in milliseconds, hazards are a list of
-        vtec records. 
+        The issueTime and expireTime are ints in milliseconds. 
         
         @param issueTime in ms
         @param purgeHours -- set time past issuance time. 
@@ -1933,8 +2001,8 @@ class TextProductCommon(object):
             # Pick the earliest end time of the vtecRecords in the segment
             for vtecRecord in vtecRecords:
                 expireTime = None
-                if expireTime is None or vtecRecord.get("endTime") < expireTime:
-                    expireTime = vtecRecord.get("endTime")
+                if expireTime is None or vtecRecord.get('endTime') < expireTime:
+                    expireTime = vtecRecord.get('endTime')
 
         if not fixedExpire:
             canExpFound = 0
@@ -1961,7 +2029,7 @@ class TextProductCommon(object):
         if expireTime - issueTime < 3600:
             expireTime = issueTime + 3600*1000
 
-        #round to next "roundMinutes"
+        #round to next 'roundMinutes'
         roundValue = roundMinutes*60*1000  #in milliseconds
         delta = expireTime % roundValue  # in milliseconds
         baseTime = int(expireTime/roundValue)*roundValue
@@ -1974,7 +2042,7 @@ class TextProductCommon(object):
     
     def getGeneralAreaList(self, areaList, areaDict):
         '''
-        Returns a list of strings that describe the "areaList", such as
+        Returns a list of strings that describe the 'areaList', such as
         Southwest Kansas, along with their county/zone names.  Format returned
         is [(stateName, portionOfState, [(county/zone list, type)])].  The type
         is PARISH, COUNTY, ZONE, INDEPENDENT CITY.  Duplicate names are
@@ -1985,41 +2053,41 @@ class TextProductCommon(object):
         for areaName in areaList:
             entry = areaDict.get(areaName)
             if entry is None:
-                self.logger.info("TextProductCommon: getGeneralAreaList: Area outside CWA "+areaName)
+                self.logger.info('TextProductCommon: getGeneralAreaList: Area outside CWA '+areaName)
                 # Set this up until we have national AreaDictionary so products continue
-                entry = areaDict.get("COC003")  
+                entry = areaDict.get('COC003')  
                           
-            if entry.has_key("ugcName"):
+            if entry.has_key('ugcName'):
                 # Get state
                 state = areaName[0:2]
-                if entry.has_key("fullStateName"):
-                    state = entry["fullStateName"]
+                if entry.has_key('fullStateName'):
+                    state = entry['fullStateName']
                     #Special District of Columbia case
-                    if state == "DISTRICT OF COLUMBIA":
-                        state = "THE DISTRICT OF COLUMBIA"
+                    if state == 'DISTRICT OF COLUMBIA':
+                        state = 'THE DISTRICT OF COLUMBIA'
                 # Get part-of-state information
-                partOfState = ""
-                if entry.has_key("partOfState"):
-                    partOfState = entry["partOfState"]
+                partOfState = ''
+                if entry.has_key('partOfState'):
+                    partOfState = entry['partOfState']
 
                 # get the county/zone name
-                zoneName = entry["ugcName"]
-                if entry.has_key("locationName"):
-                    zoneName = entry["locationName"]  #alternative name
-                if entry.has_key("ugcCode"):
-                    codeType = entry["ugcCode"][2]
-                    if codeType == "Z":
-                        nameType = "ZONE"
-                    elif codeType == "C":
-                        indCty=entry.get("independentCity", 0)
+                zoneName = entry['ugcName']
+                if entry.has_key('locationName'):
+                    zoneName = entry['locationName']  #alternative name
+                if entry.has_key('ugcCode'):
+                    codeType = entry['ugcCode'][2]
+                    if codeType == 'Z':
+                        nameType = 'ZONE'
+                    elif codeType == 'C':
+                        indCty=entry.get('independentCity', 0)
                         if indCty == 1:
-                            nameType = "INDEPENDENT CITY"
-                        elif state == "LOUISIANA":
-                            nameType = "PARISH"
+                            nameType = 'INDEPENDENT CITY'
+                        elif state == 'LOUISIANA':
+                            nameType = 'PARISH'
                         else:
-                            nameType = "COUNTY"
+                            nameType = 'COUNTY'
                     else:
-                        codeType == "?"
+                        codeType == '?'
                 value = (state, partOfState)
                 znt = (zoneName, nameType)
                  
@@ -2065,14 +2133,14 @@ class TextProductCommon(object):
         return geoAreas    
     
     def hazard_hook(self, tree, node, phen, sig, act, start, end):
-        return ""
+        return ''
         
 ################### From GFE StringUtils   
     def indentText(self, text, indentFirstString = '', indentNextString = '',
-                   maxWidth=69, breakStrings=[" "]):
+                   maxWidth=69, breakStrings=[' ']):
         '''
         IndentText returns a formatted string which is at most maxWidth
-        columns in width, with the first line indented by "indentFirstString"
+        columns in width, with the first line indented by 'indentFirstString'
         and subsequent lines indented by indentNextString.  Any leading spaces
         in the first line are preserved.
         '''
@@ -2085,7 +2153,7 @@ class TextProductCommon(object):
             
         # eliminate all new lines and create a list of words     
         if len(words) == 0:
-            return ""
+            return ''
 
         # find out how many spaces the 1st line has been indented based on
         # the input text.
@@ -2100,7 +2168,7 @@ class TextProductCommon(object):
         additional = indentFirstString + firstLineAdditionalIndent
         for w in words:
             if len(line) + len(w) + 1 > maxWidth:
-                out = out + line + "\n"
+                out = out + line + '\n'
                 line = indentNextString + w
             else:
                 if len(out) == 0 and len(line) == len(additional):
@@ -2111,9 +2179,9 @@ class TextProductCommon(object):
         if len(line):
             out = out + line
 
-        return out + "\n"
+        return out + '\n'
 
-    def splitIntoWords(self, words, breakStrings=[" "]):
+    def splitIntoWords(self, words, breakStrings=[' ']):
         # Break the list of words further
         # using the list of breakStrings.
         for breakStr in breakStrings:
@@ -2128,7 +2196,7 @@ class TextProductCommon(object):
                     index = 0
                     length = len(strWords)-1
                     for strWord in strWords:
-                        if strWord == "":
+                        if strWord == '':
                             continue
                         if index < length:
                             strWord += breakStr
@@ -2164,7 +2232,7 @@ class CallToActions:
             items = func()
             if len(items) > 0:
                 return items[0]
-        return ""   #No call to action
+        return ''   #No call to action
 
     def allCTAs(self, phensig):
         if self.ctaDict().has_key(phensig):
@@ -2183,15 +2251,15 @@ class CallToActions:
     # returns list of generic call to action statements
     def genericCTAs(self):
         return [
- """MONITOR NOAA WEATHER RADIO FOR THE LATEST INFORMATION...FORECASTS...AND WARNINGS.""",
- """LISTEN TO NOAA WEATHER RADIO OR YOUR LOCAL MEDIA FOR THE LATEST UPDATES ON THIS SITUATION.""",
+ '''MONITOR NOAA WEATHER RADIO FOR THE LATEST INFORMATION...FORECASTS...AND WARNINGS.''',
+ '''LISTEN TO NOAA WEATHER RADIO OR YOUR LOCAL MEDIA FOR THE LATEST UPDATES ON THIS SITUATION.''',
         ]
 
         
 
 ##### PLEASE KEEP PHENSIG IN ALPHABETICAL ORDER #######
 
-# CallToAction dictionary.  The key is the phen/sig, such as "BZ.W".  The
+# CallToAction dictionary.  The key is the phen/sig, such as 'BZ.W'.  The
 # value is a LIST of call to action statements.  The default formatter
 # uses the first one in the list. Users can add additional entries which
 # are accessible in the product editor.  The lists are actually function
@@ -2199,85 +2267,85 @@ class CallToActions:
 # Updated in 9.3 to sync with VTECTable entries  
     def ctaDict(self):
         return {
-         "AF.W": self.ctaAFW,
-         "AF.Y": self.ctaAFY,
-         "AS.O": self.ctaASO,
-         "AS.Y": self.ctaASY,
-         "BW.Y": self.ctaBWY,
-         "BZ.A": self.ctaBZA,
-         "BZ.W": self.ctaBZW,
-         "CF.A": self.ctaCFA,
-         "CF.W": self.ctaCFW,
-         "CF.Y": self.ctaCFY,
-         "DS.W": self.ctaDSW,
-         "DU.Y": self.ctaDUY,
-         "EC.A": self.ctaECA,
-         "EC.W": self.ctaECW,
-         "EH.A": self.ctaEHA,
-         "EH.W": self.ctaEHW,
-         "FA.A": self.ctaFAA,
-         "FF.A": self.ctaFFA,
-         "FG.Y": self.ctaFGY,
-         "FR.Y": self.ctaFRY,
-         "FW.A": self.ctaFWA,
-         "FW.W": self.ctaFWW,
-         "FZ.A": self.ctaFZA,
-         "FZ.W": self.ctaFZW,
-         "GL.A": self.ctaGLA,
-         "GL.W": self.ctaGLW,
-         "HF.A": self.ctaHFA,
-         "HF.W": self.ctaHFW,
-         "HT.Y": self.ctaHTY,
-         "HU.A": self.ctaHUA,
-         "HU.W": self.ctaHUW,
-         "HW.A": self.ctaHWA,
-         "HW.W": self.ctaHWW,
-         "HZ.A": self.ctaHZA,
-         "HZ.W": self.ctaHZW,
-         "IS.W": self.ctaISW,
-         "LE.A": self.ctaLEA,
-         "LE.W": self.ctaLEW,
-         "LE.Y": self.ctaLEY,
-         "LO.Y": self.ctaLOY,
-         "LS.A": self.ctaLSA,
-         "LS.W": self.ctaLSW,
-         "LS.Y": self.ctaLSY,
-         "LW.Y": self.ctaLWY,
-         "MF.Y": self.ctaMFY,
-         "MH.W": self.ctaMHW,
-         "MH.Y": self.ctaMHY,
-         "MS.Y": self.ctaMSY,
-         "RB.Y": self.ctaRBY,
-         "SC.Y": self.ctaSCY,
-         "SE.A": self.ctaSEA,
-         "SE.W": self.ctaSEW,
-         "SI.Y": self.ctaSIY,
-         "SM.Y": self.ctaSMY,
-         "SR.A": self.ctaSRA,
-         "SR.W": self.ctaSRW,
-         "SU.W": self.ctaSUW,
-         "SU.Y": self.ctaSUY,
-         "SW.Y": self.ctaSWY,
-         "TR.A": self.ctaTRA,
-         "TR.W": self.ctaTRW,
-         "UP.A": self.ctaUPA,
-         "UP.W": self.ctaUPW,
-         "UP.Y": self.ctaUPY,
-         "WC.A": self.ctaWCA,
-         "WC.W": self.ctaWCW,
-         "WC.Y": self.ctaWCY,
-         "WI.Y": self.ctaWIY,
-         "WS.A": self.ctaWSA,
-         "WS.W": self.ctaWSW,
-         "WW.Y": self.ctaWWY,
-         "ZF.Y": self.ctaZFY,
-         "ZR.Y": self.ctaZRY,
+         'AF.W': self.ctaAFW,
+         'AF.Y': self.ctaAFY,
+         'AS.O': self.ctaASO,
+         'AS.Y': self.ctaASY,
+         'BW.Y': self.ctaBWY,
+         'BZ.A': self.ctaBZA,
+         'BZ.W': self.ctaBZW,
+         'CF.A': self.ctaCFA,
+         'CF.W': self.ctaCFW,
+         'CF.Y': self.ctaCFY,
+         'DS.W': self.ctaDSW,
+         'DU.Y': self.ctaDUY,
+         'EC.A': self.ctaECA,
+         'EC.W': self.ctaECW,
+         'EH.A': self.ctaEHA,
+         'EH.W': self.ctaEHW,
+         'FA.A': self.ctaFAA,
+         'FF.A': self.ctaFFA,
+         'FG.Y': self.ctaFGY,
+         'FR.Y': self.ctaFRY,
+         'FW.A': self.ctaFWA,
+         'FW.W': self.ctaFWW,
+         'FZ.A': self.ctaFZA,
+         'FZ.W': self.ctaFZW,
+         'GL.A': self.ctaGLA,
+         'GL.W': self.ctaGLW,
+         'HF.A': self.ctaHFA,
+         'HF.W': self.ctaHFW,
+         'HT.Y': self.ctaHTY,
+         'HU.A': self.ctaHUA,
+         'HU.W': self.ctaHUW,
+         'HW.A': self.ctaHWA,
+         'HW.W': self.ctaHWW,
+         'HZ.A': self.ctaHZA,
+         'HZ.W': self.ctaHZW,
+         'IS.W': self.ctaISW,
+         'LE.A': self.ctaLEA,
+         'LE.W': self.ctaLEW,
+         'LE.Y': self.ctaLEY,
+         'LO.Y': self.ctaLOY,
+         'LS.A': self.ctaLSA,
+         'LS.W': self.ctaLSW,
+         'LS.Y': self.ctaLSY,
+         'LW.Y': self.ctaLWY,
+         'MF.Y': self.ctaMFY,
+         'MH.W': self.ctaMHW,
+         'MH.Y': self.ctaMHY,
+         'MS.Y': self.ctaMSY,
+         'RB.Y': self.ctaRBY,
+         'SC.Y': self.ctaSCY,
+         'SE.A': self.ctaSEA,
+         'SE.W': self.ctaSEW,
+         'SI.Y': self.ctaSIY,
+         'SM.Y': self.ctaSMY,
+         'SR.A': self.ctaSRA,
+         'SR.W': self.ctaSRW,
+         'SU.W': self.ctaSUW,
+         'SU.Y': self.ctaSUY,
+         'SW.Y': self.ctaSWY,
+         'TR.A': self.ctaTRA,
+         'TR.W': self.ctaTRW,
+         'UP.A': self.ctaUPA,
+         'UP.W': self.ctaUPW,
+         'UP.Y': self.ctaUPY,
+         'WC.A': self.ctaWCA,
+         'WC.W': self.ctaWCW,
+         'WC.Y': self.ctaWCY,
+         'WI.Y': self.ctaWIY,
+         'WS.A': self.ctaWSA,
+         'WS.W': self.ctaWSW,
+         'WW.Y': self.ctaWWY,
+         'ZF.Y': self.ctaZFY,
+         'ZR.Y': self.ctaZRY,
           }
 
 
 ##### PLEASE KEEP PILS IN ALPHABETICAL ORDER #######
 
-# CallToAction PIL dictionary.  The key is the product pil, such as "HLS".
+# CallToAction PIL dictionary.  The key is the product pil, such as 'HLS'.
 # The entries are available for a particular product.  None of these
 # are entered automatically by the formatter, but are available through
 # the product editor.
@@ -2346,18 +2414,18 @@ class CallToActions:
 #------------------------------------------------------------------------
     def winterWScta(self):
         return [
-      ("***HEAVY SNOW", """A WINTER STORM WARNING FOR HEAVY SNOW MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING.  SIGNIFICANT AMOUNTS OF SNOW ARE FORECAST THAT WILL MAKE TRAVEL DANGEROUS. ONLY TRAVEL IN AN EMERGENCY. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY."""),
-      ("***SLEET", """A WINTER STORM WARNING FOR SLEET MEANS THAT A WINTER STORM SYSTEM IS IMPACTING THE AREA WITH SIGNIFICANT AMOUNTS OF SLEET. TRAVEL IS LIKELY TO BE SEVERELY IMPACTED."""),
-      ("***MIXED PRECIP", """A WINTER STORM WARNING MEANS SIGNIFICANT AMOUNTS OF SNOW...SLEET...AND ICE ARE EXPECTED OR OCCURRING. STRONG WINDS ARE ALSO POSSIBLE.  THIS WILL MAKE TRAVEL VERY HAZARDOUS OR IMPOSSIBLE."""),
+      ('***HEAVY SNOW', '''A WINTER STORM WARNING FOR HEAVY SNOW MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING.  SIGNIFICANT AMOUNTS OF SNOW ARE FORECAST THAT WILL MAKE TRAVEL DANGEROUS. ONLY TRAVEL IN AN EMERGENCY. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY.'''),
+      ('***SLEET', '''A WINTER STORM WARNING FOR SLEET MEANS THAT A WINTER STORM SYSTEM IS IMPACTING THE AREA WITH SIGNIFICANT AMOUNTS OF SLEET. TRAVEL IS LIKELY TO BE SEVERELY IMPACTED.'''),
+      ('***MIXED PRECIP', '''A WINTER STORM WARNING MEANS SIGNIFICANT AMOUNTS OF SNOW...SLEET...AND ICE ARE EXPECTED OR OCCURRING. STRONG WINDS ARE ALSO POSSIBLE.  THIS WILL MAKE TRAVEL VERY HAZARDOUS OR IMPOSSIBLE.'''),
               ]
 
     def winterWWcta(self):
         return [
-      ("***BLOWING SNOW", """A WINTER WEATHER ADVISORY FOR BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO STRONG WINDS BLOWING SNOW AROUND. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS."""),      
-      ("***SLEET", """A WINTER WEATHER ADVISORY FOR SLEET MEANS PERIODS OF SLEET ARE IMMINENT OR OCCURRING. SLEET MAY CAUSE DRIVING TO BECOME EXTREMELY DANGEROUS...SO BE PREPARED TO USE CAUTION WHEN TRAVELING."""),
-      ("***SNOW AND BLOWING SNOW", """A WINTER WEATHER ADVISORY FOR |*LAKE EFFECT*| SNOW AND BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO A COMBINATION OF FALLING AND BLOWING SNOW. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS."""),
-      ("***SNOW", """A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARILY TRAVEL DIFFICULTIES. BE PREPARED FOR SNOW COVERED ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING."""),
-      ("***MIXED PRECIP", """A WINTER WEATHER ADVISORY MEANS THAT PERIODS OF SNOW...SLEET...OR FREEZING RAIN WILL CAUSE TRAVEL DIFFICULTIES. BE PREPARED FOR SLIPPERY ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING."""),
+      ('***BLOWING SNOW', '''A WINTER WEATHER ADVISORY FOR BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO STRONG WINDS BLOWING SNOW AROUND. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.'''),      
+      ('***SLEET', '''A WINTER WEATHER ADVISORY FOR SLEET MEANS PERIODS OF SLEET ARE IMMINENT OR OCCURRING. SLEET MAY CAUSE DRIVING TO BECOME EXTREMELY DANGEROUS...SO BE PREPARED TO USE CAUTION WHEN TRAVELING.'''),
+      ('***SNOW AND BLOWING SNOW', '''A WINTER WEATHER ADVISORY FOR |*LAKE EFFECT*| SNOW AND BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO A COMBINATION OF FALLING AND BLOWING SNOW. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.'''),
+      ('***SNOW', '''A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARILY TRAVEL DIFFICULTIES. BE PREPARED FOR SNOW COVERED ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.'''),
+      ('***MIXED PRECIP', '''A WINTER WEATHER ADVISORY MEANS THAT PERIODS OF SNOW...SLEET...OR FREEZING RAIN WILL CAUSE TRAVEL DIFFICULTIES. BE PREPARED FOR SLIPPERY ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.'''),
         ]
 #------------------------------------------------------------------------
 # CALL TO ACTIONS - individual functions for each phen/sig
@@ -2367,368 +2435,368 @@ class CallToActions:
 
     def ctaAFW(self):
         return [ 
-"""AN ASHFALL WARNING MEANS THAT SIGNIFICANT ACCUMULATION OF VOLCANIC ASH IS EXPECTED OR OCCURRING DUE TO A VOLCANIC ERUPTION OR RESUSPENSION OF PREVIOUSLY DEPOSITED ASH.
+'''AN ASHFALL WARNING MEANS THAT SIGNIFICANT ACCUMULATION OF VOLCANIC ASH IS EXPECTED OR OCCURRING DUE TO A VOLCANIC ERUPTION OR RESUSPENSION OF PREVIOUSLY DEPOSITED ASH.
  
 SEAL WINDOWS AND DOORS.  PROTECT ELECTRONICS AND COVER AIR INTAKES AND OPEN WATER SOURCES.  AVOID DRIVING. REMAIN INDOORS UNLESS ABSOLUTELY NECESSARY.  USE EXTREME CAUTION CLEARING ROOFTOPS OF ASH.
 
-LISTEN TO NOAA WEATHER RADIO OR LOCAL MEDIA FOR FURTHER INFORMATION.""",
+LISTEN TO NOAA WEATHER RADIO OR LOCAL MEDIA FOR FURTHER INFORMATION.''',
         ]
 
     def ctaAFY(self):
         return [
- """AN ASHFALL ADVISORY MEANS THAT LARGE AMOUNTS OF ASH WILL BE DEPOSITED IN THE ADVISORY AREA. PERSONS WITH RESPIRATORY ILLNESSES SHOULD REMAIN INDOORS TO AVOID INHALING THE ASH PARTICLES...AND ALL PERSONS OUTSIDE SHOULD COVER THEIR MOUTH AND NOSE WITH A MASK OR CLOTH.""",
+ '''AN ASHFALL ADVISORY MEANS THAT LARGE AMOUNTS OF ASH WILL BE DEPOSITED IN THE ADVISORY AREA. PERSONS WITH RESPIRATORY ILLNESSES SHOULD REMAIN INDOORS TO AVOID INHALING THE ASH PARTICLES...AND ALL PERSONS OUTSIDE SHOULD COVER THEIR MOUTH AND NOSE WITH A MASK OR CLOTH.''',
         ]
 
     def ctaASO(self):
         return [
- """AN AIR STAGNATION OUTLOOK IS ISSUED WHEN AN EXTENDED PERIOD OF WEATHER CONDITIONS ARE ANTICIPATED THAT COULD CONTRIBUTE TO POOR VENTILATION...AND THUS POTENTIALLY POOR AIR QUALITY.  BE PREPARED FOR THESE CONDITIONS TO DEVELOP IN THE NEXT 2 TO 3 DAYS...AND FOR THE ISSUANCE OF AIR STAGNATION ADVISORIES AS THE SITUATION BECOMES IMMINENT.""",
+ '''AN AIR STAGNATION OUTLOOK IS ISSUED WHEN AN EXTENDED PERIOD OF WEATHER CONDITIONS ARE ANTICIPATED THAT COULD CONTRIBUTE TO POOR VENTILATION...AND THUS POTENTIALLY POOR AIR QUALITY.  BE PREPARED FOR THESE CONDITIONS TO DEVELOP IN THE NEXT 2 TO 3 DAYS...AND FOR THE ISSUANCE OF AIR STAGNATION ADVISORIES AS THE SITUATION BECOMES IMMINENT.''',
         ]
 
     def ctaASY(self):
         return [
- """AN AIR STAGNATION ADVISORY INDICATES THAT DUE TO LIMITED MOVEMENT OF AN AIR MASS ACROSS THE ADVISORY AREA...POLLUTION WILL INCREASE TO DANGEROUS LEVELS. PERSONS WITH RESPIRATORY ILLNESS SHOULD FOLLOW THEIR PHYSICIANS ADVICE FOR DEALING WITH HIGH LEVELS OF AIR POLLUTION.""",
+ '''AN AIR STAGNATION ADVISORY INDICATES THAT DUE TO LIMITED MOVEMENT OF AN AIR MASS ACROSS THE ADVISORY AREA...POLLUTION WILL INCREASE TO DANGEROUS LEVELS. PERSONS WITH RESPIRATORY ILLNESS SHOULD FOLLOW THEIR PHYSICIANS ADVICE FOR DEALING WITH HIGH LEVELS OF AIR POLLUTION.''',
         ]
 
     def ctaBWY(self):
         return [
- """A BRISK WIND ADVISORY MEANS THAT WINDS WILL REACH SMALL CRAFT ADVISORY CRITERIA IN AREAS THAT ARE PRIMARILY ICE COVERED. MOVING ICE FLOES COULD DAMAGE SMALL CRAFT.""",
+ '''A BRISK WIND ADVISORY MEANS THAT WINDS WILL REACH SMALL CRAFT ADVISORY CRITERIA IN AREAS THAT ARE PRIMARILY ICE COVERED. MOVING ICE FLOES COULD DAMAGE SMALL CRAFT.''',
         ]
 
     def ctaBZA(self):
         return [
-"""A BLIZZARD WATCH MEANS THERE IS A POTENTIAL FOR FALLING AND/OR BLOWING SNOW WITH STRONG WINDS AND EXTREMELY POOR VISIBILITIES. THIS CAN LEAD TO WHITEOUT CONDITIONS AND MAKE TRAVEL VERY DANGEROUS.""",
+'''A BLIZZARD WATCH MEANS THERE IS A POTENTIAL FOR FALLING AND/OR BLOWING SNOW WITH STRONG WINDS AND EXTREMELY POOR VISIBILITIES. THIS CAN LEAD TO WHITEOUT CONDITIONS AND MAKE TRAVEL VERY DANGEROUS.''',
         ]
 
     def ctaBZW(self):
         return [
- """A BLIZZARD WARNING MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING. FALLING AND BLOWING SNOW WITH STRONG WINDS AND POOR VISIBILITIES ARE LIKELY. THIS WILL LEAD TO WHITEOUT CONDITIONS...MAKING TRAVEL EXTREMELY DANGEROUS. DO NOT TRAVEL. IF YOU MUST TRAVEL...HAVE A WINTER SURVIVAL KIT WITH YOU. IF YOU GET STRANDED...STAY WITH YOUR VEHICLE.""",
+ '''A BLIZZARD WARNING MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING. FALLING AND BLOWING SNOW WITH STRONG WINDS AND POOR VISIBILITIES ARE LIKELY. THIS WILL LEAD TO WHITEOUT CONDITIONS...MAKING TRAVEL EXTREMELY DANGEROUS. DO NOT TRAVEL. IF YOU MUST TRAVEL...HAVE A WINTER SURVIVAL KIT WITH YOU. IF YOU GET STRANDED...STAY WITH YOUR VEHICLE.''',
         ]
 
     def ctaCFA(self):
         return [
- """A COASTAL FLOOD WATCH MEANS THAT CONDITIONS FAVORABLE FOR FLOODING ARE EXPECTED TO DEVELOP. COASTAL RESIDENTS SHOULD BE ALERT FOR LATER STATEMENTS OR WARNINGS...AND TAKE ACTION TO PROTECT PROPERTY.""",
+ '''A COASTAL FLOOD WATCH MEANS THAT CONDITIONS FAVORABLE FOR FLOODING ARE EXPECTED TO DEVELOP. COASTAL RESIDENTS SHOULD BE ALERT FOR LATER STATEMENTS OR WARNINGS...AND TAKE ACTION TO PROTECT PROPERTY.''',
         ]
 
     def ctaCFW(self):
         return [
- """A COASTAL FLOOD WARNING MEANS THAT FLOODING IS OCCURRING OR IMMINENT. COASTAL RESIDENTS IN THE WARNED AREA SHOULD BE ALERT FOR RISING WATER...AND TAKE APPROPRIATE ACTION TO PROTECT LIFE AND PROPERTY.""",
+ '''A COASTAL FLOOD WARNING MEANS THAT FLOODING IS OCCURRING OR IMMINENT. COASTAL RESIDENTS IN THE WARNED AREA SHOULD BE ALERT FOR RISING WATER...AND TAKE APPROPRIATE ACTION TO PROTECT LIFE AND PROPERTY.''',
         ]
 
     def ctaCFY(self):
         return [
- """A COASTAL FLOOD ADVISORY INDICATES THAT ONSHORE WINDS AND TIDES WILL COMBINE TO GENERATE FLOODING OF LOW AREAS ALONG THE SHORE.""",
+ '''A COASTAL FLOOD ADVISORY INDICATES THAT ONSHORE WINDS AND TIDES WILL COMBINE TO GENERATE FLOODING OF LOW AREAS ALONG THE SHORE.''',
         ]
 
     def ctaDSW(self):
         return [
- """A DUST STORM WARNING MEANS SEVERELY LIMITED VISIBILITIES ARE EXPECTED WITH BLOWING DUST. TRAVEL COULD BECOME EXTREMELY DANGEROUS. PERSONS WITH RESPIRATORY PROBLEMS SHOULD MAKE PREPARATIONS TO STAY INDOORS UNTIL THE STORM PASSES.""",
+ '''A DUST STORM WARNING MEANS SEVERELY LIMITED VISIBILITIES ARE EXPECTED WITH BLOWING DUST. TRAVEL COULD BECOME EXTREMELY DANGEROUS. PERSONS WITH RESPIRATORY PROBLEMS SHOULD MAKE PREPARATIONS TO STAY INDOORS UNTIL THE STORM PASSES.''',
         ]
 
     def ctaDUY(self):
         return [
- """A BLOWING DUST ADVISORY MEANS THAT BLOWING DUST WILL RESTRICT VISIBILITIES. TRAVELERS ARE URGED TO USE CAUTION.""",
+ '''A BLOWING DUST ADVISORY MEANS THAT BLOWING DUST WILL RESTRICT VISIBILITIES. TRAVELERS ARE URGED TO USE CAUTION.''',
         ]
 
     def ctaECA(self):
         return [
- """AN EXTREME COLD WATCH MEANS THAT PROLONGED PERIODS OF VERY COLD TEMPERATURES ARE EXPECTED. ENSURE THAT OUTDOOR ANIMALS HAVE WARM SHELTER...AND THAT CHILDREN WEAR A HAT AND GLOVES.""",
+ '''AN EXTREME COLD WATCH MEANS THAT PROLONGED PERIODS OF VERY COLD TEMPERATURES ARE EXPECTED. ENSURE THAT OUTDOOR ANIMALS HAVE WARM SHELTER...AND THAT CHILDREN WEAR A HAT AND GLOVES.''',
         ]
 
     def ctaECW(self):
         return [
- """AN EXTREME COLD WARNING MEAN THAT DANGEROUSLY LOW TEMPERATURES ARE EXPECTED FOR A PROLONGED PERIOD OF TIME. FROSTBITE AND HYPOTHERMIA ARE LIKELY IF EXPOSED TO THESE TEMPERATURES...SO MAKE SURE A HAT...FACEMASK...AND HEAVY GLOVES OR MITTENS ARE AVAILABLE.""",
+ '''AN EXTREME COLD WARNING MEAN THAT DANGEROUSLY LOW TEMPERATURES ARE EXPECTED FOR A PROLONGED PERIOD OF TIME. FROSTBITE AND HYPOTHERMIA ARE LIKELY IF EXPOSED TO THESE TEMPERATURES...SO MAKE SURE A HAT...FACEMASK...AND HEAVY GLOVES OR MITTENS ARE AVAILABLE.''',
         ]
 
     def ctaEHA(self):
         return [
- """AN EXCESSIVE HEAT WATCH MEANS THAT A PROLONGED PERIOD OF HOT TEMPERATURES IS EXPECTED. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A DANGEROUS SITUATION IN WHICH HEAT ILLNESSES ARE POSSIBLE. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.""",
+ '''AN EXCESSIVE HEAT WATCH MEANS THAT A PROLONGED PERIOD OF HOT TEMPERATURES IS EXPECTED. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A DANGEROUS SITUATION IN WHICH HEAT ILLNESSES ARE POSSIBLE. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.''',
         ]
 
     def ctaEHW(self):
         return [
- """AN EXCESSIVE HEAT WARNING MEANS THAT A PROLONGED PERIOD OF DANGEROUSLY HOT TEMPERATURES WILL OCCUR. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A DANGEROUS SITUATION IN WHICH HEAT ILLNESSES ARE LIKELY. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.""",
+ '''AN EXCESSIVE HEAT WARNING MEANS THAT A PROLONGED PERIOD OF DANGEROUSLY HOT TEMPERATURES WILL OCCUR. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A DANGEROUS SITUATION IN WHICH HEAT ILLNESSES ARE LIKELY. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.''',
         ]
 
     def ctaFAA(self):
         return [
- """A FLOOD WATCH MEANS THERE IS A POTENTIAL FOR FLOODING BASED ON CURRENT FORECASTS.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE ALERT FOR POSSIBLE FLOOD WARNINGS. THOSE LIVING IN AREAS PRONE TO FLOODING SHOULD BE PREPARED TO TAKE ACTION SHOULD FLOODING DEVELOP.""",
+ '''A FLOOD WATCH MEANS THERE IS A POTENTIAL FOR FLOODING BASED ON CURRENT FORECASTS.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE ALERT FOR POSSIBLE FLOOD WARNINGS. THOSE LIVING IN AREAS PRONE TO FLOODING SHOULD BE PREPARED TO TAKE ACTION SHOULD FLOODING DEVELOP.''',
         ]
 
     def ctaFFA(self):
         return [
- """A FLASH FLOOD WATCH MEANS THAT CONDITIONS MAY DEVELOP THAT LEAD TO FLASH FLOODING. FLASH FLOODING IS A VERY DANGEROUS SITUATION.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE PREPARED TO TAKE ACTION SHOULD FLASH FLOOD WARNINGS BE ISSUED.""",
+ '''A FLASH FLOOD WATCH MEANS THAT CONDITIONS MAY DEVELOP THAT LEAD TO FLASH FLOODING. FLASH FLOODING IS A VERY DANGEROUS SITUATION.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE PREPARED TO TAKE ACTION SHOULD FLASH FLOOD WARNINGS BE ISSUED.''',
         ]
 
     def ctaFGY(self):
         return [
-"""A DENSE FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE QUARTER MILE. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU.""",
+'''A DENSE FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE QUARTER MILE. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU.''',
         ]
 
     def ctaFRY(self):
         return [
- """A FROST ADVISORY MEANS THAT FROST IS POSSIBLE. SENSITIVE OUTDOOR PLANTS MAY BE KILLED IF LEFT UNCOVERED.""",
+ '''A FROST ADVISORY MEANS THAT FROST IS POSSIBLE. SENSITIVE OUTDOOR PLANTS MAY BE KILLED IF LEFT UNCOVERED.''',
         ]
 
     def ctaFWA(self):
         return [
- """A FIRE WEATHER WATCH MEANS THAT CRITICAL FIRE WEATHER CONDITIONS ARE FORECAST TO OCCUR. LISTEN FOR LATER FORECASTS AND POSSIBLE RED FLAG WARNINGS.""",
+ '''A FIRE WEATHER WATCH MEANS THAT CRITICAL FIRE WEATHER CONDITIONS ARE FORECAST TO OCCUR. LISTEN FOR LATER FORECASTS AND POSSIBLE RED FLAG WARNINGS.''',
         ]
 
     def ctaFWW(self):
         return [
- """A RED FLAG WARNING MEANS THAT CRITICAL FIRE WEATHER CONDITIONS ARE EITHER OCCURRING NOW...OR WILL SHORTLY. A COMBINATION OF STRONG WINDS...LOW RELATIVE HUMIDITY...AND WARM TEMPERATURES WILL CREATE EXPLOSIVE FIRE GROWTH POTENTIAL.""",
+ '''A RED FLAG WARNING MEANS THAT CRITICAL FIRE WEATHER CONDITIONS ARE EITHER OCCURRING NOW...OR WILL SHORTLY. A COMBINATION OF STRONG WINDS...LOW RELATIVE HUMIDITY...AND WARM TEMPERATURES WILL CREATE EXPLOSIVE FIRE GROWTH POTENTIAL.''',
         ]
 
     def ctaFZA(self):
         return [
- """A FREEZE WATCH MEANS SUB-FREEZING TEMPERATURES ARE POSSIBLE. THESE CONDITIONS COULD KILL CROPS AND OTHER SENSITIVE VEGETATION.""",
+ '''A FREEZE WATCH MEANS SUB-FREEZING TEMPERATURES ARE POSSIBLE. THESE CONDITIONS COULD KILL CROPS AND OTHER SENSITIVE VEGETATION.''',
         ]
 
     def ctaFZW(self):
         return [
- """A FREEZE WARNING MEANS SUB-FREEZING TEMPERATURES ARE IMMINENT OR HIGHLY LIKELY. THESE CONDITIONS WILL KILL CROPS AND OTHER SENSITIVE VEGETATION.""",
+ '''A FREEZE WARNING MEANS SUB-FREEZING TEMPERATURES ARE IMMINENT OR HIGHLY LIKELY. THESE CONDITIONS WILL KILL CROPS AND OTHER SENSITIVE VEGETATION.''',
         ]
 
     def ctaGLA(self):
         return [
- """A GALE WATCH IS ISSUED WHEN THE RISK OF GALE FORCE WINDS OF 34 TO 47 KNOTS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN. IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.""",
+ '''A GALE WATCH IS ISSUED WHEN THE RISK OF GALE FORCE WINDS OF 34 TO 47 KNOTS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN. IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.''',
         ]
 
     def ctaGLW(self):
         return [
- """A GALE WARNING MEANS WINDS OF 34 TO 47 KNOTS ARE IMMINENT OR OCCURING. OPERATING A VESSEL IN GALE CONDITIONS REQUIRES EXPERIENCE AND PROPERLY EQUIPPED VESSELS. IT IS HIGHLY RECOMMENDED THAT MARINERS WITHOUT THE PROPER EXPERIENCE SEEK SAFE HARBOR PRIOR TO THE ONSET OF GALE CONDITIONS.""",
+ '''A GALE WARNING MEANS WINDS OF 34 TO 47 KNOTS ARE IMMINENT OR OCCURING. OPERATING A VESSEL IN GALE CONDITIONS REQUIRES EXPERIENCE AND PROPERLY EQUIPPED VESSELS. IT IS HIGHLY RECOMMENDED THAT MARINERS WITHOUT THE PROPER EXPERIENCE SEEK SAFE HARBOR PRIOR TO THE ONSET OF GALE CONDITIONS.''',
         ]
 
     def ctaHFA(self):
         return [
- """A HURRICANE FORCE WIND WATCH IS ISSUED WHEN THE RISK OF HURRICANE FORCE WINDS OF 64 KNOTS OR GREATER HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.""",
+ '''A HURRICANE FORCE WIND WATCH IS ISSUED WHEN THE RISK OF HURRICANE FORCE WINDS OF 64 KNOTS OR GREATER HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.''',
         ]
 
     def ctaHFW(self):
         return [
- """A HURRICANE FORCE WIND WARNING MEANS WINDS OF 64 KNOTS OR GREATER ARE IMMINENT OR OCCURING. ALL VESSELS SHOULD REMAIN IN PORT...OR TAKE SHELTER AS SOON AS POSSIBLE...UNTIL WINDS AND WAVES SUBSIDE.""",
+ '''A HURRICANE FORCE WIND WARNING MEANS WINDS OF 64 KNOTS OR GREATER ARE IMMINENT OR OCCURING. ALL VESSELS SHOULD REMAIN IN PORT...OR TAKE SHELTER AS SOON AS POSSIBLE...UNTIL WINDS AND WAVES SUBSIDE.''',
         ]
 
     def ctaHTY(self):
         return [
- """A HEAT ADVISORY MEANS THAT A PERIOD OF HOT TEMPERATURES IS EXPECTED. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A SITUATION IN WHICH HEAT ILLNESSES ARE POSSIBLE. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.""",
+ '''A HEAT ADVISORY MEANS THAT A PERIOD OF HOT TEMPERATURES IS EXPECTED. THE COMBINATION OF HOT TEMPERATURES AND HIGH HUMIDITY WILL COMBINE TO CREATE A SITUATION IN WHICH HEAT ILLNESSES ARE POSSIBLE. DRINK PLENTY OF FLUIDS...STAY IN AN AIR-CONDITIONED ROOM...STAY OUT OF THE SUN...AND CHECK UP ON RELATIVES AND NEIGHBORS.''',
         ]
 
     def ctaHUA(self):
         return [
- """A HURRICANE WATCH IS ISSUED WHEN SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE POSSIBLE WITHIN 48 HOURS.""",
+ '''A HURRICANE WATCH IS ISSUED WHEN SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE POSSIBLE WITHIN 48 HOURS.''',
         ] 
 
     def ctaHUW(self):
         return [
- """A HURRICANE WARNING MEANS SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE EXPECTED WITHIN 36 HOURS. A HURRICANE WARNING CAN REMAIN IN EFFECT WHEN DANGEROUSLY HIGH WATER OR A COMBINATION OF DANGEROUSLY HIGH WATER AND EXCEPTIONALLY HIGH WAVES CONTINUE...EVEN THOUGH WINDS MAY BE LESS THAN HURRICANE FORCE.""",
+ '''A HURRICANE WARNING MEANS SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE EXPECTED WITHIN 36 HOURS. A HURRICANE WARNING CAN REMAIN IN EFFECT WHEN DANGEROUSLY HIGH WATER OR A COMBINATION OF DANGEROUSLY HIGH WATER AND EXCEPTIONALLY HIGH WAVES CONTINUE...EVEN THOUGH WINDS MAY BE LESS THAN HURRICANE FORCE.''',
         ] 
     
     def ctaHWA(self):
         return [
- """A HIGH WIND WATCH MEANS THERE IS THE POTENTIAL FOR A HAZARDOUS HIGH WIND EVENT. SUSTAINED WINDS OF AT LEAST 40 MPH...OR GUSTS OF 58 MPH OR STRONGER MAY OCCUR. CONTINUE TO MONITOR THE LATEST FORECASTS.""",
+ '''A HIGH WIND WATCH MEANS THERE IS THE POTENTIAL FOR A HAZARDOUS HIGH WIND EVENT. SUSTAINED WINDS OF AT LEAST 40 MPH...OR GUSTS OF 58 MPH OR STRONGER MAY OCCUR. CONTINUE TO MONITOR THE LATEST FORECASTS.''',
         ]
 
     def ctaHWW(self):
         return [
- """A HIGH WIND WARNING MEANS A HAZARDOUS HIGH WIND EVENT IS EXPECTED OR OCCURRING. SUSTAINED WIND SPEEDS OF AT LEAST 40 MPH OR GUSTS OF 58 MPH OR MORE CAN LEAD TO PROPERTY DAMAGE.""",
+ '''A HIGH WIND WARNING MEANS A HAZARDOUS HIGH WIND EVENT IS EXPECTED OR OCCURRING. SUSTAINED WIND SPEEDS OF AT LEAST 40 MPH OR GUSTS OF 58 MPH OR MORE CAN LEAD TO PROPERTY DAMAGE.''',
         ]
 
     def ctaHZA(self):
         return [
- """A HARD FREEZE WATCH MEANS SUB-FREEZING TEMPERATURES ARE POSSIBLE. THESE CONDITIONS COULD KILL CROPS AND OTHER SENSITIVE VEGETATION.""",
+ '''A HARD FREEZE WATCH MEANS SUB-FREEZING TEMPERATURES ARE POSSIBLE. THESE CONDITIONS COULD KILL CROPS AND OTHER SENSITIVE VEGETATION.''',
         ]
 
     def ctaHZW(self):
         return [
- """A HARD FREEZE WARNING MEANS SUB-FREEZING TEMPERATURES ARE IMMINENT OR HIGHLY LIKELY. THESE CONDITIONS WILL KILL CROPS AND OTHER SENSITIVE VEGETATION.""",
+ '''A HARD FREEZE WARNING MEANS SUB-FREEZING TEMPERATURES ARE IMMINENT OR HIGHLY LIKELY. THESE CONDITIONS WILL KILL CROPS AND OTHER SENSITIVE VEGETATION.''',
         ]
 
     def ctaISW(self):
         return [
- """AN ICE STORM WARNING MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING. SIGNIFICANT AMOUNTS OF ICE ACCUMULATIONS WILL MAKE TRAVEL DANGEROUS OR IMPOSSIBLE. TRAVEL IS STRONGLY DISCOURAGED. COMMERCE WILL LIKELY BE SEVERELY IMPACTED. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY. ICE ACCUMULATIONS AND WINDS WILL LIKELY LEAD TO SNAPPED POWER LINES AND FALLING TREE BRANCHES THAT ADD TO THE DANGER.""",
+ '''AN ICE STORM WARNING MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING. SIGNIFICANT AMOUNTS OF ICE ACCUMULATIONS WILL MAKE TRAVEL DANGEROUS OR IMPOSSIBLE. TRAVEL IS STRONGLY DISCOURAGED. COMMERCE WILL LIKELY BE SEVERELY IMPACTED. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY. ICE ACCUMULATIONS AND WINDS WILL LIKELY LEAD TO SNAPPED POWER LINES AND FALLING TREE BRANCHES THAT ADD TO THE DANGER.''',
         ]
 
     def ctaLEA(self):
          return [
- """A LAKE EFFECT SNOW WATCH MEANS THERE IS A POTENTIAL FOR A LARGE AMOUNT OF SNOW IN ONLY A FEW HOURS. VISIBILITIES AND DEPTH OF SNOW CAN VARY GREATLY...IMPACTING TRAVEL SIGNIFICANTLY. CONTINUE TO MONITOR THE LATEST FORECASTS.""",
+ '''A LAKE EFFECT SNOW WATCH MEANS THERE IS A POTENTIAL FOR A LARGE AMOUNT OF SNOW IN ONLY A FEW HOURS. VISIBILITIES AND DEPTH OF SNOW CAN VARY GREATLY...IMPACTING TRAVEL SIGNIFICANTLY. CONTINUE TO MONITOR THE LATEST FORECASTS.''',
         ]
 
     def ctaLEW(self):
         return [
- """A LAKE EFFECT SNOW WARNING MEANS SIGNIFICANT AMOUNTS OF LAKE-EFFECT SNOW ARE FORECAST THAT WILL MAKE TRAVEL VERY HAZARDOUS OR IMPOSSIBLE. LAKE-EFFECT SNOW SHOWERS TYPICALLY ALIGN THEMSELVES IN BANDS AND WILL LIKELY BE INTENSE ENOUGH TO DROP 1 TO SEVERAL INCHES OF SNOW PER HOUR FOR SEVERAL HOURS. VISIBILITIES VARY GREATLY AND CAN DROP TO ZERO WITHIN MINUTES.  TRAVEL IS STRONGLY DISCOURAGED. COMMERCE COULD BE SEVERELY IMPACTED. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY.""",
+ '''A LAKE EFFECT SNOW WARNING MEANS SIGNIFICANT AMOUNTS OF LAKE-EFFECT SNOW ARE FORECAST THAT WILL MAKE TRAVEL VERY HAZARDOUS OR IMPOSSIBLE. LAKE-EFFECT SNOW SHOWERS TYPICALLY ALIGN THEMSELVES IN BANDS AND WILL LIKELY BE INTENSE ENOUGH TO DROP 1 TO SEVERAL INCHES OF SNOW PER HOUR FOR SEVERAL HOURS. VISIBILITIES VARY GREATLY AND CAN DROP TO ZERO WITHIN MINUTES.  TRAVEL IS STRONGLY DISCOURAGED. COMMERCE COULD BE SEVERELY IMPACTED. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY.''',
         ]
 
     def ctaLEY(self):
         return [
- """A LAKE EFFECT SNOW ADVISORY MEANS LAKE-EFFECT SNOW IS FORECAST THAT WILL MAKE TRAVEL DIFFICULT IN SOME AREAS. LAKE-EFFECT SNOW SHOWERS TYPICALLY ALIGN THEMSELVES IN BANDS AND WILL LIKELY BE INTENSE ENOUGH TO DROP SEVERAL INCHES IN LOCALIZED AREAS. USE CAUTION WHEN TRAVELING.""",
+ '''A LAKE EFFECT SNOW ADVISORY MEANS LAKE-EFFECT SNOW IS FORECAST THAT WILL MAKE TRAVEL DIFFICULT IN SOME AREAS. LAKE-EFFECT SNOW SHOWERS TYPICALLY ALIGN THEMSELVES IN BANDS AND WILL LIKELY BE INTENSE ENOUGH TO DROP SEVERAL INCHES IN LOCALIZED AREAS. USE CAUTION WHEN TRAVELING.''',
         ]
 
     def ctaLOY(self):
         return [
- """A LOW WATER ADVISORY MEANS WATER LEVELS ARE EXPECTED TO BE SIGNIFICANTLY BELOW AVERAGE. MARINERS SHOULD USE EXTREME CAUTION AND TRANSIT AT THE SLOWEST SAFE NAVIGABLE SPEED TO MINIMIZE IMPACT.""",
+ '''A LOW WATER ADVISORY MEANS WATER LEVELS ARE EXPECTED TO BE SIGNIFICANTLY BELOW AVERAGE. MARINERS SHOULD USE EXTREME CAUTION AND TRANSIT AT THE SLOWEST SAFE NAVIGABLE SPEED TO MINIMIZE IMPACT.''',
         ]
 
     def ctaLSA(self):
         return [
- """A LAKESHORE FLOOD WATCH MEANS THAT CONDITIONS FAVORABLE FOR LAKESHORE FLOODING ARE EXPECTED TO DEVELOP. RESIDENTS ON OR NEAR THE SHORE SHOULD TAKE ACTION TO PROTECT PROPERTY...AND LISTEN FOR LATER STATEMENTS OR WARNINGS.""",
+ '''A LAKESHORE FLOOD WATCH MEANS THAT CONDITIONS FAVORABLE FOR LAKESHORE FLOODING ARE EXPECTED TO DEVELOP. RESIDENTS ON OR NEAR THE SHORE SHOULD TAKE ACTION TO PROTECT PROPERTY...AND LISTEN FOR LATER STATEMENTS OR WARNINGS.''',
         ]
 
     def ctaLSW(self):
         return [
- """A LAKESHORE FLOOD WARNING MEANS THAT FLOODING IS OCCURRING OR IMMINENT ALONG THE LAKE. RESIDENTS ON OR NEAR THE SHORE IN THE WARNED AREA SHOULD BE ALERT FOR RISING WATER...AND TAKE APPROPRIATE ACTION TO PROTECT LIFE AND PROPERTY.""",
+ '''A LAKESHORE FLOOD WARNING MEANS THAT FLOODING IS OCCURRING OR IMMINENT ALONG THE LAKE. RESIDENTS ON OR NEAR THE SHORE IN THE WARNED AREA SHOULD BE ALERT FOR RISING WATER...AND TAKE APPROPRIATE ACTION TO PROTECT LIFE AND PROPERTY.''',
         ]
 
     def ctaLSY(self):
         return [
- """A LAKESHORE FLOOD ADVISORY INDICATES THAT ONSHORE WINDS WILL GENERATE FLOODING OF LOW AREAS ALONG THE LAKESHORE.""",
+ '''A LAKESHORE FLOOD ADVISORY INDICATES THAT ONSHORE WINDS WILL GENERATE FLOODING OF LOW AREAS ALONG THE LAKESHORE.''',
         ]
 
     def ctaLWY(self):
         return [
- """A LAKE WIND ADVISORY INDICATES THAT WINDS WILL CAUSE ROUGH CHOP ON AREA LAKES. SMALL BOATS WILL BE ESPECIALLY PRONE TO CAPSIZING.""",
+ '''A LAKE WIND ADVISORY INDICATES THAT WINDS WILL CAUSE ROUGH CHOP ON AREA LAKES. SMALL BOATS WILL BE ESPECIALLY PRONE TO CAPSIZING.''',
         ]
 
     def ctaMHW(self):
         return [
- """AN ASHFALL WARNING MEANS THAT SIGNIFICANT ACCUMULATION OF ASHFALL IS EXPECTED ON VESSELS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE THE NECESSARY COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTERING THE WARNING AREA.""",
+ '''AN ASHFALL WARNING MEANS THAT SIGNIFICANT ACCUMULATION OF ASHFALL IS EXPECTED ON VESSELS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE THE NECESSARY COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTERING THE WARNING AREA.''',
         ]
 
     def ctaMFY(self):
         return [
-"""A DENSE FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE MILE. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS. """,
+'''A DENSE FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE MILE. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS. ''',
         ]
 
     def ctaMHY(self):
         return [
-"""AN ASHFALL ADVISORY MEANS THAT A LIGHT ACCUMULATION OF ASHFALL IS EXPECTED ON VESSELS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE APPROPRIATE COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTERING THE ADVISORY AREA.""",
+'''AN ASHFALL ADVISORY MEANS THAT A LIGHT ACCUMULATION OF ASHFALL IS EXPECTED ON VESSELS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE APPROPRIATE COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTERING THE ADVISORY AREA.''',
         ]
 
     def ctaMSY(self):
         return [
- """A DENSE SMOKE ADVISORY MEANS WIDESPREAD FIRES WILL CREATE SMOKE...LIMITING VISIBILITIES. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.""",
+ '''A DENSE SMOKE ADVISORY MEANS WIDESPREAD FIRES WILL CREATE SMOKE...LIMITING VISIBILITIES. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.''',
         ]
 
     def ctaRBY(self):
         return [
- """A SMALL CRAFT ADVISORY FOR ROUGH BAR MEANS THAT WAVE CONDITIONS ARE EXPECTED TO BE HAZARDOUS TO SMALL CRAFT IN OR NEAR HARBOR ENTRANCES.""",
+ '''A SMALL CRAFT ADVISORY FOR ROUGH BAR MEANS THAT WAVE CONDITIONS ARE EXPECTED TO BE HAZARDOUS TO SMALL CRAFT IN OR NEAR HARBOR ENTRANCES.''',
         ]
 
     def ctaSCY(self):
         return [
- """A SMALL CRAFT ADVISORY MEANS THAT WIND SPEEDS OF 21 TO 33 KNOTS ARE EXPECTED TO PRODUCE HAZARDOUS WAVE CONDITIONS TO SMALL CRAFT. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.""",
+ '''A SMALL CRAFT ADVISORY MEANS THAT WIND SPEEDS OF 21 TO 33 KNOTS ARE EXPECTED TO PRODUCE HAZARDOUS WAVE CONDITIONS TO SMALL CRAFT. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.''',
         ]
 
     def ctaSEA(self):
         return [
- """A HAZARDOUS SEAS WATCH IS ISSUED WHEN THE RISK OF HAZARDOUS SEAS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.""",
+ '''A HAZARDOUS SEAS WATCH IS ISSUED WHEN THE RISK OF HAZARDOUS SEAS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.''',
         ]
 
     def ctaSEW(self):
         return [
- """A HAZARDOUS SEAS WARNING MEANS HAZARDOUS SEA CONDITIONS ARE IMMINENT OR OCCURING. RECREATIONAL BOATERS SHOULD REMAIN IN PORT...OR TAKE SHELTER UNTIL WAVES SUBSIDE.  COMMERCIAL VESSELS SHOULD PREPARE FOR ROUGH SEAS<85>AND CONSIDER REMAINING IN PORT OR TAKING SHELTER IN PORT UNTIL HAZARDOUS SEAS SUBSIDE.""",
+ '''A HAZARDOUS SEAS WARNING MEANS HAZARDOUS SEA CONDITIONS ARE IMMINENT OR OCCURING. RECREATIONAL BOATERS SHOULD REMAIN IN PORT...OR TAKE SHELTER UNTIL WAVES SUBSIDE.  COMMERCIAL VESSELS SHOULD PREPARE FOR ROUGH SEAS<85>AND CONSIDER REMAINING IN PORT OR TAKING SHELTER IN PORT UNTIL HAZARDOUS SEAS SUBSIDE.''',
         ]
 
     def ctaSIY(self):
         return [
- """A SMALL CRAFT ADVISORY FOR WIND MEANS THAT WIND SPEEDS OF 21 TO 33 KNOTS ARE EXPECTED. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.""",
+ '''A SMALL CRAFT ADVISORY FOR WIND MEANS THAT WIND SPEEDS OF 21 TO 33 KNOTS ARE EXPECTED. INEXPERIENCED MARINERS...ESPECIALLY THOSE OPERATING SMALLER VESSELS SHOULD AVOID NAVIGATING IN THESE CONDITIONS.''',
         ]
 
     def ctaSMY(self):
         return [
- """A DENSE SMOKE ADVISORY MEANS WIDESPREAD FIRES WILL CREATE SMOKE...LIMITING VISIBILITIES. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU IN CASE A SUDDEN STOP IS NEEDED.""",
+ '''A DENSE SMOKE ADVISORY MEANS WIDESPREAD FIRES WILL CREATE SMOKE...LIMITING VISIBILITIES. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU IN CASE A SUDDEN STOP IS NEEDED.''',
         ]
 
 
     def ctaSRA(self):
         return [
- """A STORM WATCH IS ISSUED WHEN THE RISK OF STORM FORCE WINDS OF 48 TO 63 KNOTS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.""",
+ '''A STORM WATCH IS ISSUED WHEN THE RISK OF STORM FORCE WINDS OF 48 TO 63 KNOTS HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.''',
         ]
 
     def ctaSRW(self):
         return [
- """A STORM WARNING MEANS WINDS OF 48 TO 63 KNOTS ARE IMMINENT OR OCCURING. RECREATIONAL BOATERS SHOULD REMAIN IN PORT...OR TAKE SHELTER UNTIL WINDS AND WAVES SUBSIDE. COMMERCIAL VESSELS SHOULD PREPARE FOR VERY STRONG WINDS AND DANGEROUS SEA CONDITIONS...AND CONSIDER REMAINING IN PORT OR TAKING SHELTER IN PORT UNTIL WINDS AND WAVES SUBSIDE.""",
+ '''A STORM WARNING MEANS WINDS OF 48 TO 63 KNOTS ARE IMMINENT OR OCCURING. RECREATIONAL BOATERS SHOULD REMAIN IN PORT...OR TAKE SHELTER UNTIL WINDS AND WAVES SUBSIDE. COMMERCIAL VESSELS SHOULD PREPARE FOR VERY STRONG WINDS AND DANGEROUS SEA CONDITIONS...AND CONSIDER REMAINING IN PORT OR TAKING SHELTER IN PORT UNTIL WINDS AND WAVES SUBSIDE.''',
         ]
 
     def ctaSUW(self):
         return [
- """A HIGH SURF WARNING INDICATES THAT DANGEROUS...BATTERING WAVE WILL POUND THE SHORELINE. THIS WILL RESULT IN VERY DANGEROUS SWIMMING CONDITIONS...AND DEADLY RIP CURRENTS.""",
+ '''A HIGH SURF WARNING INDICATES THAT DANGEROUS...BATTERING WAVE WILL POUND THE SHORELINE. THIS WILL RESULT IN VERY DANGEROUS SWIMMING CONDITIONS...AND DEADLY RIP CURRENTS.''',
         ]
 
     def ctaSUY(self):
         return [
- """A HIGH SURF ADVISORY MEANS THAT HIGH SURF WILL AFFECT BEACHES IN THE ADVISORY AREA...PRODUCING RIP CURRENTS AND LOCALIZED BEACH EROSION.""",
+ '''A HIGH SURF ADVISORY MEANS THAT HIGH SURF WILL AFFECT BEACHES IN THE ADVISORY AREA...PRODUCING RIP CURRENTS AND LOCALIZED BEACH EROSION.''',
         ]
 
     def ctaSWY(self):
         return [
- """A SMALL CRAFT ADVISORY FOR HAZARDOUS SEAS MEANS THAT WAVES ARE EXPECTED TO BE HAZARDOUS TO SMALL CRAFT. MARINERS SHOULD AVOID SHOALING AREAS. LONG PERIOD SWELL CAN SHARPEN INTO LARGE BREAKING WAVES IN SHOALING AREAS. IT IS NOT UNUSUAL FOR WAVES TO BREAK MUCH FARTHER FROM SHOALING AREAS THAN IS NORMALLY EXPERIENCED. REMEMBER...BREAKING WAVES CAN EASILY CAPSIZE EVEN LARGER VESSELS.""",
+ '''A SMALL CRAFT ADVISORY FOR HAZARDOUS SEAS MEANS THAT WAVES ARE EXPECTED TO BE HAZARDOUS TO SMALL CRAFT. MARINERS SHOULD AVOID SHOALING AREAS. LONG PERIOD SWELL CAN SHARPEN INTO LARGE BREAKING WAVES IN SHOALING AREAS. IT IS NOT UNUSUAL FOR WAVES TO BREAK MUCH FARTHER FROM SHOALING AREAS THAN IS NORMALLY EXPERIENCED. REMEMBER...BREAKING WAVES CAN EASILY CAPSIZE EVEN LARGER VESSELS.''',
         ]
 
     def ctaTRA(self):
         return [
- """A TROPICAL STORM WATCH MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE POSSIBLE DUE TO A TROPICAL STORM WITHIN 48 HOURS.""",
+ '''A TROPICAL STORM WATCH MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE POSSIBLE DUE TO A TROPICAL STORM WITHIN 48 HOURS.''',
         ] 
 
     def ctaTRW(self):
         return [
- """A TROPICAL STORM WARNING MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE EXPECTED DUE TO A TROPICAL STORM WITHIN 36 HOURS.""",
+ '''A TROPICAL STORM WARNING MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE EXPECTED DUE TO A TROPICAL STORM WITHIN 36 HOURS.''',
         ] 
 
     def ctaUPA(self):
         return [
- """A HEAVY FREEZING SPRAY WATCH IS ISSUED WHEN THE RISK OF HEAVY FREEZING SPRAY HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.""",
+ '''A HEAVY FREEZING SPRAY WATCH IS ISSUED WHEN THE RISK OF HEAVY FREEZING SPRAY HAS SIGNIFICANTLY INCREASED...BUT THE SPECIFIC TIMING AND/OR LOCATION IS STILL UNCERTAIN.  IT IS INTENDED TO PROVIDE ADDITIONAL LEAD TIME FOR MARINERS WHO MAY WISH TO CONSIDER ALTERING THEIR PLANS.''',
         ]
 
     def ctaUPW(self):
         return [
- """A HEAVY FREEZING SPRAY WARNING MEANS HEAVY FREEZING SPRAY IS EXPECTED TO RAPIDLY ACCUMULATE ON VESSELS. THESE CONDITIONS CAN BE EXTREMELY HAZARDOUS TO NAVIGATION. IT IS RECOMMENDED THAT MARINERS NOT TRAINED TO OPERATE IN THESE CONDITIONS OR VESSELS NOT PROPERLY EQUIPED TO DO SO...REMAIN IN PORT OR AVOID THE WARING AREA.""",
+ '''A HEAVY FREEZING SPRAY WARNING MEANS HEAVY FREEZING SPRAY IS EXPECTED TO RAPIDLY ACCUMULATE ON VESSELS. THESE CONDITIONS CAN BE EXTREMELY HAZARDOUS TO NAVIGATION. IT IS RECOMMENDED THAT MARINERS NOT TRAINED TO OPERATE IN THESE CONDITIONS OR VESSELS NOT PROPERLY EQUIPED TO DO SO...REMAIN IN PORT OR AVOID THE WARING AREA.''',
         ]
 
     def ctaUPY(self):
         return [
- """A FREEZING SPRAY ADVISORY MEANS THAT LIGHT TO MODERATE ACCUMULATION OF ICE IS EXPECTED ON VESSELS. OPERATING A VESSEL IN FREEZING SPRAY CAN BE HAZARDOUS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE APPROPRIATE COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTER THE ADVISORY AREA.""",
+ '''A FREEZING SPRAY ADVISORY MEANS THAT LIGHT TO MODERATE ACCUMULATION OF ICE IS EXPECTED ON VESSELS. OPERATING A VESSEL IN FREEZING SPRAY CAN BE HAZARDOUS. IT IS RECOMMENDED THAT VESSELS BE PREPARED TO TAKE APPROPRIATE COUNTER MEASURES BEFORE PUTTING TO SEA OR ENTER THE ADVISORY AREA.''',
         ]
 
     def ctaWCA(self):
         return [
- """A WIND CHILL WATCH MEANS THE THERE IS THE POTENTIAL FOR A COMBINATION OF VERY COLD AIR AND STRONG WINDS TO CREATE DANGEROUSLY LOW WIND CHILL VALUES. MONITOR THE LATEST FORECASTS AND WARNINGS FOR UPDATES ON THIS SITUATION.""",
+ '''A WIND CHILL WATCH MEANS THE THERE IS THE POTENTIAL FOR A COMBINATION OF VERY COLD AIR AND STRONG WINDS TO CREATE DANGEROUSLY LOW WIND CHILL VALUES. MONITOR THE LATEST FORECASTS AND WARNINGS FOR UPDATES ON THIS SITUATION.''',
         ]
 
     def ctaWCW(self):
         return [
- """A WIND CHILL WARNING MEANS THE COMBINATION OF VERY COLD AIR AND STRONG WINDS WILL CREATE DANGEROUSLY LOW WIND CHILL VALUES. THIS WILL RESULT IN FROST BITE AND LEAD TO HYPOTHERMIA OR DEATH IF PRECAUTIONS ARE NOT TAKEN.""",
+ '''A WIND CHILL WARNING MEANS THE COMBINATION OF VERY COLD AIR AND STRONG WINDS WILL CREATE DANGEROUSLY LOW WIND CHILL VALUES. THIS WILL RESULT IN FROST BITE AND LEAD TO HYPOTHERMIA OR DEATH IF PRECAUTIONS ARE NOT TAKEN.''',
         ]
 
     def ctaWCY(self):
         return [
- """A WIND CHILL ADVISORY MEANS THAT VERY COLD AIR AND STRONG WINDS WILL COMBINE TO GENERATE LOW WIND CHILLS. THIS WILL RESULT IN FROST BITE AND LEAD TO HYPOTHERMIA IF PRECAUTIONS ARE NOT TAKEN.  IF YOU MUST VENTURE OUTDOORS...MAKE SURE YOU WEAR A HAT AND GLOVES.""",
+ '''A WIND CHILL ADVISORY MEANS THAT VERY COLD AIR AND STRONG WINDS WILL COMBINE TO GENERATE LOW WIND CHILLS. THIS WILL RESULT IN FROST BITE AND LEAD TO HYPOTHERMIA IF PRECAUTIONS ARE NOT TAKEN.  IF YOU MUST VENTURE OUTDOORS...MAKE SURE YOU WEAR A HAT AND GLOVES.''',
         ]
 
     def ctaWIY(self):
         return [
- """A WIND ADVISORY MEANS THAT WINDS OF 35 MPH ARE EXPECTED. WINDS THIS STRONG CAN MAKE DRIVING DIFFICULT...ESPECIALLY FOR HIGH PROFILE VEHICLES. USE EXTRA CAUTION.""",
+ '''A WIND ADVISORY MEANS THAT WINDS OF 35 MPH ARE EXPECTED. WINDS THIS STRONG CAN MAKE DRIVING DIFFICULT...ESPECIALLY FOR HIGH PROFILE VEHICLES. USE EXTRA CAUTION.''',
         ]
 
     def ctaWSA(self):
         return [
- """A WINTER STORM WATCH MEANS THERE IS A POTENTIAL FOR SIGNIFICANT SNOW...SLEET...OR ICE ACCUMULATIONS THAT MAY IMPACT TRAVEL. CONTINUE TO MONITOR THE LATEST FORECASTS.""",
+ '''A WINTER STORM WATCH MEANS THERE IS A POTENTIAL FOR SIGNIFICANT SNOW...SLEET...OR ICE ACCUMULATIONS THAT MAY IMPACT TRAVEL. CONTINUE TO MONITOR THE LATEST FORECASTS.''',
         ]
 
     def ctaWSW(self):
         return [
- """|*Choose the appropriate CTA below and delete the rest*|
+ '''|*Choose the appropriate CTA below and delete the rest*|
 
 A WINTER STORM WARNING FOR HEAVY SNOW MEANS SEVERE WINTER WEATHER CONDITIONS ARE EXPECTED OR OCCURRING.  SIGNIFICANT AMOUNTS OF SNOW ARE FORECAST THAT WILL MAKE TRAVEL DANGEROUS. ONLY TRAVEL IN AN EMERGENCY. IF YOU MUST TRAVEL...KEEP AN EXTRA FLASHLIGHT...FOOD...AND WATER IN YOUR VEHICLE IN CASE OF AN EMERGENCY.
 
 A WINTER STORM WARNING MEANS SIGNIFICANT AMOUNTS OF SNOW...SLEET...AND ICE ARE EXPECTED OR OCCURRING. STRONG WINDS ARE ALSO POSSIBLE.  THIS WILL MAKE TRAVEL VERY HAZARDOUS OR IMPOSSIBLE.
 
-A WINTER STORM WARNING FOR SLEET MEANS THAT A WINTER STORM SYSTEM IS IMPACTING THE AREA WITH SIGNIFICANT AMOUNTS OF SLEET. TRAVEL IS LIKELY TO BE SEVERELY IMPACTED.""",
+A WINTER STORM WARNING FOR SLEET MEANS THAT A WINTER STORM SYSTEM IS IMPACTING THE AREA WITH SIGNIFICANT AMOUNTS OF SLEET. TRAVEL IS LIKELY TO BE SEVERELY IMPACTED.''',
         ] 
 
     def ctaWWY(self):
         return [
- """|*Choose the appropriate CTA below and delete the rest*|
+ '''|*Choose the appropriate CTA below and delete the rest*|
 
 A WINTER WEATHER ADVISORY MEANS THAT PERIODS OF SNOW...SLEET...OR FREEZING RAIN WILL CAUSE TRAVEL DIFFICULTIES. BE PREPARED FOR SLIPPERY ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.
 
@@ -2738,18 +2806,18 @@ A WINTER WEATHER ADVISORY FOR SLEET MEANS PERIODS OF SLEET ARE IMMINENT OR OCCUR
 
 A WINTER WEATHER ADVISORY FOR |*LAKE EFFECT*| SNOW AND BLOWING SNOW MEANS THAT VISIBILITIES WILL BE LIMITED DUE TO A COMBINATION OF FALLING AND BLOWING SNOW. USE CAUTION WHEN TRAVELING...ESPECIALLY IN OPEN AREAS.
 
-A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARILY TRAVEL DIFFICULTIES. BE PREPARED FOR SNOW COVERED ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.""",
+A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARILY TRAVEL DIFFICULTIES. BE PREPARED FOR SNOW COVERED ROADS AND LIMITED VISIBILITIES...AND USE CAUTION WHILE DRIVING.''',
 
         ] 
         
     def ctaZFY(self):
         return [
- """A FREEZING FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE QUARTER MILE. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU. ALSO...BE ALERT FOR FROST ON BRIDGE DECKS CAUSING SLIPPERY ROADS.""",
+ '''A FREEZING FOG ADVISORY MEANS VISIBILITIES WILL FREQUENTLY BE REDUCED TO LESS THAN ONE QUARTER MILE. IF DRIVING...SLOW DOWN...USE YOUR HEADLIGHTS...AND LEAVE PLENTY OF DISTANCE AHEAD OF YOU. ALSO...BE ALERT FOR FROST ON BRIDGE DECKS CAUSING SLIPPERY ROADS.''',
         ]
 
     def ctaZRY(self):
         return [
- """A FREEZING RAIN ADVISORY MEANS THAT PERIODS OF FREEZING RAIN OR FREEZING DRIZZLE WILL CAUSE TRAVEL DIFFICULTIES. BE PREPARED FOR SLIPPERY ROADS. SLOW DOWN AND USE CAUTION WHILE DRIVING.""",
+ '''A FREEZING RAIN ADVISORY MEANS THAT PERIODS OF FREEZING RAIN OR FREEZING DRIZZLE WILL CAUSE TRAVEL DIFFICULTIES. BE PREPARED FOR SLIPPERY ROADS. SLOW DOWN AND USE CAUTION WHILE DRIVING.''',
         ]
 
 #------------------------------------------------------------------------
@@ -2843,26 +2911,26 @@ A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARI
         ]
 
     def ctaPilHLS(self):
-        return [("***MINOR FLOODING", """RESIDENTS CAN EXPECT MINOR FLOODING OF ROADS...ESPECIALLY THOSE WITH POOR DRAINAGE. KNOWN INTERSECTIONS WITH VERY POOR DRAINAGE MAY HAVE WATER LEVELS UP TO 3 FEET. OTHER POOR DRAINAGE AREAS WILL HAVE WATER RISES OF 1 FOOT."""),
- ("***WIDESPREAD FLOODING", """RESIDENTS CAN EXPECT WIDESPREAD FLOODING.  IN POOR DRAINAGE AREAS...MINOR TO MODERATE PROPERTY DAMAGE IS EXPECTED...AND SEVERAL MAIN THOROUGHFARES MAY BE CLOSED.  KNOWN INTERSECTIONS WITH VERY POOR DRAINAGE MAY HAVE WATER LEVELS UP TO 5 FEET.  OTHER POOR DRAINAGE AREAS WILL HAVE WATER RISES UP TO 3 FEET.  LEVELS WILL RISE 1 FOOT ELSEWHERE."""),
- """SMALL STREAMS WILL SURPASS BANK FULL...BUT ONLY FOR ONE HOUR OR LESS.""",
- ("***WIDESPREAD STREAM FLOODING", """MOST SMALL STREAMS AND CREEKS WILL SURPASS BANK FULL...FOR UP TO 3 HOURS.  LARGER RIVERS WILL RISE...AND THOSE WHICH RESPOND QUICKLY TO VERY HEAVY RAIN MAY BRIEFLY EXCEED FLOOD STAGE."""),
- ("***PRIOR NOTICE OF EXTENSIVE AREAL FLOODING", """EXTENSIVE FLOODING IS EXPECTED |**TODAY OR TONIGHT OR NEXT DAY**| \n\n PERSONS LIVING NEAR OR IN POOR DRAINAGE LOCATIONS SHOULD PREPARE FOR POSSIBLE EVACUATION LATER |**TODAY OR TONIGHT OR NEXT DAY**|. IN THESE AREAS...SIGNIFICANT PROPERTY DAMAGE WILL OCCUR...AND SOME POWER OUTAGES ARE LIKELY.  MINOR PROPERTY DAMAGE IS POSSIBLE ELSEWHERE. \n\nWATER LEVELS IN VERY POOR DRAINAGE AREAS WILL APPROACH 7 FEET.  OTHER POOR DRAINAGE LOCATIONS WILL HAVE RISES BETWEEN 3 AND 5 FEET.  ELSEWHERE...EXPECT WATER RISES TO NEAR 2 FEET.  NUMEROUS MAIN ROADS WILL BE CLOSED.  DRIVING IS HIGHLY DISCOURAGED EXCEPT FOR EMERGENCIES."""),
- ("***DANGEROUS FLOODING", """THIS IS A DANGEROUS FLOOD SITUATION!  \n\nPERSONS LIVING IN OR NEAR POOR DRAINAGE AREAS SHOULD EVACUATE IMMEDIATELY.  SIGNIFICANT PROPERTY DAMAGE WILL OCCUR IN THESE LOCATIONS.  MINOR PROPERTY DAMAGE IS POSSIBLE IN OTHER AREAS.  SOME POWER OUTAGES ARE EXPECTED. \n\n WATER LEVELS IN VERY POOR DRAINAGE AREAS WILL APPROACH 7 FEET.  OTHER POOR DRAINAGE LOCATIONS WILL HAVE RISES BETWEEN 3 AND 5 FEET.  ELSEWHERE...EXPECT WATER RISES TO NEAR 2 FEET.  NUMEROUS MAIN ROADS WILL BE CLOSED.  DRIVING IS HIGHLY DISCOURAGED UNTIL WELL AFTER FLOOD WATERS RECEDE. \n\n MOVE TO SAFETY IMMEDIATELY."""),
- ("***PRIOR NOTICE OF EXTENSIVE RIVER FLOODING", """EXTENSIVE FLOODING IS EXPECTED |**TODAY OR TONIGHT OR NEXT DAY**|. \n\n BY |**TIME**|...ALL SMALL STREAMS AND CREEKS WILL HAVE SURPASSED BANK FULL.  THESE CONDITIONS WILL LAST BETWEEN 3 AND 6 HOURS.  SOME STREAMS WILL EXCEED THEIR BANKS BY SEVERAL FEET AND MAY FLOOD NEARBY HOMES.  EVACUATIONS ARE POSSIBLE.\n\n RIVERS IN AFFECTED AREAS WILL RISE...WITH SOME REACHING OR EXCEEDING FLOOD STAGE.  NORMALLY QUICK-RISING RIVERS WILL EXCEED FLOOD STAGE BY SEVERAL FEET...FLOODING HOMES ALONG THE RIVERSIDE.  PASTURES WILL ALSO FLOOD...BUT LIVESTOCK LOSSES SHOULD BE MINIMAL.  SEVERAL SECONDARY ROADS AND BRIDGES WILL BE WASHED OUT.  DRIVING IS HIGHLY DISCOURAGED."""),
- ("***DANGEROUS RIVER FLOODING", """THIS IS A DANGEROUS SITUATION!  \n\nALL STREAMS...CREEKS..AND SOME RIVERS WILL SURPASS BANKFULL...FOR BETWEEN 3 AND 6 HOURS.  SOME STREAMS WILL EXCEED THEIR BANKS BY SEVERAL FEET...FLOODING NEARBY HOMES.  EVACUATIONS ARE POSSIBLE. \n\n RIVERS IN AFFECTED AREAS WILL RISE...WITH SOME REACHING OR EXCEEDING FLOOD STAGE.  NORMALLY QUICK RISING RIVERS WILL EXCEED FLOOD STAGE BY SEVERAL FEET...FLOODING HOMES ALONG THE RIVERSIDE.  PASTURES WILL ALSO FLOOD...BUT LIVESTOCK LOSSES SHOULD BE MINIMAL."""),
- ("***CATASTROPHIC FLOODING EXPECTED", """CATASTROPHIC FLOODING IS EXPECTED LATER |**EDIT DAY OR NIGHT PERIODS**|. \n\n A STATE OF EMERGENCY HAS BEEN ISSUED |**BY AGENCY**| FOR |**EDIT AREA HERE**|. \n\n RESIDENTS IN FLOOD PRONE AREAS SHOULD RUSH TO COMPLETION PREPARATIONS TO PROTECT THEIR PROPERTY...THEN MOVE TO A PLACE OF SAFETY...THIS |**EDIT TIME PERIOD**|. MANDATORY EVACUATIONS ARE UNDERWAY. \n\n |** OPENING PARAGRAPH DESCRIBING ANTECEDENT RAINFALL AND EXPECTED HEAVIER RAINFALL **| \n\n LIFE THREATENING FLOODING IS LIKELY!  IN URBAN AREAS...EXTENSIVE PROPERTY DAMAGE WILL OCCUR IN ALL POOR DRAINAGE AREAS...WITH MODERATE TO MAJOR PROPERTY DAMAGE ELSEWHERE.  WIDESPREAD POWER OUTAGES ARE LIKELY. \n\n IN RURAL LOCATIONS...ALL STREAMS...CREEKS...AND ARROYOS WILL SURPASS BANK FULL FOR MORE THAN 6 HOURS.  EACH WILL EXCEED THEIR BANKS BY SEVERAL FEET...FLOODING HOMES...EVEN THOSE UP TO ONE HALF MILE AWAY FROM THE BANKS. \n\n IN ALL AREAS...HUNDREDS OF ROADS WILL FLOOD.  DOZENS OF SECONDARY ROADS MAY BECOME WASHED OUT IN RURAL AREAS.  NUMEROUS LOW WATER BRIDGES WILL LIKELY WASH OUT AS WELL. \n\n WATER LEVELS WILL EXCEED 5 FEET IN ALL POOR DRAINAGE URBAN AREAS...AND AVERAGE AT LEAST 2 FEET ELSEWHERE.  ALL RIVERS IN AFFECTED AREAS WILL RISE...AND MOST WILL EXCEED FLOOD STAGE.  QUICK RISING RIVERS WILL EXCEED FLOOD STAGE...AND REACH NEAR RECORD CRESTS...CAUSING INUNDATION OF NEARBY HOMES.  IN RURAL LOCATIONS...EXTENSIVE PASTURELAND FLOODING WILL OCCUR AS WATER LEVELS RISE TO 2 FEET OR MORE.  WIDESPREAD LIVESTOCK LOSSES ARE LIKELY."""),
- ("***CATASTROPHIC FLOODING OCCURRING", """CATASTROPHIC FLOODING IS OCCURRING IN |**EDIT AREA**|. \n\n STATES OF EMERGENCY REMAIN IN EFFECT FOR THE FOLLOWING LOCATIONS: \n\n |**EDIT COUNTIES AND CITIES HERE**| \n\n RESIDENTS REMAIN PROHIBITED FROM VENTURING OUT.  LAW ENFORCEMENT AND |**MILITARY SUPPORT GROUP EDIT HERE**| EVACUATIONS ARE NOW UNDERWAY. \n\n THIS REMAINS A LIFE THREATENING SITUATION!  EXTENSIVE PROPERTY DAMAGE IS OCCURRING IN ALL POOR DRAINAGE AREAS.  ELSEWHERE...MODERATE TO MAJOR PROPERTY DAMAGE IS OCCURRING.  HUNDREDS OF ROADS ARE CLOSED...AND SOME ARE LIKELY DAMAGED.  SEVERAL AREA BRIDGES ARE WASHED OUT.  STREAMS...CREEKS...AND ARROYOS ARE SEVERAL FEET ABOVE BANK FULL...AND WILL REMAIN SO FOR HOURS.  MANY RIVERS ARE NEARING FLOOD STAGE...AND SOME HAVE ALREADY SURPASSED IT.  HOMES NEAR THESE RIVERS ARE LIKELY FLOODED. FLOOD WATERS WILL CONTINUE FOR SEVERAL MORE HOURS. \n\n WATER LEVELS ARE IN EXCESS OF 5 FEET IN ALL POOR DRAINAGE AREAS.  ELSEWHERE...AVERAGE WATER LEVELS ARE AT LEAST 2 FEET. POWER OUTAGES ARE WIDESPREAD. \n\n STAY TUNED TO NOAA WEATHER RADIO FOR FURTHER INFORMATION ON THIS DANGEROUS FLOOD.  HEED ALL EVACUATION ORDERS FROM LAW ENFORCEMENT OR MILITARY PERSONNEL."""),
- ("***GENERATOR PRECAUTIONS", """IF YOU PLAN ON USING A PORTABLE GENERATOR...BE SURE TO OBSERVE ALL SAFETY PRECAUTIONS TO AVOID CARBON MONOXIDE POISONING...ELECTROCUTION...OR FIRE.  BE SURE TO OPERATE YOUR GENERATOR IN A DRY OUTDOOR AREA AWAY FROM WINDOWS...DOORS AND VENTS. CARBON MONOXIDE POISONING DEATHS CAN OCCUR DUE TO IMPROPERLY LOCATED PORTABLE GENERATORS!"""),
- ("***FLAMMABLES PRECAUTION", """FLAMMABLE LIQUIDS SUCH AS GASOLINE OR KEROSENE SHOULD ONLY BE STORED OUTSIDE OF THE LIVING AREAS IN PROPERLY LABELED...NON GLASS SAFETY CONTAINERS.  DO NOT STORE IN AN ATTACHED GARAGE AS GAS FUMES CAN TRAVEL INTO THE HOME AND POTENTIALLY IGNITE...ESPECIALLY IF THE HOME HAS NATURAL OR PROPANE GAS LINES THAT COULD BECOME DAMAGED DURING THE HURRICANE."""),
- ("***HURRICANE WARNING DEFINITION", """A HURRICANE WARNING MEANS SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE EXPECTED WITHIN 36 HOURS. A HURRICANE WARNING CAN REMAIN IN EFFECT WHEN DANGEROUSLY HIGH WATER OR A COMBINATION OF DANGEROUSLY HIGH WATER AND EXCEPTIONALLY HIGH WAVES CONTINUE...EVEN THOUGH WINDS MAY BE LESS THAN HURRICANE FORCE."""),
- ("***HURRICANE WATCH DEFINITION", """A HURRICANE WATCH IS ISSUED WHEN SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE POSSIBLE WITHIN 48 HOURS."""),
- ("***HURRICANE WIND WARNING DEFINITION", """A HURRICANE WIND WARNING IS ISSUED WHEN A LANDFALLING HURRICANE IS EXPECTED TO SPREAD HURRICANE FORCE WINDS WELL INLAND. SERIOUS PROPERTY DAMAGE...POWER OUTAGES...BLOWING DEBRIS...AND FALLEN TREES CAN BE EXPECTED AS WINDS REACH OR EXCEED 74 MPH."""),
- ("***HURRICANE WIND WATCH DEFINITION", """A HURRICANE WIND WATCH IS ISSUED WHEN A LANDFALLING HURRICANE IS EXPECTED TO SPREAD HURRICANE FORCE WINDS WELL INLAND WITHIN THE NEXT 48 HOURS. PREPARE FOR WINDS IN EXCESS OF 74 MPH."""),
- ("***TROPICAL STORM WARNING DEFINITION", """A TROPICAL STORM WARNING MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE EXPECTED DUE TO A TROPICAL CYCLONE WITHIN 36 HOURS."""),
- ("***TROPICAL STORM WIND WARNING DEFINITION", """A TROPICAL STORM WIND WARNING MEANS WINDS OF 39 TO 73 MPH ARE EXPECTED DUE TO A LANDFALLING HURRICANE OR TROPICAL STORM. WINDS OF THIS MAGNITUDE ARE LIKELY TO CAUSE SPORADIC POWER OUTAGES...FALLEN TREES...MINOR PROPERTY DAMAGE...AND DANGEROUS DRIVING CONDITIONS FOR HIGH PROFILE VEHICLES."""),
- ("***TROPICAL STORM WATCH DEFINITION", """A TROPICAL STORM WATCH MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE POSSIBLE DUE TO A TROPICAL CYCLONE WITHIN 48 HOURS."""),
- ("***TROPICAL STORM WIND WATCH DEFINITION", """A TROPICAL STORM WIND WATCH MEANS WINDS OF 39 TO 73 MPH ARE EXPECTED DUE TO A LANDFALLING HURRICANE OR TROPICAL STORM WITHIN 48 HOURS."""),
+        return [('***MINOR FLOODING', '''RESIDENTS CAN EXPECT MINOR FLOODING OF ROADS...ESPECIALLY THOSE WITH POOR DRAINAGE. KNOWN INTERSECTIONS WITH VERY POOR DRAINAGE MAY HAVE WATER LEVELS UP TO 3 FEET. OTHER POOR DRAINAGE AREAS WILL HAVE WATER RISES OF 1 FOOT.'''),
+ ('***WIDESPREAD FLOODING', '''RESIDENTS CAN EXPECT WIDESPREAD FLOODING.  IN POOR DRAINAGE AREAS...MINOR TO MODERATE PROPERTY DAMAGE IS EXPECTED...AND SEVERAL MAIN THOROUGHFARES MAY BE CLOSED.  KNOWN INTERSECTIONS WITH VERY POOR DRAINAGE MAY HAVE WATER LEVELS UP TO 5 FEET.  OTHER POOR DRAINAGE AREAS WILL HAVE WATER RISES UP TO 3 FEET.  LEVELS WILL RISE 1 FOOT ELSEWHERE.'''),
+ '''SMALL STREAMS WILL SURPASS BANK FULL...BUT ONLY FOR ONE HOUR OR LESS.''',
+ ('***WIDESPREAD STREAM FLOODING', '''MOST SMALL STREAMS AND CREEKS WILL SURPASS BANK FULL...FOR UP TO 3 HOURS.  LARGER RIVERS WILL RISE...AND THOSE WHICH RESPOND QUICKLY TO VERY HEAVY RAIN MAY BRIEFLY EXCEED FLOOD STAGE.'''),
+ ('***PRIOR NOTICE OF EXTENSIVE AREAL FLOODING', '''EXTENSIVE FLOODING IS EXPECTED |**TODAY OR TONIGHT OR NEXT DAY**| \n\n PERSONS LIVING NEAR OR IN POOR DRAINAGE LOCATIONS SHOULD PREPARE FOR POSSIBLE EVACUATION LATER |**TODAY OR TONIGHT OR NEXT DAY**|. IN THESE AREAS...SIGNIFICANT PROPERTY DAMAGE WILL OCCUR...AND SOME POWER OUTAGES ARE LIKELY.  MINOR PROPERTY DAMAGE IS POSSIBLE ELSEWHERE. \n\nWATER LEVELS IN VERY POOR DRAINAGE AREAS WILL APPROACH 7 FEET.  OTHER POOR DRAINAGE LOCATIONS WILL HAVE RISES BETWEEN 3 AND 5 FEET.  ELSEWHERE...EXPECT WATER RISES TO NEAR 2 FEET.  NUMEROUS MAIN ROADS WILL BE CLOSED.  DRIVING IS HIGHLY DISCOURAGED EXCEPT FOR EMERGENCIES.'''),
+ ('***DANGEROUS FLOODING', '''THIS IS A DANGEROUS FLOOD SITUATION!  \n\nPERSONS LIVING IN OR NEAR POOR DRAINAGE AREAS SHOULD EVACUATE IMMEDIATELY.  SIGNIFICANT PROPERTY DAMAGE WILL OCCUR IN THESE LOCATIONS.  MINOR PROPERTY DAMAGE IS POSSIBLE IN OTHER AREAS.  SOME POWER OUTAGES ARE EXPECTED. \n\n WATER LEVELS IN VERY POOR DRAINAGE AREAS WILL APPROACH 7 FEET.  OTHER POOR DRAINAGE LOCATIONS WILL HAVE RISES BETWEEN 3 AND 5 FEET.  ELSEWHERE...EXPECT WATER RISES TO NEAR 2 FEET.  NUMEROUS MAIN ROADS WILL BE CLOSED.  DRIVING IS HIGHLY DISCOURAGED UNTIL WELL AFTER FLOOD WATERS RECEDE. \n\n MOVE TO SAFETY IMMEDIATELY.'''),
+ ('***PRIOR NOTICE OF EXTENSIVE RIVER FLOODING', '''EXTENSIVE FLOODING IS EXPECTED |**TODAY OR TONIGHT OR NEXT DAY**|. \n\n BY |**TIME**|...ALL SMALL STREAMS AND CREEKS WILL HAVE SURPASSED BANK FULL.  THESE CONDITIONS WILL LAST BETWEEN 3 AND 6 HOURS.  SOME STREAMS WILL EXCEED THEIR BANKS BY SEVERAL FEET AND MAY FLOOD NEARBY HOMES.  EVACUATIONS ARE POSSIBLE.\n\n RIVERS IN AFFECTED AREAS WILL RISE...WITH SOME REACHING OR EXCEEDING FLOOD STAGE.  NORMALLY QUICK-RISING RIVERS WILL EXCEED FLOOD STAGE BY SEVERAL FEET...FLOODING HOMES ALONG THE RIVERSIDE.  PASTURES WILL ALSO FLOOD...BUT LIVESTOCK LOSSES SHOULD BE MINIMAL.  SEVERAL SECONDARY ROADS AND BRIDGES WILL BE WASHED OUT.  DRIVING IS HIGHLY DISCOURAGED.'''),
+ ('***DANGEROUS RIVER FLOODING', '''THIS IS A DANGEROUS SITUATION!  \n\nALL STREAMS...CREEKS..AND SOME RIVERS WILL SURPASS BANKFULL...FOR BETWEEN 3 AND 6 HOURS.  SOME STREAMS WILL EXCEED THEIR BANKS BY SEVERAL FEET...FLOODING NEARBY HOMES.  EVACUATIONS ARE POSSIBLE. \n\n RIVERS IN AFFECTED AREAS WILL RISE...WITH SOME REACHING OR EXCEEDING FLOOD STAGE.  NORMALLY QUICK RISING RIVERS WILL EXCEED FLOOD STAGE BY SEVERAL FEET...FLOODING HOMES ALONG THE RIVERSIDE.  PASTURES WILL ALSO FLOOD...BUT LIVESTOCK LOSSES SHOULD BE MINIMAL.'''),
+ ('***CATASTROPHIC FLOODING EXPECTED', '''CATASTROPHIC FLOODING IS EXPECTED LATER |**EDIT DAY OR NIGHT PERIODS**|. \n\n A STATE OF EMERGENCY HAS BEEN ISSUED |**BY AGENCY**| FOR |**EDIT AREA HERE**|. \n\n RESIDENTS IN FLOOD PRONE AREAS SHOULD RUSH TO COMPLETION PREPARATIONS TO PROTECT THEIR PROPERTY...THEN MOVE TO A PLACE OF SAFETY...THIS |**EDIT TIME PERIOD**|. MANDATORY EVACUATIONS ARE UNDERWAY. \n\n |** OPENING PARAGRAPH DESCRIBING ANTECEDENT RAINFALL AND EXPECTED HEAVIER RAINFALL **| \n\n LIFE THREATENING FLOODING IS LIKELY!  IN URBAN AREAS...EXTENSIVE PROPERTY DAMAGE WILL OCCUR IN ALL POOR DRAINAGE AREAS...WITH MODERATE TO MAJOR PROPERTY DAMAGE ELSEWHERE.  WIDESPREAD POWER OUTAGES ARE LIKELY. \n\n IN RURAL LOCATIONS...ALL STREAMS...CREEKS...AND ARROYOS WILL SURPASS BANK FULL FOR MORE THAN 6 HOURS.  EACH WILL EXCEED THEIR BANKS BY SEVERAL FEET...FLOODING HOMES...EVEN THOSE UP TO ONE HALF MILE AWAY FROM THE BANKS. \n\n IN ALL AREAS...HUNDREDS OF ROADS WILL FLOOD.  DOZENS OF SECONDARY ROADS MAY BECOME WASHED OUT IN RURAL AREAS.  NUMEROUS LOW WATER BRIDGES WILL LIKELY WASH OUT AS WELL. \n\n WATER LEVELS WILL EXCEED 5 FEET IN ALL POOR DRAINAGE URBAN AREAS...AND AVERAGE AT LEAST 2 FEET ELSEWHERE.  ALL RIVERS IN AFFECTED AREAS WILL RISE...AND MOST WILL EXCEED FLOOD STAGE.  QUICK RISING RIVERS WILL EXCEED FLOOD STAGE...AND REACH NEAR RECORD CRESTS...CAUSING INUNDATION OF NEARBY HOMES.  IN RURAL LOCATIONS...EXTENSIVE PASTURELAND FLOODING WILL OCCUR AS WATER LEVELS RISE TO 2 FEET OR MORE.  WIDESPREAD LIVESTOCK LOSSES ARE LIKELY.'''),
+ ('***CATASTROPHIC FLOODING OCCURRING', '''CATASTROPHIC FLOODING IS OCCURRING IN |**EDIT AREA**|. \n\n STATES OF EMERGENCY REMAIN IN EFFECT FOR THE FOLLOWING LOCATIONS: \n\n |**EDIT COUNTIES AND CITIES HERE**| \n\n RESIDENTS REMAIN PROHIBITED FROM VENTURING OUT.  LAW ENFORCEMENT AND |**MILITARY SUPPORT GROUP EDIT HERE**| EVACUATIONS ARE NOW UNDERWAY. \n\n THIS REMAINS A LIFE THREATENING SITUATION!  EXTENSIVE PROPERTY DAMAGE IS OCCURRING IN ALL POOR DRAINAGE AREAS.  ELSEWHERE...MODERATE TO MAJOR PROPERTY DAMAGE IS OCCURRING.  HUNDREDS OF ROADS ARE CLOSED...AND SOME ARE LIKELY DAMAGED.  SEVERAL AREA BRIDGES ARE WASHED OUT.  STREAMS...CREEKS...AND ARROYOS ARE SEVERAL FEET ABOVE BANK FULL...AND WILL REMAIN SO FOR HOURS.  MANY RIVERS ARE NEARING FLOOD STAGE...AND SOME HAVE ALREADY SURPASSED IT.  HOMES NEAR THESE RIVERS ARE LIKELY FLOODED. FLOOD WATERS WILL CONTINUE FOR SEVERAL MORE HOURS. \n\n WATER LEVELS ARE IN EXCESS OF 5 FEET IN ALL POOR DRAINAGE AREAS.  ELSEWHERE...AVERAGE WATER LEVELS ARE AT LEAST 2 FEET. POWER OUTAGES ARE WIDESPREAD. \n\n STAY TUNED TO NOAA WEATHER RADIO FOR FURTHER INFORMATION ON THIS DANGEROUS FLOOD.  HEED ALL EVACUATION ORDERS FROM LAW ENFORCEMENT OR MILITARY PERSONNEL.'''),
+ ('***GENERATOR PRECAUTIONS', '''IF YOU PLAN ON USING A PORTABLE GENERATOR...BE SURE TO OBSERVE ALL SAFETY PRECAUTIONS TO AVOID CARBON MONOXIDE POISONING...ELECTROCUTION...OR FIRE.  BE SURE TO OPERATE YOUR GENERATOR IN A DRY OUTDOOR AREA AWAY FROM WINDOWS...DOORS AND VENTS. CARBON MONOXIDE POISONING DEATHS CAN OCCUR DUE TO IMPROPERLY LOCATED PORTABLE GENERATORS!'''),
+ ('***FLAMMABLES PRECAUTION', '''FLAMMABLE LIQUIDS SUCH AS GASOLINE OR KEROSENE SHOULD ONLY BE STORED OUTSIDE OF THE LIVING AREAS IN PROPERLY LABELED...NON GLASS SAFETY CONTAINERS.  DO NOT STORE IN AN ATTACHED GARAGE AS GAS FUMES CAN TRAVEL INTO THE HOME AND POTENTIALLY IGNITE...ESPECIALLY IF THE HOME HAS NATURAL OR PROPANE GAS LINES THAT COULD BECOME DAMAGED DURING THE HURRICANE.'''),
+ ('***HURRICANE WARNING DEFINITION', '''A HURRICANE WARNING MEANS SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE EXPECTED WITHIN 36 HOURS. A HURRICANE WARNING CAN REMAIN IN EFFECT WHEN DANGEROUSLY HIGH WATER OR A COMBINATION OF DANGEROUSLY HIGH WATER AND EXCEPTIONALLY HIGH WAVES CONTINUE...EVEN THOUGH WINDS MAY BE LESS THAN HURRICANE FORCE.'''),
+ ('***HURRICANE WATCH DEFINITION', '''A HURRICANE WATCH IS ISSUED WHEN SUSTAINED WINDS OF |* 64 KTS OR 74 MPH *| OR HIGHER ASSOCIATED WITH A HURRICANE ARE POSSIBLE WITHIN 48 HOURS.'''),
+ ('***HURRICANE WIND WARNING DEFINITION', '''A HURRICANE WIND WARNING IS ISSUED WHEN A LANDFALLING HURRICANE IS EXPECTED TO SPREAD HURRICANE FORCE WINDS WELL INLAND. SERIOUS PROPERTY DAMAGE...POWER OUTAGES...BLOWING DEBRIS...AND FALLEN TREES CAN BE EXPECTED AS WINDS REACH OR EXCEED 74 MPH.'''),
+ ('***HURRICANE WIND WATCH DEFINITION', '''A HURRICANE WIND WATCH IS ISSUED WHEN A LANDFALLING HURRICANE IS EXPECTED TO SPREAD HURRICANE FORCE WINDS WELL INLAND WITHIN THE NEXT 48 HOURS. PREPARE FOR WINDS IN EXCESS OF 74 MPH.'''),
+ ('***TROPICAL STORM WARNING DEFINITION', '''A TROPICAL STORM WARNING MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE EXPECTED DUE TO A TROPICAL CYCLONE WITHIN 36 HOURS.'''),
+ ('***TROPICAL STORM WIND WARNING DEFINITION', '''A TROPICAL STORM WIND WARNING MEANS WINDS OF 39 TO 73 MPH ARE EXPECTED DUE TO A LANDFALLING HURRICANE OR TROPICAL STORM. WINDS OF THIS MAGNITUDE ARE LIKELY TO CAUSE SPORADIC POWER OUTAGES...FALLEN TREES...MINOR PROPERTY DAMAGE...AND DANGEROUS DRIVING CONDITIONS FOR HIGH PROFILE VEHICLES.'''),
+ ('***TROPICAL STORM WATCH DEFINITION', '''A TROPICAL STORM WATCH MEANS SUSTAINED WINDS OF |* 34 TO 63 KT OR 39 TO 73 MPH OR 63 TO 118 KM PER HR *| ARE POSSIBLE DUE TO A TROPICAL CYCLONE WITHIN 48 HOURS.'''),
+ ('***TROPICAL STORM WIND WATCH DEFINITION', '''A TROPICAL STORM WIND WATCH MEANS WINDS OF 39 TO 73 MPH ARE EXPECTED DUE TO A LANDFALLING HURRICANE OR TROPICAL STORM WITHIN 48 HOURS.'''),
         ]
 
     def ctaPilHMW(self):
@@ -2887,7 +2955,7 @@ A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARI
 
     def ctaPilMWW(self):
         return [
- """MARINERS SHOULD PAY CLOSE ATTENTION TO THE MARINE FORECAST...AND CONSIDER WIND AND SEA CONDITIONS IN PLANNING.""",
+ '''MARINERS SHOULD PAY CLOSE ATTENTION TO THE MARINE FORECAST...AND CONSIDER WIND AND SEA CONDITIONS IN PLANNING.''',
         ]
 
     def ctaPilMVF(self):

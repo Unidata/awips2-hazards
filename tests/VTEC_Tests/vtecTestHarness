@@ -7,11 +7,10 @@
 # This code will have to be modified to work in the Hazard Services environment
 # as it doesn't use the bridge.
 
-from DTFCommonLibrary.VTECutilities.VTECEngineWrapper import VTECEngineWrapper
-from DTFCommonLibrary.VTECutilities.VTECTableIO import VTECTableIO
-#from DTFCommonLibrary.VTECutilities.VTECEngineWrapper import DBPATH
-import DTFCommonLibrary.logUtilities.Logger as LS
-from bridge.Bridge import Bridge
+from VTECEngineWrapper import VTECEngineWrapper
+from VTECTableIO import VTECTableIO
+import Logger as LS
+from Bridge import Bridge
 
 import copy
 import calendar
@@ -38,9 +37,7 @@ HVTECre = r'/[0-9A-Z]{5}\.[0-3NU]\.[A-Z]{2}\.' + \
 
 # THIS CODE USES THE vtec records directly through the use of the VTECTableIO
 # class. The location is defined in the test version of the VTECEngineWrapper.
-
-
-        
+       
 class VTECTestHarness(object):
 
     def __init__(self, scriptName, scripts):

@@ -169,4 +169,5 @@ TEXT_UTILITY_ROOT = "gfe/userPython/textUtilities/regular/"
 # Product Generation
 XML_FORMAT = "XML"
 LEGACY_FORMAT = "Legacy"
+CAP_FORMAT = "CAP"
 

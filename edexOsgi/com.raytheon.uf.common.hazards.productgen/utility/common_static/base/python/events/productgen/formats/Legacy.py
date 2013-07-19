@@ -14,7 +14,7 @@
 #                         Omaha, NE 68106
 #                         402.291.0100
 #
-# See the AWIPS II Master Rights File ("Master Rights File.pdf") for
+# See the AWIPS II Master Rights File ('Master Rights File.pdf') for
 # further licensing information.   
 # #
 
@@ -33,17 +33,18 @@
 import FormatTemplate
 from time import gmtime, strftime
 import collections
-import dateutil.parser
 import types
+from TextProductCommon import TextProductCommon
 
 class Format(FormatTemplate.Formatter):
     
     def execute(self, data):
-        """
+        '''
         Main method of execution to generate Legacy text
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in Legacy format.
-        """
+        '''
+        self._tpc = TextProductCommon()        
         data = self.cleanDictKeys(data)
         text = ''
 
@@ -53,11 +54,16 @@ class Format(FormatTemplate.Formatter):
             text += easMessage + '\n'
         text += data['productName'] + '\n'
         text += data['senderName'] + '\n'
-        text += strftime('%H%M %p %Z %a %b %Y', gmtime()) + '\n\n'
+        sentTimeZ = self._tpc.getVal(data, 'sentTimeZ_datetime')
+        timeZones = self._tpc.getVal(data, 'timeZones')
+        for timeZone in timeZones:
+            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %b %Y', timeZone) + '\n'
+        text += '\n'        
         # Test if this is a watch
         text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
         text += self.processSegments(data['segments'])
         return str(text.upper())
+    
     
     def processWmoHeader(self, wmoHeader):
         text = wmoHeader['wmoHeaderLine'] + '\n'
@@ -73,30 +79,30 @@ class Format(FormatTemplate.Formatter):
             for segment in segmentList:
                 vtecRecords = segment['vtecRecords']
                 for vtecRecord in vtecRecords:
-                    if vtecRecord.get("pvtecRecordType") == "pvtecRecord" and vtecRecord.get('significance') is 'A':
+                    if vtecRecord.get('pvtecRecordType') == 'pvtecRecord' and vtecRecord.get('significance') is 'A':
                         return 'URGENT - IMMEDIATE BROADCAST REQUESTED'
                 return 'BULLETIN - EAS ACTIVATION REQUESTED'       
         return None
         
     def processSegments(self, segments):
-        """
+        '''
         Generates Legacy text from a list of segments
         @param data: a list of dictionaries 
         @return: Returns the legacy text of the segments.
-        """  
+        '''  
         text = ''
         for segment in segments['segment']:
-            text += segment["ugcHeader"] + "\n"
+            text += segment['ugcHeader'] + '\n'
             if 'vtecRecords' in segment:
                 vtecRecords = segment['vtecRecords']
                 for vtecRecord in vtecRecords:
                     text += vtecRecord['vtecString'] + '\n'
-            areaString = segment.get('areaString', "")
+            areaString = segment.get('areaString', '')
             if areaString:
-                text += areaString + "\n"
-            cityString = segment.get('cityString', "")
+                text += areaString + '\n'
+            cityString = segment.get('cityString', '')
             if cityString:
-                text += cityString + "\n"              
+                text += cityString + '\n'              
             text += strftime('%H%M %p %Z %a %b %Y', gmtime()) + '\n\n'
 
             text += segment['description'] + '\n'

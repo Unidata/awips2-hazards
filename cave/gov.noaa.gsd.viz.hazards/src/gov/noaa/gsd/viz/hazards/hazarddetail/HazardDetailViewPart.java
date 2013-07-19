@@ -1,3 +1,4 @@
+
 /**
  * This software was developed and / or modified by the
  * National Oceanic and Atmospheric Administration (NOAA), 
@@ -2921,6 +2922,7 @@ public class HazardDetailViewPart extends ViewPart implements
             return object;
         }
     }
+
 
     /**
      * When an action is fire in HID, this method will be called to notify all
