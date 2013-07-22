@@ -24,7 +24,8 @@ Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.spatialdisplay
 Eclipse-BuddyPolicy: ext, global
 Bundle-ActivationPolicy: lazy
-Import-Package: com.raytheon.uf.common.dataplugin.events,
+Import-Package: com.raytheon.uf.common.colormap,
+ com.raytheon.uf.common.dataplugin.events,
  com.raytheon.uf.common.dataplugin.events.hazards,
  com.raytheon.uf.common.dataplugin.events.hazards.datastorage,
  com.raytheon.uf.common.dataplugin.events.hazards.event,
