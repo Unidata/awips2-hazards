@@ -32,6 +32,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.swt.widgets.Display;
 import org.osgi.framework.Bundle;
 
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -44,6 +45,7 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -61,6 +63,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Jun 24, 2013            bryon.lawrence      Removed the 'Move Entire Element'
  *                                             option from the right-click context
  *                                             menu.
+ * Jul 19, 2013 1257       bsteffen    Notification support for session manager.
  * 
  * </pre>
  * 
@@ -422,7 +425,13 @@ public final class HazardServicesMessageHandler {
             String dynamicSettingJSON, String state) {
         this.appBuilder = appBuilder;
         if (false) {
-            model = new ModelDecorator(new ModelAdapter());
+            ModelAdapter adapter = new ModelAdapter();
+            try {
+                adapter.getNewSessionManager().registerForNotification(this);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+            model = new ModelDecorator(adapter);
         } else {
             model = new ModelDecorator(instantiateModel());
         }
@@ -1288,6 +1297,17 @@ public final class HazardServicesMessageHandler {
      */
     public String getBenchmarkingStats() {
         return model.getBenchmarkingStats();
+    }
+
+    @Subscribe
+    public void sessionEventsModified(SessionEventsModified notification) {
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+                notifyModelEventsChanged();
+            }
+        });
     }
 
 }
