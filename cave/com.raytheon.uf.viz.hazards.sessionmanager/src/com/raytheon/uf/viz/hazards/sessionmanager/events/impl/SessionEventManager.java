@@ -24,9 +24,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -92,6 +94,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
     private final ISessionNotificationSender notificationSender;
 
     private List<IHazardEvent> events = new ArrayList<IHazardEvent>();
+
+    private Deque<String> eventModifications = new LinkedList<String>();
 
     public SessionEventManager(ISessionTimeManager timeManager,
             SessionConfigurationManager configManager,
@@ -213,8 +217,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
-    protected IHazardEvent addEvent(IHazardEvent event,
- boolean localEvent) {
+    protected IHazardEvent addEvent(IHazardEvent event, boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
         if (localEvent) {
@@ -307,8 +310,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
-    protected void hazardEventModifiedChange(SessionEventModified notification) {
+    protected void hazardEventModified(SessionEventModified notification) {
         notification.getEvent().setState(HazardState.PENDING);
+        addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
     }
 
@@ -319,6 +323,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 && !notification.isAttrbute(ATTR_ISSUED)) {
             notification.getEvent().setState(HazardState.PENDING);
         }
+        addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
     }
 
@@ -352,7 +357,28 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 ;// do nothing.
             }
         }
+        addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
+    }
+
+    private void addModification(String eventId) {
+        eventModifications.remove(eventId);
+        eventModifications.push(eventId);
+    }
+
+    @Override
+    public IHazardEvent getLastModifiedSelectedEvent() {
+        if (eventModifications.isEmpty()) {
+            return null;
+        }
+        IHazardEvent event = getEventById(eventModifications.peek());
+        if (event != null
+                && Boolean.TRUE.equals(event.getHazardAttribute(ATTR_SELECTED))) {
+            return event;
+        }else{
+            eventModifications.pop();
+            return getLastModifiedSelectedEvent();
+        }
     }
 
     @Override
@@ -409,4 +435,5 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
         return value;
     }
+
 }

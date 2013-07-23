@@ -157,6 +157,13 @@ public interface ISessionEventManager {
     public Collection<IHazardEvent> getSelectedEvents();
 
     /**
+     * Return the selected event that was most recently modified.
+     * 
+     * @return
+     */
+    public IHazardEvent getLastModifiedSelectedEvent();
+
+    /**
      * Set the selected events. Any currently selected events that are no in
      * selectedEvents will be deslected, all events in the selectedEvents set
      * will get ATTR_SELECTED set to True.

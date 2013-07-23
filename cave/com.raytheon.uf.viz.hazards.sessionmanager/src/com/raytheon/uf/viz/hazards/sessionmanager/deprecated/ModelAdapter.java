@@ -195,9 +195,9 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getLastSelectedEventID() {
-        Collection<IHazardEvent> selectedEvents = model.getEventManager()
-                .getSelectedEvents();
-        for (IHazardEvent event : selectedEvents) {
+        IHazardEvent event = model.getEventManager()
+                .getLastModifiedSelectedEvent();
+        if (event != null) {
             return event.getEventID();
         }
         return "";
@@ -387,8 +387,10 @@ public abstract class ModelAdapter {
     public void handleAction(String action, String jsonText) {
         if (action.equals("riseAbove:crest:fallBelow")) {
             return;
+        } else if (action.equals("__startTime__:__endTime__")) {
+            return;
         }
-        throw new UnsupportedOperationException("Not implemented");
+        throw new UnsupportedOperationException("Not implemented: " + action);
     }
 
     /*

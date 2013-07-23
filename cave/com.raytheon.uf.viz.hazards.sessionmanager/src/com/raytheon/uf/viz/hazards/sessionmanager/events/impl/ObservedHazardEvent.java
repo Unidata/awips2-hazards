@@ -223,7 +223,7 @@ public class ObservedHazardEvent implements IHazardEvent {
             delegate.setSiteID(site);
             if (notify) {
                 eventManager
-                        .hazardEventModifiedChange(new SessionEventModified(
+                        .hazardEventModified(new SessionEventModified(
                                 eventManager, this));
             }
         }
@@ -234,7 +234,7 @@ public class ObservedHazardEvent implements IHazardEvent {
             delegate.setEventID(eventId);
             if (notify) {
                 eventManager
-                        .hazardEventModifiedChange(new SessionEventModified(
+                        .hazardEventModified(new SessionEventModified(
                                 eventManager, this));
             }
         }
@@ -257,7 +257,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setPhenomenon(phenomenon);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventModified(
+                            .hazardEventModified(new SessionEventModified(
                                     eventManager, this));
                 }
             } else {
@@ -272,7 +272,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setSignificance(significance);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventModified(
+                            .hazardEventModified(new SessionEventModified(
                                     eventManager, this));
                 }
             } else {
@@ -287,7 +287,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setSubtype(subtype);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventModified(
+                            .hazardEventModified(new SessionEventModified(
                                     eventManager, this));
                 }
             } else {
@@ -301,7 +301,7 @@ public class ObservedHazardEvent implements IHazardEvent {
             delegate.setIssueTime(date);
             if (notify) {
                 eventManager
-                        .hazardEventModifiedChange(new SessionEventModified(
+                        .hazardEventModified(new SessionEventModified(
                                 eventManager, this));
             }
         }
@@ -313,7 +313,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setEndTime(date);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventModified(
+                            .hazardEventModified(new SessionEventModified(
                                     eventManager, this));
                 }
             } else {
@@ -328,7 +328,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setStartTime(date);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventModified(
+                            .hazardEventModified(new SessionEventModified(
                                     eventManager, this));
                 }
             } else {
@@ -343,7 +343,7 @@ public class ObservedHazardEvent implements IHazardEvent {
                 delegate.setGeometry(geom);
                 if (notify) {
                     eventManager
-                            .hazardEventModifiedChange(new SessionEventGeometryModified(
+                            .hazardEventModified(new SessionEventGeometryModified(
                                     eventManager, this));
                 }
             } else {
@@ -357,7 +357,7 @@ public class ObservedHazardEvent implements IHazardEvent {
             delegate.setHazardMode(mode);
             if (notify) {
                 eventManager
-                        .hazardEventModifiedChange(new SessionEventModified(
+                        .hazardEventModified(new SessionEventModified(
                                 eventManager, this));
             }
         }
@@ -369,7 +369,7 @@ public class ObservedHazardEvent implements IHazardEvent {
             delegate.setHazardAttributes(attributes);
             if (notify) {
                 eventManager
-                        .hazardEventModifiedChange(new SessionEventModified(
+                        .hazardEventModified(new SessionEventModified(
                                 eventManager, this));
             }
         }

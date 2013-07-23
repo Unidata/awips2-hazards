@@ -106,4 +106,9 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         events.clear();
     }
 
+    @Override
+    public IHazardEvent getLastModifiedSelectedEvent() {
+        return null;
+    }
+
 }
