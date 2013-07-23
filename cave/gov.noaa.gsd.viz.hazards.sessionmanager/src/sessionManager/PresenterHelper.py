@@ -188,9 +188,18 @@ class PresenterHelper(object):
         trackingPointLonLats = []
         label = eventID + " " + eventType
 
+        # overlayShapes are things we want to plot last, and therefore on top,
+        # of other things so they are not covered over by other things.
+        overlayShapes = []
+
+        # If a tracker is active and frame is not within the valid time of the
+        # event, we still want to show polygon for event associated with tracker.
+        subduedPolygon = None
+
         for eventShape in eventShapes:
             # Polygons            
-            # Build a list of tracking points.  This will be used to create a line between the tracking points.
+            # Build a list of tracking points.  This will be used to create a
+            # line between the tracking points.
             
             if eventShape.get(SHAPE_TYPE) == "polygon":
                 if overlap:
@@ -206,6 +215,20 @@ class PresenterHelper(object):
                            "label": label,
                            "isSelected": isSelected,
                            })
+                else :
+                    subduedPolygon = {
+                           SHAPE_TYPE:"polygon",
+                           INCLUDE: eventShape.get(INCLUDE, "true"),
+                           POINTS: eventShape.get(POINTS),
+                           "fill color":"0 0 0",
+                           "border color":"127 127 127",
+                           "borderStyle":self.getBorderStyle(state),
+                           "border thick":self.getBorderThick(isSelected),
+                           "isVisible": "true",
+                           "label": label,
+                           "isSelected": isSelected
+                           }
+
             # Tracking points
             if eventShape.get(SHAPE_TYPE) in ["star", "circle", POINT, "dot"]:
                 if eventShape.get("pointType", "") == "tracking":
@@ -213,21 +236,38 @@ class PresenterHelper(object):
                         t = eventShape.get("pointID")                        
                         lonLat = eventShape.get(POINT)
                         trackingPointLonLats.append(lonLat)
-                        
+
+                        # We know that there are seconds to milliseconds (and 
+                        # vice-versa) conversions going on all over the place.
+                        # May be unsafe to use exact equality tests with 
+                        # millisecond units to determine when two times match
+                        # each other.
+                        nowFrame = False
+                        slop = long(t)-long(self.sessionManager.getSelectedTime())
+                        if slop>-999 and slop<999 :
+                            nowFrame = True
+
+                        if nowFrame : rgb = "255 255 255"
+                        else :        rgb = "127 127 127"
                         if t in dTimes: shapeType = "star"
                         else:           shapeType = "dot"
-                        shapes.append({
-                                       "pointID": t,
-                                       SHAPE_TYPE:shapeType,
-                                       "centerPoint":lonLat,
-                                       "radius"       : 1,
-                                       "fill color":self.getTrackColor(t),
-                                       "border color":"255 255 255",
-                                       "borderStyle":self.getBorderStyle(state),
-                                       "border thick":self.getBorderThick(isSelected),
-                                       "isVisible": "true",
-                                       "isSelected": isSelected,
-                                       })  
+
+                        addShape = {"pointID": t,
+                                    SHAPE_TYPE:shapeType,
+                                    "centerPoint":lonLat,
+                                    "radius"       : 1,
+                                    "fill color":self.getTrackColor(t),
+                                    "border color":rgb ,
+                                    "borderStyle":self.getBorderStyle(state),
+                                    "border thick":self.getBorderThick(isSelected),
+                                    "isVisible": "true",
+                                    "isSelected": isSelected,
+                                    }
+                        if nowFrame :
+                            overlayShapes.append(addShape)
+                        else :
+                            shapes.append(addShape)
+
                 # Must be forecast point
                 elif overlap:  
                         lonLat = eventShape.get(POINT)
@@ -252,14 +292,18 @@ class PresenterHelper(object):
                            INCLUDE: eventShape.get(INCLUDE, "true"),
                            POINTS: trackingPointLonLats,
                            "fill color":self.getFillColor(eventDict),
-                           "border color":"255 255 255",
+                           "border color":"127 127 127",
                            "borderStyle":self.getBorderStyle(state),
                            "border thick":self.getBorderThick(isSelected),
                            "isVisible": "true",
                            "label": label,
                            "isSelected": isSelected,
                            })
-            
+
+        if len(trackingPointLonLats)>0 and subduedPolygon :
+            shapes.insert(0, subduedPolygon)
+        shapes.extend(overlayShapes)
+
         sdDict[SHAPES] = shapes
         
         geoReference = eventDict.get("geometryReference")
