@@ -116,7 +116,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Subscribe
     public void settingsIDChanged(SettingsIDModified notification) {
         for (IHazardEvent event : getEvents()) {
-            removeEvent(event);
+            removeEvent(event, false);
         }
     }
 
@@ -127,15 +127,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
         Collection<IHazardEvent> eventsToRemove = getEvents();
         eventsToRemove.removeAll(eventsToKepp);
         for (IHazardEvent event : eventsToRemove) {
-            removeEvent(event);
+            removeEvent(event, false);
         }
         loadEventsForSettings(notification.getSettings());
     }
 
     protected void filterEventsForConfig(Collection<IHazardEvent> events) {
         Settings settings = configManager.getSettings();
-        List<String> siteIDs = settings.getVisibleSites();
-        List<String> phenSigs = settings.getVisibleTypes();
+        Set<String> siteIDs = settings.getVisibleSites();
+        Set<String> phenSigs = settings.getVisibleTypes();
         Set<HazardState> states = EnumSet.noneOf(HazardState.class);
         for (String state : settings.getVisibleStates()) {
             states.add(HazardState.valueOf(state.toUpperCase()));
@@ -158,18 +158,18 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private void loadEventsForSettings(Settings settings) {
         Map<String, List<Object>> filters = new HashMap<String, List<Object>>();
-        List<String> visibleSites = settings.getVisibleSites();
+        Set<String> visibleSites = settings.getVisibleSites();
         if (visibleSites == null || visibleSites.isEmpty()) {
             return;
         }
         filters.put(HazardConstants.SITEID, new ArrayList<Object>(visibleSites));
-        List<String> visibleTypes = settings.getVisibleTypes();
+        Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
         }
         filters.put(HazardConstants.PHENSIG,
                 new ArrayList<Object>(visibleTypes));
-        List<String> visibleStates = settings.getVisibleStates();
+        Set<String> visibleStates = settings.getVisibleStates();
         if (visibleStates == null || visibleStates.isEmpty()) {
             return;
         }
@@ -280,15 +280,21 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void removeEvent(IHazardEvent event) {
+        removeEvent(event, true);
+    }
+
+    private void removeEvent(IHazardEvent event, boolean delete) {
         synchronized (events) {
             if (events.remove(event)) {
                 // TODO this should never delete operation issued events
                 // TODO this should not delete the whole list, just any pending
                 // or proposed items on the end of the list.
-                HazardHistoryList histList = dbManager.getByEventID(event
-                        .getEventID());
-                if (histList != null && !histList.isEmpty()) {
-                    dbManager.removeEvents(histList);
+                if (delete) {
+                    HazardHistoryList histList = dbManager.getByEventID(event
+                            .getEventID());
+                    if (histList != null && !histList.isEmpty()) {
+                        dbManager.removeEvents(histList);
+                    }
                 }
                 notificationSender.postNotification(new SessionEventRemoved(
                         this, event));

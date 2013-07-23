@@ -22,8 +22,10 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.eclipse.core.runtime.Assert;
@@ -77,7 +79,7 @@ public class ObservedSettings extends Settings {
             }
         } else if (newObj.equals(oldObj)) {
             return false;
-        } else if(newObj instanceof Object[] && oldObj instanceof Object[]){
+        } else if (newObj instanceof Object[] && oldObj instanceof Object[]) {
             return !Arrays.equals((Object[]) newObj, (Object[]) oldObj);
         }
         return true;
@@ -95,6 +97,62 @@ public class ObservedSettings extends Settings {
         }
     }
 
+    /**
+     * Apply any changes to the persisted settings. Any changes to persisted
+     * settings that have not been changed in this will be applied from update.
+     * Local changes to this settings object will not reflect changes in
+     * updates.
+     * 
+     * @param persisted
+     * @param update
+     */
+    public void applyPersistedChanges(Settings persisted, Settings update) {
+        if (!changed(getSettingsID(), persisted.getSettingsID())) {
+            setSettingsID(update.getSettingsID());
+        }
+        if (!changed(getVisibleTypes(), persisted.getVisibleTypes())) {
+            setVisibleTypes(update.getVisibleTypes());
+        }
+        if (!changed(getVisibleStates(), persisted.getVisibleStates())) {
+            setVisibleStates(update.getVisibleStates());
+        }
+        if (!changed(getToolbarTools(), persisted.getToolbarTools())) {
+            setToolbarTools(update.getToolbarTools());
+        }
+        if (!changed(getDefaultTimeDisplayDuration(),
+                persisted.getDefaultTimeDisplayDuration())) {
+            setDefaultTimeDisplayDuration(update
+                    .getDefaultTimeDisplayDuration());
+        }
+        if (!changed(getMapCenter(), persisted.getMapCenter())) {
+            setMapCenter(update.getMapCenter());
+        }
+        if (!changed(getDefaultCategory(), persisted.getDefaultCategory())) {
+            setDefaultCategory(update.getDefaultCategory());
+        }
+        if (!changed(getVisibleSites(), persisted.getVisibleSites())) {
+            setVisibleSites(update.getVisibleSites());
+        }
+        if (!changed(getDisplayName(), persisted.getDisplayName())) {
+            setDisplayName(update.getDisplayName());
+        }
+        if (!changed(getDefaultDuration(), persisted.getDefaultDuration())) {
+            setDefaultDuration(update.getDefaultDuration());
+        }
+        if (!changed(getVisibleColumns(), persisted.getVisibleColumns())) {
+            setVisibleColumns(update.getVisibleColumns());
+        }
+        if (!changed(getColumns(), persisted.getColumns())) {
+            setColumns(update.getColumns());
+        }
+        if (!changed(getStaticSettingsID(), persisted.getStaticSettingsID())) {
+            setStaticSettingsID(update.getStaticSettingsID());
+        }
+        if (!changed(getAddToSelected(), persisted.getAddToSelected())) {
+            setAddToSelected(update.getAddToSelected());
+        }
+    }
+
     @Override
     public void setSettingsID(String settingsID) {
         if (changed(settingsID, getSettingsID())) {
@@ -104,7 +162,7 @@ public class ObservedSettings extends Settings {
     }
 
     @Override
-    public void setVisibleTypes(List<String> visibleTypes) {
+    public void setVisibleTypes(Set<String> visibleTypes) {
         if (changed(visibleTypes, getVisibleTypes())) {
             super.setVisibleTypes(visibleTypes);
             settingsChanged(new SettingsFiltersModified(configManager));
@@ -112,7 +170,7 @@ public class ObservedSettings extends Settings {
     }
 
     @Override
-    public void setVisibleStates(List<String> visibleStates) {
+    public void setVisibleStates(Set<String> visibleStates) {
         if (changed(visibleStates, getVisibleStates())) {
             super.setVisibleStates(visibleStates);
             settingsChanged(new SettingsFiltersModified(configManager));
@@ -152,7 +210,7 @@ public class ObservedSettings extends Settings {
     }
 
     @Override
-    public void setVisibleSites(List<String> visibleSites) {
+    public void setVisibleSites(Set<String> visibleSites) {
         if (changed(visibleSites, getVisibleSites())) {
             super.setVisibleSites(visibleSites);
             settingsChanged(new SettingsFiltersModified(configManager));
@@ -242,7 +300,7 @@ public class ObservedSettings extends Settings {
      */
     public void setHazardCategoriesAndTypes(
             HazardCategoryAndTypes[] hazardCategoriesAndTypes) {
-        List<String> types = new ArrayList<String>();
+        Set<String> types = new HashSet<String>();
         for (HazardCategoryAndTypes hcat : hazardCategoriesAndTypes) {
             types.addAll(hcat.getChildren());
         }

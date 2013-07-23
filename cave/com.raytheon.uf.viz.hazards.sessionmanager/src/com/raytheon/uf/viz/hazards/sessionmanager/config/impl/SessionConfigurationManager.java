@@ -33,10 +33,16 @@ import jep.JepException;
 
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationContext;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -98,6 +104,8 @@ public class SessionConfigurationManager implements
     private final JobPool loaderPool = new JobPool(
             "Loading Hazard Services Config", 1);
 
+    private final IPathManager pathManager;
+
     private List<ConfigLoader<Settings>> allSettings;
 
     private ConfigLoader<StartUpConfig> startUpConfig;
@@ -120,16 +128,18 @@ public class SessionConfigurationManager implements
 
     public SessionConfigurationManager(IPathManager pathManager,
             ISessionNotificationSender notificationSender) {
+        this.pathManager = pathManager;
         this.notificationSender = notificationSender;
-        LocalizationFile[] files = pathManager.listStaticFiles(
-                "hazardServices/settings/", null, false, true);
-        allSettings = new ArrayList<ConfigLoader<Settings>>();
-        for (LocalizationFile file : files) {
-            ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
-                    Settings.class);
-            allSettings.add(loader);
-            loaderPool.schedule(loader);
-        }
+
+        LocalizationContext commonStaticBase = pathManager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        LocalizationFile settingsDir = pathManager.getLocalizationFile(
+                commonStaticBase, "hazardServices/settings/");
+        settingsDir
+                .addFileUpdatedObserver(new SettingsDirectoryUpdateObserver());
+
+        loadAllSettings();
+
         LocalizationFile file = pathManager
                 .getStaticLocalizationFile("hazardServices/startUpConfig/StartUpConfig.py");
         startUpConfig = new ConfigLoader<StartUpConfig>(file,
@@ -194,6 +204,46 @@ public class SessionConfigurationManager implements
         loaderPool.schedule(settingsConfig);
     }
 
+    protected void loadAllSettings() {
+        Settings previousPersisted = null;
+        if (settings != null) {
+            for (ConfigLoader<Settings> settingsConfig : allSettings) {
+                Settings s = settingsConfig.getConfig();
+                if (s.getSettingsID().equals(settings.getSettingsID())) {
+                    previousPersisted = s;
+                    break;
+                }
+            }
+        }
+        LocalizationFile[] files = pathManager.listStaticFiles(
+                "hazardServices/settings/", null, false, true);
+        List<ConfigLoader<Settings>> allSettings = new ArrayList<ConfigLoader<Settings>>();
+        for (LocalizationFile file : files) {
+            ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
+                    Settings.class);
+            allSettings.add(loader);
+            loaderPool.schedule(loader);
+            if (previousPersisted != null) {
+                try {
+                    String fileName = file.getFile(false).getName();
+                    if (fileName.startsWith(previousPersisted.getSettingsID()
+                            + ".")) {
+                        Settings s = loader.getConfig();
+                        if (s.getSettingsID().equals(
+                                previousPersisted.getSettingsID())) {
+                            settings.applyPersistedChanges(previousPersisted, s);
+                            previousPersisted = null;
+                        }
+                    }
+                } catch (LocalizationException e) {
+                    statusHandler.handle(Priority.PROBLEM,
+                            e.getLocalizedMessage(), e);
+                }
+            }
+        }
+        this.allSettings = allSettings;
+    }
+
     @Override
     public void changeSettings(String settingsId) {
         for (ConfigLoader<Settings> settingsConfig : allSettings) {
@@ -205,6 +255,7 @@ public class SessionConfigurationManager implements
                 } else {
                     settings.apply(s);
                 }
+                break;
             }
         }
     }
@@ -219,6 +270,29 @@ public class SessionConfigurationManager implements
             settingsChanged(new SettingsLoaded(this));
         }
         return settings;
+    }
+
+    @Override
+    public void saveSettings() {
+        LocalizationContext context = pathManager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
+        Settings settings = getSettings();
+        LocalizationFile f = this.pathManager.getLocalizationFile(context,
+                "hazardServices/settings/" + settings.getSettingsID() + ".py");
+        StringBuilder contents = new StringBuilder();
+        contents.append(settings.getSettingsID());
+        contents.append(" = ");
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.getSerializationConfig().setSerializationInclusion(
+                Inclusion.NON_NULL);
+        try {
+            contents.append(mapper.defaultPrettyPrintingWriter()
+                    .writeValueAsString(settings));
+            f.write(contents.toString().getBytes());
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, "Unable to save settings.",
+                    e);
+        }
     }
 
     @Override
@@ -575,4 +649,13 @@ public class SessionConfigurationManager implements
         }
     }
 
+    private class SettingsDirectoryUpdateObserver implements
+            ILocalizationFileObserver {
+
+        @Override
+        public void fileUpdated(FileUpdatedMessage message) {
+            loadAllSettings();
+        }
+
+    }
 }

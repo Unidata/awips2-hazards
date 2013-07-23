@@ -557,8 +557,11 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String newStaticSettings(String settings) {
-        // Cannot find how this gets called
-        throw new UnsupportedOperationException("Not implemented");
+        Settings settingsObj = fromJson(settings, Settings.class);
+        settingsObj.setSettingsID(settingsObj.getDisplayName());
+        model.getConfigurationManager().getSettings().apply(settingsObj);
+        model.getConfigurationManager().saveSettings();
+        return settingsObj.getSettingsID();
     }
 
     /*
@@ -566,8 +569,9 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public void updateStaticSettings(String settings) {
-        // Cannot find how this gets called
-        throw new UnsupportedOperationException("Not implemented");
+        Settings settingsObj = fromJson(settings, Settings.class);
+        model.getConfigurationManager().getSettings().apply(settingsObj);
+        model.getConfigurationManager().saveSettings();
     }
 
     /*

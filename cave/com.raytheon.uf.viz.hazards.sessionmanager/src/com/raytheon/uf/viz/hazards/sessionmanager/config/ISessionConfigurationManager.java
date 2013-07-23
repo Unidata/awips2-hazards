@@ -82,6 +82,13 @@ public interface ISessionConfigurationManager {
     public Settings getSettings();
 
     /**
+     * Save the current settings.
+     * 
+     * @return
+     */
+    public void saveSettings();
+
+    /**
      * Get a list of the available settings a user could change to.
      * 
      * @return

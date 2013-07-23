@@ -433,11 +433,7 @@ public final class HazardServicesMessageHandler {
         this.appBuilder = appBuilder;
         if (false) {
             ModelAdapter adapter = new ModelAdapter();
-            try {
-                adapter.getNewSessionManager().registerForNotification(this);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
+            adapter.getNewSessionManager().registerForNotification(this);
             model = new ModelDecorator(adapter);
         } else {
             model = new ModelDecorator(instantiateModel());

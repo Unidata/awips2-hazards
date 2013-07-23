@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -51,12 +52,12 @@ public class Settings {
     /**
      * Which types of events should be loaded/displayed
      */
-    private List<String> visibleTypes;
+    private Set<String> visibleTypes;
 
     /**
      * Which states of events should be loaded/displayed
      */
-    private List<String> visibleStates;
+    private Set<String> visibleStates;
 
     /**
      * Which product generators can be run
@@ -81,7 +82,7 @@ public class Settings {
     /**
      * Which sites events should be loaded/displayed
      */
-    private List<String> visibleSites;
+    private Set<String> visibleSites;
 
     /**
      * A Pretty name for this configuration to show users.
@@ -153,19 +154,19 @@ public class Settings {
         this.settingsID = settingsID;
     }
 
-    public List<String> getVisibleTypes() {
+    public Set<String> getVisibleTypes() {
         return visibleTypes;
     }
 
-    public void setVisibleTypes(List<String> visibleTypes) {
+    public void setVisibleTypes(Set<String> visibleTypes) {
         this.visibleTypes = visibleTypes;
     }
 
-    public List<String> getVisibleStates() {
+    public Set<String> getVisibleStates() {
         return visibleStates;
     }
 
-    public void setVisibleStates(List<String> visibleStates) {
+    public void setVisibleStates(Set<String> visibleStates) {
         this.visibleStates = visibleStates;
     }
 
@@ -201,11 +202,11 @@ public class Settings {
         this.defaultCategory = defaultCategory;
     }
 
-    public List<String> getVisibleSites() {
+    public Set<String> getVisibleSites() {
         return visibleSites;
     }
 
-    public void setVisibleSites(List<String> visibleSites) {
+    public void setVisibleSites(Set<String> visibleSites) {
         this.visibleSites = visibleSites;
     }
 

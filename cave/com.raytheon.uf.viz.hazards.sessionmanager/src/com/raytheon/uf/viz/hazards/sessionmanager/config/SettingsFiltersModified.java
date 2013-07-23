@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
@@ -48,15 +48,15 @@ public class SettingsFiltersModified extends SettingsModified implements
         super(manager);
     }
 
-    public List<String> getVisibleTypes() {
+    public Set<String> getVisibleTypes() {
         return getSettings().getVisibleTypes();
     }
 
-    public List<String> getVisibleStates() {
+    public Set<String> getVisibleStates() {
         return getSettings().getVisibleStates();
     }
 
-    public List<String> getVisibleSites() {
+    public Set<String> getVisibleSites() {
         return getSettings().getVisibleSites();
     }
 
