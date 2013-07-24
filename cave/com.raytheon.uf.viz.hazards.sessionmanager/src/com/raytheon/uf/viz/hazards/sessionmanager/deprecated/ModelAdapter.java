@@ -690,7 +690,8 @@ public abstract class ModelAdapter {
         eventSet.addAttribute("currentTime", model.getTimeManager()
                 .getCurrentTime().getTime());
         model.getRecommenderEngine().runExecuteRecommender(toolName, eventSet,
-                rData.getSpatialInfo(), rData.getDialogInfo(),
+                rData.getSpatialInfo(),
+                rData.getDialogInfoSerializable(),
                 getRecommenderListener(toolName));
         return null;
     }

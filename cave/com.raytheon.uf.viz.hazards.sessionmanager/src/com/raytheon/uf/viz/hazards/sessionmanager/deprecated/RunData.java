@@ -20,7 +20,9 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -47,7 +49,7 @@ public class RunData {
 
     private Map<String, String> spatialInfo;
 
-    private Map<String, Serializable> dialogInfo;
+    private Map<String, Object> dialogInfo;
 
     public String[] getEventSet() {
         return eventSet;
@@ -65,11 +67,11 @@ public class RunData {
         this.spatialInfo = spatialInfo;
     }
 
-    public Map<String, Serializable> getDialogInfo() {
+    public Map<String, Object> getDialogInfo() {
         return dialogInfo;
     }
 
-    public void setDialogInfo(Map<String, Serializable> dialogInfo) {
+    public void setDialogInfo(Map<String, Object> dialogInfo) {
         this.dialogInfo = dialogInfo;
     }
 
@@ -77,4 +79,20 @@ public class RunData {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+    public Map<String, Serializable> getDialogInfoSerializable() {
+        Map<String, Serializable> result = new HashMap<String, Serializable>();
+        for (Entry<String, Object> entry : dialogInfo.entrySet()) {
+            Object val = entry.getValue();
+            if (val instanceof Serializable) {
+                result.put(entry.getKey(), (Serializable) val);
+            } else {
+                throw new RuntimeException(entry + ", "
+                        + val.getClass().getSimpleName()
+                        + " does not implement Serializable");
+            }
+        }
+        return result;
+    }
+
 }
