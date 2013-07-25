@@ -15,21 +15,12 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 
-import jep.Jep;
-import jep.JepException;
-
-import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.swt.widgets.Display;
-import org.osgi.framework.Bundle;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
@@ -38,7 +29,6 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -213,74 +203,12 @@ public final class HazardServicesMessageHandler {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardServicesMessageHandler.class);
 
-    // Private Static Variables
-
-    /**
-     * Resolved path of SessionManager code.
-     */
-    private static String PATH_TO_SESSION_MANAGER = null;
-    static {
-
-        // Try retrieving the serverCode directory from the
-        Bundle sessionManagerBundle = Platform
-                .getBundle(Utilities.SESSION_MANAGER_PLUGIN);
-
-        statusHandler.debug("Utilities.SESSION_MANAGER_PLUGIN: "
-                + Utilities.SESSION_MANAGER_PLUGIN);
-        statusHandler.debug("sessionManagerBundle: " + sessionManagerBundle);
-
-        if (sessionManagerBundle != null) {
-
-            // The plug-in has been loaded. Try to find the serverCode
-            // directory.
-            try {
-
-                // Look here first. Calling getEntry twice is more
-                // efficient that calling find entries once.
-                URL sessionManagerURL = sessionManagerBundle
-                        .getEntry(File.separator + "src" + File.separator
-                                + "sessionManager");
-
-                statusHandler.debug("sessionManagerURL: " + sessionManagerURL);
-
-                if (sessionManagerURL != null) {
-                    PATH_TO_SESSION_MANAGER = FileLocator.resolve(
-                            sessionManagerURL).getPath();
-
-                    statusHandler.debug("PATH_TO_SESSION_MANAGER: "
-                            + PATH_TO_SESSION_MANAGER);
-                }
-
-            } catch (IOException e) {
-                statusHandler.error(
-                        "Could not resolve path to session manager.", e);
-            }
-        }
-
-        if (PATH_TO_SESSION_MANAGER == null) {
-            HazardServicesAppBuilder
-                    .warnUser("You cannot run Hazard Services because your system is "
-                            + "not configured correctly. Plug-in "
-                            + Utilities.SESSION_MANAGER_PLUGIN
-                            + File.separator
-                            + "src"
-                            + File.separator
-                            + "sessionManager could not be found.");
-
-        }
-    }
-
     // Private Variables
 
     /**
      * Interface to SessionManager (via proxy).
      */
     private ModelDecorator model = null;
-
-    /**
-     * JEP connection. Allows Java to run Python and Python to run Java.
-     */
-    private Jep jep;
 
     private final String caveMode;
 
@@ -329,90 +257,6 @@ public final class HazardServicesMessageHandler {
         return eventIDstring.toString();
     }
 
-    // Private Static Methods
-
-    /**
-     * Instantiates Hazard Services model class for subsequent calls
-     * 
-     * @return A Model object.
-     */
-    private IHazardServicesModel instantiateModel() {
-        try {
-            /*
-             * Retrieve the class loader used to find classes in this plug-in.
-             * This needs to be passed into JEP so that it can find the java
-             * classes it needs.
-             */
-            ClassLoader loader = HazardServicesActivator.getDefault()
-                    .getClass().getClassLoader();
-            String jepIncludePath = buildJepIncludePath();
-            jep = new Jep(false, jepIncludePath, loader);
-            jep.eval("import JavaImporter");
-            jep.runScript(PATH_TO_SESSION_MANAGER + File.separator
-                    + "SessionManager.py");
-
-            IHazardServicesModel model = (IHazardServicesModel) jep
-                    .invoke("getProxy");
-            return model;
-        } catch (JepException e) {
-            statusHandler.error("Error building Hazard Services JEP interface",
-                    e);
-            return null;
-        }
-    }
-
-    /**
-     * Builds the JEP include path. This includes the paths to all of the python
-     * resources that Hazard Services will need. This removes dependence from
-     * the PYTHONPATH environment variable.
-     * 
-     * @param
-     * @return An path like string containing all of the python resources needed
-     *         by Hazard Services.
-     */
-    static String[] pythonLocalizationDirectories = { "python",
-            "python" + File.separator + "bridge",
-            "python" + File.separator + "dataStorage",
-            "python" + File.separator + "events",
-            "python" + File.separator + "geoUtilities",
-            "python" + File.separator + "logUtilities",
-            "python" + File.separator + "shapeUtilities",
-            "python" + File.separator + "textUtilities",
-            "python" + File.separator + "VTECutilities",
-            "python" + File.separator + "events" + File.separator + "utilities" };
-
-    private static String buildJepIncludePath() {
-        try {
-
-            Bundle bundle = Platform.getBundle(Utilities
-                    .getSessionManagerPlugin());
-            statusHandler.debug("buildJepIncludePath: "
-                    + Utilities.getSessionManagerPlugin());
-            File file = new File(FileLocator.resolve(bundle.getResource("src"))
-                    .getPath());
-
-            /**
-             * A real hack. The other directories are not plugins so we can't
-             * get them using getBundle. Just navigate to them.
-             */
-            String basePath = file.getPath();
-            List<String> sourcePaths = Utilities
-                    .buildPythonSourcePaths(basePath);
-
-            for (String locPath : pythonLocalizationDirectories) {
-                String path = Utilities.buildUtilitiesPath(locPath);
-                sourcePaths.add(path);
-            }
-
-            return PyUtil.buildJepIncludePath(sourcePaths
-                    .toArray(new String[0]));
-        } catch (IOException e) {
-            statusHandler.error("Error building Hazard Services JEP interface",
-                    e);
-            return null;
-        }
-    }
-
     // Public Constructors
     /**
      * Construct a standard instance.
@@ -436,13 +280,11 @@ public final class HazardServicesMessageHandler {
             String currentTime, String staticSettingID,
             String dynamicSettingJSON, String state) {
         this.appBuilder = appBuilder;
-        if (true) {
-            ModelAdapter adapter = new ModelAdapter();
-            adapter.getSessionManager().registerForNotification(this);
-            model = new ModelDecorator(adapter);
-        } else {
-            model = new ModelDecorator(instantiateModel());
-        }
+
+        ModelAdapter adapter = new ModelAdapter();
+        adapter.getSessionManager().registerForNotification(this);
+        model = new ModelDecorator(adapter);
+
         IHazardEventManager hazardEventManager = new HazardEventManager(
                 HazardEventManager.Mode.PRACTICE);
         model.setHazardEventManager(hazardEventManager);
@@ -1177,10 +1019,6 @@ public final class HazardServicesMessageHandler {
      * some leaked memory associated with numpy.
      */
     public void prepareForShutdown() {
-        if (jep != null) {
-            jep.close();
-            jep = null;
-        }
         model = null;
     }
 
