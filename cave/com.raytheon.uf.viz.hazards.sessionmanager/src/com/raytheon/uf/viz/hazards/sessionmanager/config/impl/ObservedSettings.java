@@ -103,8 +103,18 @@ public class ObservedSettings extends Settings {
      * Local changes to this settings object will not reflect changes in
      * updates.
      * 
+     * For example: If a user has two caves open with hazard services with the
+     * same settings. In caveA the user adds the site ID column, if the user
+     * saves then the settings change will be applied to the settings in caveB.
+     * Now if caveA removes the site ID column and caveB adds the endTime
+     * column, then when cave A saves this will not be directly applied to caveB
+     * because it would overwrite caveBs local settings.
+     * 
      * @param persisted
+     *            the previously persisted settings, from which this settings
+     *            object is based.
      * @param update
+     *            the new persisted settings that have changed in localization.
      */
     public void applyPersistedChanges(Settings persisted, Settings update) {
         if (!changed(getSettingsID(), persisted.getSettingsID())) {

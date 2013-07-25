@@ -226,7 +226,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         Settings settings = configManager.getSettings();
 
-        if (oevent.getHazardAttribute(ATTR_HAZARD_CATEGORY) == null) {
+        if (configManager.getHazardCategory(oevent) == null
+                && oevent.getHazardAttribute(ATTR_HAZARD_CATEGORY) == null) {
             oevent.addHazardAttribute(ATTR_HAZARD_CATEGORY,
                     settings.getDefaultCategory(), false);
         }

@@ -138,6 +138,7 @@ public class SessionHazardNotificationListener implements INotificationObserver{
                 }
                 oldAttr.remove(ISessionEventManager.ATTR_CHECKED);
                 oldAttr.remove(ISessionEventManager.ATTR_SELECTED);
+                oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
                 for (String key : oldAttr.keySet()) {
                     oldEvent.removeHazardAttribute(key);
                 }
