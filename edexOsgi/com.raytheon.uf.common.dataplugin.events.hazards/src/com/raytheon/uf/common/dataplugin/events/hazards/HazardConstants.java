@@ -33,6 +33,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 12, 2012            mnash     Initial creation
+ * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * 
  * </pre>
  * 
@@ -190,6 +191,8 @@ public final class HazardConstants {
     public static final String ENDTIME = "endTime";
 
     public static final String ISSUETIME = "issueTime";
+
+    public static final String EXPIRATIONTIME = "expirationTime";
 
     public static final String HAZARDMODE = "hazardMode";
 

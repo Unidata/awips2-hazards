@@ -19,19 +19,18 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-
 import java.util.List;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptions;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-
 
 /**
  * Manages all settings and configuration files for a session.
@@ -43,6 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
+ * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * 
  * </pre>
  * 
@@ -117,6 +117,14 @@ public interface ISessionConfigurationManager {
      * @return
      */
     public HazardInfoOptions getHazardInfoOptions();
+
+    /**
+     * Get the HazardAlertConfig
+     * 
+     * @param
+     * @return
+     */
+    public HazardAlertsConfig getAlertConfig();
 
     /**
      * Get the FilterConfig.

@@ -19,12 +19,16 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
-
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -42,6 +46,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
+ * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * 
  * </pre>
  * 
@@ -63,6 +68,7 @@ public class SessionManager implements ISessionManager {
 
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
+    private final IHazardSessionAlertsManager alertsManager;
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager) {
@@ -73,15 +79,29 @@ public class SessionManager implements ISessionManager {
                 eventBus);
         timeManager = new SessionTimeManager(sender);
         configManager = new SessionConfigurationManager(pathManager, sender);
-        eventManager = new SessionEventManager(timeManager, configManager, hazardEventManager,
-                sender);
-        productManager = new SessionProductManager(timeManager, configManager, eventManager, sender);
+        eventManager = new SessionEventManager(timeManager, configManager,
+                hazardEventManager, sender);
+        productManager = new SessionProductManager(timeManager, configManager,
+                eventManager, sender);
+        alertsManager = new HazardSessionAlertsManager(sender);
+        alertsManager.addAlertGenerationStrategy(HazardNotification.class,
+                new HazardEventExpirationAlertStrategy(alertsManager,
+                        timeManager, configManager, hazardEventManager,
+                        new AllHazardsFilterStrategy()));
+
+        /**
+         * TODO Where should a call be made to remove the NotificationJob
+         * observer (done in the stop method)?
+         */
+        alertsManager.start();
         recommenderEngine = new CAVERecommenderEngine();
         eventBus.register(timeManager);
         eventBus.register(configManager);
         eventBus.register(eventManager);
         eventBus.register(productManager);
         eventBus.register(recommenderEngine);
+        eventBus.register(alertsManager);
+
     }
 
     @Override
@@ -102,6 +122,11 @@ public class SessionManager implements ISessionManager {
     @Override
     public ISessionProductManager getProductManager() {
         return productManager;
+    }
+
+    @Override
+    public IHazardSessionAlertsManager getAlertsManager() {
+        return alertsManager;
     }
 
     @Override

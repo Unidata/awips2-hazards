@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
-
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -37,6 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
+ * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * 
  * </pre>
  * 
@@ -75,6 +76,13 @@ public interface ISessionManager {
     public ISessionProductManager getProductManager();
 
     /**
+     * Get a manager for handling alerting.
+     * 
+     * @return
+     */
+    public IHazardSessionAlertsManager getAlertsManager();
+
+    /**
      * Get the recommender engine to use for running recommenders.
      * 
      * TODO this may be moved out of session manager or into a sub manager, this
@@ -83,7 +91,6 @@ public interface ISessionManager {
      * @return
      */
     public AbstractRecommenderEngine<?> getRecommenderEngine();
-
 
     /**
      * Register an object as to receive ISessionNotifiation events for this
