@@ -174,7 +174,12 @@ Flood = {
         {
             "toolName": "RiverFloodRecommender", 
             "displayName": "River Flood Recommender"
+        },
+        {
+            "toolName": "FlashFloodRecommender", 
+            "displayName": "Flash Flood Recommender"
         }
+
     ], 
     "defaultHazardCategory": "hydro"
 }
