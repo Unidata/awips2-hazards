@@ -8,12 +8,19 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.style.HazardStyle;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+
+import org.eclipse.core.runtime.Assert;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -21,7 +28,13 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.BundleScanner;
+import com.raytheon.uf.viz.core.style.ParamLevelMatchCriteria;
+import com.raytheon.uf.viz.core.style.StyleManager;
+import com.raytheon.uf.viz.core.style.StyleRule;
+import com.raytheon.uf.viz.core.style.VizStyleException;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -43,7 +56,18 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  */
 public class Utilities {
 
+    /**
+     * Logging mechanism.
+     */
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(Utilities.class);
+
     // Public Static Constants
+
+    /**
+     * Default hazard color.
+     */
+    public static final Color WHITE = new Color(255f, 255f, 255f);
 
     /**
      * ID of plug-in containing the Hazard Services SessionManager code.
@@ -395,9 +419,15 @@ public class Utilities {
      */
     private static final GeometryFactory geometryFactory;
 
+    /**
+     * Hazard color map.
+     */
+    private static final Map<String, HazardStyle> hazardDisplayPreferencesMap;
+
     // Initialize the geometry factory.
     static {
         geometryFactory = new GeometryFactory();
+        hazardDisplayPreferencesMap = Maps.newHashMap();
     }
 
     // Public Static Methods
@@ -540,5 +570,67 @@ public class Utilities {
         }
 
         return sourcePaths;
+    }
+
+    /**
+     * Searches the Style Rule Sets associated with Hazard Services for the
+     * specified phen.sig.subtype key and returns the fill color for the closest
+     * matching phen.sig.subtype.
+     * 
+     * @param hazardType
+     *            The phen, sig, subtype to find the fill color for
+     * @return The fill color as a Color object.
+     */
+    public static Color getHazardFillColor(final String hazardType) {
+
+        /*
+         * The hazard display preferences map is built as preferences for
+         * specific hazard types are requested.
+         */
+        Color bestHazardColor = WHITE;
+
+        /*
+         * Hazard type may be null. This occurs in the case where the hazard has
+         * been drawn, but it has not yet been assigned as hazard type. So, we
+         * need to check for it here.
+         */
+        if (hazardType != null) {
+            Assert.isTrue(hazardType.length() > 0);
+
+            if (hazardDisplayPreferencesMap.containsKey(hazardType)) {
+                bestHazardColor = hazardDisplayPreferencesMap.get(hazardType)
+                        .getColor();
+            } else {
+                /*
+                 * Attempt to load the requested hazard type's color from the
+                 * style rules. If it cannot be loaded, set it to white by
+                 * default.
+                 */
+                ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
+                match.setParameterName(Arrays.asList(hazardType));
+
+                try {
+                    StyleRule styleRule = StyleManager
+                            .getInstance()
+                            .getStyleRule(StyleManager.StyleType.HAZARDS, match);
+
+                    HazardStyle pref = (HazardStyle) styleRule.getPreferences();
+
+                    if (pref != null) {
+                        bestHazardColor = pref.getColor();
+                        pref.setColor(bestHazardColor);
+                        hazardDisplayPreferencesMap.put(hazardType, pref);
+                    }
+
+                } catch (VizStyleException e) {
+                    statusHandler.error(
+                            "Error loading style preferences for hazard type: "
+                                    + hazardType, e);
+                }
+            }
+
+        }
+
+        return bestHazardColor;
     }
 }

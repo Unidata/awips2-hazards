@@ -11,6 +11,7 @@ non-homogeneous data structures.
 import os, json, types
 import logging, UFStatusHandler
 from HazardConstants import *
+from gov.noaa.gsd.viz.hazards.utilities import Utilities
 
 class PresenterHelper(object):
     def __init__(self, bridge, sessionManager):
@@ -369,25 +370,18 @@ class PresenterHelper(object):
     def getFillColor(self, eventDict):
         """
         Returns an event color based on 
-        the type of the event (FFW, BZW, WSW).
+        the type of the event (FF.W.Convective, BZ.W, WS.W).
         @param eventDict: The event
         @return: The fill color for the event as a string of RGB values 
         """
         type = eventDict.get(HAZARD_TYPE)
-        color = ""
-        if type:
-            c = self.sessionManager.colorTable.get(type)
-            if c:
-                color = c 
-            else:
-                color = "#FFFFFF"
-        else:
-            color = "#FFFFFF"
-        color = color.strip("#")
-        R = int(color[0:2],16)
-        G = int(color[2:4],16)
-        B = int(color[4:6],16)
-        return str(R)+" "+str(G)+" "+str(B)
+        
+        if isinstance(type, unicode):
+            type = str(type)
+        
+        color = Utilities.getHazardFillColor(type)
+        colorString = str(int(color.getRed())) + " " + str(int(color.getGreen())) + " " + str(int(color.getBlue()))    
+        return colorString
     
     def getMegawidget(self, item, fieldName):
         """
