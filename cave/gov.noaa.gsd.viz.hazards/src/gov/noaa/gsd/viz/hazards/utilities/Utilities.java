@@ -12,11 +12,8 @@ import gov.noaa.gsd.viz.hazards.style.HazardStyle;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import org.eclipse.core.runtime.Assert;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -31,10 +28,6 @@ import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.BundleScanner;
-import com.raytheon.uf.viz.core.style.ParamLevelMatchCriteria;
-import com.raytheon.uf.viz.core.style.StyleManager;
-import com.raytheon.uf.viz.core.style.StyleRule;
-import com.raytheon.uf.viz.core.style.VizStyleException;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -48,6 +41,13 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            daniel.s.schaffer      Initial induction into repo
+ * Aug 01, 2013            bryon.lawrence         Commented out the body of the 
+ *                                                getHazardFillColor method until
+ *                                                HAZARDS("HazardStyleRules.xml") is
+ *                                                added to the StyleType enum in the
+ *                                                baseline class StyleManager. Nobody
+ *                                                calls this method at the moment. It 
+ *                                                will always return white.
  * 
  * </pre>
  * 
@@ -59,6 +59,7 @@ public class Utilities {
     /**
      * Logging mechanism.
      */
+    @SuppressWarnings("unused")
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(Utilities.class);
 
@@ -594,42 +595,47 @@ public class Utilities {
          * been drawn, but it has not yet been assigned as hazard type. So, we
          * need to check for it here.
          */
-        if (hazardType != null) {
-            Assert.isTrue(hazardType.length() > 0);
-
-            if (hazardDisplayPreferencesMap.containsKey(hazardType)) {
-                bestHazardColor = hazardDisplayPreferencesMap.get(hazardType)
-                        .getColor();
-            } else {
-                /*
-                 * Attempt to load the requested hazard type's color from the
-                 * style rules. If it cannot be loaded, set it to white by
-                 * default.
-                 */
-                ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
-                match.setParameterName(Arrays.asList(hazardType));
-
-                try {
-                    StyleRule styleRule = StyleManager
-                            .getInstance()
-                            .getStyleRule(StyleManager.StyleType.HAZARDS, match);
-
-                    HazardStyle pref = (HazardStyle) styleRule.getPreferences();
-
-                    if (pref != null) {
-                        bestHazardColor = pref.getColor();
-                        pref.setColor(bestHazardColor);
-                        hazardDisplayPreferencesMap.put(hazardType, pref);
-                    }
-
-                } catch (VizStyleException e) {
-                    statusHandler.error(
-                            "Error loading style preferences for hazard type: "
-                                    + hazardType, e);
-                }
-            }
-
-        }
+        /*
+         * Commented out this block until HAZARDS("HazardStyleRules.xml") is
+         * added to the StyleType enum in the AWIPS II baseline StyleManager
+         * class. This method will always return the color white for now.
+         */
+        // if (hazardType != null) {
+        // Assert.isTrue(hazardType.length() > 0);
+        //
+        // if (hazardDisplayPreferencesMap.containsKey(hazardType)) {
+        // bestHazardColor = hazardDisplayPreferencesMap.get(hazardType)
+        // .getColor();
+        // } else {
+        // /*
+        // * Attempt to load the requested hazard type's color from the
+        // * style rules. If it cannot be loaded, set it to white by
+        // * default.
+        // */
+        // ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
+        // match.setParameterName(Arrays.asList(hazardType));
+        //
+        // try {
+        // StyleRule styleRule = StyleManager
+        // .getInstance()
+        // .getStyleRule(StyleManager.StyleType.HAZARDS, match);
+        //
+        // HazardStyle pref = (HazardStyle) styleRule.getPreferences();
+        //
+        // if (pref != null) {
+        // bestHazardColor = pref.getColor();
+        // pref.setColor(bestHazardColor);
+        // hazardDisplayPreferencesMap.put(hazardType, pref);
+        // }
+        //
+        // } catch (VizStyleException e) {
+        // statusHandler.error(
+        // "Error loading style preferences for hazard type: "
+        // + hazardType, e);
+        // }
+        // }
+        //
+        // }
 
         return bestHazardColor;
     }
