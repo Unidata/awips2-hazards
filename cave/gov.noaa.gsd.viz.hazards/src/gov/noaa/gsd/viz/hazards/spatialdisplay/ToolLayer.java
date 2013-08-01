@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
@@ -52,6 +53,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -107,6 +109,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jun 24, 2013            Bryon.Lawrence Removed the 'Move Entire Element' option from
  *                                        from the right-click context menu.
  * Jul 10, 2013     585    Chris.Golden   Changed to support loading from bundle.
+ * Jul 12, 2013            Bryon.Lawrence Added ability to draw persistent shapes.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -233,6 +236,14 @@ public class ToolLayer extends
      */
     private final ArrayList<double[]> handleBarPoints = Lists.newArrayList();
 
+    /*
+     * Contains a map in which each entry contains a unique identifier and a
+     * list of shapes. These are not events, and they are persisted across zoom,
+     * pan and time change operations. It is up to the client to remove them
+     * when they should not be displayed anymore.
+     */
+    private final Map<String, List<AbstractDrawableComponent>> persistentShapeMap;
+
     /**
      * Constructor.
      * 
@@ -274,6 +285,7 @@ public class ToolLayer extends
         geoFactory = new GeometryFactory();
         drawableBuilder = new HazardServicesDrawableBuilder();
         dataManager = new ToolLayerDataManager();
+        persistentShapeMap = Maps.newHashMap();
 
         dataTimes = new ArrayList<DataTime>();
         selectedEventIDs = Lists.newArrayList();
@@ -366,7 +378,15 @@ public class ToolLayer extends
                 break;
             }
 
-            removeElement(de);
+            String eventID = ((IHazardServicesShape) de).getEventID();
+            List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
+                    .get(eventID);
+
+            if (persistentDrawables == null
+                    || !persistentDrawables.contains(de)) {
+
+                removeElement(de);
+            }
         }
 
         issueRefresh();
@@ -376,13 +396,14 @@ public class ToolLayer extends
      * Draws event geometries on the Hazard Services Tool Layer.
      * 
      * @param JSONeventAreas
-     *            - A JSON string contain a list of event dictionaries. Each
+     *            A JSON string contain a list of event dictionaries. Each
      *            dictionary contains information about how to render the event
      *            it contains.
+     * @param clearAllEvents
+     *            Clear all displayed events before rendering the new events.
      * @return
      */
-
-    public void drawEventAreas(String JSONeventAreas) {
+    public void drawEventAreas(String JSONeventAreas, boolean clearAllEvents) {
 
         DictList dictList = DictList.getInstance(JSONeventAreas);
 
@@ -398,7 +419,11 @@ public class ToolLayer extends
         }
 
         previousDictList = dictList;
-        clearEvents();
+
+        if (clearAllEvents) {
+            clearEvents();
+        }
+
         selectedHazardIHISLayer = null;
         selectedEventIDs.clear();
 
@@ -434,8 +459,14 @@ public class ToolLayer extends
 
         // Retrieve the event identifier
         String eventID = (String) obj.get(Utilities.HAZARD_EVENT_IDENTIFIER);
+
+        Boolean isPersistent = obj
+                .getDynamicallyTypedValue(Utilities.PERSISTENT_SHAPE);
+
         List<Dict> shapeArray = (List<Dict>) obj
                 .get(Utilities.HAZARD_EVENT_SHAPES);
+
+        List<AbstractDrawableComponent> drawableList = Lists.newArrayList();
 
         // There could be one or more shapes per event.
         if (shapeArray != null && shapeArray.size() > 0) {
@@ -447,8 +478,16 @@ public class ToolLayer extends
 
                 Dict shape = shapeArray.get(i);
 
-                Boolean isSelected = shape
-                        .getDynamicallyTypedValue(IS_SELECTED_KEY);
+                Object shapeObject = shape.get(IS_SELECTED_KEY);
+                Boolean isSelected = false;
+
+                if (shapeObject instanceof Boolean) {
+                    isSelected = (Boolean) shapeObject;
+                } else {
+                    if (((String) shapeObject).equalsIgnoreCase("true")) {
+                        isSelected = true;
+                    }
+                }
 
                 /*
                  * Keep an inventory of which events are selected.
@@ -480,6 +519,8 @@ public class ToolLayer extends
                     }
 
                     addElement(drawableComponent);
+                    drawableList.add(drawableComponent);
+
                     text = null;
 
                     if (drawingAttributes.getString() != null
@@ -488,10 +529,25 @@ public class ToolLayer extends
                                 drawableComponent.getPoints(),
                                 getActiveLayer(), geoFactory);
                         addElement(text);
+                        drawableList.add(text);
                     }
                 } // End of test for null drawable
 
             } // End of shape array loop.
+
+            /*
+             * This ensures that a persistent shape with the same id as one that
+             * already exists will override it.
+             */
+            if (isPersistent != null && isPersistent) {
+                if (persistentShapeMap.containsKey(eventID)) {
+                    persistentShapeMap.remove(eventID);
+                }
+
+                if (!drawableList.isEmpty()) {
+                    persistentShapeMap.put(eventID, drawableList);
+                }
+            }
 
         }
     }
@@ -1554,3 +1610,4 @@ public class ToolLayer extends
     }
 
 }
+//

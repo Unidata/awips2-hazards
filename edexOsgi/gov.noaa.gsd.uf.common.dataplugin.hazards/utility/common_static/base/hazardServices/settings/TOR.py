@@ -153,6 +153,10 @@ TOR = {
         }
     }, 
     "toolbarTools": [
+        {
+            "toolName": "StormTrackTool", 
+            "displayName": "Storm Track"
+        }
     ], 
     "defaultHazardCategory": "shortFused"
 }

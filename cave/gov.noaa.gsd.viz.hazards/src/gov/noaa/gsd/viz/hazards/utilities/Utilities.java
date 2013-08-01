@@ -413,6 +413,16 @@ public class Utilities {
      */
     public static final String SETTING_CONFIG = "viewConfig";
 
+    /**
+     * Persistent shape key.
+     */
+    public static final String PERSISTENT_SHAPE = "persistentShape";
+
+    /**
+     * Drag drop dot identifier.
+     */
+    public static final String DRAG_DROP_DOT = "DragDropDot";
+
     // Private Static Variables
 
     /**

@@ -176,12 +176,16 @@ public class JSONUtilities {
         EventDict dragDropDict = new EventDict();
         dragDropDictArray.add(dragDropDict);
 
-        dragDropDict.put(Utilities.HAZARD_EVENT_IDENTIFIER, "DragDropDot");
+        dragDropDict.put(Utilities.HAZARD_EVENT_IDENTIFIER,
+                Utilities.DRAG_DROP_DOT);
 
         DragDropDot dot = new DragDropDot(label, "true", "true", "true",
                 "255 000 000", 1, "SOLID", "255 000 255", 3, 0, new int[] {
                         -9999, -9999 });
         dragDropDict.addShape(dot);
+
+        dragDropDict.put(Utilities.PERSISTENT_SHAPE, new Boolean(true));
+
         Gson gson = createGsonInterpreter();
         return gson.toJson(dragDropDictArray);
     }

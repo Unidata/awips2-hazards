@@ -1,24 +1,30 @@
 """
-Description: The class EarthTriplet is a simple container class used to represent a
-point on the earth's surface as a unit vector on a spherical earth.
+Description: 
+The class EarthTriplet is a medium weight class used to represent a
+point on the earth's surface as a unit vector on a shperical earth.
 EarthTriplet objects are heavily used as a computation tool in the
-TrackCoordConv class, and in the several static member functions 
-associated with the PointTrack class.
-
-Any method beginning with an underscore can modify the object.
+TrackCoordConv class, and in the PointTrack class.
  
 SOFTWARE HISTORY
 Date         Ticket#    Engineer    Description
 ------------ ---------- ----------- --------------------------
-MMM DD, YYYY            Tracy.L.Hansen      Initial creation
-  
-@author Tracy.L.Hansen@noaa.gov
+Mar 05, 2013            Tracy.L.Hansen      Placed in code set.
+Jul 30, 2013            James.E.Ramer       Updated the inline documentation.
+
+@author James.E.Ramer@noaa.gov
 @version 1.0
 """
 
 import math
 from LatLonCoord import *
 from HazardConstants import *
+
+# This is one of a set of helper classes for doing feature tracking.
+# The other classes are LatLonCoord, Motion, TrackCoord, TrackCoordConv, and
+# PointTrack.  In these classes, methods with a leading underscore are meant
+# to be private.  Methods that end with an underscore can modify the contents
+# of the class; methods with no trailing underscore do not change the contents
+# of the class.
 
 class EarthTriplet:
 
@@ -27,17 +33,20 @@ class EarthTriplet:
         self.yy = yy0
         self.zz = zz0
 
+    # Test for equivalence with another EarthTriplet object
     def same(self, other):
         if self.xx==other.xx and self.yy==other.yy and  self.zz==other.zz :
             return True
         return False
 
-    def _EarthTriplet(self, other) :
+    # Make this object a deep copy of another EarthTriplet object
+    def EarthTriplet_(self, other) :
         self.xx = other.xx
         self.yy = other.yy
         self.zz = other.zz
 
-    def _ET_latLon(self, latLon) :
+    # Reinitialize this object on behalf of LatLonCoord
+    def latLonInit_(self, latLon) :
         if  latLon.lat==90.0 or latLon.lat==-90.0 :
             self.xx = 0.0
             self.yy = 0.0
@@ -53,11 +62,14 @@ class EarthTriplet:
         self.yy = math.sin(lonrad)*coslat
         self.zz = math.sin(latrad)
 
-    def ET_mag(self) :
+    # Return the vector magnitude of this object.
+    def mag(self) :
         mag = self.xx*self.xx + self.yy*self.yy + self.zz*self.zz
         return math.sqrt(mag)
 
-    def _ET_unit(self) :
+    # Force this object to have a vector magnitude of exactly one.
+    # Returns a boolean for whether this was possible.
+    def unit_(self) :
         mag = self.xx*self.xx + self.yy*self.yy + self.zz*self.zz
         if mag==0.0 :
             return False
@@ -67,7 +79,8 @@ class EarthTriplet:
         self.zz /= mag;
         return True
 
-    def ET_getLatLon(self) :
+    # Return the LatLonCoord represented by this object.
+    def getLatLon(self) :
         retLatLon = LatLonCoord()
         if self.xx==0.0 and self.yy==0.0 :
             if self.zz==0 :
@@ -83,38 +96,45 @@ class EarthTriplet:
                          math.sqrt(self.xx*self.xx+self.yy*self.yy))/DEG_TO_RAD
         return retLatLon
 
-    def ET_dot(self, other) :
+    # Return the dot product of this with another EarthTriplet object
+    def dot(self, other) :
         return self.xx*other.xx + self.yy*other.yy + self.zz*other.zz
 
-    def ET_dotDiffs(self, et1, et2) :
+    # Return the dot product of this with another EarthTriplet object
+    def dotDiffs(self, et1, et2) :
         return (et1.xx-self.xx)*(et2.xx-et1.xx) + \
                (et1.yy-self.yy)*(et2.yy-et1.yy) + \
                (et1.zz-self.zz)*(et2.zz-et1.zz)
 
-    def _ET_add(self, et1, et2) :
+    # Add another EarthTriplet object to this one
+    def add_(self, et1, et2) :
         self.xx = et1.xx+et2.xx
         self.yy = et1.yy+et2.yy
         self.zz = et1.zz+et2.zz
 
-    def _ET_diff(self, et1, et2) :
+    # Subtract another EarthTriplet object from this one
+    def diff_(self, et1, et2) :
         self.xx = et1.xx-et2.xx
         self.yy = et1.yy-et2.yy
         self.zz = et1.zz-et2.zz
 
-    def _ET_mult(self, et1, scalar) :
+    # Multiply this EarthTriplet object by a scalar.
+    def mult_(self, et1, scalar) :
         self.xx = et1.xx*scalar
         self.yy = et1.yy*scalar
         self.zz = et1.zz*scalar
 
-    def _ET_weight(self, et1, w1, et2, w2) :
+    # Reinitialize this object as the weighted average of two other
+    # EarthTriplet objects
+    def weight_(self, et1, w1, et2, w2) :
         self.xx = et1.xx*w1 + et2.xx*w2
         self.yy = et1.yy*w1 + et2.yy*w2
         self.zz = et1.zz*w1 + et2.zz*w2
 
-    def _ET_cross(self, et1, et2) :
+    # Reinitialize this object as the cross product of two other
+    # EarthTriplet objects
+    def cross_(self, et1, et2) :
         self.xx = et1.yy*et2.zz-et2.yy*et1.zz
         self.yy = et1.zz*et2.xx-et2.zz*et1.xx
         self.zz = et1.xx*et2.yy-et2.xx*et1.yy
-
-
 

@@ -794,7 +794,7 @@ public class SpatialView implements
 
     @Override
     public void drawEvents(String jsonEvents) {
-        spatialDisplay.drawEventAreas(jsonEvents);
+        spatialDisplay.drawEventAreas(jsonEvents, true);
     }
 
     /**
@@ -846,8 +846,8 @@ public class SpatialView implements
             break;
 
         case DRAG_DROP_DRAWING:
-            spatialDisplay.drawEventAreas(JSONUtilities
-                    .createDragDropDotJSON(args[1]));
+            spatialDisplay.drawEventAreas(
+                    JSONUtilities.createDragDropDotJSON(args[1]), false);
             break;
 
         case DRAW_BY_AREA:

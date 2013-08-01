@@ -178,8 +178,11 @@ Flood = {
         {
             "toolName": "FlashFloodRecommender", 
             "displayName": "Flash Flood Recommender"
+        },
+        {
+            "toolName": "StormTrackTool", 
+            "displayName": "Storm Track"
         }
-
     ], 
     "defaultHazardCategory": "hydro"
 }

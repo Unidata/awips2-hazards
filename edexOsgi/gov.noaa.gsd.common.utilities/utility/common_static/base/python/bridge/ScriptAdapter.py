@@ -135,7 +135,7 @@ class ScriptAdapter:
         hazardEventSet = EventSet(eventSet, sessionJavaMap)
         
         if 'spatialInfo' in runDict:
-            spatialDict = runDict['spatialDict']
+            spatialDict = runDict['spatialInfo']
             spatialJavaMap = JUtil.pyDictToJavaMap(spatialDict)
         else:
             spatialJavaMap = JUtil.pyDictToJavaMap({})

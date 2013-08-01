@@ -10,6 +10,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
@@ -95,25 +96,56 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
                         "runTool", toolName, json);
                 getSpatialPresenter().fireAction(action);
                 getSpatialPresenter().getView().drawingActionComplete();
+
+                getDrawingLayer().removeGhostLine();
+                getDrawingLayer().removeEvent("DragDropDot");
+                getDrawingLayer().setSelectedDE(null);
+                ghostEl = null;
+
+                // We are done dragging the storm dot. Switch back
+                // to the previously used mouse handler.
+                getSpatialPresenter().getView().drawingActionComplete();
+                getSpatialPresenter().getView().setCursor(
+                        SpatialViewCursorTypes.ARROW_CURSOR);
+
+                // Tell the Spatial Display to fire a DMTS message
+
+                getDrawingLayer().issueRefresh();
+
+                return true;
+            } else {
+                return false;
             }
 
-            getDrawingLayer().removeGhostLine();
-            getDrawingLayer().removeEvent("DragDropDot");
-            getDrawingLayer().setSelectedDE(null);
-            ghostEl = null;
-
-            // We are done dragging the storm dot. Switch back
-            // to the previously used mouse handler.
-            getSpatialPresenter().getView().drawingActionComplete();
-            getSpatialPresenter().getView().setCursor(
-                    SpatialViewCursorTypes.ARROW_CURSOR);
-
-            // Tell the Spatial Display to fire a DMTS message
-
-            getDrawingLayer().issueRefresh();
-
-            return true;
-
         }
+
+        @Override
+        public boolean handleMouseDown(int anX, int aY, int button) {
+
+            boolean mouseActionHandled = super.handleMouseDown(anX, aY, button);
+
+            AbstractDrawableComponent elSelected = getDrawingLayer()
+                    .getSelectedDE();
+
+            if (elSelected != null) {
+                return mouseActionHandled;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public boolean handleMouseDownMove(int anX, int aY, int button) {
+
+            AbstractDrawableComponent elSelected = getDrawingLayer()
+                    .getSelectedDE();
+
+            if (elSelected != null) {
+                return super.handleMouseDownMove(anX, aY, button);
+            } else {
+                return false;
+            }
+        }
+
     }
 }

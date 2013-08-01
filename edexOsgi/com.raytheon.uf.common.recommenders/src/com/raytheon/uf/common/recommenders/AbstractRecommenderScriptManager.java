@@ -62,6 +62,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
+ * Aug 15, 2013  750       jramer      Added some paths needed by storm
+ *                                     tracking tools
  * 
  * </pre>
  * 
@@ -188,10 +190,16 @@ public abstract class AbstractRecommenderScriptManager extends
         String eventsPath = FileUtil.join(pythonPath, "events");
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
+        String bridgePath = FileUtil.join(pythonPath, "bridge");
+        String trackUtilPath = FileUtil.join(pythonPath, "trackUtilities");
+        String geoUtilPath = FileUtil.join(pythonPath, "geoUtilities");
+        String genUtilPath = FileUtil.join(pythonPath, "generalUtilities");
+        String logUtilPath = FileUtil.join(pythonPath, "logUtilities");
 
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 recommenderConfigPath, recommenderDirPath, dataAccessPath,
-                dataTimePath, eventsPath, utilitiesPath, gfePath);
+                dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
+                trackUtilPath, geoUtilPath, genUtilPath, logUtilPath);
         return includePath;
     }
 
