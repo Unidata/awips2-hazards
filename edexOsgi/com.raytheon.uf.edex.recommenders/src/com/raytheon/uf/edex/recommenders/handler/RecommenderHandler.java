@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.recommenders.handler;
 
 import java.util.List;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
@@ -86,7 +87,11 @@ public class RecommenderHandler implements
                 running = false;
             }
         };
-        engine.runEntireRecommender(request.getRecommenderName(), listener);
+        EventSet<IEvent> eventSet = new EventSet<IEvent>();
+        eventSet.addAttribute("site", request.getSite());
+        // TODO, we need to return good values here.
+        engine.runExecuteRecommender(request.getRecommenderName(), eventSet,
+                null, null, listener);
         while (running) {
             // wait
         }

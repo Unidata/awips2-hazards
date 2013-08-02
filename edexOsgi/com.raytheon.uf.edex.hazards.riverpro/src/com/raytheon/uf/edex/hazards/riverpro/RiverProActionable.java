@@ -29,7 +29,6 @@ import com.raytheon.edex.plugin.text.dao.AfosToAwipsDao;
 import com.raytheon.uf.common.actionregistry.IActionable;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
-import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecaction;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
@@ -94,9 +93,8 @@ class RiverProActionable implements IActionable {
      * .uf.common.actionregistry.PluginDataObject[])
      */
     @Override
-    public void handleAction(PluginDataObject[] arguments) {
+    public void handleAction(Object... arguments) {
         if (arguments.length > 0) {
-            long time = System.currentTimeMillis();
             boolean practice = arguments[0] instanceof PracticeWarningRecord ? true
                     : false;
             // find the gage locations from the table
@@ -107,14 +105,19 @@ class RiverProActionable implements IActionable {
             // retrieve the available significances for RiverPro
             Map<String, String> sigs = retrieveAvailable("signif", "vtecsignif");
             // loop over each record
-            for (PluginDataObject ob : arguments) {
-                AbstractWarningRecord warning = (AbstractWarningRecord) ob;
+            for (Object obj : arguments) {
+                AbstractWarningRecord warning = null;
+                if (obj instanceof AbstractWarningRecord) {
+                    warning = (AbstractWarningRecord) obj;
+                } else {
+                    continue;
+                }
                 // are are we doing a correct phen and sig, if not, continue on
                 if (phens.containsKey(warning.getPhen())
-                        && sigs.containsKey(warning.getSig()) || true) {
+                        && sigs.containsKey(warning.getSig())) {
                     // loop over all gage locations
                     for (Entry<String, Point> pt : gageLocations.entrySet()) {
-                        // only create a record, if the gage
+                        // only create a record, if the gage is in the area
                         if (warning.getGeometry().contains(pt.getValue())) {
 
                             // query the afos_to_awips table to get the product
@@ -124,9 +127,8 @@ class RiverProActionable implements IActionable {
                                 String xxxId = warning.getOfficeid();
                                 String wmottaaii = warning.getWmoid()
                                         .split(" ")[0];
-                                String ccc = retrieveCCC(xxxId);
                                 List<AfosToAwips> list = a2aDao.lookupAfosId(
-                                        wmottaaii, ccc).getIdList();
+                                        wmottaaii, xxxId).getIdList();
                                 for (AfosToAwips a2a : list) {
                                     if (a2a.getAfosid().contains(
                                             warning.getPil())) {
@@ -140,9 +142,6 @@ class RiverProActionable implements IActionable {
                                                 "Unable to query afos_to_awips table for afosId",
                                                 e);
                             }
-                            // for (AfosToAwips a2a : list) {
-                            // a2a.getAfosid();
-                            // }
                             // testing whether it should go to the practice
                             // table, or to the regular table.
                             if (practice) {
@@ -210,7 +209,6 @@ class RiverProActionable implements IActionable {
                     }
                 }
             }
-            System.out.println("Time : " + (System.currentTimeMillis() - time));
         }
     }
 
@@ -284,24 +282,5 @@ class RiverProActionable implements IActionable {
             }
         }
         return null;
-    }
-
-    /**
-     * Retrieves the CCC for use when finding the Afos Id
-     * 
-     * @param id
-     * @return
-     */
-    private String retrieveCCC(String id) {
-        String query = "select ccc from afoslookup where origin='" + id + "';";
-        List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, query, FXA_DB, "ccc");
-        String ccc = "";
-        for (Object[] obs : objects) {
-            if (obs[0] != null) {
-                ccc = (String) obs[0];
-            }
-        }
-        return ccc;
     }
 }
