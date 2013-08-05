@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -49,6 +50,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -61,6 +63,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 20, 2013 1257       bsteffen    Initial creation
+ * Aug 10, 2013 1265       blawrenc    Added logic to clear 
+ *                                     undo/redo information
+ *                                     when an event is issued. Also
+ *                                     replaced key strings with constants
+ *                                     from HazardConstants.py.
  * 
  * </pre>
  * 
@@ -98,8 +105,7 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public Collection<ProductInformation> getSelectedProducts() {
         List<ProductInformation> result = new ArrayList<ProductInformation>();
-        ProductGeneratorTable pgt = configManager
-                .getProductGeneratorTable();
+        ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
             Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
             Set<IHazardEvent> potentialEvents = new HashSet<IHazardEvent>();
@@ -113,8 +119,8 @@ public class SessionProductManager implements ISessionProductManager {
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
                         if (e.getHazardAttribute(
-                                        ISessionEventManager.ATTR_SELECTED)
-                                        .equals(true)) {
+                                ISessionEventManager.ATTR_SELECTED)
+                                .equals(true)) {
                             selectedEvents.add(e);
                         } else {
                             potentialEvents.add(e);
@@ -144,22 +150,22 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void generate(ProductInformation information, boolean issue) {
         EventSet<IHazardEvent> events = new EventSet<IHazardEvent>();
-        events.addAttribute("currentTime", timeManager
+        events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                 .getCurrentTime().getTime());
-        events.addAttribute("siteID", configManager
-                .getSiteID());
-        events.addAttribute("backupSiteID", LocalizationManager.getInstance()
-                .getCurrentSite());
+        events.addAttribute(HazardConstants.SITEID, configManager.getSiteID());
+        events.addAttribute(HazardConstants.BACKUP_SITEID, LocalizationManager
+                .getInstance().getCurrentSite());
 
         if (issue) {
-            events.addAttribute("issueFlag", "True");
+            events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
         } else {
-            events.addAttribute("issueFlag", "False");
+            events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
         }
-        HashMap<String, String> sessionDict = new HashMap<String, String>();
-        sessionDict.put("testMode", CAVEMode.getMode().toString());
-        events.addAttribute("sessionDict", sessionDict);
 
+        HashMap<String, String> sessionDict = new HashMap<String, String>();
+        sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
+                .toString());
+        events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
 
         if (information.getDialogSelections() != null) {
             for (Entry<String, String> entry : information
@@ -169,20 +175,22 @@ public class SessionProductManager implements ISessionProductManager {
         }
         for (IHazardEvent event : information.getSelectedEvents()) {
             event = new BaseHazardEvent(event);
-            for(Entry<String, Serializable> entry : event.getHazardAttributes().entrySet()){
-                if(entry.getValue() instanceof Date){
+            for (Entry<String, Serializable> entry : event
+                    .getHazardAttributes().entrySet()) {
+                if (entry.getValue() instanceof Date) {
                     entry.setValue(((Date) entry.getValue()).getTime());
                 }
             }
-            String headline = configManager.getHeadline(
-                    event);
-            event.addHazardAttribute("headline", headline);
-            if (event.getHazardAttribute("forecastPoint") != null) {
-                event.addHazardAttribute("geoType", "point");
+            String headline = configManager.getHeadline(event);
+            event.addHazardAttribute(HazardConstants.HEADLINE, headline);
+            if (event.getHazardAttribute(HazardConstants.FORECAST_POINT) != null) {
+                event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        HazardConstants.POINT_TYPE);
             } else {
-                event.addHazardAttribute("geoType", "area");
+                event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        HazardConstants.AREA_TYPE);
             }
-            event.removeHazardAttribute("type");
+            event.removeHazardAttribute(HazardConstants.TYPE);
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
@@ -195,8 +203,7 @@ public class SessionProductManager implements ISessionProductManager {
         String[] formats = information.getFormats();
         IPythonJobListener<List<IGeneratedProduct>> listener = new JobListener(
                 issue, notificationSender, information);
-        productGen.generate(product, events, formats,
-                listener);
+        productGen.generate(product, events, formats, listener);
     }
 
     @Override
@@ -208,12 +215,19 @@ public class SessionProductManager implements ISessionProductManager {
         for (IHazardEvent event : information.getSelectedEvents()) {
             if (event.getState() != HazardState.ENDED) {
                 Serializable previewState = event
-                        .getHazardAttribute("previewState");
-                if(previewState != null && previewState.toString().equalsIgnoreCase(HazardState.ENDED.toString())){
+                        .getHazardAttribute(HazardConstants.PREVIEW_STATE);
+                if (previewState != null
+                        && previewState.toString().equalsIgnoreCase(
+                                HazardState.ENDED.toString())) {
                     event.setState(HazardState.ENDED);
-                }else{
+                } else {
                     event.setState(HazardState.ISSUED);
                 }
+
+                /*
+                 * Clear the undo/redo events.
+                 */
+                ((IUndoRedoable) event).clearUndoRedo();
             }
         }
     }

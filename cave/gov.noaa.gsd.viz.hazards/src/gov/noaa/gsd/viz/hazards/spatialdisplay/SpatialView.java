@@ -83,6 +83,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Aug 04, 2013   1265     Bryon.Lawrence    Added support for undo/redo
  * </pre>
  * 
  * @author Chris.Golden
@@ -1430,4 +1431,39 @@ public class SpatialView implements
         }
     }
 
+    /**
+     * Sets the enabled state of the undo button.
+     * 
+     * @param undoFlag
+     *            True - enabled, False - disabled
+     * 
+     * @return
+     */
+    @Override
+    public void setUndoEnabled(final Boolean undoFlag) {
+        /*
+         * undoCommandAction can be null until the Console is initialized
+         */
+        if (this.undoCommandAction != null) {
+            this.undoCommandAction.setEnabled(undoFlag);
+        }
+    }
+
+    /**
+     * Sets the enabled state of the redo button.
+     * 
+     * @param redoFlag
+     *            True - enabled, False - disabled
+     * 
+     * @return
+     */
+    @Override
+    public void setRedoEnabled(final Boolean redoFlag) {
+        /*
+         * redoCommandAction can be null until the Console is initialized
+         */
+        if (this.redoCommandAction != null) {
+            this.redoCommandAction.setEnabled(redoFlag);
+        }
+    }
 }

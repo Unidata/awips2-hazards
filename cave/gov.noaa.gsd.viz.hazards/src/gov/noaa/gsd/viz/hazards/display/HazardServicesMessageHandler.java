@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             including making the model and JEP
  *                                             instances be member variables instead
  *                                             of class-scoped.
+ * Aug 06, 2013   1265     bryon.lawrence      Added support for undo/redo.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1275,6 +1276,26 @@ public final class HazardServicesMessageHandler {
                         "Error updating Hazard Services components", e);
             }
         }
+    }
+
+    /**
+     * Handles an undo action from the Console.
+     * 
+     * @param
+     * @return
+     */
+    public void handleUndoAction() {
+        this.model.undo();
+    }
+
+    /**
+     * Handles a redo action from the Console.
+     * 
+     * @param
+     * @return
+     */
+    public void handleRedoAction() {
+        this.model.redo();
     }
 
     /**

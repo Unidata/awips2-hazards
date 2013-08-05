@@ -20,9 +20,11 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import java.util.Stack;
 
 import org.eclipse.core.runtime.Assert;
 
@@ -30,11 +32,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.IllegalEventModificationException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -48,6 +54,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 23, 2013 1257       bsteffen    Initial creation
+ * Aug 06, 2013 1265       blawrenc    Updated to support undo/redo
  * 
  * </pre>
  * 
@@ -55,56 +62,94 @@ import com.vividsolutions.jts.geom.Geometry;
  * @version 1.0
  */
 
-public class ObservedHazardEvent implements IHazardEvent {
+public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
+
+    /**
+     * Logging mechanism.
+     */
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ObservedHazardEvent.class);
 
     private final SessionEventManager eventManager;
 
     private final IHazardEvent delegate;
 
+    /**
+     * Undo stack. Supports undo operations on this hazard event.
+     */
+    private final Stack<Pair<Method, Object>> undoStack = new Stack<Pair<Method, Object>>();
+
+    /**
+     * Redo stack. Support redo operations on this hazard event.
+     */
+    private final Stack<Pair<Method, Object>> redoStack = new Stack<Pair<Method, Object>>();
+
+    /**
+     * Flag indicating whether or not an undo operation is in progress.
+     */
+    private volatile Boolean undoInProgress = false;
+
+    /**
+     * Flag indicating whether or not a redo operation is in progress.
+     */
+    private volatile Boolean redoInProgress = false;
+
+    @Override
     public Date getStartTime() {
         return delegate.getStartTime();
     }
 
+    @Override
     public Date getEndTime() {
         return delegate.getEndTime();
     }
 
+    @Override
     public Geometry getGeometry() {
         return delegate.getGeometry();
     }
 
+    @Override
     public String getSiteID() {
         return delegate.getSiteID();
     }
 
+    @Override
     public String getEventID() {
         return delegate.getEventID();
     }
 
+    @Override
     public HazardState getState() {
         return delegate.getState();
     }
 
+    @Override
     public String getPhenomenon() {
         return delegate.getPhenomenon();
     }
 
+    @Override
     public String getSignificance() {
         return delegate.getSignificance();
     }
 
+    @Override
     public String getSubtype() {
         return delegate.getSubtype();
     }
 
+    @Override
     public Date getIssueTime() {
         return delegate.getIssueTime();
     }
 
+    @Override
     public ProductClass getHazardMode() {
         return delegate.getHazardMode();
     }
 
+    @Override
     public Serializable getHazardAttribute(String key) {
         return delegate.getHazardAttribute(key);
     }
@@ -222,9 +267,8 @@ public class ObservedHazardEvent implements IHazardEvent {
         if (changed(getSiteID(), site)) {
             delegate.setSiteID(site);
             if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventModified(
-                                eventManager, this));
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this));
             }
         }
     }
@@ -233,9 +277,8 @@ public class ObservedHazardEvent implements IHazardEvent {
         if (changed(getEventID(), eventId)) {
             delegate.setEventID(eventId);
             if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventModified(
-                                eventManager, this));
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this));
             }
         }
     }
@@ -256,9 +299,8 @@ public class ObservedHazardEvent implements IHazardEvent {
             if (eventManager.canChangeType(this)) {
                 delegate.setPhenomenon(phenomenon);
                 if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventModified(
-                                    eventManager, this));
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, this));
                 }
             } else {
                 throw new IllegalEventModificationException("subtype");
@@ -271,9 +313,8 @@ public class ObservedHazardEvent implements IHazardEvent {
             if (eventManager.canChangeType(this)) {
                 delegate.setSignificance(significance);
                 if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventModified(
-                                    eventManager, this));
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, this));
                 }
             } else {
                 throw new IllegalEventModificationException("subtype");
@@ -286,9 +327,8 @@ public class ObservedHazardEvent implements IHazardEvent {
             if (eventManager.canChangeType(this)) {
                 delegate.setSubtype(subtype);
                 if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventModified(
-                                    eventManager, this));
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, this));
                 }
             } else {
                 throw new IllegalEventModificationException("subtype");
@@ -300,9 +340,8 @@ public class ObservedHazardEvent implements IHazardEvent {
         if (changed(getIssueTime(), date)) {
             delegate.setIssueTime(date);
             if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventModified(
-                                eventManager, this));
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this));
             }
         }
     }
@@ -312,9 +351,8 @@ public class ObservedHazardEvent implements IHazardEvent {
             if (eventManager.canChangeTimeRange(this)) {
                 delegate.setEndTime(date);
                 if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventModified(
-                                    eventManager, this));
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, this));
                 }
             } else {
                 throw new IllegalEventModificationException("endTime");
@@ -327,9 +365,8 @@ public class ObservedHazardEvent implements IHazardEvent {
             if (eventManager.canChangeTimeRange(this)) {
                 delegate.setStartTime(date);
                 if (notify) {
-                    eventManager
-                            .hazardEventModified(new SessionEventModified(
-                                    eventManager, this));
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, this));
                 }
             } else {
                 throw new IllegalEventModificationException("startTime");
@@ -340,6 +377,7 @@ public class ObservedHazardEvent implements IHazardEvent {
     protected void setGeometry(Geometry geom, boolean notify) {
         if (changed(getGeometry(), geom)) {
             if (eventManager.canChangeGeometry(this)) {
+                pushToStack("setGeometry", Geometry.class, getGeometry());
                 delegate.setGeometry(geom);
                 if (notify) {
                     eventManager
@@ -356,9 +394,8 @@ public class ObservedHazardEvent implements IHazardEvent {
         if (changed(getHazardMode(), mode)) {
             delegate.setHazardMode(mode);
             if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventModified(
-                                eventManager, this));
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this));
             }
         }
     }
@@ -368,9 +405,8 @@ public class ObservedHazardEvent implements IHazardEvent {
         if (changed(getHazardAttributes(), attributes)) {
             delegate.setHazardAttributes(attributes);
             if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventModified(
-                                eventManager, this));
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this));
             }
         }
     }
@@ -397,6 +433,102 @@ public class ObservedHazardEvent implements IHazardEvent {
                                 eventManager, this, key));
             }
         }
+    }
+
+    @Override
+    public void undo() {
+        if (isUndoable()) {
+
+            Pair<Method, Object> pair = undoStack.pop();
+            Method method = pair.getFirst();
+            Object value = pair.getSecond();
+
+            try {
+                undoInProgress = true;
+                method.invoke(this, value);
+            } catch (Exception e) {
+                statusHandler.error("Error invoking undo method for event "
+                        + getEventID(), e);
+            }
+
+            undoInProgress = false;
+        }
+    }
+
+    @Override
+    public void redo() {
+        if (isRedoable()) {
+            Pair<Method, Object> pair = redoStack.pop();
+            Method method = pair.getFirst();
+            Object value = pair.getSecond();
+
+            try {
+                redoInProgress = true;
+                method.invoke(this, value);
+            } catch (Exception e) {
+                statusHandler.error("Error invoking redo method for event "
+                        + getEventID(), e);
+            }
+
+            redoInProgress = false;
+        }
+    }
+
+    @Override
+    public Boolean isUndoable() {
+        return !undoStack.isEmpty();
+    }
+
+    @Override
+    public Boolean isRedoable() {
+        return !redoStack.isEmpty();
+    }
+
+    /**
+     * Method for handling pushes to the undo and redo stack. Each element on
+     * these stacks contain the 'setter' method to call as well as the value to
+     * pass to it. When items are popped off of the undo or redo stack, the
+     * method is invoked with the stored value. This allows other portions of
+     * the ObservedHazardEvent state to be eventually undone/redone.
+     * 
+     * @param methodName
+     *            The name of the calling method which wants to push an item to
+     *            either the undo or redo stack.
+     * @param className
+     *            The name of the class which contains the method.
+     * @param value
+     *            The value to be pushed to either the undo or redo stack.
+     * @return
+     */
+    private void pushToStack(final String methodName,
+            final Class<?> className, Object value) {
+
+        try {
+            if ((!undoInProgress && !redoInProgress) || redoInProgress) {
+                Method method = this.getClass()
+                        .getMethod(methodName, className);
+                Pair<Method, Object> methodValuePair = new Pair<Method, Object>(
+                        method, value);
+                undoStack.push(methodValuePair);
+            } else {
+                Method method = this.getClass()
+                        .getMethod(methodName, className);
+                Pair<Method, Object> methodValuePair = new Pair<Method, Object>(
+                        method, value);
+                redoStack.push(methodValuePair);
+
+            }
+        } catch (Exception e) {
+            statusHandler.error("Error updating undo/redo stack for event "
+                    + getEventID(), e);
+        }
+
+    }
+
+    @Override
+    public void clearUndoRedo() {
+        undoStack.clear();
+        redoStack.clear();
     }
 
 }

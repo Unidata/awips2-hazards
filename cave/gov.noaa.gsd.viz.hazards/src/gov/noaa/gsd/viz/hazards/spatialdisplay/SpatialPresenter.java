@@ -34,6 +34,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Aug 6, 2013     1265    Bryon.Lawrence    Added support for undo/redo.
  * </pre>
  * 
  * @author Chris.Golden
@@ -106,6 +107,9 @@ public class SpatialPresenter extends
      */
     public void updateSpatialDisplay() {
         IHazardServicesModel model = getModel();
+
+        getView().setUndoEnabled(model.isUndoable());
+        getView().setRedoEnabled(model.isRedoable());
         getView().drawEvents(
                 model.getComponentData(
                         HazardServicesAppBuilder.SPATIAL_ORIGINATOR, "all"));
