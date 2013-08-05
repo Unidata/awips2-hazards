@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
-
 import java.util.Date;
 
 import com.raytheon.uf.common.time.TimeRange;

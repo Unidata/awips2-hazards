@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hazardAlerts>
+    <eventExpiration>
+        <configuration>
+            <category>Flood Hydro Warning</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>W</significance>
+                <subType>NonConvective</subType>
+            </hazardTypes>
+            <criteria>
+                <name>10 min</name>
+                <units>Minutes</units>
+                <location>Console</location>
+                <millisBeforeExpiration>600000</millisBeforeExpiration>
+                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <isBold>true</isBold>
+                <isBlinking>true</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+        </configuration>
+        <configuration>
+            <category>Hydro Long Term</category>
+            <hazardTypes>
+                <phenomenon>FL</phenomenon>
+                <significance>W</significance>
+                <subType>NonConvective</subType>
+            </hazardTypes>
+            <criteria>
+                <name>6 hours</name>
+                <units>Hours</units>
+                <location>Spatial</location>
+                <millisBeforeExpiration>21600000</millisBeforeExpiration>
+                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <isBold>true</isBold>
+                <isBlinking>true</isBlinking>
+                <isItalic>false</isItalic>
+                <fontSize>12</fontSize>
+            </criteria>
+        </configuration>
+        <configuration>
+            <category>Severe Weather</category>
+            <hazardTypes>
+                <phenomenon>SV</phenomenon>
+                <significance>W</significance>
+                <subType></subType>
+            </hazardTypes>
+            <criteria>
+                <name>1 hours</name>
+                <units>Hours</units>
+                <location>Spatial</location>
+                <millisBeforeExpiration>3600000</millisBeforeExpiration>
+                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <isBold>true</isBold>
+                <isBlinking>true</isBlinking>
+                <isItalic>false</isItalic>
+                <fontSize>12</fontSize>
+            </criteria>
+        </configuration>
+    </eventExpiration>
+</hazardAlerts>

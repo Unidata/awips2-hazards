@@ -1,2 +1,6 @@
 gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData
 gov.noaa.gsd.viz.hazards.style.HazardStyle
+com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertCategoryConfig
+com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig
+com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion
+com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig

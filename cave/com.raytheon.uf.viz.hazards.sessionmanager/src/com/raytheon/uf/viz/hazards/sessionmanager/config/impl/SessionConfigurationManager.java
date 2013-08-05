@@ -19,19 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
+import gov.noaa.gsd.common.utilities.Utils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
-import javax.xml.bind.JAXB;
-
-import jep.Jep;
-import jep.JepException;
-
-import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
@@ -53,6 +46,7 @@ import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategories;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDataEntry;
@@ -75,7 +69,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 
 /**
- * Implementation of ISessionConfigurationManager with asyncronous config file
+ * Implementation of ISessionConfigurationManager with asynchronous config file
  * loading.
  * 
  * <pre>
@@ -85,6 +79,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
+ * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * 
  * </pre>
  * 
@@ -94,7 +89,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
 
 public class SessionConfigurationManager implements
         ISessionConfigurationManager {
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+
+    public static final String ALERTS_CONFIG_PATH = Utils.directoryJoin(
+            "hazardServices", "alerts", "HazardAlertsConfig.xml");
+
+    static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionConfigurationManager.class);
 
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
@@ -108,19 +107,21 @@ public class SessionConfigurationManager implements
 
     private List<ConfigLoader<Settings>> allSettings;
 
-    private ConfigLoader<StartUpConfig> startUpConfig;
+    private final ConfigLoader<StartUpConfig> startUpConfig;
 
-    private ConfigLoader<HazardCategories> hazardCategories;
+    private final ConfigLoader<HazardCategories> hazardCategories;
 
-    private ConfigLoader<HazardMetaData> hazardMetaData;
+    private final ConfigLoader<HazardMetaData> hazardMetaData;
 
-    private ConfigLoader<ProductGeneratorTable> pgenTable;
+    private final ConfigLoader<ProductGeneratorTable> pgenTable;
 
-    private List<ConfigLoader<? extends IHazardsColorTable>> colorTables;
+    private final List<ConfigLoader<? extends IHazardsColorTable>> colorTables;
 
-    private ConfigLoader<HazardTypes> hazardTypes;
+    private final ConfigLoader<HazardTypes> hazardTypes;
 
-    private ConfigLoader<SettingsConfig[]> settingsConfig;
+    private final ConfigLoader<HazardAlertsConfig> alertsConfig;
+
+    private final ConfigLoader<SettingsConfig[]> settingsConfig;
 
     private ObservedSettings settings;
 
@@ -190,6 +191,11 @@ public class SessionConfigurationManager implements
                 .getStaticLocalizationFile("hazardServices/hazardTypes/HazardTypes.py");
         hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
         loaderPool.schedule(hazardTypes);
+
+        file = pathManager.getStaticLocalizationFile(ALERTS_CONFIG_PATH);
+        alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
+                HazardAlertsConfig.class);
+        loaderPool.schedule(alertsConfig);
 
         file = pathManager
                 .getStaticLocalizationFile("hazardServices/productGeneratorTable/ProductGeneratorTable.py");
@@ -394,6 +400,11 @@ public class SessionConfigurationManager implements
     }
 
     @Override
+    public HazardAlertsConfig getAlertConfig() {
+        return alertsConfig.getConfig();
+    }
+
+    @Override
     public Field[] getFilterConfig() {
         Field[] config = new Field[3];
         SettingsConfig viewConfig = getSettingsConfig();
@@ -536,119 +547,6 @@ public class SessionConfigurationManager implements
         return new Color(r / 255f, g / 255f, b / 255f);
     }
 
-    /**
-     * This is the primary interface which allows asynchronous loading. At
-     * initialization time these can be scheduled on a job pool but if they are
-     * requested before the pool is available they will be loaded synchronously.
-     */
-    private static class ConfigLoader<T> implements Runnable {
-
-        private final LocalizationFile lfile;
-
-        private final Class<T> clazz;
-
-        private final String pyVarName;
-
-        private final String pyIncludes;
-
-        private T config;
-
-        public ConfigLoader(LocalizationFile lfile, Class<T> clazz) {
-            this(lfile, clazz, null);
-        }
-
-        public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
-                String pyVarName) {
-            this(lfile, clazz, pyVarName, null);
-        }
-
-        public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
-                String pyVarName, String pyIncludes) {
-            this.lfile = lfile;
-            this.clazz = clazz;
-            this.pyVarName = pyVarName;
-            this.pyIncludes = pyIncludes;
-        }
-
-        @Override
-        public void run() {
-            synchronized (this) {
-                if (config != null) {
-                    return;
-                }
-                File file = lfile.getFile();
-                String ext = file.getName().substring(
-                        file.getName().lastIndexOf('.'));
-                try {
-                    if (ext.equals(".py")) {
-                        this.config = loadPython();
-                    } else if (ext.equals(".json")) {
-                        this.config = loadJson();
-                    } else if (ext.equals(".xml")) {
-                        this.config = loadXml();
-                    } else {
-                        throw new UnsupportedOperationException(
-                                "Cannot load config file " + lfile.getName());
-                    }
-                } catch (Throwable e) {
-                    statusHandler.handle(
-                            Priority.PROBLEM,
-                            "Unable to load configuration from: "
-                                    + lfile.getName(), e);
-                }
-                if (this.config == null) {
-                    try {
-                        config = clazz.newInstance();
-                    } catch (Exception e) {
-                        statusHandler.handle(Priority.PROBLEM,
-                                e.getLocalizedMessage(), e);
-                    }
-                }
-            }
-        }
-
-        private T loadJson() throws LocalizationException, IOException {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(
-                    DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-                    false);
-            return mapper.readValue(new String(lfile.read()), clazz);
-        }
-
-        private T loadXml() throws LocalizationException {
-            return JAXB
-                    .unmarshal(new ByteArrayInputStream(lfile.read()), clazz);
-        }
-
-        private T loadPython() throws JepException, IOException {
-            File file = lfile.getFile();
-            String varName = pyVarName;
-            if (varName == null) {
-                varName = file.getName().replaceFirst("[.][^.]+$", "");
-            }
-            // TODO use incremental python override and make sure localization
-            // importing is being used.
-            Jep jep = new Jep(false, pyIncludes);
-            jep.runScript(file.getAbsolutePath());
-            jep.eval("import json");
-            String json = (String) jep.getValue("json.dumps(" + varName + ")");
-            jep.close();
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(
-                    DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-                    false);
-            return mapper.readValue(json, clazz);
-
-        }
-
-        public T getConfig() {
-            if (config == null) {
-                run();
-            }
-            return config;
-        }
-    }
-
     private class SettingsDirectoryUpdateObserver implements
             ILocalizationFileObserver {
 
@@ -658,4 +556,5 @@ public class SessionConfigurationManager implements
         }
 
     }
+
 }

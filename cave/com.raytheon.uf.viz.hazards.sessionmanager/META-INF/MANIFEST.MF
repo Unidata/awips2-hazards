@@ -26,10 +26,12 @@ Require-Bundle: org.eclipse.core.runtime,
  org.codehaus.jackson;bundle-version="1.7.3",
  com.raytheon.viz.core;bundle-version="1.12.1174",
  com.google.guava;bundle-version="1.0.0",
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ gov.noaa.gsd.common.utilities;bundle-version="1.0.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
+ com.raytheon.uf.viz.hazards.sessionmanager.alerts,
  com.raytheon.uf.viz.hazards.sessionmanager.config,
  com.raytheon.uf.viz.hazards.sessionmanager.config.types,
  com.raytheon.uf.viz.hazards.sessionmanager.deprecated,
