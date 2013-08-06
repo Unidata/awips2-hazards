@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Polygon;
 
 /**
@@ -174,8 +175,21 @@ public class Event {
 
         draggedPoints = new double[0][];
 
+        Geometry geom = event.getGeometry();
+        if (geom instanceof MultiPolygon) {
+            this.shapes = new Shape[geom.getNumGeometries()];
+            for (int i = 0; i < shapes.length; i += 1) {
+                shapes[i] = convertGeometry(geom.getGeometryN(i));
+            }
+        } else {
+            shapes = new Shape[] { convertGeometry(geom) };
+        }
+
+    }
+
+    private Shape convertGeometry(Geometry geom) {
         List<double[]> points = new ArrayList<double[]>();
-        for (Coordinate c : event.getGeometry().getCoordinates()) {
+        for (Coordinate c : geom.getCoordinates()) {
             points.add(new double[] { c.x, c.y });
         }
         points.remove(points.size() - 1);
@@ -189,8 +203,7 @@ public class Event {
         shape.setIsSelected(selected);
         shape.setIsVisible("true");
         shape.setInclude("true");
-        shapes = new Shape[] { shape };
-
+        return shape;
     }
 
     public String getEventID() {

@@ -105,7 +105,8 @@ public class SessionProductManager implements ISessionProductManager {
             Set<IHazardEvent> potentialEvents = new HashSet<IHazardEvent>();
 
             for (IHazardEvent e : eventManager.getEvents()) {
-                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                if (e.getPhenomenon() == null || e.getSignificance() == null
+                        || e.getState() == HazardState.POTENTIAL) {
                     continue;
                 }
                 String key = HazardEventUtilities.getPhenSigSubType(e);
@@ -176,7 +177,12 @@ public class SessionProductManager implements ISessionProductManager {
             String headline = configManager.getHeadline(
                     event);
             event.addHazardAttribute("headline", headline);
-            event.addHazardAttribute("geoType", "area");
+            if (event.getHazardAttribute("forecastPoint") != null) {
+                event.addHazardAttribute("geoType", "point");
+            } else {
+                event.addHazardAttribute("geoType", "area");
+            }
+            event.removeHazardAttribute("type");
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);

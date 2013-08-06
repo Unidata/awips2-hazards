@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -1313,6 +1314,18 @@ public final class HazardServicesMessageHandler {
             @Override
             public void run() {
                 notifyModelEventsChanged();
+            }
+        });
+    }
+
+    @Subscribe
+    public void selectedTimeChanged(SelectedTimeChanged notification) {
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+                appBuilder.notifyModelChanged(EnumSet
+                        .of(IHazardServicesModel.Element.SELECTED_TIME));
             }
         });
     }

@@ -208,9 +208,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Override
     public IHazardEvent addEvent(IHazardEvent event) {
         HazardState state = event.getState();
-        if (state == null || state == HazardState.PENDING
-                || state == HazardState.POTENTIAL) {
+        if (state == null || state == HazardState.PENDING) {
             return addEvent(event, true);
+        } else if (state == HazardState.POTENTIAL) {
+            return addEvent(event, false);
         } else {
             List<IHazardEvent> list = new ArrayList<IHazardEvent>();
             list.add(event);
@@ -226,7 +227,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
     protected IHazardEvent addEvent(IHazardEvent event, boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
-        if (localEvent) {
+        if (event.getState() == HazardState.PENDING
+                || event.getState() == HazardState.POTENTIAL) {
             oevent.setEventID(generateEventID(), false);
         }
 

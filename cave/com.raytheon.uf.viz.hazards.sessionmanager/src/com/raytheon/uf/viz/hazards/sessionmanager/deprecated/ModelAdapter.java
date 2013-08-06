@@ -323,8 +323,13 @@ public abstract class ModelAdapter {
                 } else if (primitive.isBoolean()) {
                     event.addHazardAttribute(key, primitive.getBooleanValue());
                 } else if (primitive.isNumber()) {
-                    event.addHazardAttribute(key,
-                            new Date(primitive.getLongValue()));
+                    Object currentVal = event.getHazardAttribute(key);
+                    if (currentVal instanceof Integer) {
+                        event.addHazardAttribute(key, primitive.getIntValue());
+                    } else {
+                        event.addHazardAttribute(key,
+                                new Date(primitive.getLongValue()));
+                    }
                 } else {
                     throw new UnsupportedOperationException("Not implemented");
                 }
@@ -1005,7 +1010,7 @@ public abstract class ModelAdapter {
                 IHazardEvent event = it.next();
                 TimeRange eventRange = new TimeRange(event.getStartTime(),
                         event.getEndTime());
-                if (selectedRange == null) {
+                if (selectedRange == null || !selectedRange.isValid()) {
                     if (!eventRange.contains(selectedTime)) {
                         it.remove();
                     }
@@ -1075,6 +1080,8 @@ public abstract class ModelAdapter {
                             tmpArray.add(obj.toString());
                         }
                         node.put(entry.getKey(), tmpArray);
+                    } else if (entry.getValue() instanceof Integer) {
+                        node.put(entry.getKey(), (Integer) entry.getValue());
                     }
                 }
                 jevents.add(jobj);
