@@ -1,4 +1,3 @@
-
 /**
  * This software was developed and / or modified by the
  * National Oceanic and Atmospheric Administration (NOAA), 
@@ -95,6 +94,11 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           value for any identifier that has no
  *                                           entry yet in the event dictionary.
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Jul 31, 2013   1298     Chris.Golden      Fixed problem with metadata values for
+ *                                           hazard event being incorrectly carried
+ *                                           over to a new hazard type when that event
+ *                                           was assigned said new type, leading to
+ *                                           exceptions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1252,13 +1256,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // the change.
                 fireHIDAction(new HazardDetailAction("updateEventType",
                         jsonText));
-
-                // Show the metadata widgets for this type,
-                // and synch them up with the event infor-
-                // mation.
-                if (showMetadataForType(typeCombo.getText()) == false) {
-                    synchMetadataWidgetsWithEventInfo();
-                }
             }
         });
 
@@ -2732,19 +2729,31 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
                 for (String identifier : ((IStatefulSpecifier) widget
                         .getSpecifier()).getStateIdentifiers()) {
-                    if (paramValues.containsKey(identifier)) {
+
+                    // Use the value from the parameter
+                    // values dictionary if it works, but
+                    // if it invalid, or if there is no
+                    // such value available, use the
+                    // default value instead.
+                    boolean useDefaultValue = !paramValues
+                            .containsKey(identifier);
+                    if (useDefaultValue == false) {
                         Object value = paramValues.get(identifier);
                         try {
                             setWidgetState((IStateful) widget, identifier,
                                     value, widgetsNeedingCommit);
-                        } catch (Exception e) {
+                        } catch (MegawidgetStateException e) {
+                            useDefaultValue = true;
                             statusHandler
-                                    .error("HazardDetailViewPart.setWidgetsStates(): "
+                                    .info("HazardDetailViewPart.setWidgetsStates(): "
                                             + "Unable to set state for "
-                                            + identifier + " to " + value + ".",
-                                            e);
+                                            + identifier
+                                            + " to "
+                                            + value
+                                            + " (value is invalid).");
                         }
-                    } else {
+                    }
+                    if (useDefaultValue) {
                         try {
 
                             // Use the default (starting) value of the
@@ -2910,7 +2919,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return object;
         }
     }
-
 
     /**
      * When an action is fire in HID, this method will be called to notify all
