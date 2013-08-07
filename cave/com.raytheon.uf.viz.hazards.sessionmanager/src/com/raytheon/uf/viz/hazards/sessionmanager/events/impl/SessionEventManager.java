@@ -45,6 +45,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
@@ -80,6 +83,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  */
 
 public class SessionEventManager extends AbstractSessionEventManager {
+
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(SessionEventManager.class);
 
     private final ISessionTimeManager timeManager;
 
@@ -337,14 +343,27 @@ public class SessionEventManager extends AbstractSessionEventManager {
     protected void hazardEventStateModified(
             SessionEventStateModified notification, boolean persist) {
         if (persist) {
+
             ObservedHazardEvent event = (ObservedHazardEvent) notification
                     .getEvent();
             HazardState newState = event.getState();
+            boolean needsPersist = false;
             switch (newState) {
             case ISSUED:
                 event.addHazardAttribute(ATTR_ISSUED, true);
+                needsPersist = true;
+                break;
             case PROPOSED:
+                needsPersist = true;
+                break;
             case ENDED:
+                event.addHazardAttribute(ATTR_SELECTED, false);
+                needsPersist = true;
+                break;
+            default:
+                ;// do nothing.
+            }
+            if (needsPersist) {
                 // issue goes through special route so it does not reset state.
                 event.setIssueTime(SimulatedTime.getSystemTime().getTime(),
                         false);
@@ -358,12 +377,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
                     dbManager.storeEvent(dbEvent);
                 } catch (Throwable e) {
-                    e.printStackTrace();
+                    statusHandler.handle(Priority.PROBLEM,
+                            e.getLocalizedMessage(), e);
                 }
-            default:
-                ;// do nothing.
             }
         }
+
         addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
     }

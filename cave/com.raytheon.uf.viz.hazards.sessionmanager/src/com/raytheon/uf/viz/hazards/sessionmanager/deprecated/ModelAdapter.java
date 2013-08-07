@@ -400,11 +400,14 @@ public abstract class ModelAdapter {
     @Deprecated
     public void changeState(String eventID, String state) {
         if (state.toUpperCase().equals("PREVIEWENDED")) {
-            state = HazardState.ENDED.toString();
-        }
-        HazardState hstate = HazardState.valueOf(state.toUpperCase());
-        for (IHazardEvent event : fromIDs(eventID)) {
-            event.setState(hstate);
+            for (IHazardEvent event : fromIDs(eventID)) {
+                event.addHazardAttribute("previewState", "ended");
+            }
+        } else {
+            HazardState hstate = HazardState.valueOf(state.toUpperCase());
+            for (IHazardEvent event : fromIDs(eventID)) {
+                event.setState(hstate);
+            }
         }
     }
 
