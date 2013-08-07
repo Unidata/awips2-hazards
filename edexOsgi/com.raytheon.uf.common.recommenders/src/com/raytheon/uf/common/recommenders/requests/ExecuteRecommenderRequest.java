@@ -45,6 +45,9 @@ public class ExecuteRecommenderRequest implements IServerRequest {
     @DynamicSerializeElement
     private String recommenderName;
 
+    @DynamicSerializeElement
+    private String site;
+
     /**
      * 
      */
@@ -71,5 +74,20 @@ public class ExecuteRecommenderRequest implements IServerRequest {
      */
     public String getRecommenderName() {
         return recommenderName;
+    }
+
+    /**
+     * @return the site
+     */
+    public String getSite() {
+        return site;
+    }
+
+    /**
+     * @param site
+     *            the site to set
+     */
+    public void setSite(String site) {
+        this.site = site;
     }
 }

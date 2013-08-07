@@ -37,7 +37,7 @@ import datetime
 import EventFactory
 import RecommenderTemplate
 import JUtil
-import DiscreteGridHelper
+import GridHelper
 import numpy
 import ContourUtil
 import datetime
@@ -83,8 +83,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # for now this will do ALL grids, but the logic for the rest still says the same
         grids = DataAccessLayer.getGridData(req, times)
         for data in grids :
-            keys = DiscreteGridHelper.convertKeysToList(data.getAttribute("keys"))
-            values = DiscreteGridHelper.getValuesToSearch(keys)
+            keys = GridHelper.convertKeysToList(data.getAttribute("keys"))
+            values = GridHelper.getValuesToSearch(keys)
 
             # TODO, will become an EventSet
             events = list()

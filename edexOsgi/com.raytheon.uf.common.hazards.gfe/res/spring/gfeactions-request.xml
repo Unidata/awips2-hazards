@@ -1,0 +1,12 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+
+	<bean id="gfeActionableRegistry"
+		class="com.raytheon.uf.common.hazards.gfe.GFEActionable" />
+
+	<bean factory-bean="actionRegistry" factory-method="register">
+		<constructor-arg value="gfe" />
+		<constructor-arg ref="gfeActionableRegistry" />
+	</bean>
+</beans>

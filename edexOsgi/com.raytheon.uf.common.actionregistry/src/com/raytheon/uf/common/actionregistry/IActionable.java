@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.common.actionregistry;
 
-import com.raytheon.uf.common.dataplugin.PluginDataObject;
 
 /**
  * Interface for actions that will receive PluginDataObject[]
@@ -41,10 +40,10 @@ import com.raytheon.uf.common.dataplugin.PluginDataObject;
 public interface IActionable {
 
     /**
-     * Anything that implements this class will have this method executed when the
-     * registry is triggered.
+     * Anything that implements this class will have this method executed when
+     * the registry is triggered.
      * 
      * @param arguments
      */
-    public void handleAction(PluginDataObject[] arguments);
+    public void handleAction(Object... arguments);
 }

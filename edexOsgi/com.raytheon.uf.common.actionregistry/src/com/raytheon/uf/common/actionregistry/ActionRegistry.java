@@ -20,11 +20,9 @@
 package com.raytheon.uf.common.actionregistry;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import com.raytheon.uf.common.dataplugin.PluginDataObject;
 
 /**
  * Allows actions to be registered and run when an event is posted to this
@@ -66,6 +64,7 @@ public class ActionRegistry {
 
     /**
      * Registers text and an action with the ActionRegistry
+     * 
      * @param action
      * @param actionable
      * @return
@@ -81,7 +80,7 @@ public class ActionRegistry {
      * @param action
      * @param arguments
      */
-    public void postAction(String action, PluginDataObject[] arguments) {
+    public void postAction(String action, Object[] arguments) {
         Collection<IActionable> actions = actionableMap.get(action);
         for (IActionable actionable : actions) {
             actionable.handleAction(arguments);

@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.actionregistry.IActionable;
-import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
@@ -72,7 +71,7 @@ public class WarningActionable implements IActionable {
      * @see com.raytheon.uf.common.actionregistry.IActionable#handleAction()
      */
     @Override
-    public void handleAction(PluginDataObject[] objects) {
+    public void handleAction(Object... objects) {
         if (objects.length > 0) {
             // TODO, change this once we turn on the registry as well
             // Mode mode = objects[0] instanceof PracticeWarningRecord ?
@@ -81,14 +80,19 @@ public class WarningActionable implements IActionable {
             Mode mode = Mode.PRACTICE;
             HazardEventManager manager = new HazardEventManager(mode);
             List<IHazardEvent> events = new ArrayList<IHazardEvent>();
-            for (PluginDataObject object : objects) {
-                AbstractWarningRecord record = (AbstractWarningRecord) object;
+            for (Object ob : objects) {
+                AbstractWarningRecord record = null;
+                if (ob instanceof AbstractWarningRecord) {
+                    record = (AbstractWarningRecord) ob;
+                } else {
+                    continue;
+                }
                 IHazardEvent event = manager.createEvent();
 
                 // make a request for the hazard event id from the cluster task
                 // table
                 HazardEventIdRequest request = new HazardEventIdRequest();
-                request.setSiteId(record.getOfficeid());
+                request.setSiteId(record.getXxxid());
                 String value = "";
                 try {
                     value = RequestRouter.route(request).toString();
@@ -103,7 +107,7 @@ public class WarningActionable implements IActionable {
                 event.setGeometry(record.getGeometry());
                 event.setPhenomenon(record.getPhen());
                 event.setSignificance(record.getSig());
-                event.setSiteID(record.getOfficeid());
+                event.setSiteID(record.getXxxid());
                 event.setHazardMode(HazardConstants
                         .productClassFromAbbreviation(record.getProductClass()));
                 event.setState(stateBasedOnAction(record.getAct()));
