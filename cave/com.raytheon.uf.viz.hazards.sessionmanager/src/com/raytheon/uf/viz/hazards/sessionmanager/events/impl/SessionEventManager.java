@@ -227,7 +227,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
     protected IHazardEvent addEvent(IHazardEvent event, boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
-        if (event.getState() == HazardState.PENDING
+        if (event.getState() == null || event.getState() == HazardState.PENDING
                 || event.getState() == HazardState.POTENTIAL) {
             oevent.setEventID(generateEventID(), false);
         }
