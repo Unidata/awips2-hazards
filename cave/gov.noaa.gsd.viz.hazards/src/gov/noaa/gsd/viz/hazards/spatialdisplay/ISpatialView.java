@@ -30,6 +30,7 @@ import com.raytheon.uf.viz.core.map.MapDescriptor;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Aug 06, 2013   1265     bryon.lawrence    Added support for undo/redo.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Chris.Golden
@@ -61,12 +62,8 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
 
     /**
      * Draw events on the view.
-     * 
-     * @param jsonEvents
-     *            Json string representing the events.
-     * 
      */
-    public void drawEvents(String jsonEvents);
+    public void drawEvents();
 
     /**
      * Retrieve the descriptor associated with this view.

@@ -44,7 +44,6 @@ import org.codehaus.jackson.node.ObjectNode;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -56,7 +55,6 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -91,6 +89,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Aug 06, 2013 1265       B. Lawrence Updated to support undo/redo.
  * Aug 12, 2013 1921       B. Lawrence Added logic to clear the VTEC files
  *                                     in localization when events are reset.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Removed code made obsolete by 
+ *                                                     replacement of JSON with POJOs
  * </pre>
  * 
  * @author bsteffen
@@ -1162,11 +1162,6 @@ public abstract class ModelAdapter {
         for (int i = 0; i < events2.length; i += 1) {
             IHazardEvent hevent = it.next();
             events2[i] = new Event(hevent);
-            Color color = configManager.getColor(hevent);
-            String fillColor = (int) (color.getRed() * 255) + " "
-                    + (int) (color.getGreen() * 255) + " "
-                    + (int) (color.getBlue() * 255);
-            events2[i].setColor(fillColor);
             String type = events2[i].getType();
             if (type != null) {
                 String headline = configManager.getHeadline(hevent);
@@ -1177,21 +1172,6 @@ public abstract class ModelAdapter {
                     hevent.getEndTime());
             if (time != null && !hetr.contains(time)) {
                 events2[i].setShapes(new Shape[0]);
-            }
-            Shape[] shapes = events2[i].getShapes();
-            if (shapes != null) {
-                int borderWidth = configManager.getBorderWidth(hevent);
-                String borderStyle = "NONE";
-                LineStyle linestyle = configManager.getBorderStyle(hevent);
-                if (linestyle != null) {
-                    borderStyle = linestyle.toString();
-                }
-                for (Shape shape : shapes) {
-                    shape.setBorderThickness(borderWidth);
-                    shape.setBorderColor("255 255 255");
-                    shape.setBorderStyle(borderStyle);
-                    shape.setFillColor(fillColor);
-                }
             }
             if (component.equalsIgnoreCase("HID")) {
                 // HID needs all the extra attributes.
@@ -1335,7 +1315,7 @@ public abstract class ModelAdapter {
         return new Date(Long.valueOf(timeInMillisAsLongAsString));
     }
 
-    public ISessionManager getNewSessionManager() {
+    public ISessionManager getSessionManager() {
         return model;
     }
 

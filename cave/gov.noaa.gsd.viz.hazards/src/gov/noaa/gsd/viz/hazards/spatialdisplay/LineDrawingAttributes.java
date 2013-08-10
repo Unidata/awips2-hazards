@@ -7,18 +7,14 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.*;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
-
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.vividsolutions.jts.geom.Coordinate;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * <Description> The PGEN drawing attributes associated with a polygon drawn on
@@ -30,6 +26,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * 
  * </pre>
  * 
@@ -41,16 +38,11 @@ public class LineDrawingAttributes extends HazardServicesDrawingAttributes {
 
     public static int SMOOTH_FACTOR = 0;
 
-    private float lineWidth = 2.0f;
+    private LineStyle lineStyle = LINE_SOLID;
 
-    private Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
-
-    private String lineStyle = "LINE_SOLID";
-
-    private boolean selected = false;
-
-    public LineDrawingAttributes(Shell parShell) throws VizException {
-        super(parShell);
+    public LineDrawingAttributes(Shell parShell, ISessionManager sessionManager)
+            throws VizException {
+        super(parShell, sessionManager.getConfigurationManager());
     }
 
     @Override
@@ -70,21 +62,6 @@ public class LineDrawingAttributes extends HazardServicesDrawingAttributes {
     }
 
     /**
-     * Sets the line width of the drawn event polygon border
-     * 
-     * @return float
-     * 
-     */
-    @Override
-    public float getLineWidth() {
-        return lineWidth;
-    }
-
-    public void setLineWidth(float lineWidth) {
-        this.lineWidth = lineWidth;
-    }
-
-    /**
      * Sets flag indicating whether or not this event drawable should be closed.
      * 
      * @return Boolean
@@ -92,15 +69,6 @@ public class LineDrawingAttributes extends HazardServicesDrawingAttributes {
     @Override
     public Boolean isClosedLine() {
         return false;
-    }
-
-    @Override
-    public Color[] getColors() {
-        return colors;
-    }
-
-    public void setColors(Color[] colors) {
-        this.colors = colors;
     }
 
     /**
@@ -125,89 +93,23 @@ public class LineDrawingAttributes extends HazardServicesDrawingAttributes {
         return FillPattern.FILL_PATTERN_5;
     }
 
+    @Override
     public void setSOLIDLineStyle() {
-        this.lineStyle = "LINE_SOLID";
-    }
-
-    public void setDASHEDLineStyle() {
-        this.lineStyle = "LINE_DASHED_2";
+        this.lineStyle = LINE_SOLID;
     }
 
     @Override
-    public String getLineStyle() {
+    public void setDASHEDLineStyle() {
+        this.lineStyle = LINE_DASHED_2;
+    }
+
+    @Override
+    public LineStyle getLineStyle() {
         return lineStyle;
     }
 
     @Override
     public double getSizeScale() {
         return SIZE_SCALE;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public List<Coordinate> updateFromEventDict(Dict shape) {
-
-        List<Object> pointsArray = (List<Object>) shape.get("points");
-
-        ArrayList<Coordinate> points = new ArrayList<Coordinate>();
-
-        for (int j = 0; j < pointsArray.size(); ++j) {
-            List<Number> coords = (List<Number>) pointsArray.get(j);
-            double lon = coords.get(0).doubleValue();
-            double lat = coords.get(1).doubleValue();
-            Coordinate coord = new Coordinate(lon, lat, 0);
-            points.add(coord);
-        }
-
-        Color[] colors = new Color[] { Color.BLACK, Color.BLACK };
-        int borderThickness = ((Number) shape.get("border thick")).intValue();
-        String fillcolor = (String) shape.get("fill color");
-        String borderStyle = (String) shape.get("borderStyle");
-        String borderColor = (String) shape.get("border color");
-        String label = (String) shape.get("label");
-
-        colors[0] = ToolLayer.convertRGBStringToColor(borderColor);
-        colors[1] = ToolLayer.convertRGBStringToColor(fillcolor);
-
-        Boolean selected = ((Boolean) shape.get("isSelected"));
-
-        if (selected != null) {
-            setSelected(selected);
-        }
-
-        setLineWidth(borderThickness);
-
-        if (label != null && label.length() > 0) {
-            setString(new String[] { label });
-        } else {
-            setString(null);
-        }
-
-        switch (BorderStyles.valueOf(borderStyle)) {
-
-        case SOLID:
-            setSOLIDLineStyle();
-            break;
-
-        case DASHED:
-            setDASHEDLineStyle();
-            break;
-
-        case NONE:
-            // Nothing to do at the moment.
-            break;
-        }
-
-        setColors(colors);
-
-        return points;
-    }
-
-    public void setSelected(boolean selected) {
-        this.selected = selected;
-    }
-
-    public boolean isSelected() {
-        return selected;
     }
 }

@@ -502,7 +502,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      */
     @Override
     public Serializable getHazardAttribute(String key) {
-        return hazardAttributes.get(key);
+        return getHazardAttributes().get(key);
     }
 
     /*

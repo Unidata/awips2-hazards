@@ -28,6 +28,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -45,6 +46,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * Nov 2011                Bryon.Lawrence      Initial creation
  * Jul 15, 2013      585   Chris.Golden        Changed to no longer be a singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -64,14 +66,15 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
      */
-    public static EventBoxDrawingAction getInstance() {
-        return new EventBoxDrawingAction();
+    public static EventBoxDrawingAction getInstance(
+            ISessionManager sessionManager) {
+        return new EventBoxDrawingAction(sessionManager);
     }
 
     /**
      * Private constructor.
      */
-    private EventBoxDrawingAction() {
+    private EventBoxDrawingAction(ISessionManager sessionManager) {
         super();
 
         /*
@@ -79,7 +82,8 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
          */
         try {
             drawingAttributes = new PolygonDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell());
+                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
+                    sessionManager);
         } catch (VizException e) {
             statusHandler
                     .error("In EvenBoxDrawingAction, could not create drawing attributes.",

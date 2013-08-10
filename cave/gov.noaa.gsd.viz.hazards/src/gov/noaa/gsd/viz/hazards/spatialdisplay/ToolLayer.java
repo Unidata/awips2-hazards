@@ -9,8 +9,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -33,6 +31,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
@@ -58,10 +57,12 @@ import com.google.common.eventbus.EventBus;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
@@ -77,6 +78,9 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
@@ -110,6 +114,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                        from the right-click context menu.
  * Jul 10, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * Jul 12, 2013            Bryon.Lawrence Added ability to draw persistent shapes.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -199,7 +204,7 @@ public class ToolLayer extends
      * The previous list of events drawn. Used for testing if a redraw is
      * necessary.
      */
-    private DictList previousDictList = null;
+    private Collection<IHazardEvent> previousEvents;
 
     /*
      * reference to eventBus singleton instance
@@ -283,36 +288,38 @@ public class ToolLayer extends
         displayMap = new ConcurrentHashMap<DrawableElement, AbstractElementContainer>();
         elSelected = new ArrayList<AbstractDrawableComponent>();
         geoFactory = new GeometryFactory();
-        drawableBuilder = new HazardServicesDrawableBuilder();
+
         dataManager = new ToolLayerDataManager();
         persistentShapeMap = Maps.newHashMap();
 
         dataTimes = new ArrayList<DataTime>();
         selectedEventIDs = Lists.newArrayList();
 
-        // The tool layer may be instantiated from within the UI thread, or
-        // from another thread (for example, a non-UI thread is used for
-        // creating the tool layer as part of a bundle load). Ensure that
-        // the rest of the initialization happens on the UI thread.
+        /**
+         * 
+         * The tool layer may be instantiated from within the UI thread, or from
+         * another thread (for example, a non-UI thread is used for creating the
+         * tool layer as part of a bundle load). Ensure that the rest of the
+         * initialization happens on the UI thread.
+         */
         Runnable initializationFinisher = new Runnable() {
             @Override
             public void run() {
                 handleBarColor = Display.getCurrent().getSystemColor(
                         SWT.COLOR_GRAY);
 
-                // Create an app builder if one has not already been pro-
-                // vided.
                 if (appBuilder != null) {
                     ToolLayer.this.appBuilder = appBuilder;
+                    drawableBuilder = new HazardServicesDrawableBuilder(
+                            ToolLayer.this.appBuilder.getSessionManager());
                 } else {
-                    try {
-                        ToolLayer.this.appBuilder = new HazardServicesAppBuilder(
-                                ToolLayer.this, loadedFromBundle);
-                    } catch (VizException e) {
-                        statusHandler.error(
-                                "Could not create or get the app builder.", e);
-                    }
+                    ToolLayer.this.appBuilder = new HazardServicesAppBuilder(
+                            ToolLayer.this);
+                    drawableBuilder = new HazardServicesDrawableBuilder(
+                            ToolLayer.this.appBuilder.getSessionManager());
+                    ToolLayer.this.appBuilder.buildGUIs(loadedFromBundle);
                 }
+
                 eventBus = ToolLayer.this.appBuilder.getEventBus();
 
                 // If the resource data has a setting to be used, use
@@ -329,6 +336,7 @@ public class ToolLayer extends
                 }
             }
         };
+
         if (Display.getDefault().getThread() == Thread.currentThread()) {
             initializationFinisher.run();
         } else {
@@ -363,7 +371,8 @@ public class ToolLayer extends
     }
 
     /**
-     * Clear all events from the spatial display.
+     * Clear all events from the spatial display. Takes into account events that
+     * need to be persisted such as a storm track dot.
      */
     public void clearEvents() {
         List<AbstractDrawableComponent> deList = dataManager.getActiveLayer()
@@ -395,21 +404,35 @@ public class ToolLayer extends
     /**
      * Draws event geometries on the Hazard Services Tool Layer.
      * 
-     * @param JSONeventAreas
-     *            A JSON string contain a list of event dictionaries. Each
-     *            dictionary contains information about how to render the event
-     *            it contains.
      * @param clearAllEvents
      *            Clear all displayed events before rendering the new events.
      * @return
      */
-    public void drawEventAreas(String JSONeventAreas, boolean clearAllEvents) {
+    public void drawEventAreas(boolean clearAllEvents) {
 
-        DictList dictList = DictList.getInstance(JSONeventAreas);
+        /**
+         * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
+         * this method is called for the old {@link ToolLayer} when you switch
+         * perspectives and create a new {@link ToolLayer}. But part of the
+         * changing perspective process is to nullify the appBuilder so we have
+         * to do a check here. It would be good to take some time to understand
+         * why this method is called in the old one when you switch
+         * perspectives.
+         */
+        if (appBuilder == null) {
+            return;
+        }
 
-        if (previousDictList != null) {
+        ISessionManager sessionManager = appBuilder.getSessionManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
+        Collection<IHazardEvent> events = eventManager.getCheckedEvents();
+        ISessionTimeManager timeManager = sessionManager.getTimeManager();
+        TimeRange selectedRange = timeManager.getSelectedTimeRange();
+        Date selectedTime = timeManager.getSelectedTime();
+        filterEventsForTime(events, selectedRange, selectedTime);
 
-            if (dictList.equals(previousDictList)) {
+        if (previousEvents != null) {
+            if (!areEventsChanged(events)) {
                 /*
                  * This list of events is identical to the previously drawn
                  * list. Do nothing more.
@@ -418,137 +441,73 @@ public class ToolLayer extends
             }
         }
 
-        previousDictList = dictList;
-
         if (clearAllEvents) {
             clearEvents();
         }
 
+        previousEvents = events;
         selectedHazardIHISLayer = null;
         selectedEventIDs.clear();
 
-        try {
-            if (dictList != null) {
-                for (int i = 0; i < dictList.size(); ++i) {
-                    Dict event = (Dict) dictList.get(i);
-                    drawEventArea(event);
-                }
+        for (IHazardEvent hazardEvent : events) {
 
-                setObjects(dataManager.getActiveLayer().getDrawables());
-                issueRefresh();
-            }
-        } catch (VizException e) {
-            statusHandler.error(
-                    "ToolLayer.drawEventAreas(): draw of areas failed.", e);
+            List<AbstractDrawableComponent> drawables = drawableBuilder
+                    .buildDrawableComponents(this, hazardEvent,
+                            getActiveLayer());
+            trackPersistentShapes(hazardEvent, drawables);
         }
+
+        setObjects(dataManager.getActiveLayer().getDrawables());
+        issueRefresh();
 
     }
 
-    /**
-     * Draws an event geometry on the Hazard Services Tool Layer.
-     * 
-     * @param obj
-     *            - The dictionary containing shape information for the event.
-     * @return
-     */
-    public void drawEventArea(Dict obj) throws VizException {
-        AbstractDrawableComponent drawableComponent;
-        AbstractDrawableComponent text;
-        HazardServicesDrawingAttributes drawingAttributes;
-        List<Coordinate> points;
-
-        // Retrieve the event identifier
-        String eventID = (String) obj.get(Utilities.HAZARD_EVENT_IDENTIFIER);
-
-        Boolean isPersistent = obj
-                .getDynamicallyTypedValue(Utilities.PERSISTENT_SHAPE);
-
-        List<Dict> shapeArray = (List<Dict>) obj
-                .get(Utilities.HAZARD_EVENT_SHAPES);
-
-        List<AbstractDrawableComponent> drawableList = Lists.newArrayList();
-
-        // There could be one or more shapes per event.
-        if (shapeArray != null && shapeArray.size() > 0) {
-            for (int i = 0; i < shapeArray.size(); ++i) {
-                drawableComponent = null;
-                text = null;
-                drawingAttributes = null;
-                points = null;
-
-                Dict shape = shapeArray.get(i);
-
-                Object shapeObject = shape.get(IS_SELECTED_KEY);
-                Boolean isSelected = false;
-
-                if (shapeObject instanceof Boolean) {
-                    isSelected = (Boolean) shapeObject;
-                } else {
-                    if (((String) shapeObject).equalsIgnoreCase("true")) {
-                        isSelected = true;
-                    }
-                }
-
-                /*
-                 * Keep an inventory of which events are selected.
-                 */
-                if (isSelected != null && isSelected
-                        && !selectedEventIDs.contains(eventID)) {
-
-                    /*
-                     * Since there can be multiple polygons per event, represent
-                     * each event only once.
-                     */
-                    selectedEventIDs.add(eventID);
-                }
-
-                /*
-                 * Do not try to draw anything that is outside or has a point
-                 * that is outside of the grid extent of the display. This seems
-                 * to be mainly a problem in the GFE perspective.
-                 */
-                drawableComponent = drawableBuilder.buildDrawableComponent(
-                        shape, eventID, points, getActiveLayer(),
-                        getDescriptor());
-
-                if (drawableComponent != null) {
-                    drawingAttributes = drawableBuilder.getDrawingAttributes();
-
-                    if (drawingAttributes.getLineWidth() == 4.0) {
-                        setSelectedHazardIHISLayer(drawableComponent);
-                    }
-
-                    addElement(drawableComponent);
-                    drawableList.add(drawableComponent);
-
-                    text = null;
-
-                    if (drawingAttributes.getString() != null
-                            && drawingAttributes.getString().length > 0) {
-                        text = drawableBuilder.buildText(shape, eventID,
-                                drawableComponent.getPoints(),
-                                getActiveLayer(), geoFactory);
-                        addElement(text);
-                        drawableList.add(text);
-                    }
-                } // End of test for null drawable
-
-            } // End of shape array loop.
-
-            /*
-             * This ensures that a persistent shape with the same id as one that
-             * already exists will override it.
-             */
-            if (isPersistent != null && isPersistent) {
-                if (persistentShapeMap.containsKey(eventID)) {
-                    persistentShapeMap.remove(eventID);
-                }
-
-                if (!drawableList.isEmpty()) {
-                    persistentShapeMap.put(eventID, drawableList);
-                }
+    private void trackPersistentShapes(IHazardEvent hazardEvent,
+            List<AbstractDrawableComponent> drawables) {
+        /*
+         * This ensures that a persistent shape with the same id as one that
+         * already exists will override it.
+         */
+        Boolean isPersistent = (Boolean) hazardEvent
+                .getHazardAttribute(Utilities.PERSISTENT_SHAPE);
+        if (isPersistent != null && isPersistent) {
+            if (persistentShapeMap.containsKey(hazardEvent.getEventID())) {
+                persistentShapeMap.remove(hazardEvent.getEventID());
             }
 
+            if (!drawables.isEmpty()) {
+                persistentShapeMap.put(hazardEvent.getEventID(), drawables);
+            }
+        }
+    }
+
+    private boolean areEventsChanged(Collection<IHazardEvent> events) {
+        for (IHazardEvent hazardEvent : events) {
+            for (IHazardEvent previousEvent : previousEvents) {
+                if (hazardEvent.getEventID().equals(previousEvent.getEventID())) {
+                    if (!hazardEvent.equals(previousEvent)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private void filterEventsForTime(Collection<IHazardEvent> events,
+            TimeRange selectedRange, Date selectedTime) {
+        Iterator<IHazardEvent> it = events.iterator();
+        while (it.hasNext()) {
+            IHazardEvent event = it.next();
+            TimeRange eventRange = new TimeRange(event.getStartTime(),
+                    event.getEndTime());
+            if (selectedRange == null || !selectedRange.isValid()) {
+                if (!eventRange.contains(selectedTime)) {
+                    it.remove();
+                }
+            } else if (!eventRange.overlaps(selectedRange)) {
+                it.remove();
+            }
         }
     }
 
@@ -569,13 +528,13 @@ public class ToolLayer extends
      * 
      * @see com.raytheon.uf.viz.core.rsc.AbstractVizResource#init(com.raytheon.uf
      *      .viz.core.IGraphicsTarget)
-     * 
      * @param target
      *            The graphics target which will receive drawables.
      */
     @Override
     public void initInternal(IGraphicsTarget target) throws VizException {
-        // This needs to be done to register this tool's mouse listener with
+        // This needs to be done to register this tool's mouse
+        // listener with
         // the Pane Manager.
         super.initInternal(target);
 
@@ -596,9 +555,8 @@ public class ToolLayer extends
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.viz.core.rsc.IVizResource#isApplicable(com.raytheon.viz.
-     * core.PixelExtent)
+     * @see com.raytheon.viz.core.rsc.IVizResource#isApplicable(com.raytheon
+     * .viz. core.PixelExtent)
      */
     public boolean isApplicable(PixelExtent extent) {
         return true;
@@ -665,8 +623,10 @@ public class ToolLayer extends
 
         super.disposeInternal();
 
-        // Fire a spatial display dispose event if the perspective is not
-        // changing, since this means that Hazard Services should close.
+        // Fire a spatial display dispose event if the perspective is
+        // not
+        // changing, since this means that Hazard Services should
+        // close.
         if (perspectiveChanging == false) {
             fireSpatialDisplayDisposedActionOccurred();
         }
@@ -976,7 +936,6 @@ public class ToolLayer extends
      * 
      * @param eventIDs
      *            The identifiers of the selected events.
-     * 
      * @return
      */
     public void multipleElementsClicked(Set<String> eventIDs) {
@@ -989,7 +948,6 @@ public class ToolLayer extends
      * 
      * @param element
      *            The element to remove the label from.
-     * 
      */
     public void removeElementLabel(DrawableElement element) {
         String eventID = elementClicked(element, false, false);
@@ -1057,9 +1015,11 @@ public class ToolLayer extends
                 .getInstance().getActiveEditor();
         double screenCoord[] = editor.translateInverseClick(point);
 
-        // Note that the distance unit of the JTS distance function is central
-        // angle degrees.
-        // This seems to match closely with degrees lat and lon.
+        /**
+         * Note that the distance unit of the JTS distance function is central
+         * angle degrees. This seems to match closely with degrees lat and lon.
+         * 
+         */
         double minDist = Double.MAX_VALUE;
 
         Iterator<AbstractDrawableComponent> iterator = dataManager
@@ -1120,9 +1080,13 @@ public class ToolLayer extends
         Iterator<AbstractDrawableComponent> iterator = dataManager
                 .getActiveLayer().getComponentIterator();
 
-        // Check each of the hazard polygons. Normally, there will not be
-        // too many of these. However, we can make this more efficient by
-        // using a tree and storing/resusing the Geometries.
+        /**
+         * 
+         * Check each of the hazard polygons. Normally, there will not be too
+         * many of these. However, we can make this more efficient by A using a
+         * tree and storing/resusing the Geometries.
+         * 
+         */
         Point clickPoint = geoFactory.createPoint(point);
 
         AbstractDrawableComponent selectedSymbol = null;
@@ -1160,9 +1124,11 @@ public class ToolLayer extends
         Iterator<AbstractDrawableComponent> iterator = dataManager
                 .getActiveLayer().getComponentIterator();
 
-        // Check each of the hazard polygons. Normally, there will not be
-        // too many of these. However, we can make this more efficient by
-        // using a tree and storing/resusing the Geometries.
+        /**
+         * Check each of the hazard polygons. Normally, there will not be too
+         * many of these. However, we can make this more efficient by using a
+         * tree and storing/resusing the Geometries.
+         */
         Point clickPoint = geoFactory.createPoint(point);
 
         List<AbstractDrawableComponent> containingSymbolsList = new ArrayList<AbstractDrawableComponent>();
@@ -1183,7 +1149,7 @@ public class ToolLayer extends
             }
         }
 
-        /*
+        /**
          * The hazards drawn first are on the bottom of the stack while those
          * drawn last are on the top of the stack. Reversing the list makes it
          * easier for applications to find the top-most containing element.
@@ -1240,10 +1206,11 @@ public class ToolLayer extends
 
     @Override
     public void addContextMenuItems(IMenuManager menuManager, int x, int y) {
-        // In here, add the options to delete a vertex
-        // and add a vertex, but only if over a selected
-        // hazard and point.
-        // Retrieve the list of context menu items to add...
+        /**
+         * In here, add the options to delete a vertex and add a vertex, but
+         * only if over a selected hazard and point. Retrieve the list of
+         * context menu items to add...
+         */
         List<String> entries = getContextMenuEntries();
 
         if (entries != null && entries.size() > 0) {
@@ -1302,7 +1269,7 @@ public class ToolLayer extends
 
         selectedHazardIHISLayer = comp;
 
-        /*
+        /**
          * Update the list of world pixels associated with this hazard. We only
          * need to do this computation once. This is especially useful for
          * drawing hazard selection handlebars.
@@ -1337,7 +1304,6 @@ public class ToolLayer extends
      * @param paintProps
      *            Describes how drawables appear on the target.
      * @return
-     * 
      * @throws VizException
      *             An exception was encountered while drawing the handle bar
      *             points on the target graphic
@@ -1524,7 +1490,7 @@ public class ToolLayer extends
     @Override
     public DataTime[] getDataTimes() {
         if (timeMatchBasis) {
-            /*
+            /**
              * We only want to calculate more data times if the user has
              * selected more frames than there have been in the past.
              */
@@ -1550,7 +1516,8 @@ public class ToolLayer extends
 
             if (dataTimes.size() == 0) {
                 timeMatchBasis = true;
-                // Case where this tool is time match basis or no data loaded
+                // Case where this tool is time match basis or no data
+                // loaded
                 DataTime currentTime = null;
                 if (dataTimes.size() > 0) {
                     currentTime = dataTimes.get(dataTimes.size() - 1);
@@ -1607,6 +1574,10 @@ public class ToolLayer extends
     @Override
     public ResourceOrder getResourceOrder() {
         return RenderingOrderFactory.ResourceOrder.HIGHEST;
+    }
+
+    public GeometryFactory getGeoFactory() {
+        return geoFactory;
     }
 
 }

@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -70,6 +71,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             instances be member variables instead
  *                                             of class-scoped.
  * Aug 06, 2013   1265     bryon.lawrence      Added support for undo/redo.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author bryon.lawrence
@@ -433,9 +435,9 @@ public final class HazardServicesMessageHandler {
             String currentTime, String staticSettingID,
             String dynamicSettingJSON, String state) {
         this.appBuilder = appBuilder;
-        if (false) {
+        if (true) {
             ModelAdapter adapter = new ModelAdapter();
-            adapter.getNewSessionManager().registerForNotification(this);
+            adapter.getSessionManager().registerForNotification(this);
             model = new ModelDecorator(adapter);
         } else {
             model = new ModelDecorator(instantiateModel());
@@ -1349,6 +1351,10 @@ public final class HazardServicesMessageHandler {
                         .of(IHazardServicesModel.Element.SELECTED_TIME));
             }
         });
+    }
+
+    public ISessionManager getSessionManager() {
+        return model.getSessionManager();
     }
 
 }

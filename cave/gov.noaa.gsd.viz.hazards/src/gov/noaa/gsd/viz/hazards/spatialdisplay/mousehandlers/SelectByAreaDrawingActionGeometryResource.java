@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -41,6 +42,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton,
  *                                            and to subclass AbstractMouseHandler
  *                                            so as to make usage less special-case.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -65,14 +67,19 @@ public class SelectByAreaDrawingActionGeometryResource extends
      */
     private final Map<String, List<Geometry>> hazardGeometryList;
 
+    private final ISessionManager sessionManager;
+
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
+     * 
+     * @param sessionManager
      * 
      * @param zoneDisplay
      * @return SelectByAreaDrawingActionGeometryResource
      */
-    public static SelectByAreaDrawingActionGeometryResource getInstance() {
-        return new SelectByAreaDrawingActionGeometryResource();
+    public static SelectByAreaDrawingActionGeometryResource getInstance(
+            ISessionManager sessionManager) {
+        return new SelectByAreaDrawingActionGeometryResource(sessionManager);
     }
 
     @Override
@@ -81,7 +88,9 @@ public class SelectByAreaDrawingActionGeometryResource extends
         zoneDisplay = spatialPresenter.getView().getSelectableGeometryDisplay();
     }
 
-    private SelectByAreaDrawingActionGeometryResource() {
+    private SelectByAreaDrawingActionGeometryResource(
+            ISessionManager sessionManager) {
+        this.sessionManager = sessionManager;
         hazardGeometryList = new HashMap<String, List<Geometry>>();
     }
 

@@ -30,6 +30,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -50,6 +51,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *  ------------ ---------- ----------- --------------------------
  * 07/15/2012                Xiangbao Jing    Initial creation
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -63,18 +65,24 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
 
     protected AttrDlg attrDlg = null;
 
+    private final ISessionManager sessionManager;
+
     public static final String pgenType = "TornadoWarning";
 
     public static final String pgenCategory = "MET";
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
+     * 
+     * @param sessionManager
      */
-    public static SelectionRectangleDrawingAction getInstance() {
-        return new SelectionRectangleDrawingAction();
+    public static SelectionRectangleDrawingAction getInstance(
+            ISessionManager sessionManager) {
+        return new SelectionRectangleDrawingAction(sessionManager);
     }
 
-    private SelectionRectangleDrawingAction() {
+    private SelectionRectangleDrawingAction(ISessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     /*
@@ -87,7 +95,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
         IInputHandler handler = new SelectionHandler();
         try {
             ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                    null);
+                    null, sessionManager);
         } catch (VizException e) {
             statusHandler.error(
                     "In SelectionRectangleDrawingAction.getMouseHandler():", e);

@@ -21,6 +21,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Description: Decorates instances of IHazardServicesModel for such purposes as
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                                to avoid the latter being a
  *                                                singleton.
  * Aug 06, 2013     1265   bryon.lawrence         Added support for undo/redo
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -789,5 +791,10 @@ public class ModelDecorator implements IHazardServicesModel {
         Boolean result = decorated.isRedoable();
         benchmarkStop(methodName);
         return result;
+    }
+
+    @Override
+    public ISessionManager getSessionManager() {
+        return decorated.getSessionManager();
     }
 }

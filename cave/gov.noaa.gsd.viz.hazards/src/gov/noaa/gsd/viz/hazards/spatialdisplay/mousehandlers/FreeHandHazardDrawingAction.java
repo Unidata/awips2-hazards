@@ -29,6 +29,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -47,6 +48,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -61,18 +63,15 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
     protected AttrDlg attrDlg = null;
 
-    public static final String pgenType = "TornadoWarning";
-
-    public static final String pgenCategory = "MET";
-
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
      */
-    public static FreeHandHazardDrawingAction getInstance() {
-        return new FreeHandHazardDrawingAction();
+    public static FreeHandHazardDrawingAction getInstance(
+            ISessionManager sessionManager) {
+        return new FreeHandHazardDrawingAction(sessionManager);
     }
 
-    private FreeHandHazardDrawingAction() {
+    private FreeHandHazardDrawingAction(ISessionManager sessionManager) {
         super();
 
         /*
@@ -80,7 +79,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
          */
         try {
             attrDlg = new PolygonDrawingAttributes(PlatformUI.getWorkbench()
-                    .getActiveWorkbenchWindow().getShell());
+                    .getActiveWorkbenchWindow().getShell(), sessionManager);
         } catch (VizException e) {
             statusHandler.error("FreeHandHazardDrawingAction.<init>: Creation "
                     + "of polygon drawing attributes failed.", e);

@@ -486,7 +486,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @Override
     public Serializable getHazardAttribute(String key) {
-        return hazardAttributes.get(key);
+        return getHazardAttributes().get(key);
     }
 
     /*

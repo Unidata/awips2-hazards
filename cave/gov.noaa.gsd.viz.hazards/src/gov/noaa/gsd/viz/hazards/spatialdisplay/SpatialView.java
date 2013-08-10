@@ -13,7 +13,6 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionDrawingAction.SelectionHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
@@ -84,6 +83,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Aug 04, 2013   1265     Bryon.Lawrence    Added support for undo/redo
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Chris.Golden
@@ -793,23 +793,10 @@ public class SpatialView implements
     }
 
     @Override
-    public void drawEvents(String jsonEvents) {
-        spatialDisplay.drawEventAreas(jsonEvents, true);
+    public void drawEvents() {
+        spatialDisplay.drawEventAreas(true);
     }
 
-    /**
-     * Sets the mouse handler.
-     * 
-     * @param appBuilder
-     *            The app builder.
-     * @param messageHandler
-     *            The app message handler
-     * @param mouseHandler
-     *            The mouse handler to load.
-     * @params args arguments required by the draw by area mouse handler.
-     * 
-     * @return
-     */
     @Override
     public void setMouseHandler(HazardServicesMouseHandlers mouseHandlerType,
             String... args) {
@@ -846,8 +833,7 @@ public class SpatialView implements
             break;
 
         case DRAG_DROP_DRAWING:
-            spatialDisplay.drawEventAreas(
-                    JSONUtilities.createDragDropDotJSON(args[1]), false);
+            spatialDisplay.drawEventAreas(false);
             break;
 
         case DRAW_BY_AREA:
