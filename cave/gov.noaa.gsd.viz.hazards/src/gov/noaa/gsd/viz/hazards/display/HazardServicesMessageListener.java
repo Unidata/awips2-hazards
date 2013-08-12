@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
  * </pre>
  * 
  * @author bryon.lawrence
@@ -202,7 +203,12 @@ public class HazardServicesMessageListener {
                     spatialDisplayAction.getEventID(), "Spatial");
         } else if (actionType.equals("updateEventData")) {
             messageHandler.updateEventData(spatialDisplayAction.getJSON(), "");
+        } else if (actionType.equals("undo")) {
+            messageHandler.handleUndoAction();
+        } else if (actionType.equals("redo")) {
+            messageHandler.handleRedoAction();
         }
+
     }
 
     /**

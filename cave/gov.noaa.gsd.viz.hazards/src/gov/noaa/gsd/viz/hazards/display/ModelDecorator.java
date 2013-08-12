@@ -35,6 +35,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 15, 2013      585   Chris.Golden           Changed to take event bus so as
  *                                                to avoid the latter being a
  *                                                singleton.
+ * Aug 06, 2013     1265   bryon.lawrence         Added support for undo/redo
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -748,6 +749,44 @@ public class ModelDecorator implements IHazardServicesModel {
         benchmarkStart(methodName);
         String result = decorated.handleProductGeneratorResult(toolID,
                 generatedProductList);
+        benchmarkStop(methodName);
+        return result;
+    }
+
+    @Override
+    public void undo() {
+        final String methodName = "undo";
+        logCallingMethod(methodName);
+        benchmarkStart(methodName);
+        decorated.undo();
+        benchmarkStop(methodName);
+    }
+
+    @Override
+    public void redo() {
+        final String methodName = "redo";
+        logCallingMethod(methodName);
+        benchmarkStart(methodName);
+        decorated.redo();
+        benchmarkStop(methodName);
+    }
+
+    @Override
+    public Boolean isUndoable() {
+        final String methodName = "isUndoable";
+        logCallingMethod(methodName);
+        benchmarkStart(methodName);
+        Boolean result = decorated.isUndoable();
+        benchmarkStop(methodName);
+        return result;
+    }
+
+    @Override
+    public Boolean isRedoable() {
+        final String methodName = "isRedoable";
+        logCallingMethod(methodName);
+        benchmarkStart(methodName);
+        Boolean result = decorated.isRedoable();
         benchmarkStop(methodName);
         return result;
     }

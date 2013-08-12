@@ -34,6 +34,9 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * Sep 12, 2012            mnash     Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Aug 10, 2013  1265      blawrenc  Added more constants. This helps
+ *                                   to clean up the use of strings
+ *                                   as keys in other code modules.
  * 
  * </pre>
  * 
@@ -201,4 +204,39 @@ public final class HazardConstants {
     public static final String CREST = "crest";
 
     public static final String FALL_BELOW = "fallBelow";
+
+    public static final String TYPE = "type";
+
+    /*
+     * The following are used to identify elements in the session state.
+     */
+    public static final String SESSION_DICT = "sessionDict";
+
+    public static final String CURRENT_TIME = "currentTime";
+
+    public static final String BACKUP_SITEID = "backupSiteID";
+
+    public static final String TEST_MODE = "testMode";
+
+    /*
+     * The following are related to product generation.
+     */
+    public static final String ISSUE_FLAG = "issueFlag";
+
+    public static final String HEADLINE = "headline";
+
+    public static final String PREVIEW_STATE = "previewState";
+
+    /*
+     * The following are related to hazard geometries and their supporting meta
+     * information.
+     */
+    public static final String FORECAST_POINT = "forecastPoint";
+
+    public static final String GEO_TYPE = "geoType";
+
+    public static final String POINT_TYPE = "point";
+
+    public static final String AREA_TYPE = "area";
+
 }

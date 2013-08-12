@@ -1524,4 +1524,35 @@ class SessionManager(object):
             else:
                 print "   ", key, eventDict[key]
         self.flush()
+        
+    def undo(self):
+        """
+        Empty implementation to support running of old session manager
+        with undo/redo changes
+        """
+        pass
 
+    def redo(self):
+        """
+        This is deprecated.
+        Empty implementation to support running of old session manager
+        with undo/redo changes
+        """
+        pass
+
+    def isUndoable(self):
+        """
+        This is deprecated.
+        Empty implementation to support running of old session manager
+        with undo/redo changes
+        """
+        return False
+
+    def isRedoable(self):
+        """
+        This is deprecated.
+        Empty implementation to support running of old session manager
+        with undo/redo changes
+        """
+        return False
+        

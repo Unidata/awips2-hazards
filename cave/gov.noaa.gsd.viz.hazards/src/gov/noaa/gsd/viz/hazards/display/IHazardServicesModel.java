@@ -30,6 +30,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Jul 15, 2013      585   Chris.Golden        Changed to take an event bus so as
  *                                             to avoid having the latter be a
  *                                             singleton.
+ * Aug 06, 2013     1265   Bryon.Lawrence      Updated to support undo/redo.
  * </pre>
  * 
  * @author Tracy.L.Hansen
@@ -520,5 +521,37 @@ public interface IHazardServicesModel {
     public void setHazardEventManager(Object hazardEventManager);
 
     public String[] getHazardsForDynamicSettings();
+
+    /**
+     * Undo user edits.
+     * 
+     * @param
+     * @return
+     */
+    public void undo();
+
+    /**
+     * Redo user edits.
+     * 
+     * @param
+     * @return
+     */
+    public void redo();
+
+    /**
+     * Tests if there is an undoable edit.
+     * 
+     * @param
+     * @return
+     */
+    public Boolean isUndoable();
+
+    /**
+     * Tests if there is a redoable edit.
+     * 
+     * @param
+     * @return
+     */
+    public Boolean isRedoable();
 
 }

@@ -64,11 +64,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationRe
 import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.HazardEventSet;
 import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.StagingInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
 /**
  * Provides backwards compatibility with old IHazardServicesModel. Does not
@@ -82,6 +84,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
+ * Aug 06, 2013 1265       B. Lawrence Updated to support undo/redo.
  * </pre>
  * 
  * @author bsteffen
@@ -698,8 +701,7 @@ public abstract class ModelAdapter {
         eventSet.addAttribute("currentTime", model.getTimeManager()
                 .getCurrentTime().getTime());
         model.getRecommenderEngine().runExecuteRecommender(toolName, eventSet,
-                rData.getSpatialInfo(),
-                rData.getDialogInfoSerializable(),
+                rData.getSpatialInfo(), rData.getDialogInfoSerializable(),
                 getRecommenderListener(toolName));
         return null;
     }
@@ -757,6 +759,7 @@ public abstract class ModelAdapter {
             for (ProductInformation info : products) {
                 productManager.generate(info,
                         issueFlag.equalsIgnoreCase(Boolean.TRUE.toString()));
+
             }
             result.setReturnType("NONE");
         } else {
@@ -854,6 +857,7 @@ public abstract class ModelAdapter {
             info.setSelectedEvents(selectedEvents);
             productManager.generate(info,
                     issueFlag.equalsIgnoreCase(Boolean.TRUE.toString()));
+
         }
         result = new ProductGenerationResult();
         result.setReturnType("NONE");
@@ -900,6 +904,96 @@ public abstract class ModelAdapter {
         getProductGenerationListener(
                 failed.getProductInformation().getProductName()).jobFailed(
                 failed.getProductInformation().getError());
+    }
+
+    /**
+     * Undoes user-edits to a selected hazard
+     * 
+     * @param
+     * @return
+     * 
+     */
+    @Deprecated
+    public void undo() {
+        Collection<IHazardEvent> events = model.getEventManager()
+                .getSelectedEvents();
+
+        if (events.size() == 1) {
+            Iterator<IHazardEvent> eventIter = events.iterator();
+            ObservedHazardEvent obsEvent = (ObservedHazardEvent) eventIter
+                    .next();
+            obsEvent.undo();
+        }
+
+    }
+
+    /**
+     * Reapplies any undone user-edits.
+     * 
+     * @param
+     * @return
+     */
+    @Deprecated
+    public void redo() {
+        Collection<IHazardEvent> events = model.getEventManager()
+                .getSelectedEvents();
+
+        /*
+         * Limited to single selected hazard events.
+         */
+        if (events.size() == 1) {
+            Iterator<IHazardEvent> eventIter = events.iterator();
+            ObservedHazardEvent obsEvent = (ObservedHazardEvent) eventIter
+                    .next();
+            obsEvent.redo();
+        }
+
+    }
+
+    /**
+     * Tests if there are undoable user-edits.
+     * 
+     * @param
+     * @return True - undoable user edits exist, False, undoable user-edits do
+     *         not exist.
+     */
+    @Deprecated
+    public Boolean isUndoable() {
+        Collection<IHazardEvent> hazardEvents = model.getEventManager()
+                .getSelectedEvents();
+
+        /*
+         * Limited to single selected hazard events.
+         */
+        if (hazardEvents.size() == 1) {
+            Iterator<IHazardEvent> iterator = hazardEvents.iterator();
+            return ((IUndoRedoable) iterator.next()).isUndoable();
+        }
+
+        return false;
+    }
+
+    /**
+     * Tests if there are any redoable user-edits.
+     * 
+     * @param
+     * @return True - user edits exist, False, user edits do not exist.
+     */
+    @Deprecated
+    public Boolean isRedoable() {
+
+        Collection<IHazardEvent> hazardEvents = model.getEventManager()
+                .getSelectedEvents();
+
+        /*
+         * Limit to single selection.
+         */
+        if (hazardEvents.size() == 1) {
+            Iterator<IHazardEvent> iterator = hazardEvents.iterator();
+            return ((IUndoRedoable) iterator.next()).isRedoable();
+        }
+
+        return false;
     }
 
     /*
@@ -1206,4 +1300,5 @@ public abstract class ModelAdapter {
     public ISessionManager getNewSessionManager() {
         return model;
     }
+
 }

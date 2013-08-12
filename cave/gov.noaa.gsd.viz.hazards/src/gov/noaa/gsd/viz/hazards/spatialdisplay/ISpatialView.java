@@ -29,6 +29,7 @@ import com.raytheon.uf.viz.core.map.MapDescriptor;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Aug 06, 2013   1265     bryon.lawrence    Added support for undo/redo.
  * </pre>
  * 
  * @author Chris.Golden
@@ -202,4 +203,25 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * @return the current instance of the draw by area resource.
      */
     public SelectByAreaDbMapResource getSelectableGeometryDisplay();
+
+    /**
+     * Sets the enabled state of the undo flag.
+     * 
+     * @param undoFlag
+     *            True - enabled, Flase - disabled
+     * 
+     * @return
+     */
+    public void setUndoEnabled(final Boolean undoFlag);
+
+    /**
+     * Sets the enabled state of the redo flag.
+     * 
+     * @param redoFlag
+     *            True - enabled, Flase - disabled
+     * 
+     * @return
+     */
+    public void setRedoEnabled(final Boolean redoFlag);
+
 }
