@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -50,6 +51,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationContext;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
@@ -85,6 +89,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * Aug 06, 2013 1265       B. Lawrence Updated to support undo/redo.
+ * Aug 12, 2013 1921       B. Lawrence Added logic to clear the VTEC files
+ *                                     in localization when events are reset.
  * </pre>
  * 
  * @author bsteffen
@@ -104,6 +110,17 @@ public abstract class ModelAdapter {
     private int numProducts = 0;
 
     private boolean issue;
+
+    /**
+     * Files in localization to be removed when the events are reset from the
+     * Console. These are VTEC-related. If VTEC information is allowed to
+     * persist after events are deleted, VTEC processing could be compromised
+     * for future events. These are assumed to be CAVE_STATIC files.
+     */
+    private static final String[] filesToDeleteOnReset = {
+            "gfe/userPython/testVtecRecords_local.json",
+            "gfe/userPython/vtecRecords.json",
+            "gfe/userPython/vtecRecords.lock" };
 
     public ModelAdapter() {
         this.model = SessionManagerFactory.getSessionManager();
@@ -436,6 +453,27 @@ public abstract class ModelAdapter {
             ISessionEventManager eventManager = model.getEventManager();
             for (IHazardEvent event : eventManager.getEvents()) {
                 eventManager.removeEvent(event);
+            }
+
+            /*
+             * Reset the VTEC information in the VTEC files. This needs to be
+             * done. Otherwise, it is difficult to test against the job sheets
+             * and functional tests when the forecaster selects Reset->Events
+             * but old VTEC information remains in the VTEC files. This solution
+             * will change once VTEC is stored in the database.
+             */
+            IPathManager pathManager = PathManagerFactory.getPathManager();
+            LocalizationContext localizationContext = pathManager.getContext(
+                    LocalizationContext.LocalizationType.CAVE_STATIC,
+                    LocalizationContext.LocalizationLevel.USER);
+
+            for (String fileToDelete : filesToDeleteOnReset) {
+                File file = pathManager.getLocalizationFile(
+                        localizationContext, fileToDelete).getFile();
+
+                if (file.exists()) {
+                    file.delete();
+                }
             }
         }
     }
