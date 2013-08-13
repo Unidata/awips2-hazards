@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
+import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
 
 /**
  * Implementation of ISessionManager.
@@ -69,7 +70,6 @@ public class SessionManager implements ISessionManager {
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
     private final IHazardSessionAlertsManager alertsManager;
-
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager) {
         // TODO switch the bus to async
@@ -95,6 +95,7 @@ public class SessionManager implements ISessionManager {
          */
         alertsManager.start();
         recommenderEngine = new CAVERecommenderEngine();
+        recommenderEngine.injectEngine(new InteractiveRecommenderEngine());
         eventBus.register(timeManager);
         eventBus.register(configManager);
         eventBus.register(eventManager);

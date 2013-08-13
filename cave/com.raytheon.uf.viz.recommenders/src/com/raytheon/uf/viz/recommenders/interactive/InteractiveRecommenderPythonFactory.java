@@ -17,16 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.recommenders.executors;
+package com.raytheon.uf.viz.recommenders.interactive;
 
-import java.io.Serializable;
-import java.util.Map;
-
-import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
+import com.raytheon.uf.viz.recommenders.CAVERecommenderPythonFactory;
 
 /**
- * {@link AbstractRecommenderExecutor} to get the spatial information from the
- * recommender.
+ * Constructs a python script factory for interactive recommenders.
  * 
  * <pre>
  * 
@@ -34,7 +30,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
+ * Aug 8, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -42,18 +38,13 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * @version 1.0
  */
 
-public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
+public class InteractiveRecommenderPythonFactory extends
+        CAVERecommenderPythonFactory {
 
     /**
-* 
-*/
-    public RecommenderSpatialInfoExecutor(String recommenderName) {
-        super(recommenderName);
-    }
-
-    @Override
-    public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getSpatialInfo");
+     * 
+     */
+    public InteractiveRecommenderPythonFactory() {
+        super("InteractiveRecommenders", 1);
     }
 }

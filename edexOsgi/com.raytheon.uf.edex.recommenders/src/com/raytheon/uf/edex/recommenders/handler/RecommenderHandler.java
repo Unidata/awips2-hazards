@@ -89,6 +89,7 @@ public class RecommenderHandler implements
         };
         EventSet<IEvent> eventSet = new EventSet<IEvent>();
         eventSet.addAttribute("site", request.getSite());
+        eventSet.addAttribute("timeRange", request.getTimeRange());
         // TODO, we need to return good values here.
         engine.runExecuteRecommender(request.getRecommenderName(), eventSet,
                 null, null, listener);

@@ -46,6 +46,8 @@ public class EventRecommender {
 
     public static final String VERSION = "version";
 
+    public static final String THREAD_MANAGER = "threadmanager";
+
     private LocalizationFile file;
 
     private String name;
@@ -55,6 +57,8 @@ public class EventRecommender {
     private String description;
 
     private String version;
+
+    private String threadManager;
 
     /**
      * @return the file
@@ -129,5 +133,20 @@ public class EventRecommender {
      */
     protected void setVersion(String version) {
         this.version = version;
+    }
+
+    /**
+     * @param threadManager
+     *            the thread manager to set
+     */
+    public void setThreadManager(String threadManager) {
+        this.threadManager = threadManager;
+    }
+
+    /**
+     * @return the thread manager
+     */
+    public String getThreadManager() {
+        return threadManager;
     }
 }

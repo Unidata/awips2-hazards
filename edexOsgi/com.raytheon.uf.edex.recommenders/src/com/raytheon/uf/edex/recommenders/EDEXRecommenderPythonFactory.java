@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.recommenders;
 import jep.JepException;
 
 import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -52,7 +53,7 @@ public class EDEXRecommenderPythonFactory extends
      * 
      */
     public EDEXRecommenderPythonFactory() {
-        super("Recommenders", 1);
+        super(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 1);
     }
 
     /*

@@ -59,7 +59,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         return self.jobj.getEventID()
     
     def setEventID(self, eventId):
-        self.jobj.setSiteID(eventId)
+        self.jobj.setEventID(eventId)
     
     def getHazardState(self):
         return self.jobj.getState().name()

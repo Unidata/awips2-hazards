@@ -47,7 +47,7 @@ public class RunData {
 
     private String[] eventSet;
 
-    private Map<String, String> spatialInfo;
+    private Map<String, Object> spatialInfo;
 
     private Map<String, Object> dialogInfo;
 
@@ -59,11 +59,11 @@ public class RunData {
         this.eventSet = eventSet;
     }
 
-    public Map<String, String> getSpatialInfo() {
+    public Map<String, Object> getSpatialInfo() {
         return spatialInfo;
     }
 
-    public void setSpatialInfo(Map<String, String> spatialInfo) {
+    public void setSpatialInfo(Map<String, Object> spatialInfo) {
         this.spatialInfo = spatialInfo;
     }
 
@@ -83,6 +83,21 @@ public class RunData {
     public Map<String, Serializable> getDialogInfoSerializable() {
         Map<String, Serializable> result = new HashMap<String, Serializable>();
         for (Entry<String, Object> entry : dialogInfo.entrySet()) {
+            Object val = entry.getValue();
+            if (val instanceof Serializable) {
+                result.put(entry.getKey(), (Serializable) val);
+            } else {
+                throw new RuntimeException(entry + ", "
+                        + val.getClass().getSimpleName()
+                        + " does not implement Serializable");
+            }
+        }
+        return result;
+    }
+
+    public Map<String, Serializable> getSpatialInfoSerializable() {
+        Map<String, Serializable> result = new HashMap<String, Serializable>();
+        for (Entry<String, Object> entry : spatialInfo.entrySet()) {
             Object val = entry.getValue();
             if (val instanceof Serializable) {
                 result.put(entry.getKey(), (Serializable) val);

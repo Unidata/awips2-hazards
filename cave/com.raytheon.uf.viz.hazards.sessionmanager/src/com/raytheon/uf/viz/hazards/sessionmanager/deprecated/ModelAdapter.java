@@ -739,7 +739,8 @@ public abstract class ModelAdapter {
         eventSet.addAttribute("currentTime", model.getTimeManager()
                 .getCurrentTime().getTime());
         model.getRecommenderEngine().runExecuteRecommender(toolName, eventSet,
-                rData.getSpatialInfo(), rData.getDialogInfoSerializable(),
+                rData.getSpatialInfoSerializable(),
+                rData.getDialogInfoSerializable(),
                 getRecommenderListener(toolName));
         return null;
     }
@@ -760,8 +761,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getSpatialInfo(String toolName) {
-        Map<String, String> map = model.getRecommenderEngine().getSpatialInfo(
-                toolName);
+        Map<String, Serializable> map = model.getRecommenderEngine()
+                .getSpatialInfo(toolName);
         if (map.isEmpty()) {
             return null;
         } else {

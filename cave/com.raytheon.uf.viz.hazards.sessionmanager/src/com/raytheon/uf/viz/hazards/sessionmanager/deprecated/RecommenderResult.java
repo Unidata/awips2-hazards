@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -44,7 +45,7 @@ public class RecommenderResult {
 
     private Event[] resultData;
 
-    private Map<String, String> metaData;
+    private Map<String, Serializable> metaData;
 
     public Event[] getResultData() {
         return resultData;
@@ -54,11 +55,11 @@ public class RecommenderResult {
         this.resultData = resultData;
     }
 
-    public Map<String, String> getMetaData() {
+    public Map<String, Serializable> getMetaData() {
         return metaData;
     }
 
-    public void setMetaData(Map<String, String> metaData) {
+    public void setMetaData(Map<String, Serializable> metaData) {
         this.metaData = metaData;
     }
 

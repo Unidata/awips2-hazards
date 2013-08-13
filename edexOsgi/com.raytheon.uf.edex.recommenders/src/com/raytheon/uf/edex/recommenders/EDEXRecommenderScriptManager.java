@@ -87,7 +87,7 @@ public class EDEXRecommenderScriptManager extends
                 }
                 // do nothing with these for now, may read from config file
                 Map<String, Serializable> dialogValues = null;
-                Map<String, String> spatialValues = null;
+                Map<String, Serializable> spatialValues = null;
                 // using a new EventSet<IEvent> for now, but will need something
                 // different for future
                 return executeRecommender(recommenderName,

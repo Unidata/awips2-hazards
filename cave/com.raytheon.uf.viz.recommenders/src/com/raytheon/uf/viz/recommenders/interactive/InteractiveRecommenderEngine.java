@@ -17,16 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.recommenders.executors;
+package com.raytheon.uf.viz.recommenders.interactive;
 
-import java.io.Serializable;
-import java.util.Map;
-
-import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
+import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
 
 /**
- * {@link AbstractRecommenderExecutor} to get the spatial information from the
- * recommender.
+ * Recommender engine used for calls to interactive Python recommenders (UI
+ * interaction)
  * 
  * <pre>
  * 
@@ -34,7 +33,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 6, 2013            mnash     Initial creation
+ * Aug 8, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -42,18 +41,15 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  * @version 1.0
  */
 
-public class RecommenderSpatialInfoExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
-
-    /**
-* 
-*/
-    public RecommenderSpatialInfoExecutor(String recommenderName) {
-        super(recommenderName);
+public class InteractiveRecommenderEngine extends
+        AbstractRecommenderEngine<CAVERecommenderScriptManager> {
+    public InteractiveRecommenderEngine() {
+        super();
     }
 
     @Override
-    public Map<String, Serializable> execute(P script) {
-        return script.getInfo(recommenderName, "getSpatialInfo");
+    protected PythonJobCoordinator<CAVERecommenderScriptManager> getCoordinator() {
+        factory = new InteractiveRecommenderPythonFactory();
+        return PythonJobCoordinator.newInstance(factory);
     }
 }

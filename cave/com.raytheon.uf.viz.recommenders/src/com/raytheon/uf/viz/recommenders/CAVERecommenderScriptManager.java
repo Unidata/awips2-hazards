@@ -90,7 +90,7 @@ public class CAVERecommenderScriptManager extends
                 Map<String, Serializable> dialogValues = getInfo(recName,
                         "getDialogInfo");
                 showDialog(dialogValues);
-                Map<String, String> spatialValues = getInfo(recName,
+                Map<String, Serializable> spatialValues = getInfo(recName,
                         "getSpatialInfo");
                 return executeRecommender(recommenderName,
                         new EventSet<IEvent>(), dialogValues, spatialValues);

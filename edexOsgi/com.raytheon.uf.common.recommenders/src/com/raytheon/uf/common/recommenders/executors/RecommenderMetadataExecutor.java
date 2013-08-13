@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
@@ -41,7 +42,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  */
 
 public class RecommenderMetadataExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, Map<String, String>> {
+        extends AbstractRecommenderExecutor<P, Map<String, Serializable>> {
 
     /**
      * 
@@ -51,7 +52,7 @@ public class RecommenderMetadataExecutor<P extends AbstractRecommenderScriptMana
     }
 
     @Override
-    public Map<String, String> execute(P script) {
+    public Map<String, Serializable> execute(P script) {
         return script.getInfo(recommenderName, "getScriptMetadata");
     }
 }

@@ -43,7 +43,7 @@ from EventSet import EventSet
 from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
 
 def findConverter(eventSet):        
-    # for now get the BASE site only, maybe we should add lower levels of localization later
+    # for now get the BASE file only, maybe we should add lower levels of localization later
     pathMgr = PathManager()
     
     path = os.path.join('python', 'events')

@@ -22,6 +22,7 @@ package com.raytheon.uf.common.recommenders.requests;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
+import com.raytheon.uf.common.time.TimeRange;
 
 /**
  * Request for EDEX to execute recommenders.
@@ -47,6 +48,9 @@ public class ExecuteRecommenderRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private String site;
+
+    @DynamicSerializeElement
+    private TimeRange timeRange;
 
     /**
      * 
@@ -89,5 +93,20 @@ public class ExecuteRecommenderRequest implements IServerRequest {
      */
     public void setSite(String site) {
         this.site = site;
+    }
+
+    /**
+     * @return the timeRange
+     */
+    public TimeRange getTimeRange() {
+        return timeRange;
+    }
+
+    /**
+     * @param timeRange
+     *            the timeRange to set
+     */
+    public void setTimeRange(TimeRange timeRange) {
+        this.timeRange = timeRange;
     }
 }

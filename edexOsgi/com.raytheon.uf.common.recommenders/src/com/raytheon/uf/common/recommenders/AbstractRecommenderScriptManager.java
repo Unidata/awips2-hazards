@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
@@ -224,7 +225,7 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     public List<IEvent> executeRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
-            Map<String, String> spatialValues) {
+            Map<String, Serializable> spatialValues) {
         final Map<String, Object> args = getStarterMap(recommenderName);
         args.put("eventSet", eventSet);
         args.put("dialogInputMap", dialogValues);
@@ -318,15 +319,16 @@ public abstract class AbstractRecommenderScriptManager extends
         super.fileUpdated(message);
     }
 
+    @SuppressWarnings("unchecked")
     private EventRecommender setMetadata(LocalizationFile file) {
         final String modName = resolveCorrectName(file.getFile().getName());
-        Map<String, String> results = null;
+        Map<String, Serializable> results = null;
         try {
             if (isInstantiated(modName) == false) {
                 instantiatePythonScript(modName);
             }
             Map<String, Object> args = getStarterMap(modName);
-            results = (HashMap<String, String>) execute(GET_SCRIPT_METADATA,
+            results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
                     INTERFACE, args);
         } catch (JepException e) {
             statusHandler.handle(Priority.WARN, "Recommender " + modName
@@ -354,9 +356,13 @@ public abstract class AbstractRecommenderScriptManager extends
             Object auth = results.get(EventRecommender.AUTHOR);
             Object desc = results.get(EventRecommender.DESCRIPTION);
             Object vers = results.get(EventRecommender.VERSION);
+            Object threadManager = results.get(EventRecommender.THREAD_MANAGER);
             reco.setAuthor(auth != null ? auth.toString() : "");
             reco.setDescription(desc != null ? desc.toString() : "");
             reco.setVersion(vers != null ? vers.toString() : "");
+            reco.setThreadManager(threadManager != null ? threadManager
+                    .toString()
+                    : AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR);
         }
         return reco;
     }
@@ -375,11 +381,13 @@ public abstract class AbstractRecommenderScriptManager extends
             events.addAll((List<IEvent>) obj);
         } else if (obj instanceof IEvent) {
             events.add((IEvent) obj);
+        } else if (obj instanceof Set) {
+            events.addAll((Set<IEvent>) obj);
         } else if (obj == null) {
             // do nothing, we just want to return an empty events
         } else {
             statusHandler.handle(Priority.CRITICAL,
-                    "Must return a single event or multiple event objects");
+                    "Must return an event set of objects");
         }
         return events;
     }

@@ -51,7 +51,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
         extends AbstractRecommenderExecutor<P, List<IEvent>> {
 
-    private Map<String, String> spatialInfo;
+    private Map<String, Serializable> spatialInfo;
 
     private Map<String, Serializable> dialogInfo;
 
@@ -62,7 +62,7 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
      * them when running.
      */
     public RecommenderExecutor(String recommenderName,
-            EventSet<IEvent> eventSet, Map<String, String> spatialInfo,
+            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo) {
         super(recommenderName);
         this.eventSet = eventSet;

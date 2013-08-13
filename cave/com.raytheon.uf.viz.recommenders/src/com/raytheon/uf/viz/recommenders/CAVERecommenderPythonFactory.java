@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.recommenders;
 import jep.JepException;
 
 import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -51,7 +52,7 @@ public class CAVERecommenderPythonFactory extends
             .getHandler(CAVERecommenderPythonFactory.class);
 
     public CAVERecommenderPythonFactory() {
-        this("Recommenders", 2);
+        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 2);
     }
 
     /**

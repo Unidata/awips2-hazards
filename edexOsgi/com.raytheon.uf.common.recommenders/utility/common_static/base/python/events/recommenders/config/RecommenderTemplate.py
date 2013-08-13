@@ -48,7 +48,6 @@ class Recommender(object):
         '''
         return
     
-    @abc.abstractmethod
     def defineDialog(self):
         '''      
         @summary: Defines a dialog that will be presented to the user prior to 
@@ -58,7 +57,6 @@ class Recommender(object):
         '''
         return
     
-    @abc.abstractmethod
     def defineSpatialInfo(self):
         '''
         @summary: Determines spatial information needed by the recommender.

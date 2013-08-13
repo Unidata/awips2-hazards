@@ -108,11 +108,12 @@ public abstract class AbstractRecommenderTest {
         return null;
     }
 
-    public Map<String, String> getSpatialInfo(String name) {
+    public Map<String, Serializable> getSpatialInfo(String name) {
         try {
             for (EventRecommender rec : engine.getInventory()) {
                 if (rec.getName().equals(name)) {
-                    Map<String, String> vals = engine.getSpatialInfo(name);
+                    Map<String, Serializable> vals = engine
+                            .getSpatialInfo(name);
                     return vals;
                 }
             }
