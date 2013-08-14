@@ -58,6 +58,8 @@ except :
 # leave the "_STATIC" off the end.
 
 caveEdexHost = None
+defEdexPort = os.getenv("DEFAULT_PORT", "9581")
+caveEdexPort = defEdexPort
 edexLocMap = { "" : "" }
 hostnameF = None
 
@@ -69,27 +71,25 @@ class LocalizationInterface():
     # EDEX host currently being used by Cave.
     def __init__(self, edexHost="") :
         global caveEdexHost
+        global caveEdexPort
         self.__curUser = getpass.getuser()
         self.__defLoc = None
         self.__logger = HazardServicesLogger.getInstance()
         self.__repat = None
         self.__resrch = None
-        self.__javaenv = False
         if edexHost!="" :
             self.__locServer = edexHost
             try :
                 self.__lfi = LocalFileInstaller(edexHost)
-                self.__javaenv = True
             except :
-                self.__lfi = AppFileInstaller(edexHost)
+                self.__lfi = AppFileInstaller(edexHost, defEdexPort)
             return
         if caveEdexHost!=None :
             self.__locServer = caveEdexHost
             try :
                 self.__lfi = LocalFileInstaller(caveEdexHost)
-                self.__javaenv = True
             except :
-                self.__lfi = AppFileInstaller(caveEdexHost)
+                self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
             return
         caveEdexHost = ""
         prefspath = os.environ["HOME"] + "/caveData/.metadata/.plugins" + \
@@ -109,6 +109,15 @@ class LocalizationInterface():
                 while prefsData[j]!="\\" and prefsData[j]!=":" :
                     j = j+1
                 caveEdexHost = prefsData[i+2:j]
+                j = j + 1
+                if not prefsData[j].isdigit() :
+                    j = j + 1
+                if not prefsData[j].isdigit() :
+                    break
+                i = j
+                while prefsData[j].isdigit() :
+                    j = j+1
+                caveEdexPort = prefsData[i:j]
                 break
         except :
             pass
@@ -118,9 +127,8 @@ class LocalizationInterface():
         self.__locServer = caveEdexHost
         try :
             self.__lfi = LocalFileInstaller(caveEdexHost)
-            self.__javaenv = True
         except :
-            self.__lfi = AppFileInstaller(caveEdexHost)
+            self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
 
     # This method determines the current host id.
     def getThisHost(self) :
@@ -394,9 +402,7 @@ class LocalizationInterface():
                     result = self.formatAsPythonInit(fileData, pyRoot)
                 else :
                     result = json.dumps(fileData, indent=4)
-
-                self.__lfi.putFile(locPath0, result)
-                return True
+                return self.__lfi.putFile(locPath0, result)
             except :
                 msg = "Can't put localization file "+locPath0
                 self.__logger.logMessage(msg, "Error")
@@ -418,8 +424,7 @@ class LocalizationInterface():
             result = fileData
 
         try :
-            self.__lfi.putFile(locPath0, result)
-            return True
+            return self.__lfi.putFile(locPath0, result)
         except :
             msg = "Can't put localization file '"+locPath0
             self.__logger.logMessage(msg, "Error")
@@ -571,35 +576,14 @@ return ResponseMessageGeneric(stdout)
             locPath0 = locPath0[:i]+sss+locPath0[i+3:]
             i = locPath0.find("###", i+3)
 
-        if self.__javaenv :
-            self.__lfi.setType(locType)
-            self.__lfi.setLevel(locLevel)
-            self.__lfi.setName(locName)
-            if contextUser=="" :
-                self.__lfi.setMyContextName(self.__curUser)
-            else :
-                self.__lfi.setMyContextName(contextUser)
-            return self.__lfi.rmFile(locPath0)
-
-        # For now lets do an end run by submitting this to the uEngine
-        filePath = '/awips2/edex/data/utility/'+locType.lower()+'/'+ \
-                   locLevel.lower()+'/'+locName+'/'+locPath0
-        cmd = 'export DEFAULT_HOST='+self.__locServer+' ; '
-        cmd = cmd + '( echo import subprocess ; echo import os ;'
-        cmd = cmd + 'echo from com.raytheon.uf.common.message.response '
-        cmd = cmd +        'import ResponseMessageGeneric ; '
-        cmd = cmd + 'echo mycmd = '+"'"+'"rm -f '+filePath+'"'+"' ;"
-        cmd = cmd + 'echo "p = subprocess.Popen(mycmd, shell=True, '
-        cmd = cmd +        'stdout=subprocess.PIPE)" ;'
-        cmd = cmd + 'echo "(stdout, stderr) = p.communicate()" ; '
-        cmd = cmd + 'echo "return ResponseMessageGeneric('+"''"+')" ) | '
-        cmd = cmd + '/awips2/fxa/bin/uengine -r python'
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        (stdout, stderr) = p.communicate()
-        if stderr==None :
-            return True
-        return False
-
+        self.__lfi.setType(locType)
+        self.__lfi.setLevel(locLevel)
+        self.__lfi.setName(locName)
+        if contextUser=="" :
+            self.__lfi.setMyContextName(self.__curUser)
+        else :
+            self.__lfi.setMyContextName(contextUser)
+        return self.__lfi.rmFile(locPath0)
 
     # This method allows one to get listings of localization directories.   
     # dirPath0 is the relative path to the directory under the level, site
