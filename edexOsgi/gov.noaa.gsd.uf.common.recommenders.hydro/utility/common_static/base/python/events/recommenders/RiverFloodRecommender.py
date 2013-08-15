@@ -12,6 +12,7 @@ import GeometryFactory
 import RecommenderTemplate
 import numpy
 import JUtil
+import EventSetFactory
 
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
 
@@ -222,6 +223,6 @@ def hazardEventConverter(obj):
         
         hazardAttributes = JUtil.javaMapToPyDict(javaEvent.getHazardAttributes())
         hazardEvent.setHazardAttributes(hazardAttributes)
-        return hazardEvent
+        return EventSetFactory.createEventSet(hazardEvent)
     else:
         return None

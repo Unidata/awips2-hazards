@@ -20,7 +20,7 @@
 # #
 
 #
-# A HazardEventSet, based on HazardEventSet
+# An EventSet, based on a Java EventSet
 #
 #
 #     SOFTWARE HISTORY
@@ -40,6 +40,8 @@ from HazardEvent import HazardEvent
 
 from java.util import Date
 
+from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
+
 class EventSet(JUtil.JavaWrapperClass):
 
     def __init__(self, wrappedObject):
@@ -52,13 +54,15 @@ class EventSet(JUtil.JavaWrapperClass):
                 self.events = set()
             self.attributes = JUtil.javaMapToPyDict(wrappedObject.getAttributes())
         else :
+            self.jobj = JavaEventSet()
+            self.events = set()
             self.attributes = {}
 
-    def add(self, hazardEvent):
-        self.events.add(hazardEvent)
+    def add(self, event):
+        self.events.add(event)
 
-    def addAll(self, hazardEvents):
-        for event in hazardEvents:
+    def addAll(self, events):
+        for event in events:
             self.events.add(event)
 
     def iterator(self):
@@ -71,18 +75,21 @@ class EventSet(JUtil.JavaWrapperClass):
         return self.events.next()
 
     def addAttribute(self, key, value):
-        attributes[key] = value
+        self.attributes[key] = value
 
     def getAttribute(self, key):
-        return attributes[key]
+        return self.attributes[key]
 
     def getAttributes(self):
         return self.attributes
+    
+    def setAttributes(self, attributes):
+        self.attributes = attributes
 
     def getEvents(self):
         return self.events
 
     def toJavaObj(self):
-        self.jobj.addAll(JUtil.pyValToJavaObj(self.events))
+        self.jobj.addAll(JUtil.pyValToJavaObj(list(self.events)))
         self.jobj.setAttributes(JUtil.pyDictToJavaMap(self.attributes))
         return self.jobj

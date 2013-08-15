@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
 
 import java.util.List;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
@@ -62,7 +63,7 @@ public class ToolAction implements IAction {
     /**
      * List of recommender generated events, if any.
      */
-    private List<IEvent> recommendedEventList;
+    private EventSet<IEvent> recommendedEventList;
 
     /**
      * List of generated products, if any.
@@ -120,7 +121,8 @@ public class ToolAction implements IAction {
      * @param aux
      *            Name of the tool which generated these events
      */
-    public ToolAction(ToolActionEnum action, List<IEvent> eventList, String aux) {
+    public ToolAction(ToolActionEnum action, EventSet<IEvent> eventList,
+            String aux) {
         this.action = action;
         this.recommendedEventList = eventList;
         this.aux = aux;
@@ -196,14 +198,14 @@ public class ToolAction implements IAction {
      * @param recommendedEventList
      *            the recommended event list to set
      */
-    public void setRecommendedEventList(List<IEvent> recommendedEventList) {
+    public void setRecommendedEventList(EventSet<IEvent> recommendedEventList) {
         this.recommendedEventList = recommendedEventList;
     }
 
     /**
      * @return the recommended event list
      */
-    public List<IEvent> getRecommendedEventList() {
+    public EventSet<IEvent> getRecommendedEventList() {
         return recommendedEventList;
     }
 

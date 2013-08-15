@@ -12,6 +12,7 @@ import datetime
 import EventFactory
 import RecommenderTemplate
 import sys
+import EventSetFactory
 
 from ufpy.dataaccess import DataAccessLayer
 
@@ -429,9 +430,9 @@ class Recommender(RecommenderTemplate.Recommender):
         ration of precip to FFG is 1 or more, this small basin is
         flagged as a potential location for flash flooding.
         
-        @return: A list of potential flash flood (FF.W) hazard events
+        @return: An EventSet of potential flash flood (FF.W) hazard events
         '''
-        pythonEventList = []
+        pythonEventSet = EventSetFactory.createEventSet()
         
         for basinName in self.smallBasinMap:
             basin = self.smallBasinMap[basinName]
@@ -464,9 +465,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     hazardEvent.setIssueTime(creationDateTime)
                     hazardEvent.setStartTime(startDateTime)
                     hazardEvent.setEndTime(endDateTime)
-                    pythonEventList.append(hazardEvent)
+                    pythonEventSet.add(hazardEvent)
                     
-        return pythonEventList
+        return pythonEventSet
         
         
     def toString(self):

@@ -20,35 +20,33 @@
 
 
 #
-# Easy way of creating Events from Python
+# Creates an EventSet from Python
 #  
 #    
 #     SOFTWARE HISTORY
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
+#    08/15/13                      mnash       Initial Creation.
 #    
 # 
 #
 
-from Event import NullEvent
-from HazardEvent import HazardEvent
+from EventSet import EventSet
+from Event import Event
+
 from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
+from com.raytheon.uf.common.dataplugin.events import EventSet as JavaEventSet
 
-def createNullEvent():        
+def createEventSet(events=None):        
     '''
-    @return: a NullEvent, indicating that no area or information about an event is 
-    necessary
+    @return: an EventSet
     '''
-    ne = NullEvent()
-    return ne
-
-def createEvent():
-    '''
-    @return: a BaseEvent, any event that has an area and holds other information
-    '''
-    bhe = BaseHazardEvent()
-    he = HazardEvent(bhe)
-    return he
-    
+    javaEventSet = JavaEventSet()
+    eventSet = EventSet(javaEventSet)
+    if events is not None :
+        if isinstance(events, list) :
+            eventSet.addAll(events)
+        elif isinstance(events, Event):
+            eventSet.add(events)
+    return eventSet

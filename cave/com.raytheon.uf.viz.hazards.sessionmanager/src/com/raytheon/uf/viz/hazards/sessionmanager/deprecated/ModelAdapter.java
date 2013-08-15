@@ -745,7 +745,7 @@ public abstract class ModelAdapter {
         return null;
     }
 
-    protected abstract IPythonJobListener<List<IEvent>> getRecommenderListener(
+    protected abstract IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
             String toolName);
 
     /*
@@ -907,7 +907,8 @@ public abstract class ModelAdapter {
      * Use ISessionEventManager.addEvent
      */
     @Deprecated
-    public String handleRecommenderResult(String toolID, List<IEvent> eventList) {
+    public String handleRecommenderResult(String toolID,
+            EventSet<IEvent> eventList) {
         RecommenderResult result = new RecommenderResult();
         List<Event> events = new ArrayList<Event>();
         for (IEvent event : eventList) {

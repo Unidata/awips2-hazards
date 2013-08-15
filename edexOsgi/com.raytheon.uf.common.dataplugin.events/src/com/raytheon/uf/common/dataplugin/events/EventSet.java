@@ -123,6 +123,14 @@ public class EventSet<E extends IEvent> extends HashSet<E> {
     }
 
     /**
+     * @param attributes
+     *            the attributes to set
+     */
+    public void setAttributes(Map<String, Serializable> attributes) {
+        this.attributes = new HashMap<String, Serializable>(attributes);
+    }
+
+    /**
      * Does a validation check before it gets added to the set
      * 
      * @param e

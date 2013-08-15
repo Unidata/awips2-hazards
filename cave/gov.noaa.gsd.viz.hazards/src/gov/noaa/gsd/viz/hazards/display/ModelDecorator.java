@@ -17,6 +17,7 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -730,7 +731,8 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String handleRecommenderResult(String toolID, List<IEvent> eventList) {
+    public String handleRecommenderResult(String toolID,
+            EventSet<IEvent> eventList) {
         final String methodName = "handleRecommenderResult";
         logCallingMethod(methodName);
         // ToStringBuilder.reflectionToString(eventList);

@@ -28,6 +28,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -413,7 +414,7 @@ public class HazardServicesMessageListener {
 
         case TOOL_RECOMMENDATIONS:
             String toolID = action.getAuxiliaryDetails();
-            List<IEvent> eventList = action.getRecommendedEventList();
+            EventSet<IEvent> eventList = action.getRecommendedEventList();
             messageHandler.handleRecommenderResults(toolID, eventList);
             break;
 

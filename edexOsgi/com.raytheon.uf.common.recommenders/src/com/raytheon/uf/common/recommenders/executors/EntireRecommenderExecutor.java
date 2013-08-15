@@ -19,8 +19,7 @@
  **/
 package com.raytheon.uf.common.recommenders.executors;
 
-import java.util.List;
-
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 
@@ -42,7 +41,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  */
 
 public class EntireRecommenderExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, List<IEvent>> {
+        extends AbstractRecommenderExecutor<P, EventSet<IEvent>> {
     /**
      * @param recommenderName
      */
@@ -58,7 +57,7 @@ public class EntireRecommenderExecutor<P extends AbstractRecommenderScriptManage
      * raytheon.uf.common.python.PythonInterpreter)
      */
     @Override
-    public List<IEvent> execute(P script) {
+    public EventSet<IEvent> execute(P script) {
         return script.executeEntireRecommender(recommenderName);
     }
 }

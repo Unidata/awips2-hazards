@@ -10,9 +10,8 @@ package gov.noaa.gsd.viz.hazards.pythonjoblistener;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
 
-import java.util.List;
-
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -36,7 +35,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * @version 1.0
  */
 public class HazardServicesRecommenderJobListener implements
-        IPythonJobListener<List<IEvent>> {
+        IPythonJobListener<EventSet<IEvent>> {
     private final EventBus eventBus;
 
     private final String toolID;
@@ -66,7 +65,7 @@ public class HazardServicesRecommenderJobListener implements
      *            A list of recommended events from the recommender.
      */
     @Override
-    public void jobFinished(final List<IEvent> result) {
+    public void jobFinished(final EventSet<IEvent> result) {
 
         /*
          * Need to place the result on the thread the Session Manager is

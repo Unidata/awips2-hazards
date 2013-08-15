@@ -211,7 +211,8 @@ public abstract class AbstractRecommenderScriptManager extends
      * @param recommenderName
      * @return
      */
-    public abstract List<IEvent> executeEntireRecommender(String recommenderName);
+    public abstract EventSet<IEvent> executeEntireRecommender(
+            String recommenderName);
 
     /**
      * This method just runs the execute method on the recommender. This method
@@ -223,7 +224,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @param spatialValues
      * @return
      */
-    public List<IEvent> executeRecommender(String recommenderName,
+    public EventSet<IEvent> executeRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
             Map<String, Serializable> spatialValues) {
         final Map<String, Object> args = getStarterMap(recommenderName);
@@ -375,20 +376,30 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     @SuppressWarnings("unchecked")
-    protected List<IEvent> resolveEvents(Object obj) {
-        List<IEvent> events = new ArrayList<IEvent>();
-        if (obj instanceof List) {
+    protected EventSet<IEvent> resolveEvents(Object obj) {
+        EventSet<IEvent> events = new EventSet<IEvent>();
+        // EventSet is what is intended, all others are going to be removed
+        // eventually. This is only for backwards compatibility.
+        if (obj instanceof EventSet) {
+            events.setAttributes(((EventSet<IEvent>) obj).getAttributes());
+            events.addAll((Set<IEvent>) obj);
+        } else if (obj instanceof List) {
+            statusHandler.handle(Priority.VERBOSE, "Return objects of type "
+                    + obj.getClass()
+                    + " are not supported, but will handle for now.");
             events.addAll((List<IEvent>) obj);
         } else if (obj instanceof IEvent) {
+            statusHandler.handle(Priority.VERBOSE, "Return objects of type "
+                    + obj.getClass()
+                    + " are not supported, but will handle for now.");
             events.add((IEvent) obj);
-        } else if (obj instanceof Set) {
-            events.addAll((Set<IEvent>) obj);
         } else if (obj == null) {
             // do nothing, we just want to return an empty events
         } else {
             statusHandler.handle(Priority.CRITICAL,
                     "Must return an event set of objects");
         }
+
         return events;
     }
 

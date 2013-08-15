@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.recommenders;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 import jep.JepException;
@@ -76,7 +75,7 @@ public class EDEXRecommenderScriptManager extends
      * executeEntireRecommender(java.lang.String)
      */
     @Override
-    public List<IEvent> executeEntireRecommender(String recommenderName) {
+    public EventSet<IEvent> executeEntireRecommender(String recommenderName) {
         if (inventory.containsKey(recommenderName)) {
             statusHandler
                     .handle(Priority.VERBOSE, "Running " + recommenderName);

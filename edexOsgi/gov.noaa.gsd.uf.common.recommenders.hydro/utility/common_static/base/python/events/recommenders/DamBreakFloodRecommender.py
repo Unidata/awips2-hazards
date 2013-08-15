@@ -10,6 +10,7 @@ import GeometryFactory
 import RecommenderTemplate
 import numpy
 import JUtil
+import EventSetFactory
  
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -162,7 +163,7 @@ class Recommender(RecommenderTemplate.Recommender):
         else:
             hazardEvent = None
                         
-        return hazardEvent
+        return EventSetFactory.createEventSet(hazardEvent)
         
     
     def getFloodPolygonForDam(self, damName):

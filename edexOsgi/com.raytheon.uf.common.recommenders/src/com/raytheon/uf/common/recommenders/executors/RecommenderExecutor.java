@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.recommenders.executors;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -49,7 +48,7 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
  */
 
 public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
-        extends AbstractRecommenderExecutor<P, List<IEvent>> {
+        extends AbstractRecommenderExecutor<P, EventSet<IEvent>> {
 
     private Map<String, Serializable> spatialInfo;
 
@@ -71,8 +70,8 @@ public class RecommenderExecutor<P extends AbstractRecommenderScriptManager>
     }
 
     @Override
-    public List<IEvent> execute(P script) {
-        List<IEvent> events = script.executeRecommender(recommenderName,
+    public EventSet<IEvent> execute(P script) {
+        EventSet<IEvent> events = script.executeRecommender(recommenderName,
                 eventSet, dialogInfo, spatialInfo);
         return events;
     }

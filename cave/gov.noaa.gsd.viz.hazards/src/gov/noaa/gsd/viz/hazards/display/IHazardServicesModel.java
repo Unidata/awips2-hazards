@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -462,7 +463,8 @@ public interface IHazardServicesModel {
     /**
      * 
      */
-    public String handleRecommenderResult(String toolID, List<IEvent> eventList);
+    public String handleRecommenderResult(String toolID,
+            EventSet<IEvent> eventList);
 
     /**
      * Handle the generated products from an asynchronous run of a product

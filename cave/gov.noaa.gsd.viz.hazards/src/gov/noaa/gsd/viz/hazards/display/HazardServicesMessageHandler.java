@@ -33,6 +33,7 @@ import org.osgi.framework.Bundle;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -643,7 +644,7 @@ public final class HazardServicesMessageHandler {
      * @return
      */
     void handleRecommenderResults(String recommenderID,
-            final List<IEvent> eventList) {
+            final EventSet<IEvent> eventList) {
 
         String resultJSON = model.handleRecommenderResult(recommenderID,
                 eventList);

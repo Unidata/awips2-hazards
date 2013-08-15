@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.recommenders.handler;
 
-import java.util.List;
-
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -56,7 +54,7 @@ public class RecommenderHandler implements
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RecommenderHandler.class);
 
-    private List<IEvent> events;
+    private EventSet<IEvent> events;
 
     private volatile boolean running;
 
@@ -71,10 +69,10 @@ public class RecommenderHandler implements
     public Object handleRequest(final ExecuteRecommenderRequest request)
             throws Exception {
         AbstractRecommenderEngine<EDEXRecommenderScriptManager> engine = new EDEXRecommenderEngine();
-        IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
+        IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
 
             @Override
-            public void jobFinished(List<IEvent> result) {
+            public void jobFinished(EventSet<IEvent> result) {
                 events = result;
                 running = false;
             }

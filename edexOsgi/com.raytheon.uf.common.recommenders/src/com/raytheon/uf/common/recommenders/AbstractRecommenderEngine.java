@@ -87,8 +87,8 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param recommenderName
      */
     public void runEntireRecommender(String recommenderName,
-            IPythonJobListener<List<IEvent>> listener) {
-        IPythonExecutor<P, List<IEvent>> executor = new EntireRecommenderExecutor<P>(
+            IPythonJobListener<EventSet<IEvent>> listener) {
+        IPythonExecutor<P, EventSet<IEvent>> executor = new EntireRecommenderExecutor<P>(
                 recommenderName);
         try {
             getCoordinator(recommenderName).submitAsyncJob(executor, listener);
@@ -110,8 +110,8 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     public void runExecuteRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo,
-            IPythonJobListener<List<IEvent>> listener) {
-        IPythonExecutor<P, List<IEvent>> executor = new RecommenderExecutor<P>(
+            IPythonJobListener<EventSet<IEvent>> listener) {
+        IPythonExecutor<P, EventSet<IEvent>> executor = new RecommenderExecutor<P>(
                 recommenderName, eventSet, spatialInfo, dialogInfo);
         try {
             getCoordinator(recommenderName).submitAsyncJob(executor, listener);
@@ -239,6 +239,11 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         }
     }
 
+    /**
+     * Shuts down the engine, and frees any threads that were originally
+     * allocated. This should be called once we are done using the recommender
+     * engine (not each time, but when the application that uses it has ended).
+     */
     public void shutdownEngine() {
         for (String coordName : new HashSet<String>(
                 recommenderToCoordinator.values())) {

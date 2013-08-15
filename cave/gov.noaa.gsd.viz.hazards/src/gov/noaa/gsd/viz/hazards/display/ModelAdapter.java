@@ -25,6 +25,7 @@ import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobLi
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -64,7 +65,7 @@ public class ModelAdapter extends
     }
 
     @Override
-    protected IPythonJobListener<List<IEvent>> getRecommenderListener(
+    protected IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
             String toolName) {
         return new HazardServicesRecommenderJobListener(eventBus, toolName);
     }
