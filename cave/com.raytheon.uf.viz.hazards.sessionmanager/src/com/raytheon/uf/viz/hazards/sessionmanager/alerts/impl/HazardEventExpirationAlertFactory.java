@@ -11,6 +11,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.joda.time.DateTime;
 
@@ -26,8 +27,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
 
 /**
- * Description: A factory that builds {@link IHazardEventAlert}s based on given
- * {@link HazardAlertTimerConfigCriterion} and a given {@link IHazardEvent}
+ * Description: A factory that builds {@link IHazardEventAlert}s based
+ * on given {@link HazardAlertTimerConfigCriterion} and a given
+ * {@link IHazardEvent}
  * 
  * <pre>
  * 
@@ -44,77 +46,76 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertT
 public class HazardEventExpirationAlertFactory {
 
     private final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(this.getClass());
+	    .getHandler(this.getClass());
 
     public List<IHazardEventAlert> createAlerts(
-            HazardAlertTimerConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
+	    HazardAlertTimerConfigCriterion alertCriterion,
+	    IHazardEvent hazardEvent) {
 
-        List<IHazardEventAlert> result = Lists.newArrayList();
+	List<IHazardEventAlert> result = Lists.newArrayList();
 
-        switch (alertCriterion.getLocation()) {
+	Set<HazardAlertTimerConfigCriterion.Location> locations = alertCriterion
+		.getLocations();
+	for (HazardAlertTimerConfigCriterion.Location location : locations) {
 
-        case CONSOLE:
-            HazardEventExpirationConsoleTimer consoleAlert = buildConsoleAlert(
-                    alertCriterion, hazardEvent);
-            result.add(consoleAlert);
-            break;
+	    switch (location) {
 
-        case SPATIAL:
-            HazardEventExpirationSpatialTimer spatialAlert = buildSpatialAlert(
-                    alertCriterion, hazardEvent);
-            result.add(spatialAlert);
-            break;
+	    case CONSOLE:
+		HazardEventExpirationConsoleTimer consoleAlert = buildConsoleAlert(
+			alertCriterion, hazardEvent);
+		result.add(consoleAlert);
+		break;
 
-        case SPATIAL_AND_CONSOLE:
-            consoleAlert = buildConsoleAlert(alertCriterion, hazardEvent);
-            result.add(consoleAlert);
-            spatialAlert = buildSpatialAlert(alertCriterion, hazardEvent);
-            result.add(spatialAlert);
-            break;
-        }
+	    case SPATIAL:
+		HazardEventExpirationSpatialTimer spatialAlert = buildSpatialAlert(
+			alertCriterion, hazardEvent);
+		result.add(spatialAlert);
+		break;
+	    }
+	}
 
-        return result;
+	return result;
     }
 
     private HazardEventExpirationSpatialTimer buildSpatialAlert(
-            HazardAlertTimerConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
-        HazardEventExpirationSpatialTimer spatialAlert = new HazardEventExpirationSpatialTimer(
-                hazardEvent.getEventID(), alertCriterion);
-        computeActivationTime(alertCriterion, hazardEvent, spatialAlert);
-        return spatialAlert;
+	    HazardAlertTimerConfigCriterion alertCriterion,
+	    IHazardEvent hazardEvent) {
+	HazardEventExpirationSpatialTimer spatialAlert = new HazardEventExpirationSpatialTimer(
+		hazardEvent.getEventID(), alertCriterion);
+	computeActivationTime(alertCriterion, hazardEvent, spatialAlert);
+	return spatialAlert;
     }
 
     private HazardEventExpirationConsoleTimer buildConsoleAlert(
-            HazardAlertTimerConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent) {
-        HazardEventExpirationConsoleTimer consoleAlert = new HazardEventExpirationConsoleTimer(
-                hazardEvent.getEventID(), alertCriterion);
-        computeActivationTime(alertCriterion, hazardEvent, consoleAlert);
-        return consoleAlert;
+	    HazardAlertTimerConfigCriterion alertCriterion,
+	    IHazardEvent hazardEvent) {
+	HazardEventExpirationConsoleTimer consoleAlert = new HazardEventExpirationConsoleTimer(
+		hazardEvent.getEventID(), alertCriterion);
+	computeActivationTime(alertCriterion, hazardEvent, consoleAlert);
+	return consoleAlert;
     }
 
     private void computeActivationTime(
-            HazardAlertTimerConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent, HazardAlert alert) {
-        try {
-            Long timeBeforeExpiration = alertCriterion
-                    .getMillisBeforeExpiration();
-            Long hazardExpiration = ((Date) hazardEvent
-                    .getHazardAttribute(HazardConstants.EXPIRATIONTIME))
-                    .getTime();
+	    HazardAlertTimerConfigCriterion alertCriterion,
+	    IHazardEvent hazardEvent, HazardAlert alert) {
+	try {
+	    Long timeBeforeExpiration = alertCriterion
+		    .getMillisBeforeExpiration();
+	    Long hazardExpiration = ((Date) hazardEvent
+		    .getHazardAttribute(HazardConstants.EXPIRATIONTIME))
+		    .getTime();
 
-            Long activationTime = hazardExpiration - timeBeforeExpiration;
-            alert.setActivationTimeInMillis(activationTime);
-            /**
-             * TODO Remove this when expiration time is being set.
-             */
-        } catch (NullPointerException e) {
-            statusHandler
-                    .debug("Alerts will not work until expiration time is set");
-            alert.setActivationTimeInMillis(new DateTime(2100, 1, 1, 0, 0, 0, 0)
-                    .getMillis());
-        }
+	    Long activationTimeInMillis = hazardExpiration
+		    - timeBeforeExpiration;
+	    alert.setActivationTime(new Date(activationTimeInMillis));
+	    /**
+	     * TODO Remove this when expiration time is being set.
+	     */
+	} catch (NullPointerException e) {
+	    statusHandler
+		    .debug("Alerts will not work until expiration time is set");
+	    alert.setActivationTime(new DateTime(2100, 1, 1, 0, 0, 0, 0)
+		    .toDate());
+	}
     }
 }

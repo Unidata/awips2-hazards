@@ -45,7 +45,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
- * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * </pre>
  * 
  * @author bsteffen

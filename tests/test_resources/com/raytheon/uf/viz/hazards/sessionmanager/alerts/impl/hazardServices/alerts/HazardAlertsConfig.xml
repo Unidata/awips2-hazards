@@ -15,9 +15,9 @@
             </hazardTypes>
             <criteria>
                 <name>10 min</name>
-                <units>Minutes</units>
-                <location>Console</location>
-                <millisBeforeExpiration>600000</millisBeforeExpiration>
+                <expirationTime>10</expirationTime>
+                <units>minutes</units>
+                <locations>Console</locations>
                 <color r="10.0" g="20.0" b="30.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
@@ -33,9 +33,9 @@
             </hazardTypes>
             <criteria>
                 <name>6 hours</name>
-                <units>Hours</units>
-                <location>Spatial</location>
-                <millisBeforeExpiration>21600000</millisBeforeExpiration>
+                <expirationTime>6</expirationTime>
+                <units>hours</units>
+                <locations>Spatial</locations>
                 <color r="10.0" g="20.0" b="30.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
@@ -52,9 +52,10 @@
             </hazardTypes>
             <criteria>
                 <name>1 hours</name>
-                <units>Hours</units>
-                <location>Spatial and Console</location>
-                <millisBeforeExpiration>3600000</millisBeforeExpiration>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <locations>Console</locations>
+                <locations>Spatial</locations>
                 <color r="10.0" g="20.0" b="30.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>

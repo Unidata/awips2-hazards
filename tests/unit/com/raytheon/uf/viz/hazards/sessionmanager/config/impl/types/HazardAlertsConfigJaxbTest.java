@@ -11,7 +11,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
 import static org.junit.Assert.*;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.bind.JAXBException;
 
@@ -56,9 +58,12 @@ public class HazardAlertsConfigJaxbTest {
             List<HazardAlertTimerConfigCriterion> alertConfiguration = Lists
                     .newArrayList();
             Color color = new Color(10, 20, 30);
+            Set<HazardAlertTimerConfigCriterion.Location> locations = 
+        	    EnumSet.noneOf(HazardAlertTimerConfigCriterion.Location.class);
+            locations.add(HazardAlertTimerConfigCriterion.Location.CONSOLE);
             HazardAlertTimerConfigCriterion criterion = new HazardAlertTimerConfigCriterion(
                     "10 min", HazardAlertTimerConfigCriterion.Units.MINUTES,
-                    HazardAlertTimerConfigCriterion.Location.CONSOLE,
+                    locations,
                     10 * TimeUtil.MILLIS_PER_MINUTE, color, true, false, true);
             alertConfiguration.add(criterion);
             categoryConfig.setConfiguration(alertConfiguration);

@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
+import java.util.Date;
+
 /**
  * Description: An alert for hazard services
  * 
@@ -39,6 +41,6 @@ public interface IHazardAlert {
     /**
      * @return the time at which this is scheduled to be activated.
      */
-    Long getActivationTimeInMillis();
+    Date getActivationTime();
 
 }

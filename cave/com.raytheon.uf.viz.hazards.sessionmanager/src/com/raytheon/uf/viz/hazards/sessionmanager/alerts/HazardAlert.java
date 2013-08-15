@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
+import java.util.Date;
+
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -32,7 +34,7 @@ public class HazardAlert implements IHazardAlert {
 
     protected HazardAlertState state;
 
-    private Long activationTimeInMillis;
+    private Date activationTime;
 
     /**
      * 
@@ -50,19 +52,19 @@ public class HazardAlert implements IHazardAlert {
     }
 
     /**
-     * @return the activationTimeInMillis
+     * @return the activationTime
      */
     @Override
-    public Long getActivationTimeInMillis() {
-        return activationTimeInMillis;
+    public Date getActivationTime() {
+        return activationTime;
     }
 
     /**
-     * @param activationTimeInMillis
-     *            the activationTimeInMillis to set
+     * @param activationTime
+     *            the activationTime to set
      */
-    public void setActivationTimeInMillis(Long activationTimeInMillis) {
-        this.activationTimeInMillis = activationTimeInMillis;
+    public void setActivationTime(Date activationTime) {
+        this.activationTime = activationTime;
     }
 
     @Override

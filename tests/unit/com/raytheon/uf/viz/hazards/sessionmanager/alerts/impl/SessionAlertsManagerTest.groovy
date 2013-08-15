@@ -105,7 +105,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         activeAlerts.size() == 1
         alert.getEventID() == EVENT_O
         alert.getState() == HazardAlertState.ACTIVE
-        alert.getActivationTimeInMillis() == new DateTime(2013, 7, 25, 14, 50, 0, 0).getMillis()
+        alert.getActivationTime() == new DateTime(2013, 7, 25, 14, 50, 0, 0).toDate()
         alert.getColor() == new Color(10, 20, 30);
         alert.isBold()
         !alert.isItalic()
@@ -180,8 +180,8 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
-        HazardEventExpirationConsoleTimer consoleAlert = scheduledAlerts.get(0)
-        HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(1)
+	HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(0)
+        HazardEventExpirationConsoleTimer consoleAlert = scheduledAlerts.get(1)
 
         then: "The proper alerts are scheduled"
         scheduledAlerts.size() == 2

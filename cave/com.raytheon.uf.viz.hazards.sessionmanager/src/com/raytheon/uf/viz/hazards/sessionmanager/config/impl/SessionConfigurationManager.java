@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.Utils;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -41,6 +39,7 @@ import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -90,7 +89,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
 public class SessionConfigurationManager implements
         ISessionConfigurationManager {
 
-    public static final String ALERTS_CONFIG_PATH = Utils.directoryJoin(
+    public static final String ALERTS_CONFIG_PATH = FileUtil.join(
             "hazardServices", "alerts", "HazardAlertsConfig.xml");
 
     static final transient IUFStatusHandler statusHandler = UFStatus

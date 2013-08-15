@@ -197,7 +197,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                     alertCriterion, hazardEvent);
             for (IHazardEventAlert alert : alerts) {
 
-                Long delay = Math.max(0, alert.getActivationTimeInMillis()
+                Long delay = Math.max(0, alert.getActivationTime().getTime()
                         - sessionTimeManager.getCurrentTime().getTime());
                 alertsManager.scheduleAlert(alert, delay);
             }

@@ -30,6 +30,7 @@ import jep.JepException;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import com.raytheon.uf.common.localization.FileLocker;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -135,7 +136,11 @@ public class ConfigLoader<T> implements Runnable {
     }
 
     private T loadXml() throws LocalizationException {
-        return JAXB.unmarshal(lfile.getFile(), clazz);
+	File file = lfile.getFile();
+	FileLocker.lock(this, file, FileLocker.Type.READ);
+        T result =  JAXB.unmarshal(file, clazz);
+        FileLocker.unlock(this, file);
+        return result;
     }
 
     private T loadPython() throws JepException, IOException {
