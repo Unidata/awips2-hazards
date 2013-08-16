@@ -47,16 +47,16 @@ def findConverter(eventSet):
     pathMgr = PathManager()
     
     path = os.path.join('python', 'events')
-    events = pathMgr.listFiles(path, [".py"], False, True, loctype='COMMON_STATIC',loclevel='BASE')
+    events = pathMgr.listFiles(path, ['.py'], False, True, loctype='COMMON_STATIC', loclevel='BASE')
     if eventSet.size() > 0 :
         iter = eventSet.iterator()
-        #assumes that every thing in the event set is of the same type
+        # assumes that every thing in the event set is of the same type
         next = iter.next()
         # for each python module in the directory
         if events is not None :
             for event in events :
                 importedEvent = LocalizationUtil.loadModule(event.getPath())
-                if hasattr(importedEvent,'canConvert'):
+                if hasattr(importedEvent, 'canConvert'):
                     if importedEvent.canConvert(next) :
                         return importedEvent
     return None
