@@ -12,7 +12,7 @@ import GeometryFactory
 import RecommenderTemplate
 import numpy
 import JUtil
-import EventSetFactory
+from EventSet import EventSet
 
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
 
@@ -106,10 +106,6 @@ def applySideEffects(triggerIdentifier, mutableProperties):
         
         return dialogDict
     
-    def defineSpatialInfo(self):
-        print "Spatial info is not necessary for this recommender."
-        return    
-    
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         """
         Runs the River Flood Recommender tool
@@ -133,11 +129,11 @@ def applySideEffects(triggerIdentifier, mutableProperties):
         javaEventList = riverProFloodRecommender.getRecommendation(sessionMap,
                                                                    dialogMap,
                                                                    spatialMap)
-            
-        pythonEventList = JUtil.javaObjToPyVal(javaEventList, hazardEventConverter)
-        self.addFloodPolygons(pythonEventList)    
 
-        return pythonEventList
+        pythonEventSet = EventSet(javaEventList)
+        self.addFloodPolygons(pythonEventSet)    
+
+        return pythonEventSet
 
     def toString(self):
         return "RiverFloodRecommender"

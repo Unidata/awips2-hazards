@@ -1,18 +1,18 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.IFloodRecommenderDAO;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
@@ -228,9 +228,9 @@ public class RiverFloodRecommenderBRON1Test {
         Map<String, Object> spatialInputMap = new HashMap<String, Object>();
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
-        List<IHazardEvent> results = recommender.getFloodDictList(true);
+        EventSet<IHazardEvent> results = recommender.getFloodDictList(true);
         assertEquals(1, results.size());
-        IHazardEvent recommendation = results.get(0);
+        IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation
                 .getHazardAttributes();
 

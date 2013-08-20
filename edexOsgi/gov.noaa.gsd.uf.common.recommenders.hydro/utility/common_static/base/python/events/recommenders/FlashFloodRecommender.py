@@ -193,13 +193,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dialogDict
     
-    def defineSpatialInfo(self):
-        """
-        Spatial input is not required for this
-        recommender.
-        """
-        return    
-    
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         '''
         Runs the Flash Flood Recommender tool

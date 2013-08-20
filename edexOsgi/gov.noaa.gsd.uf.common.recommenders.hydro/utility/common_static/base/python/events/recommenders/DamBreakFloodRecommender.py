@@ -72,14 +72,6 @@ class Recommender(RecommenderTemplate.Recommender):
         dialogDict["valueDict"] = valueDict
         
         return dialogDict
-
-    
-    def defineSpatialInfo(self):
-        """
-        @return: A dict defining any user-input required from the Spatial Display.
-                 For this recommender, no spatial input is required.
-        """
-        return    
     
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         """
