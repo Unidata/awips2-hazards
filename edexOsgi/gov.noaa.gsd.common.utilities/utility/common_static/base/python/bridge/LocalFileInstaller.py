@@ -1,12 +1,15 @@
-#
-# LocalFileInstaller
-#
-# SVN: $Revision: 17 $  $Date: 2012-03-30 08:00:10 -0600 (Fri, 30 Mar 2012) $  $Author: matthew.foster $
-#
-# by Matt Foster, TDM, Central Region Hq.
-#
-# JRamer, GSD, added check() and getList() methods, Nov 2012.
-#
+"""
+Description: Allows access to individual localization files in an environment
+             with JEP access
+
+SOFTWARE HISTORY
+Date         Ticket#    Engineer          Description
+------------ ---------- -----------       --------------------------
+May 3, 2013             BLawrence         Created from AppFileInstaller, swapped out
+                                          ThriftClient in favor of RequestRouter.
+Aug 22, 2013            JRamer            Fix delete operation, add some pydoc.
+                                          
+"""
 
 import jep
 from com.raytheon.uf.common.localization.stream import LocalizationStreamPutRequest
@@ -20,6 +23,7 @@ from com.raytheon.uf.common.localization.msgs import DeleteUtilityResponse
 from com.raytheon.uf.common.localization.msgs import ListResponseEntry
 from com.raytheon.uf.common.localization.msgs import UtilityResponseMessage
 from com.raytheon.uf.common.localization.msgs import AbstractUtilityCommand
+from com.raytheon.uf.common.localization.msgs import AbstractPrivilegedUtilityCommand
 from com.raytheon.uf.common.localization import LocalizationContext
 from com.raytheon.uf.common.localization import LocalizationContext_LocalizationType as LocalizationType
 from com.raytheon.uf.common.localization import LocalizationContext_LocalizationLevel as LocalizationLevel
@@ -34,7 +38,7 @@ import sys, os, traceback
 import getpass
 
 class LocalFileInstaller():
-    def __init__(self, host="ec"):        
+    def __init__(self, host="ec"):
         self.__rr = RequestRouter
         self.__context = LocalizationContext()
         self.__lspr = self.createPutRequest()
@@ -62,22 +66,49 @@ class LocalFileInstaller():
         return req
 
     def setLevel(self, lev):
+        '''
+        @summary: Public interface for setting the localization level to use.
+        @param lev: Localization level, should be "Base", "Configured", "Site",
+                    "Workstation", or "User"
+        '''
         level = LocalizationLevel.valueOf(lev)
         self.__context.setLocalizationLevel(level)
 
     def setType(self, lt):
+        '''
+        @summary: Public interface for setting the localization type to use.
+        @param type: Localization type, should be "COMMON_STATIC", "EDEX_STATIC",
+                     or "CAVE_STATIC"
+        '''
         locType = LocalizationType.valueOf(lt)
         self.__context.setLocalizationType(locType)
 
     def setName(self, name):
+        '''
+        @summary: Public interface for setting the localization name to use.
+        @param name: Localization name, for which the meaningful values to use
+                     depend on which level is set.
+        '''
         self.__context.setContextName(name)
 
     def setMyContextName(self, name):
+        '''
+        @summary: Public interface for setting the context name to use.
+        @param name: Localization context name, the user name that applies to
+                     priveleged operations.
+        '''
         self.__lspr.setMyContextName(name)
         self.__lsgr.setMyContextName(name)
         self.__duc.setMyContextName(name)
 
     def putFile(self, fname, data):
+        '''
+        @summary: Public interface for writing a localization file.
+                  Operation not enabled for Base and Configured level.
+        @param fname: File path to file, below level/name path components.
+        @param data: Text to place in newly created localization file.
+        @return: Throws LocalFileInstallerException on failure.
+        '''
         resp = None
         lev = self.__context.getLocalizationLevel()
         if lev.toString().upper() == "BASE":
@@ -93,27 +124,37 @@ class LocalFileInstaller():
             raise LocalFileInstallerException("putFile: Error sending request to server")
 
     def rmFile(self, fname):
+        '''
+        @summary: Public interface for deleting a localization file.
+                  Operation not enabled for Base and Configured level.
+        @param fname: File path to file, below level/name path components.
+        @return: Throws LocalFileInstallerException on failure.
+        '''
         lev = self.__context.getLocalizationLevel()
-        if lev.getText().upper() == "BASE":
+        if lev.toString().upper() == "BASE":
             raise LocalFileInstallerException("I can GET files from BASE, but I won't DELETE them.  It just wouldn't be right.")
         self.__duc.setFilename(fname)
         resp = None
         try :
-            if True :
-                urm = PrivilegedUtilityRequestMessage()
-                urm.setUser(User(self.__duc.getMyContextName()))
-                urm.setCommands([self.__duc])
-            else :
-                urm = UtilityRequestMessage()
-                urm.setCommands([self.__duc])
+            urm = PrivilegedUtilityRequestMessage()
+            urmArray = jep.jarray(1, AbstractPrivilegedUtilityCommand)
+            urmArray[0] = self.__duc
+            urm.setCommands(urmArray)
             resp = self.__rr.route(urm)
             if resp==None :
                 return False
         except :
+            traceback.print_exc()
             return False
         return True
 
     def getFile(self, fname):
+        '''
+        @summary: Public interface for reading a localization file.
+        @param fname: File path to file, below level/name path components.
+        @return: String representing the contents of the file, throws
+                 LocalFileInstallerException on failure.
+        '''
         user = getpass.getuser()
         self.__lsgr = AbstractPrivilegedRequest.createRequest(LocalizationStreamGetRequest().getClass(), User(user))
         self.__lsgr.setFileName(fname)
@@ -128,6 +169,13 @@ class LocalFileInstaller():
         return fileStr
 
     def getList(self, dirname):
+        '''
+        @summary: Public interface for listing localization files.
+        @param dirname: File path to localizaton data directory, below
+                        level/name path components.
+        @return: List of files found, throws LocalFileInstallerException
+                 on failure.
+        '''
         self.__luc.setSubDirectory(dirname)
         nnn = len(dirname)+1
         resp = None
@@ -151,6 +199,12 @@ class LocalFileInstaller():
         return retList
 
     def check(self, filname):
+        '''
+        @summary: Public interface for verifying a localization file exists.
+        @param fname: File path to file, below level/name path components.
+        @return: boolean for whether file exists, may throw
+                 LocalFileInstallerException for certain failures.
+        '''
         self.__luc.setSubDirectory(filname)
         resp = None
         try:
