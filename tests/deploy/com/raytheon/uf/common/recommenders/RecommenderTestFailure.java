@@ -19,13 +19,14 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
-
-import java.util.List;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
@@ -51,7 +52,7 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
 
     @Test
     public void run() {
-        IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
+        IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override
             public void jobFailed(Throwable e) {
                 fail(e.getMessage());
@@ -59,7 +60,7 @@ public class RecommenderTestFailure extends AbstractRecommenderTest {
             }
 
             @Override
-            public void jobFinished(List<IEvent> result) {
+            public void jobFinished(EventSet<IEvent> result) {
                 assertNotNull(result);
                 assertThat(result, hasSize(0));
                 proceed = true;

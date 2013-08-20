@@ -23,7 +23,6 @@ import static org.junit.Assert.fail;
 import gov.noaa.gsd.viz.hazards.utilities.FileUtilities;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 import jep.JepException;
@@ -31,6 +30,7 @@ import jep.JepException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.localization.PathManagerFactoryTest;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -80,8 +80,8 @@ public abstract class AbstractRecommenderTest {
         engine = new CAVERecommenderEngine();
     }
 
-    public List<IEvent> runRecommender(String name,
-            IPythonJobListener<List<IEvent>> listener) {
+    public EventSet<IEvent> runRecommender(String name,
+            IPythonJobListener<EventSet<IEvent>> listener) {
         try {
             for (EventRecommender rec : engine.getInventory()) {
                 if (rec.getName().equals(name)) {

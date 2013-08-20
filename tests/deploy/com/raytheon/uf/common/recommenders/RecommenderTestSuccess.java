@@ -27,11 +27,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -60,7 +60,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
     public void run() {
-        IPythonJobListener<List<IEvent>> listener = new IPythonJobListener<List<IEvent>>() {
+        IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override
             public void jobFailed(Throwable e) {
                 fail(e.getMessage());
@@ -68,11 +68,11 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
             }
 
             @Override
-            public void jobFinished(List<IEvent> result) {
+            public void jobFinished(EventSet<IEvent> result) {
                 assertNotNull(result);
                 assertThat(result, hasSize(1));
-                assertTrue("Event not of type BaseHazardEvent",
-                        result.get(0) instanceof BaseHazardEvent);
+                assertTrue("Event not of type BaseHazardEvent", result
+                        .iterator().next() instanceof BaseHazardEvent);
                 proceed = true;
             }
         };
