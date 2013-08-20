@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
@@ -35,6 +34,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Aug 6, 2013     1265    Bryon.Lawrence    Added support for undo/redo.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Chris.Golden
@@ -110,9 +110,7 @@ public class SpatialPresenter extends
 
         getView().setUndoEnabled(model.isUndoable());
         getView().setRedoEnabled(model.isRedoable());
-        getView().drawEvents(
-                model.getComponentData(
-                        HazardServicesAppBuilder.SPATIAL_ORIGINATOR, "all"));
+        getView().drawEvents();
     }
 
     /**

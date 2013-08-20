@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonIgnore;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -48,6 +49,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov    Enhance {@link #getGeometry()} to support multi-polygons
  * 
  * </pre>
  * 
@@ -105,6 +107,8 @@ public class Event {
     private String geoType;
 
     private Boolean polyModified;
+
+    private static GeometryFactory geometryFactory = new GeometryFactory();
 
     public Event() {
 
@@ -169,7 +173,7 @@ public class Event {
                         .get(ISessionEventManager.ATTR_ISSUED))) {
             state = HazardState.ISSUED.toString().toLowerCase();
         }
-        
+
         geoType = "area";
         polyModified = true;
 
@@ -440,20 +444,33 @@ public class Event {
 
     @JsonIgnore
     public Geometry getGeometry() {
-        if (shapes != null && shapes.length != 0) {
-            List<Coordinate> coords = new ArrayList<Coordinate>();
-            for (double[] point : shapes[0].points) {
-                coords.add(new Coordinate(point[0], point[1]));
-            }
-            coords.add(coords.get(0));
-            GeometryFactory gf = new GeometryFactory();
-            Polygon p = gf.createPolygon(
-                    gf.createLinearRing(coords.toArray(new Coordinate[0])),
-                    null);
-            return p;
-        }
-        return null;
+        assert (shapes != null && shapes.length != 0);
+        List<Polygon> polygons = Lists.newArrayList();
+        for (Shape shape : shapes) {
 
+            Polygon p = buildPolygon(shape);
+            polygons.add(p);
+        }
+        Geometry result;
+        if (polygons.size() == 1) {
+            result = polygons.get(0);
+        } else {
+            result = new MultiPolygon(polygons.toArray(new Polygon[polygons
+                    .size()]), geometryFactory);
+        }
+        return result;
+
+    }
+
+    private Polygon buildPolygon(Shape shape) {
+        List<Coordinate> coords = new ArrayList<Coordinate>();
+        for (double[] point : shape.points) {
+            coords.add(new Coordinate(point[0], point[1]));
+        }
+        coords.add(coords.get(0));
+        Polygon p = geometryFactory.createPolygon(geometryFactory
+                .createLinearRing(coords.toArray(new Coordinate[0])), null);
+        return p;
     }
 
     @Override

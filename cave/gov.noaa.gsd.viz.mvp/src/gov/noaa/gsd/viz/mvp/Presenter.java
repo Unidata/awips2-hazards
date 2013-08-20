@@ -28,6 +28,7 @@ import com.google.common.eventbus.EventBus;
  * Jul 15, 2013     585    Chris.Golden   Changed to have event bus passed
  *                                        in so that it did not have to be a
  *                                        singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,17 +41,17 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
     /**
      * View.
      */
-    private V view = null;
+    protected V view;
 
     /**
      * Model.
      */
-    private M model = null;
+    private final M model;
 
     /**
      * Event bus used to signal changes.
      */
-    private EventBus eventBus = null;
+    private final EventBus eventBus;
 
     // Public Constructors
 

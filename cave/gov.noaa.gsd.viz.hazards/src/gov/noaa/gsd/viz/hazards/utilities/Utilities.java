@@ -18,6 +18,7 @@ import java.util.Map;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -234,6 +235,12 @@ public class Utilities {
      * Ended state value in hazard event dictionary.
      */
     public static final String HAZARD_EVENT_STATE_ENDED = "ended";
+
+    /**
+     * Key into {@link IHazardEvent} attributes for the time associated with a
+     * point in storm track, for example.
+     */
+    public static final String POINT_TIME = "pointTime";
 
     /**
      * Column identifier key in column definition dictionary in setting

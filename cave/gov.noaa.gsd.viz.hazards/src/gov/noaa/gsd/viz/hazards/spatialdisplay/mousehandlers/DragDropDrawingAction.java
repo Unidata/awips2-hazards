@@ -42,12 +42,9 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     */
+     * */
     public static DragDropDrawingAction getInstance() {
         return new DragDropDrawingAction();
-    }
-
-    private DragDropDrawingAction() {
     }
 
     @Override

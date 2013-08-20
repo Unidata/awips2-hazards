@@ -28,6 +28,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
  * Feb 28, 2013            Bryon.Lawrence      Initial creation
  * Jul 15, 2013      585   Chris.Golden        Changed so that various handlers
  *                                             are no longer singletons.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -89,23 +90,27 @@ public class MouseHandlerFactory {
                 handler = SelectionDrawingAction.getInstance();
                 break;
             case MULTI_SELECTION:
-                handler = MultiSelectionAction.getInstance();
+                handler = MultiSelectionAction.getInstance(presenter
+                        .getSessionManager());
                 break;
             case SELECTION_RECTANGLE:
-                handler = SelectionRectangleDrawingAction.getInstance();
+                handler = SelectionRectangleDrawingAction.getInstance(presenter
+                        .getSessionManager());
                 break;
             case EVENTBOX_DRAWING:
-                handler = EventBoxDrawingAction.getInstance();
+                handler = EventBoxDrawingAction.getInstance(presenter
+                        .getSessionManager());
                 break;
             case FREEHAND_DRAWING:
-                handler = FreeHandHazardDrawingAction.getInstance();
+                handler = FreeHandHazardDrawingAction.getInstance(presenter
+                        .getSessionManager());
                 break;
             case DRAG_DROP_DRAWING:
                 handler = DragDropDrawingAction.getInstance();
                 break;
             case DRAW_BY_AREA:
                 handler = SelectByAreaDrawingActionGeometryResource
-                        .getInstance();
+                        .getInstance(presenter.getSessionManager());
                 break;
             default:
                 statusHandler

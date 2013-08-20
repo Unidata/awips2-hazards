@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -92,6 +93,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             including making this class no longer a
  *                                             singleton, and ensuring that any previously
  *                                             class-scoped variables are now member data.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -247,6 +249,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private ToolLayer toolLayer;
 
+    private ISessionManager sessionManager;
+
     // Public Static Methods
 
     /**
@@ -278,16 +282,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param toolLayer
      *            Viz resource associated with this app builder, if a new one is
      *            to be created.
-     * @param loadedFromBundle
-     *            Flag indicating whether or not Hazard Services is being
-     *            instantiated as a result of a bundle load.
      * @throws VizException
      *             If an exception occurs while attempting to build the Hazard
      *             Services application.
      */
-    public HazardServicesAppBuilder(ToolLayer toolLayer,
-            boolean loadedFromBundle) throws VizException {
-        initialize(toolLayer, loadedFromBundle);
+    public HazardServicesAppBuilder(ToolLayer toolLayer) {
+        initialize(toolLayer);
     }
 
     // Methods
@@ -297,14 +297,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @param toolLayer
      *            Tool layer to be used with this builder.
-     * @param loadedFromBundle
-     *            Flag indicating whether or not Hazard Services is being
-     *            instantiated as a result of a bundle load.
      * @throws VizException
      *             If an error occurs while attempting to initialize.
      */
-    private void initialize(ToolLayer toolLayer, boolean loadedFromBundle)
-            throws VizException {
+    private void initialize(ToolLayer toolLayer) {
         currentTime = null;
         this.toolLayer = toolLayer;
         this.eventBus = new EventBus();
@@ -347,13 +343,23 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
         messageHandler = new HazardServicesMessageHandler(this, currentTime,
                 initialSetting, "", "{}");
+        this.sessionManager = messageHandler.getSessionManager();
         new HazardServicesMessageListener(messageHandler, eventBus);
 
+    }
+
+    /**
+     * 
+     * @param loadedFromBundle
+     *            Flag indicating whether or not Hazard Services is being
+     *            instantiated as a result of a bundle load.
+     * @return
+     */
+    public void buildGUIs(boolean loadedFromBundle) {
         /*
          * Create the Spatial Display layer in the active CAVE editor. This is
          * what hazards will be drawn on.
          */
-
         createSpatialDisplay(toolLayer);
 
         // Determine whether or not views are to be hidden at first if this
@@ -427,7 +433,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // Start the current time update timer.
         timer = new HazardServicesTimer(TIMER_UPDATE_MS, true, eventBus);
         timer.start();
-
     }
 
     /**
@@ -1059,5 +1064,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Prepare the Python side effects applier for shutdown.
         PythonSideEffectsApplier.prepareForShutDown();
+    }
+
+    public ISessionManager getSessionManager() {
+        return sessionManager;
     }
 }

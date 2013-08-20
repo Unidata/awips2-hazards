@@ -31,6 +31,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -51,6 +52,7 @@ import com.vividsolutions.jts.geom.LinearRing;
  *  ------------ ---------- ----------- --------------------------
  * 07/15/2012                Xiangbao Jing    Initial creation
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Xiangbao jing
@@ -64,18 +66,24 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
 
     protected AttrDlg drawingAttributes = null;
 
+    private final ISessionManager sessionManager;
+
     public static final String pgenType = "TornadoWarning";
 
     public static final String pgenCategory = "MET";
 
     /**
      * Call this function to retrieve an instance of the EventBoxDrawingAction.
+     * 
+     * @param sessionManager
      */
-    public static MultiSelectionAction getInstance() {
-        return new MultiSelectionAction();
+    public static MultiSelectionAction getInstance(
+            ISessionManager sessionManager) {
+        return new MultiSelectionAction(sessionManager);
     }
 
-    private MultiSelectionAction() {
+    private MultiSelectionAction(ISessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     @Override
@@ -83,7 +91,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
         IInputHandler handler = super.getMouseHandler();
         try {
             ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                    null);
+                    null, sessionManager);
         } catch (VizException e) {
             statusHandler.error("MultiSelectionAction.getMouseHandler(): ", e);
         }

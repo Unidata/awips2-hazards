@@ -11,7 +11,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesCircle;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
@@ -47,6 +46,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * ------------ ---------- ----------- --------------------------
  * November 2011             Bryon.Lawrence   Initial creation
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -244,8 +244,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                      * precedence.
                      */
                     for (AbstractDrawableComponent comp : containingComponentsList) {
-                        if (comp instanceof HazardServicesCircle
-                                || comp instanceof HazardServicesSymbol) {
+                        if (comp instanceof HazardServicesSymbol) {
                             String containingComponentEventID = getDrawingLayer()
                                     .elementClicked((DrawableElement) comp,
                                             false, false);
@@ -333,35 +332,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
             if (ghostEl != null) {
                 DrawableElement selectedDE = getDrawingLayer().getSelectedDE();
 
-                if (selectedDE instanceof HazardServicesCircle) {
-                    Line movedCircle = (Line) ghostEl;
-
-                    HazardServicesCircle origCircle = (HazardServicesCircle) selectedDE;
-                    String eventID = origCircle.getEventID();
-                    Coordinate newCoord = movedCircle.getCentroid();
-
-                    // Create JSON for this modified object.
-                    // Convert the object to JSON.
-                    Dict modifiedAreaObject = new Dict();
-
-                    // Look for a pointID. If it is there, then
-                    // include it in the JSON message. If it is
-                    // not there, then don't include it in the message.
-                    long pointID = origCircle.getPointID();
-
-                    modifiedAreaObject.put("pointID", pointID);
-                    modifiedAreaObject.put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                            eventID);
-                    modifiedAreaObject.put(Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                            Utilities.HAZARD_EVENT_SHAPE_TYPE_CIRCLE);
-                    double[] newLonLat = new double[2];
-                    newLonLat[0] = newCoord.x;
-                    newLonLat[1] = newCoord.y;
-                    modifiedAreaObject.put("newLonLat", newLonLat);
-
-                    getDrawingLayer().notifyModifiedEvent(
-                            modifiedAreaObject.toJSONString());
-                } else if (selectedDE instanceof HazardServicesPolygon) {
+                if (selectedDE instanceof HazardServicesPolygon) {
                     Line movedPolygon = (Line) ghostEl;
                     HazardServicesPolygon origPolygon = (HazardServicesPolygon) selectedDE;
 
@@ -499,7 +470,6 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
             if (selectedComponent != null
                     && (selectedComponent != getDrawingLayer()
                             .getSelectedHazardIHISLayer())
-                    && !(selectedComponent instanceof HazardServicesCircle)
                     && !(selectedComponent instanceof HazardServicesSymbol)) {
                 allowPanning = true;
             }

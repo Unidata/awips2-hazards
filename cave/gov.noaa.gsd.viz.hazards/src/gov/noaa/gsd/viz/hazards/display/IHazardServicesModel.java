@@ -16,6 +16,7 @@ import java.util.List;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Model interface, describing the methods that must be implemented in order to
@@ -31,6 +32,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  *                                             to avoid having the latter be a
  *                                             singleton.
  * Aug 06, 2013     1265   Bryon.Lawrence      Updated to support undo/redo.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Tracy.L.Hansen
@@ -553,5 +555,12 @@ public interface IHazardServicesModel {
      * @return
      */
     public Boolean isRedoable();
+
+    /**
+     * 
+     * @param
+     * @return current {@link ISessionManager} instance.
+     */
+    public ISessionManager getSessionManager();
 
 }

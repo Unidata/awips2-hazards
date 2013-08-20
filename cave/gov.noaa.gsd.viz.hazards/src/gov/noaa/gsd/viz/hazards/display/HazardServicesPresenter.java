@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Superclass from which to derive presenters for specific types of views for
@@ -28,6 +29,7 @@ import com.google.common.eventbus.EventBus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,5 +53,9 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
     public HazardServicesPresenter(IHazardServicesModel model, V view,
             EventBus eventBus) {
         super(model, view, eventBus);
+    }
+
+    public ISessionManager getSessionManager() {
+        return getModel().getSessionManager();
     }
 }
