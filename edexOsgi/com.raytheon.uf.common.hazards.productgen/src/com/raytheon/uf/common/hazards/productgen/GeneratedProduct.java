@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+
 /**
  * 
  * Generated product created by the ProductGenerator.
@@ -34,6 +37,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 19, 2012            jsanchez     Initial creation
+ * Aug 20, 2013 1360       blawrenc     Added event set.
  * 
  * </pre>
  * 
@@ -42,7 +46,9 @@ import java.util.Map;
  */
 public class GeneratedProduct implements IGeneratedProduct {
 
-    private String productID;
+    private final String productID;
+
+    private EventSet<BaseHazardEvent> eventSet;
 
     /** Resulting products generated */
     private Map<String, List<Object>> entries = new HashMap<String, List<Object>>();
@@ -72,6 +78,7 @@ public class GeneratedProduct implements IGeneratedProduct {
         this.entries.put(key, entry);
     }
 
+    @Override
     public String getErrors() {
         return errors;
     }
@@ -87,6 +94,16 @@ public class GeneratedProduct implements IGeneratedProduct {
         }
 
         return null;
+    }
+
+    @Override
+    public EventSet<BaseHazardEvent> getEventSet() {
+        return eventSet;
+    }
+
+    @Override
+    public void setEventSet(EventSet<BaseHazardEvent> eventSet) {
+        this.eventSet = eventSet;
     }
 
 }

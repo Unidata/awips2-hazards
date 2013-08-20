@@ -24,6 +24,10 @@
  Jul 15, 2013     585    Chris.Golden Added passing of event bus
                                       to job listeners, since event
                                       bus is no longer a singleton.
+ August 14, 2013  1360   hansen       Modified to return hazard event
+                                      set from product generators
+ August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
+                                      This is not used.
 """
 
 import logging, UFStatusHandler
@@ -39,8 +43,8 @@ from LocalizationInterface import LocalizationInterface
 import collections
 
 try:
-    import HazardEventJSONAdapter as Adapter
-    from HazardEventJSONAdapter import HazardEventJSONAdapter
+    import HazardEventPythonAdapter as Adapter
+    from HazardEventPythonAdapter import HazardEventPythonAdapter
     from ScriptAdapter import ScriptAdapter
     import JUtil 
     from jep import *  
@@ -60,9 +64,9 @@ class Bridge:
         self.logger.setLevel(logging.INFO)         
         
         # The try/catch block is needed because when this module is used from python-only
-        # unit tests, we have no access to JAVA stuff which is embedded in HazardEventJSONAdapter
+        # unit tests, we have no access to JAVA stuff which is embedded in HazardEventPythonAdapter
         try:
-            self.hazardEventJSONAdapter = HazardEventJSONAdapter()
+            self.hazardEventPythonAdapter = HazardEventPythonAdapter()
             self.recommenderScriptAdapter = ScriptAdapter(RECOMMENDER_TOOL)
             self.generatorScriptAdapter = ScriptAdapter(PRODUCT_GENERATOR_TOOL)
         except:
@@ -85,7 +89,7 @@ class Bridge:
         @param hazardEventManager:  The hazard event manager object.
                                     Implements IHazardEventManager interface. 
         """
-        self.hazardEventJSONAdapter.setHazardEventManager(hazardEventManager)
+        self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)
     
     def runTool(self, toolID, toolType, runData=None):
         """
@@ -108,9 +112,15 @@ class Bridge:
         Adapter.setEnclosed(enclosed)
         return JUtil.javaObjToPyVal(eventList, Adapter.eventConverter)   
     
-    def handleProductGeneratorResult(self, toolID, generatedProductList):
-        pyVal =  JUtil.javaObjToPyVal(generatedProductList, Adapter.generatedProductConverter)  
-        return pyVal
+    def handleProductGeneratorResult(self, toolID, eventSet, enclosed=True):
+        Adapter.setEnclosed(enclosed)
+        iterator = eventSet.iterator()
+        eventDicts = []
+        while iterator.hasNext():
+            eventDicts.append(JUtil.javaObjToPyVal(iterator.next(), Adapter.eventConverter))
+        generatedProductList = eventSet.getAttribute('generatedProducts')  
+        generatedProducts = JUtil.javaObjToPyVal(generatedProductList, Adapter.generatedProductConverter)
+        return generatedProducts, eventDicts
             
     def getMetaData(self, toolID, toolType, runData=None):
         """
@@ -438,11 +448,11 @@ class Bridge:
         return events
         
     def readEventsFromDB(self, filter):
-        events = self.hazardEventJSONAdapter.getEventsByFilter(filter)
+        events = self.hazardEventPythonAdapter.getEventsByFilter(filter)
         return events
     
     def writeEventDB(self, eventDicts):
-        self.hazardEventJSONAdapter.storeEvents(eventDicts)  
+        self.hazardEventPythonAdapter.storeEvents(eventDicts)  
     
     def addCriterium(self, settings, key, filters):
         if settings.has_key(key):
@@ -459,7 +469,7 @@ class Bridge:
                     DATA_TYPE_KEY: CANNED_EVENT_DATA,
                     }
             eventDicts = self.DatabaseStorage.getData(json.dumps(criteria))
-            self.hazardEventJSONAdapter.removeAllEvents()
+            self.hazardEventPythonAdapter.removeAllEvents()
             self.writeEventDB(eventDicts)
             # Also reset the VTEC database
             criteria = {

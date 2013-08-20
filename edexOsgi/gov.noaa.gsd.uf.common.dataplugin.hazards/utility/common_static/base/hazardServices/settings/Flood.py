@@ -132,10 +132,10 @@ Flood = {
             "fieldName": "sig", 
             "type": "string"
         }, 
-        "Purge Time": {
+        "Expiration Time": {
             "sortDir": "none", 
             "width": 123, 
-            "fieldName": "purgeTime", 
+            "fieldName": "expirationTime", 
             "type": "date"
         }, 
         "Issue Time": {
@@ -149,14 +149,19 @@ Flood = {
             "fieldName": "siteID", 
             "sortDir": "none"
         }, 
-        "VTEC Code": {
+        "VTEC Codes": {
             "type": "string", 
-            "fieldName": "vtecCode", 
+            "fieldName": "vtecCodes", 
             "sortDir": "none"
         }, 
-        "ETN": {
+        "ETNs": {
             "type": "number", 
-            "fieldName": "ETN", 
+            "fieldName": "etns", 
+            "sortDir": "none"
+        }, 
+        "PILs": {
+            "type": "number", 
+            "fieldName": "pils", 
             "sortDir": "none"
         }, 
         "Description": {

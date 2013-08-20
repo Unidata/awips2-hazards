@@ -22,6 +22,9 @@ package com.raytheon.uf.common.hazards.productgen;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+
 /**
  * 
  * Generated product interface for the client.
@@ -33,6 +36,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 17, 2012            jsanchez     Initial creation
+ * Aug 20, 2013 1360       blawrenc     Added methods to set/get event set
  * 
  * </pre>
  * 
@@ -56,4 +60,20 @@ public interface IGeneratedProduct {
 
     /** @return Errors thrown when executing a python class */
     public String getErrors();
+
+    /**
+     * 
+     * @param
+     * @return A set of events
+     */
+    public EventSet<BaseHazardEvent> getEventSet();
+
+    /**
+     * 
+     * @param An
+     *            event set
+     * @return
+     */
+    public void setEventSet(EventSet<BaseHazardEvent> eventSet);
+
 }

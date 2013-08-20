@@ -47,6 +47,8 @@ class Format(FormatTemplate.Formatter):
         self._tpc = TextProductCommon()        
         data = self.cleanDictKeys(data)
         self.data = data 
+        #print "Legacy data", data
+        #self._tpc.flush()
         text = self._processProductParts(data, self._tpc.getVal(data, 'productParts', []))
         return str(text.upper())
     
@@ -68,13 +70,16 @@ class Format(FormatTemplate.Formatter):
                 if easMessage is not None:
                     text += easMessage + '\n'
             elif name == 'productHeader':
-                text += dataDict['productName'] + '\n'
-                text += dataDict['senderName'] + '\n'
+                text += self._tpc.getVal(dataDict, 'productName', altDict=self.data) + '\n'
+                text += self._tpc.getVal(dataDict, 'senderName', altDict=self.data) + '\n'
+                text += self._tpc.getVal(dataDict, 'issuedByString', default='', altDict=self.data)
                 text += self.formatIssueTime()
             elif name == 'overview':
                 text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
             elif name == 'segments':
                 text += self.processSegments(dataDict['segments'], productPart.getProductParts()) 
+            elif name == 'sections':
+                text += self.processSections(dataDict['sections'], productPart.getProductParts())
             elif name == 'vtecRecords':
                 if 'vtecRecords' in dataDict:
                     vtecRecords = dataDict['vtecRecords']
@@ -88,12 +93,13 @@ class Format(FormatTemplate.Formatter):
                     text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
                     for cta in callsToAction['callToAction']:
                         text += cta + '\n\n'
-                    text += '&&\n\n'
             elif name == 'polygonText':
                 if 'polygonText' in dataDict and dataDict['polygonText']:
                     text += dataDict['polygonText'] + '\n\n'
-            elif name == 'end':
+            elif name == 'endProduct':
                 text += '$$' 
+            elif name == 'endSegment':
+                text += '&&\n\n' 
             elif name == 'CR':
                 text += '\n'
             else:
@@ -108,10 +114,9 @@ class Format(FormatTemplate.Formatter):
         return text
     
     def processEAS(self, data):
-        request = data['easActivationRequested']
-        #TODO Check using an ignoreCase
+        request = self._tpc.getVal(data, 'easActivationRequested', altDict=self.data)
         if request == 'true':
-            segments = data['segments']
+            segments = self._tpc.getVal(data, 'segments', altDict=self.data)
             segmentList = segments['segment']
             for segment in segmentList:
                 vtecRecords = segment['vtecRecords']
@@ -132,16 +137,32 @@ class Format(FormatTemplate.Formatter):
     def processSegments(self, segments, segmentParts):
         """
         Generates Legacy text from a list of segments
-        @param data: a list of dictionaries 
+        @param segments: a list of dictionaries 
+        @param segmentParts: a list of Product Parts for each segment
         @return: Returns the legacy text of the segments.
         """
         text = ''  
         for segment in segments['segment']:
             text += self._processProductParts(segment, segmentParts)
         return text
-        
+
+    def processSections(self, sections, sectionParts):
+        """
+        Generates Legacy text from a list of sections
+        @param sections: a list of dictionaries 
+        @param sectionParts: a list of Product Parts for each section
+        @return: Returns the legacy text of the segments.
+        """
+        text = ''  
+        for section in sections['section']:
+            text += self._processProductParts(section, sectionParts)
+        return text
+      
     def cleanDictKeys(self, data):
         '''
+        Remove annotations (e.g. :editable) from the dictionary keys
+        @param data -- dictionary
+        @return -- cleaned dictionary
         '''
         temp = collections.OrderedDict()
         for key in data:
@@ -169,5 +190,5 @@ class Format(FormatTemplate.Formatter):
                     item = self.cleanDictKeys(item)
             temp.append(item)
         return temp
-    
+
     

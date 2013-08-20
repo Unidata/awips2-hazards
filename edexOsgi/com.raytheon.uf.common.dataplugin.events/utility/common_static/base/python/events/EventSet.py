@@ -28,8 +28,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    03/04/13                      jsanchez       Initial Creation.
-#
-#
+#    08/20/13        1360          hansen         Added code to create empty event
+#                                                 set when wrapped object is null.
 #
 
 import JUtil
@@ -55,8 +55,8 @@ class EventSet(JUtil.JavaWrapperClass):
             self.attributes = JUtil.javaMapToPyDict(wrappedObject.getAttributes())
         else :
             self.jobj = JavaEventSet()
-            self.events = set()
             self.attributes = {}
+            self.events = set()
 
     def add(self, event):
         self.events.add(event)

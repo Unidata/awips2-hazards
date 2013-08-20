@@ -28,6 +28,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    02/20/13                      jsanchez        Initial Creation.
+#    08/20/13        1360          blawrenc       Added code to store an event
+#                                                 set in the generated product
 #    
 # 
 #
@@ -38,6 +40,8 @@ from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct
 import traceback, sys, os
 import logging, UFStatusHandler
+import EventConverter
+from com.raytheon.uf.common.dataplugin.events import EventSet
 
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     
@@ -52,12 +56,12 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     def execute(self, moduleName, className, hazardEventSet, formats):
         # TODO Convert hazardEventSet to a python hazardEventSet
         kwargs = { 'hazardEventSet' : hazardEventSet }
-        dataList = self.runMethod(moduleName, className, 'execute', **kwargs)
+        dataList, hazardEvents = self.runMethod(moduleName, className, 'execute', **kwargs)
         if not isinstance(dataList, list):
             raise Exception('Expecting a list from ' + moduleName + '.execute()')
         formats = JUtil.javaStringListToPylist(formats) 
         
-        return self.format(dataList, formats)
+        return self.format(dataList, formats, hazardEvents)
     
     def getDialogInfo(self, moduleName, className, **kwargs):
         """
@@ -73,14 +77,20 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         val = self.runMethod(moduleName, className, 'getScriptMetadata', **kwargs)
         return JUtil.pyValToJavaObj(val)
     
-    def format(self, dataList, formats):
+    def format(self, dataList, formats, hazardEvents):
         """
         Returns the list of dictionaries of the data in different formats.
         @param dataList: list of dictionaries
         @param formats: list of formats
-        @return: Returns a list of GeneratedProducts.
+        @param eventDicts: list of hazard event dictionaries
+        @return: Returns a Hazard Event Set with a list of GeneratedProducts.
         """
         generatedProductList = ArrayList()
+        
+        javaHazardEvents = JUtil.pyValToJavaObj(hazardEvents)
+        eventSet = EventSet()
+        eventSet.addAll(javaHazardEvents)
+
         for data in dataList:
             if isinstance(data, OrderedDict):
                 wmoHeader = data.get('wmoHeader') 
@@ -103,7 +113,8 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                         products[format] = 'Failed to execute ' + format + '. Make sure it exists.'
                         #self.logger.exception("An Exception Occurred" + traceback.format_exc(limit=20))
                         exc_type, exc_value, exc_traceback = sys.exc_info()
-                        traceback.print_tb(exc_traceback, limit=20)
+                        print traceback.format_exc(limit=20)
+                        #traceback.print_tb(exc_traceback, limit=20)
                         os.sys.__stdout__.flush()
                 
                 jmap = JUtil.pyDictToJavaMap(products)
@@ -111,6 +122,8 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             else:
                 generatedProduct = GeneratedProduct(None)
                 generatedProduct.setErrors('Can not format data. Not a python dictionary')
+            
+            generatedProduct.setEventSet(eventSet)    
             generatedProductList.add(generatedProduct)
-          
+
         return generatedProductList

@@ -42,10 +42,13 @@ class ProductPart(object):
         areaList            -- AMHERST-APPOMATTOX-BEDFORD-BOTETOURT-BUCKINGHAM-CAMPBELL-CASWELL-
                                CHARLOTTE-FRANKLIN-HALIFAX-HENRY-PATRICK-PITTSYLVANIA-ROANOKE-
                                ROCKBRIDGE-ROCKINGHAM-STOKES-SUNNY-WILKES-YADKIN-
-        cityList            -- INCLUDING THE CITIES OF ...
-        headline            -- ...FLOOD WATCH IN EFFECT FROM 10 AM THIS MORNING THROUGH WEDNESDAY MORNING...
+        cityList            -- INCLUDING THE CITIES OF ...TEKAMAH...OAKLAND...LYONS...DECATUR
+        summaryHeadlines    -- ...FLOOD WATCH IN EFFECT FROM 10 AM THIS MORNING THROUGH WEDNESDAY MORNING...
         
-        bulletHeading       -- THE NATIONAL WEATHER SERVICE IN BLACKSBURG HAS ISSUED A
+        -----------
+        sections            -- Contains descriptive information for each hazard event in the segment
+        
+        attribution         -- THE NATIONAL WEATHER SERVICE IN BLACKSBURG HAS ISSUED A
         firstBullet         -- * FLOOD WATCH FOR PORTIONS OF SOUTHWESTERN VIRGINIA AND NORTHWEST
                                NORTH CAROLINA...INCLUDING THE FOLLOWING COUNTIES IN VIRGINIA...
                                AMHERST...APPOMATTOX...BEDFORD...BOTETOURT...BUCKINGHAM...CAMPBELL...
@@ -54,6 +57,10 @@ class ProductPart(object):
                                IN NORTH CAROLINA...CASWELL...ROCKINGHAM...STOKES...SURRY...WILKES
                                AND YADKIN.
         timePhrase          -- * FROM 10 AM THIS MORNING THROUGH WEDNESDAY MORNING.
+        pointPhrase         -- * At 7:15 PM MONDAY THE STAGE WAS '39.04' FEET
+                               * MODERATE FLOODING IS POSSIBLE 
+                               * FLOOD STAGE IS '35.0' FEET 
+                               * FORECAST...FLOOD STAGE MAY BE REACHED BY TUESDAY PM 
         basis               -- * LOW PRESSURE IS EXPECTED TO STRENGTHEN OVER THE CAROLINAS AND MOVE
                                EAST THIS AFTERNOON AS A POTENT UPPER DISTURBANCE OVER KENTUCKY
                                MOVES OVER THE SOUTHERN APPALACHIANS. AS A RESULT RAIN IS EXPECTED
@@ -65,6 +72,8 @@ class ProductPart(object):
                                EASILY CAUSE SHARP RISES ON THESE RIVERS. AREA CREEKS AND STREAMS
                                ARE ALSO RUNNING HIGH AND COULD FLOOD WITH MORE HEAVY RAIN.
                                
+        -------------------
+                               
         callsToAction       -- PRECAUTIONARY/PREPAREDNESS ACTIONS...
                                REMEMBER...A FLOOD WATCH MEANS THAT FLOODING IS POSSIBLE BUT NOT
                                IMMINENT IN THE WATCH AREA.
@@ -74,7 +83,8 @@ class ProductPart(object):
         narrativeForecastInformation
         tabularForecastInformation
         probabilisticForecastInformation
-        end                  -- $$
+        endSegment          -- &&\n\n
+        endProduct          -- $$
 
         
         Focal Points adding customized Product Parts should create names that begin with

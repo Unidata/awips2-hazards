@@ -11,8 +11,6 @@ from MetaData_FLY import MetaData_FLY
 from MetaData_FFW_Convective import MetaData_FFW_Convective
 from MetaData_FFW_NonConvective import MetaData_FFW_NonConvective
 from MetaData_ShortFused import MetaData_ShortFused
-#from MetaData_LongFused import MetaData
-#from MetaData_HydroPoint import MetaData_HydroPoint
 
 #   The order of this list is important.  
 #   For example, "FA", "A" may be listed in the hydroHazardTypes, 

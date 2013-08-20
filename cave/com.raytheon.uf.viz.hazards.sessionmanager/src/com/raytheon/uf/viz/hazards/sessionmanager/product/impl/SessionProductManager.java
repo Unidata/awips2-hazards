@@ -44,6 +44,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurati
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
@@ -68,7 +71,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                     when an event is issued. Also
  *                                     replaced key strings with constants
  *                                     from HazardConstants.py.
- * 
+ * Aug 12, 2013 1360       hansen      Added logic to handle expiration time
+ *                                     other product information from product
+ *                                     generators
+ * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
+ * Aug 20, 2013 1360       blawrenc    Fixed problem with incorrect states showing in console.
  * </pre>
  * 
  * @author bsteffen
@@ -137,7 +144,7 @@ public class SessionProductManager implements ISessionProductManager {
                 // info breaks the Replace Watch with Warning Story.
                 // info.setDialogInfo(productGen.getDialogInfo(entry.getKey()));
                 info.setDialogInfo(Collections.<String, String> emptyMap());
-                info.setFormats(new String[] { "XML", "Legacy" });
+                info.setFormats(new String[] { "XML", "Legacy", "CAP" });
                 result.add(info);
             }
         }
@@ -191,6 +198,17 @@ public class SessionProductManager implements ISessionProductManager {
                         HazardConstants.AREA_TYPE);
             }
             event.removeHazardAttribute(HazardConstants.TYPE);
+
+            /*
+             * Need to re-initialize product information when issuing
+             */
+            if (issue) {
+                event.removeHazardAttribute("expirationTime");
+                event.removeHazardAttribute("issueTime");
+                event.removeHazardAttribute("vtecCodes");
+                event.removeHazardAttribute("etns");
+                event.removeHazardAttribute("pils");
+            }
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
@@ -208,26 +226,38 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void issue(ProductInformation information) {
-        for (IGeneratedProduct product : information.getProducts()) {
-            // TODO detect if in practice mode or operational
-            // ProductUtils.disseminate(product.toString());
-        }
-        for (IHazardEvent event : information.getSelectedEvents()) {
-            if (event.getState() != HazardState.ENDED) {
-                Serializable previewState = event
+
+        for (IHazardEvent selectedEvent : information.getSelectedEvents()) {
+            if (selectedEvent.getState() != HazardState.ENDED) {
+                Serializable previewState = selectedEvent
                         .getHazardAttribute(HazardConstants.PREVIEW_STATE);
                 if (previewState != null
                         && previewState.toString().equalsIgnoreCase(
                                 HazardState.ENDED.toString())) {
-                    event.setState(HazardState.ENDED);
+                    selectedEvent.setState(HazardState.ENDED);
                 } else {
-                    event.setState(HazardState.ISSUED);
+                    for (IHazardEvent event : information.getProducts().get(0)
+                            .getEventSet()) {
+                        if (selectedEvent.getEventID().equals(
+                                event.getEventID())) {
+
+                            ObservedHazardEvent newEvent = new ObservedHazardEvent(
+                                    event, (SessionEventManager) eventManager);
+
+                            SessionEventUtilities.mergeHazardEvents(newEvent,
+                                    selectedEvent);
+                            break;
+                        }
+
+                    }
+
+                    selectedEvent.setState(HazardState.ISSUED);
                 }
 
                 /*
                  * Clear the undo/redo events.
                  */
-                ((IUndoRedoable) event).clearUndoRedo();
+                ((IUndoRedoable) selectedEvent).clearUndoRedo();
             }
         }
     }

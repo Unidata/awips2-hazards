@@ -13,8 +13,9 @@ except:
 
 import datetime
 
+DEFAULT_POLYGON_BUFFER = 0.05
 #
-# Adapts to/from HazardEvent/JSON representations of events
+# Adapts to/from Java HazardEvent/Python eventDict representations of events
 #
 #
 #
@@ -26,7 +27,10 @@ import datetime
 #    Jun 25, 2013           blawrenc                         Removed reference
 #                                                            to HazardServicesEvent
 #                                                            java class.
-#
+#    Aug     2013           blawrenc                         Removed new_storeEvents and
+#                                                            eventDictsToHazardEvents. These
+#                                                            are not used.
+
 
 
 ENCLOSED = True
@@ -178,8 +182,7 @@ def unicodeToString(input):
     else:
         return input
         
-class HazardEventJSONAdapter:
-
+class HazardEventPythonAdapter:
 
     def __init__(self):
         pass
@@ -224,7 +227,8 @@ class HazardEventJSONAdapter:
             for i in range(oldEvents.size()):
                 eventsToRemove.add(oldEvents.get(i))
         self.hazardEventManager.removeEvents(eventsToRemove)
-        
+
+
     def storeEvents(self, eventDicts):
         self.removeEvents(eventDicts)
         

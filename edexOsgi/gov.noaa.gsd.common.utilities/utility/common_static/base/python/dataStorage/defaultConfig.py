@@ -1088,7 +1088,7 @@ columns = [
                       "displayString": "Sig", 
                      },
                      {
-                      "displayString": "Purge Time",
+                      "displayString": "Expiration Time",
                      },
                      {
                       "displayString": "Issue Time", 
@@ -1097,10 +1097,13 @@ columns = [
                       "displayString": "Site ID", 
                      },
                      {
-                      "displayString": "VTEC Code", 
+                      "displayString": "VTEC Codes", 
                      },
                      {
-                      "displayString": "ETN"
+                      "displayString": "ETNs"
+                     },
+                     {
+                      "displayString": "PILs"
                      },
                      {
                       "displayString": "Description"

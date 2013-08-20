@@ -16,6 +16,13 @@
  * 
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
+ * 
+ * SOFTWARE HISTORY
+ * 
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * August 2013  1360       hansen      Added fields for product information
+ *
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
@@ -50,7 +57,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov    Enhance {@link #getGeometry()} to support multi-polygons
- * 
+ * Aug     2013 1360       hansen      Added fields for product information
  * </pre>
  * 
  * @author bsteffen
@@ -107,6 +114,16 @@ public class Event {
     private String geoType;
 
     private Boolean polyModified;
+
+    private Long expirationTime;
+
+    private Long issueTime;
+
+    private String etns;
+
+    private String pils;
+
+    private String vtecCodes;
 
     private static GeometryFactory geometryFactory = new GeometryFactory();
 
@@ -187,6 +204,37 @@ public class Event {
             }
         } else {
             shapes = new Shape[] { convertGeometry(geom) };
+        }
+
+        if (attr.containsKey("expirationTime")) {
+            expirationTime = (Long) attr.get("expirationTime");
+        }
+        if (attr.containsKey("issueTime")) {
+            issueTime = (Long) attr.get("issueTime");
+        }
+        if (attr.containsKey("vtecCodes")) {
+            Serializable eventVtecCodes = attr.get("vtecCodes");
+            if (eventVtecCodes != null) {
+                vtecCodes = attr.get("vtecCodes").toString();
+            } else {
+                vtecCodes = "[]";
+            }
+        }
+        if (attr.containsKey("etns")) {
+            Serializable eventVtecCodes = attr.get("etns");
+            if (eventVtecCodes != null) {
+                etns = attr.get("etns").toString();
+            } else {
+                etns = "[]";
+            }
+        }
+        if (attr.containsKey("pils")) {
+            Serializable eventVtecCodes = attr.get("pils");
+            if (eventVtecCodes != null) {
+                pils = attr.get("pils").toString();
+            } else {
+                pils = "[]";
+            }
         }
 
     }
@@ -386,12 +434,52 @@ public class Event {
         this.damName = damName;
     }
 
+    public void setGeoType(String geoType) {
+        this.geoType = geoType;
+    }
+
     public String getGeoType() {
         return geoType;
     }
 
-    public void setGeoType(String geoType) {
-        this.geoType = geoType;
+    public void setIssueTime(Long issueTime) {
+        this.issueTime = issueTime;
+    }
+
+    public Long getIssueTime() {
+        return issueTime;
+    }
+
+    public void setExpirationTime(Long expirationTime) {
+        this.expirationTime = expirationTime;
+    }
+
+    public Long getExpirationTime() {
+        return expirationTime;
+    }
+
+    public void setEtns(String etns) {
+        this.etns = etns;
+    }
+
+    public String getEtns() {
+        return etns;
+    }
+
+    public void setVtecCodes(String vtecCodes) {
+        this.etns = vtecCodes;
+    }
+
+    public String getVtecCodes() {
+        return vtecCodes;
+    }
+
+    public void setPils(String pils) {
+        this.pils = pils;
+    }
+
+    public String getPils() {
+        return pils;
     }
 
     public Boolean getPolyModified() {
@@ -458,8 +546,8 @@ public class Event {
             result = new MultiPolygon(polygons.toArray(new Polygon[polygons
                     .size()]), geometryFactory);
         }
-        return result;
 
+        return result;
     }
 
     private Polygon buildPolygon(Shape shape) {

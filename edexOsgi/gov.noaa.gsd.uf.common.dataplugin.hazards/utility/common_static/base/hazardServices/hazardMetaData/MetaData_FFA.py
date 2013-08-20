@@ -37,4 +37,15 @@ MetaData_FFA = [
                 {"displayString": "UU (Unknown)", "productString": "UU","identifier": "UU",},
                 ],
            },
+            {                      
+             "fieldType":"CheckList",
+             "label":"Calls to Action (1 or more):",
+             "fieldName": "cta",
+             "lines": 3,
+             #'values': ["FlashFloodWatch"],
+             "choices": [ 
+                     {"displayString": "A Flash Flood Watch means...", "identifier": "FlashFloodWatch",
+                      "productString": '''A FLASH FLOOD WATCH MEANS THAT CONDITIONS MAY DEVELOP THAT LEAD TO FLASH FLOODING. FLASH FLOODING IS A VERY DANGEROUS SITUATION.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE PREPARED TO TAKE ACTION SHOULD FLASH FLOOD WARNINGS BE ISSUED.''',},
+                    ]
+            },
         ] + CAP_Fields

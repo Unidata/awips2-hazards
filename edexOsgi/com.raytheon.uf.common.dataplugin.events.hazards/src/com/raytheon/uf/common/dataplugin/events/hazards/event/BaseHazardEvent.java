@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
@@ -46,6 +48,7 @@ import com.vividsolutions.jts.io.WKTReader;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 24, 2013            mnash     Initial creation
+ * 
  * 
  * </pre>
  * 
@@ -247,6 +250,7 @@ public class BaseHazardEvent implements IHazardEvent {
         }
     }
 
+    @Override
     public Map<String, Serializable> getHazardAttributes() {
         return attributes;
     }
@@ -310,67 +314,97 @@ public class BaseHazardEvent implements IHazardEvent {
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         BaseHazardEvent other = (BaseHazardEvent) obj;
         if (attributes == null) {
-            if (other.attributes != null)
+            if (other.attributes != null) {
                 return false;
-        } else if (!attributes.equals(other.attributes))
+            }
+        } else if (!attributes.equals(other.attributes)) {
             return false;
+        }
         if (endTime == null) {
-            if (other.endTime != null)
+            if (other.endTime != null) {
                 return false;
-        } else if (!endTime.equals(other.endTime))
+            }
+        } else if (!endTime.equals(other.endTime)) {
             return false;
+        }
         if (eventId == null) {
-            if (other.eventId != null)
+            if (other.eventId != null) {
                 return false;
-        } else if (!eventId.equals(other.eventId))
+            }
+        } else if (!eventId.equals(other.eventId)) {
             return false;
+        }
         if (geometry == null) {
-            if (other.geometry != null)
+            if (other.geometry != null) {
                 return false;
-        } else if (!geometry.equals(other.geometry))
+            }
+        } else if (!geometry.equals(other.geometry)) {
             return false;
-        if (hazardMode != other.hazardMode)
+        }
+        if (hazardMode != other.hazardMode) {
             return false;
-        if (hazardState != other.hazardState)
+        }
+        if (hazardState != other.hazardState) {
             return false;
+        }
         if (issueTime == null) {
-            if (other.issueTime != null)
+            if (other.issueTime != null) {
                 return false;
-        } else if (!issueTime.equals(other.issueTime))
+            }
+        } else if (!issueTime.equals(other.issueTime)) {
             return false;
+        }
         if (phenomenon == null) {
-            if (other.phenomenon != null)
+            if (other.phenomenon != null) {
                 return false;
-        } else if (!phenomenon.equals(other.phenomenon))
+            }
+        } else if (!phenomenon.equals(other.phenomenon)) {
             return false;
+        }
         if (significance == null) {
-            if (other.significance != null)
+            if (other.significance != null) {
                 return false;
-        } else if (!significance.equals(other.significance))
+            }
+        } else if (!significance.equals(other.significance)) {
             return false;
+        }
         if (site == null) {
-            if (other.site != null)
+            if (other.site != null) {
                 return false;
-        } else if (!site.equals(other.site))
+            }
+        } else if (!site.equals(other.site)) {
             return false;
+        }
         if (startTime == null) {
-            if (other.startTime != null)
+            if (other.startTime != null) {
                 return false;
-        } else if (!startTime.equals(other.startTime))
+            }
+        } else if (!startTime.equals(other.startTime)) {
             return false;
+        }
         if (subtype == null) {
-            if (other.subtype != null)
+            if (other.subtype != null) {
                 return false;
-        } else if (!subtype.equals(other.subtype))
+            }
+        } else if (!subtype.equals(other.subtype)) {
             return false;
+        }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
     }
 }

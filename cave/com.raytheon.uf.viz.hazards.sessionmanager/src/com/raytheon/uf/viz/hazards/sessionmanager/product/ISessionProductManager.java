@@ -54,7 +54,7 @@ public interface ISessionProductManager {
      * @param information
      *            the information about the product to generate
      * @param issue
-     *            whether to immediatly issue the product or not
+     *            whether to immediately issue the product or not
      */
     public void generate(ProductInformation information, boolean issue);
 

@@ -28,7 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/22/13                      mnash       Initial Creation.
-#    
+#    08/20/13        1360          blawrenc    Changed toStr() to __str__() for debugging
 # 
 #
 
@@ -238,6 +238,11 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def __ne__(self, other):
         return not self.__eq__(other)
+    
+    def __str__(self):
+        string = 'HazardEvent: ' + self.jobj.toString() +\
+            '\ngeometry: ' + str(self.jobj.getGeometry())
+        return string
     
     def toJavaObj(self):
         return self.jobj

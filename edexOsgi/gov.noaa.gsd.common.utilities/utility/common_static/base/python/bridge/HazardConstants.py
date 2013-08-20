@@ -5,7 +5,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     April 5, 2013            Tracy.L.Hansen      Initial creation
-    April 19, 2013           blawren             Added constants for 
+    April 19, 2013           blawrenc            Added constants for 
                                                  Bridge
     
     @author Tracy.L.Hansen@noaa.gov
@@ -44,6 +44,7 @@ START_TIME = "startTime"
 END_TIME = "endTime"
 CREATION_TIME = "creationTime"
 ISSUE_TIME = "issueTime"
+EXPIRATION_TIME = "expirationTime"
 
 # Session State
 SELECTED_TIME_MS = "selectedTimeMS"

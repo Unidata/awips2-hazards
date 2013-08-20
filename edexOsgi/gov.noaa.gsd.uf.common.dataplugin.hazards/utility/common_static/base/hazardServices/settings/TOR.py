@@ -89,20 +89,20 @@ TOR = {
             "hintTextFieldName": "headline"
         }, 
         "State": {
-            "sortDir": "none", 
-            "width": 60, 
+             "sortDir": "none", 
+            "width": 61, 
             "fieldName": "state", 
             "type": "string"
         }, 
         "Start Time": {
             "sortDir": "none", 
-            "width": 126, 
+            "width": 125, 
             "fieldName": "startTime", 
             "type": "date"
         }, 
         "End Time": {
             "sortDir": "none", 
-            "width": 128, 
+            "width": 125, 
             "fieldName": "endTime", 
             "type": "date"
         }, 
@@ -118,15 +118,15 @@ TOR = {
             "fieldName": "sig", 
             "type": "string"
         }, 
-        "Purge Time": {
+        "Expiration Time": {
             "sortDir": "none", 
-            "width": 130, 
-            "fieldName": "purgeTime", 
+            "width": 123, 
+            "fieldName": "expirationTime", 
             "type": "date"
         }, 
         "Issue Time": {
             "sortDir": "none", 
-            "width": 123, 
+            "width": 122, 
             "fieldName": "issueTime", 
             "type": "date"
         }, 
@@ -135,14 +135,19 @@ TOR = {
             "fieldName": "siteID", 
             "sortDir": "none"
         }, 
-        "VTEC Code": {
+        "VTEC Codes": {
             "type": "string", 
-            "fieldName": "vtecCode", 
+            "fieldName": "vtecCodes", 
             "sortDir": "none"
         }, 
-        "ETN": {
+        "ETNs": {
             "type": "number", 
-            "fieldName": "ETN", 
+            "fieldName": "etns", 
+            "sortDir": "none"
+        }, 
+        "PILs": {
+            "type": "number", 
+            "fieldName": "pils", 
             "sortDir": "none"
         }, 
         "Description": {

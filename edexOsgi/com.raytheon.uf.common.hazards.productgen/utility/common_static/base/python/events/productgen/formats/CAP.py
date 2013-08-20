@@ -5,6 +5,8 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     June     2013  648     Tracy.L.Hansen  Format CAP XML messages
+    August   2013  784     hansen          Added handling of sections 
+                                           within segments
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -112,268 +114,108 @@ If a product has multiple segments, a CAP message will be generated for each seg
 
 ##########################
 INPUT : Product Dictionary for one legacy product
+CAP prodDict 
 
-SAMPLE Product Dictionary
- {
-        'disclaimer': 'This XML wrapped text product should be considered COMPLETELY EXPERIMENTAL. The National Weather Service currently makes NO GUARANTEE WHATSOEVER that this product will continue to be supplied without interruption. The format of this product MAY CHANGE AT ANY TIME without notice.', 
-        'senderName': 'NATIONAL WEATHER SERVICE OMAHA/VALLEY NE', 
-        'productName': 'FLOOD WATCH', 
-        'productID': 'FFA', 
-        'wmoHeader': {
-            'TTAAii': 'WGUS63', 
-            'originatingOffice': 'KOAX', 
-            'productID': 'FFA', 
-            'siteID': 'OAX', 
-            'wmoHeaderLine': 'WGUS63 KOAX 080400', 
-            'awipsIdentifierLine': 'FFAOAX'
-        }, 
-        'overview': '', 
-        'synopsis': '', 
-        'segments': {
-            'segment': [
-                {
-                    'description:editable': '...FLASH FLOOD WATCH in effect through this morning...\nTHE NATIONAL WEATHER SERVICE IN OMAHA/VALLEY HAS ISSUED A\n\n* TEST FLASH FLOOD WATCH FOR PORTIONS OF EAST CENTRAL NEBRASKA AND \n SOUTHEAST NEBRASKA...INCLUDING THE FOLLOWING AREAS...IN EAST \n CENTRAL NEBRASKA...Douglas...Sarpy AND Saunders. IN SOUTHEAST \n NEBRASKA...Cass...Lancaster AND Otoe.\n\n* from late Monday night through Tuesday morning\n* |* BASIS FOR THE WATCH *|\n\n* |* (OPTIONAL...text truncated
-                    'ugcCodes': {
-                        'ugcCode': [
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '051', 
-                                'text': 'NEZ051', 
-                                'subArea': ''
-                            }, 
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '052', 
-                                'text': 'NEZ052', 
-                                'subArea': ''
-                            }, 
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '053', 
-                                'text': 'NEZ053', 
-                                'subArea': ''
-                            }, 
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '066', 
-                                'text': 'NEZ066', 
-                                'subArea': ''
-                            }, 
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '067', 
-                                'text': 'NEZ067', 
-                                'subArea': ''
-                            }, 
-                            {
-                                'state': 'NE', 
-                                'type': 'Zone', 
-                                'number': '068', 
-                                'text': 'NEZ068', 
-                                'subArea': ''
-                            }
-                        ]
-                    }, 
-                    'ugcHeader': 'NEZ051>053-066>068-081200-', 
-                    'areaString': 'Saunders-Douglas-Sarpy-Lancaster-Cass-Otoe-', 
-                    'cityString': 'INCLUDING THE CITIES OF ...WAHOO...ASHLAND...YUTAN...OMAHA...BELLEVUE...PAPILLION...LA VISTA...LINCOLN...PLATTSMOUTH...NEBRASKA CITY', 
-                    'areaType': 'area', 
-                    'expireTime': '2011-02-08T12:00:00', 
-                    'vtecRecords': [
-                        {
-                            'vtecRecordType': 'pvtecRecord', 
-                            'name': 'pvtecRecord', 
-                            'productClass': '0', 
-                            'action': 'NEW', 
-                            'site': 'KOAX', 
-                            'phenomena': 'FF', 
-                            'significance': 'A', 
-                            'eventTrackingNumber': '0001', 
-                            'startTimeVTEC': '110208T0400Z', 
-                            'startTime': '2011-02-08T04:00:00', 
-                            'endTimeVTEC': '110208T1200Z', 
-                            'endTime': '2011-02-08T12:00:00', 
-                            'vtecString': '0.NEW.KOAX.FF.A.0001.110208T0400Z-110208T1200Z'
-                        }
-                    ], 
-                    'polygons': {
-                        'polygon': [
-                            {
-                                'point': [
-                                    {
-                                        'latitude': '41.117893219', 
-                                        'longitude': '-96.6356201172'
-                                    }, 
-                                    {
-                                        'latitude': '40.7864837646', 
-                                        'longitude': '-96.6356201172'
-                                    }, 
-                                    {
-                                        'latitude': '40.5813293457', 
-                                        'longitude': '-96.3042144775'
-                                    }, 
-                                    {
-                                        'latitude': '40.8180465698', 
-                                        'longitude': '-95.9254608154'
-                                    }, 
-                                    {
-                                        'latitude': '41.2914848328', 
-                                        'longitude': '-96.0517120361'
-                                    }, 
-                                    {
-                                        'latitude': '41.117893219', 
-                                        'longitude': '-96.6356201172'
-                                    }
-                                ]
-                            }
-                        ]
-                    }, 
-                    'timeMotionLocation': {}, 
-                    'impactedLocations': {
-                        'location': [
-                            {
-                                'locationName': 'Douglas'
-                            }, 
-                            {
-                                'locationName': 'Sarpy'
-                            }, 
-                            {
-                                'locationName': 'Saunders'
-                            }, 
-                            {
-                                'locationName': 'Cass'
-                            }, 
-                            {
-                                'locationName': 'Lancaster'
-                            }, 
-                            {
-                                'locationName': 'Otoe'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.0405', 
-                                    'longitude': '-96.3709'
-                                }
-                            }, 
-                            {
-                                'locationName': 'ASHLAND'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.2432', 
-                                    'longitude': '-96.3973'
-                                }
-                            }, 
-                            {
-                                'locationName': 'YUTAN'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.2152', 
-                                    'longitude': '-96.62'
-                                }
-                            }, 
-                            {
-                                'locationName': 'WAHOO'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.2639', 
-                                    'longitude': '-96.0117'
-                                }
-                            }, 
-                            {
-                                'locationName': 'OMAHA'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.1572', 
-                                    'longitude': '-96.0405'
-                                }
-                            }, 
-                            {
-                                'locationName': 'PAPILLION'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.1564', 
-                                    'longitude': '-95.9226'
-                                }
-                            }, 
-                            {
-                                'locationName': 'BELLEVUE'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.1843', 
-                                    'longitude': '-96.0391'
-                                }
-                            }, 
-                            {
-                                'locationName': 'LA VISTA'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '40.8164', 
-                                    'longitude': '-96.6882'
-                                }
-                            }, 
-                            {
-                                'locationName': 'LINCOLN'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '41.0077', 
-                                    'longitude': '-95.8914'
-                                }
-                            }, 
-                            {
-                                'locationName': 'PLATTSMOUTH'
-                            }, 
-                            {
-                                'point': {
-                                    'latitude': '40.6762', 
-                                    'longitude': '-95.8607'
-                                }
-                            }, 
-                            {
-                                'locationName': 'NEBRASKA CITY'
-                            }
-                        ]
-                    }, 
-                    'observations': {}, 
-                    'callsToAction': {
-                        'callToAction': [
-                            'A FLASH FLOOD WATCH MEANS THAT CONDITIONS MAY DEVELOP THAT LEAD TO FLASH FLOODING. FLASH FLOODING IS A VERY DANGEROUS SITUATION.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE PREPARED TO TAKE ACTION SHOULD FLASH FLOOD WARNINGS BE ISSUED.'
-                        ]
-                    }, 
-                    'polygonText': ''
-                    'status:skip':'Actual',
-                    'CAP_areaString:skip': 'Saunders; Douglas; Sarpy; Lancaster; Cass; Otoe (Nebraska)',
-                    'info:skip': [{
-                            'category': 'Met', 
-                            'event': 'Flash Flood Warning', 
-                            'responseType': 'Monitor', 
-                            'urgency': 'Past', 
-                            'severity': 'Severe', 
-                            'certainty': 'Observed', 
-                            'onset': '2011-02-08T04:00:00', 
-                            'WEA_text': '', 
-                            'pil': 'FFAOAX', 
-                            'eventEndingTime', '2011-02-08T12:00:00',
-                            }]
-                }
-            ]
-        }, 
-        'easActivationRequested': 'true', 
-        'sentTimeZ': '2011-02-08T04:00:00', 
-        'sentTimeLocal': '2011-02-08T04:00:00'
-    }
+OrderedDict([
+('disclaimer', 'This XML wrapped text product should be considered COMPLETELY EXPERIMENTAL. The National Weather Service currently makes NO GUARANTEE WHATSOEVER that this product will continue to be supplied without interruption. The format of this product MAY CHANGE AT ANY TIME without notice.'), 
+('senderName', u'NATIONAL WEATHER SERVICE OMAHA/VALLEY NE'), 
+('productName', 'TEST...FLOOD WATCH...TEST'), 
+('issuedByString', ''), ('productID', 'FFA'), 
+('productParts', [<ProductPart.ProductPart object at 0x9e46a0c>, <ProductPart.ProductPart object at 0x9e46a2c>, <ProductPart.ProductPart object at 0x9e4684c>, <ProductPart.ProductPart object at 0x9e46a6c>, <ProductPart.ProductPart object at 0x9e4638c>, <ProductPart.ProductPart object at 0x9e4628c>]), 
+('easActivationRequested', 'true'), 
+('wmoHeader', 
+     OrderedDict([('TTAAii', 'WGUS63'), 
+                  ('originatingOffice', u'KOAX'), 
+                  ('productID', 'FFA'), 
+                  ('siteID', 'OAX'), 
+                  ('wmoHeaderLine', u'WGUS63 KOAX 080400'), 
+                  ('awipsIdentifierLine', 'FFAOAX')])), 
+('overview', ''), 
+('synopsis', ''), 
+('segments', 
+     OrderedDict([('segment', [OrderedDict([
+              ('ugcCodes', OrderedDict([
+                  ('ugcCode', [
+                       OrderedDict([('state', u'NE'), ('type', 'Zone'), ('number', '033'), ('text', 'NEZ033'), ('subArea', '')]), 
+                       OrderedDict([('state', u'NE'), ('type', 'Zone'), ('number', '034'), ('text', 'NEZ034'), ('subArea', '')]), 
+                       OrderedDict([('state', u'NE'), ('type', 'Zone'), ('number', '044'), ('text', 'NEZ044'), ('subArea', '')]), 
+                       OrderedDict([('state', u'NE'), ('type', 'Zone'), ('number', '045'), ('text', 'NEZ045'), ('subArea', '')])])])), 
+              ('ugcHeader', 'NEZ033-034-044-045-081200-'), 
+              ('areaString', u'Cuming-Burt-Dodge-Washington-'), 
+              ('cityString:editable', u'INCLUDING THE CITIES OF ...WEST POINT...WISNER...TEKAMAH...OAKLAND...LYONS...DECATUR...FREMONT...BLAIR'), 
+              ('areaType', 'area'), 
+              ('expireTime', '2011-02-08T12:00:00+00:00'), 
+              ('expireTime_datetime', datetime.datetime(2011, 2, 8, 12, 0)), 
+              ('vtecRecords', [
+                    OrderedDict([
+                        ('vtecRecordType', 'pvtecRecord'), 
+                        ('name', 'pvtecRecord'), 
+                        ('productClass', 'O'), 
+                        ('action', 'NEW'), 
+                        ('site', 'KOAX'), 
+                        ('phenomenon', 'FA'), 
+                        ('significance', 'A'), 
+                        ('eventTrackingNumber', '0001'), 
+                        ('startTimeVTEC', '700116T0018Z'), 
+                        ('startTime', '2070-01-16T00:18:00'), 
+                        ('endTimeVTEC', '700116T0019Z'), 
+                        ('endTime', '2070-01-16T00:19:00'), 
+                        ('vtecString', '/O.NEW.KOAX.FA.A.0001.700116T0018Z-700116T0019Z/')]), 
+                    OrderedDict([
+                        ('vtecRecordType', 'hvtecRecordType'), 
+                        ('name', 'hvtecRecord'), 
+                        ('nwsli', '00000'), 
+                        ('floodSeverity', '0'), 
+                        ('immediateCause', 'ER'), 
+                        ('floodBeginTimeVTEC', '000000T0000Z'), 
+                        ('floodCrestTimeVTEC', '000000T0000Z'), 
+                        ('floodEndTimeVTEC', '000000T0000Z'), 
+                        ('floodBeginTime', '000-00-00T00:00Z'), 
+                        ('floodCrestTime', '000-00-00T00:00Z'), 
+                        ('floodEndTime', '000-00-00T00:00Z'), 
+                        ('floodRecordStatus', 'OO'), 
+                        ('vtecString', '/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/')])]), 
+                ('summaryHeadlines', u'...AREAL FLOOD WATCH in effect from Monday evening through late Monday night...\n'), 
+                ('headlines', [u'AREAL FLOOD WATCH']), 
+                ('timeZones', ['CST6CDT']), 
+                ('status', 'Actual'), 
+                ('CAP_areaString', u'Cuming; Burt; Dodge; Washington (Nebraska) '), 
+                ('sections', 
+                    OrderedDict([('section', [OrderedDict([
+                       ('attribution', u'THE NATIONAL WEATHER SERVICE IN OMAHA/VALLEY HAS ISSUED A'), 
+                       ('firstBullet:editable', u'* TEST AREAL FLOOD WATCH FOR PORTIONS OF EAST CENTRAL NEBRASKA AND \n  NORTHEAST NEBRASKA...INCLUDING THE FOLLOWING AREAS...IN EAST \n  CENTRAL NEBRASKA...Burt...Dodge AND Washington. IN NORTHEAST \n  NEBRASKA...Cuming.\n\n'), 
+                       ('pointPhrase:editable', ''), 
+                       ('timePhrase:editable', '* through late tonight\n'), 
+                       ('basis:editable', '* |* BASIS FOR THE WATCH *|\n'), 
+                       ('impacts:editable', '* |* (OPTIONAL) POTENTIAL IMPACTS OF FLOODING *|\n'), 
+                       ('description', u'THE NATIONAL WEATHER SERVICE IN OMAHA/VALLEY HAS ISSUED A* TEST AREAL FLOOD WATCH FOR PORTIONS OF EAST CENTRAL NEBRASKA AND \n  NORTHEAST NEBRASKA...INCLUDING THE FOLLOWING AREAS...IN EAST \n  CENTRAL NEBRASKA...Burt...Dodge AND Washington. IN NORTHEAST \n  NEBRASKA...Cuming.\n\n* through late tonight\n* |* BASIS FOR THE WATCH *|\n* |* (OPTIONAL) POTENTIAL IMPACTS OF FLOODING *|\n'), 
+                       ('info', [OrderedDict([
+                           ('category', 'Met'), 
+                           ('responseType', 'Prepare'), 
+                           ('urgency', 'Future'), 
+                           ('severity', 'Severe'), 
+                           ('certainty', 'Possible'), 
+                           ('onset_datetime', datetime.datetime(2011, 2, 8, 4, 0)), 
+                           ('WEA_text', ''), ('pil', 'FFAOAX'), 
+                           ('sentBy', u'OMAHA/VALLEY'), 
+                           ('event', 'AREAL FLOOD WATCH'), 
+                           ('eventEndingTime_datetime', datetime.datetime(2011, 2, 8, 12, 0))])])])])])), 
+               ('callsToAction', OrderedDict([('callToAction', [])])), 
+               ('polygonText', ''), 
+               ('polygons', OrderedDict([('polygon', [OrderedDict([
+                          ('point', 
+                           [OrderedDict([('latitude', '41.8881072998'), ('longitude', '-96.6248855591')]), 
+                            OrderedDict([('latitude', '41.5117340088'), ('longitude', '-96.559425354')]), 
+                            OrderedDict([('latitude', '41.757194519'), ('longitude', '-96.3630599976')]), 
+                            OrderedDict([('latitude', '41.7899246216'), ('longitude', '-96.3630599976')]), 
+                            OrderedDict([('latitude', '41.8881072998'), ('longitude', '-96.6248855591')])])])])])), 
+              ('timeMotionLocation', OrderedDict()), 
+              ('impactedLocations', OrderedDict([('location', [{'locationName': u'Burt'}, {'locationName': u'Dodge'}, {'locationName': u'Washington'}, {'locationName': u'Cuming'}, 
+                  {'point': OrderedDict([('latitude', '41.9867'), ('longitude', '-96.9135')])}, {'locationName': u'WISNER'}, {'point': OrderedDict([('latitude', '41.8377'), ('longitude', '-96.7073')])}, {'locationName': u'WEST POINT'}, {'point': OrderedDict([('latitude', '41.8351'), ('longitude', '-96.4658')])}, {'locationName': u'OAKLAND'}, {'point': OrderedDict([('latitude', '41.9361'), ('longitude', '-96.4719')])}, {'locationName': u'LYONS'}, {'point': OrderedDict([('latitude', '42.0081'), ('longitude', '-96.2507')])}, {'locationName': u'DECATUR'}, {'point': OrderedDict([('latitude', '41.7774'), ('longitude', '-96.2227')])}, {'locationName': u'TEKAMAH'}, {'point': OrderedDict([('latitude', '41.4408'), ('longitude', '-96.4921')])}, {'locationName': u'FREMONT'}, {'point': OrderedDict([('latitude', '41.5442'), ('longitude', '-96.1367')])}, {'locationName': u'BLAIR'}])])), ('observations', OrderedDict())])])])), 
+('sentTimeZ', '2011-02-08T04:00:00+00:00'), 
+('sentTimeZ_datetime', datetime.datetime(2011, 2, 8, 4, 0)), 
+('sentTimeLocal', '2011-02-07T22:00:00-06:00'), 
+('timeZones', ['CST6CDT'])])
 
 '''
 
@@ -381,6 +223,7 @@ import FormatTemplate
 from xml.etree.ElementTree import Element, SubElement, tostring
 import os, collections, datetime, dateutil.parser
 from TextProductCommon import TextProductCommon
+
 
 class Format(FormatTemplate.Formatter):
     
@@ -395,7 +238,7 @@ class Format(FormatTemplate.Formatter):
         self._tpc = TextProductCommon()
         self.capVersion = 'urn:oasis:names:tc:emergency:cap:1.2'
         self.issuedBy = ' Issued by '
-
+        
         messages = []       
         if prodDict is not None:
             # For each segment of the prodDict, there will be a separate CAP message
@@ -420,27 +263,29 @@ class Format(FormatTemplate.Formatter):
         # Main Section                  
         for tag in self.CAP_tags(): 
             self.createXML(xml, tag, prodDict, segDict) 
-        # Info Section
-        infoDicts = self._tpc.getVal(segDict, 'info')
-        for infoDict in infoDicts:
-            infoElement = SubElement(xml, 'info')
-            for tag in self.info_tags():
-                self.createXML(infoElement, tag, prodDict, segDict, infoDict)
-            # Parameters and Event Code
-            self.createBlocks(infoElement, prodDict, segDict, infoDict)
-            # Area
-            self.createAreas(infoElement, prodDict, segDict, infoDict)
+        for sectionDict in segDict.get('sections')['section']:
+            # Info Section
+            infoDicts = self._tpc.getVal(sectionDict, 'info')
+            for infoDict in infoDicts:
+                infoElement = SubElement(xml, 'info')
+                for tag in self.info_tags():
+                    self.createXML(infoElement, tag, prodDict, segDict, sectionDict, infoDict)
+                # Parameters and Event Code
+                self.createBlocks(infoElement, prodDict, segDict, sectionDict, infoDict)
+                # Area
+                self.createAreas(infoElement, prodDict, segDict, sectionDict, infoDict)
 
     class tag:
         '''
         The tag class holds the information about how to create an XML tag and value.
         It is used by the method createXML.
         '''
-        def __init__(self, tagName, method=None, prodKey=None, segKey=None, infoKey=None, value=None):  
+        def __init__(self, tagName, method=None, prodKey=None, segKey=None, sectionKey=None, infoKey=None, value=None):  
             self.method = method 
             self.tagName = tagName
             self.prodKey = prodKey
             self.segKey = segKey 
+            self.sectionKey= sectionKey
             self.infoKey = infoKey  
             self.value = value
              
@@ -478,12 +323,12 @@ class Format(FormatTemplate.Formatter):
             self.tag('expires', self.createExpires), 
             self.tag('senderName'),  # NWS Tampa Bay (West Central Florida
             self.tag('headline', self.createHeadline),
-            self.tag('description', segKey='description'),
+            self.tag('description', sectionKey='description'),
             self.tag('instruction', method=self.createCallsToAction),
             self.tag('web', value='http://www.weather.gov')
             ]
 
-    def createXML(self, xml, tag, prodDict, segDict, infoDict=None):  
+    def createXML(self, xml, tag, prodDict, segDict, sectionDict=None, infoDict=None):  
         '''
         For a given tag object, determine it's value and create an XML entry for it
         
@@ -491,20 +336,23 @@ class Format(FormatTemplate.Formatter):
         @param tag: a tag object specifying the tag and its value
         @prodDict: dictionary values provided by the product generator
         @segDict: dictionary of values for a segment of the legacy product
+        @sectionDict: dictionary of values for a section of a segment of the legacy product
+          There could be multiple sections when multiple hazards are in a segment.
         @infoDict: dictionary of values for an info section. 
-          There could be multiple info sections when multiple hazards are in a segment.
-          The info section can also be used for generating different languages.
+          There could be multiple info e.g. if used for generating different languages.
         '''    
         subElement = SubElement(xml, tag.tagName)
         value = None
         if tag.value:
             value = tag.value
         elif tag.method:
-            value = tag.method(prodDict, segDict, infoDict)
+            value = tag.method(prodDict, segDict, sectionDict, infoDict)
         elif tag.prodKey:
             value = self._tpc.getVal(prodDict, tag.prodKey)
         elif tag.segKey:
             value = self._tpc.getVal(segDict, tag.segKey)
+        elif tag.sectionKey:
+            value = self._tpc.getVal(sectionDict, tag.sectionKey)
         elif tag.infoKey:
             value = self._tpc.getVal(infoDict, tag.infoKey)
         if value: 
@@ -519,7 +367,7 @@ class Format(FormatTemplate.Formatter):
         @infoDict: dictionary of values for an info section. 
     
     '''                                                           
-    def createBlocks(self, xml, prodDict, segDict, infoDict):
+    def createBlocks(self, xml, prodDict, segDict, sectionDict, infoDict):
         '''
         Create the parameters and eventCode blocks for the CAP info section
         '''
@@ -533,7 +381,7 @@ class Format(FormatTemplate.Formatter):
         dt = self._tpc.getVal(infoDict, 'eventEndingTime_datetime')
         eventEndingTime = self._tpc.formatDatetime(dt, timeZone=self._tz)       
         self.createBlock(xml, 'parameter', {'valueName':'eventEndingTime', 'value':eventEndingTime})             
-        weaText = segDict.get('WEA_text', '')
+        weaText = infoDict.get('WEA_text', '')
         if weaText:
             dt = self._tpc.getVal(segDict, 'expireTime_datetime')
             dStr = self._tpc.formatDatetime(dt, '%I:%M %p %Z %a', self._tz)
@@ -542,7 +390,7 @@ class Format(FormatTemplate.Formatter):
         self.createBlock(xml, 'parameter', {'valueName':'TIME...MOT...LOC', 'value':segDict.get('timeMotionLocation')})             
         self.createBlock(xml, 'eventCode', {'valueName':'SAME', 'value':prodDict.get('productID')})             
                 
-    def createAreas(self, xml, prodDict, segDict, infoDict):  
+    def createAreas(self, xml, prodDict, segDict, sectionDict, infoDict):  
         '''
         create the areas portion of the CAP info section
         '''      
@@ -563,12 +411,12 @@ class Format(FormatTemplate.Formatter):
             for ugcDict in ugcs:
                 self.createBlock(areaElement, 'geocode', {'valueName':'UGC', 'value':ugcDict.get('text')} )     
      
-    def createIdentifier(self, prodDict, segDict, infoDict): 
+    def createIdentifier(self, prodDict, segDict, sectionDict, infoDict): 
         # TODO identifier 
         self.identifier = 'NOAA-NWS-ALERTS-FL20110125203700FlashFloodWarning20110125213000FL.TBWSVRTBW.f809e7f8ffe0c3658e925873d720fe9c' 
         return self.identifier
     
-    def createMsgType(self, prodDict, segDict, infoDict):
+    def createMsgType(self, prodDict, segDict, sectionDict, infoDict):
         '''
          NOTE: First check for Alert, then Update, then Cancel
          
@@ -593,7 +441,7 @@ class Format(FormatTemplate.Formatter):
         return self.msgType
 
     
-    def createNote(self, prodDict, segDict, infoDict):
+    def createNote(self, prodDict, segDict, sectionDict, infoDict):
         '''
         Create the note e.g. Alert for Citrus; Hernando; Pasco (Florida) Issued by the National Weather Service
 
@@ -603,7 +451,7 @@ class Format(FormatTemplate.Formatter):
         note = self.msgType + ' for '+ aStr + self.issuedBy + 'the National Weather Service'
         return note
 
-    def createReferences(self, prodDict, segDict, infoDict):
+    def createReferences(self, prodDict, segDict, sectionDict, infoDict):
         '''
         <references>sender,identifier,sent</references> 
         Where sender,identifier, and sent are the sender, identifier, and sent elements from the earlier 
@@ -620,26 +468,21 @@ class Format(FormatTemplate.Formatter):
         #    reference = 'w-nws.webmaster@noaa.gov, '+self.identifier + ', '+prodDict.get('sentTimeLocal')
         return reference
 
-    def createEvent(self, prodDict, segDict, infoDict):
+    def createEvent(self, prodDict, segDict, sectionDict, infoDict):
         '''
         e.g. Flash Flood Warning
-
-        @prodDict: dictionary values provided by the product generator
-        @segDict: dictionary of values for a segment of the legacy product
-        @infoDict: dictionary of values for an info section. 
-
         '''
         self.event = self._tpc.getVal(segDict, "headlines")[0]
         return self.event
     
-    def createOnset(self, prodDict, segDict, infoDict):
+    def createOnset(self, prodDict, segDict, sectionDict, infoDict):
         '''
         Create onset entry 
         '''
         dt = self._tpc.getVal(infoDict, 'onset_datetime')
         return self._tpc.formatDatetime(dt, timeZone=self._tz)
 
-    def createExpires(self, prodDict, segDict, infoDict):
+    def createExpires(self, prodDict, segDict, sectionDict, infoDict):
         '''
         Create expires entry
         '''
@@ -647,7 +490,7 @@ class Format(FormatTemplate.Formatter):
         return self._tpc.formatDatetime(dt, timeZone=self._tz)
     
     
-    def createHeadline(self, prodDict, segDict, infoDict):
+    def createHeadline(self, prodDict, segDict, sectionDict, infoDict):
         # TODO Outstanding issue: Handle multiple events per segment
         '''
         "Flash Flood Warning issued January 25 at 3:37PM EST expiring January 25 at 4:30PM EST by NWS Tampa Bay"
@@ -665,10 +508,6 @@ class Format(FormatTemplate.Formatter):
         etc.) which are in effect until further notice, the format for <headline> is as follows.
         <headline>WWA issued Month DD at hh:mmAM/PM LST/LDT until further notice by NWS Office</headline>
 
-        @prodDict: dictionary values provided by the product generator
-        @segDict: dictionary of values for a segment of the legacy product
-        @infoDict: dictionary of values for an info section. 
-
         '''
         st = infoDict.get('onset_datetime')
         format = '%B %d at %I:%M%p %Z'
@@ -680,13 +519,8 @@ class Format(FormatTemplate.Formatter):
             et = '' 
         return infoDict.get('event') + ' issued ' + st + et + ' by NWS ' + infoDict.get('sentBy')
     
-    def createCallsToAction(self, prodDict, segDict, infoDict):
-        '''
-        
-        @prodDict: dictionary values provided by the product generator
-        @segDict: dictionary of values for a segment of the legacy product
-        @infoDict: dictionary of values for an info section. 
-        
+    def createCallsToAction(self, prodDict, segDict, sectionDict, infoDict):
+        '''        
         '''
         if 'callsToAction' in segDict and segDict['callsToAction']:
             callsToAction = segDict['callsToAction']
@@ -705,3 +539,4 @@ class Format(FormatTemplate.Formatter):
         sub = SubElement(xml, tag, attrs)
         if text is not None:
             sub.text = text
+

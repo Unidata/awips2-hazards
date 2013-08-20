@@ -37,4 +37,16 @@ MetaData_FAA = [
                 {"displayString": "UU (Unknown)", "productString": "UU","identifier": "UU"},
                 ],
            },
+            {                      
+             "fieldType":"CheckList",
+             "label":"Calls to Action (1 or more):",
+             "fieldName": "cta",
+             "lines": 3,
+             'values': ['FloodWatch'],
+             "choices": [
+                     {"displayString": "A Flood Watch means...", "identifier": "FloodWatch",
+                      "productString":  '''A FLOOD WATCH MEANS THERE IS A POTENTIAL FOR FLOODING BASED ON CURRENT FORECASTS.\n\nYOU SHOULD MONITOR LATER FORECASTS AND BE ALERT FOR POSSIBLE FLOOD WARNINGS. THOSE LIVING IN AREAS PRONE TO FLOODING SHOULD BE PREPARED TO TAKE ACTION SHOULD FLOODING DEVELOP.''',},
+                    ]
+            },
+                
         ] + CAP_Fields

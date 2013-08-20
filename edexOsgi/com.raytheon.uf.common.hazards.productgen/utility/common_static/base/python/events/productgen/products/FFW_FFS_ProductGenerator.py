@@ -129,41 +129,37 @@ class Product(ProductTemplate.Product):
         return productSegmentGroups
 
 
-    def getBasisPhrase(self, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
-                    creationTime, testMode, wfoCity, lineLength=69):
+    def getBasisPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69):
         #  Time is off of last frame of data
         try :
             eventTime = self._sessionDict["framesInfo"]["frameTimeList"][-1]
         except :
-            eventTime = hazard.get("startTime")            
+            eventTime = vtecRecord.get("startTime")            
         eventTime = self._tpc.getFormattedTime(eventTime/1000, "%I%M %p %Z ", 
                                                shiftToLocal=1, stripLeading=1).upper()
         para = "* at "+eventTime
-        basis = self.getMetadataItemForEvent(self.segmentEventDict, self.metaData,  "basis")
+        basis = self.getMetadataItemForEvent(eventDict, metaData,  "basis")
         if basis is None :
-            basis = "Flash Flooding was reported"
-        else :
-            basis = " Flash Flooding"
-        para += basis + " " + self.descWxLocForEvent(self.segmentEventDict)
-        motion = self.descMotionForEvent(self.segmentEventDict)
+            basis = " Flash Flooding was reported"
+        para += basis + " " + self.descWxLocForEvent(eventDict)
+        motion = self.descMotionForEvent(eventDict)
         if motion == None :
             para += "."
         else :
             para += self.descWxLocForEvent(eventDict, ". THIS RAIN WAS ", \
                ". THIS STORM WAS ", ". THESE STORMS WERE ", "-")
             para += motion+"."
-        return "\n"+para, None, None, None
+        return "\n"+para
     
-    def getImpactsPhrase(self, multRecords, impact, hazard, canHazard, areaPhrase, eventType, eventDict, metaDataList, 
-                    creationTime, testMode, wfoCity, lineLength=69 ):
+    def getImpactsPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69 ):
         '''
         #* LOCATIONS IN THE WARNING INCLUDE BUT ARE NOT LIMITED TO CASTLE
         #  PINES...THE PINERY...SURREY RIDGE...SEDALIA...LOUVIERS...HIGHLANDS
         #  RANCH AND BEVERLY HILLS. 
-        '''     
+        '''        
         para = "* LOCATIONS IN THE WARNING INCLUDE BUT" + \
-               " ARE NOT LIMITED TO "
-        para += self.getCityInfo(eventDict.get("ugcs"))
+               " ARE NOT LIMITED TO"
+        para += self.getCityInfo(self._ugcs)
         return "\n"+para
 
 

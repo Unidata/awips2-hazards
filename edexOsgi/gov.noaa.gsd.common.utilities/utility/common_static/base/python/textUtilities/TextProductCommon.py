@@ -17,6 +17,12 @@ import logging, UFStatusHandler
 from MapInfo import MapInfo
 from datetime import datetime
 from dateutil import tz
+import EventFactory
+import GeometryFactory
+import JUtil
+
+# The size of the buffer for default flood polygons.
+DEFAULT_POLYGON_BUFFER = 0.05
 
 class TextProductCommon(object):
     
@@ -44,6 +50,64 @@ class TextProductCommon(object):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
         self.logger.setLevel(logging.INFO)  
+
+    def createHazardEvents(self, eventDicts, siteID):
+        """
+        Creates the Java hazard events, based on the eventDicts. 
+        
+        @param eventDicts: Python dictionaries representing hazard events        
+        @return: A list of hazard events (HazardEvent.py)
+        """
+        hazardEvents = []
+        
+        for eventDict in eventDicts:
+            hazardEvent = EventFactory.createEvent()
+            hazardDict = {}
+            geometryList = []
+            for key in eventDict: 
+                if key in ['saveEventID']: continue
+                value = eventDict.get(key)
+                if   key == 'eventID': 
+                    hazardEvent.setEventID(JUtil.pyValToJavaObj(value))
+                elif key == 'siteID':
+                    if eventDict.get('saveSiteID'):
+                        hazardEvent.setSiteID(eventDict.get('saveSiteID'))
+                    else:
+                        hazardEvent.setSiteID(siteID)
+                    hazardDict['siteID'] = siteID
+                elif key == 'state': hazardEvent.setHazardState(value)
+                elif key in ['phenomenon', 'phen']: hazardEvent.setPhenomenon(value)
+                elif key in ['significance', 'sig']: hazardEvent.setSignificance(value)
+                elif key == 'subType': hazardEvent.setSubtype(value)
+                elif key == 'issueTime': 
+                    if value:
+                        hazardEvent.setIssueTime(datetime.fromtimestamp(value / 1000))
+                        hazardDict['saveIssueTime'] = value
+                elif key == 'startTime': hazardEvent.setStartTime(datetime.fromtimestamp(value / 1000))
+                elif key == 'endTime': hazardEvent.setEndTime(datetime.fromtimestamp(value / 1000))
+                elif key == 'mode': hazardEvent.setHazardMode(value)
+                elif key == 'shapes':
+                    for shape in value:
+                        if shape.get('shapeType') == 'polygon':
+                            polygon = shape.get('points')
+                            geometryList.append(GeometryFactory.createPolygon(polygon, holes=None))
+                        if shape.get('shapeType') == 'point':
+                            point = shape.get('point')
+                            pointGeometry = GeometryFactory.createPoint(point)
+                            geometryList.append(pointGeometry.buffer(DEFAULT_POLYGON_BUFFER))
+                    #hazardDict[key] = value 
+                else:
+                    hazardDict[key] = value
+                                                 
+            hazardEvent.setHazardAttributes(hazardDict)
+            if len(geometryList) == 1:         
+                hazardEvent.setGeometry(geometryList[0])
+            else:
+                multiPolygon = GeometryFactory.createMultiPolygon(geometryList, 'polygons')
+                hazardEvent.setGeometry(multiPolygon)
+                
+            hazardEvents.append(hazardEvent)                        
+        return hazardEvents
                 
     def formatDatetime(self, dt, format='ISO', timeZone=None):
         '''
@@ -62,7 +126,7 @@ class TextProductCommon(object):
         else:
             return new_time.strftime(format)  
  
-    def getVal(self, dictionary, key, default=None):
+    def getVal(self, dictionary, key, default=None, altDict=None):
         '''
         Convenience method to access dictionary keys and account for :skip and :editable suffixes
         
@@ -73,6 +137,8 @@ class TextProductCommon(object):
         for dictKey in [key, key+':skip', key+':editable']:
             if dictionary.get(dictKey): 
                 return dictionary.get(dictKey)
+            if altDict and altDict.get(dictKey):
+                return altDict.get(dictKey)
         return default
                
     def setSiteID(self, siteID):
@@ -512,17 +578,26 @@ class TextProductCommon(object):
             timeWords = ' ' + timeWords   #add a leading space
         return timeWords
 
-    def substituteBulletedText(self, capText, defaultText, frameit='Never', lineLength=69):
+    def substituteBulletedText(self, text, defaultText, frameit='Never', lineLength=69):
         '''
-        Returns a properly formatted bulleted text based on
-        the capText variable.  If capText is None or 0 length, then
-        the default text is used.  frameit can be 'Never', in which
-        nothing is wrapped in framing codes, 'Always' in which the 
-        text (default or cap) is wrapped in framing codes, or 
-        DefaultOnly' in which just the default text is wrapped.
+        Returns a properly formatted bulleted text 
+        
+        @param text:  Can be a single text string or list of text strings
+          which will be concatenated together with carriage returns
+        @param defaultText: If text is None or 0 length, then
+            the default text is used. 
+        @param frameit:  can be 
+             'Never', in which nothing is wrapped in framing codes, 
+             'Always' in which the text (default or cap) is wrapped in framing codes, or 
+             'DefaultOnly' in which just the default text is wrapped.
         '''
-        if capText is not None and len(capText):
-            textToUse = capText
+        if text is not None and len(text):
+            if type(text) is types.ListType:
+                newText = ''
+                for t in text:
+                    newText += t + '\n'
+                text = newText
+            textToUse = text
             if frameit == 'Always':
                 textToUse = '|* ' + textToUse + ' *|'
         else:
@@ -775,7 +850,17 @@ class TextProductCommon(object):
             self.logger.info(actionCode + 'not recognized in actionControlWord.')
             return '<actionControlWord>'
 
-    def getHeadlines(self, vtecRecords, productID, creationTime):
+    def getHeadlinesAndSections(self, vtecRecords, metaDataList, productID, creationTime):
+        '''
+        Order vtec records and create the sections for the segment
+        
+        @param vtecRecords:  vtecRecords for a segment
+        @param metaDataList: list of (metaData, eventDict) for the segment
+        @param productID: product ID e.g. FFA, CWF, etc.
+        @param creationTime: in seconds so that it compares to the vtec records
+        '''
+        sections = []
+        headlines = []
         headlineStr = ''
         hList = copy.deepcopy(vtecRecords)
         if len(hList):
@@ -800,6 +885,7 @@ class TextProductCommon(object):
    
             #assemble the vtecRecord type
             hazStr = vtecRecord['hdln']
+            headlines.append(hazStr)
             #hazStr = self.convertToLower(hazStr)
 
             # if the vtecRecord is a convective watch, tack on the etn
@@ -822,11 +908,28 @@ class TextProductCommon(object):
                   None, None, vtecRecord['phen'], vtecRecord['sig'], vtecRecord['act'],
                   vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
                 headlineStr = headlineStr + '...' + hazStr + localStr + '...\n'
-                
+            
+            # Add to section
+            for metaData, eventDict in metaDataList:
+                if eventDict.get('eventID') == vtecRecord['eventID']:
+                    sections.append((vtecRecord, metaData, eventDict))
+                    break 
+
+            # Add replaceStr
+            replacedBy = eventDict.get('replacedBy')
+            replaces = eventDict.get('replaces')
+            if replacedBy:
+                replaceStr =  '...REPLACED BY ' + replacedBy + '...\n'
+            elif replaces:
+                replaceStr =  '...REPLACES ' + replaces + '...\n'
+            else:
+                replaceStr = ''
+            headlineStr += replaceStr 
+                    
             # always remove the main vtecRecord from the list
             hList.remove(vtecRecord)
             
-        return headlineStr 
+        return headlineStr, headlines, sections
         
     def getTimingPhrase(self, vtecRecord, issueTime, stype=None, etype=None):
         '''
