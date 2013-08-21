@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.IAction;
 
 import java.util.List;
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 3/22/13                 Bryon.Lawrence    Added support for asynchronous results
  *                                           from recommenders and product generators.
  *                                           Added enum for action types.
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author Chris Golden
@@ -50,15 +52,15 @@ public class ToolAction implements IAction {
      */
     private ToolActionEnum action;
 
-    /**
-     * Detail text, if any.
-     */
-    private String details;
+    private String toolName;
 
     /**
      * Auxiliary details text, if any.
+     * 
+     * TODO This should probably be replaced with a Map<String, Serializable> or
+     * modify {@link Dict} to extend that map.
      */
-    private String aux;
+    private Dict aux;
 
     /**
      * List of recommender generated events, if any.
@@ -69,6 +71,8 @@ public class ToolAction implements IAction {
      * List of generated products, if any.
      */
     private List<IGeneratedProduct> productList;
+
+    private String productGeneratorName;
 
     // Public Constructors
 
@@ -87,12 +91,12 @@ public class ToolAction implements IAction {
      * 
      * @param action
      *            Identifier of the action that is occurring.
-     * @param details
-     *            Optional JSON string giving additional details.
+     * @param toolName
+     * 
      */
-    public ToolAction(ToolActionEnum action, String details) {
+    public ToolAction(ToolActionEnum action, String toolName) {
         this.action = action;
-        this.details = details;
+        this.toolName = toolName;
     }
 
     /**
@@ -100,14 +104,14 @@ public class ToolAction implements IAction {
      * 
      * @param action
      *            Identifier of the action that is occurring.
-     * @param details
-     *            Optional JSON string giving additional details.
+     * @param toolName
+     * 
      * @param aux
-     *            Optional JSON string giving auxiliary details.
+     *            Optional auxiliary details.
      */
-    public ToolAction(ToolActionEnum action, String details, String aux) {
+    public ToolAction(ToolActionEnum action, String toolName, Dict aux) {
         this.action = action;
-        this.details = details;
+        this.toolName = toolName;
         this.aux = aux;
     }
 
@@ -118,14 +122,15 @@ public class ToolAction implements IAction {
      *            Identifier of the action that is occurring.
      * @param eventList
      *            List of recommended events
-     * @param aux
+     * @param toolName
      *            Name of the tool which generated these events
      */
+
     public ToolAction(ToolActionEnum action, EventSet<IEvent> eventList,
-            String aux) {
+            String toolName) {
         this.action = action;
         this.recommendedEventList = eventList;
-        this.aux = aux;
+        this.toolName = toolName;
     }
 
     /**
@@ -135,14 +140,14 @@ public class ToolAction implements IAction {
      *            Identifier of the action that is occurring.
      * @param productList
      *            List of recommended events
-     * @param aux
+     * @param productGeneratorName
      *            Name of the tool which generated these events
      */
-    public ToolAction(ToolActionEnum action, String aux,
+    public ToolAction(ToolActionEnum action, String productGeneratorName,
             List<IGeneratedProduct> productList) {
         this.action = action;
         this.productList = productList;
-        this.aux = aux;
+        this.productGeneratorName = productGeneratorName;
     }
 
     // Public Methods
@@ -166,31 +171,16 @@ public class ToolAction implements IAction {
         this.action = action;
     }
 
-    /**
-     * Get the additional details.
-     * 
-     * @return JSON string giving additional details.
-     */
-    public String getDetails() {
-        return details;
-    }
-
-    /**
-     * Set the additional details as specified.
-     * 
-     * @param jsonText
-     *            JSON string giving additional details.
-     */
-    public void setJSONText(String details) {
-        this.details = details;
+    public String getToolName() {
+        return toolName;
     }
 
     /**
      * Get the auxiliary details.
      * 
-     * @return JSON string giving auxiliary details.
+     * @return auxiliary details.
      */
-    public String getAuxiliaryDetails() {
+    public Dict getAuxiliaryDetails() {
         return aux;
     }
 
@@ -222,5 +212,12 @@ public class ToolAction implements IAction {
      */
     public List<IGeneratedProduct> getProductList() {
         return productList;
+    }
+
+    /**
+     * @return the productGeneratorName
+     */
+    public String getProductGeneratorName() {
+        return productGeneratorName;
     }
 }

@@ -370,43 +370,6 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String runTool(String toolName, String runData) {
-        final String methodName = "runTool";
-        logCallingMethod(methodName);
-        log(String.format("toolName: %s", toolName));
-        log(String.format("runData: %s", runData));
-        benchmarkStart(methodName);
-        String result = decorated.runTool(toolName, runData);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String getDialogInfo(String toolName) {
-        final String methodName = "getDialogInfo";
-        logCallingMethod(methodName);
-        log(String.format("toolName: %s", toolName));
-        benchmarkStart(methodName);
-        String result = decorated.getDialogInfo(toolName);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String getSpatialInfo(String toolName) {
-        final String methodName = "getSpatialInfo";
-        logCallingMethod(methodName);
-        log(String.format("toolName: %s", toolName));
-        benchmarkStart(methodName);
-        String result = decorated.getSpatialInfo(toolName);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
     public void modifyEventArea(String jsonText) {
         final String methodName = "modifyEventArea";
         logCallingMethod(methodName);

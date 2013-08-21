@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.IAction;
 
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
@@ -22,6 +23,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * 
  * </pre>
  * 
@@ -46,7 +48,7 @@ public class SpatialDisplayAction implements IAction {
 
     private String toolName = null;
 
-    private String json = null;
+    private Dict toolParameters = null;
 
     private String eventID = null;
 
@@ -83,10 +85,10 @@ public class SpatialDisplayAction implements IAction {
     }
 
     public SpatialDisplayAction(String actionType, String toolName,
-            String toolJSON) {
+            Dict toolParameters) {
         this.actionType = actionType;
         this.toolName = toolName;
-        this.json = toolJSON;
+        this.toolParameters = toolParameters;
     }
 
     public SpatialDisplayAction(String actionType, String actionIdentifier,
@@ -192,22 +194,12 @@ public class SpatialDisplayAction implements IAction {
         return toolName;
     }
 
-    /**
-     * @return the toolJSON
-     */
-    public String getJSON() {
-        return json;
+    public Dict getToolParameters() {
+        return toolParameters;
     }
 
-    /**
-     * Sets the json payload.
-     * 
-     * @param json
-     *            json payload
-     * @return
-     */
-    public void setJSON(String json) {
-        this.json = json;
+    public void setToolParameters(Dict toolParameters) {
+        this.toolParameters = toolParameters;
     }
 
     /**

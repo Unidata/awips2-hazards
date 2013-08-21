@@ -416,20 +416,6 @@ public interface IHazardServicesModel {
 
     public String getContextMenuEntryCallback(String menuItemName);
 
-    // ********************
-    // TOOL HANDLER
-    // ********************
-
-    /**
-     * Methods to run tools (Recommenders and Product Generators) as well as to
-     * get the Dialog information, Spatial information required.
-     */
-    public String runTool(String toolName, String runData);
-
-    public String getDialogInfo(String toolName);
-
-    public String getSpatialInfo(String toolName);
-
     /**
      * createProductsFromEventIDs -- Generate products from the set of selected
      * events

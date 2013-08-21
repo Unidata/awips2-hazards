@@ -35,6 +35,7 @@ import com.google.gson.JsonPrimitive;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * 4/5/2012                Bryon.Lawrence    Initial creation
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -143,7 +144,12 @@ public class DictDeserializer implements JsonDeserializer<Dict> {
             returnObject = object.getAsBoolean();
         } else if (object.isNumber()) {
             Number number = object.getAsNumber();
-            returnObject = new ComparableLazilyParsedNumber(number);
+            /*
+             * Return a Float here because JUtil.py javaObjToPyVal handles it
+             * when it is passed to the RiverFloodRecommender for example. The
+             * long term solution may be a switch from {@link Dict} to Jackson.
+             */
+            returnObject = Float.valueOf(number.floatValue());
         } else if (object.isString()) {
             returnObject = object.getAsString();
         }

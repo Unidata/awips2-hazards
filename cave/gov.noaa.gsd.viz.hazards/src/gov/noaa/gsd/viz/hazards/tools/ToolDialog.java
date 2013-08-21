@@ -88,6 +88,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           tool dialog.
  * Jul 18, 2013    585     Chris Golden      Changed to support loading
  *                                           from bundle.
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author Chris.Golden
@@ -220,20 +221,14 @@ class ToolDialog extends BasicDialog {
     // Public Methods
 
     /**
-     * Get the current state held by the dialog in the form of a JSON string.
-     * The current state is specified as a dictionary that pairs field name keys
-     * with those fields' values.
+     * Get the current state held by the dialog. The current state is specified
+     * as a dictionary that pairs field name keys with those fields' values.
      * 
-     * @return Current state held by the dialog as a JSON string.
+     * @return Current state held by the dialog.
      */
-    public String getState() {
-        try {
-            return valuesDict.toJSONString();
-        } catch (Exception e) {
-            statusHandler.error("ToolDialog.getState(): Error: Could "
-                    + "not serialize JSON.", e);
-            return null;
-        }
+    public Dict getState() {
+        return valuesDict;
+
     }
 
     /**

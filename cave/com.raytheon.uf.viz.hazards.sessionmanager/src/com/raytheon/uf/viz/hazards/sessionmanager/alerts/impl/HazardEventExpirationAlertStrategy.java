@@ -146,10 +146,12 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                     IHazardEvent alertedEvent = alertedEvents.get(hazardEvent
                             .getEventID());
                     try {
-                        Date alertedEventExpirationTime = (Date) alertedEvent
-                                .getHazardAttribute(HazardConstants.EXPIRATIONTIME);
-                        Date eventExpirationTime = (Date) hazardEvent
-                                .getHazardAttribute(HazardConstants.EXPIRATIONTIME);
+                        Date alertedEventExpirationTime = new Date(
+                                (Long) alertedEvent
+                                        .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+                        Date eventExpirationTime = new Date(
+                                (Long) hazardEvent
+                                        .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
                         if (!alertedEventExpirationTime
                                 .equals(eventExpirationTime)) {
                             /**

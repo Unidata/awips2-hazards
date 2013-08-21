@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
@@ -28,6 +29,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 04, 2013            Xiangbao Jing     Initial induction into repo
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle
  *                                           and to no longer be a singleton.
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -90,7 +92,7 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
                         coord.x, selectedTime);
 
                 SpatialDisplayAction action = new SpatialDisplayAction(
-                        "runTool", toolName, json);
+                        "runTool", toolName, Dict.getInstance(json));
                 getSpatialPresenter().fireAction(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 

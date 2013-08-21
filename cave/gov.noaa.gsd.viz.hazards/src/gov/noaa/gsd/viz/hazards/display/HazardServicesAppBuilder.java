@@ -34,8 +34,10 @@ import gov.noaa.gsd.viz.hazards.tools.ToolsView;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
@@ -722,14 +724,18 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @param toolName
      *            Name of the tool for which parameters are to be gathered.
-     * @param jsonParams
-     *            JSON string giving the parameters for this subview. Within the
-     *            set of all fields that are defined by these parameters, all
-     *            the fields (megawidget specifiers) must have unique
-     *            identifiers.
+     * @param dialogInput
+     *            the parameters for this subview. Within the set of all fields
+     *            that are defined by these parameters, all the fields
+     *            (megawidget specifiers) must have unique identifiers.
      */
-    public void showToolParameterGatherer(String toolName, String jsonParams) {
-        toolsPresenter.showToolParameterGatherer(toolName, jsonParams);
+    public void showToolParameterGatherer(String toolName,
+            Map<String, Serializable> dialogInput) {
+        Dict dict = new Dict();
+        for (String parameter : dialogInput.keySet()) {
+            dict.put(parameter, dialogInput.get(parameter));
+        }
+        toolsPresenter.showToolParameterGatherer(toolName, dict.toJSONString());
     }
 
     @Override

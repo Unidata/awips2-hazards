@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
@@ -205,7 +206,7 @@ public class EventBoxDrawingAction extends AbstractMouseHandler {
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
                                 "newEventArea");
-                        action.setJSON(jsonString);
+                        action.setToolParameters(Dict.getInstance(jsonString));
                         getSpatialPresenter().fireAction(action);
 
                         // Indicate that this drawing action is done.

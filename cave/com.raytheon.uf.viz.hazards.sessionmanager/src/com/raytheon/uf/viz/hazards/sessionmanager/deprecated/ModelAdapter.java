@@ -727,50 +727,6 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * Use AbstractRecommenderEngine.runExecuteRecommender()
-     */
-    @Deprecated
-    public String runTool(String toolName, String runData) {
-        RunData rData = fromJson(runData, RunData.class);
-        if (rData.getEventSet() != null) {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-        EventSet<IEvent> eventSet = new EventSet<IEvent>();
-        eventSet.addAttribute("currentTime", model.getTimeManager()
-                .getCurrentTime().getTime());
-        model.getRecommenderEngine().runExecuteRecommender(toolName, eventSet,
-                rData.getSpatialInfoSerializable(),
-                rData.getDialogInfoSerializable(),
-                getRecommenderListener(toolName));
-        return null;
-    }
-
-    protected abstract IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
-            String toolName);
-
-    /*
-     * Use AbstractRecommenderEngine.getDialogInfo()
-     */
-    @Deprecated
-    public String getDialogInfo(String toolName) {
-        return toJson(model.getRecommenderEngine().getDialogInfo(toolName));
-    }
-
-    /*
-     * Use AbstractRecommenderEngine.getSpatialInfo()
-     */
-    @Deprecated
-    public String getSpatialInfo(String toolName) {
-        Map<String, Serializable> map = model.getRecommenderEngine()
-                .getSpatialInfo(toolName);
-        if (map.isEmpty()) {
-            return null;
-        } else {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-    }
-
-    /*
      * Use ISessionProductManager.getSelectedProducts()
      */
     @Deprecated

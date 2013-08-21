@@ -10,15 +10,20 @@ package gov.noaa.gsd.viz.hazards.display;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.io.Serializable;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.swt.widgets.Display;
 
@@ -26,9 +31,12 @@ import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -63,6 +71,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             of class-scoped.
  * Aug 06, 2013   1265     bryon.lawrence      Added support for undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author bryon.lawrence
@@ -361,23 +370,26 @@ public final class HazardServicesMessageHandler {
      *            The name of the tool to run.
      */
     public void runTool(String toolName) {
+        AbstractRecommenderEngine<?> recommenderEngine = appBuilder
+                .getSessionManager().getRecommenderEngine();
 
         // Check if this tool requires user input from the display...
-        String spatialInputJSON = model.getSpatialInfo(toolName);
-        String dialogInputJSON = model.getDialogInfo(toolName);
+        Map<String, Serializable> spatialInput = recommenderEngine
+                .getSpatialInfo(toolName);
+        Map<String, Serializable> dialogInput = recommenderEngine
+                .getDialogInfo(toolName);
 
-        if (spatialInputJSON != null || dialogInputJSON != null) {
-            if (spatialInputJSON != null) {
+        if (!spatialInput.isEmpty() || !dialogInput.isEmpty()) {
+            if (!spatialInput.isEmpty()) {
                 // This will generally need to be asynchronous
-                processSpatialInput(toolName, spatialInputJSON);
+                processSpatialInput(toolName, spatialInput);
             }
 
-            if (dialogInputJSON != null) {
+            if (!dialogInput.isEmpty()) {
                 // If the dialog dictionary is non-empty, display the
                 // subview for gathering tool parameters.
-                if (!dialogInputJSON.equals("")) {
-                    appBuilder.showToolParameterGatherer(toolName,
-                            dialogInputJSON);
+                if (!dialogInput.isEmpty()) {
+                    appBuilder.showToolParameterGatherer(toolName, dialogInput);
                 }
             }
         } else {
@@ -406,34 +418,33 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Processes JSON representing spatial input required by a tool and
-     * determines what action is needed to retrieve that spatial input. For
-     * example, the storm track tool needs a drag/drop dot to mark the location
-     * of a storm. Based on this, this routine will load the Drag Drop mouse
-     * handler to retrieve this input.
+     * Processes spatial input required by a tool and determines what action is
+     * needed to retrieve that spatial input. For example, the storm track tool
+     * needs a drag/drop dot to mark the location of a storm. Based on this,
+     * this routine will load the Drag Drop mouse handler to retrieve this
+     * input.
      * 
      * @param toolName
      *            The name of the tool being run.
      * @param spatialInput
-     *            JSON string describing the type of spatial input required.
+     *            the type of spatial input required.
      */
-    private void processSpatialInput(String toolName, String spatialInput) {
-        if (spatialInput != null) {
-            Dict spatialDict = Dict.getInstance(spatialInput);
+    private void processSpatialInput(String toolName,
+            Map<String, Serializable> spatialInput) {
 
-            String returnType = (String) spatialDict.get(RETURN_TYPE);
+        String returnType = (String) spatialInput.get(RETURN_TYPE);
 
-            if (returnType.equals(POINT_RETURN_TYPE)) {
-                String label = (String) spatialDict.get(HAZARD_LABEL);
+        if (returnType.equals(POINT_RETURN_TYPE)) {
+            String label = (String) spatialInput.get(HAZARD_LABEL);
 
-                /*
-                 * Activate the storm tracking mouse handler
-                 */
-                appBuilder.requestMouseHandler(
-                        HazardServicesMouseHandlers.DRAG_DROP_DRAWING,
-                        toolName, label);
-            }
+            /*
+             * Activate the storm tracking mouse handler
+             */
+            appBuilder.requestMouseHandler(
+                    HazardServicesMouseHandlers.DRAG_DROP_DRAWING, toolName,
+                    label);
         }
+
     }
 
     /**
@@ -443,21 +454,18 @@ public final class HazardServicesMessageHandler {
      * @param toolName
      *            The name of the tool to run
      * @param sourceKey
-     *            The source of the included json
-     * @param json
-     *            The json to pass to the tool as run data.
+     *            The source of the runData
+     * @param spatialInfo
+     *            Spatial info to pass to the tool.
+     * @param dialogInfo
+     *            Dialog info to pass to the tool.
      * 
      * @throws VizException
      */
-    public void runTool(String toolName, String sourceKey, String json) {
+    public void runTool(String toolName, Dict spatialInfo, Dict dialogInfo) {
 
-        if (sourceKey != null && json != null) {
-            json = "{ \"" + sourceKey + "\":" + json + "}";
-        }
-
-        IHazardServicesModel sessionManager = model;
+        ISessionManager sessionManager = appBuilder.getSessionManager();
         appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
-        String resultJSON = null;
 
         while (Display.getCurrent().readAndDispatch()) {
 
@@ -465,13 +473,42 @@ public final class HazardServicesMessageHandler {
         }
         Display.getCurrent().update();
 
-        // Send the latest frames to the session manager for the tool
-        // to use.
-        resultJSON = sessionManager.runTool(toolName, json);
+        EventSet<IEvent> eventSet = new EventSet<IEvent>();
+        eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
+                .getTimeManager().getCurrentTime().getTime());
+
+        sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
+                eventSet, asMap(spatialInfo), asMap(dialogInfo),
+                getRecommenderListener(toolName));
+
         appBuilder.setCursor(SpatialViewCursorTypes.MOVE_POINT_CURSOR);
 
         notifyModelEventsChanged();
 
+    }
+
+    private Map<String, Serializable> asMap(Dict runData) {
+        if (runData == null) {
+            return null;
+        }
+        Map<String, Serializable> result = new HashMap<String, Serializable>();
+        for (Entry<String, Object> entry : runData.entrySet()) {
+            Object val = entry.getValue();
+            if (val instanceof Serializable) {
+                result.put(entry.getKey(), (Serializable) val);
+            } else {
+                throw new RuntimeException(entry + ", "
+                        + val.getClass().getSimpleName()
+                        + " does not implement Serializable");
+            }
+        }
+        return result;
+    }
+
+    private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
+            String toolName) {
+        return new HazardServicesRecommenderJobListener(
+                appBuilder.getEventBus(), toolName);
     }
 
     /**

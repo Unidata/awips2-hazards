@@ -54,6 +54,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author bryon.lawrence
@@ -68,10 +69,6 @@ public class HazardServicesMessageListener {
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardServicesMessageListener.class);
-
-    private static final String DIALOG_INFO_KEY = "dialogInfo";
-
-    private static final String SPATIAL_INFO_KEY = "spatialInfo";
 
     // Private Constants
 
@@ -198,12 +195,20 @@ public class HazardServicesMessageListener {
             messageHandler.sendFrameInformationToSessionManager();
         } else if (actionType.equals("runTool")) {
             messageHandler.runTool(spatialDisplayAction.getToolName(),
-                    SPATIAL_INFO_KEY, spatialDisplayAction.getJSON());
+                    spatialDisplayAction.getToolParameters(), null);
         } else if (actionType.equals("newEventArea")) {
-            messageHandler.newEventArea(spatialDisplayAction.getJSON(),
-                    spatialDisplayAction.getEventID(), "Spatial");
+            /**
+             * TODO Change newEventArea to take in a POJO
+             */
+            messageHandler.newEventArea(spatialDisplayAction
+                    .getToolParameters().toJSONString(), spatialDisplayAction
+                    .getEventID(), "Spatial");
         } else if (actionType.equals("updateEventData")) {
-            messageHandler.updateEventData(spatialDisplayAction.getJSON(), "");
+            /**
+             * TODO Change updateEventData to take in a POJO
+             */
+            messageHandler.updateEventData(spatialDisplayAction
+                    .getToolParameters().toJSONString(), "");
         } else if (actionType.equals("undo")) {
             messageHandler.handleUndoAction();
         } else if (actionType.equals("redo")) {
@@ -404,22 +409,22 @@ public class HazardServicesMessageListener {
     public void toolActionOccurred(final ToolAction action) {
         switch (action.getAction()) {
         case RUN_TOOL:
-            messageHandler.runTool(action.getDetails());
+            messageHandler.runTool(action.getToolName());
             break;
 
         case RUN_TOOL_WITH_PARAMETERS:
-            messageHandler.runTool(action.getDetails(), DIALOG_INFO_KEY,
+            messageHandler.runTool(action.getToolName(), null,
                     action.getAuxiliaryDetails());
             break;
 
         case TOOL_RECOMMENDATIONS:
-            String toolID = action.getAuxiliaryDetails();
+            String toolID = action.getToolName();
             EventSet<IEvent> eventList = action.getRecommendedEventList();
             messageHandler.handleRecommenderResults(toolID, eventList);
             break;
 
         case PRODUCTS_GENERATED:
-            toolID = action.getAuxiliaryDetails();
+            toolID = action.getProductGeneratorName();
             List<IGeneratedProduct> productList = action.getProductList();
             messageHandler.handleProductGeneratorResult(toolID, productList);
             break;

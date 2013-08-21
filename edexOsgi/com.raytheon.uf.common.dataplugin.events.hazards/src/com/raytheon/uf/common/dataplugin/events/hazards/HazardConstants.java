@@ -37,6 +37,7 @@ import java.util.List;
  * Aug 10, 2013  1265      blawrenc  Added more constants. This helps
  *                                   to clean up the use of strings
  *                                   as keys in other code modules.
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * 
  * </pre>
  * 

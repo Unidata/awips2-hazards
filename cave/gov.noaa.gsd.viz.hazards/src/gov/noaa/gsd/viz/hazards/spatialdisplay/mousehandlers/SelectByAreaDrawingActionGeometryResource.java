@@ -43,6 +43,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                            and to subclass AbstractMouseHandler
  *                                            so as to make usage less special-case.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -298,7 +299,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
                                 "newEventArea");
-                        action.setJSON(eventAreaJSON);
+                        action.setToolParameters(Dict
+                                .getInstance(eventAreaJSON));
                         action.setEventID(eventID);
                         getSpatialPresenter().fireAction(action);
 
@@ -322,7 +324,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         contextMenuDict.put("Add/Remove Shapes", "");
                         geoReferenceDict.put("contextMenu", contextMenuDict);
                         action = new SpatialDisplayAction("updateEventData");
-                        action.setJSON(geoReferenceDict.toJSONString());
+                        action.setToolParameters(geoReferenceDict);
                         getSpatialPresenter().fireAction(action);
                     } else {
                         /*
