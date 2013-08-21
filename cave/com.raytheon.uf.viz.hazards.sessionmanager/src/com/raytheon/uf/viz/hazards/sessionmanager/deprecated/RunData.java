@@ -82,14 +82,16 @@ public class RunData {
 
     public Map<String, Serializable> getDialogInfoSerializable() {
         Map<String, Serializable> result = new HashMap<String, Serializable>();
-        for (Entry<String, Object> entry : dialogInfo.entrySet()) {
-            Object val = entry.getValue();
-            if (val instanceof Serializable) {
-                result.put(entry.getKey(), (Serializable) val);
-            } else {
-                throw new RuntimeException(entry + ", "
-                        + val.getClass().getSimpleName()
-                        + " does not implement Serializable");
+        if (dialogInfo != null) {
+            for (Entry<String, Object> entry : dialogInfo.entrySet()) {
+                Object val = entry.getValue();
+                if (val instanceof Serializable) {
+                    result.put(entry.getKey(), (Serializable) val);
+                } else {
+                    throw new RuntimeException(entry + ", "
+                            + val.getClass().getSimpleName()
+                            + " does not implement Serializable");
+                }
             }
         }
         return result;
@@ -97,14 +99,16 @@ public class RunData {
 
     public Map<String, Serializable> getSpatialInfoSerializable() {
         Map<String, Serializable> result = new HashMap<String, Serializable>();
-        for (Entry<String, Object> entry : spatialInfo.entrySet()) {
-            Object val = entry.getValue();
-            if (val instanceof Serializable) {
-                result.put(entry.getKey(), (Serializable) val);
-            } else {
-                throw new RuntimeException(entry + ", "
-                        + val.getClass().getSimpleName()
-                        + " does not implement Serializable");
+        if (spatialInfo != null) {
+            for (Entry<String, Object> entry : spatialInfo.entrySet()) {
+                Object val = entry.getValue();
+                if (val instanceof Serializable) {
+                    result.put(entry.getKey(), (Serializable) val);
+                } else {
+                    throw new RuntimeException(entry + ", "
+                            + val.getClass().getSimpleName()
+                            + " does not implement Serializable");
+                }
             }
         }
         return result;

@@ -4,7 +4,6 @@ import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HydroEven
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint.HydroGraphTrend;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -13,6 +12,7 @@ import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -116,7 +116,7 @@ public class RiverProFloodRecommender {
      *            A map of user-input spatial information
      * @return A list of hazard events representing river flood recommendations
      */
-    public List<IHazardEvent> getRecommendation(
+    public EventSet<IHazardEvent> getRecommendation(
             Map<String, Object> sessionAttributeMap,
             Map<String, Object> dialogInputMap,
             Map<String, Object> spatialInputMap) {
@@ -553,7 +553,8 @@ public class RiverProFloodRecommender {
      * @param
      * @return
      */
-    private List<IHazardEvent> createHazards(Map<String, Object> dialogInputMap) {
+    private EventSet<IHazardEvent> createHazards(
+            Map<String, Object> dialogInputMap) {
         boolean isWarning = false;
         /*
          * Check the runData for a forecast confidence percentage.
@@ -569,7 +570,7 @@ public class RiverProFloodRecommender {
             }
         }
 
-        List<IHazardEvent> listOfPotentialEventDicts = getFloodDictList(isWarning);
+        EventSet<IHazardEvent> listOfPotentialEventDicts = getFloodDictList(isWarning);
 
         return listOfPotentialEventDicts;
     }
@@ -582,8 +583,8 @@ public class RiverProFloodRecommender {
      *            true - create FL.W hazards, false - create FL.A hazards
      * @return A list of recommended hazards.
      */
-    public List<IHazardEvent> getFloodDictList(boolean isWarning) {
-        List<IHazardEvent> listOfPotentialEventDicts = new ArrayList<IHazardEvent>();
+    public EventSet<IHazardEvent> getFloodDictList(boolean isWarning) {
+        EventSet<IHazardEvent> listOfPotentialEventDicts = new EventSet<IHazardEvent>();
 
         for (RiverForecastGroup riverGroup : riverGroupList) {
             for (RiverForecastPoint riverForecastPoint : riverGroup

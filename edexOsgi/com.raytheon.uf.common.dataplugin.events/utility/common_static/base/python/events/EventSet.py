@@ -89,6 +89,9 @@ class EventSet(JUtil.JavaWrapperClass):
     def getEvents(self):
         return self.events
 
+    def __iter__(self):
+        return iter(self.events)
+    
     def toJavaObj(self):
         self.jobj.addAll(JUtil.pyValToJavaObj(list(self.events)))
         self.jobj.setAttributes(JUtil.pyDictToJavaMap(self.attributes))
