@@ -99,6 +99,11 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           over to a new hazard type when that event
  *                                           was assigned said new type, leading to
  *                                           exceptions.
+ * Aug 22, 2013   1921     Bryon.Lawrence    Added a check for whether or not HID actions
+ *                                           should be fired in the setWidgetStates
+ *                                           method. This was resulting in a HID action
+ *                                           message being sent when the HID was updated
+ *                                           due to a model state change.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2832,8 +2837,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             .error("HazardDetailViewPart.setWidgetsStates(): conversion "
                                     + "of event info to JSON string failed.", e);
                 }
-                hazardDetailView.fireAction(new HazardDetailAction(
-                        "updateEventMetadata", jsonText), true);
+                if (!hazardDetailView.doNotForwardActions()) {
+                    hazardDetailView.fireAction(new HazardDetailAction(
+                            "updateEventMetadata", jsonText), true);
+                }
             }
         }
     }

@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
@@ -55,7 +56,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * May 23, 2013 1257       bsteffen    Initial creation
  * Aug 06, 2013 1265       blawrenc    Updated to support undo/redo
- * 
+ * Aug 22, 2013 1921       blawrenc    Added a deep array equality test to the
+ *                                     changed (Object, Object) method.
  * </pre>
  * 
  * @author bsteffen
@@ -168,6 +170,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             }
         } else if (newObj.equals(oldObj)) {
             return false;
+        } else if ((newObj instanceof Object[]) && (oldObj instanceof Object[])) {
+
+            return !Arrays.deepEquals((Object[]) newObj, (Object[]) oldObj);
+
         }
         return true;
     }
@@ -286,6 +292,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     protected void setState(HazardState state, boolean notify, boolean persist) {
         if (changed(getState(), state)) {
             delegate.setState(state);
+
             if (notify) {
                 eventManager.hazardEventStateModified(
                         new SessionEventStateModified(eventManager, this),
@@ -500,8 +507,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
      *            The value to be pushed to either the undo or redo stack.
      * @return
      */
-    private void pushToStack(final String methodName,
-            final Class<?> className, Object value) {
+    private void pushToStack(final String methodName, final Class<?> className,
+            Object value) {
 
         try {
             if ((!undoInProgress && !redoInProgress) || redoInProgress) {
