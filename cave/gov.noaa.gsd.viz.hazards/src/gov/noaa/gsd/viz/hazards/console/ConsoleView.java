@@ -44,6 +44,7 @@ import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -57,9 +58,12 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * May 08, 2013            Chris.Goldenj     Moved view-part-managing code
+ * May 08, 2013            Chris.Golden      Moved view-part-managing code
  *                                           to new superclass.
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Aug 22, 2013    787     Bryon.Lawrence    Added references to constants for 
+ *                                           RESET_EVENTS, RESET_SETTINGS, and 
+ *                                           RESET_ACTION
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,18 +74,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         implements IConsoleView<Action, RCPMainUserInterfaceElement> {
 
     // Public Static Constants
-
-    /**
-     * Action detail indicating settings are to be reset.
-     */
-    public static final String SETTINGS = "Settings";
-
-    /**
-     * Action detail indicating events are to be reset.
-     */
-    public static final String EVENTS = "Events";
-
-    // Private Static Constants
 
     /**
      * Reset events command menu item text.
@@ -744,10 +736,12 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         } else {
             resetEventsCommandAction = new BasicConsoleAction(
                     RESET_EVENTS_COMMAND_MENU_TEXT, null,
-                    Action.AS_PUSH_BUTTON, null, "Reset", EVENTS);
+                    Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
+                    HazardConstants.RESET_EVENTS);
             resetSettingsCommandAction = new BasicConsoleAction(
                     RESET_SETTINGS_COMMAND_MENU_TEXT, null,
-                    Action.AS_PUSH_BUTTON, null, "Reset", SETTINGS);
+                    Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
+                    HazardConstants.RESET_SETTINGS);
             return Lists.newArrayList(resetEventsCommandAction,
                     resetSettingsCommandAction);
         }

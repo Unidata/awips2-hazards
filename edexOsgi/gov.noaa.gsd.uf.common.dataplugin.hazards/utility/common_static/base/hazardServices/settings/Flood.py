@@ -1,5 +1,7 @@
 Flood = {
     "settingsID" : "Flood",
+    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
+                        "com.raytheon.viz.mpe.ui.MPEPerspective"],
     "displayName": "Canned Flood", 
     "hidHazardCategories": [
         "Hydrology"
@@ -57,11 +59,11 @@ Flood = {
     "maxDuration": 7260, 
     "durationIncrement": 60, 
     "mapCenter": {
-        "lat": 40.1, 
-        "lon": -104.4, 
+        "lat": 41.06, 
+        "lon": -95.91, 
         "zoom": 7
     }, 
-    "defaultSiteID": "BOU", 
+    "defaultSiteID": "OAX", 
     "temporalCounts": {
         "distance": 12, 
         "step": 2000, 

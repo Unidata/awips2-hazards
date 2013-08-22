@@ -240,4 +240,13 @@ public final class HazardConstants {
 
     public static final String AREA_TYPE = "area";
 
+    /*
+     * Information related to the type of a reset action.
+     */
+    public static final String RESET_EVENTS = "Events";
+
+    public static final String RESET_SETTINGS = "Settings";
+
+    public static final String RESET_ACTION = "Reset";
+
 }

@@ -30,6 +30,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -55,6 +56,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                           singleton.
  * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -227,7 +229,7 @@ public class HazardServicesMessageListener {
      */
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
-        if (consoleAction.getAction().equals("Reset")) {
+        if (consoleAction.getAction().equals(HazardConstants.RESET_ACTION)) {
             messageHandler.reset(consoleAction.getId());
         } else if (consoleAction.getAction().equals("SelectedTimeChanged")) {
             try {

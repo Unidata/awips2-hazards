@@ -1,5 +1,6 @@
 WSW = {
-    "settingsID": "WSW", 
+    "settingsID": "WSW",
+    "perspectiveIDs": ["com.raytheon.viz.ui.GFEPerspective"], 
     "displayName": "Canned WSW", 
     "hidHazardCategories": [
         "Winter Weather"
@@ -40,8 +41,8 @@ WSW = {
     "maxDuration": 3600, 
     "durationIncrement": 60, 
     "mapCenter": {
-        "lat": 39.3, 
-        "lon": -104.7, 
+        "lat": 41.06, 
+        "lon": -95.91, 
         "zoom": 7
     }, 
     "defaultSiteID": "OAX", 

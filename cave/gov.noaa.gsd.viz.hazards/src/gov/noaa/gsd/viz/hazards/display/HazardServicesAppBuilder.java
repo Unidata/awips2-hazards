@@ -96,6 +96,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             singleton, and ensuring that any previously
  *                                             class-scoped variables are now member data.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 22, 2013  787       bryon.lawrence      Removed perspective-specific references
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -215,16 +216,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             .newArrayList();
 
     /**
-     * Descriptor of the current CAVE perspective.
-     */
-    private IPerspectiveDescriptor currentPerspectiveDescriptor = null;
-
-    /**
-     * The setting with which Hazard Services is started.
-     */
-    private String initialSetting;
-
-    /**
      * Timer used for interval updates.
      */
     private HazardServicesTimer timer = null;
@@ -324,28 +315,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         currentTime = Long.toString(SimulatedTime.getSystemTime().getTime()
                 .getTime());
 
-        currentPerspectiveDescriptor = VizWorkbenchManager.getInstance()
-                .getActiveEditor().getSite().getPage().getPerspective();
-
-        initialSetting = "";
-
-        /*
-         * We will eventually make Hazard Services perspective agnostic. For
-         * example, the settings definitions will contain mappings to
-         * perspectives.
-         */
-        if (currentPerspectiveDescriptor.getId().contains("D2D")) {
-            initialSetting = "TOR";
-        } else if (currentPerspectiveDescriptor.getId().contains("GFE")) {
-            initialSetting = "WSW";
-        } else if (currentPerspectiveDescriptor.getId().contains("Hydro")) {
-            initialSetting = "Flood";
-        } else if (currentPerspectiveDescriptor.getId().contains("MPE")) {
-            initialSetting = "Flood";
-        }
         messageHandler = new HazardServicesMessageHandler(this, currentTime,
-                initialSetting, "", "{}");
+                "", "{}");
         this.sessionManager = messageHandler.getSessionManager();
+
         new HazardServicesMessageListener(messageHandler, eventBus);
 
     }
@@ -416,9 +389,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         spatialPresenter.getView().setMouseHandler(
                 HazardServicesMouseHandlers.SINGLE_SELECTION, new String[] {});
-
-        // Tell the spatial display to use the setting's zoom parameters.
-        // spatialPresenter.useSettingZoomParameters(initialSetting);
 
         // Set the time line duration.
         messageHandler.updateConsoleVisibleTimeDelta();
@@ -759,11 +729,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         createHazardDetailDisplay(false);
 
         /*
-         * Retrieve and store the descriptor of the newly activated perspective.
-         */
-        currentPerspectiveDescriptor = perspective;
-
-        /*
          * Check perspective type and reconfigure Hazard Services and its
          * components accordingly.
          */
@@ -888,34 +853,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public void recenterRezoomDisplay() {
         spatialPresenter.getView().recenterRezoomDisplay();
-    }
-
-    /**
-     * Return the descriptor of the current perspective.
-     * 
-     * @return Descriptor of the current perspective.
-     */
-    public IPerspectiveDescriptor getCurrentPerspectiveDescriptor() {
-        return currentPerspectiveDescriptor;
-    }
-
-    /**
-     * Get the initial setting.
-     * 
-     * @return Initial setting.
-     */
-    public String getInitialSetting() {
-        return initialSetting;
-    }
-
-    /**
-     * Set the initial setting to be used.
-     * 
-     * @param initialSetting
-     *            The default setting to use.
-     */
-    public void setInitialSetting(String initialSetting) {
-        this.initialSetting = initialSetting;
     }
 
     /**

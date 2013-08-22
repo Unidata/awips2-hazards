@@ -36,6 +36,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
+ * Aug 22, 2013  787       blawrenc    Added capability to associate the setting
+ *                                     with one or more perspectives.
  * 
  * </pre>
  * 
@@ -115,6 +117,13 @@ public class Settings {
      * selection.
      */
     private Boolean addToSelected;
+
+    /**
+     * Identifiers of perspectives (if any) associated with this Setting. When
+     * Hazard Services is started, these are searched to determine the
+     * appropriate setting to load.
+     */
+    private Set<String> perspectiveIDs;
 
     public Settings() {
 
@@ -258,6 +267,14 @@ public class Settings {
         this.addToSelected = addToSelected;
     }
 
+    public Set<String> getPerspectiveIDs() {
+        return perspectiveIDs;
+    }
+
+    public void setPerspectiveIDs(Set<String> perspectiveIDs) {
+        this.perspectiveIDs = perspectiveIDs;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -292,6 +309,9 @@ public class Settings {
                 + ((visibleStates == null) ? 0 : visibleStates.hashCode());
         result = prime * result
                 + ((visibleTypes == null) ? 0 : visibleTypes.hashCode());
+        result = prime * result
+                + ((perspectiveIDs == null) ? 0 : perspectiveIDs.hashCode());
+
         return result;
     }
 
@@ -406,6 +426,16 @@ public class Settings {
         } else if (!visibleTypes.equals(other.visibleTypes)) {
             return false;
         }
+
+        if (perspectiveIDs == null) {
+            if (other.perspectiveIDs != null) {
+                return false;
+            }
+
+        } else if (!perspectiveIDs.equals(other.perspectiveIDs)) {
+            return false;
+        }
+
         return true;
     }
 
@@ -413,4 +443,5 @@ public class Settings {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
 }

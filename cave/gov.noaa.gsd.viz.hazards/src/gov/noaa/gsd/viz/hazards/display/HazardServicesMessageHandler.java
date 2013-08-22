@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.swt.widgets.Display;
 
@@ -45,11 +46,13 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
  * Description: Handles messages delegated from the message listener object.
@@ -72,6 +75,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Aug 06, 2013   1265     bryon.lawrence      Added support for undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 22, 2013    787     bryon.lawrence      Added method to find setting linked to
+ *                                             the current CAVE perspective.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -86,25 +91,6 @@ public final class HazardServicesMessageHandler {
      * expiration product needs to be previewed.
      */
     private final String PREVIEW_ENDED = "previewEnded";
-
-    /**
-     * Canned hazard services setting identifiers
-     */
-    private final String FLOOD_SETTING = "Flood";
-
-    private final String WSW_SETTING = "WSW";
-
-    private final String TOR_SETTING = "TOR";
-
-    /**
-     * Perspective Identifiers A goal is to make this code perspective agnostic.
-     * So, these constants will be going away.
-     */
-    private final String HYDRO_PERSPECTIVE = "Hydro";
-
-    private final String GFE_PERSPECTIVE = "GFE";
-
-    private final String D2D_PERSPECTIVE = "D2D";
 
     /**
      * True/False string representations
@@ -126,10 +112,6 @@ public final class HazardServicesMessageHandler {
     private final String POINT_RETURN_TYPE = "Point";
 
     private final String STAGING_INFO_RETURN_TYPE = "stagingInfo";
-
-    private final String IEVENT_LIST_RETURN_TYPE = "IEvent List";
-
-    private final String EVENT_DICTS_RETURN_TYPE = "EventDicts";
 
     /**
      * Indicates that a range of selected times has been updated.
@@ -187,22 +169,6 @@ public final class HazardServicesMessageHandler {
     private final String FRAME_INDEX = "frameIndex";
 
     private final String FRAME_COUNT = "frameCount";
-
-    /**
-     * A key used to represent results from a recommender
-     */
-    private final String RECOMMENDER = "Recommender";
-
-    /**
-     * Key for retrieving event state information from hazard event dict meta
-     * data.
-     */
-    private final String EVENT_STATE = "eventState";
-
-    /**
-     * Meta data hazard dictionary key.
-     */
-    private final String META_DATA = "metaData";
 
     // Private Static Constants
 
@@ -275,8 +241,6 @@ public final class HazardServicesMessageHandler {
      * @param currentTime
      *            The current time in milliseconds, based on the CAVE current
      *            time.
-     * @param staticSettingID
-     *            The identifier for the setting to load.
      * @param dynamicSettingJSON
      *            Settings related to configurations the user has made but has
      *            not save to a static settings file.
@@ -285,13 +249,14 @@ public final class HazardServicesMessageHandler {
      *            previous session.
      * 
      */
+    @SuppressWarnings("deprecation")
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            String currentTime, String staticSettingID,
-            String dynamicSettingJSON, String state) {
+            String currentTime, String dynamicSettingJSON, String state) {
         this.appBuilder = appBuilder;
 
         ModelAdapter adapter = new ModelAdapter();
         adapter.getSessionManager().registerForNotification(this);
+
         model = new ModelDecorator(adapter);
 
         IHazardEventManager hazardEventManager = new HazardEventManager(
@@ -300,6 +265,8 @@ public final class HazardServicesMessageHandler {
 
         caveMode = (CAVEMode.getMode()).toString();
         siteID = LocalizationManager.getInstance().getCurrentSite();
+
+        String staticSettingID = getSettingForCurrentPerspective();
 
         model.initialize(currentTime, currentTime, staticSettingID,
                 dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus(),
@@ -525,8 +492,7 @@ public final class HazardServicesMessageHandler {
     void handleRecommenderResults(String recommenderID,
             final EventSet<IEvent> eventList) {
 
-        String resultJSON = model.handleRecommenderResult(recommenderID,
-                eventList);
+        model.handleRecommenderResult(recommenderID, eventList);
 
         notifyModelEventsChanged();
 
@@ -668,18 +634,12 @@ public final class HazardServicesMessageHandler {
     public void reset(String type) {
         model.reset(type);
 
-        String perspectiveID = appBuilder.getCurrentPerspectiveDescriptor()
-                .getId();
-
-        if (perspectiveID.contains(D2D_PERSPECTIVE)) {
-            appBuilder.setInitialSetting(TOR_SETTING);
-        } else if (perspectiveID.contains(GFE_PERSPECTIVE)) {
-            appBuilder.setInitialSetting(WSW_SETTING);
-        } else if (perspectiveID.contains(HYDRO_PERSPECTIVE)) {
-            appBuilder.setInitialSetting(FLOOD_SETTING);
+        /*
+         * Switch back to the default settings only if resetting the settings.
+         */
+        if (type == HazardConstants.RESET_SETTINGS) {
+            changeSetting(getSettingForCurrentPerspective(), false, true);
         }
-
-        changeSetting(appBuilder.getInitialSetting(), false, true);
     }
 
     /**
@@ -1231,6 +1191,39 @@ public final class HazardServicesMessageHandler {
 
     public ISessionManager getSessionManager() {
         return model.getSessionManager();
+    }
+
+    /**
+     * Retrieves the setting for the current perspective. If this perspective is
+     * not specified by any Setting, then this method defaults to the first
+     * setting in the list of available settings.
+     * 
+     * @param
+     * @return The setting identifier
+     */
+    private String getSettingForCurrentPerspective() {
+
+        String perspectiveID = VizPerspectiveListener
+                .getCurrentPerspectiveManager().getPerspectiveId();
+        List<Settings> settingsList = model.getSessionManager()
+                .getConfigurationManager().getSettingsList();
+
+        for (Settings settings : settingsList) {
+            Set<String> settingPerspectiveList = settings.getPerspectiveIDs();
+
+            if (settingPerspectiveList != null
+                    && settingPerspectiveList.contains(perspectiveID)) {
+                return settings.getSettingsID();
+            }
+        }
+
+        /*
+         * It might be better to create a default settings object. It would not
+         * be represented in the Localization perspective. Rather, it would be
+         * in memory. I'm assuming that there will always be settings
+         * information available. Is that dangerous?
+         */
+        return settingsList.get(0).getSettingsID();
     }
 
 }
