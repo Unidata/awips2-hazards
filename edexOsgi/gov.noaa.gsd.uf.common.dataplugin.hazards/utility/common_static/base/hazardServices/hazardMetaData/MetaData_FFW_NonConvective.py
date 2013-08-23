@@ -19,111 +19,162 @@ MetaData_FFW_NonConvective = [
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
-            "values": "ER",
+            "values": "DM",
             "choices": [
-                {"displayString": "ER (Excessive Rainfall)","productString": "ER","identifier": "ER",},
-                {"displayString": "SM (Snow Melt)", "productString": "SM","identifier": "SM",},
-                {"displayString": "RS (Rain and Snow Melt)", "productString": "RS","identifier": "RS",},
-                {"displayString": "DM (Dam or Levee Failure)","productString": "DM","identifier": "DM",},
-                {"displayString": "DR (Upstream Dam Release)","productString": "DR","identifier": "DR",},
-                {"displayString": "GO (Glacier-Dammed Lake Outburst)","productString": "GO","identifier": "GO",},
-                {"displayString": "IJ (Ice Jam)", "productString": "IJ","identifier": "IJ",},
-                {"displayString": "IC (Rain and/or Snow melt and/or Ice Jam)","productString": "IC","identifier": "IC",},
-                {"displayString": "FS (Upstream Flooding plus Storm Surge)", "productString": "FS","identifier": "FS",},
-                {"displayString": "FT (Upstream Flooding plus Tidal Effects)","productString": "FT","identifier": "FT",},
-                {"displayString": "ET (Elevated Upstream Flow plus Tidal Effects)","productString": "ET","identifier": "ET",},
-                {"displayString": "WT (Wind and/or Tidal Effects)","productString": "WT","identifier": "WT",},
-                {"displayString": "OT (Other Effects)","identifier": "OT","productString": "OT",},
-                {"displayString": "MC (Other Multiple Causes)","identifier": "MC"},
-                {"displayString": "UU (Unknown)", "productString": "UU","identifier": "UU",},
+                # use "_override_by_key_identifier_", in override file to support incremental override
+                {"identifier":"ER", "productString":"ER", "displayString":"ER (Excessive Rainfall)"},
+                {"identifier":"SM", "productString":"SM", "displayString":"SM (Snow Melt)"},
+                {"identifier":"RS", "productString":"RS", "displayString":"RS (Rain and Snow Melt)"},
+                {"identifier":"DM", "productString":"DM", "displayString":"DM (Dam or Levee Failure)"},
+                {"identifier":"DR", "productString":"DR", "displayString":"DR (Upstream Dam Release)"},
+                {"identifier":"GO", "productString":"GO", "displayString":"GO (Glacier-Dammed Lake Outburst)"},
+                {"identifier":"IJ", "productString":"IJ", "displayString":"IJ (Ice Jam)"},
+                {"identifier":"IC", "productString":"IC", "displayString":"IC (Rain and/or Snow melt and/or Ice Jam)"},
+                {"identifier":"FS", "productString":"FS", "displayString":"FS (Upstream Flooding plus Storm Surge)"},
+                {"identifier":"FT", "productString":"FT", "displayString":"FT (Upstream Flooding plus Tidal Effects)"},
+                {"identifier":"ET", "productString":"ET", "displayString":"ET (Elevated Upstream Flow plus Tidal Effects)"},
+                {"identifier":"WT", "productString":"WT", "displayString":"WT (Wind and/or Tidal Effects)"},
+                {"identifier":"OT", "productString":"OT", "displayString":"OT (Other Effects)"},
+                {"identifier":"MC", "productString":"MC", "displayString":"MC (Other Multiple Causes)"},
+                {"identifier":"UU", "productString":"UU", "displayString":"UU (Unknown)"},
                 ],
-           },
+            },
             {
             # INCLUDE 
              "fieldType":"CheckBoxes",
              "fieldName": "include",
              "label": "",
              "choices": [
-                 {"displayString": "Also Snow Melt", "productString": "RAPID SNOW MELT IS CAUSING FLOODING.",},
-                 {"displayString": "Flooding not directly reported, only heavy rain","productString": "FLOODING IS NOT DIRECTLY REPORTED, ONLY HEAVY RAINS.",}
-                ],
+                { "identifier": "ffwEmergency",
+                  "displayString": "**SELECT FOR FLASH FLOOD EMERGENCY**",
+                  "productString": "...Flash flood emergency for !** LOCATION **!..."
+                },
+                 ],
+            },
+           {
+            # SEVERITY 
+             "fieldType":"RadioButtons",
+             "fieldName": "include",
+             "label": "Severity",
+             "choices": [
+                { "identifier": "sev1", "productString": "1",
+                  "displayString": "Minor flood"},
+                { "identifier": "sev2", "productString": "2",
+                  "displayString": "Moderate flood"},
+                { "identifier": "sev3", "productString": "3",
+                  "displayString": "Major flood"},
+                { "identifier": "sevUnk", "productString": "U",
+                  "displayString": "Severity Unknown"},
+                 ],
             },
             # BASIS
             {
              "fieldType":"RadioButtons",
              "fieldName": "basis",
              "label": "Reported By (Choose 1):",
+             "values": "lawEnf",
              "choices": [    
-                     {
-                      "displayString": "Doppler Radar indicated...", 
-                      "productString": "Doppler Radar indicated",
-                     },
-                     {
-                      "displayString": "Local law enforcement reported...", 
-                      "productString": "Local law enforcement reported...",
-                     },
-                     {
-                      "displayString": "Trained weather spotters reported...", 
-                      "productString": "Trained weather spotters reported...",
-                     },
-                     {
-                      "displayString": "Public reported...", 
-                      "productString": "Public reported...",
-                     },
-                     {
-                      "displayString": "pathcast",
-                      "productString": "",
-                     }
-                   ], 
+                     {"identifier":"countyDisp", "displayString": "County dispatch...", 
+                      "productString": "County dispatch reported",},
+                     {"identifier":"lawEnf", "displayString": "Law enforcement...",
+                      "productString": "Local law enforcement reported",},
+                      {"identifier":"corpsEng", "displayString": "Corps of engineers...", 
+                      "productString": "Corps of engineers reported",},
+                      {"identifier":"wxSpot", "displayString": "Dam operator...", 
+                      "productString": "Dam operators reported",},
+                     {"identifier":"emerMgmt", "displayString": "Bureau of reclamation...",
+                      "productString": "Bureau of reclamation reported",},
+                     {"identifier":"public", "displayString": "Public reported...",
+                      "productString": "The public reported",},
+                       ], 
             },
+           # ADDITIONAL INFO
+             {
+              "fieldType":"CheckList",
+              "fieldName": "additionalInfo",
+              "label": "Additional Info:",
+              "choices": [    
+                     {"identifier":"listOfCities", "displayString": "Select for a list of cities", 
+                       "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." },
+                     {"identifier":"pathCast", "displayString": "Select for pathcast", 
+                       "productString": "The flood will be near..." },
+                     {"identifier":"listOfDrainages", "displayString": "Automated list of drainages", 
+                      "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." },
+                     {"identifier":"particularStream",
+                      "displayString": "Flooding is occurring in a particular stream/river", 
+                      "productString": 
+                    '''FLood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to 
+                       !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by
+                       !**TIME(S)**!.''',},
+                     {"identifier":"endGeneric", "displayString": "EXP-CAN:Generic Statement",
+                      "productString": 
+                    '''The water is receding...and is no longer expected to pose a significant threat.
+                       Please continue to heed any road closures.''',},
+                     {"identifier":"endRiver", "displayString": "EXP-CAN:River Flooding",
+                      "productString": 
+                    '''Flooding on the !** **! river has receded and is no longer expected to pose
+                       a significant threat. Please continue to heed all road closures.''',},
+                        ], 
+             },
            # CALLS TO ACTION
            {
            "fieldType":"CheckList",
            "label":"Calls to Action (1 or more):",
            "fieldName": "cta",
+           "values": "noCTA",
            "choices": [
-               {
+               {"identifier": "noCTA",
                 "displayString": "No call to action",
                 "productString": ""
-                },{
-                "displayString": "Automated list of drainages",
-                "productString": "THIS INCLUDES THE FOLLOWING STREAMS AND DRAINAGES..."
-                },{
-                "displayString": "Additional rainfall expected...",
-                "productString": "ADDITIONAL RAINFALL AMOUNTS OF !** EDIT AMOUNT **! ARE POSSIBLE IN THE WARNED AREA."
-                },{
-                "displayString": "Urban flooding",
-                "productString": "EXCESSIVE RUNOFF FROM HEAVY RAINFALL WILL CAUSE ELEVATED LEVELS ON SMALL CREEKS AND STREAMS...AND PONDING OF WATER IN URBAN AREAS...HIGHWAYS...STREETS AND UNDERPASSES AS WELL AS OTHER POOR DRAINAGE AREAS AND LOW LYING SPOTS."
-                },{
-                "displayString": "Rural flooding/small streams",
-                "productString": "EXCESSIVE RUNOFF FROM HEAVY RAINFALL WILL CAUSE ELEVATED LEVELS ON SMALL CREEKS AND STREAMS...AND PONDING OF WATER ON COUNTRY ROADS AND FARMLAND ALONG THE BANKS OF CREEKS AND STREAMS."
-                },{
-                "displayString": "Flooding is occurring in a particular stream/river",
-                "productString": "FLOOD WATERS ARE MOVING DOWN !**name of channel**! FROM !**location**! TO !**location**!. THE FLOOD CREST IS EXPECTED TO REACH !**location(s)**! BY !**time(s)**!."
-                },{
-                "displayString": "Nighttime flooding",
-                "productString": "BE ESPECIALLY CAUTIOUS AT NIGHT WHEN IT IS HARDER TO RECOGNIZE THE DANGERS OF FLOODING. IF FLOODING IS OBSERVED ACT QUICKLY. MOVE UP TO HIGHER GROUND TO ESCAPE FLOOD WATERS. DO NOT STAY IN AREAS SUBJECT TO FLOODING WHEN WATER BEGINS RISING."
-                },{
-                "displayString": "Do not drive into water",
-                "productString": "DO NOT DRIVE YOUR VEHICLE INTO AREAS WHERE THE WATER COVERS THE ROADWAY. THE WATER DEPTH MAY BE TOO GREAT TO ALLOW YOUR CAR TO CROSS SAFELY. MOVE TO HIGHER GROUND."
-                },{
+               },
+               {"identifier": "actQuicklyCTA",
+                "displayString": "Act Quickly...",
+                "productString": 
+                  "Move to higher ground now. Act quickly to protect your life."
+               },
+               {"identifier": "childSafetyCTA",
+                "displayString": "Child Safety...",
+                "productString": 
+               '''Keep children away from storm drains...culverts...creeks and streams.
+                  Water levels can rise rapidly and sweep children away.'''},
+               {"identifier": "nighttimeCTA",
+                "displayString": "Nighttime flooding...",
+                "productString":
+               '''Be especially cautious at night when it is harder to recognize the
+                  dangers of flooding.'''},
+               {"identifier": "safetyCTA",
+                "displayString": "Safety...by foot or motorist",
+                "productString":
+                   "Do not enter or cross flowing water or water of unknown depth."},
+               {"identifier": "turnAroundCTA",
                 "displayString": "Turn around...don't drown",
-                "productString": "MOST FLOOD DEATHS OCCUR IN AUTOMOBILES. NEVER DRIVE YOUR VEHICLE INTO AREAS WHERE THE WATER COVERS THE ROADWAY. FLOOD WATERS ARE USUALLY DEEPER THAN THEY APPEAR. JUST ONE FOOT OF FLOWING WATER IS POWERFUL ENOUGH TO SWEEP VEHICLES OFF THE ROAD. WHEN ENCOUNTERING FLOODED ROADS MAKE THE SMART CHOICE...TURN AROUND...DONT DROWN."
-                },{
-                "displayString": "Camper safety",
-                "productString": "FLOODING IS OCCURRING OR IS IMMINENT.  IT IS IMPORTANT TO KNOW WHERE YOU ARE RELATIVE TO STREAMS...RIVERS...OR CREEKS WHICH CAN BECOME KILLERS IN HEAVY RAINS.  CAMPERS AND HIKERS SHOULD AVOID STREAMS OR CREEKS."
-                },{
-                "displayString": "Low spots in hilly terrain ",
-                "productString": "IN HILLY TERRAIN THERE ARE HUNDREDS OF LOW WATER CROSSINGS WHICH ARE POTENTIALLY DANGEROUS IN HEAVY RAIN. DO NOT ATTEMPT TO TRAVEL ACROSS FLOODED ROADS. FIND ALTERNATE ROUTES. IT TAKES ONLY A FEW INCHES OF SWIFTLY FLOWING WATER TO CARRY VEHICLES AWAY."
-                },{
-                "displayString": "A Flash Flood Warning means...",
-                "productString": "flashFloodWarningMeans is not defined now"
-                },{
-                "displayString": "Power of flood waters/vehicles",
-                "productString": "DO NOT UNDERESTIMATE THE POWER OF FLOOD WATERS. ONLY A FEW INCHES OF RAPIDLY FLOWING WATER CAN QUICKLY CARRY AWAY YOUR VEHICLE."
-                },{
+                "productString":
+               '''Turn around...dont drown when encountering flooded roads.
+                  Most flood deaths occur in vehicles.'''},
+               {"identifier": "stayAwayCTA",
+                "displayString": "Stay away or be swept away",
+                "productString":
+               '''Stay away or be swept away. River banks and culverts can become
+                  unstable and unsafe.'''},
+               {"identifier": "arroyosCTA",
+                "displayString": "Arroyos...",
+                "productString": 
+               '''Remain alert for flooding even in locations not receiving rain.
+                  arroyos...Streams and rivers can become raging killer currents
+                  in a matter of minutes...even from distant rainfall.'''},
+               {"identifier": "burnAreasCTA",
+                "displayString": "Burn Areas...",
+                "productString": 
+               '''Move away from recently burned areas. Life threatening flooding
+                  of creeks...roads and normally dry arroyos is likely. The heavy
+                  rains will likely trigger rockslides...mudslides and debris flows
+                  in steep terrain...especially in and around these areas.'''},
+               {
+                "identifier": "reportFloodingCTA",
                 "displayString": "Report flooding to local law enforcement",
-                "productString": "TO REPORT FLOODING...HAVE THE NEAREST LAW ENFORCEMENT AGENCY RELAY YOUR REPORT TO THE NATIONAL WEATHER SERVICE FORECAST OFFICE."
-                }]
+                "productString": 
+               '''Please report flooding to your local law enforcement agency when
+                  you can do so safely.'''},
+                ]
            }, 
         ] + CAP_Fields
