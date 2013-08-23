@@ -45,6 +45,10 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           changes to be pushed to the event bus
  *                                           if so desired by the view part.
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Aug 22, 2013   1921     Bryon.Lawrence    Added accessor method for
+ *                                           testing whether or not HID 
+ *                                           updates should fire-off
+ *                                           messages.
  * </pre>
  * 
  * @author Chris.Golden
@@ -604,4 +608,15 @@ public class HazardDetailView extends
     private boolean isViewPartDocked() {
         return (getViewPart() == null ? false : getViewPart().isDocked());
     }
+
+    /**
+     * Returns whether or not HID actions should be fired.
+     * 
+     * @return True - HID actions should not be fired-off. False - HID Actions
+     *         should be fired off.
+     */
+    public boolean doNotForwardActions() {
+        return doNotForwardActions;
+    }
+
 }
