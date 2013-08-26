@@ -71,8 +71,50 @@ MetaData_FLA = [
              "shortValueLabels": {"riseAbove": "Rise","crest": "Crest","fallBelow": "Fall"},
              "relativeValueWeights": {"riseAbove": 3,"crest": 3,"fallBelow": 3},
              "notify":1,
-             "spacing": 5,
+             "spacing": 5,  
             },
-        ] + CAP_Fields
                 
-
+            # The following product sections contain logic and/or 
+            # information from the hydro database
+            # and must be created by the product generator:
+            # Headline, Crest History, Impact, Data Round-up, Summary, Tabular
+            
+            # Basis                
+            {                      
+             "fieldType":"RadioButtons",
+             "label":"Basis (Choose 1):",
+             "fieldName": "basis",
+             "lines": 2,
+             "values": "Default",
+             "choices": [ 
+                     {"displayString": "Flooding due to heavy rain is possible...",
+                      "productString": "Flooding due to heavy rain is possible. The exact amount...intensity...timing...and location of the rain that will occur is still uncertain. Once there is more certainty...a flood warning or advisory will be issued.",
+                      "identifier": "Heavy rain" },
+                     {"displayString": "Default basis statement...",
+                      "productString": "!** INSERT HYDROMETEOROLOGICAL BASIS HERE **!",
+                      "identifier": "Default"},
+                    ]
+            },                
+            # Calls to action    
+            {                      
+             "fieldType":"CheckList",
+             "label":"Calls to Action (1 or more):",
+             "fieldName": "cta",
+             "lines": 3,
+             "values": "NOAA Weather Radio",
+             "choices": [ 
+                     {"displayString": "No call to action.",
+                      "productString": "No call to action.",
+                      "identifier": "None"},   
+                     {"displayString": "Stay tuned to NOAA Weather Radio for further information...",
+                      "productString": "Stay tuned to further developments by listening to your local radio... television... or NOAA Weather Radio for further information.",
+                      "identifier": "NOAA Weather Radio"},                     
+                     {"displayString": "A flood watch means...",
+                      "productString": "A flood watch means flooding is possible but not imminent.  If you are in the watch area remain alert to possible flooding.  Residents and those with interests near the river should monitor rising water levels and be prepared for possible flood warnings.",
+                      "identifier": "Flood Watch Defined"},
+                     {"displayString": "Report observed flooding...",
+                      "productString": "Report observed flooding to local emergency services or law enforcement and request they pass this information on to the National Weather Service.",
+                      "identifier": "Report Flooding"}
+                    ]
+            }
+        ] + CAP_Fields

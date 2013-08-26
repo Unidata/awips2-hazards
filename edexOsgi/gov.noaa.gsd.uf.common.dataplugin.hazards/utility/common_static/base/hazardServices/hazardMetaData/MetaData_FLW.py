@@ -72,4 +72,73 @@ MetaData_FLW = [
             "notify":1,
             "spacing": 5,
            },
+
+           # The following product sections contain logic and/or 
+           # information from the hydro database
+           # and must be created by the product generator:
+           # Headline, Crest History, Impact, Data Round-up, Summary, Tabular
+                
+
+           # Basis
+           {                      
+             "fieldType":"RadioButtons",
+             "label":"Basis (Choose 1):",
+             "fieldName": "basis",
+             "lines": 2,
+             "values": "Default",
+             "choices": [ 
+                     {"displayString": "The current weather is...",
+                      "productString": "The current weather is dominated by a !** EDIT HYDROMETEOROLOGICAL BASIS HERE **!. This weather system will produce rainfall amounts ranging from  !**EDIT RAINFALL AMOUNTS **!",
+                      "identifier": "Current Weather" },
+                     {"displayString": "Default basis statement...",
+                      "productString": "!** INSERT HYDROMETEOROLOGICAL BASIS HERE **!",
+                      "identifier":"Default"},
+                    ]
+            },
+            # Calls to action
+            {                      
+             "fieldType":"CheckList",
+             "label":"Calls to Action (1 or more):",
+             "fieldName": "cta",
+             "lines": 3,
+             "values": "None",
+             "choices": [ 
+                     {"displayString": "No call to action.",
+                      "productString": "No call to action.",
+                      "identifier": "None" },
+                     {"displayString": "Do not drive through flooded areas...",
+                      "productString": "Motorists should not attempt to drive around barricades or drive cars through flooded areas.",
+                      "identifier": "Flood Roadways"},
+                     {"displayString": "Walking near riverbanks...",
+                      "productString": "Caution is urged when walking near riverbanks.",
+                      "identifier": "Riverbanks"},
+                     {"displayString": "Turn around...don't drown.",
+                      "productString": "Turn around...don't drown.",
+                      "identifier":"TADD"},
+                     {"displayString": "Stay tuned to NOAA Weather Radio for further information...",
+                      "productString": "Stay tuned to further developments by listening to your local radio... television... or NOAA Weather Radio for further information.",
+                      "identifier": "NOAA Weather Radio"},
+                     {"displayString": "Use caution when driving at night...", 
+                      "productString": "Be especially cautious at night when it is harder to recognize the dangers of floods and flash floods.",
+                      "identifier": "Driving at Night"},
+                     {"displayString": "Most flood deaths occur in automobiles...",
+                      "productString": "Most flood deaths occur in automobiles.  Do not attempt to cross bridges... dips... or low spots if water covers the roadway.",
+                      "identifier": "Automobile Deaths"},
+                     {"displayString": "To escape rising water...",
+                      "productString": "To escape rising water... take the shortest path to higher ground.",
+                      "identifier": "Rising Water"},
+                     {"displayString": "Force of fast-moving flood water...",
+                      "productString": "Even 6 inches of fast-moving flood water can knock you off your feet... and a depth of 2 feet will float your car.  Never try to walk... swim... or drive through such swift water.  If you come upon flood waters... stop... turn around and go another way.",
+                      "identifier": "Force of Water"},
+                     {"displayString": "Last river flood statement on this event...", 
+                      "productString": "This will be the last river flood statement on this event.  Stay tuned to developments.",
+                      "identifier": "Last Statement"},
+                     {"displayString": "This warning will be in effect...",
+                      "productString": "This warning will be in effect until the river falls below its flood stage.",
+                      "identifier":  "Warning in Effect Until"},
+                     {"displayString": "Report observed flooding...",
+                      "productString": "Report observed flooding to local emergency services or law enforcement and request they pass this information on to the National Weather Service.",
+                      "identifier": "Report Flooding"}
+                    ]
+            }
         ] + CAP_Fields
