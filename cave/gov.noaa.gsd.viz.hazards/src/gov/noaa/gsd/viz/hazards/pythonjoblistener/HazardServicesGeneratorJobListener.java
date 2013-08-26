@@ -17,7 +17,6 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Description: This listens for the results from an asynchronous run of a
@@ -30,6 +29,10 @@ import com.raytheon.uf.viz.core.VizApp;
  * ------------ ---------- ----------- --------------------------
  * Mar 19, 2013            Bryon.Lawrence    Initial creation
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Aug 26, 2013    1921    Bryon.Lawrence    Removed call to VizApp.runAsync in 
+ *                                           jobFinished.   This is already being 
+ *                                           called in SessionProductManager 
+ *                                           jobFinished().
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -68,19 +71,9 @@ public class HazardServicesGeneratorJobListener implements
     @Override
     public void jobFinished(final List<IGeneratedProduct> result) {
 
-        /*
-         * Need to place the result on the thread the Session Manager is
-         * running. At the moment this is the UI thread.
-         */
-        VizApp.runAsync(new Runnable() {
-
-            @Override
-            public void run() {
-                ToolAction action = new ToolAction(
-                        ToolActionEnum.PRODUCTS_GENERATED, toolID, result);
-                eventBus.post(action);
-            }
-        });
+        ToolAction action = new ToolAction(ToolActionEnum.PRODUCTS_GENERATED,
+                toolID, result);
+        eventBus.post(action);
     }
 
     /**

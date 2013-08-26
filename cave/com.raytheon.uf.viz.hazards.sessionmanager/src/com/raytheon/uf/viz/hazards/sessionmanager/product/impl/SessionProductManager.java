@@ -39,6 +39,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
@@ -76,6 +77,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                     generators
  * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
  * Aug 20, 2013 1360       blawrenc    Fixed problem with incorrect states showing in console.
+ * Aug 26, 2013 1921       blawrenc    Added call to VizApp.runAsync to jobFinished and
+ *                                     jobFailed methods. This seems to remedy the 
+ *                                     currentModification exception that we were occasionally
+ *                                     seeing.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -284,18 +290,38 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         @Override
-        public void jobFinished(List<IGeneratedProduct> result) {
-            info.setProducts(result);
-            if (issue) {
-                issue(info);
-            }
-            notificationSender.postNotification(new ProductGenerated(info));
+        public void jobFinished(final List<IGeneratedProduct> result) {
+
+            /*
+             * Need to place the result on the thread the Session Manager is
+             * running. At the moment this is the UI thread.
+             */
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    info.setProducts(result);
+                    if (issue) {
+                        issue(info);
+                    }
+                    notificationSender.postNotification(new ProductGenerated(
+                            info));
+                }
+            });
         }
 
         @Override
-        public void jobFailed(Throwable e) {
-            info.setError(e);
-            notificationSender.postNotification(new ProductFailed(info));
+        public void jobFailed(final Throwable e) {
+
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    info.setError(e);
+                    notificationSender
+                            .postNotification(new ProductFailed(info));
+                }
+            });
         }
 
     }
