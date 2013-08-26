@@ -44,6 +44,7 @@ import org.codehaus.jackson.node.ObjectNode;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -94,6 +95,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                                     replacement of JSON with POJOs
  * Aug 26, 2012 1921       B. Lawrence  Replaced "replaces" string with 
  *                                      HazardConstants.REPLACES constant.
+ * Aug 26, 2013 1921    Bryon.Lawrence    Put back block of code which adds color
+ *                                        information to hazard events until all
+ *                                        Hazard Services views have been converted
+ *                                        to use event objects instead of event dicts.
  * </pre>
  * 
  * @author bsteffen
@@ -1123,6 +1128,20 @@ public abstract class ModelAdapter {
         for (int i = 0; i < events2.length; i += 1) {
             IHazardEvent hevent = it.next();
             events2[i] = new Event(hevent);
+
+            /*
+             * This logic adds hazard color information to an event dict.
+             * 
+             * This block of code cannot be removed until all Hazard Services
+             * views have been converted from using event Dicts to using event
+             * objects.
+             */
+            Color color = configManager.getColor(hevent);
+            String fillColor = (int) (color.getRed() * 255) + " "
+                    + (int) (color.getGreen() * 255) + " "
+                    + (int) (color.getBlue() * 255);
+            events2[i].setColor(fillColor);
+
             String type = events2[i].getType();
             if (type != null) {
                 String headline = configManager.getHeadline(hevent);
