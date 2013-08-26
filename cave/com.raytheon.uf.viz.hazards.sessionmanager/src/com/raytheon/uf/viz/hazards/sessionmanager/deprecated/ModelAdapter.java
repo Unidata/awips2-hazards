@@ -46,6 +46,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -91,6 +92,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                     in localization when events are reset.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Removed code made obsolete by 
  *                                                     replacement of JSON with POJOs
+ * Aug 26, 2012 1921       B. Lawrence  Replaced "replaces" string with 
+ *                                      HazardConstants.REPLACES constant.
  * </pre>
  * 
  * @author bsteffen
@@ -283,7 +286,7 @@ public abstract class ModelAdapter {
                     oldEvent = event;
                     event = new BaseHazardEvent(event);
                     event.setState(HazardState.PENDING);
-                    event.addHazardAttribute("replaces",
+                    event.addHazardAttribute(HazardConstants.REPLACES,
                             configManager.getHeadline(oldEvent));
                     Collection<IHazardEvent> selection = eventManager
                             .getSelectedEvents();

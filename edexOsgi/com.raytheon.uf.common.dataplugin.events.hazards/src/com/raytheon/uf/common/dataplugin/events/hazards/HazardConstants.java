@@ -228,6 +228,8 @@ public final class HazardConstants {
 
     public static final String PREVIEW_STATE = "previewState";
 
+    public static final String REPLACES = "replaces";
+
     /*
      * The following are related to hazard geometries and their supporting meta
      * information.
