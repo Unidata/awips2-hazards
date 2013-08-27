@@ -115,6 +115,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jul 10, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * Jul 12, 2013            Bryon.Lawrence Added ability to draw persistent shapes.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 27, 2013 1921       Bryon.Lawrence Replaced code to support multi-hazard selection using
+ *                                        Shift and Ctrl keys.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -447,9 +449,28 @@ public class ToolLayer extends
 
         previousEvents = events;
         selectedHazardIHISLayer = null;
+
         selectedEventIDs.clear();
 
         for (IHazardEvent hazardEvent : events) {
+
+            /*
+             * Keep an inventory of which events are selected.
+             */
+            String eventID = hazardEvent.getEventID();
+
+            Boolean isSelected = (Boolean) hazardEvent
+                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+
+            if (isSelected != null && isSelected
+                    && !selectedEventIDs.contains(eventID)) {
+
+                /*
+                 * Since there can be multiple polygons per event, represent
+                 * each event only once.
+                 */
+                selectedEventIDs.add(eventID);
+            }
 
             List<AbstractDrawableComponent> drawables = drawableBuilder
                     .buildDrawableComponents(this, hazardEvent,
