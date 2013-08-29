@@ -1,0 +1,39 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="handlerRegistry" class="com.raytheon.uf.edex.auth.HandlerRegistry"
+		factory-method="getInstance" />
+
+	<bean id="serializeServer" class="com.raytheon.uf.edex.auth.RemoteRequestServer"
+		factory-method="getInstance">
+		<property name="registry" ref="handlerRegistry" />
+	</bean>
+
+	<bean id="routeWrapper" class="com.raytheon.uf.edex.auth.RemoteRequestRouteWrapper">
+		<property name="server" ref="serializeServer" />
+	</bean>
+
+	<bean id="productgenProperties" class="com.raytheon.uf.common.dataplugin.PluginProperties">
+		<property name="pluginName" value="productgen" />
+		<property name="pluginFQN" value="com.raytheon.uf.common.hazards.productgen" />
+		<property name="record"
+			value="com.raytheon.uf.common.hazards.productgen.editable.ProductText" />
+	</bean>
+
+	<bean id="productgenRegistered" factory-bean="pluginRegistry"
+		factory-method="register">
+		<constructor-arg value="productgen" />
+		<constructor-arg ref="productgenProperties" />
+	</bean>
+
+	<bean id="getProductTextHandler"
+		class="com.raytheon.uf.edex.productgen.ProductTextHandler" />
+		
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.hazards.productgen.editable.ProductTextRequest" />
+		<constructor-arg ref="getProductTextHandler" />
+	</bean>
+</beans>
