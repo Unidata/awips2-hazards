@@ -111,4 +111,11 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         return null;
     }
 
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
+    }
+
 }

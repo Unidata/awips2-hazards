@@ -81,6 +81,6 @@ public interface IHazardSessionAlertsManager {
     /**
      * Execute any shutdown required.
      */
-    void stop();
+    void shutdown();
 
 }

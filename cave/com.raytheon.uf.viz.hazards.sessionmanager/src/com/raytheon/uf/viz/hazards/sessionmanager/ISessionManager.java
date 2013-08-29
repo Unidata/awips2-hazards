@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
+import org.eclipse.core.runtime.jobs.Job;
+
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -108,4 +110,10 @@ public interface ISessionManager {
      * @param object
      */
     public void unregisterForNotification(Object object);
+
+    /**
+     * 
+     * Shutdown activities such as spawned {@link Job}s
+     */
+    public void shutdown();
 }

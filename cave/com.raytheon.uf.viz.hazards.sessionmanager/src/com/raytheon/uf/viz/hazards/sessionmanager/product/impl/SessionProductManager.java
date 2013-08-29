@@ -41,7 +41,7 @@ import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -98,7 +98,7 @@ public class SessionProductManager implements ISessionProductManager {
      * A full configuration manager is needed to get access to the product
      * generation table, which is not exposed in ISessionConfigurationManager
      */
-    private final SessionConfigurationManager configManager;
+    private final ISessionConfigurationManager configManager;
 
     private final ISessionEventManager eventManager;
 
@@ -107,7 +107,7 @@ public class SessionProductManager implements ISessionProductManager {
     private final ProductGeneration productGen;
 
     public SessionProductManager(ISessionTimeManager timeManager,
-            SessionConfigurationManager configManager,
+            ISessionConfigurationManager configManager,
             ISessionEventManager eventManager,
             ISessionNotificationSender notificationSender) {
         this.timeManager = timeManager;
@@ -334,6 +334,13 @@ public class SessionProductManager implements ISessionProductManager {
             });
         }
 
+    }
+
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
     }
 
 }

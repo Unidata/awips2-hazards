@@ -64,4 +64,9 @@ public interface ISessionProductManager {
      * @param information
      */
     public void issue(ProductInformation information);
+
+    /**
+     * Execute any shutdown needed.
+     */
+    public void shutdown();
 }

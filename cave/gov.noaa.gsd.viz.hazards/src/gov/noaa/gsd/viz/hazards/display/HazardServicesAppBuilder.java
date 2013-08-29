@@ -944,6 +944,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * Services.
          */
         eventBus.post(new HazardServicesCloseAction());
+        sessionManager.shutdown();
 
         boolean showMessageBox = ((message != null) || (forcedShutdown == false));
         boolean saveSessionData = (forcedShutdown || (showMessageBox && MessageDialog

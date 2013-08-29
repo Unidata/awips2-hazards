@@ -93,7 +93,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
      * Cleans up any resources used by this test.
      */
     def cleanup() {
-        alertsManager.stop()
+        alertsManager.shutdown()
     }
 
     def "Check that the proper alerts are created upon initialization"() {

@@ -139,4 +139,11 @@ public class SessionTimeManager implements ISessionTimeManager {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
+    }
 }

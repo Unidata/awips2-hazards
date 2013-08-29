@@ -441,10 +441,12 @@ public class SessionConfigurationManager implements
         return viewConfig;
     }
 
+    @Override
     public ProductGeneratorTable getProductGeneratorTable() {
         return pgenTable.getConfig();
     }
 
+    @Override
     public HazardTypes getHazardTypes() {
         return hazardTypes.getConfig();
     }
@@ -554,6 +556,13 @@ public class SessionConfigurationManager implements
             loadAllSettings();
         }
 
+    }
+
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
     }
 
 }

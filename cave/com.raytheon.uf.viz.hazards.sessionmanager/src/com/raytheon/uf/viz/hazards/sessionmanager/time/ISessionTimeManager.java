@@ -92,4 +92,9 @@ public interface ISessionTimeManager {
      */
     public TimeRange getVisibleRange();
 
+    /**
+     * Execute any shutdown needed.
+     */
+    public void shutdown();
+
 }

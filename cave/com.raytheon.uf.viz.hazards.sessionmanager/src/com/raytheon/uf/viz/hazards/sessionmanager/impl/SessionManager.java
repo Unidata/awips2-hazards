@@ -29,10 +29,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsMan
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlertsManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
@@ -59,17 +62,18 @@ public class SessionManager implements ISessionManager {
 
     private final EventBus eventBus;
 
-    private final SessionEventManager eventManager;
+    private final ISessionEventManager eventManager;
 
-    private final SessionTimeManager timeManager;
+    private final ISessionTimeManager timeManager;
 
-    private final SessionConfigurationManager configManager;
+    private final ISessionConfigurationManager configManager;
 
-    private final SessionProductManager productManager;
+    private final ISessionProductManager productManager;
 
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
     private final IHazardSessionAlertsManager alertsManager;
+
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager) {
         // TODO switch the bus to async
@@ -106,17 +110,17 @@ public class SessionManager implements ISessionManager {
     }
 
     @Override
-    public SessionEventManager getEventManager() {
+    public ISessionEventManager getEventManager() {
         return eventManager;
     }
 
     @Override
-    public SessionTimeManager getTimeManager() {
+    public ISessionTimeManager getTimeManager() {
         return timeManager;
     }
 
     @Override
-    public SessionConfigurationManager getConfigurationManager() {
+    public ISessionConfigurationManager getConfigurationManager() {
         return configManager;
     }
 
@@ -145,4 +149,17 @@ public class SessionManager implements ISessionManager {
         eventBus.unregister(object);
     }
 
+    @Override
+    public void shutdown() {
+
+        eventManager.shutdown();
+
+        timeManager.shutdown();
+
+        configManager.shutdown();
+
+        productManager.shutdown();
+
+        alertsManager.shutdown();
+    }
 }

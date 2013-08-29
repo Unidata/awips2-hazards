@@ -212,4 +212,9 @@ public interface ISessionEventManager {
      */
     public void sortEvents(Comparator<IHazardEvent> comparator);
 
+    /**
+     * Execute any shutdown needed.
+     */
+    public void shutdown();
+
 }

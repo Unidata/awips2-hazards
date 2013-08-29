@@ -49,10 +49,10 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -93,18 +93,18 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * A full configuration manager is needed to get access to hazard types,
      * which is not exposed in ISessionConfigurationManager
      */
-    private final SessionConfigurationManager configManager;
+    private final ISessionConfigurationManager configManager;
 
     private final IHazardEventManager dbManager;
 
     private final ISessionNotificationSender notificationSender;
 
-    private List<IHazardEvent> events = new ArrayList<IHazardEvent>();
+    private final List<IHazardEvent> events = new ArrayList<IHazardEvent>();
 
-    private Deque<String> eventModifications = new LinkedList<String>();
+    private final Deque<String> eventModifications = new LinkedList<String>();
 
     public SessionEventManager(ISessionTimeManager timeManager,
-            SessionConfigurationManager configManager,
+            ISessionConfigurationManager configManager,
             IHazardEventManager dbManager,
             ISessionNotificationSender notificationSender) {
         this.configManager = configManager;
@@ -195,8 +195,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     continue;
                 }
                 event = addEvent(event, false);
-                for(IHazardEvent histEvent : list){
-                    if(histEvent.getState() == HazardState.ISSUED){
+                for (IHazardEvent histEvent : list) {
+                    if (histEvent.getState() == HazardState.ISSUED) {
                         event.addHazardAttribute(ATTR_ISSUED, true);
                         break;
                     }
@@ -266,8 +266,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         // TODO operational.
         oevent.setHazardMode(ProductClass.TEST, false);
         synchronized (events) {
-            if (localEvent
-                    && !Boolean.TRUE.equals(settings.getAddToSelected())) {
+            if (localEvent && !Boolean.TRUE.equals(settings.getAddToSelected())) {
                 for (IHazardEvent e : events) {
                     e.addHazardAttribute(ATTR_SELECTED, false);
                 }
@@ -403,7 +402,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (event != null
                 && Boolean.TRUE.equals(event.getHazardAttribute(ATTR_SELECTED))) {
             return event;
-        }else{
+        } else {
             eventModifications.pop();
             return getLastModifiedSelectedEvent();
         }
@@ -462,6 +461,13 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     "Unable to make request for hazard event id", e);
         }
         return value;
+    }
+
+    @Override
+    public void shutdown() {
+        /**
+         * Nothing to do right now.
+         */
     }
 
 }

@@ -25,6 +25,8 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptions;
@@ -180,5 +182,20 @@ public interface ISessionConfigurationManager {
      * @return
      */
     public String getHazardCategory(IHazardEvent event);
+
+    /**
+     * Get the product generator table.
+     */
+    public ProductGeneratorTable getProductGeneratorTable();
+
+    /**
+     * Get the hazard types
+     */
+    public HazardTypes getHazardTypes();
+
+    /**
+     * Execute any shutdown needed.
+     */
+    public void shutdown();
 
 }

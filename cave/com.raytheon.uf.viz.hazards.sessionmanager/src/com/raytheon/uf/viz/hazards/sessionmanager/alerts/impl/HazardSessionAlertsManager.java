@@ -166,8 +166,11 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     }
 
     @Override
-    public void stop() {
+    public void shutdown() {
         notificationHandler.stop();
+        for (IHazardAlertJob job : scheduledAlertJobs) {
+            job.cancel();
+        }
     }
 
     @Override
