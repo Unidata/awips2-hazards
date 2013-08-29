@@ -19,13 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
-import java.io.Serializable;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -56,7 +51,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * @version 1.0
  */
 
-public class SessionHazardNotificationListener implements INotificationObserver{
+public class SessionHazardNotificationListener implements INotificationObserver {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionHazardNotificationListener.class);
 
@@ -93,7 +88,7 @@ public class SessionHazardNotificationListener implements INotificationObserver{
                 statusHandler
                         .handle(Priority.ERROR, e.getLocalizedMessage(), e);
             }
-        }            
+        }
     }
 
     public void handleNotification(HazardNotification notification) {
@@ -109,50 +104,12 @@ public class SessionHazardNotificationListener implements INotificationObserver{
         case UPDATE:
         case STORE:
             if (oldEvent != null) {
-                oldEvent.setSiteID(newEvent.getSiteID());
-                oldEvent.setEndTime(newEvent.getEndTime());
-                oldEvent.setStartTime(newEvent.getStartTime());
-                oldEvent.setIssueTime(newEvent.getIssueTime());
-                oldEvent.setGeometry(newEvent.getGeometry());
-                oldEvent.setPhenomenon(newEvent.getPhenomenon());
-                oldEvent.setSignificance(newEvent.getSignificance());
-                oldEvent.setSubtype(newEvent.getSubtype());
-                oldEvent.setHazardMode(newEvent.getHazardMode());
-                Map<String, Serializable> newAttr = newEvent
-                        .getHazardAttributes();
-                Map<String, Serializable> oldAttr = oldEvent
-                        .getHazardAttributes();
-                if (oldAttr != null) {
-                    oldAttr = new HashMap<String, Serializable>(oldAttr);
-                } else {
-                    oldAttr = new HashMap<String, Serializable>();
-                }
-                if (newAttr != null) {
-                    for (Entry<String, Serializable> entry : newAttr.entrySet()) {
-                        oldEvent.addHazardAttribute(entry.getKey(),
-                                entry.getValue());
-                        oldAttr.remove(entry.getKey());
-                    }
-                } else {
-                    newAttr = Collections.emptyMap();
-                }
-                oldAttr.remove(ISessionEventManager.ATTR_CHECKED);
-                oldAttr.remove(ISessionEventManager.ATTR_SELECTED);
-                oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
-                for (String key : oldAttr.keySet()) {
-                    oldEvent.removeHazardAttribute(key);
-                }
-                if (oldEvent instanceof ObservedHazardEvent) {
-                    ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
-                    obEvent.setState(newEvent.getState(), true, false);
-                } else {
-                    oldEvent.setState(newEvent.getState());
-                }
+                SessionEventUtilities.mergeHazardEvents(newEvent, oldEvent);
                 return;
             }
             manager.addEvent(newEvent);
             break;
         }
     }
-    
+
 }

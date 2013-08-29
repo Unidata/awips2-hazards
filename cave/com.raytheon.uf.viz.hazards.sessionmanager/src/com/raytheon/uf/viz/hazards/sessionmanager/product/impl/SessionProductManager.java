@@ -81,6 +81,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                     jobFailed methods. This seems to remedy the 
  *                                     currentModification exception that we were occasionally
  *                                     seeing.
+ * Aug 29, 2013 1921       blawrenc    Added logic to issue that the "replaces" information is
+ *                                     removed from an event upon issuance.
  * 
  * </pre>
  * 
@@ -242,6 +244,7 @@ public class SessionProductManager implements ISessionProductManager {
                                 HazardState.ENDED.toString())) {
                     selectedEvent.setState(HazardState.ENDED);
                 } else {
+
                     for (IHazardEvent event : information.getProducts().get(0)
                             .getEventSet()) {
                         if (selectedEvent.getEventID().equals(
@@ -256,6 +259,13 @@ public class SessionProductManager implements ISessionProductManager {
                         }
 
                     }
+
+                    /*
+                     * This ensures that the "replaces" string is removed for
+                     * the next generation of a product.
+                     */
+                    selectedEvent
+                            .removeHazardAttribute(HazardConstants.REPLACES);
 
                     selectedEvent.setState(HazardState.ISSUED);
                 }
