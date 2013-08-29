@@ -896,6 +896,11 @@ public final class HazardServicesMessageHandler {
         }
     }
 
+    public void updateSite(String site) {
+        appBuilder.notifyModelChanged(EnumSet
+                .of(IHazardServicesModel.Element.SITE));
+    }
+
     /**
      * Generates products for preview.
      */

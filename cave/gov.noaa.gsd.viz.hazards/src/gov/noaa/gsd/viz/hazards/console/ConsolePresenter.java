@@ -106,6 +106,10 @@ public class ConsolePresenter extends
                 || changed.contains(IHazardServicesModel.Element.EVENTS)) {
             updateHazardEvents();
         }
+        if (changed.contains(IHazardServicesModel.Element.SITE)) {
+            view.updateTitle(getModel().getSessionManager()
+                    .getConfigurationManager().getSiteID());
+        }
     }
 
     // Protected Methods

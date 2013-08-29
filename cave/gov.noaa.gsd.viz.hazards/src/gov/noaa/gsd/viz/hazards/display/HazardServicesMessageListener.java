@@ -16,6 +16,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.timer.TimerAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
@@ -285,6 +286,8 @@ public class HazardServicesMessageListener {
                     Long.parseLong(consoleAction.getEndTime()));
             messageHandler.updateEventData(eventInfo.toJSONString(),
                     HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
+        } else if (consoleAction.getAction().equals("SiteChanged")) {
+            messageHandler.updateSite(consoleAction.getId());
         } else if (consoleAction.getAction().equals("Close")) {
             eventBus.unregister(this);
             messageHandler.closeHazardServices();
@@ -438,6 +441,15 @@ public class HazardServicesMessageListener {
             break;
         }
 
+    }
+
+    @Subscribe
+    public void changeSiteOccurred(ChangeSiteAction action) {
+        messageHandler.getSessionManager().getConfigurationManager()
+                .setSiteID(action.getSite());
+        ConsoleAction cAction = new ConsoleAction("SiteChanged");
+        cAction.setId(action.getSite());
+        consoleActionOccurred(cAction);
     }
 
     /**

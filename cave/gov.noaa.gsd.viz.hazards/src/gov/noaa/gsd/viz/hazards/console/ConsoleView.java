@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
@@ -742,8 +743,12 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                     RESET_SETTINGS_COMMAND_MENU_TEXT, null,
                     Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
                     HazardConstants.RESET_SETTINGS);
-            return Lists.newArrayList(resetEventsCommandAction,
-                    resetSettingsCommandAction);
+            SeparatorAction sep = new SeparatorAction();
+            Action changeSiteAction = new ChangeSiteAction(presenter);
+            List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
+                    resetSettingsCommandAction, sep, changeSiteAction);
+
+            return actions;
         }
     }
 
@@ -987,5 +992,17 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                 });
             }
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * gov.noaa.gsd.viz.hazards.console.IConsoleView#updateTitle(java.lang.String
+     * )
+     */
+    @Override
+    public void updateTitle(String title) {
+        getViewPart().updateSite(title);
     }
 }

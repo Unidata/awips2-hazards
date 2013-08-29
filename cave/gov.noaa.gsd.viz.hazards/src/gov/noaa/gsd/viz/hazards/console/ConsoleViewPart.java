@@ -20,8 +20,10 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
 
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -76,6 +78,11 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     private String selectedSettingName = null;
 
     /**
+     * Name of the current site being used.
+     */
+    private String currentSite = null;
+
+    /**
      * Action bars manager.
      */
     private IActionBars actionBars = null;
@@ -118,6 +125,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
             long currentTime, long visibleTimeRange, String hazardEvents,
             String jsonSettings, String jsonFilters,
             boolean temporalControlsInToolBar) {
+        this.currentSite = LocalizationManager
+                .getContextName(LocalizationLevel.SITE);
         setSettings(jsonSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
                 visibleTimeRange, hazardEvents, jsonFilters,
@@ -350,6 +359,11 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         }
     }
 
+    public void updateSite(String site) {
+        this.currentSite = site;
+        setTitleText();
+    }
+
     // Private Methods
 
     /**
@@ -363,6 +377,6 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         } else {
             titlePrefix = titlePrefix.substring(0, colonIndex + 2);
         }
-        setPartName(titlePrefix + selectedSettingName);
+        setPartName(titlePrefix + selectedSettingName + " - " + currentSite);
     }
 }

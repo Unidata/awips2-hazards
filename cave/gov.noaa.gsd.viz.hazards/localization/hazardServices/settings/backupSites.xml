@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Override this file in localization to customize the sites that are able 
+	to be used for Service Backup in Hazard Services. This file is only overridable 
+	at the site level. -->
+<backupSites>
+	<!--Lines like the one below should be added for each site in the format 
+		"OAX" or "UEX" -->
+	<!--<sites>OAX</sites> -->
+	<!--<sites>UEX</sites> -->
+</backupSites>

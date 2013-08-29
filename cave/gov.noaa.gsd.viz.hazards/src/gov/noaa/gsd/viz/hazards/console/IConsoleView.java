@@ -174,4 +174,11 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            identifier.
      */
     public void setSettings(String jsonSettings);
+
+    /**
+     * Updates the title of the implementing gui
+     * 
+     * @param title
+     */
+    public void updateTitle(String title);
 }
