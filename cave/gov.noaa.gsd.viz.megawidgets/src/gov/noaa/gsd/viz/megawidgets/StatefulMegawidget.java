@@ -9,11 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Stateful megawidget created by a megawidget specifier.
@@ -42,10 +43,10 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>(
-                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
     // Protected Variables

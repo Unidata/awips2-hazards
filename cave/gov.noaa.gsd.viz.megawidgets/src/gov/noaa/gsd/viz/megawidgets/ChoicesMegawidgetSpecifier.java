@@ -9,11 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Base class for megawidget specifiers that include choices as part of their
@@ -285,7 +286,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
                                     + "\" ")
                             + eval.getProblem());
         }
-        this.choicesList = Collections.unmodifiableList(choicesList);
+        this.choicesList = ImmutableList.copyOf(choicesList);
     }
 
     // Public Methods

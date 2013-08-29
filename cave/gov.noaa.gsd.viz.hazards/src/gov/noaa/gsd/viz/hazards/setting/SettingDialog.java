@@ -17,7 +17,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.IInputValidator;
@@ -33,6 +32,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -86,15 +86,15 @@ class SettingDialog extends BasicDialog {
     /**
      * File menu item names.
      */
-    private static final List<String> FILE_MENU_ITEM_NAMES = Collections
-            .unmodifiableList(Lists.newArrayList("&New", "&Save", "Save &As",
-                    "&Delete", null, "&Close"));;
+    private static final List<String> FILE_MENU_ITEM_NAMES = Lists
+            .newArrayList("&New", "&Save", "Save &As", "&Delete", null,
+                    "&Close");;
 
     /**
      * Edit menu item names.
      */
-    private static final List<String> EDIT_MENU_ITEM_NAMES = Collections
-            .unmodifiableList(Lists.newArrayList("&Revert"));
+    private static final List<String> EDIT_MENU_ITEM_NAMES = Lists
+            .newArrayList("&Revert");
 
     // Private Constants
 
@@ -105,36 +105,33 @@ class SettingDialog extends BasicDialog {
      * implement non-standard behavior; or <code>null</code> for any menu item
      * that has no effect.
      */
-    private final List<?> FILE_MENU_ITEM_ACTIONS = Collections
-            .unmodifiableList(Lists.newArrayList(
-                    new SettingsAction("New", null), new Runnable() {
-                        @Override
-                        public void run() {
-                            fireAction(new SettingsAction("Save", getState()));
-                        }
-                    }, new Runnable() {
-                        private final IInputValidator validator = new IInputValidator() {
-                            @Override
-                            public String isValid(String text) {
-                                return (text.length() < 1 ? "The name must contain at least one character."
-                                        : null);
-                            }
-                        };
+    private final List<?> FILE_MENU_ITEM_ACTIONS = Lists.newArrayList(
+            new SettingsAction("New", null), new Runnable() {
+                @Override
+                public void run() {
+                    fireAction(new SettingsAction("Save", getState()));
+                }
+            }, new Runnable() {
+                private final IInputValidator validator = new IInputValidator() {
+                    @Override
+                    public String isValid(String text) {
+                        return (text.length() < 1 ? "The name must contain at least one character."
+                                : null);
+                    }
+                };
 
-                        @Override
-                        public void run() {
-                            InputDialog inputDialog = new InputDialog(
-                                    getShell(), "Hazard Services",
-                                    "Enter the new setting name: ", "",
-                                    validator);
-                            if (inputDialog.open() == InputDialog.OK) {
-                                values.put(DISPLAY_NAME, inputDialog.getValue());
-                                setDialogName(getShell());
-                                fireAction(new SettingsAction("Save As",
-                                        getState()));
-                            }
-                        }
-                    }, new SettingsAction("Dialog", "Delete"), null, "Close"));
+                @Override
+                public void run() {
+                    InputDialog inputDialog = new InputDialog(getShell(),
+                            "Hazard Services", "Enter the new setting name: ",
+                            "", validator);
+                    if (inputDialog.open() == InputDialog.OK) {
+                        values.put(DISPLAY_NAME, inputDialog.getValue());
+                        setDialogName(getShell());
+                        fireAction(new SettingsAction("Save As", getState()));
+                    }
+                }
+            }, new SettingsAction("Dialog", "Delete"), null, "Close");
 
     /**
      * Edit menu item actions; each is either a <code>SettingsAction</code>,
@@ -143,9 +140,8 @@ class SettingDialog extends BasicDialog {
      * implement non-standard behavior; or <code>null</code> for any menu item
      * that has no effect.
      */
-    private final List<?> EDIT_MENU_ITEM_ACTIONS = Collections
-            .unmodifiableList(Lists.newArrayList(new SettingsAction("Revert",
-                    null)));
+    private final List<?> EDIT_MENU_ITEM_ACTIONS = ImmutableList
+            .of(new SettingsAction("Revert", null));
 
     // Private Variables
 

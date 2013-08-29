@@ -11,8 +11,6 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.TimeDeltaSpecifier.Unit;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +24,9 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Time delta megawidget, providing the user a spinner widget with an optional
@@ -55,10 +56,10 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>(
-                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
     // Private Variables

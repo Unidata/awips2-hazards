@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -79,9 +80,9 @@ public class SettingsView implements
     /**
      * Array of settings dropdown menu items.
      */
-    private static final List<String> SETTINGS_DROPDOWN_MENU_ITEMS = Collections
-            .unmodifiableList(Lists.newArrayList("&Open...", "&Save",
-                    "Save &As...", "&Delete...", EDIT_COMMAND_MENU_TEXT));
+    private static final List<String> SETTINGS_DROPDOWN_MENU_ITEMS = ImmutableList
+            .of("&Open...", "&Save", "Save &As...", "&Delete...",
+                    EDIT_COMMAND_MENU_TEXT);
 
     /**
      * Settings toolbar menu button text.

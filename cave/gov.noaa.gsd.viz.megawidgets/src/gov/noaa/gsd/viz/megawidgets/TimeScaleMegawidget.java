@@ -17,10 +17,8 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +36,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Time scale megawidget, providing the user the ability to select one or more
@@ -66,11 +67,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>(
-                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
         names.add(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
     // Private Static Constants

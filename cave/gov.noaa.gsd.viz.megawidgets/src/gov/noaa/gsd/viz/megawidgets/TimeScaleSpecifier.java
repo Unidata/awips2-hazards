@@ -9,10 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Time scale megawidget specifier, providing specification of a megawidget that
@@ -101,7 +102,7 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
         for (int j = 0; j < stateIdentifiers.size(); j++) {
             indicesForIds.put(stateIdentifiers.get(j), j);
         }
-        this.indicesForIds = Collections.unmodifiableMap(indicesForIds);
+        this.indicesForIds = ImmutableMap.copyOf(indicesForIds);
     }
 
     // Public Methods

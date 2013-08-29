@@ -10,9 +10,6 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,6 +20,9 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 
 /**
  * Base class for any megawidget created by a megawidget specifier.
@@ -68,10 +68,9 @@ public abstract class Megawidget implements IMegawidget {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>();
-        names.add(MegawidgetSpecifier.MEGAWIDGET_EDITABLE);
-        names.add(MegawidgetSpecifier.MEGAWIDGET_ENABLED);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.of(
+                MegawidgetSpecifier.MEGAWIDGET_EDITABLE,
+                MegawidgetSpecifier.MEGAWIDGET_ENABLED);
     };
 
     // Private Variables
@@ -243,7 +242,7 @@ public abstract class Megawidget implements IMegawidget {
      */
     @Override
     public final Map<String, Object> getMutableProperties() {
-        Map<String, Object> map = new HashMap<String, Object>();
+        Map<String, Object> map = Maps.newHashMap();
         try {
             for (String name : getMutablePropertyNames()) {
                 map.put(name, getMutableProperty(name));

@@ -1,6 +1,5 @@
 package gov.noaa.gsd.common.utilities;
 
-import static com.google.common.collect.Lists.*;
 import static org.joda.time.DateTimeConstants.*;
 
 import java.io.BufferedInputStream;
@@ -31,8 +30,6 @@ import java.nio.channels.FileChannel;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -705,14 +702,6 @@ public class Utils {
             throw new RuntimeException(
                     "Unexpected exception determining ResultSet size ", e);
         }
-    }
-
-    public static <E> List<E> asUnmodifiableList(Iterator<? extends E> elements) {
-        return Collections.unmodifiableList(newArrayList(elements));
-    }
-
-    public static <E> List<E> asUnmodifiableList(Iterable<? extends E> elements) {
-        return Collections.unmodifiableList(newArrayList(elements));
     }
 
     public static boolean is64BitArchitecture() {

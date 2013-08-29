@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Time delta specifier, used to create a spinner-based megawidget that allows
  * manipulation of time deltas. megawidget created by this specifier expresses
@@ -304,7 +306,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
         }
         List<Unit> units = new ArrayList<Unit>(unitSet);
         Collections.sort(units);
-        this.units = Collections.unmodifiableList(units);
+        this.units = ImmutableList.copyOf(units);
 
         // Ensure that if a current unit choice was given,
         // it is valid.

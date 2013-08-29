@@ -99,6 +99,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.ToolTip;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -152,29 +153,26 @@ class TemporalDisplay {
     /**
      * Selected time mode choices.
      */
-    public static final List<String> SELECTED_TIME_MODE_CHOICES = Collections
-            .unmodifiableList(Lists.newArrayList(SELECTED_TIME_MODE_SINGLE,
-                    SELECTED_TIME_MODE_RANGE));
+    public static final ImmutableList<String> SELECTED_TIME_MODE_CHOICES = ImmutableList
+            .of(SELECTED_TIME_MODE_SINGLE, SELECTED_TIME_MODE_RANGE);
 
     /**
      * Toolbar button icon image file names.
      */
-    public static final List<String> TOOLBAR_BUTTON_IMAGE_FILE_NAMES = Collections
-            .unmodifiableList(Lists.newArrayList("timeZoomOut.png",
-                    "timeJumpBackward.png", "timeBackward.png",
+    public static final ImmutableList<String> TOOLBAR_BUTTON_IMAGE_FILE_NAMES = ImmutableList
+            .of("timeZoomOut.png", "timeJumpBackward.png", "timeBackward.png",
                     "timeCurrent.png", "timeForward.png",
-                    "timeJumpForward.png", "timeZoomIn.png"));
+                    "timeJumpForward.png", "timeZoomIn.png");
 
     /**
      * Descriptions of the toolbar buttons, each of which corresponds to the
      * file name of the button at the same index in <code>
      * TOOLBAR_BUTTON_IMAGE_FILE_NAMES</code>.
      */
-    public static final List<String> TOOLBAR_BUTTON_DESCRIPTIONS = Collections
-            .unmodifiableList(Lists.newArrayList("Zoom Out Timeline",
-                    "Page Back Timeline", "Pan Back Timeline",
+    public static final ImmutableList<String> TOOLBAR_BUTTON_DESCRIPTIONS = ImmutableList
+            .of("Zoom Out Timeline", "Page Back Timeline", "Pan Back Timeline",
                     "Show Current Time", "Pan Forward Timeline",
-                    "Page Forward Timeline", "Zoom In Timeline"));
+                    "Page Forward Timeline", "Zoom In Timeline");
 
     /**
      * Zoom out button identifier.
@@ -215,20 +213,18 @@ class TemporalDisplay {
      * List of button image names, each of which is also the name of the image
      * file (without its type specifier suffix), for the buttons.
      */
-    public static final List<String> BUTTON_IMAGE_NAMES = Collections
-            .unmodifiableList(Lists.newArrayList(BUTTON_ZOOM_OUT,
-                    BUTTON_PAGE_BACKWARD, BUTTON_PAN_BACKWARD,
+    public static final ImmutableList<String> BUTTON_IMAGE_NAMES = ImmutableList
+            .of(BUTTON_ZOOM_OUT, BUTTON_PAGE_BACKWARD, BUTTON_PAN_BACKWARD,
                     BUTTON_CURRENT_TIME, BUTTON_PAN_FORWARD,
-                    BUTTON_PAGE_FORWARD, BUTTON_ZOOM_IN));
+                    BUTTON_PAGE_FORWARD, BUTTON_ZOOM_IN);
 
     /**
      * Descriptions of the buttons, each of which corresponds to the button at
      * the same index in <code>BUTTON_IMAGE_NAMES</code>.
      */
-    public static final List<String> BUTTON_DESCRIPTIONS = Collections
-            .unmodifiableList(Lists.newArrayList("Zoom Out", "Page Back",
-                    "Pan Back", "Show Current Time", "Pan Forward",
-                    "Page Forward", "Zoom In"));
+    public static final ImmutableList<String> BUTTON_DESCRIPTIONS = ImmutableList
+            .of("Zoom Out", "Page Back", "Pan Back", "Show Current Time",
+                    "Pan Forward", "Page Forward", "Zoom In");
 
     // Private Static Constants
 

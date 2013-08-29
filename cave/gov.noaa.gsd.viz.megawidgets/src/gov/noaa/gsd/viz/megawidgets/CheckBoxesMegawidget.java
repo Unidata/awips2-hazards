@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +22,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Checkboxes megawidget, allowing the selection of zero or more choices, each
@@ -141,7 +142,7 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
         for (Button checkBox : checkBoxes) {
             checkBox.addSelectionListener(listener);
         }
-        this.checkBoxes = Collections.unmodifiableList(checkBoxes);
+        this.checkBoxes = ImmutableList.copyOf(checkBoxes);
 
         // Render the checkboxes uneditable if necessary.
         if (isEditable() == false) {

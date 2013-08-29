@@ -10,12 +10,13 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.widgets.Widget;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Stateful megawidget specifier base class, from which specific types of
@@ -176,7 +177,7 @@ public abstract class StatefulMegawidgetSpecifier extends
             }
             stateIdentifiers.add(identifier);
         }
-        this.stateIdentifiers = Collections.unmodifiableList(stateIdentifiers);
+        this.stateIdentifiers = ImmutableList.copyOf(stateIdentifiers);
 
         // Ensure that the state labels, if present, are
         // acceptable.

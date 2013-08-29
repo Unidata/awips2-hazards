@@ -12,11 +12,12 @@ package gov.noaa.gsd.viz.megawidgets;
 import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier.IllegalChoicesProblem;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Stateful megawidget created by a megawidget specifier that has a set choices
@@ -53,11 +54,10 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES;
     static {
-        Set<String> names = new HashSet<String>(
-                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(ChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES);
-        MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES = Collections
-                .unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES = ImmutableSet.copyOf(names);
     };
 
     // Protected Variables

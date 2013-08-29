@@ -22,13 +22,13 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Stack;
 
 import org.eclipse.core.runtime.Assert;
 
+import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -195,7 +195,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     public Map<String, Serializable> getHazardAttributes() {
         Map<String, Serializable> attr = delegate.getHazardAttributes();
         // Do not allow modification because listeners would need to be fired.
-        attr = Collections.unmodifiableMap(delegate.getHazardAttributes());
+        attr = ImmutableMap.copyOf(delegate.getHazardAttributes());
         return attr;
     }
 

@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +22,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Radio buttons megawidget, providing a series of radio buttons from which the
@@ -136,7 +137,7 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
         for (Button radioButton : radioButtons) {
             radioButton.addSelectionListener(listener);
         }
-        this.radioButtons = Collections.unmodifiableList(radioButtons);
+        this.radioButtons = ImmutableList.copyOf(radioButtons);
 
         // Render the radio buttons uneditable if ne-
         // cessary.

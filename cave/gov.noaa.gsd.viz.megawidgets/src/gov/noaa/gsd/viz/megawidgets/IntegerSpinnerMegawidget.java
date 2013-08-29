@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,6 +21,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Scale;
 import org.eclipse.swt.widgets.Spinner;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Integer spinner megawidget, allowing the manipulation of an integer.
@@ -50,10 +51,10 @@ public class IntegerSpinnerMegawidget extends BoundedValueMegawidget<Integer> {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>(
-                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IntegerSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
     // Protected Variables

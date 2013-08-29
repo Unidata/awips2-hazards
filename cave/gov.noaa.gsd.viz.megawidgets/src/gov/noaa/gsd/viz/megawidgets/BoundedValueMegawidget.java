@@ -9,10 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Bounded value megawidget, a base class for megawidgets that allow the
@@ -41,11 +42,11 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = new HashSet<String>(
-                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = Sets
+                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE);
         names.add(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE);
-        MUTABLE_PROPERTY_NAMES = Collections.unmodifiableSet(names);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
     // Protected Variables
