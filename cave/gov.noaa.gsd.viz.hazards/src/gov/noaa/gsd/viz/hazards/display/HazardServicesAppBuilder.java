@@ -97,6 +97,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             class-scoped variables are now member data.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 22, 2013  787       bryon.lawrence      Removed perspective-specific references
+ * Aug 22, 2013   1936     Chris.Golden        Added support for console countdown timers.
  * Aug 29, 2013 1921       bryon.lawrence      Modified loadGeometryOverlayForSelectedEvent to
  *                                             not take a JSON list of event ids.
  * </pre>
@@ -459,14 +460,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Dispose of the console view.
      */
-    private void destroyConsole() {
+    private void destroyConsoleView() {
         consolePresenter.getView().dispose();
     }
 
     /**
      * Dispose of the hazard detail view.
      */
-    private void destroyHazardDetailDisplay() {
+    private void destroyHazardDetailView() {
         hazardDetailPresenter.getView().dispose();
     }
 
@@ -686,7 +687,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Hide the hazard detail subview.
      */
     public void hideHazardDetail() {
-        // hazardDetailPresenter.hideHazardDetail(false);
         hazardDetailPresenter.hideHazardDetail();
     }
 
@@ -820,8 +820,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public void perspectivePreDeactivate(IWorkbenchPage page,
             IPerspectiveDescriptor perspective) {
-        destroyConsole();
-        destroyHazardDetailDisplay();
+        destroyConsoleView();
+        destroyHazardDetailView();
     }
 
     @Override
@@ -981,10 +981,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         for (HazardServicesPresenter<?> presenter : presenters) {
             if ((presenter instanceof ConsolePresenter) == false) {
                 presenter.getView().dispose();
+                presenter.dispose();
             }
         }
+
         consolePresenter.getView().dispose();
-        consolePresenter = null;
+        consolePresenter.dispose();
+        presenters.clear();
 
         /*
          * Attempt to remove the workbench listener.

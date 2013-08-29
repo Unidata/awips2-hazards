@@ -9,12 +9,12 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
@@ -187,20 +187,20 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     }
 
     @Override
-    public List<IHazardAlert> getAlerts() {
+    public ImmutableList<IHazardAlert> getAlerts() {
         synchronized (sharedLock) {
             List<IHazardAlert> result = Lists.newArrayList(activeAlerts);
             for (IHazardAlertJob alertJob : scheduledAlertJobs) {
                 result.add(alertJob.getHazardAlert());
             }
-            return Collections.unmodifiableList(result);
+            return ImmutableList.copyOf(result);
         }
     }
 
     @Override
-    public List<IHazardAlert> getActiveAlerts() {
+    public ImmutableList<IHazardAlert> getActiveAlerts() {
         synchronized (sharedLock) {
-            return Collections.unmodifiableList(activeAlerts);
+            return ImmutableList.copyOf(activeAlerts);
         }
     }
 

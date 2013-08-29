@@ -13,17 +13,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import org.joda.time.DateTime;
-
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationSpatialTimer;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationTimer;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventExpirationAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
 
 /**
@@ -44,9 +41,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertT
  */
 public class HazardEventExpirationAlertFactory {
 
-    private final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(this.getClass());
-
     public List<IHazardEventAlert> createAlerts(
             HazardAlertTimerConfigCriterion alertCriterion,
             IHazardEvent hazardEvent) {
@@ -60,7 +54,7 @@ public class HazardEventExpirationAlertFactory {
             switch (location) {
 
             case CONSOLE:
-                HazardEventExpirationConsoleTimer consoleAlert = buildConsoleAlert(
+                HazardEventExpirationTimer consoleAlert = buildConsoleAlert(
                         alertCriterion, hazardEvent);
                 result.add(consoleAlert);
                 break;
@@ -85,7 +79,7 @@ public class HazardEventExpirationAlertFactory {
         return spatialAlert;
     }
 
-    private HazardEventExpirationConsoleTimer buildConsoleAlert(
+    private HazardEventExpirationTimer buildConsoleAlert(
             HazardAlertTimerConfigCriterion alertCriterion,
             IHazardEvent hazardEvent) {
         HazardEventExpirationConsoleTimer consoleAlert = new HazardEventExpirationConsoleTimer(
@@ -96,24 +90,18 @@ public class HazardEventExpirationAlertFactory {
 
     private void computeActivationTime(
             HazardAlertTimerConfigCriterion alertCriterion,
-            IHazardEvent hazardEvent, HazardAlert alert) {
-        try {
-            Long timeBeforeExpiration = alertCriterion
-                    .getMillisBeforeExpiration();
-            Long hazardExpiration = (Long) hazardEvent
-                    .getHazardAttribute(HazardConstants.EXPIRATIONTIME);
+            IHazardEvent hazardEvent, IHazardEventExpirationAlert alert) {
+        Long timeBeforeExpiration = alertCriterion.getMillisBeforeExpiration();
 
-            Long activationTimeInMillis = hazardExpiration
-                    - timeBeforeExpiration;
-            alert.setActivationTime(new Date(activationTimeInMillis));
-            /**
-             * TODO Remove this when expiration time is being set.
-             */
-        } catch (NullPointerException e) {
-            statusHandler
-                    .debug("Alerts will not work until expiration time is set");
-            alert.setActivationTime(new DateTime(2100, 1, 1, 0, 0, 0, 0)
-                    .toDate());
-        }
+        /**
+         * TODO The product generator needs to be modified to store this as a
+         * Date
+         */
+        Long hazardExpiration = (Long) hazardEvent
+                .getHazardAttribute(HazardConstants.EXPIRATIONTIME);
+        alert.setHazardExpiration(new Date(hazardExpiration));
+
+        Long activationTimeInMillis = hazardExpiration - timeBeforeExpiration;
+        alert.setActivationTime(new Date(activationTimeInMillis));
     }
 }

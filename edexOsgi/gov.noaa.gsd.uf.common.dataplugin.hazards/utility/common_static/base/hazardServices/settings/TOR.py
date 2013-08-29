@@ -66,6 +66,7 @@ TOR = {
         "Event ID",
         "Hazard Type", 
         "State", 
+        "Alert",
         "Start Time", 
         "End Time"
     ], 
@@ -156,6 +157,11 @@ TOR = {
             "width": 100, 
             "fieldName": "description", 
             "type": "string"
+        },
+        "Alert": {
+            "sortDir": "none", 
+            "fieldName": "alert", 
+            "type": "countdown"
         }
     }, 
     "toolbarTools": [

@@ -38,15 +38,15 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            daniel.s.schaffer      Initial induction into repo
- * Aug 01, 2013            bryon.lawrence         Commented out the body of the 
- *                                                getHazardFillColor method until
- *                                                HAZARDS("HazardStyleRules.xml") is
- *                                                added to the StyleType enum in the
- *                                                baseline class StyleManager. Nobody
- *                                                calls this method at the moment. It 
- *                                                will always return white.
- * 
+ * Apr 04, 2013            daniel.s.schaffer  Initial induction into repo
+ * Aug 01, 2013            bryon.lawrence     Commented out the body of the 
+ *                                            getHazardFillColor method until
+ *                                            HAZARDS("HazardStyleRules.xml") is
+ *                                            added to the StyleType enum in the
+ *                                            baseline class StyleManager. Nobody
+ *                                            calls this method at the moment. It 
+ *                                            will always return white.
+ * Aug 09, 2013    1936    Chris.Golden       Added console countdown timers.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -280,6 +280,12 @@ public class Utilities {
     public static final String SETTING_COLUMN_TYPE_NUMBER = "number";
 
     /**
+     * Countdown column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_COUNTDOWN = "countdown";
+
+    /**
      * Visible columns key in setting dictionary.
      */
     public static final String SETTING_VISIBLE_COLUMNS = "visibleColumns";
@@ -426,6 +432,23 @@ public class Utilities {
      * Drag drop dot identifier.
      */
     public static final String DRAG_DROP_DOT = "DragDropDot";
+
+    // Private Static Constants
+
+    /**
+     * Weight of red luminance component of a color.
+     */
+    private static final float RED_LUMINANCE_WEIGHT = 0.299f;
+
+    /**
+     * Weight of green luminance component of a color.
+     */
+    private static final float GREEN_LUMINANCE_WEIGHT = 0.587f;
+
+    /**
+     * Weight of blue luminance component of a color.
+     */
+    private static final float BLUE_LUMINANCE_WEIGHT = 0.114f;
 
     // Private Static Variables
 
@@ -646,5 +669,23 @@ public class Utilities {
         // }
 
         return bestHazardColor;
+    }
+
+    /**
+     * Get the color, black or white, that offers the best contrast with the
+     * specified color.
+     * 
+     * @param color
+     *            Color for which a contrasting color is to be calculated.
+     * @return Color that contrasts best with the specified color.
+     */
+    public static Color getContrastingColor(Color color) {
+
+        // Weight the components of the color by perceptive luminance; the human
+        // eye notices green more than the others.
+        float component = (1f - ((RED_LUMINANCE_WEIGHT * color.getRed())
+                + (GREEN_LUMINANCE_WEIGHT * color.getGreen()) + (BLUE_LUMINANCE_WEIGHT * color
+                .getBlue())) < 0.5f ? 0f : 1f);
+        return new Color(component, component, component);
     }
 }

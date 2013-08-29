@@ -2,7 +2,25 @@
 <hazardAlerts>
     <eventExpiration>
         <configuration>
-            <category>Flood Hydro Warning</category>
+            <category>Flood Hydro Convective Warning</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>W</significance>
+                <subType>Convective</subType>
+            </hazardTypes>
+            <criteria>
+                <name>1 min</name>
+                <expirationTime>1</expirationTime>
+                <units>minutes</units>
+                <locations>Console</locations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>true</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+        </configuration>
+        <configuration>
+            <category>Flood Hydro Non-Convective Warning</category>
             <hazardTypes>
                 <phenomenon>FF</phenomenon>
                 <significance>W</significance>
@@ -13,7 +31,7 @@
                 <expirationTime>10</expirationTime>
                 <units>minutes</units>
                 <locations>Console</locations>
-                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
                 <isItalic>false</isItalic>
@@ -24,15 +42,32 @@
             <hazardTypes>
                 <phenomenon>FL</phenomenon>
                 <significance>W</significance>
-                <subType>NonConvective</subType>
             </hazardTypes>
             <criteria>
-                <name>6 hours</name>
-                <expirationTime>6</expirationTime>
+                <name>9 hours</name>
+                <expirationTime>9</expirationTime>
                 <units>hours</units>
-                <locations>Spatial</locations>
-                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <locations>Console</locations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>true</isItalic>
+                <fontSize>12</fontSize>
+            </criteria>
+        </configuration>
+        <configuration>
+            <category>Hydro Outlook</category>
+            <hazardTypes>
+                <phenomenon>HY</phenomenon>
+                <significance>O</significance>
+            </hazardTypes>
+            <criteria>
+                <name>7 hours, 59 minute</name>
+                <expirationTime>479</expirationTime>
+                <units>minutes</units>
+                <locations>Console</locations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
                 <isBlinking>true</isBlinking>
                 <isItalic>false</isItalic>
                 <fontSize>12</fontSize>
@@ -50,7 +85,7 @@
                 <expirationTime>1</expirationTime>
                 <units>hours</units>
                 <locations>Spatial</locations>
-                <color r="10.0" g="20.0" b="30.0" a="1.0"/>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
                 <isItalic>false</isItalic>

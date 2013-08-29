@@ -23,6 +23,10 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.google.common.collect.ImmutableList;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -42,6 +46,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
  *                                           points.
+ * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -117,6 +122,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
+     * @param activeAlerts
+     *            Currently active alerts.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
      *            to be shown in the toolbar. If <code>false</code>, they are
@@ -125,12 +132,13 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     public void initialize(ConsolePresenter presenter, long selectedTime,
             long currentTime, long visibleTimeRange, String hazardEvents,
             String jsonSettings, String jsonFilters,
+            ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar) {
         this.currentSite = LocalizationManager
                 .getContextName(LocalizationLevel.SITE);
         setSettings(jsonSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
-                visibleTimeRange, hazardEvents, jsonFilters,
+                visibleTimeRange, hazardEvents, jsonFilters, activeAlerts,
                 temporalControlsInToolBar);
     }
 
@@ -309,6 +317,16 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public void updateHazardEvent(String hazardEvent) {
         temporalDisplay.updateEvent(hazardEvent);
+    }
+
+    /**
+     * Update the list of currently active alerts.
+     * 
+     * @param activeAlerts
+     *            List of currently active alerts.
+     */
+    public void updateActiveAlerts(ImmutableList<IHazardAlert> activeAlerts) {
+        temporalDisplay.updateActiveAlerts(activeAlerts);
     }
 
     /**

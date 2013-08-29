@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2013 1257       bsteffen    Initial creation
+ * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
  * 
  * </pre>
  * 

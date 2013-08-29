@@ -1106,6 +1106,9 @@ columns = [
                       "displayString": "PILs"
                      },
                      {
+                      "displayString": "Alert"
+                     },
+                     {
                       "displayString": "Description"
                      }
 

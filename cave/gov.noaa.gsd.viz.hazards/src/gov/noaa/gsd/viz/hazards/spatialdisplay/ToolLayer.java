@@ -118,6 +118,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jul 18, 2013   1264     Chris.Golden   Added support for drawing lines and
  *                                        points.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 22, 2013    1936    Chris.Golden   Added console countdown timers.
  * Aug 27, 2013 1921       Bryon.Lawrence Replaced code to support multi-hazard selection using
  *                                        Shift and Ctrl keys.
  * </pre>
@@ -288,8 +289,8 @@ public class ToolLayer extends
             Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
                     .getTimeZone("UTC"));
             simulatedDate.setTime(date);
-            SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
             SimulatedTime.getSystemTime().setFrozen(true);
+            SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 
         displayMap = Maps.newConcurrentMap();

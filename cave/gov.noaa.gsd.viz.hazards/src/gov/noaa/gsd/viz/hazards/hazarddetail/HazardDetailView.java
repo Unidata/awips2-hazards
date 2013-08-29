@@ -49,6 +49,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           testing whether or not HID 
  *                                           updates should fire-off
  *                                           messages.
+ * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -310,6 +311,7 @@ public class HazardDetailView extends
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
+
                 // If undocked, hide the view part, since it is empty; other-
                 // wise, initialize the view part.
                 if (isViewPartDocked() == false) {
@@ -508,17 +510,8 @@ public class HazardDetailView extends
             setViewPartVisible(false);
         } else {
             hidden = false;
-            // if ((getViewPart().getEventCount() == 0) || force) {
-            // if (isViewPartDocked()) {
-            // if (isViewPartVisible()) {
-            // setViewPartVisible(false);
-            // }
-            // } else {
-            // hideViewPart(false);
-            // }
-            // }
         }
-        if (hidden) {
+        if (hidden && (hazardDetailToggleAction != null)) {
             hazardDetailToggleAction.setChecked(false);
         }
     }

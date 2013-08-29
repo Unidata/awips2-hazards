@@ -12,37 +12,24 @@ package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 import java.util.Date;
 
 /**
- * Description: An alert for hazard services
+ * Description: TODO
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 19, 2013   1325    daniel.s.schaffer@noaa.gov      Initial creation
+ * MMM DD, YYYY            daniel.s.schaffer@noaa.gov      Initial creation
  * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public interface IHazardAlert {
+public interface IHazardEventExpirationAlert extends IHazardAlert {
 
-    /**
-     * @return state as indicated in {@link HazardAlertState}
-     */
-    HazardAlertState getState();
+    public Date getHazardExpiration();
 
-    /**
-     * Set the state of this
-     */
-    void setState(HazardAlertState state);
-
-    /**
-     * @return the time at which this is scheduled to be activated.
-     */
-    Date getActivationTime();
-
-    void setActivationTime(Date activationTime);
+    public void setHazardExpiration(Date hazardExpiration);
 
 }

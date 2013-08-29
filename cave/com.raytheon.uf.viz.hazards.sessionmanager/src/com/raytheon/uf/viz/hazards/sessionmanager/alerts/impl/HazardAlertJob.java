@@ -15,6 +15,8 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 
@@ -37,6 +39,9 @@ public class HazardAlertJob extends Job implements IHazardAlertJob {
 
     private final IHazardSessionAlertsManager alertsManager;
 
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(HazardAlertJob.class);
+
     private final IHazardAlert hazardAlert;
 
     public HazardAlertJob(IHazardSessionAlertsManager alertsManager,
@@ -48,10 +53,12 @@ public class HazardAlertJob extends Job implements IHazardAlertJob {
 
     @Override
     protected IStatus run(IProgressMonitor monitor) {
+        statusHandler.debug("activating alert");
         alertsManager.activateAlert(this);
         return Status.OK_STATUS;
     }
 
+    @Override
     public IHazardAlert getHazardAlert() {
         return hazardAlert;
     }

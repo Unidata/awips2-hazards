@@ -11,6 +11,8 @@ package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.utilities.DateStringComparator;
 import gov.noaa.gsd.common.utilities.LongStringComparator;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
@@ -105,6 +107,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 
 /**
  * Description: Temporal display, providing the user the ability to view and
@@ -119,13 +122,14 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * June 4, 2013            Chris.Golden      Added support for changing background
+ * Jun 04, 2013            Chris.Golden      Added support for changing background
  *                                           and foreground colors in order to stay
  *                                           in synch with CAVE mode. Also tightened
  *                                           up area around timeline ruler to make
  *                                           the column header border show up around
  *                                           it as it should.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Aug 09, 2013    1936    Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -549,9 +553,15 @@ class TemporalDisplay {
     private boolean zoomLevelIsOdd = false;
 
     /**
-     * List of hazard event dictionaries used to populate the table.
+     * List of identifiers of hazard events used to populate the table.
      */
-    private final List<Dict> eventDictList;
+    private final List<String> eventIdentifiers;
+
+    /**
+     * Map of hazard event identifiers to dictionaries providing the hazard
+     * events themselves. All keys are found in <code>eventIdentifiers</code>.
+     */
+    private final Map<String, Dict> dictsForEventIdentifiers;
 
     /**
      * Indices of items that are currently selected.
@@ -643,6 +653,58 @@ class TemporalDisplay {
     private final Map<String, String> dateIdentifiersForVisibleColumnNames;
 
     /**
+     * Countdown timer display manager.
+     */
+    private ConsoleCountdownTimersDisplayManager countdownTimersDisplayManager = null;
+
+    /**
+     * Countdown timer display listener, a listener for notifications that the
+     * countdown timer displays need updating.
+     */
+    private final CountdownTimersDisplayListener countdownTimersDisplayListener = new CountdownTimersDisplayListener() {
+        @Override
+        public void countdownTimerDisplaysChanged(
+                CountdownTimersDisplayManager<?, ?> manager) {
+            updateCountdownTimers();
+        }
+
+        @Override
+        public void allCountdownTimerDisplaysChanged(
+                CountdownTimersDisplayManager<?, ?> manager) {
+            updateAllCountdownTimers();
+        }
+    };
+
+    /**
+     * Display properties for the countdown timer table cell that has
+     * experienced the <code>SWT.EraseItem</code> event but not the <code>
+     * SWT.PaintItem</code>. For each cell, the latter event immediately follows
+     * the former, before any other cell is erased or painted, so this reference
+     * is merely used to save the display properties for a cell in the very
+     * short time delta between the erasing and painting of said cell. It is
+     * never used beyond this.
+     */
+    private ConsoleCountdownTimerDisplayProperties countdownTimerDisplayProperties = null;
+
+    /**
+     * Name of the column holding the countdown timers, if any.
+     */
+    private String countdownTimerColumnName;
+
+    /**
+     * Index of the column holding the countdown timers, or <code>-1</code> if
+     * no such column is visible.
+     */
+    private int countdownTimerColumnIndex = -1;
+
+    /**
+     * Last recorded width of the column holding the countdown timers; this is
+     * merely the last width given by the <code>SWT.EraseItem</code> event when
+     * the column in question was the countdown timer column.
+     */
+    private int countdownTimerColumnWidth;
+
+    /**
      * Map of column identifiers to the corresponding column names.
      */
     private final Map<String, String> columnNamesForIdentifiers;
@@ -706,7 +768,7 @@ class TemporalDisplay {
 
                 // Save the new start and end times in the event
                 // dictionary.
-                for (Dict eventDict : eventDictList) {
+                for (Dict eventDict : dictsForEventIdentifiers.values()) {
                     if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER)
                             .equals(eventID)) {
                         eventDict.put(Utilities.HAZARD_EVENT_START_TIME,
@@ -727,11 +789,9 @@ class TemporalDisplay {
                             .get(columnIdentifiers[j]);
                     int columnIndex = getIndexOfColumnInTable(columnName);
                     if (columnIndex != -1) {
-                        String value = convertToCellValue(values[j],
+                        updateCell(columnIndex,
                                 (Dict) columnDefinitionsForNames
-                                        .get(columnName));
-                        item.setText(columnIndex,
-                                (value == null ? NOT_APPLICABLE : value));
+                                        .get(columnName), values[j], item);
                     }
                 }
 
@@ -1072,6 +1132,9 @@ class TemporalDisplay {
                 visibleColumnNames.remove(columnName);
                 hintTextIdentifiersForVisibleColumnNames.remove(columnName);
                 dateIdentifiersForVisibleColumnNames.remove(columnName);
+                if (columnName.equals(countdownTimerColumnName)) {
+                    countdownTimerColumnIndex = -1;
+                }
 
                 // Ensure that the checkboxes in the table's
                 // rows are in the leftmost column.
@@ -1224,7 +1287,8 @@ class TemporalDisplay {
         }
 
         // Create the various lists and dictionaries required.
-        eventDictList = Lists.newArrayList();
+        eventIdentifiers = Lists.newArrayList();
+        dictsForEventIdentifiers = Maps.newHashMap();
         columnDefinitionsForNames = new Dict();
         columnNamesForIdentifiers = Maps.newHashMap();
         visibleColumnNames = Lists.newArrayList();
@@ -1257,6 +1321,8 @@ class TemporalDisplay {
      * @param filterMegawidgets
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
+     * @param activeAlerts
+     *            Currently active alerts.
      * @param showControlsInToolBar
      *            Flag indicating whether the controls (navigation buttons,
      *            etc.) are to be shown in the toolbar. If <code>false</code>,
@@ -1264,7 +1330,8 @@ class TemporalDisplay {
      */
     public void initialize(ConsolePresenter presenter, long selectedTime,
             long currentTime, long visibleTimeRange, String hazardEvents,
-            String filterMegawidgets, boolean showControlsInToolBar) {
+            String filterMegawidgets, ImmutableList<IHazardAlert> activeAlerts,
+            boolean showControlsInToolBar) {
 
         // Remember the presenter.
         this.presenter = presenter;
@@ -1320,6 +1387,16 @@ class TemporalDisplay {
         // Add the mouse wheel filter, used to handle mouse wheel
         // events properly when they should apply to the table.
         table.getDisplay().addFilter(SWT.MouseWheel, mouseWheelFilter);
+
+        // Create a countdown timer display manager.
+        countdownTimersDisplayManager = new ConsoleCountdownTimersDisplayManager(
+                countdownTimersDisplayListener);
+        if (table != null) {
+            countdownTimersDisplayManager.setBaseFont(table.getFont());
+        }
+
+        // Update the active alerts.
+        updateActiveAlerts(activeAlerts);
     }
 
     /**
@@ -1469,7 +1546,11 @@ class TemporalDisplay {
      * @return List of the current hazard events.
      */
     public List<Dict> getEvents() {
-        return eventDictList;
+        List<Dict> dictList = Lists.newArrayList();
+        for (String eventId : eventIdentifiers) {
+            dictList.add(dictsForEventIdentifiers.get(eventId));
+        }
+        return dictList;
     }
 
     /**
@@ -1499,7 +1580,8 @@ class TemporalDisplay {
         if (table.isDisposed() == false) {
             table.removeAll();
         }
-        eventDictList.clear();
+        eventIdentifiers.clear();
+        dictsForEventIdentifiers.clear();
         for (TableEditor editor : tableEditorsForIdentifiers.values()) {
             editor.getEditor().dispose();
             editor.dispose();
@@ -1619,14 +1701,10 @@ class TemporalDisplay {
                         if (columnName != null) {
                             int columnIndex = getIndexOfColumnInTable(columnName);
                             if (columnIndex != -1) {
-                                Dict columnDefinition = (Dict) columnDefinitionsForNames
-                                        .get(columnName);
-                                String value = convertToCellValue(
-                                        dict.getDynamicallyTypedValue(key),
-                                        columnDefinition);
-                                item.setText(
-                                        columnIndex,
-                                        (value == null ? NOT_APPLICABLE : value));
+                                updateCell(columnIndex,
+                                        (Dict) columnDefinitionsForNames
+                                                .get(columnName),
+                                        dict.get(key), item);
                             }
                         }
 
@@ -1705,6 +1783,21 @@ class TemporalDisplay {
      */
     public void setFocus() {
         table.setFocus();
+    }
+
+    /**
+     * Update the currently active alerts.
+     * 
+     * @param activeAlerts
+     *            Currently active alerts.
+     */
+    public void updateActiveAlerts(
+            ImmutableList<? extends IHazardAlert> activeAlerts) {
+        if (countdownTimersDisplayManager == null) {
+            return;
+        }
+        countdownTimersDisplayManager.updateActiveAlerts(activeAlerts);
+        updateAllCountdownTimers();
     }
 
     // Package Methods
@@ -1985,6 +2078,9 @@ class TemporalDisplay {
             if (!columnName.equals(TIME_SCALE_COLUMN_NAME)
                     && !visibleColumnNames.contains(columnName)) {
                 tableColumn.dispose();
+                if (columnName.equals(countdownTimerColumnName)) {
+                    countdownTimerColumnIndex = -1;
+                }
             }
         }
 
@@ -2031,9 +2127,9 @@ class TemporalDisplay {
         // Update the table column headers' sort images.
         updateTableColumnSortImages();
 
-        // Sort the incoming event dictionaries based on the table's
+        // Sort the incoming event identifiers based on the table's
         // sort column and direction.
-        if (eventDictList.size() > 0) {
+        if (eventIdentifiers.size() > 0) {
             sortEventData();
             createTableRowsFromEventData();
         }
@@ -2048,6 +2144,11 @@ class TemporalDisplay {
      * Perform any disposal tasks internally.
      */
     private void disposeInternal() {
+
+        // Dispose of the countdown timer display manager.
+        if (countdownTimersDisplayManager != null) {
+            countdownTimersDisplayManager.dispose();
+        }
 
         // Clear all events.
         clearEvents();
@@ -2210,7 +2311,10 @@ class TemporalDisplay {
             numberOfRows = eventArray.size();
             for (int j = 0; j < eventArray.size(); ++j) {
                 Dict dict = eventArray.get(j);
-                eventDictList.add(dict);
+                String eventId = (String) dict
+                        .get(Utilities.HAZARD_EVENT_IDENTIFIER);
+                eventIdentifiers.add(eventId);
+                dictsForEventIdentifiers.put(eventId, dict);
             }
         }
     }
@@ -2224,7 +2328,7 @@ class TemporalDisplay {
      *            Dictionary to be merged in with the existing one.
      */
     private void mergeIntoExistingEventDict(Dict toBeMerged) {
-        for (Dict eventDict : eventDictList) {
+        for (Dict eventDict : dictsForEventIdentifiers.values()) {
             if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER).equals(
                     toBeMerged.get(Utilities.HAZARD_EVENT_IDENTIFIER))) {
                 for (String key : toBeMerged.keySet()) {
@@ -2246,7 +2350,7 @@ class TemporalDisplay {
      *            Identifiers of events that are currently selected.
      */
     private void updateEventDictListSelection(List<String> identifiers) {
-        for (Dict eventDict : eventDictList) {
+        for (Dict eventDict : dictsForEventIdentifiers.values()) {
             eventDict
                     .put(Utilities.HAZARD_EVENT_SELECTED, identifiers
                             .contains(eventDict
@@ -2412,6 +2516,90 @@ class TemporalDisplay {
         table.setBackground(Display.getCurrent().getSystemColor(
                 SWT.COLOR_WIDGET_BACKGROUND));
 
+        // Add a listener to handle painting of the background
+        // of table cells when those cells are for active, non-
+        // selected countdown timers.
+        if (countdownTimersDisplayManager != null) {
+            countdownTimersDisplayManager.setBaseFont(table.getFont());
+        }
+        table.addListener(SWT.EraseItem, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+
+                // If the cell is not a countdown timer cell, or
+                // the cell does not have custom display proper-
+                // ties, handle the erase normally.
+                countdownTimerDisplayProperties = null;
+                if ((event.index != countdownTimerColumnIndex)
+                        || (countdownTimersDisplayManager == null)) {
+                    return;
+                }
+                countdownTimerDisplayProperties = countdownTimersDisplayManager
+                        .getDisplayPropertiesForEvent((String) event.item
+                                .getData());
+                if (countdownTimerDisplayProperties == null) {
+                    return;
+                }
+
+                // Save the width of this column, because the
+                // PaintItem event that follows for this cell
+                // will only hold the width of the text to be
+                // drawn, not the width of the entire column.
+                countdownTimerColumnWidth = event.width;
+
+                // If the cell is selected, use the standard
+                // background, but make sure the foreground is
+                // not drawn in the default manner.
+                if ((event.detail & SWT.SELECTED) != 0) {
+                    event.detail &= ~(SWT.FOREGROUND | SWT.HOT);
+                    return;
+                }
+
+                // Paint the background using the appropriate
+                // color.
+                Color oldBackground = event.gc.getBackground();
+                event.gc.setBackground(countdownTimerDisplayProperties
+                        .getBackgroundColor());
+                event.gc.fillRectangle(event.x, event.y, event.width,
+                        event.height);
+                event.gc.setBackground(oldBackground);
+                event.detail &= ~(SWT.BACKGROUND | SWT.FOREGROUND | SWT.HOT);
+            }
+        });
+
+        // Add a listener to handle painting of the foreground
+        // of table cells when those cells are for active count-
+        // down timers.
+        table.addListener(SWT.PaintItem, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+
+                // If the cell is not a countdown timer cell, or
+                // the cell does not have custom display proper-
+                // ties, handle the erase normally.
+                if ((event.index != countdownTimerColumnIndex)
+                        || (countdownTimerDisplayProperties == null)) {
+                    return;
+                }
+
+                // Paint the foreground using the appropriate
+                // color.
+                Color oldForeground = event.gc.getForeground();
+                Font oldFont = event.gc.getFont();
+                event.gc.setForeground(countdownTimerDisplayProperties
+                        .getForegroundColor());
+                event.gc.setFont(countdownTimerDisplayProperties.getFont());
+                String text = ((TableItem) event.item).getText(event.index);
+                Point size = event.gc.stringExtent(text);
+                int textWidth = size.x + 5;
+                int yOffset = (event.height - size.y) / 2;
+                event.gc.drawText(text, event.x + countdownTimerColumnWidth
+                        - textWidth, event.y + yOffset, true);
+                event.gc.setForeground(oldForeground);
+                event.gc.setFont(oldFont);
+            }
+        });
+
         // Add a listener for check and uncheck events that
         // updates the event dictionary to match, and notifies
         // any listeners of the event, as well as updating the
@@ -2434,7 +2622,7 @@ class TemporalDisplay {
                     lastCheckEventTime = e.time;
                     String identifier = (String) e.item.getData();
                     boolean isChecked = ((TableItem) e.item).getChecked();
-                    for (Dict eventDict : eventDictList) {
+                    for (Dict eventDict : dictsForEventIdentifiers.values()) {
                         if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER)
                                 .equals(identifier)) {
                             eventDict.put(Utilities.HAZARD_EVENT_CHECKED,
@@ -2578,7 +2766,8 @@ class TemporalDisplay {
                             // shown.
                             String eventID = (String) item.getData();
                             String text = null;
-                            for (Dict eventDict : eventDictList) {
+                            for (Dict eventDict : dictsForEventIdentifiers
+                                    .values()) {
                                 if (eventDict.get(
                                         Utilities.HAZARD_EVENT_IDENTIFIER)
                                         .equals(eventID)) {
@@ -2656,7 +2845,8 @@ class TemporalDisplay {
                             // it, retrieve the date value.
                             String eventID = (String) item.getData();
                             long date = -1L;
-                            for (Dict eventDict : eventDictList) {
+                            for (Dict eventDict : dictsForEventIdentifiers
+                                    .values()) {
                                 if (eventDict.get(
                                         Utilities.HAZARD_EVENT_IDENTIFIER)
                                         .equals(eventID)) {
@@ -2749,12 +2939,21 @@ class TemporalDisplay {
         }
 
         // Create the column.
-        TableColumn column = new TableColumn(table, SWT.NONE,
-                (index == -1 ? table.getColumnCount() : index));
+        if (index == -1) {
+            index = table.getColumnCount();
+        }
+        TableColumn column = new TableColumn(table, SWT.NONE, index);
         column.setText(name);
         column.setImage(spacerImage);
         column.setMoveable(true);
         column.setResizable(true);
+        if (columnDefinition.getDynamicallyTypedValue(
+                Utilities.SETTING_COLUMN_TYPE).equals(
+                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+            countdownTimerColumnIndex = index;
+            countdownTimerColumnName = name;
+            updateCountdownTimers();
+        }
 
         // Set the table's sort column to match this one, and set its
         // sort direction, if this is the sort column.
@@ -2784,6 +2983,9 @@ class TemporalDisplay {
             comparator = new DateStringComparator(dateTimeFormatter);
         } else if (type.equals(Utilities.SETTING_COLUMN_TYPE_NUMBER)) {
             comparator = new LongStringComparator();
+        } else if (type.equals(Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+
+            // No comparator is needed, so keep it as null.
         } else {
             statusHandler.error("TemporalDisplay.createTableColumn(): Do not "
                     + "know how to compare values of type \"" + type + "\".");
@@ -3129,15 +3331,13 @@ class TemporalDisplay {
             // For each column in the row, insert the text appropriate
             // to the column.
             for (String name : visibleColumnNames) {
-                Dict columnDefinition = (Dict) columnDefinitionsForNames
-                        .get(name);
-                String cellValue = getCellValue(j, columnDefinition);
-                item.setText(getIndexOfColumnInTable(name),
-                        (cellValue == null ? NOT_APPLICABLE : cellValue));
+                updateCell(j, getIndexOfColumnInTable(name),
+                        (Dict) columnDefinitionsForNames.get(name), item);
             }
 
             // Determine whether or not the row is to be selected.
-            Dict eventDict = eventDictList.get(j);
+            Dict eventDict = dictsForEventIdentifiers.get(eventIdentifiers
+                    .get(j));
             Object selectedObject = eventDict
                     .get(Utilities.HAZARD_EVENT_SELECTED);
             boolean selected = ((selectedObject != null) && ((Boolean) selectedObject)
@@ -3158,8 +3358,7 @@ class TemporalDisplay {
 
             // Set the row's identifier to equal that of the hazard
             // event.
-            item.setData(eventDictList.get(j).get(
-                    Utilities.HAZARD_EVENT_IDENTIFIER));
+            item.setData(eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER));
             item.setChecked((Boolean) eventDict
                     .get(Utilities.HAZARD_EVENT_CHECKED));
 
@@ -3282,15 +3481,78 @@ class TemporalDisplay {
         // Iterate through the rows of the table, setting
         // the text of the cells within the new column as
         // appropriate.
-        Dict columnDefinition = (Dict) columnDefinitionsForNames
-                .get(columnName);
         int index = getIndexOfColumnInTable(columnName);
-        TableItem[] tableItems = table.getItems();
-        for (int j = 0; j < tableItems.length; j++) {
-            String cellValue = getCellValue(j, columnDefinition);
-            tableItems[j].setText(index, (cellValue == null ? NOT_APPLICABLE
-                    : cellValue));
+        if (index != -1) {
+            Dict columnDefinition = columnDefinitionsForNames
+                    .getDynamicallyTypedValue(columnName);
+            TableItem[] tableItems = table.getItems();
+            for (int j = 0; j < tableItems.length; j++) {
+                updateCell(j, index, columnDefinition, tableItems[j]);
+            }
         }
+    }
+
+    /**
+     * Update the specified cell to display the correct value with the correct
+     * display attributes (font, etc.).
+     * 
+     * @param row
+     *            Row to be updated.
+     * @param col
+     *            Column to be updated.
+     * @param columnDefinition
+     *            Dictionary holding the definition of the column as key-value
+     *            pairs.
+     * @param item
+     *            Table item holding the cell that is to be updated.
+     */
+    private void updateCell(int row, int col, Dict columnDefinition,
+            TableItem item) {
+
+        // If the cell is in the countdown column, update the display
+        // properties for any countdown timer associated with this
+        // row's event.
+        if (columnDefinition.get(Utilities.SETTING_COLUMN_TYPE).equals(
+                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)
+                && (countdownTimersDisplayManager != null)) {
+            countdownTimersDisplayManager.updateDisplayPropertiesForEvent(
+                    (String) item.getData(), item.getFont());
+        }
+
+        // Set the cell text to the appropriate value.
+        setCellText(col, item, getCellValue(row, columnDefinition));
+    }
+
+    /**
+     * Update the specified cell to display the specified value.
+     * 
+     * @param col
+     *            Column to be updated.
+     * @param columnDefinition
+     *            Dictionary holding the definition of the column as key-value
+     *            pairs.
+     * @param value
+     *            Value to be displayed.
+     * @param item
+     *            Table item holding the cell that is to be updated.
+     */
+    private void updateCell(int col, Dict columnDefinition, Object value,
+            TableItem item) {
+        setCellText(col, item, convertToCellValue(value, columnDefinition));
+    }
+
+    /**
+     * Set the specified cell's text to the specified value.
+     * 
+     * @param col
+     *            Column of the cell to have its text set.
+     * @param item
+     *            Table item holding the cell to have its text set.
+     * @param text
+     *            Text to be used.
+     */
+    private void setCellText(int col, TableItem item, String text) {
+        item.setText(col, (text == null ? NOT_APPLICABLE : text));
     }
 
     /**
@@ -3722,6 +3984,10 @@ class TemporalDisplay {
             table.deselectAll();
         }
 
+        // Get the index of the countdown timer column, if it
+        // is showing.
+        countdownTimerColumnIndex = getIndexOfColumnInTable(countdownTimerColumnName);
+
         // Update the order of the columns in the dictionaries.
         updateTableColumnOrderInSettingDefinition();
     }
@@ -3739,8 +4005,16 @@ class TemporalDisplay {
                     + "no column definition provided");
             return null;
         }
+        if (columnDefinition.get(Utilities.SETTING_COLUMN_TYPE).equals(
+                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+            if (countdownTimersDisplayManager == null) {
+                return null;
+            }
+            return countdownTimersDisplayManager
+                    .getTextForEvent(eventIdentifiers.get(row));
+        }
         return (convertToCellValue(
-                eventDictList.get(row).get(
+                dictsForEventIdentifiers.get(eventIdentifiers.get(row)).get(
                         columnDefinition
                                 .get(Utilities.SETTING_COLUMN_IDENTIFIER)),
                 columnDefinition));
@@ -3847,8 +4121,9 @@ class TemporalDisplay {
             hintTextIdentifiersForVisibleColumnNames.put(columnName,
                     hintTextIdentifier);
         }
-        if (columnDefinition.get(Utilities.SETTING_COLUMN_TYPE).equals(
-                Utilities.SETTING_COLUMN_TYPE_DATE)) {
+        String columnType = columnDefinition
+                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_TYPE);
+        if (columnType.equals(Utilities.SETTING_COLUMN_TYPE_DATE)) {
             dateIdentifiersForVisibleColumnNames.put(columnName,
                     (String) columnDefinition
                             .get(Utilities.SETTING_COLUMN_IDENTIFIER));
@@ -3944,6 +4219,9 @@ class TemporalDisplay {
      *         column is not currently in the table.
      */
     private int getIndexOfColumnInTable(String name) {
+        if (name == null) {
+            return -1;
+        }
         TableColumn[] columns = table.getColumns();
         for (int j = 0; j < columns.length; j++) {
             if (name.equals(columns[j].getText())) {
@@ -4015,6 +4293,10 @@ class TemporalDisplay {
             } else if (sortByType.equals(Utilities.SETTING_COLUMN_TYPE_DATE)
                     || sortByType.equals(Utilities.SETTING_COLUMN_TYPE_NUMBER)) {
                 comparator = new LongStringComparator();
+            } else if (sortByType
+                    .equals(Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+
+                // No action; comparator should be null.
             } else {
                 statusHandler
                         .error("TemporalDisplay.sortEventData(): Do not know "
@@ -4026,28 +4308,44 @@ class TemporalDisplay {
             boolean changed = false;
             do {
                 changed = false;
-                for (int j = 0; j < eventDictList.size() - 1; ++j) {
+                for (int j = 0; j < eventIdentifiers.size() - 1; ++j) {
 
-                    // Get the objects to be sorted; if either is
-                    // missing, do nothing this round.
-                    Object object1 = eventDictList.get(j).get(sortByIdentifier);
-                    Object object2 = eventDictList.get(j + 1).get(
-                            sortByIdentifier);
-                    if ((object1 == null) || (object2 == null)) {
-                        continue;
+                    // Get the objects to be sorted; if a comparator has
+                    // been found, then only do the comparison if the
+                    // text for the appropriate parameter is found for
+                    // both events. If no comparator is being used, use
+                    // the expiration times for the two events for the
+                    // comparison.
+                    String value1 = null;
+                    String value2 = null;
+                    long time1 = 0L;
+                    long time2 = 0L;
+                    if (comparator != null) {
+                        Object object1 = dictsForEventIdentifiers.get(
+                                eventIdentifiers.get(j)).get(sortByIdentifier);
+                        Object object2 = dictsForEventIdentifiers.get(
+                                eventIdentifiers.get(j + 1)).get(
+                                sortByIdentifier);
+                        if ((object1 == null) || (object2 == null)) {
+                            continue;
+                        }
+                        value1 = object1.toString();
+                        value2 = object2.toString();
+                    } else {
+                        time1 = getAlertExpirationTime(eventIdentifiers.get(j));
+                        time2 = getAlertExpirationTime(eventIdentifiers
+                                .get(j + 1));
                     }
-                    String value1 = object1.toString();
-                    String value2 = object2.toString();
 
                     // Switch the two event dictionaries if they are
                     // not already in the correct order.
-                    if (((tableSortDirection == SWT.UP) && (comparator.compare(
-                            value1, value2) > 0))
-                            || ((tableSortDirection == SWT.DOWN) && (comparator
-                                    .compare(value1, value2) < 0))) {
-                        Dict tempEventDict = eventDictList.get(j);
-                        eventDictList.set(j, eventDictList.get(j + 1));
-                        eventDictList.set(j + 1, tempEventDict);
+                    if (((comparator != null) && (compareFirstToSecond(
+                            tableSortDirection, value1, value2, comparator) > 0))
+                            || ((comparator == null) && (compareFirstToSecond(
+                                    tableSortDirection, time1, time2) > 0))) {
+                        String tempEventId = eventIdentifiers.get(j);
+                        eventIdentifiers.set(j, eventIdentifiers.get(j + 1));
+                        eventIdentifiers.set(j + 1, tempEventId);
                         changed = true;
                     }
                 }
@@ -4057,10 +4355,13 @@ class TemporalDisplay {
 
     /**
      * Sort the rows in the table based upon the contents of the cells in the
-     * specified column using the provided comparator.
+     * specified column using the provided comparator, or using alert expiration
+     * values if no comparator is specified.
      * 
      * @param sortColumnIndex
      *            Canonical index of the column to be used for sorting.
+     * @param comparator
+     *            If provided, comparator to be used to compare the values.
      */
     private void sortRowsByColumn(int sortColumnIndex,
             Comparator<? super String> comparator) {
@@ -4091,22 +4392,37 @@ class TemporalDisplay {
             tableEditorsForIdentifiers.clear();
 
             // Iterate through the old rows after the first one,
-            // finding
-            // in each case where the the row belongs, and recreating
-            // it at the appropriate index.
+            // finding in each case where the the row belongs, and
+            // recreating it at the appropriate index.
             for (int j = 1; j < items.length; j++) {
 
                 // Iterate through all the rows before this one,
                 // finding the place to insert the row, and insert a
                 // new one that is identical to this one there,
-                // deleting this one in the process.
-                String value1 = items[j].getText(sortColumnIndex);
+                // deleting this one in the process. Use the text in
+                // the cells to compare the two rows if a comparator
+                // was provided; otherwise, use the expiration times
+                // of any alert for the two rows for the comparison.
+                String value1 = null;
+                long time1 = 0L;
+                if (comparator != null) {
+                    value1 = items[j].getText(sortColumnIndex);
+                } else {
+                    time1 = getAlertExpirationTime((String) items[j].getData());
+                }
                 for (int k = 0; k < j; k++) {
-                    String value2 = items[k].getText(sortColumnIndex);
-                    if (((tableSortDirection == SWT.UP) && (comparator.compare(
-                            value1, value2) < 0))
-                            || ((tableSortDirection == SWT.DOWN) && (comparator
-                                    .compare(value1, value2) > 0))) {
+                    String value2 = null;
+                    long time2 = 0L;
+                    if (comparator != null) {
+                        value2 = items[k].getText(sortColumnIndex);
+                    } else {
+                        time2 = getAlertExpirationTime((String) items[k]
+                                .getData());
+                    }
+                    if (((comparator != null) && (compareFirstToSecond(
+                            tableSortDirection, value1, value2, comparator) < 0))
+                            || ((comparator == null) && (compareFirstToSecond(
+                                    tableSortDirection, time1, time2) < 0))) {
 
                         // Create the new row at the index at which it
                         // now belongs.
@@ -4137,6 +4453,12 @@ class TemporalDisplay {
                 }
             }
 
+            // Rebuild the event identifiers list.
+            eventIdentifiers.clear();
+            for (TableItem item : items) {
+                eventIdentifiers.add((String) item.getData());
+            }
+
             // Iterate through the table items once more, placing the
             // controls in new editors in the last column, and making
             // a list of any that were previously selected.
@@ -4154,6 +4476,155 @@ class TemporalDisplay {
             // Select the items that were previously selected.
             table.setSelection(selectedItems);
             selectedIndices = table.getSelectionIndices();
+
+            // Update countdown timers, since the sort may have
+            // changed the rows of any existing timers' cells.
+            updateAllCountdownTimers();
         }
+    }
+
+    /**
+     * Compare the first and second values in the table.
+     * 
+     * @param tableSortDirection
+     *            Direction of sorting within the table.
+     * @param value1
+     *            First value to be compared.
+     * @param value2
+     *            Second value to be compared.
+     * @param comparator
+     *            Comparator to be used.
+     * @return A value less than, equal to, or greater than 0 indicating that
+     *         the first value is less than, equal to, or greater than the
+     *         second, respectively.
+     */
+    private int compareFirstToSecond(int tableSortDirection, String value1,
+            String value2, Comparator<? super String> comparator) {
+        if (tableSortDirection == SWT.UP) {
+            return comparator.compare(value1, value2);
+        }
+        return comparator.compare(value1, value2) * -1;
+    }
+
+    /**
+     * Compare the first and second values in the table.
+     * 
+     * @param tableSortDirection
+     *            Direction of sorting within the table.
+     * @param value1
+     *            First value to be compared.
+     * @param value2
+     *            Second value to be compared.
+     * @return A value less than, equal to, or greater than 0 indicating that
+     *         the first value is less than, equal to, or greater than the
+     *         second, respectively.
+     */
+    private int compareFirstToSecond(int tableSortDirection, long value1,
+            long value2) {
+        int result = (value1 > value2 ? 1 : (value1 < value2 ? -1 : 0));
+        return result * (tableSortDirection == SWT.UP ? 1 : -1);
+    }
+
+    /**
+     * Get the expiration time of the alert for the specified event identifier.
+     * 
+     * @param eventId
+     *            Event identifier for which to fetch the expiration time.
+     * @return Expiration time as an epoch time in milliseconds, or <code>
+     *         Long.MAX_VALUE</code> if there is no expiration time.
+     */
+    private long getAlertExpirationTime(String eventId) {
+        if (countdownTimersDisplayManager == null) {
+            return Long.MAX_VALUE;
+        }
+        return countdownTimersDisplayManager
+                .getAlertExpirationTimeForEvent(eventId);
+    }
+
+    /**
+     * Update any countdown timer cells that need updating.
+     */
+    private void updateCountdownTimers() {
+
+        // Do nothing unless the countdown timer column is showing and the
+        // countdown timer display manager exists.
+        if ((temporalDisplayPanel == null) || temporalDisplayPanel.isDisposed()
+                || (countdownTimersDisplayManager == null)) {
+            return;
+        }
+        int columnIndex = getIndexOfColumnInTable(countdownTimerColumnName);
+        if (columnIndex != -1) {
+
+            // Find out which countdown timers need updating.
+            Map<String, CountdownTimersDisplayManager.UpdateType> updateTypesForEventIdentifiers = countdownTimersDisplayManager
+                    .getEventsNeedingUpdateAndRefreshRedrawTimes();
+
+            // Iterate through the countdown timers, updating the
+            // display of any that have corresponding table cells.
+            Dict columnDefinition = columnDefinitionsForNames
+                    .getDynamicallyTypedValue(countdownTimerColumnName);
+            TableItem[] items = table.getItems();
+            for (String eventId : updateTypesForEventIdentifiers.keySet()) {
+
+                // If this event is not found in the table, skip it.
+                int rowIndex = eventIdentifiers.indexOf(eventId);
+                if (rowIndex == -1) {
+                    continue;
+                }
+
+                // Update the text and/or redraw the table cell, as
+                // appropriate.
+                CountdownTimersDisplayManager.UpdateType type = updateTypesForEventIdentifiers
+                        .get(eventId);
+                if ((type == CountdownTimersDisplayManager.UpdateType.TEXT)
+                        || (type == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
+                    updateCell(rowIndex, columnIndex, columnDefinition,
+                            items[rowIndex]);
+                }
+                if ((type == CountdownTimersDisplayManager.UpdateType.COLOR)
+                        || (type == CountdownTimersDisplayManager.UpdateType.TEXT_AND_COLOR)) {
+                    Rectangle bounds = items[rowIndex].getBounds(columnIndex);
+                    table.redraw(bounds.x - 1, bounds.y - 1, bounds.width + 1,
+                            bounds.height + 1, false);
+                }
+            }
+
+            // Force the table to redraw immediately, so that blinking
+            // of any countdown timers that should blink occurs.
+            table.update();
+
+            // Schedule the next invocation of this method if there
+            // is anything to be updated.
+            countdownTimersDisplayManager
+                    .scheduleNextDisplayUpdate(eventIdentifiers);
+        }
+    }
+
+    /**
+     * Update all countdown timer cells.
+     */
+    private void updateAllCountdownTimers() {
+
+        // Do nothing unless the countdown timer column is showing and the
+        // countdown timer display manager exists.
+        if ((temporalDisplayPanel == null) || temporalDisplayPanel.isDisposed()
+                || (countdownTimersDisplayManager == null)) {
+            return;
+        }
+
+        // Turn off redraw, update all the cells, and turn redraw back on
+        // to force redrawing in case of blinking cells.
+        table.setRedraw(false);
+        updateCellsForColumn(countdownTimerColumnName);
+        table.setRedraw(true);
+        table.update();
+
+        // Calculate the next display update time for each of the countdown
+        // timers.
+        countdownTimersDisplayManager.refreshAllRedrawTimes();
+
+        // Schedule the next countdown timer column redraw.
+        countdownTimersDisplayManager
+                .scheduleNextDisplayUpdate(eventIdentifiers);
     }
 }

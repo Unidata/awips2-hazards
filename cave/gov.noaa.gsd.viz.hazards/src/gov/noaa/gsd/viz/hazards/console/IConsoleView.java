@@ -14,6 +14,9 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.List;
 
+import com.google.common.collect.ImmutableList;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+
 /**
  * Console view, an interface describing the methods that a class must implement
  * in order to act as a view for a console presenter.
@@ -24,7 +27,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Jul 12, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,6 +58,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
+     * @param activeAlerts
+     *            Currently active alerts.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
      *            to be shown in the toolbar. If <code>false</code>, they are
@@ -62,6 +68,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     public void initialize(ConsolePresenter presenter, long selectedTime,
             long currentTime, long visibleTimeRange, String jsonHazardEvents,
             String jsonSettings, String jsonFilters,
+            ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar);
 
     /**
@@ -157,6 +164,14 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            with the properties in the dictionary.
      */
     public void updateHazardEvent(String hazardEventJSON);
+
+    /**
+     * Set the list of currently active alerts.
+     * 
+     * @param activeAlerts
+     *            List of currently active alerts.
+     */
+    public void setActiveAlerts(ImmutableList<IHazardAlert> activeAlerts);
 
     /**
      * Get the dictionary defining the current dynamic setting being used.

@@ -63,6 +63,7 @@ public class HazardAlert implements IHazardAlert {
      * @param activationTime
      *            the activationTime to set
      */
+    @Override
     public void setActivationTime(Date activationTime) {
         this.activationTime = activationTime;
     }

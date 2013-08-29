@@ -24,8 +24,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryB
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
@@ -76,9 +74,6 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
      * {@link IHazardEvent}s for which there are alerts.
      */
     private final Map<String, IHazardEvent> alertedEvents;
-
-    private final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(this.getClass());
 
     public HazardEventExpirationAlertStrategy(
             IHazardSessionAlertsManager alertsManager,
@@ -145,29 +140,20 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                 } else {
                     IHazardEvent alertedEvent = alertedEvents.get(hazardEvent
                             .getEventID());
-                    try {
-                        Date alertedEventExpirationTime = new Date(
-                                (Long) alertedEvent
-                                        .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
-                        Date eventExpirationTime = new Date(
-                                (Long) hazardEvent
-                                        .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
-                        if (!alertedEventExpirationTime
-                                .equals(eventExpirationTime)) {
-                            /**
-                             * Cancel previous alerts and re-raise them as
-                             * necessary
-                             */
-                            updatesAlertsForDeletedHazard(alertedEvent);
-                            generateAlertsForIssuedHazardEvent(hazardEvent);
-                        }
-                    } catch (NullPointerException e) {
+                    Date alertedEventExpirationTime = new Date(
+                            (Long) alertedEvent
+                                    .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+                    Date eventExpirationTime = new Date(
+                            (Long) hazardEvent
+                                    .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+                    if (!alertedEventExpirationTime.equals(eventExpirationTime)) {
                         /**
-                         * TODO Fix this.
+                         * Cancel previous alerts and re-raise them as necessary
                          */
-                        statusHandler
-                                .debug("Alerts will not work until expiration time is set");
+                        updatesAlertsForDeletedHazard(alertedEvent);
+                        generateAlertsForIssuedHazardEvent(hazardEvent);
                     }
+
                 }
             } else if (hazardEvent.getState().equals(HazardState.ENDED)) {
                 updatesAlertsForDeletedHazard(hazardNotification.getEvent());
@@ -190,11 +176,11 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     }
 
     private void generateAlertsForIssuedHazardEvent(IHazardEvent hazardEvent) {
-        alertedEvents.put(hazardEvent.getEventID(), hazardEvent);
         List<HazardAlertTimerConfigCriterion> alertCriteria = alertConfiguration
                 .getCriteria(new HazardType(hazardEvent.getPhenomenon(),
                         hazardEvent.getSignificance(), hazardEvent.getSubtype()));
         for (HazardAlertTimerConfigCriterion alertCriterion : alertCriteria) {
+            alertedEvents.put(hazardEvent.getEventID(), hazardEvent);
             List<IHazardEventAlert> alerts = alertFactory.createAlerts(
                     alertCriterion, hazardEvent);
             for (IHazardEventAlert alert : alerts) {

@@ -9,8 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
-import java.util.List;
-
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.IHazardAlertJob;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.IHazardAlertStrategy;
@@ -66,12 +65,12 @@ public interface IHazardSessionAlertsManager {
     /**
      * @return all scheduled plus active alerts
      */
-    List<IHazardAlert> getAlerts();
+    ImmutableList<IHazardAlert> getAlerts();
 
     /**
      * @return the currently active {@link IHazardAlert}s
      */
-    List<IHazardAlert> getActiveAlerts();
+    ImmutableList<IHazardAlert> getActiveAlerts();
 
     /**
      * Execute any startup required.

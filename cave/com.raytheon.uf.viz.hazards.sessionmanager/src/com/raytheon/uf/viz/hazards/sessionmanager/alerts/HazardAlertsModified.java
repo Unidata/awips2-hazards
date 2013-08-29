@@ -9,8 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
-import java.util.List;
-
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
 /**
@@ -31,13 +30,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  */
 public class HazardAlertsModified implements ISessionNotification {
 
-    private final List<IHazardAlert> activeAlerts;
+    private final ImmutableList<IHazardAlert> activeAlerts;
 
-    public HazardAlertsModified(List<IHazardAlert> activeAlerts) {
+    public HazardAlertsModified(ImmutableList<IHazardAlert> activeAlerts) {
         this.activeAlerts = activeAlerts;
     }
 
-    public List<IHazardAlert> getActiveAlerts() {
+    public ImmutableList<IHazardAlert> getActiveAlerts() {
         return activeAlerts;
     }
 

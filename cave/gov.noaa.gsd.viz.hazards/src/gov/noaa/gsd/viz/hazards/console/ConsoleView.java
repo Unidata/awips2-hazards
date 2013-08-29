@@ -43,11 +43,13 @@ import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 
 /**
  * Console view, an implementation of IConsoleView that provides an Eclipse
@@ -61,10 +63,11 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * May 08, 2013            Chris.Golden      Moved view-part-managing code
  *                                           to new superclass.
- * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
- * Aug 22, 2013    787     Bryon.Lawrence    Added references to constants for 
+ * Jul 12, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Aug 22, 2013     787    Bryon.Lawrence    Added references to constants for 
  *                                           RESET_EVENTS, RESET_SETTINGS, and 
  *                                           RESET_ACTION
+ * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -522,9 +525,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                 // If this view is being created as the result of a
                 // bundle load, determine whether the view part
                 // should be started off as hidden, and if so, hide
-                // it. * Jul 15, 2013 585 Chris.Golden Changed to use
-                // non-singleton event bus.
-
+                // it.
                 boolean potentialDetach = true;
                 if (loadedFromBundle) {
                     potentialDetach = false;
@@ -591,6 +592,8 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
+     * @param activeAlerts
+     *            Currently active alerts.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
      *            to be shown in the toolbar. If <code>false</code>, they are
@@ -601,6 +604,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             final long selectedTime, final long currentTime,
             final long visibleTimeRange, final String jsonHazardEvents,
             final String jsonSettings, final String jsonFilters,
+            final ImmutableList<IHazardAlert> activeAlerts,
             final boolean temporalControlsInToolBar) {
         this.presenter = presenter;
         this.temporalControlsInToolBar = temporalControlsInToolBar;
@@ -609,7 +613,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             public void run() {
                 getViewPart().initialize(presenter, selectedTime, currentTime,
                         visibleTimeRange, jsonHazardEvents, jsonSettings,
-                        jsonFilters, temporalControlsInToolBar);
+                        jsonFilters, activeAlerts, temporalControlsInToolBar);
             }
         });
     }
@@ -903,6 +907,22 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             @Override
             public void run() {
                 getViewPart().updateHazardEvent(hazardEvent);
+            }
+        });
+    }
+
+    /**
+     * Set the list of currently active alerts.
+     * 
+     * @param activeAlerts
+     *            List of currently active alerts.
+     */
+    @Override
+    public void setActiveAlerts(final ImmutableList<IHazardAlert> activeAlerts) {
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
+                getViewPart().updateActiveAlerts(activeAlerts);
             }
         });
     }

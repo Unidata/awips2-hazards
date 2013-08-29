@@ -28,7 +28,8 @@ import com.google.common.eventbus.EventBus;
  * Jul 15, 2013     585    Chris.Golden   Changed to have event bus passed
  *                                        in so that it did not have to be a
  *                                        singleton.
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug  9, 2013    1921    daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 22, 2013    1936    Chris.Golden   Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -119,6 +120,12 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
      *            Set of elements within the model that have changed.
      */
     public abstract void modelChanged(EnumSet<E> changed);
+
+    /**
+     * Dispose of the presenter. This may be implemented, for example, to
+     * unregister for notifications for which the presenter was listening.
+     */
+    public abstract void dispose();
 
     // Protected Methods
 

@@ -21,8 +21,10 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 
 /**
  * Console presenter, used to manage the console view.
@@ -37,6 +39,8 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Aug 16, 2013    1325    daniel.s.schaffer@noaa.gov    Alerts integration
+ * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -69,6 +73,7 @@ public class ConsolePresenter extends
     public ConsolePresenter(IHazardServicesModel model,
             IConsoleView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
+        getModel().getSessionManager().registerForNotification(this);
     }
 
     // Public Methods
@@ -112,6 +117,11 @@ public class ConsolePresenter extends
         }
     }
 
+    @Override
+    public void dispose() {
+        getModel().getSessionManager().unregisterForNotification(this);
+    }
+
     // Protected Methods
 
     /**
@@ -151,8 +161,9 @@ public class ConsolePresenter extends
                 getModel().getComponentData(
                         HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all"),
                 getModel().getSettingsList(),
-                getModel().getConfigItem(Utilities.FILTER_CONFIG),
-                temporalControlsInToolBar);
+                getModel().getConfigItem(Utilities.FILTER_CONFIG), getModel()
+                        .getSessionManager().getAlertsManager()
+                        .getActiveAlerts(), temporalControlsInToolBar);
     }
 
     // Private Methods
@@ -221,5 +232,10 @@ public class ConsolePresenter extends
         } else {
             getView().setHazardEvents(componentDataJSON);
         }
+    }
+
+    @Subscribe
+    public void alertsModified(HazardAlertsModified notification) {
+        view.setActiveAlerts(notification.getActiveAlerts());
     }
 }

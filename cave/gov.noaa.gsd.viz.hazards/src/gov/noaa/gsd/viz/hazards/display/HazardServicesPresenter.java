@@ -55,6 +55,24 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
         super(model, view, eventBus);
     }
 
+    // Public Methods
+
+    /**
+     * Dispose of the presenter. This implementation does nothing, but
+     * subclasses may override this to, for example, unregister for
+     * notifications.
+     */
+    @Override
+    public void dispose() {
+
+        // No action.
+    }
+
+    /**
+     * Get the session manager.
+     * 
+     * @return Session manager.
+     */
     public ISessionManager getSessionManager() {
         return getModel().getSessionManager();
     }

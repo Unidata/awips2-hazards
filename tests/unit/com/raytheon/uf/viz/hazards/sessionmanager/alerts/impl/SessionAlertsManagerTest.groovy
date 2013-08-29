@@ -106,13 +106,14 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         alert.getEventID() == EVENT_O
         alert.getState() == HazardAlertState.ACTIVE
         alert.getActivationTime() == new DateTime(2013, 7, 25, 14, 50, 0, 0).toDate()
-        alert.getColor() == new Color(10, 20, 30);
+        alert.getColor() == new Color(1, 1, 0);
         alert.isBold()
         !alert.isItalic()
         alert.isBlinking()
+        alert.getHazardExpiration() == new DateTime(2013, 7, 25, 15, 0, 0, 0).toDate()
     }
 
-    def "A hazard for which there is an alert is changed in any way except expirationTime"() {
+    def "A hazard for which there is an alert is changed in an innocuous way"() {
         when: "The hazard is changed"
         event0.addHazardAttribute("foo", "bar")
         HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE)
@@ -180,7 +181,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
-	HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(0)
+        HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(0)
         HazardEventExpirationConsoleTimer consoleAlert = scheduledAlerts.get(1)
 
         then: "The proper alerts are scheduled"
@@ -208,12 +209,12 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         alert.getFontSize() == 12
     }
 
-    def "A hazard event is issued that does not result in an alert"() {
+    def "A hazard event is issued that does not initially result in an alert"() {
 
         when: "The hazard is issued"
 
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
-                new DateTime(2013, 7, 25, 16, 1, 0, 0))
+                new DateTime(2013, 7, 25, 15, 0, 0, 0))
         hazardEvent.setPhenomenon("WS")
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
@@ -224,6 +225,16 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         then: "No scheduled or new active alerts"
         scheduledAlerts.size() == 0
         activeAlerts.size() == 1
+
+        when: "The hazard is changed to one that causes an alert"
+        hazardEvent = buildHazardEvent(EVENT_1,
+                new DateTime(2013, 7, 25, 15, 0, 0, 0))
+        hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        alertsManager.handleNotification(hazardNotification)
+        activeAlerts = alertsManager.getActiveAlerts()
+
+        then: "The alert is activated"
+        activeAlerts.size() == 2
     }
 
     def "A hazard event corresponding to an active alert is ended"() {
@@ -258,7 +269,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setSignificance("W")
         hazardEvent.setSubtype("NonConvective")
         hazardEvent.setState(HazardState.ISSUED)
-        hazardEvent.addHazardAttribute(HazardConstants.EXPIRATIONTIME, dateTime.toDate())
+        hazardEvent.addHazardAttribute(HazardConstants.EXPIRATIONTIME, dateTime.getMillis())
         return hazardEvent
     }
 

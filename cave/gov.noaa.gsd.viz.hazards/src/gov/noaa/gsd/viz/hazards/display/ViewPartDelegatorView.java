@@ -68,6 +68,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2013            Chris.Golden      Initial creation
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
  * </pre>
  * 
  * @author Chris.Golden
@@ -308,8 +309,10 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
                 throw new IllegalStateException(
                         "view part creation not attempted before this invocation");
             }
-        } else {
+        } else if (Display.getDefault().getThread() == Thread.currentThread()) {
             job.run();
+        } else {
+            Display.getDefault().syncExec(job);
         }
     }
 

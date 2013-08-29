@@ -13,7 +13,6 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
 
 /**
@@ -32,30 +31,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertT
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class HazardEventExpirationConsoleTimer extends HazardEventAlert {
-
-    private final HazardAlertTimerConfigCriterion alertCriterion;
+public class HazardEventExpirationConsoleTimer extends
+        HazardEventExpirationTimer implements IHazardEventExpirationAlert {
 
     public HazardEventExpirationConsoleTimer(String eventID,
             HazardAlertTimerConfigCriterion alertCriterion) {
-        super(eventID);
-        this.alertCriterion = alertCriterion;
-    }
-
-    public Color getColor() {
-        return alertCriterion.getColor();
-    }
-
-    public boolean isBold() {
-        return alertCriterion.isBold();
-    }
-
-    public boolean isBlinking() {
-        return alertCriterion.isBlinking();
-    }
-
-    public boolean isItalic() {
-        return alertCriterion.isItalic();
+        super(eventID, alertCriterion);
     }
 
     @Override
