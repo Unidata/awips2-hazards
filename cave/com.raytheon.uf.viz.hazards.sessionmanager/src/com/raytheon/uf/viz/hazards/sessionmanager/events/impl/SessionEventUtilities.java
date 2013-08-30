@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
@@ -28,8 +27,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 15, 2013            daniel.s.schaffer@noaa.gov      Initial creation
- * Aug 26, 2013            blawrenc    Added removal of "replaces" key from
+ * Aug 26, 2013  1921      blawrenc    Added removal of "replaces" key from
  *                                     event attributes.
+ * Aug 29, 2013  1921      blawrenc    Re-added logic to properly set the state of 
+ *                                     the old event. Moved logic to remove 
+ *                                     "replaces" information from event.
  * 
  * </pre>
  * 
@@ -75,10 +77,11 @@ public class SessionEventUtilities {
             oldEvent.removeHazardAttribute(key);
         }
 
-        /*
-         * This ensures that the "replaces" string is removed for the next
-         * generation of a product.
-         */
-        oldEvent.removeHazardAttribute(HazardConstants.REPLACES);
+        if (oldEvent instanceof ObservedHazardEvent) {
+            ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
+            obEvent.setState(newEvent.getState(), true, false);
+        } else {
+            oldEvent.setState(newEvent.getState());
+        }
     }
 }
