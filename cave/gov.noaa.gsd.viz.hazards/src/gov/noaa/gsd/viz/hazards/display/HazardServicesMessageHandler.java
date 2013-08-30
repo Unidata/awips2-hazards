@@ -18,6 +18,7 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -35,6 +36,8 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
@@ -79,6 +82,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                             the current CAVE perspective.
  * Aug 29, 2013 1921       bryon.lawrence      Modified to not pass JSON event id list
  *                                             to loadGeometryOverlayForSelectedEvent().
+ * Aug 30, 2013 1921       bryon.lawrence      Added code to pass hazard events as a part of
+ *                                             the EventSet passed to a recommender when it
+ *                                             is run.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -441,6 +447,27 @@ public final class HazardServicesMessageHandler {
         Display.getCurrent().update();
 
         EventSet<IEvent> eventSet = new EventSet<IEvent>();
+
+        /*
+         * Add events to the event set.
+         */
+        Collection<IHazardEvent> hazardEvents = sessionManager
+                .getEventManager().getEvents();
+
+        /*
+         * HazardEvent.py canConvert() does not know anything about observed
+         * hazard events. Also, HazardEvent.py is in a common plug-in while
+         * observed hazard event is in a viz plug-in. So, convert the observed
+         * hazard events to base hazard events.
+         */
+        for (IHazardEvent event : hazardEvents) {
+            BaseHazardEvent baseHazardEvent = new BaseHazardEvent(event);
+            eventSet.add(baseHazardEvent);
+        }
+
+        /*
+         * Add session information to event set.
+         */
         eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
                 .getTimeManager().getCurrentTime().getTime());
 
