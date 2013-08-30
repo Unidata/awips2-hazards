@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -44,6 +46,10 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                            so as to make usage less special-case.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 29, 2013 1921       bryon.lawrence     Modified to send list of context menu
+ *                                            contributions instead of dict. A dict
+ *                                            is not translated by the model adapter's
+ *                                            updateEventData method.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -317,12 +323,19 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         Dict geoReferenceDict = new Dict();
                         geoReferenceDict.put(Utilities.HAZARD_EVENT_IDENTIFIER,
                                 eventID);
-                        geoReferenceDict
-                                .put("geometryReference", geometryTable);
-                        geoReferenceDict.put("geometryMapName", geometryLegend);
-                        Dict contextMenuDict = new Dict();
-                        contextMenuDict.put("Add/Remove Shapes", "");
-                        geoReferenceDict.put("contextMenu", contextMenuDict);
+                        geoReferenceDict.put(
+                                HazardConstants.GEOMETRY_REFERENCE_KEY,
+                                geometryTable);
+                        geoReferenceDict.put(
+                                HazardConstants.GEOMETRY_MAP_NAME_KEY,
+                                geometryLegend);
+                        ArrayList<String> contextMenuList = Lists
+                                .newArrayList();
+                        contextMenuList
+                                .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+                        geoReferenceDict.put(
+                                HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                                contextMenuList);
                         action = new SpatialDisplayAction("updateEventData");
                         action.setToolParameters(geoReferenceDict);
                         getSpatialPresenter().fireAction(action);

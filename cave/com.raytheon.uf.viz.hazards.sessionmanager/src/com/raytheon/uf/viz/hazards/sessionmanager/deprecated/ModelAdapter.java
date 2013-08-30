@@ -99,6 +99,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                        information to hazard events until all
  *                                        Hazard Services views have been converted
  *                                        to use event objects instead of event dicts.
+ * Aug 29, 2013 1921    Bryon.Lawrence  Modified getContextMenuEntries to support 
+ *                                      hazard-specific context menu entries. This was
+ *                                      done to fix "Add/Remove Shapes" functionality
  * </pre>
  * 
  * @author bsteffen
@@ -344,6 +347,9 @@ public abstract class ModelAdapter {
                     array[i] = arrayNode.get(i).getValueAsText();
                 }
                 event.addHazardAttribute(key, array);
+            } else if (jnode.get(key).isContainerNode()) {
+                throw new UnsupportedOperationException(
+                        "Support for container node not implemented yet.");
             } else {
                 JsonNode primitive = jnode.get(key);
                 if (primitive.isTextual()) {
@@ -701,7 +707,23 @@ public abstract class ModelAdapter {
         EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
         for (IHazardEvent event : model.getEventManager().getSelectedEvents()) {
             states.add(event.getState());
+
+            /*
+             * Logic to handle hazard-specific contributions to the context
+             * menu. This is used, for example, by the "Add/Remove Shapes" entry
+             * which applies to hazard geometries created by the draw-by-area
+             * tool.
+             */
+            String[] contextMenuEntries = (String[]) event
+                    .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+
+            if (contextMenuEntries != null) {
+                for (String contextMenuEntry : contextMenuEntries) {
+                    entries.add(contextMenuEntry);
+                }
+            }
         }
+
         entries.add("Hazard Information Dialog");
         if (states.contains(HazardState.ISSUED)) {
             entries.add("End Selected Hazards");
@@ -723,6 +745,7 @@ public abstract class ModelAdapter {
         }
         entries.add("Hazard Occurrence Alerts");
         return toJson(entries.toArray(new String[0]));
+
     }
 
     /*

@@ -77,6 +77,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Aug 22, 2013    787     bryon.lawrence      Added method to find setting linked to
  *                                             the current CAVE perspective.
+ * Aug 29, 2013 1921       bryon.lawrence      Modified to not pass JSON event id list
+ *                                             to loadGeometryOverlayForSelectedEvent().
  * </pre>
  * 
  * @author bryon.lawrence
@@ -140,8 +142,6 @@ public final class HazardServicesMessageHandler {
     private final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
 
     private final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
-
-    private final String CONTEXT_MENU_ADD_REMOVE_SHAPES = "Add/Remove Shapes";
 
     private final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
 
@@ -986,9 +986,8 @@ public final class HazardServicesMessageHandler {
             notifyModelEventsChanged();
         } else if (label.contains(CONTEXT_MENU_SAVE)) {
             model.putHazards();
-        } else if (label.equals(CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
-            String eventIDs = model.getSelectedEvents();
-            appBuilder.loadGeometryOverlayForSelectedEvent(eventIDs);
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
+            appBuilder.loadGeometryOverlayForSelectedEvent();
         } else if (label.equals(CONTEXT_MENU_SEND_TO_BACK)) {
             model.sendSelectedHazardsToBack();
             notifyModelEventsChanged();

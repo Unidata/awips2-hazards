@@ -251,4 +251,18 @@ public final class HazardConstants {
 
     public static final String RESET_ACTION = "Reset";
 
+    /*
+     * Context menu entries.
+     */
+    public static final String CONTEXT_MENU_CONTRIBUTION_KEY = "contextMenu";
+
+    public static final String CONTEXT_MENU_ADD_REMOVE_SHAPES = "Add/Remove Shapes";
+
+    /*
+     * Constants specific to draw-by-area hazard creation operations.
+     */
+    public static final String GEOMETRY_REFERENCE_KEY = "geometryReference";
+
+    public static final String GEOMETRY_MAP_NAME_KEY = "geometryMapName";
+
 }

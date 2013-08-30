@@ -31,6 +31,8 @@ import com.raytheon.uf.viz.core.map.MapDescriptor;
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Aug 06, 2013   1265     bryon.lawrence    Added support for undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 29, 2013   1921     bryon.lawrence    Removed JSON parameter from
+ *                                           loadGeometryOverlayForSelectedEvent().
  * </pre>
  * 
  * @author Chris.Golden
@@ -188,11 +190,8 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * selected event. If multiple geometry overlays need to be loaded this
      * currently only loads the first overlay.
      * 
-     * @param eventIDs_json
-     *            A json string containing the eventID or IDs to load a geometry
-     *            overlay for.
      */
-    public void loadGeometryOverlayForSelectedEvent(String eventIDs_json);
+    public void loadGeometryOverlayForSelectedEvent();
 
     /**
      * Returns the current instance of the draw by area resource.
