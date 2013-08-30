@@ -97,6 +97,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             class-scoped variables are now member data.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 22, 2013  787       bryon.lawrence      Removed perspective-specific references
+ * Aug 29, 2013 1921       bryon.lawrence      Modified loadGeometryOverlayForSelectedEvent to
+ *                                             not take a JSON list of event ids.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -901,15 +903,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     /**
      * Checks to determine if a geometry overlay needs to be loaded for the
-     * specified selected events. If multiple geometry overlays need to be
-     * loaded this currently only loads the first overlay.
+     * current selected events. If multiple geometry overlays need to be loaded
+     * this currently only loads the first overlay.
      * 
-     * @param eventIDs
-     *            Identifiers of the selected events.
      */
-    public void loadGeometryOverlayForSelectedEvent(String eventIDs) {
-        spatialPresenter.getView()
-                .loadGeometryOverlayForSelectedEvent(eventIDs);
+    public void loadGeometryOverlayForSelectedEvent() {
+        spatialPresenter.getView().loadGeometryOverlayForSelectedEvent();
     }
 
     /**

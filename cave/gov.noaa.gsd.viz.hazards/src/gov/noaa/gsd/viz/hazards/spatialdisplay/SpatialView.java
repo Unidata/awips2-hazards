@@ -11,8 +11,6 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionDrawingAction.SelectionHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
@@ -22,6 +20,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -45,6 +44,8 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -83,7 +84,10 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Aug 04, 2013   1265     Bryon.Lawrence    Added support for undo/redo
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug  9, 2013   1921     daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 29, 2013   1921     bryon.lawrence    Updated loadGeometryOverlayForSelectedEvent
+ *                                           to use Java event objects instead of
+ *                                           JSON.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1302,45 +1306,42 @@ public class SpatialView implements
      * @return
      */
     @Override
-    public void loadGeometryOverlayForSelectedEvent(String eventIDs_json) {
+    public void loadGeometryOverlayForSelectedEvent() {
         /*
          * Need to determine if the selected event was based on a geometry read
          * from the database
          */
-        DictList eventIDs = DictList.getInstance(eventIDs_json);
+        Collection<IHazardEvent> selectedEvents = presenter.getSessionManager()
+                .getEventManager().getSelectedEvents();
 
-        for (int i = 0; i < eventIDs.size(); ++i) {
-            final String eventID = eventIDs.getDynamicallyTypedValue(i);
-            String selectedEventJSON = presenter.getEvents(eventID);
+        for (IHazardEvent selectedEvent : selectedEvents) {
+            final String eventID = selectedEvent.getEventID();
 
-            DictList selectedEventDictList = DictList
-                    .getInstance(selectedEventJSON);
-            Dict selectedEventDict = selectedEventDictList
-                    .getDynamicallyTypedValue(0);
-
-            if (selectedEventDict.containsKey("geometryReference")) {
+            if (selectedEvent.getHazardAttributes().containsKey(
+                    HazardConstants.GEOMETRY_REFERENCE_KEY)) {
 
                 /*
                  * This was an event generated from a union of one or more
                  * geometries.
                  */
-                // Make sure that the geoLayer is not already loaded.
-                final String tableName = selectedEventDict
-                        .getDynamicallyTypedValue("geometryReference");
-                final String displayName = selectedEventDict
-                        .getDynamicallyTypedValue("geometryMapName");
+                final String tableName = (String) selectedEvent
+                        .getHazardAttribute(HazardConstants.GEOMETRY_REFERENCE_KEY);
+                final String displayName = (String) selectedEvent
+                        .getHazardAttribute(HazardConstants.GEOMETRY_MAP_NAME_KEY);
 
-                // Launch the select-by-area layer. Give it the table name
-                // from
-                // above as well as
-                // the hazard polygon(s).
-                // Unload the resource if it exists.
+                /*
+                 * Launch the select-by-area layer. Give it the table name from
+                 * above as well as the hazard polygon(s). Unload the resource
+                 * if it exists.
+                 */
                 if (isGeometryDisplayResourceLoaded()) {
                     unloadGeometryDisplayResource();
                 }
 
-                // Need to make sure that we add the geometry display
-                // after the old one has been removed...
+                /*
+                 * Need to make sure that we add the geometry display after the
+                 * old one has been removed...
+                 */
                 VizApp.runAsync(new Runnable() {
 
                     @Override
@@ -1353,10 +1354,9 @@ public class SpatialView implements
                 });
 
                 break;
+
             }
-
         }
-
     }
 
     /**
