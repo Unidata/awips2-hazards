@@ -33,6 +33,7 @@
 #
 
 from shapely.geometry import *
+from shapely import wkt
 
 def createLineString(coordinates):
     '''
@@ -83,3 +84,18 @@ def createMultiPolygon(polygons, context_type):
     '''
     mp = MultiPolygon(polygons, context_type)
     return mp
+
+def createCollection(geometries):
+    '''
+    Takes any type of geometry and puts them
+    into a GeometryCollection.  This is done
+    in a backwards way as shapely doesn't allow
+    addition of arbitrary geometries to a
+    GeometryCollection.
+    '''
+    # remove any empty geometries
+    for g in geometries :
+        if g.is_empty :
+            geometries.remove(g)
+    text = 'GEOMETRYCOLLECTION (%s)' % ', '.join(g.wkt for g in geometries)
+    return wkt.loads(text)
