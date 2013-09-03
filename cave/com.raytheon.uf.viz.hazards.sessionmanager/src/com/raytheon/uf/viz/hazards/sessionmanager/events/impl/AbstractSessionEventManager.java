@@ -36,6 +36,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013 1257       bsteffen    Initial creation
+ * Aug 29, 2013 1921       blawrenc    Updated to set selected
+ *                                     potential events to pending.
+ *                                     This is in keeping with the
+ *                                     Mixed Hazard Story.
  * 
  * </pre>
  * 
@@ -92,6 +96,14 @@ public abstract class AbstractSessionEventManager implements
         }
         for (IHazardEvent event : selectedEvents) {
             event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
+
+            /*
+             * Once selected, a potential event or set of events should be set
+             * to PENDING.
+             */
+            if (event.getState() == HazardState.POTENTIAL) {
+                event.setState(HazardState.PENDING);
+            }
         }
     }
 
