@@ -388,10 +388,6 @@ public class HazardDetailView extends
             return;
         }
 
-        System.err.println("Show hazard detail called, events = "
-                + (eventValuesList == null ? "null" : eventValuesList.size())
-                + " (top event = " + topEventID + "), force = " + force);
-
         // If the view part does not exist, show it.
         final boolean needsInitializing = (getViewPart() == null);
         if (needsInitializing) {
@@ -458,10 +454,6 @@ public class HazardDetailView extends
     public final void updateHazardDetail(DictList eventValuesList,
             String topEventID) {
 
-        System.err.println("Update hazard detail called, events = "
-                + (eventValuesList == null ? "null" : eventValuesList.size())
-                + " (top event = " + topEventID + ").");
-
         // If the view part exists, update it; otherwise, if there
         // is at least one event to show, show the view part.
         if (getViewPart() != null) {
@@ -498,14 +490,6 @@ public class HazardDetailView extends
      */
     @Override
     public final void hideHazardDetail(boolean force) {
-
-        System.err.println("Hide hazard detail called, view part (docked = "
-                + isViewPartDocked()
-                + ", visible = "
-                + isViewPartVisible()
-                + ") = "
-                + (getViewPart() == null ? "null" : Integer
-                        .toString(getViewPart().getEventCount())));
 
         // If the view part is not showing, it may have been meant to
         // be showing, but was unable to because its instantiation was

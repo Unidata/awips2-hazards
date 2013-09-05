@@ -12,20 +12,21 @@ import gov.noaa.nws.ncep.ui.pgen.display.SymbolImageUtil;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.swt.graphics.Rectangle;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.IExtent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Base class for Symbols drawn in Hazard Services. This allows Hazard Services
@@ -35,35 +36,34 @@ import com.vividsolutions.jts.geom.Polygon;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * April 2011              Bryon.Lawrence    Initial creation
+ * April 2011              Bryon.Lawrence      Initial creation
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 public class HazardServicesSymbol extends Symbol implements
         IHazardServicesShape {
+
+    /**
+     * Drawable attributes.
+     */
+    private final HazardServicesDrawingAttributes drawingAttributes;
+
     /**
      * Identifier of the hazard event that this symbol is part of. All drawable
      * components of the hazard share this ID.
      */
-    private String eventID;
+    private String id;
 
     /**
      * unique identifier for this symbol. Helps to distinguish it from other
      * shapes in the hazard.
      */
-    private long pointID;
+    private final long pointID;
 
-    /**
-     * This is an instance of a JTS polygon containing this symbol. This is used
-     * for JTS utilities such as determining whether or not a click point is
-     * within a polygon.
-     */
-    private Polygon polygon = null;
-
-    public HazardServicesSymbol() {
-        super();
-    }
+    private Geometry geometry = null;
 
     /**
      * Creates an IHISSymbol.
@@ -78,15 +78,15 @@ public class HazardServicesSymbol extends Symbol implements
      *            The points in this symbol
      * @param activeLayer
      *            The PGEN layer this symbol will be drawn to.
-     * @param eventID
+     * @param id
      *            The ID of this symbol.
      */
     public HazardServicesSymbol(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String eventID) {
-        this();
-        this.eventID = eventID;
+            Layer activeLayer, String id) {
+        this.id = id;
+        this.drawingAttributes = drawingAttributes;
         setLocation(points.get(0));
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
@@ -96,17 +96,22 @@ public class HazardServicesSymbol extends Symbol implements
         setLineWidth(drawingAttributes.getLineWidth());
         setSizeScale(drawingAttributes.getSizeScale());
         pointID = drawingAttributes.getPointID();
-        updateEnclosingPolygon();
+        updateEnclosingGeometry();
     }
 
     @Override
-    public void setEventID(String eventID) {
-        this.eventID = eventID;
+    public HazardServicesDrawingAttributes getDrawingAttributes() {
+        return drawingAttributes;
     }
 
     @Override
-    public String getEventID() {
-        return eventID;
+    public void setID(String id) {
+        this.id = id;
+    }
+
+    @Override
+    public String getID() {
+        return id;
     }
 
     public Point getPoint() {
@@ -115,13 +120,13 @@ public class HazardServicesSymbol extends Symbol implements
     }
 
     /**
-     * Updates the JTS polygon which represents the selectable area associated
+     * Updates the JTS geometry which represents the selectable area associated
      * with this symbol.
      * 
      * @param props
      * @return
      */
-    private void updateEnclosingPolygon() {
+    private void updateEnclosingGeometry() {
         /*
          * Build the enclosing geometry for selection purposes.
          */
@@ -162,7 +167,7 @@ public class HazardServicesSymbol extends Symbol implements
 
         GeometryFactory gf = new GeometryFactory();
 
-        List<Coordinate> drawnPoints = new ArrayList<Coordinate>();
+        List<Coordinate> drawnPoints = Lists.newArrayList();
         drawnPoints.add(editor.translateClick(lowerX, lowerY));
         drawnPoints.add(editor.translateClick(upperX, lowerY));
         drawnPoints.add(editor.translateClick(upperX, upperY));
@@ -179,20 +184,20 @@ public class HazardServicesSymbol extends Symbol implements
         if (!drawnPoints.contains(null)) {
             LinearRing ls = gf.createLinearRing(drawnPoints
                     .toArray(new Coordinate[0]));
-            polygon = gf.createPolygon(ls, null);
+            geometry = gf.createPolygon(ls, null);
         } else {
-            polygon = null;
+            geometry = null;
         }
     }
 
     @Override
-    public Polygon getPolygon() {
-        return polygon;
+    public Geometry getGeometry() {
+        return geometry;
     }
 
     @Override
-    public boolean canVerticesBeEdited() {
-        return false;
+    public LineString getEditableVertices() {
+        return null;
     }
 
     /**

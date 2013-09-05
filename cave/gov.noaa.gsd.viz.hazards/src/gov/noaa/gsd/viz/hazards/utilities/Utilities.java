@@ -8,15 +8,12 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
 import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.style.HazardStyle;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -437,15 +434,9 @@ public class Utilities {
      */
     private static final GeometryFactory geometryFactory;
 
-    /**
-     * Hazard color map.
-     */
-    private static final Map<String, HazardStyle> hazardDisplayPreferencesMap;
-
     // Initialize the geometry factory.
     static {
         geometryFactory = new GeometryFactory();
-        hazardDisplayPreferencesMap = Maps.newHashMap();
     }
 
     // Public Static Methods

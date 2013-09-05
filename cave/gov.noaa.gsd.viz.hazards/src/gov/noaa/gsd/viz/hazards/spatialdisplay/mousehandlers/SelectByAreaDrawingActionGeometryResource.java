@@ -24,7 +24,6 @@ import java.util.Map;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -66,7 +65,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
     private boolean modifyingEvent = false;
 
     /** The displayed resource */
-    protected SelectByAreaDbMapResource zoneDisplay;
+    private SelectByAreaDbMapResource zoneDisplay;
 
     /*
      * This map will keep track of the geometries for each hazard that is
@@ -74,36 +73,19 @@ public class SelectByAreaDrawingActionGeometryResource extends
      */
     private final Map<String, List<Geometry>> hazardGeometryList;
 
-    private final ISessionManager sessionManager;
-
-    /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param sessionManager
-     * 
-     * @param zoneDisplay
-     * @return SelectByAreaDrawingActionGeometryResource
-     */
-    public static SelectByAreaDrawingActionGeometryResource getInstance(
-            ISessionManager sessionManager) {
-        return new SelectByAreaDrawingActionGeometryResource(sessionManager);
-    }
-
     @Override
     public void setSpatialPresenter(SpatialPresenter spatialPresenter) {
         super.setSpatialPresenter(spatialPresenter);
         zoneDisplay = spatialPresenter.getView().getSelectableGeometryDisplay();
     }
 
-    private SelectByAreaDrawingActionGeometryResource(
-            ISessionManager sessionManager) {
-        this.sessionManager = sessionManager;
+    public SelectByAreaDrawingActionGeometryResource() {
         hazardGeometryList = new HashMap<String, List<Geometry>>();
     }
 
     @Override
     protected IInputHandler createMouseHandler() {
-        return new SelectionHandler();
+        return new SelectByAreaHandler();
     }
 
     @Override
@@ -115,12 +97,12 @@ public class SelectByAreaDrawingActionGeometryResource extends
          * object is being edited.
          */
         if (modifyingEvent) {
-            ((SelectionHandler) handler).setSelectedGeoms(eventID);
+            ((SelectByAreaHandler) handler).setSelectedGeoms(eventID);
         } else {
             /*
              * Clear any cached geometries
              */
-            ((SelectionHandler) handler).selectedGeoms.clear();
+            ((SelectByAreaHandler) handler).selectedGeoms.clear();
         }
 
         return handler;
@@ -144,13 +126,13 @@ public class SelectByAreaDrawingActionGeometryResource extends
         modifyingEvent = true;
     }
 
-    public class SelectionHandler extends InputHandlerDefaultImpl {
+    public class SelectByAreaHandler extends InputHandlerDefaultImpl {
 
         private final Geometry mouseDownGeometry = null;
 
         private Geometry selectedGeometry = null;
 
-        private List<Geometry> selectedGeoms = new ArrayList<Geometry>();
+        private List<Geometry> selectedGeoms = Lists.newArrayList();
 
         private Mode mode = Mode.CREATE;
 
@@ -288,7 +270,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         /*
                          * Clone the list of selected geometries.
                          */
-                        List<Geometry> copyGeometriesList = new ArrayList<Geometry>();
+                        List<Geometry> copyGeometriesList = Lists
+                                .newArrayList();
 
                         for (Geometry geometry : selectedGeoms) {
                             copyGeometriesList.add((Geometry) geometry.clone());
@@ -304,7 +287,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                 eventAreaJSON);
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
-                                "newEventArea");
+                                HazardConstants.NEW_EVENT_SHAPE);
                         action.setToolParameters(Dict
                                 .getInstance(eventAreaJSON));
                         action.setEventID(eventID);

@@ -26,6 +26,7 @@ import java.util.List;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -64,16 +65,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
     protected AttrDlg attrDlg = null;
 
-    /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     */
-    public static FreeHandHazardDrawingAction getInstance(
-            ISessionManager sessionManager) {
-        return new FreeHandHazardDrawingAction(sessionManager);
-    }
-
-    private FreeHandHazardDrawingAction(ISessionManager sessionManager) {
-        super();
+    public FreeHandHazardDrawingAction(ISessionManager sessionManager) {
 
         /*
          * Create the attribute container.
@@ -93,7 +85,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     }
 
     public class FreeHandHazardDrawingHandler extends InputHandlerDefaultImpl {
-        private final ArrayList<Coordinate> points = new ArrayList<Coordinate>();
+        private final ArrayList<Coordinate> points = Lists.newArrayList();
 
         /*
          * An instance of DrawableElementFactory, which is used to create a new
@@ -180,7 +172,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 points.clear();
 
                 SpatialDisplayAction action = new SpatialDisplayAction(
-                        "newEventArea");
+                        HazardConstants.NEW_EVENT_SHAPE);
                 action.setToolParameters(Dict.getInstance(jsonString));
                 getSpatialPresenter().fireAction(action);
 
@@ -211,8 +203,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                         attrDlg, "Line", "LINE_SOLID", points,
                         getDrawingLayer().getActiveLayer());
 
-                ArrayList<Coordinate> ghostPts = new ArrayList<Coordinate>(
-                        points);
+                List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ((Line) ghost).setLinePoints(ghostPts);
 
                 getDrawingLayer().setGhostLine(ghost);

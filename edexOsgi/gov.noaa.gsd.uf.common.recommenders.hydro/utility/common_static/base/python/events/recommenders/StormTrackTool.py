@@ -81,7 +81,13 @@ class Recommender(RecommenderTemplate.Recommender):
         # Get information about 'dragmeto' point. In previous incarnations,
         # there has been some uncertainty as to what the units of the
         # draggedPointTime are.
-        points = spatialInputMap["spatialInfo"]["points"]
+        import os
+	spatialInput = spatialInputMap["spatialInfo"]
+        print "spatialInput ", spatialInput
+        os.sys.__stdout__.flush()
+        points = spatialInput["points"]
+        print "points ", points
+        os.sys.__stdout__.flush()
         draggedPointTuple = points[0]
         draggedPoint = draggedPointTuple[0]
         draggedPointTime = long(draggedPointTuple[1])

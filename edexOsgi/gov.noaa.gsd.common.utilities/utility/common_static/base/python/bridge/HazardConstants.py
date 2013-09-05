@@ -64,6 +64,7 @@ FORECAST_POINT = "forecastPoint"
 ID = "id"
 NAME = "name"
 POINT = "point"
+LINE = "line"
 POLYGON = "polygon"
 
 PREVIEW_STATE = "previewState"

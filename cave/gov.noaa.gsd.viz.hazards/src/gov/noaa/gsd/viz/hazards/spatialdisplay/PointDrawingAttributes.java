@@ -18,13 +18,11 @@ import java.util.List;
 
 import org.eclipse.swt.widgets.Shell;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Point;
 
 /**
  * Description: Drawing attributes for a Hazard Services point.
@@ -197,14 +195,22 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
             sizeScale = OUTER_SIZE_SCALE;
         }
 
+        /*
+         * Outer components of points are always white. Inner components are
+         * either black, if no type has been chosen, or else the color that goes
+         * with the chosen type.
+         */
         if (element.equals(Element.OUTER)) {
             setColors(new Color[] { Color.WHITE, Color.WHITE });
+        } else if (hazardEvent.getPhenomenon() != null) {
+            Color color = getColors()[1];
+            setColors(new Color[] { color, color });
+        } else {
+            setColors(new Color[] { Color.BLACK, Color.BLACK });
         }
 
+        /* Ensure that inner components have no text associated with them. */
         if (element.equals(Element.INNER)) {
-            /**
-             * We want no label for the inner circle
-             */
             setString(null);
         }
 
@@ -218,23 +224,15 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
             IHazardEvent hazardEvent) {
         Boolean selected = (Boolean) hazardEvent
                 .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
-        int radius = 3;
+        double radius = 3.0;
         if (selected) {
-            radius = 5;
+            radius = 5.0;
         }
-        Point point = (Point) hazardEvent.getGeometry();
+        Coordinate centerPointInWorld = hazardEvent.getGeometry()
+                .getCoordinate();
 
-        Coordinate centerCoordInPixels = worldToPixel(new Coordinate(
-                point.getX(), point.getY()));
-
-        Coordinate circumferenceCoordInPixels = new Coordinate(
-                centerCoordInPixels.x - radius, centerCoordInPixels.y);
-
-        Coordinate circumferenceCoordInWorld = pixelToWorld(circumferenceCoordInPixels);
-
-        List<Coordinate> result = Lists.newArrayList();
-        result.add(new Coordinate(point.getX(), point.getY(), 0));
-        result.add(circumferenceCoordInWorld);
+        List<Coordinate> result = buildCircleCoordinates(radius,
+                centerPointInWorld);
         return result;
     }
 }

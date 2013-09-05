@@ -28,7 +28,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -73,14 +73,14 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
 
     private final IDescriptor descriptor;
 
+    protected AbstractEditor editor;
+
     public HazardServicesDrawingAttributes(Shell parShell,
             ISessionConfigurationManager configurationManager)
             throws VizException {
         super(parShell);
         this.configurationManager = configurationManager;
-        AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor();
-
+        editor = EditorUtil.getActiveEditorAs(AbstractEditor.class);
         descriptor = editor.getActiveDisplayPane().getDescriptor();
     }
 
@@ -235,6 +235,22 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         ToolLayer.convertRGBStringToColor(borderColor),
                 ToolLayer.convertRGBStringToColor(fillcolor) };
         return colors;
+    }
+
+    protected List<Coordinate> buildCircleCoordinates(double radius,
+            Coordinate centerPointInWorld) {
+        Coordinate centerCoordInPixels = worldToPixel(new Coordinate(
+                centerPointInWorld.x, centerPointInWorld.y));
+
+        Coordinate circumferenceCoordInPixels = new Coordinate(
+                centerCoordInPixels.x - radius, centerCoordInPixels.y);
+
+        Coordinate circumferenceCoordInWorld = pixelToWorld(circumferenceCoordInPixels);
+
+        List<Coordinate> result = Lists.newArrayList();
+        result.add(centerPointInWorld);
+        result.add(circumferenceCoordInWorld);
+        return result;
     }
 
     protected Coordinate worldToPixel(Coordinate coords) {

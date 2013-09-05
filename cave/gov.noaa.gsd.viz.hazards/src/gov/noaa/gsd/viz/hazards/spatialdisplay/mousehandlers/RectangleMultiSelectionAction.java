@@ -12,13 +12,10 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesS
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +23,7 @@ import java.util.Set;
 import org.eclipse.swt.SWT;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -56,12 +54,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * 
  * @author Xiangbao Jing
  */
-public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
+public class RectangleMultiSelectionAction extends NonDrawingAction {
     /**
      * For logging...
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(SelectionRectangleDrawingAction.class);
+            .getHandler(RectangleMultiSelectionAction.class);
 
     protected AttrDlg attrDlg = null;
 
@@ -71,17 +69,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
 
     public static final String pgenCategory = "MET";
 
-    /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param sessionManager
-     */
-    public static SelectionRectangleDrawingAction getInstance(
-            ISessionManager sessionManager) {
-        return new SelectionRectangleDrawingAction(sessionManager);
-    }
-
-    private SelectionRectangleDrawingAction(ISessionManager sessionManager) {
+    public RectangleMultiSelectionAction(ISessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -92,31 +80,31 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
      */
     @Override
     protected IInputHandler createMouseHandler() {
-        IInputHandler handler = new SelectionHandler();
-        try {
-            ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                    null, sessionManager);
-        } catch (VizException e) {
-            statusHandler.error(
-                    "In SelectionRectangleDrawingAction.getMouseHandler():", e);
-        }
-        return handler;
+        return new RectangleMultiSelectionHandler();
     }
 
     @Override
     public IInputHandler getMouseHandler() {
         IInputHandler handler = super.getMouseHandler();
+        try {
+            ((RectangleMultiSelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
+                    null, sessionManager);
+        } catch (VizException e) {
+            statusHandler.error(
+                    "In RectangleMultiSelectionAction.getMouseHandler():", e);
+        }
 
         /*
          * Make sure state variables are properly initialized.
          */
-        ((SelectionHandler) handler).anchorCorner = null;
-        ((SelectionHandler) handler).dragCorner = null;
+        ((RectangleMultiSelectionHandler) handler).anchorCorner = null;
+        ((RectangleMultiSelectionHandler) handler).dragCorner = null;
 
         return handler;
     }
 
-    public class SelectionHandler extends CopyEventDrawingAction.CopyHandler {
+    public class RectangleMultiSelectionHandler extends
+            NonDrawingAction.NonDrawingHandler {
         // Minimum screen distance for identify started a selection by area.
         private final int MIN_DISTANCE = 10;
 
@@ -158,7 +146,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
          * Contains a set of the clicked event ids. Using a set prevents the
          * possibility of duplicate eventIds.
          */
-        Set<String> clickedElementList = new HashSet<String>();
+        Set<String> clickedElementList = Sets.newHashSet();
 
         /**
          * When SHIFT key is up switch the control to single event selection
@@ -229,7 +217,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
 
                     // Is any event selected?
                     List<AbstractDrawableComponent> containingComponentsList = getDrawingLayer()
-                            .getContainingComponents(loc);
+                            .getContainingComponents(loc, x, y);
 
                     // No, do nothing
                     if (containingComponentsList == null) {
@@ -241,9 +229,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
                         String selectedElementEventID = getDrawingLayer()
-                                .elementClicked(
-                                        (DrawableElement) drawableComponent,
-                                        false, false);
+                                .elementClicked(drawableComponent, false, false);
                         if (selectedElementEventID == null) {
                             continue;
                         }
@@ -254,9 +240,8 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getDrawingLayer().elementClicked(
-                                    (DrawableElement) drawableComponent, false,
-                                    false);
+                            getDrawingLayer().elementClicked(drawableComponent,
+                                    false, false);
                         }
                     }
 
@@ -331,14 +316,13 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                         .getActiveLayer().getComponentIterator();
                 while (iterator.hasNext()) {
                     AbstractDrawableComponent comp = iterator.next();
-                    Geometry p = ((IHazardServicesShape) comp).getPolygon();
+                    Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
                         String selectedEventId = getDrawingLayer()
-                                .elementClicked((DrawableElement) comp, false,
-                                        false);
+                                .elementClicked(comp, false, false);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {
@@ -409,7 +393,7 @@ public class SelectionRectangleDrawingAction extends CopyEventDrawingAction {
                         drawingAttributes, "Line", "LINE_SOLID", points,
                         getDrawingLayer().getActiveLayer());
 
-                ArrayList<Coordinate> ghostPts = Lists.newArrayList(points);
+                List<Coordinate> ghostPts = Lists.newArrayList(points);
 
                 ((Line) ghost).setLinePoints(ghostPts);
 

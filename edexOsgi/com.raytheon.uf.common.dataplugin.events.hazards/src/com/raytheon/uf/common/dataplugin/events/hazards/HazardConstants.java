@@ -176,6 +176,8 @@ public final class HazardConstants {
 
     public static final String GEOMETRY = "geometry";
 
+    public static final String POINTID = "pointID";
+
     public static final String STARTTIME = "startTime";
 
     public static final String PHENOMENON = "phenomenon";
@@ -240,6 +242,8 @@ public final class HazardConstants {
 
     public static final String POINT_TYPE = "point";
 
+    public static final String LINE_TYPE = "line";
+
     public static final String AREA_TYPE = "area";
 
     /*
@@ -265,4 +269,8 @@ public final class HazardConstants {
 
     public static final String GEOMETRY_MAP_NAME_KEY = "geometryMapName";
 
+    /*
+     * Constants related to Spatial Action types.
+     */
+    public static final String NEW_EVENT_SHAPE = "NewEventShape";
 }

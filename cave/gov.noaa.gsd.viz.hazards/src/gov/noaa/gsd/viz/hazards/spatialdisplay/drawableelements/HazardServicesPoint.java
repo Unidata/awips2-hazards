@@ -1,10 +1,10 @@
 /**
  * This software was developed and / or modified by the
- * National Oceanic and Atmospheric Administration (NOAA),
- * Earth System Research Laboratory (ESRL),
- * Global Systems Division (GSD),
+ * National Oceanic and Atmospheric Administration (NOAA), 
+ * Earth System Research Laboratory (ESRL), 
+ * Global Systems Division (GSD), 
  * Information Services Branch (ISB)
- *
+ * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
@@ -17,48 +17,62 @@ import java.util.List;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
- * Description: Point symbol as used by Hazard Services.
+ * Description: TODO
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  initial creation
+ * MMM DD, YYYY            Chris.Golden      Initial creation
+ * 
  * </pre>
  * 
- * @author daniel.s.schaffer@noaa.gov
+ * @author Chris.Golden
  * @version 1.0
  */
 public class HazardServicesPoint extends HazardServicesSymbol {
 
     /**
-     * Construct a standard empty instance.
+     * Flag indicating whether this is an outer or inner portion of the point.
      */
-    public HazardServicesPoint() {
-    }
+    private final boolean isOuter;
 
     /**
-     * Construct a standard instance.
+     * Create an inner or outer portion of a point.
      * 
      * @param drawingAttributes
-     *            Attributes controlling the appearance of this point.
+     *            The attributes controlling the appearance of this Symbol.
      * @param pgenCategory
-     *            PGEN category of this point.
+     *            The PGEN category of this symbol, e.g.
      * @param pgenType
-     *            PGEN type of this point.
-     * @param coordinates
-     *            Coordinates making up the visuals of this point.
+     *            The PGEN type of this symbol, e.g.
+     * @param points
+     *            The points in this symbol
      * @param activeLayer
-     *            PGEN layer this point will be drawn to.
-     * @param eventID
-     *            Identifier of this point.
+     *            The PGEN layer this symbol will be drawn to.
+     * @param id
+     *            The ID of this symbol.
+     * @param isOuter
+     *            Flag indicating whether or not this is the outer portion of
+     *            the point.
      */
     public HazardServicesPoint(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String eventID) {
+            Layer activeLayer, String id, boolean isOuter) {
         super(drawingAttributes, pgenCategory, pgenType, points, activeLayer,
-                eventID);
+                id);
+        this.isOuter = isOuter;
+    }
+
+    /**
+     * Determine whether this symbol is the outer part of a point.
+     * 
+     * @return Flag indicating whether or not this symbol is the outer part of a
+     *         point.
+     */
+    public boolean isOuter() {
+        return isOuter;
     }
 }

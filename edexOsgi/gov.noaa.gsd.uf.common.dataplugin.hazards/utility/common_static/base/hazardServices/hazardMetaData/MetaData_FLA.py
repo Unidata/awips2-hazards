@@ -15,6 +15,13 @@ for entry in CAP_Fields:
 
 
 MetaData_FLA = [
+           {
+             "fieldName": "pointID",
+             "fieldType": "Text",
+             "label": "Forecast Point:",
+             "length": 5,
+             "values": "XXXXX"
+            },                
              {             
              "fieldName": "immediateCause",
              "fieldType":"ComboBox",

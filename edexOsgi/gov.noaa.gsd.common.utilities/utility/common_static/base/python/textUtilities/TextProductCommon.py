@@ -91,10 +91,13 @@ class TextProductCommon(object):
                         if shape.get('shapeType') == 'polygon':
                             polygon = shape.get('points')
                             geometryList.append(GeometryFactory.createPolygon(polygon, holes=None))
+                        if shape.get('shapeType') == 'line':
+                            line = shape.get('points')
+                            geometryList.append(GeometryFactory.createLineString(line))
                         if shape.get('shapeType') == 'point':
-                            point = shape.get('point')
+                            point = shape.get('points')[0]
                             pointGeometry = GeometryFactory.createPoint(point)
-                            geometryList.append(pointGeometry.buffer(DEFAULT_POLYGON_BUFFER))
+                            geometryList.append(pointGeometry)
                     #hazardDict[key] = value 
                 else:
                     hazardDict[key] = value

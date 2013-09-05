@@ -9,8 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.nws.ncep.ui.pgen.display.IMultiPoint;
+import gov.noaa.nws.ncep.ui.pgen.display.ISinglePoint;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -39,6 +44,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -53,47 +60,71 @@ public class JSONUtilities {
 
     /**
      * Convenience method for creating a JSON string describing a modified
-     * hazard event. A modified event is one for which the boundary coordinates
+     * hazard event. A modified event is one for which the shape coordinates
      * have changed.
      * 
-     * @param modifiedPolygon
-     *            The modified polygon
-     * @param polygonsForEvent
-     *            A list of polygons for the event.
+     * @param modifiedShape
+     *            The modified shape
+     * @param shapesForEvent
+     *            A list of shapes for the event.
      * @param newCoords
      *            The new coordinates of the boundary of the modified polygon.
      * 
      * @return JSON string representing a modified event.
      */
     static public String createModifiedHazardJSON(
-            HazardServicesPolygon modifiedPolygon,
-            List<HazardServicesPolygon> polygonsForEvent,
+            IHazardServicesShape modifiedShape,
+            List<? extends IHazardServicesShape> shapesForEvent,
             List<Coordinate> newCoords) {
-        String eventID = modifiedPolygon.getEventID();
+        String eventID = modifiedShape.getID();
 
         EventDict modifiedAreaObject = new EventDict();
 
         modifiedAreaObject.put(Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
-        modifiedAreaObject.put(Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+        modifiedAreaObject
+                .put(Utilities.HAZARD_EVENT_SHAPE_TYPE,
+                        (modifiedShape instanceof HazardServicesLine ? Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE
+                                : (modifiedShape instanceof HazardServicesPolygon ? Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                                        : Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)));
 
-        for (HazardServicesPolygon polygon : polygonsForEvent) {
+        for (IHazardServicesShape shape : shapesForEvent) {
 
-            Polygon newPolygon = null;
+            Shape newJsonShape = null;
 
+            Coordinate coord = null;
             Coordinate[] coords = null;
 
-            if (polygon.equals(modifiedPolygon)) {
-                coords = newCoords.toArray(new Coordinate[0]);
-
+            if (shape.equals(modifiedShape)) {
+                if (shape instanceof IMultiPoint) {
+                    coords = newCoords
+                            .toArray(new Coordinate[newCoords.size()]);
+                } else {
+                    coord = newCoords.get(0);
+                }
             } else {
-                coords = polygon.getPoints().toArray(new Coordinate[0]);
+                if (shape instanceof IMultiPoint) {
+                    coords = ((IMultiPoint) shape).getLinePoints();
+                } else {
+                    coord = ((ISinglePoint) shape).getLocation();
+                }
             }
 
-            newPolygon = new Polygon("", "true", "true", "true", "", 2, "", "",
-                    coords);
+            if (shape.getClass().equals(HazardServicesLine.class)) {
+                newJsonShape = new Line("", "true", "true", "true", "", 2,
+                        coords);
+            } else if (shape.getClass().equals(HazardServicesPolygon.class)) {
+                newJsonShape = new Polygon("", "true", "true", "true", "", 2,
+                        "", "", coords);
+            } else if (shape.getClass().equals(HazardServicesPoint.class)) {
+                newJsonShape = new Point("", "true", "true", "true", "", coord,
+                        eventID);
+            } else {
+                statusHandler
+                        .error("JSONUtilities cannot convert shape of type "
+                                + shape.getClass() + " to JSON.");
+            }
 
-            modifiedAreaObject.addShape(newPolygon);
+            modifiedAreaObject.addShape(newJsonShape);
 
         }
 
@@ -118,12 +149,21 @@ public class JSONUtilities {
         Coordinate[] coords = points.toArray(new Coordinate[0]);
 
         // Convert the object to JSON.
-        Polygon polygon = new Polygon("", "true", "true", "true", "White", 2,
-                "SOLID", "White", coords);
+        Shape shape = null;
+        if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+            shape = new Polygon("", "true", "true", "true", "White", 2,
+                    "SOLID", "White", coords);
+        } else if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE)) {
+            shape = new Line("", "true", "true", "true", "White", 2, coords);
+        } else if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+            shape = new Point("", "true", "true", "true", "White",
+                    points.get(0), eventID);
+        }
 
         EventDict dict = new EventDict();
         dict.put(Utilities.HAZARD_EVENT_IDENTIFIER, "");
-        dict.addShape(polygon);
+
+        dict.addShape(shape);
 
         return dict.toJSONString();
     }

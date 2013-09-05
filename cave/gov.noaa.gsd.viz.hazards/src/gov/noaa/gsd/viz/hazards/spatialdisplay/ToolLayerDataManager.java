@@ -8,13 +8,17 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Product;
 import gov.noaa.nws.ncep.ui.pgen.elements.ProductInfo;
 import gov.noaa.nws.ncep.ui.pgen.elements.ProductTime;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+
+import com.google.common.collect.Lists;
 
 /**
  * Description: TODO
@@ -24,6 +28,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
+ * Jul 18, 2013   1264     Chris.Golden       Added support for drawing lines and
+ *                                            points.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -43,7 +49,7 @@ public class ToolLayerDataManager {
     private Layer activeLayer = null;
 
     public ToolLayerDataManager() {
-        productList = new ArrayList<Product>();
+        productList = Lists.newArrayList();
         initializeProducts();
     }
 
@@ -101,9 +107,9 @@ public class ToolLayerDataManager {
          */
         if (productList.size() == 0) {
 
+            ArrayList<Layer> list = Lists.newArrayList();
             activeProduct = new Product("Default", "Default", "Default",
-                    new ProductInfo(), new ProductTime(),
-                    new ArrayList<Layer>());
+                    new ProductInfo(), new ProductTime(), list);
 
             activeLayer = new Layer();
             // activeLayer = new ContourLine();
@@ -122,13 +128,27 @@ public class ToolLayerDataManager {
      *            The DrawableElement being added.
      */
     public void addElement(AbstractDrawableComponent de) {
-
-        activeLayer.addElement(de);
-
+        if (de instanceof DECollection) {
+            Iterator<AbstractDrawableComponent> iter = ((DECollection) de)
+                    .getComponentIterator();
+            while (iter.hasNext()) {
+                addElement(iter.next());
+            }
+        } else {
+            activeLayer.addElement(de);
+        }
     }
 
     public void removeElement(AbstractDrawableComponent de) {
-        activeLayer.removeElement(de);
+        if (de instanceof DECollection) {
+            Iterator<AbstractDrawableComponent> iter = ((DECollection) de)
+                    .getComponentIterator();
+            while (iter.hasNext()) {
+                removeElement(iter.next());
+            }
+        } else {
+            activeLayer.removeElement(de);
+        }
     }
 
     /**

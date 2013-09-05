@@ -263,8 +263,8 @@ public abstract class ModelAdapter {
      * Use ISessionEventManager.addEvent()
      */
     @Deprecated
-    public String newEvent(String eventArea) {
-        Event event = fromJson(eventArea, Event.class);
+    public String newEvent(String eventShape) {
+        Event event = fromJson(eventShape, Event.class);
         IHazardEvent hevent = event.toHazardEvent();
         hevent.addHazardAttribute("creationTime", model.getTimeManager()
                 .getCurrentTime());

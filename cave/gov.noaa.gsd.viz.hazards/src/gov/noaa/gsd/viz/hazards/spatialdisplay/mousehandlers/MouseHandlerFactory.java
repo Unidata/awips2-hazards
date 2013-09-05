@@ -87,30 +87,29 @@ public class MouseHandlerFactory {
         if (handler == null) {
             switch (mouseHandler) {
             case SINGLE_SELECTION:
-                handler = SelectionDrawingAction.getInstance();
+                handler = new SelectionAction();
                 break;
-            case MULTI_SELECTION:
-                handler = MultiSelectionAction.getInstance(presenter
-                        .getSessionManager());
+            case FREE_HAND_MULTI_SELECTION:
+                handler = new FreeHandMultiSelectionAction(
+                        presenter.getSessionManager());
                 break;
-            case SELECTION_RECTANGLE:
-                handler = SelectionRectangleDrawingAction.getInstance(presenter
-                        .getSessionManager());
+            case RECTANGLE_MULTI_SELECTION:
+                handler = new RectangleMultiSelectionAction(
+                        presenter.getSessionManager());
                 break;
-            case EVENTBOX_DRAWING:
-                handler = EventBoxDrawingAction.getInstance(presenter
-                        .getSessionManager());
+            case NODE_DRAWING:
+                handler = new NodeHazardDrawingAction(
+                        presenter.getSessionManager());
                 break;
             case FREEHAND_DRAWING:
-                handler = FreeHandHazardDrawingAction.getInstance(presenter
-                        .getSessionManager());
+                handler = new FreeHandHazardDrawingAction(
+                        presenter.getSessionManager());
                 break;
-            case DRAG_DROP_DRAWING:
-                handler = DragDropDrawingAction.getInstance();
+            case STORM_TOOL_DRAG_DOT_DRAWING:
+                handler = new DragDropAction();
                 break;
             case DRAW_BY_AREA:
-                handler = SelectByAreaDrawingActionGeometryResource
-                        .getInstance(presenter.getSessionManager());
+                handler = new SelectByAreaDrawingActionGeometryResource();
                 break;
             default:
                 statusHandler
@@ -124,8 +123,11 @@ public class MouseHandlerFactory {
 
         // Perform any handler-specific configuration that might be required.
         switch (mouseHandler) {
-        case DRAG_DROP_DRAWING:
-            ((DragDropDrawingAction) handler).setToolName(args[0]);
+        case NODE_DRAWING:
+            ((NodeHazardDrawingAction) handler).setShapeType(args[0]);
+            break;
+        case STORM_TOOL_DRAG_DOT_DRAWING:
+            ((DragDropAction) handler).setToolName(args[0]);
             break;
         case DRAW_BY_AREA:
             if (args.length == 3) {

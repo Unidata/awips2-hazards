@@ -7,25 +7,25 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -34,7 +34,6 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Drawing action associated with the selection and manipulation of hazard
@@ -51,7 +50,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * 
  * @author Bryon.Lawrence
  */
-public class SelectionDrawingAction extends CopyEventDrawingAction {
+public class SelectionAction extends NonDrawingAction {
     /**
      * Defines the mouse selection sensitivity in pixels.
      */
@@ -65,17 +64,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
         SINGLE_POINT, ALL_POINTS;
     }
 
-    /**
-     * Call this function to retrieve an instance of the SelectionDrawingAction.
-     */
-    public static SelectionDrawingAction getInstance() {
-        return new SelectionDrawingAction();
-    }
-
-    /**
-     * Private constructor.
-     */
-    private SelectionDrawingAction() {
+    public SelectionAction() {
     }
 
     @Override
@@ -115,7 +104,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
      * @author bryon.lawrence
      * @version 1.0
      */
-    public class SelectionHandler extends CopyEventDrawingAction.CopyHandler {
+    public class SelectionHandler extends NonDrawingAction.NonDrawingHandler {
         /**
          * Flag which keeps track of the pressed state of the shift key.
          */
@@ -197,7 +186,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                 Coordinate loc = editor.translateClick(anX, aY);
 
                 if (loc != null) {
-                    findSelectedDE(loc);
+                    findSelectedDE(loc, anX, aY);
                 }
             }
 
@@ -211,9 +200,13 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
          * @param loc
          *            The coordinate representing the location of the mouse
          *            pointer.
+         * @param x
+         *            X coordinate in pixel space.
+         * @param y
+         *            Y coordinate in pixel space.
          * @return Whether or not a containing component was found.
          */
-        private boolean findSelectedDE(Coordinate loc) {
+        private boolean findSelectedDE(Coordinate loc, int x, int y) {
             boolean selectedDEFound = true;
 
             if (getDrawingLayer().getSelectedDE() == null) {
@@ -224,7 +217,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                  * point
                  */
                 List<AbstractDrawableComponent> containingComponentsList = getDrawingLayer()
-                        .getContainingComponents(loc);
+                        .getContainingComponents(loc, x, y);
 
                 /*
                  * Retrieve the currently selected hazard shape
@@ -234,20 +227,18 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
 
                 if (selectedElement != null) {
                     String selectedElementEventID = getDrawingLayer()
-                            .elementClicked((DrawableElement) selectedElement,
-                                    false, false);
+                            .elementClicked(selectedElement, false, false);
 
                     /*
                      * If there is more than one containing component, make sure
                      * that the topmost element is equal to the selected
-                     * element. If there are Circles or Symbols, give them
-                     * precedence.
+                     * element. If there are symbols (including points), give
+                     * them precedence.
                      */
                     for (AbstractDrawableComponent comp : containingComponentsList) {
                         if (comp instanceof HazardServicesSymbol) {
                             String containingComponentEventID = getDrawingLayer()
-                                    .elementClicked((DrawableElement) comp,
-                                            false, false);
+                                    .elementClicked(comp, false, false);
 
                             if (containingComponentEventID
                                     .equals(selectedElementEventID)) {
@@ -262,8 +253,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                         AbstractDrawableComponent comp = containingComponentsList
                                 .get(0);
                         String containingComponentEventID = getDrawingLayer()
-                                .elementClicked((DrawableElement) comp, false,
-                                        false);
+                                .elementClicked(comp, false, false);
 
                         if (containingComponentEventID
                                 .equals(selectedElementEventID)) {
@@ -304,9 +294,9 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
              */
             if (button == 2) {
                 if (moveType == MoveType.SINGLE_POINT) {
-                    deletePoint();
+                    deleteNode();
                 } else {
-                    addPoint();
+                    addNode();
                 }
             } else if (isVertexMove) {
                 // Was this part of a vertex move operation?
@@ -318,11 +308,10 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                         .getSelectedHazardIHISLayer();
 
                 if ((selectedElement != null)
-                        && (selectedElement instanceof HazardServicesPolygon)) {
-                    HazardServicesPolygon eventArea = (HazardServicesPolygon) selectedElement;
+                        && (selectedElement instanceof IHazardServicesShape)) {
+                    IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     String jsonString = JSONUtilities.createModifiedHazardJSON(
-                            eventArea,
-                            getPolygonsForEvent(eventArea.getEventID()),
+                            eventShape, getShapesForEvent(eventShape.getID()),
                             selectedElement.getPoints());
                     getDrawingLayer().notifyModifiedEvent(jsonString);
                 }
@@ -331,47 +320,26 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
 
             if (ghostEl != null) {
                 DrawableElement selectedDE = getDrawingLayer().getSelectedDE();
-
-                if (selectedDE instanceof HazardServicesPolygon) {
-                    Line movedPolygon = (Line) ghostEl;
-                    HazardServicesPolygon origPolygon = (HazardServicesPolygon) selectedDE;
-
+                if (selectedDE != null) {
+                    IHazardServicesShape origShape = (IHazardServicesShape) selectedDE;
+                    Class<?> selectedDEclass = selectedDE.getClass();
+                    List<Coordinate> coords = null;
+                    if (selectedDEclass.equals(HazardServicesSymbol.class)
+                            || selectedDEclass
+                                    .equals(HazardServicesPoint.class)) {
+                        coords = Lists.newArrayList(((Symbol) ghostEl)
+                                .getLocation());
+                    } else if ((selectedDEclass
+                            .equals(HazardServicesPolygon.class))
+                            || (selectedDEclass
+                                    .equals(HazardServicesLine.class))) {
+                        coords = ((Line) ghostEl).getPoints();
+                    }
                     String jsonString = JSONUtilities.createModifiedHazardJSON(
-                            origPolygon,
-                            getPolygonsForEvent(origPolygon.getEventID()),
-                            movedPolygon.getPoints());
+                            origShape, getShapesForEvent(origShape.getID()),
+                            coords);
                     getDrawingLayer().notifyModifiedEvent(jsonString);
-                } else if (selectedDE instanceof HazardServicesSymbol) {
-                    Symbol movedSymbol = (Symbol) ghostEl;
-
-                    HazardServicesSymbol origSymbol = (HazardServicesSymbol) selectedDE;
-                    String eventID = origSymbol.getEventID();
-                    Coordinate newCoord = movedSymbol.getLocation();
-
-                    // Create JSON for this modified object.
-                    // Convert the object to JSON.
-                    Dict modifiedAreaObject = new Dict();
-
-                    // Look for a pointID. If it is there, then
-                    // include it in the JSON message. If it is
-                    // not there, then don't include it in the message.
-                    long pointID = origSymbol.getPointID();
-
-                    modifiedAreaObject.put("pointID", pointID);
-
-                    modifiedAreaObject.put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                            eventID);
-                    modifiedAreaObject.put(Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                            Utilities.HAZARD_EVENT_SHAPE_TYPE_DOT);
-                    double[] newLonLat = new double[2];
-                    newLonLat[0] = newCoord.x;
-                    newLonLat[1] = newCoord.y;
-                    modifiedAreaObject.put("newLonLat", newLonLat);
-
-                    getDrawingLayer().notifyModifiedEvent(
-                            modifiedAreaObject.toJSONString());
                 }
-
             } else if (!allowPanning) {
                 /*
                  * Treat this has a hazard selection.
@@ -406,7 +374,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
 
             Coordinate loc = editor.translateClick(anX, aY);
             List<AbstractDrawableComponent> containingComponentsList = getDrawingLayer()
-                    .getContainingComponents(loc);
+                    .getContainingComponents(loc, anX, aY);
 
             /*
              * Check if the user is holding down the Ctrl or Shift keys with the
@@ -417,15 +385,19 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     || containingComponentsList.size() == 0) {
 
                 if (shiftKeyIsDown) {
-                    getSpatialPresenter().getView().setMouseHandler(
-                            HazardServicesMouseHandlers.SELECTION_RECTANGLE,
-                            new String[] {});
+                    getSpatialPresenter()
+                            .getView()
+                            .setMouseHandler(
+                                    HazardServicesMouseHandlers.RECTANGLE_MULTI_SELECTION,
+                                    new String[] {});
                     return true;
 
                 } else if (ctrlKeyIsDown) {
-                    getSpatialPresenter().getView().setMouseHandler(
-                            HazardServicesMouseHandlers.MULTI_SELECTION,
-                            new String[] {});
+                    getSpatialPresenter()
+                            .getView()
+                            .setMouseHandler(
+                                    HazardServicesMouseHandlers.FREE_HAND_MULTI_SELECTION,
+                                    new String[] {});
                     return true;
 
                 }
@@ -442,12 +414,20 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     isVertexMove = true;
 
                     /*
-                     * Replace the previous coordinate with the new one.
+                     * Replace the previous coordinate with the new one. If this
+                     * is a polygon, the last point must be the same as the
+                     * first, so ensure that this is the case if the first point
+                     * is the one being moved. (The last point is never the one
+                     * being moved for poly- gons.)
                      */
                     List<Coordinate> coords = selectedElement.getPoints();
                     loc = editor.translateClick(anX, aY);
-
                     coords.set(movePointIndex, loc);
+                    if (selectedElement.getClass().equals(
+                            HazardServicesPolygon.class)
+                            && (movePointIndex == 0)) {
+                        coords.set(coords.size() - 1, loc);
+                    }
 
                     /*
                      * The shape's coords are updated...
@@ -514,21 +494,18 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
 
                     if (selectedElement != null) {
                         String selectedElementEventID = getDrawingLayer()
-                                .elementClicked(
-                                        (DrawableElement) selectedElement,
-                                        false, false);
+                                .elementClicked(selectedElement, false, false);
 
                         AbstractDrawableComponent nadc = null;
                         // First try to find a component that completely
                         // contains
                         // the click point. There could be several of these.
                         List<AbstractDrawableComponent> containingComponentList = getDrawingLayer()
-                                .getContainingComponents(loc);
+                                .getContainingComponents(loc, x, y);
 
                         for (AbstractDrawableComponent comp : containingComponentList) {
                             String containingComponentEventID = getDrawingLayer()
-                                    .elementClicked((DrawableElement) comp,
-                                            false, false);
+                                    .elementClicked(comp, false, false);
 
                             if (containingComponentEventID
                                     .equals(selectedElementEventID)) {
@@ -563,8 +540,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                             if (comp != null) {
 
                                 String containingComponentEventID = getDrawingLayer()
-                                        .elementClicked((DrawableElement) comp,
-                                                false, false);
+                                        .elementClicked(comp, false, false);
 
                                 if (containingComponentEventID
                                         .equals(selectedElementEventID)) {
@@ -576,14 +552,14 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                         if (nadc != null) {
                             // Set the mouse cursor to a move symbol
                             getSpatialPresenter().getView().setCursor(
-                                    SpatialViewCursorTypes.MOVE_POLYGON_CURSOR);
+                                    SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
 
                             // Determine if the vertices on this shape
                             // may be edited.
-                            boolean canVerticesBeEdited = ((IHazardServicesShape) nadc)
-                                    .canVerticesBeEdited();
+                            LineString editableVertices = ((IHazardServicesShape) nadc)
+                                    .getEditableVertices();
 
-                            if (canVerticesBeEdited) {
+                            if (editableVertices != null) {
                                 // Set the flag indicating that the handle
                                 // bars on the selected polygon may be
                                 // displayed.
@@ -591,23 +567,19 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                                         true);
 
                                 // Test to determine if the mouse is close to
-                                // the
-                                // border of the geometry.
+                                // the border of the geometry.
                                 Coordinate mouseScreenCoord = new Coordinate(x,
                                         y);
 
-                                Polygon selectedPolygon = ((IHazardServicesShape) nadc)
-                                        .getPolygon();
-                                GeometryFactory gf = selectedPolygon
+                                GeometryFactory gf = editableVertices
                                         .getFactory();
 
                                 Point clickPointScreen = gf
                                         .createPoint(mouseScreenCoord);
-                                LineString ls = selectedPolygon
-                                        .getExteriorRing();
 
                                 // Create a line string with screen coordinates.
-                                Coordinate[] shapeCoords = ls.getCoordinates();
+                                Coordinate[] shapeCoords = editableVertices
+                                        .getCoordinates();
 
                                 Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
 
@@ -651,10 +623,11 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                                             getSpatialPresenter()
                                                     .getView()
                                                     .setCursor(
-                                                            SpatialViewCursorTypes.MOVE_POINT_CURSOR);
+                                                            SpatialViewCursorTypes.MOVE_NODE_CURSOR);
                                             moveType = MoveType.SINGLE_POINT;
                                             movePointIndex = i;
                                             minDistance = dist;
+                                            break;
                                         }
                                     }
                                 }
@@ -678,12 +651,9 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
         }
 
         /**
-         * Adds a new point to a selected geometry.
-         * 
-         * @param
-         * @return
+         * Add a new node to a selected geometry.
          */
-        public void addPoint() {
+        public void addNode() {
             AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
                     .getInstance().getActiveEditor());
             AbstractDrawableComponent selectedElement = getDrawingLayer()
@@ -699,13 +669,8 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                 /*
                  * Try using the geometry associated with the drawable.
                  */
-                Polygon selectedPolygon = ((IHazardServicesShape) selectedElement)
-                        .getPolygon();
-                LineString ls = selectedPolygon.getExteriorRing();
-
-                // Get the ring around the hazard...
-                // Build a LineString from the selected DE.
-                // Get the coordinates in this ring...
+                LineString ls = ((IHazardServicesShape) selectedElement)
+                        .getEditableVertices();
                 Coordinate[] coords = ls.getCoordinates();
 
                 int numCoordPoints = coords.length;
@@ -715,7 +680,7 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                  * coordinate. In this case, do not consider the last
                  * coordinate.
                  */
-                if (coords[0] == coords[numCoordPoints - 1]) {
+                if (coords[0].equals(coords[numCoordPoints - 1])) {
                     --numCoordPoints;
                 }
 
@@ -772,10 +737,9 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
                     }
 
                     // Build a json message with the new points.
-                    HazardServicesPolygon eventArea = (HazardServicesPolygon) selectedElement;
+                    IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     String jsonString = JSONUtilities.createModifiedHazardJSON(
-                            eventArea,
-                            getPolygonsForEvent(eventArea.getEventID()),
+                            eventShape, getShapesForEvent(eventShape.getID()),
                             Arrays.asList(coords2));
 
                     getDrawingLayer().notifyModifiedEvent(jsonString);
@@ -788,28 +752,37 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
         }
 
         /**
-         * Deletes a point from a selected geometry.
-         * 
-         * @param
-         * @return
+         * Delete a node from a selected geometry.
          */
-        public void deletePoint() {
+        public void deleteNode() {
             AbstractDrawableComponent selectedElement = getDrawingLayer()
                     .getSelectedHazardIHISLayer();
 
-            if (selectedElement != null && moveType != null
-                    && moveType == MoveType.SINGLE_POINT && movePointIndex >= 0
-                    && selectedElement instanceof HazardServicesPolygon) {
+            if ((selectedElement != null)
+                    && (moveType != null)
+                    && (moveType == MoveType.SINGLE_POINT)
+                    && (movePointIndex >= 0)
+                    && (((IHazardServicesShape) selectedElement)
+                            .getEditableVertices() != null)) {
                 List<Coordinate> coords = selectedElement.getPoints();
 
-                // For now, make sure there are at least three points left.
-                if (coords.size() > 3) {
+                // For now, make sure there are at least three points left for
+                // paths, or four points for polygons (since the latter need
+                // to have the last point be identical to the first point).
+                boolean isPolygon = selectedElement.getClass().equals(
+                        HazardServicesPolygon.class);
+                if (coords.size() > (isPolygon ? 4 : 3)) {
                     coords.remove(movePointIndex);
 
-                    HazardServicesPolygon eventArea = (HazardServicesPolygon) selectedElement;
+                    // For polygons, the last point has to be the same as the
+                    // first point, so ensure that this is the case.
+                    if (isPolygon && (movePointIndex == 0)) {
+                        coords.set(coords.size() - 1, coords.get(0));
+                    }
+
+                    IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     String jsonString = JSONUtilities.createModifiedHazardJSON(
-                            eventArea,
-                            getPolygonsForEvent(eventArea.getEventID()),
+                            eventShape, getShapesForEvent(eventShape.getID()),
                             selectedElement.getPoints());
                     getDrawingLayer().notifyModifiedEvent(jsonString);
 
@@ -833,31 +806,36 @@ public class SelectionDrawingAction extends CopyEventDrawingAction {
         }
 
         /**
-         * Returns a list of hazard polygons for a given eventID.
+         * Returns a list of hazard shapes for a given eventID.
          * 
          * @param eventID
-         *            The event identifier. On event can have multiple polygons.
-         * @return A list of polygons belonging to the hazard with the provided
-         *         event id.
+         *            The event identifier. On event can have multiple shapes.
+         * @return A list of shapes belonging to the hazard with the provided
+         *         event identifier that may be modified.
          */
-        private ArrayList<HazardServicesPolygon> getPolygonsForEvent(
-                String eventID) {
-            ArrayList<HazardServicesPolygon> polygons = new ArrayList<HazardServicesPolygon>();
+        private List<IHazardServicesShape> getShapesForEvent(String eventID) {
+            List<IHazardServicesShape> shapes = Lists.newArrayList();
 
             List<AbstractDrawableComponent> hazards = getDrawingLayer()
                     .getDataManager().getActiveLayer().getDrawables();
 
             if (hazards != null) {
                 for (AbstractDrawableComponent hazard : hazards) {
-                    if ((hazard instanceof HazardServicesPolygon)
-                            && ((HazardServicesPolygon) hazard).getEventID()
-                                    .equals(eventID)) {
-                        polygons.add((HazardServicesPolygon) hazard);
+                    Class<?> hazardClass = hazard.getClass();
+
+                    if (((hazardClass.equals(HazardServicesLine.class))
+                            || (hazardClass.equals(HazardServicesPolygon.class))
+                            || (hazardClass.equals(HazardServicesPoint.class) && ((HazardServicesPoint) hazard)
+                                    .isOuter() == false) || (hazardClass
+                                .equals(HazardServicesSymbol.class)))
+                            && ((IHazardServicesShape) hazard).getID().equals(
+                                    eventID)) {
+                        shapes.add((IHazardServicesShape) hazard);
                     }
                 }
             }
 
-            return polygons;
+            return shapes;
         }
 
     }

@@ -13,6 +13,9 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.List;
 
+import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Coordinate;
+
 /**
  * 
  * Description: A convenience class for creating a line shape which can easily
@@ -24,7 +27,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
- * 
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -38,12 +42,20 @@ final public class Line extends Shape {
     List<double[]> points;
 
     public Line(String label, String isVisible, String isSelected,
-            String include, String color, int thickness, List<double[]> points) {
+            String include, String color, int thickness, Coordinate[] points) {
         super(label, isVisible, isSelected, include);
         setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE);
         this.color = color;
         this.thickness = thickness;
-        this.points = points;
+
+        this.points = Lists.newArrayList();
+
+        for (Coordinate point : points) {
+            double pointArray[] = new double[2];
+            pointArray[0] = point.x;
+            pointArray[1] = point.y;
+            this.points.add(pointArray);
+        }
     }
 
     public void setColor(String color) {

@@ -80,7 +80,7 @@ class VTECEngine(VTECTableUtil):
         combinableSegments = self._determineSegmentationBehavior(eventDicts)
 
         # determine the type of data (geoType).  All hazard records provided
-        # must equate to using the same geoType ('area' or 'point')
+        # must equate to using the same geoType ('area', 'line', or 'point')
         self._geoType = self._determineGeoType(eventDicts)
 
         # filter the allowedHazards down to just those appropriate, based on
@@ -1191,7 +1191,7 @@ class VTECEngine(VTECTableUtil):
                 subtype = ''
 
             geoType = phd.get('geoType')
-            if geoType == 'area':
+            if geoType in ['area', 'line']:
                 areas = phd['ugcs']
             elif geoType == 'point':
                 areas = [phd['pointID']]

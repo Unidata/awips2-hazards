@@ -9,13 +9,14 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
-import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 
@@ -26,24 +27,17 @@ import com.vividsolutions.jts.geom.Polygon;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * June 2011               Bryon.Lawrence    Initial creation
+ * June 2011               Bryon.Lawrence      Initial creation
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class HazardServicesPolygon extends Line implements IHazardServicesShape {
-    private String eventID = null;
+public class HazardServicesPolygon extends HazardServicesShape {
+    private final Polygon geometry;
 
-    /**
-     * This is an instance of JTS polygon matching this PGEN-based polygon. This
-     * is used for JTS utilitis such as determining whether or not a click point
-     * is within a polygon.
-     */
-    private Polygon polygon = null;
-
-    public HazardServicesPolygon() {
-        super();
-    }
+    private final LineString editableGeometry;
 
     /**
      * 
@@ -59,15 +53,14 @@ public class HazardServicesPolygon extends Line implements IHazardServicesShape 
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param eventID
-     *            The eventID associated with this drawable.
+     * @param id
+     *            The id associated with this drawable.
      */
     public HazardServicesPolygon(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, List<Coordinate> points,
-            Layer activeLayer, String eventID) {
-        this();
-        this.eventID = eventID;
+            Layer activeLayer, String id) {
+        super(id, drawingAttributes);
         setLinePoints(points);
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
@@ -85,31 +78,18 @@ public class HazardServicesPolygon extends Line implements IHazardServicesShape 
         drawnPoints.add(drawnPoints.get(0));
         LinearRing ls = gf.createLinearRing(drawnPoints
                 .toArray(new Coordinate[0]));
-        polygon = gf.createPolygon(ls, null);
+        geometry = gf.createPolygon(ls, null);
+        editableGeometry = geometry.getExteriorRing();
     }
 
     @Override
-    public void setEventID(String eventID) {
-        this.eventID = eventID;
+    public Geometry getGeometry() {
+        return geometry;
     }
 
     @Override
-    public String getEventID() {
-        return eventID;
-    }
-
-    public void setPolygon(Polygon polygon) {
-        this.polygon = polygon;
-    }
-
-    @Override
-    public Polygon getPolygon() {
-        return polygon;
-    }
-
-    @Override
-    public boolean canVerticesBeEdited() {
-        return true;
+    public LineString getEditableVertices() {
+        return editableGeometry;
     }
 
 }

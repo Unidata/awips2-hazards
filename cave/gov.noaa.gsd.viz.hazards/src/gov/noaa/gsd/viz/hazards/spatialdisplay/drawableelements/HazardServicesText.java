@@ -15,8 +15,9 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 import java.util.ArrayList;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Base class for Text drawn in Hazard Services.
@@ -25,17 +26,18 @@ import com.vividsolutions.jts.geom.Polygon;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * April 2011              Bryon.Lawrence    Initial creation
+ * April 2011              Bryon.Lawrence      Initial creation
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 public class HazardServicesText extends Text implements IHazardServicesShape {
-    private String eventID = null;
 
-    public HazardServicesText() {
-        super();
-    }
+    private final HazardServicesDrawingAttributes drawingAttributes;
+
+    private String id;
 
     /**
      * 
@@ -53,15 +55,15 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param eventID
-     *            The eventID associated with this drawable.
+     * @param id
+     *            The id associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, Coordinate textCoord,
-            Layer activeLayer, String eventID) {
-        this();
-        this.eventID = eventID;
+            Layer activeLayer, String id) {
+        this.id = id;
+        this.drawingAttributes = drawingAttributes;
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
         setPgenType(pgenType);
@@ -91,15 +93,15 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param eventID
-     *            The eventID associated with this drawable.
+     * @param id
+     *            The id associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, ArrayList<Coordinate> points,
-            Layer activeLayer, String eventID) {
+            Layer activeLayer, String id) {
         this(drawingAttributes, pgenCategory, pgenType, points.get(0),
-                activeLayer, eventID);
+                activeLayer, id);
     }
 
     /**
@@ -118,25 +120,25 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
      *            The list points defining this drawable.
      * @param activeLayer
      *            The PGEN layer this will be drawn to.
-     * @param eventID
-     *            The eventID associated with this drawable.
+     * @param id
+     *            The id associated with this drawable.
      */
     public HazardServicesText(
             HazardServicesDrawingAttributes drawingAttributes,
             String pgenCategory, String pgenType, Point locationPoint,
-            Layer activeLayer, String eventID) {
+            Layer activeLayer, String id) {
         this(drawingAttributes, pgenCategory, pgenType, locationPoint
-                .getCoordinate(), activeLayer, eventID);
+                .getCoordinate(), activeLayer, id);
     }
 
     @Override
-    public void setEventID(String eventID) {
-        this.eventID = eventID;
+    public HazardServicesDrawingAttributes getDrawingAttributes() {
+        return drawingAttributes;
     }
 
     @Override
-    public String getEventID() {
-        return eventID;
+    public String getID() {
+        return id;
     }
 
     @Override
@@ -155,13 +157,18 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     }
 
     @Override
-    public boolean canVerticesBeEdited() {
-        return false;
+    public LineString getEditableVertices() {
+        return null;
     }
 
     @Override
-    public Polygon getPolygon() {
+    public Geometry getGeometry() {
         return null;
+    }
+
+    @Override
+    public void setID(String id) {
+        this.id = id;
     }
 
 }

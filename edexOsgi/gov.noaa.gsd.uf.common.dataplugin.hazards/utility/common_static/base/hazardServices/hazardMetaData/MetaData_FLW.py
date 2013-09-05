@@ -14,7 +14,14 @@ for entry in CAP_Fields:
             entry["values"] = values    
             
 MetaData_FLW = [
-            {             
+            {
+             "fieldName": "pointID",
+             "fieldType": "Text",
+             "label": "Forecast Point:",
+             "length": 5,
+             "values": "XXXXX"
+            },
+            {
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",

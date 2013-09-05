@@ -151,7 +151,13 @@ def geometryConverter(geometry):
     for geometry in geometryList:     
         dict = {}
         dict[INCLUDE] = "true"
-        dict[SHAPE_TYPE] = POLYGON
+        objType = geometry.jclassname
+        if objType in ["com.vividsolutions.jts.geom.Point"]:
+            dict[SHAPE_TYPE] = POINT
+        elif objType in ["com.vividsolutions.jts.geom.LineString"]:
+            dict[SHAPE_TYPE] = LINE
+        elif objType in ["com.vividsolutions.jts.geom.Polygon", "com.vividsolutions.jts.geom.MultiPolygon"]:
+            dict[SHAPE_TYPE] = POLYGON
         pointsList = []
     
         coordinates = geometry.getCoordinates()

@@ -7,7 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
-import com.vividsolutions.jts.geom.Polygon;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
+
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.LineString;
 
 /**
  * 
@@ -19,7 +22,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2012            bryon.lawrence      Initial creation
- * 
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -28,41 +32,47 @@ import com.vividsolutions.jts.geom.Polygon;
 public interface IHazardServicesShape {
 
     /**
+     * Get the drawable attributes.
+     * 
+     * @return Drawable attributes.
+     */
+    public HazardServicesDrawingAttributes getDrawingAttributes();
+
+    /**
      * Sets the eventID associated with this hazard geometry.
      * 
-     * @param eventID
-     *            - the ID to associate with this hazard.
+     * @param id
+     *            - the id to associate with this hazard.
      * @return
      */
-    public void setEventID(String eventID);
+    public void setID(String id);
 
     /**
      * 
-     * Retrieves the eventID associated with this hazard geometry.
+     * Retrieves the id associated with this hazard geometry.
      * 
-     * @param
      * @return the ID associated with this hazard.
      */
-    public String getEventID();
+    public String getID();
 
     /**
      * 
      * 
-     * Returns flag indicating whether or not the vertices associated with this
-     * shape can be edited.
+     * Returns the JTS line string containing the editable vertices of the
+     * shape, if vertices may be edited.
      * 
-     * @param
-     * @return true - the vertices can be edited, false - they cannot be edited.
+     * @return JTS line string of editable vertices, or <code>null</code> if no
+     *         editable vertices are available.
      */
-    public boolean canVerticesBeEdited();
+    public LineString getEditableVertices();
 
     /**
-     * Returns the JTS polygon associated with this shape. All Hazard Services
-     * geometries have an associated polygon. This allows the use of JTS tools.
+     * Returns the JTS geometry version of this shape. All Hazard Services
+     * shapes have an associated JTS geometries. This allows the use of JTS
+     * tools.
      * 
-     * @param
-     * @return JTS polygon representing the selectable area of this shape.
+     * @return JTS geometry representing this shape.
      */
-    public Polygon getPolygon();
+    public Geometry getGeometry();
 
 }

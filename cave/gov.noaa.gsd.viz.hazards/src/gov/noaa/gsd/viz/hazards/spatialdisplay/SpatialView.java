@@ -12,7 +12,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesMessageHandler;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionDrawingAction.SelectionHandler;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction.SelectionHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
@@ -23,7 +23,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +45,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -83,6 +83,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
+ *                                           points.
  * Aug 04, 2013   1265     Bryon.Lawrence    Added support for undo/redo
  * Aug  9, 2013   1921     daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 29, 2013   1921     bryon.lawrence    Updated loadGeometryOverlayForSelectedEvent
@@ -105,9 +107,9 @@ public class SpatialView implements
     public static enum SpatialViewCursorTypes {
 
         // Types of cursors.
-        MOVE_POLYGON_CURSOR(SWT.CURSOR_SIZEALL), MOVE_POINT_CURSOR(
-                SWT.CURSOR_HAND), ARROW_CURSOR(SWT.CURSOR_ARROW), DRAW_CURSOR(
-                SWT.CURSOR_CROSS), WAIT_CURSOR(SWT.CURSOR_WAIT);
+        MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_NODE_CURSOR(SWT.CURSOR_HAND), ARROW_CURSOR(
+                SWT.CURSOR_ARROW), DRAW_CURSOR(SWT.CURSOR_CROSS), WAIT_CURSOR(
+                SWT.CURSOR_WAIT);
 
         // Private Variables
 
@@ -152,7 +154,7 @@ public class SpatialView implements
 
     // Initialize the acceptable map overlays set.
     static {
-        Set<String> set = new HashSet<String>();
+        Set<String> set = Sets.newHashSet();
         String[] mapOverlays = { "mapdata.cwa", "mapdata.ffmp_basins",
                 "mapdata.firewxzones", "mapdata.zone", "mapdata.basins",
                 "mapdata.county", "mapdata.isc" };
@@ -742,11 +744,9 @@ public class SpatialView implements
             drawNodedPathChoiceAction = new BasicSpatialAction("",
                     "drawPath.png", Action.AS_RADIO_BUTTON, "Draw Path",
                     "Drawing", "DrawLine");
-            drawNodedPathChoiceAction.setEnabled(false);
             drawPointChoiceAction = new BasicSpatialAction("", "drawPoint.png",
-                    Action.AS_RADIO_BUTTON, "Draw Point", "Drawing",
+                    Action.AS_RADIO_BUTTON, "Draw Points", "Drawing",
                     "DrawPoint");
-            drawPointChoiceAction.setEnabled(false);
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
 
             // Return the list.
@@ -765,13 +765,8 @@ public class SpatialView implements
 
     /**
      * Receive notification that a drawing action has been completed.
-     * <p>
-     * NOTE: THIS SHOULD BE PRIVATE. Having it public is a temporary kludge
-     * until the spatial display is truly part of this view, so that the latter
-     * can notify the view when button state is to change. Right now, this
-     * method is called from the App Builder.
      */
-    public void notifyDrawingActionComplete() {
+    private void notifyDrawingActionComplete() {
         moveAndSelectChoiceAction.setChecked(true);
         moveAndSelectChoiceAction.run();
         drawNodedPolygonChoiceAction.setChecked(false);
@@ -782,13 +777,8 @@ public class SpatialView implements
 
     /**
      * Receive notification that a select-by-area operation has been initiated.
-     * <p>
-     * NOTE: THIS SHOULD BE PRIVATE. Having it public is a temporary kludge
-     * until the spatial display is truly part of this view, so that the latter
-     * can notify the view when button state is to change. Right now, this
-     * method is called from the App Builder.
      */
-    public void notifySelectByAreaInitiated() {
+    private void notifySelectByAreaInitiated() {
         moveAndSelectChoiceAction.setChecked(false);
         drawNodedPolygonChoiceAction.setChecked(false);
         drawFreehandPolygonChoiceAction.setChecked(false);
@@ -817,18 +807,18 @@ public class SpatialView implements
 
         switch (mouseHandlerType) {
         case SINGLE_SELECTION:
-            setCursor(SpatialViewCursorTypes.MOVE_POLYGON_CURSOR);
+            setCursor(SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
             break;
 
-        case MULTI_SELECTION:
+        case FREE_HAND_MULTI_SELECTION:
             setCursor(SpatialViewCursorTypes.ARROW_CURSOR);
             break;
 
-        case SELECTION_RECTANGLE:
+        case RECTANGLE_MULTI_SELECTION:
             setCursor(SpatialViewCursorTypes.ARROW_CURSOR);
             break;
 
-        case EVENTBOX_DRAWING:
+        case NODE_DRAWING:
             setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
             break;
 
@@ -836,7 +826,7 @@ public class SpatialView implements
             setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
             break;
 
-        case DRAG_DROP_DRAWING:
+        case STORM_TOOL_DRAG_DOT_DRAWING:
             spatialDisplay.drawEventAreas(false);
             break;
 
@@ -897,21 +887,21 @@ public class SpatialView implements
             HazardServicesMessageHandler messageHandler) {
 
         switch (drawingAction) {
-        case ADD_POINT:
+        case ADD_NODE:
             IInputHandler mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
             SelectionHandler addMouseHandler = (SelectionHandler) mouseHandler;
-            addMouseHandler.addPoint();
+            addMouseHandler.addNode();
             break;
 
-        case DELETE_POINT:
+        case DELETE_NODE:
             mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
 
             SelectionHandler deleteMouseHandler = (SelectionHandler) mouseHandler;
-            deleteMouseHandler.deletePoint();
+            deleteMouseHandler.deleteNode();
             break;
 
         case MOVE_ELEMENT:

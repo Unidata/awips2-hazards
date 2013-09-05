@@ -55,8 +55,10 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Jul 18, 2013    1264    Chris.Golden      Added support for drawing lines and
+ *                                           points.
  * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
- * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 21, 2013    1921    daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
  * </pre>
  * 
@@ -153,12 +155,7 @@ public class HazardServicesMessageListener {
                     .getActionIdentifier());
         } else if (actionType.equals("Drawing")) {
             if (spatialDisplayAction.getActionIdentifier().equalsIgnoreCase(
-                    "SelectMultiEvents")) {
-                // Activate the multiple select hazard mouse handler
-                messageHandler
-                        .requestMouseHandler(HazardServicesMouseHandlers.MULTI_SELECTION);
-            } else if (spatialDisplayAction.getActionIdentifier()
-                    .equalsIgnoreCase("SelectEvent")) {
+                    "SelectEvent")) {
                 // Activate the select hazard mouse handler
                 messageHandler
                         .requestMouseHandler(HazardServicesMouseHandlers.SINGLE_SELECTION);
@@ -168,10 +165,15 @@ public class HazardServicesMessageListener {
                             .equalsIgnoreCase("drawLine")
                     || spatialDisplayAction.getActionIdentifier()
                             .equalsIgnoreCase("drawPoint")) {
+                String shapeType = (spatialDisplayAction.getActionIdentifier()
+                        .equalsIgnoreCase("drawPolygon") ? Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                        : (spatialDisplayAction.getActionIdentifier()
+                                .equalsIgnoreCase("drawLine") ? Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE
+                                : Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT));
 
                 // Activate the hazard drawing mouse handler.
-                messageHandler
-                        .requestMouseHandler(HazardServicesMouseHandlers.EVENTBOX_DRAWING);
+                messageHandler.requestMouseHandler(
+                        HazardServicesMouseHandlers.NODE_DRAWING, shapeType);
             } else if (spatialDisplayAction.getActionIdentifier().equals(
                     "DrawFreeHandPolygon")) {
                 messageHandler
@@ -199,11 +201,11 @@ public class HazardServicesMessageListener {
         } else if (actionType.equals("runTool")) {
             messageHandler.runTool(spatialDisplayAction.getToolName(),
                     spatialDisplayAction.getToolParameters(), null);
-        } else if (actionType.equals("newEventArea")) {
+        } else if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)) {
             /**
              * TODO Change newEventArea to take in a POJO
              */
-            messageHandler.newEventArea(spatialDisplayAction
+            messageHandler.newEventShape(spatialDisplayAction
                     .getToolParameters().toJSONString(), spatialDisplayAction
                     .getEventID(), "Spatial");
         } else if (actionType.equals("updateEventData")) {

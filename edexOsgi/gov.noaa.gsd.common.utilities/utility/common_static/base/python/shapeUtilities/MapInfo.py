@@ -13,7 +13,7 @@ Apr 19, 2013            blawrenc            Removed unused methods for
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
 """
-import  cPickle, os
+import  cPickle, os, copy
 
 import MapAttributes as MapAttributes
 from LatLonCoord import *
@@ -59,7 +59,8 @@ class MapInfo:
         # If what is passed in is a point, we will expand it into a really
         # tiny polygon and go from there.
         polygons = []
-        for polygon in userPolygons:
+        for polygonImmutable in userPolygons:
+            polygon = copy.deepcopy(polygonImmutable)
             if len(polygon) == 1 :
                 lon,lat = polygon[0]
                 polygon = [

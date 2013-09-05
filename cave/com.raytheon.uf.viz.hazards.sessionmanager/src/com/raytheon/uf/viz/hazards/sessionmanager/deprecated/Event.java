@@ -36,6 +36,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonIgnore;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -43,8 +44,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.MultiPolygon;
+import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.Polygonal;
+import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Implements many of the fields that are used on JSON events.
@@ -58,6 +64,9 @@ import com.vividsolutions.jts.geom.Polygon;
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov    Enhance {@link #getGeometry()} to support multi-polygons
  * Aug     2013 1360       hansen      Added fields for product information
+ * Aug 25, 2013 1264       Chris.Golden Added support for drawing lines and points.
+ * Sep 05, 2013 1264       blawrenc    Added support geometries of any
+ *                                     different type (Lineal, Puntal, Polygonal).
  * </pre>
  * 
  * @author bsteffen
@@ -68,6 +77,8 @@ public class Event {
 
     // TODO int
     private String eventID;
+
+    private String pointID;
 
     private Shape[] shapes;
 
@@ -128,13 +139,13 @@ public class Event {
     private static GeometryFactory geometryFactory = new GeometryFactory();
 
     public Event() {
-
     }
 
     public Event(IHazardEvent event) {
         Map<String, Serializable> attr = event.getHazardAttributes();
 
         eventID = event.getEventID();
+        pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
         startTime = event.getStartTime().getTime();
         endTime = event.getEndTime().getTime();
         if (event.getIssueTime() != null) {
@@ -191,20 +202,26 @@ public class Event {
             state = HazardState.ISSUED.toString().toLowerCase();
         }
 
-        geoType = "area";
-        polyModified = true;
-
         draggedPoints = new double[0][];
 
         Geometry geom = event.getGeometry();
-        if (geom instanceof MultiPolygon) {
-            this.shapes = new Shape[geom.getNumGeometries()];
-            for (int i = 0; i < shapes.length; i += 1) {
-                shapes[i] = convertGeometry(geom.getGeometryN(i));
-            }
-        } else {
-            shapes = new Shape[] { convertGeometry(geom) };
+
+        int numberOfGeometries = geom.getNumGeometries();
+        shapes = new Shape[numberOfGeometries];
+
+        for (int i = 0; i < numberOfGeometries; ++i) {
+            shapes[i] = convertGeometry(geom.getGeometryN(i));
         }
+
+        if (geom instanceof Polygonal) {
+            geoType = HazardConstants.AREA_TYPE;
+        } else if (geom instanceof Lineal) {
+            geoType = HazardConstants.LINE_TYPE;
+        } else if (geom instanceof Puntal) {
+            geoType = HazardConstants.POINT_TYPE;
+        }
+
+        polyModified = true;
 
         if (attr.containsKey("expirationTime")) {
             expirationTime = (Long) attr.get("expirationTime");
@@ -244,10 +261,10 @@ public class Event {
         for (Coordinate c : geom.getCoordinates()) {
             points.add(new double[] { c.x, c.y });
         }
-        points.remove(points.size() - 1);
         Shape shape = new Shape();
         shape.setPoints(points.toArray(new double[0][]));
-        shape.setShapeType("polygon");
+        shape.setShapeType(geom instanceof Polygonal ? "polygon"
+                : (geom instanceof Lineal ? "line" : "point"));
         shape.setLabel(eventID + " ");
         if (type != null) {
             shape.setLabel(eventID + " " + type);
@@ -264,6 +281,14 @@ public class Event {
 
     public void setEventID(String eventID) {
         this.eventID = eventID;
+    }
+
+    public String getPointID() {
+        return pointID;
+    }
+
+    public void setPointID(String pointID) {
+        this.pointID = pointID;
     }
 
     public Shape[] getShapes() {
@@ -492,6 +517,9 @@ public class Event {
 
     public IHazardEvent toHazardEvent() {
         IHazardEvent event = new BaseHazardEvent();
+        if (pointID != null) {
+            event.addHazardAttribute(HazardConstants.POINTID, pointID);
+        }
         if (startTime != null) {
             event.setStartTime(new Date(startTime));
         }
@@ -533,32 +561,59 @@ public class Event {
     @JsonIgnore
     public Geometry getGeometry() {
         assert (shapes != null && shapes.length != 0);
-        List<Polygon> polygons = Lists.newArrayList();
+        List<Geometry> geometries = Lists.newArrayList();
+        boolean onlyPolygons = true;
         for (Shape shape : shapes) {
-
-            Polygon p = buildPolygon(shape);
-            polygons.add(p);
+            if (shape.getShapeType().equals("point")) {
+                geometries.add(buildPoint(shape));
+                onlyPolygons = false;
+            } else if (shape.getShapeType().equals("line")) {
+                geometries.add(buildLine(shape));
+                onlyPolygons = false;
+            } else if (shape.getShapeType().equals("polygon")) {
+                geometries.add(buildPolygon(shape));
+            } else {
+                throw new IllegalStateException(
+                        "Cannot get geometry of shape of type \""
+                                + shape.getShapeType() + "\"");
+            }
         }
         Geometry result;
-        if (polygons.size() == 1) {
-            result = polygons.get(0);
-        } else {
-            result = new MultiPolygon(polygons.toArray(new Polygon[polygons
+        if (geometries.size() == 1) {
+            result = geometries.get(0);
+        } else if (onlyPolygons) {
+            result = new MultiPolygon(geometries.toArray(new Polygon[geometries
                     .size()]), geometryFactory);
+        } else {
+            throw new IllegalStateException(
+                    "Cannot get geometry for multiple shapes including at least one non-polygon");
         }
 
         return result;
     }
 
+    private Point buildPoint(Shape shape) {
+        return geometryFactory.createPoint(new Coordinate(shape.points[0][0],
+                shape.points[0][1]));
+    }
+
+    private LineString buildLine(Shape shape) {
+        return geometryFactory
+                .createLineString(translateShapePointsToCoordinates(shape));
+    }
+
     private Polygon buildPolygon(Shape shape) {
-        List<Coordinate> coords = new ArrayList<Coordinate>();
+        return geometryFactory.createPolygon(geometryFactory
+                .createLinearRing(translateShapePointsToCoordinates(shape)),
+                null);
+    }
+
+    private Coordinate[] translateShapePointsToCoordinates(Shape shape) {
+        List<Coordinate> coords = new ArrayList<Coordinate>(shape.points.length);
         for (double[] point : shape.points) {
             coords.add(new Coordinate(point[0], point[1]));
         }
-        coords.add(coords.get(0));
-        Polygon p = geometryFactory.createPolygon(geometryFactory
-                .createLinearRing(coords.toArray(new Coordinate[0])), null);
-        return p;
+        return coords.toArray(new Coordinate[shape.points.length]);
     }
 
     @Override

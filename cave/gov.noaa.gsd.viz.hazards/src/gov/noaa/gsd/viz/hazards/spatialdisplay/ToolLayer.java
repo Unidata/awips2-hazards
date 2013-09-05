@@ -14,7 +14,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDr
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionDrawingAction;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
@@ -40,7 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -86,10 +86,11 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.Polygonal;
 
 /**
  * This is the AbstractVizResource used for the display of IHIS hazards. This
@@ -114,6 +115,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                        from the right-click context menu.
  * Jul 10, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * Jul 12, 2013            Bryon.Lawrence Added ability to draw persistent shapes.
+ * Jul 18, 2013   1264     Chris.Golden   Added support for drawing lines and
+ *                                        points.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 27, 2013 1921       Bryon.Lawrence Replaced code to support multi-hazard selection using
  *                                        Shift and Ctrl keys.
@@ -136,7 +139,9 @@ public class ToolLayer extends
 
     public static final String IS_SELECTED_KEY = "isSelected";
 
-    public static double VERTEX_CIRCLE_RADIUS = 2;
+    public static final double VERTEX_CIRCLE_RADIUS = 2;
+
+    private static final int HIT_TEST_SLOP_DISTANCE_PIXELS = (int) SelectionAction.SELECTION_DISTANCE_PIXELS;
 
     /**
      * Controls the relative size of the handlebars drawn on selected hazards.
@@ -160,7 +165,7 @@ public class ToolLayer extends
      * package.
      */
 
-    private final ConcurrentHashMap<DrawableElement, AbstractElementContainer> displayMap;
+    private final ConcurrentMap<AbstractDrawableComponent, AbstractElementContainer> displayMap;
 
     /**
      * Ghost for pgen element.
@@ -179,7 +184,7 @@ public class ToolLayer extends
 
     private AbstractDrawableComponent selectedHazardIHISLayer = null;
 
-    private GeometryFactory geoFactory = null;
+    private final GeometryFactory geoFactory;
 
     // Flag indicating whether or not to draw the handlebars
     // on the selected element.
@@ -287,14 +292,14 @@ public class ToolLayer extends
             SimulatedTime.getSystemTime().setFrozen(true);
         }
 
-        displayMap = new ConcurrentHashMap<DrawableElement, AbstractElementContainer>();
-        elSelected = new ArrayList<AbstractDrawableComponent>();
+        displayMap = Maps.newConcurrentMap();
+        elSelected = Lists.newArrayList();
         geoFactory = new GeometryFactory();
 
         dataManager = new ToolLayerDataManager();
         persistentShapeMap = Maps.newHashMap();
 
-        dataTimes = new ArrayList<DataTime>();
+        dataTimes = Lists.newArrayList();
         selectedEventIDs = Lists.newArrayList();
 
         /**
@@ -389,7 +394,7 @@ public class ToolLayer extends
                 break;
             }
 
-            String eventID = ((IHazardServicesShape) de).getEventID();
+            String eventID = ((IHazardServicesShape) de).getID();
             List<AbstractDrawableComponent> persistentDrawables = persistentShapeMap
                     .get(eventID);
 
@@ -554,8 +559,7 @@ public class ToolLayer extends
      */
     @Override
     public void initInternal(IGraphicsTarget target) throws VizException {
-        // This needs to be done to register this tool's mouse
-        // listener with
+        // This needs to be done to register this tool's mouse listener with
         // the Pane Manager.
         super.initInternal(target);
 
@@ -576,8 +580,9 @@ public class ToolLayer extends
     /*
      * (non-Javadoc)
      * 
-     * @see com.raytheon.viz.core.rsc.IVizResource#isApplicable(com.raytheon
-     * .viz. core.PixelExtent)
+     * @see
+     * com.raytheon.viz.core.rsc.IVizResource#isApplicable(com.raytheon.viz.
+     * core.PixelExtent)
      */
     public boolean isApplicable(PixelExtent extent) {
         return true;
@@ -644,10 +649,8 @@ public class ToolLayer extends
 
         super.disposeInternal();
 
-        // Fire a spatial display dispose event if the perspective is
-        // not
-        // changing, since this means that Hazard Services should
-        // close.
+        // Fire a spatial display dispose event if the perspective is not
+        // changing, since this means that Hazard Services should close.
         if (perspectiveChanging == false) {
             fireSpatialDisplayDisposedActionOccurred();
         }
@@ -753,7 +756,7 @@ public class ToolLayer extends
         if (!displayMap.containsKey(el)) {
             AbstractElementContainer container = ElementContainerFactory
                     .createContainer((DrawableElement) el, descriptor, target);
-            displayMap.put((DrawableElement) el, container);
+            displayMap.put(el, container);
         }
 
         displayMap.get(el).draw(target, paintProps, dprops);
@@ -892,7 +895,7 @@ public class ToolLayer extends
             }
 
             if (de instanceof IHazardServicesShape) {
-                if (((IHazardServicesShape) de).getEventID().equals(eventID)) {
+                if (((IHazardServicesShape) de).getID().equals(eventID)) {
                     removeElement(de);
                 }
             }
@@ -918,12 +921,11 @@ public class ToolLayer extends
      *            event geometry has been selected on the Spatial Display.
      * @return The event ID.
      */
-    public String elementClicked(DrawableElement element,
+    public String elementClicked(AbstractDrawableComponent element,
             boolean multipleSelection, boolean fireEvent) {
         if (element instanceof IHazardServicesShape) {
 
-            String clickedEventId = ((IHazardServicesShape) element)
-                    .getEventID();
+            String clickedEventId = ((IHazardServicesShape) element).getID();
             if (fireEvent) {
 
                 /*
@@ -970,7 +972,7 @@ public class ToolLayer extends
      * @param element
      *            The element to remove the label from.
      */
-    public void removeElementLabel(DrawableElement element) {
+    public void removeElementLabel(AbstractDrawableComponent element) {
         String eventID = elementClicked(element, false, false);
 
         if (eventID != null) {
@@ -987,7 +989,7 @@ public class ToolLayer extends
                 }
 
                 if (de instanceof Text) {
-                    if (((IHazardServicesShape) de).getEventID() == eventID) {
+                    if (((IHazardServicesShape) de).getID().equals(eventID)) {
                         removeElement(de);
                     }
                 }
@@ -1019,7 +1021,6 @@ public class ToolLayer extends
     public void removeSelected(AbstractDrawableComponent adc) {
         if (elSelected.contains(adc)) {
             elSelected.remove(adc);
-
         }
     }
 
@@ -1056,7 +1057,7 @@ public class ToolLayer extends
 
             if (!(comp instanceof Text)
                     && !(comp instanceof HazardServicesLine)) {
-                Polygon p = ((IHazardServicesShape) comp).getPolygon();
+                Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                 if (p != null) {
                     // Convert the polygon vertices into pixels
@@ -1083,7 +1084,7 @@ public class ToolLayer extends
             }
         }
 
-        if (minDist <= SelectionDrawingAction.SELECTION_DISTANCE_PIXELS) {
+        if (minDist <= SelectionAction.SELECTION_DISTANCE_PIXELS) {
             return closestSymbol;
         }
 
@@ -1094,10 +1095,15 @@ public class ToolLayer extends
      * Given a point, finds the containing drawable component.
      * 
      * @param point
-     *            The point to test against
+     *            Point in geographic space to test against.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
      * @return The drawable component which contains this point.
      */
-    public AbstractDrawableComponent getContainingComponent(Coordinate point) {
+    public AbstractDrawableComponent getContainingComponent(Coordinate point,
+            int x, int y) {
         Iterator<AbstractDrawableComponent> iterator = dataManager
                 .getActiveLayer().getComponentIterator();
 
@@ -1109,6 +1115,8 @@ public class ToolLayer extends
          * 
          */
         Point clickPoint = geoFactory.createPoint(point);
+        Geometry clickPointWithSlop = clickPoint
+                .buffer(getTranslatedHitTestSlopDistance(point, x, y));
 
         AbstractDrawableComponent selectedSymbol = null;
 
@@ -1116,10 +1124,11 @@ public class ToolLayer extends
             AbstractDrawableComponent comp = iterator.next();
 
             if (comp instanceof IHazardServicesShape) {
-                Polygon p = ((IHazardServicesShape) comp).getPolygon();
-
+                Geometry p = ((IHazardServicesShape) comp).getGeometry();
                 if (p != null) {
-                    if (clickPoint.within(p)) {
+                    boolean contains = (p instanceof Polygonal ? clickPoint
+                            .within(p) : clickPointWithSlop.intersects(p));
+                    if (contains) {
                         if (comp instanceof HazardServicesSymbol) {
                             selectedSymbol = comp;
                         } else {
@@ -1136,12 +1145,16 @@ public class ToolLayer extends
     /**
      * Given point, find all drawables which contain it.
      * 
-     * @param The
-     *            point to test.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
      * @return A list of drawables which contain this point.
      */
     public List<AbstractDrawableComponent> getContainingComponents(
-            Coordinate point) {
+            Coordinate point, int x, int y) {
         Iterator<AbstractDrawableComponent> iterator = dataManager
                 .getActiveLayer().getComponentIterator();
 
@@ -1151,8 +1164,11 @@ public class ToolLayer extends
          * tree and storing/resusing the Geometries.
          */
         Point clickPoint = geoFactory.createPoint(point);
+        Geometry clickPointWithSlop = clickPoint
+                .buffer(getTranslatedHitTestSlopDistance(point, x, y));
 
-        List<AbstractDrawableComponent> containingSymbolsList = new ArrayList<AbstractDrawableComponent>();
+        List<AbstractDrawableComponent> containingSymbolsList = Lists
+                .newArrayList();
 
         while (iterator.hasNext()) {
             AbstractDrawableComponent comp = iterator.next();
@@ -1160,17 +1176,19 @@ public class ToolLayer extends
             // Skip Labels (PGEN Text Objects). These are not
             // selectable for now...
             if (comp instanceof IHazardServicesShape) {
-                Polygon p = ((IHazardServicesShape) comp).getPolygon();
+                Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                 if (p != null) {
-                    if (clickPoint.within(p)) {
+                    boolean contains = (p instanceof Polygonal ? clickPoint
+                            .within(p) : clickPointWithSlop.intersects(p));
+                    if (contains) {
                         containingSymbolsList.add(comp);
                     }
                 }
             }
         }
 
-        /**
+        /*
          * The hazards drawn first are on the bottom of the stack while those
          * drawn last are on the top of the stack. Reversing the list makes it
          * easier for applications to find the top-most containing element.
@@ -1251,6 +1269,50 @@ public class ToolLayer extends
     }
 
     /**
+     * Given the specified point in both geographic coordinates and in pixel
+     * coordinates, determine a distance in geographic space that suffices as
+     * "slop" area for hit tests for geometries that are difficult to hit (one-
+     * and two-dimensional entities).
+     * 
+     * @param loc
+     *            Geographic coordinates of point being tested.
+     * @param x
+     *            Pixel X coordinate of point being tested.
+     * @param y
+     *            Pixel Y coordinate of point being tested.
+     * @return Distance in geographic space that suffices as "slop" area, or
+     *         <code>0.0</code> if the distance could not be calculated.
+     */
+    private double getTranslatedHitTestSlopDistance(Coordinate loc, int x, int y) {
+
+        // Find the editor.
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+
+        // Try creating a pixel point at the "slop" distance from the
+        // original pixel point in each of the four cardinal directions;
+        // for each one, see if this yields a translatable point, and
+        // if so, return the distance between that point and the original
+        // geographic point. If this fails, return 0.
+        Coordinate offsetLoc = null;
+        for (int j = 0; j < 4; j++) {
+            offsetLoc = editor
+                    .translateClick(
+                            x
+                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * ((j % 2) * (j == 1 ? 1
+                                            : -1))),
+                            y
+                                    + (HIT_TEST_SLOP_DISTANCE_PIXELS * (((j + 1) % 2) * (j == 0 ? 1
+                                            : -1))));
+            if (offsetLoc != null) {
+                return Math.sqrt(Math.pow(loc.x - offsetLoc.x, 2.0)
+                        + Math.pow(loc.y - offsetLoc.y, 2.0));
+            }
+        }
+        return 0.0;
+    }
+
+    /**
      * Adds entries to the right click context menu in CAVE based on the state
      * of the model and the mouse pointer's proximity to displayed hazards.
      * 
@@ -1258,7 +1320,7 @@ public class ToolLayer extends
      * @return A list of entries to add to the context menu.
      */
     private List<String> getContextMenuEntries() {
-        List<String> entryList = new ArrayList<String>();
+        List<String> entryList = Lists.newArrayList();
         String jsonString = appBuilder.getContextMenuEntries();
 
         JsonParser parser = new JsonParser();
@@ -1267,13 +1329,11 @@ public class ToolLayer extends
         entryList = new Gson().fromJson(jsonElement, entryList.getClass());
 
         if (spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_POINT_CURSOR)) {
-            entryList.add("Delete Point");
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR)) {
+            entryList.add("Delete Node");
         } else if (spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_POLYGON_CURSOR)
-                || spatialView
-                        .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR)) {
-            entryList.add("Add Point");
+                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR)) {
+            entryList.add("Add Node");
         }
 
         return entryList;
@@ -1290,7 +1350,7 @@ public class ToolLayer extends
 
         selectedHazardIHISLayer = comp;
 
-        /**
+        /*
          * Update the list of world pixels associated with this hazard. We only
          * need to do this computation once. This is especially useful for
          * drawing hazard selection handlebars.
@@ -1324,7 +1384,6 @@ public class ToolLayer extends
      *            The target to draw to.
      * @param paintProps
      *            Describes how drawables appear on the target.
-     * @return
      * @throws VizException
      *             An exception was encountered while drawing the handle bar
      *             points on the target graphic
@@ -1334,7 +1393,7 @@ public class ToolLayer extends
 
         if ((selectedHazardIHISLayer != null) && (drawSelectedHandleBars)) {
             if (((IHazardServicesShape) selectedHazardIHISLayer)
-                    .canVerticesBeEdited()) {
+                    .getEditableVertices() != null) {
 
                 if (!handleBarPoints.isEmpty()) {
 
@@ -1366,7 +1425,7 @@ public class ToolLayer extends
         Point centerPoint = null;
 
         if ((comp != null) && !(comp instanceof Text)) {
-            Polygon p = ((IHazardServicesShape) comp).getPolygon();
+            Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
             if (p != null) {
                 centerPoint = p.getCentroid();
@@ -1511,7 +1570,7 @@ public class ToolLayer extends
     @Override
     public DataTime[] getDataTimes() {
         if (timeMatchBasis) {
-            /**
+            /*
              * We only want to calculate more data times if the user has
              * selected more frames than there have been in the past.
              */
@@ -1537,8 +1596,7 @@ public class ToolLayer extends
 
             if (dataTimes.size() == 0) {
                 timeMatchBasis = true;
-                // Case where this tool is time match basis or no data
-                // loaded
+                // Case where this tool is time match basis or no data loaded
                 DataTime currentTime = null;
                 if (dataTimes.size() > 0) {
                     currentTime = dataTimes.get(dataTimes.size() - 1);
@@ -1597,9 +1655,11 @@ public class ToolLayer extends
         return RenderingOrderFactory.ResourceOrder.HIGHEST;
     }
 
+    /**
+     * @return the geoFactory
+     */
     public GeometryFactory getGeoFactory() {
         return geoFactory;
     }
 
 }
-//

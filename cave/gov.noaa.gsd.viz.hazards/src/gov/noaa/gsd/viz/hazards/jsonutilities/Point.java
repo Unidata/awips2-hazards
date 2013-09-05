@@ -11,7 +11,10 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
 
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import com.google.gson.Gson;
+import java.util.List;
+
+import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * 
@@ -24,7 +27,8 @@ import com.google.gson.Gson;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
- * 
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -32,24 +36,27 @@ import com.google.gson.Gson;
  */
 final public class Point extends Shape {
 
-    private double point[];
+    private final List<double[]> points;
 
     private String color;
 
+    private String pointID;
+
     public Point(String label, String isVisible, String isSelected,
-            String include, String color, double point[]) {
+            String include, String color, Coordinate point, String pointID) {
         super(label, isVisible, isSelected, include);
         setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT);
         this.color = color;
-        this.point = point;
+        this.points = Lists.newArrayList(new double[] { point.x, point.y });
+        this.pointID = pointID;
     }
 
     public void setPoint(double point[]) {
-        this.point = point;
+        this.points.set(0, point);
     }
 
     public double[] getPoint() {
-        return point;
+        return points.get(0);
     }
 
     public void setColor(String color) {
@@ -60,18 +67,11 @@ final public class Point extends Shape {
         return color;
     }
 
-    public static void main(String args[]) {
-        Point testPoint = new Point("FF.W", "true", "true", "true",
-                "255 255 255", new double[] { 42.0, -120.0 });
-        Gson gson = new Gson();
-        String json = gson.toJson(testPoint);
+    public String getPointID() {
+        return pointID;
+    }
 
-        System.out.println("JSON string: " + json);
-
-        // Try going the other way...
-        @SuppressWarnings("unused")
-        Point obj = gson.fromJson(json, Point.class);
-
-        System.exit(0);
+    public void setPointID(String pointID) {
+        this.pointID = pointID;
     }
 }

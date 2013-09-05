@@ -20,7 +20,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -535,7 +534,7 @@ public class SettingsView implements
         // Get the dictionary from the JSON, and the list of settings
         // from that.
         Dict settingDict = Dict.getInstance(jsonSettings);
-        ArrayList<Dict> settings = settingDict
+        List<Dict> settings = settingDict
                 .getDynamicallyTypedValue(Utilities.SETTINGS_LIST);
         if ((settings == null) || (settings.size() < 1)) {
             return;

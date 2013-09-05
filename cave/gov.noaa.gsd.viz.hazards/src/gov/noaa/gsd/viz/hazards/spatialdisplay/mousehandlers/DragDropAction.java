@@ -30,24 +30,18 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 15, 2013    585     Chris.Golden      Changed to support loading from bundle
  *                                           and to no longer be a singleton.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Sep 05, 2013 1264       blawrenc          Removed getInstance method. It is not used.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
-public class DragDropDrawingAction extends CopyEventDrawingAction {
+public class DragDropAction extends NonDrawingAction {
 
     private String toolName = null;
 
     public static final String pgenType = "TornadoWarning";
 
     public static final String pgenCategory = "MET";
-
-    /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * */
-    public static DragDropDrawingAction getInstance() {
-        return new DragDropDrawingAction();
-    }
 
     @Override
     protected IInputHandler createMouseHandler() {
@@ -62,7 +56,7 @@ public class DragDropDrawingAction extends CopyEventDrawingAction {
         return toolName;
     }
 
-    public class MoveHandler extends CopyEventDrawingAction.CopyHandler {
+    public class MoveHandler extends NonDrawingAction.NonDrawingHandler {
         /*
          * (non-Javadoc)
          * 

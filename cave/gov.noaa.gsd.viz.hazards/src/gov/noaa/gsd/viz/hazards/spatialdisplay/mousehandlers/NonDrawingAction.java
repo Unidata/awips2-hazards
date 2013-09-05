@@ -39,32 +39,30 @@ import com.vividsolutions.jts.geom.Point;
  *                                            on click point versus geometry
  *                                            centroid.
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
+ * Jul 18, 2013     1264     Chris.Golden     Added support for drawing lines and
+ *                                            points.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
-public class CopyEventDrawingAction extends AbstractMouseHandler {
+public class NonDrawingAction extends AbstractMouseHandler {
 
     public static final String pgenType = "TornadoWarning";
 
     public static final String pgenCategory = "MET";
 
     /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param spatialPresenter
-     * 
+     * Construct a standard instance.
      */
-    public static CopyEventDrawingAction getInstance() {
-        return new CopyEventDrawingAction();
+    public NonDrawingAction() {
     }
 
     @Override
     protected IInputHandler createMouseHandler() {
-        return new CopyHandler();
+        return new NonDrawingHandler();
     }
 
-    public class CopyHandler extends InputHandlerDefaultImpl {
+    public class NonDrawingHandler extends InputHandlerDefaultImpl {
 
         AbstractDrawableComponent ghostEl = null;
 
@@ -98,12 +96,11 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
                      * ContourLine, ContourMinmax or ContourCircle.
                      */
                     AbstractDrawableComponent nadc = getDrawingLayer()
-                            .getContainingComponent(loc);
+                            .getContainingComponent(loc, anX, aY);
                     getDrawingLayer().setSelectedDE(nadc);
 
                     // Remove the label associated with the element.
-                    getDrawingLayer()
-                            .removeElementLabel((DrawableElement) nadc);
+                    getDrawingLayer().removeElementLabel(nadc);
 
                     getDrawingLayer().issueRefresh();
                 }
@@ -144,7 +141,6 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
                     GeometryFactory gf = new GeometryFactory();
                     Point clickPoint = gf.createPoint(loc);
                     double distance;
-
                     if (elSelected instanceof HazardServicesSymbol) {
                         Point centroid = gf.createPoint(elSelected.getPoints()
                                 .get(0));
@@ -257,14 +253,14 @@ public class CopyEventDrawingAction extends AbstractMouseHandler {
 
             if (loc != null) {
                 AbstractDrawableComponent nadc = getDrawingLayer()
-                        .getContainingComponent(loc);
+                        .getContainingComponent(loc, x, y);
 
                 // There is a selected element. Is the
                 // mouse over it?
                 if (nadc != null) {
                     // Set the mouse cursor to a move symbol
                     getSpatialPresenter().getView().setCursor(
-                            SpatialViewCursorTypes.MOVE_POLYGON_CURSOR);
+                            SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
 
                 } else {
                     // Set the mouse cursor to an arrow

@@ -56,6 +56,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.vividsolutions.jts.geom.Lineal;
+import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Implementation of ISessionProductManager
@@ -202,8 +204,17 @@ public class SessionProductManager implements ISessionProductManager {
                 event.addHazardAttribute(HazardConstants.GEO_TYPE,
                         HazardConstants.POINT_TYPE);
             } else {
-                event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                        HazardConstants.AREA_TYPE);
+                Class<?> geometryClass = event.getGeometry().getClass();
+                if (geometryClass.equals(Puntal.class)) {
+                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                            HazardConstants.POINT_TYPE);
+                } else if (geometryClass.equals(Lineal.class)) {
+                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                            HazardConstants.LINE_TYPE);
+                } else {
+                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                            HazardConstants.AREA_TYPE);
+                }
             }
             event.removeHazardAttribute(HazardConstants.TYPE);
 

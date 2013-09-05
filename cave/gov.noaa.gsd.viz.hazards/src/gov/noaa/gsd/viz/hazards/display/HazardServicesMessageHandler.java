@@ -30,6 +30,7 @@ import java.util.Set;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -75,6 +76,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                             including making the model and JEP
  *                                             instances be member variables instead
  *                                             of class-scoped.
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * Aug 06, 2013   1265     bryon.lawrence      Added support for undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
@@ -157,9 +160,9 @@ public final class HazardServicesMessageHandler {
 
     private final String CONTEXT_MENU_DELETE = "Delete";
 
-    private final String CONTEXT_MENU_ADD_POINT = "Add Point";
+    private final String CONTEXT_MENU_ADD_NODE = "Add Node";
 
-    private final String CONTEXT_MENU_DELETE_POINT = "Delete Point";
+    private final String CONTEXT_MENU_DELETE_NODE = "Delete Node";
 
     private final String CONTEXT_MENU_END = "End";
 
@@ -170,7 +173,7 @@ public final class HazardServicesMessageHandler {
     /**
      * Constants representing CAVE frame information.
      */
-    private final String FRAME_TIMES = "frameTimes";
+    private final String FRAME_TIMES = "frameTimeList";
 
     private final String FRAME_INDEX = "frameIndex";
 
@@ -414,8 +417,8 @@ public final class HazardServicesMessageHandler {
              * Activate the storm tracking mouse handler
              */
             appBuilder.requestMouseHandler(
-                    HazardServicesMouseHandlers.DRAG_DROP_DRAWING, toolName,
-                    label);
+                    HazardServicesMouseHandlers.STORM_TOOL_DRAG_DOT_DRAWING,
+                    toolName, label);
         }
 
     }
@@ -471,11 +474,22 @@ public final class HazardServicesMessageHandler {
         eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
                 .getTimeManager().getCurrentTime().getTime());
 
+        Dict frameInfo = buildFrameInformation();
+        eventSet.addAttribute("framesInfo", (Serializable) asMap(frameInfo));
+
+        HashMap<String, Serializable> staticSettings = Maps.newHashMap();
+
+        /**
+         * TODO Get this from the session manager somehow.
+         */
+        staticSettings.put("defaultDuration", 1800000);
+        eventSet.addAttribute("staticSettings", staticSettings);
+
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
                 eventSet, asMap(spatialInfo), asMap(dialogInfo),
                 getRecommenderListener(toolName));
 
-        appBuilder.setCursor(SpatialViewCursorTypes.MOVE_POINT_CURSOR);
+        appBuilder.setCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
 
         notifyModelEventsChanged();
 
@@ -485,7 +499,7 @@ public final class HazardServicesMessageHandler {
         if (runData == null) {
             return null;
         }
-        Map<String, Serializable> result = new HashMap<String, Serializable>();
+        HashMap<String, Serializable> result = Maps.newHashMap();
         for (Entry<String, Object> entry : runData.entrySet()) {
             Object val = entry.getValue();
             if (val instanceof Serializable) {
@@ -853,20 +867,20 @@ public final class HazardServicesMessageHandler {
      * The originator argument is for extensibility in case the capability to
      * add events is added to other components.
      * 
-     * @param eventArea
-     *            Json string representing a newly created eventArea
+     * @param eventShape
+     *            Json string representing a newly created event shape.
      * @param eventID
      *            The id of the event. If this is null, then a new event and id
      *            are created.
      * @param originator
      *            The originator of the new event (for example, "Spatial"). This
      *            should be an enum.
-     * @return An eventID for the new event area.
+     * @return An eventID for the new event shape.
      */
-    public String newEventArea(String eventArea, String eventID,
+    public String newEventShape(String eventShape, String eventID,
             String originator) {
         if (eventID == null) {
-            eventID = model.newEvent(eventArea);
+            eventID = model.newEvent(eventShape);
         }
         notifyModelEventsChanged();
 
@@ -926,10 +940,19 @@ public final class HazardServicesMessageHandler {
      */
     public void sendFrameInformationToSessionManager() {
 
+        Dict frameDict = buildFrameInformation();
+        if (!frameDict.isEmpty()) {
+            VizApp.runAsync(new FrameUpdater(frameDict));
+        }
+
+    }
+
+    private Dict buildFrameInformation() {
         AbstractEditor editor = getCurrentEditor();
         FramesInfo framesInfo = editor.getActiveDisplayPane().getDescriptor()
                 .getFramesInfo();
 
+        Dict frameDict = new Dict();
         if (framesInfo != null) {
             final int frameCount = framesInfo.getFrameCount();
             final int frameIndex = framesInfo.getFrameIndex();
@@ -945,43 +968,46 @@ public final class HazardServicesMessageHandler {
                     }
                 }
 
-                Dict frameDict = new Dict();
                 frameDict.put(FRAME_COUNT, frameCount);
                 frameDict.put(FRAME_INDEX, frameIndex);
                 frameDict.put(FRAME_TIMES, dataTimeList);
-
-                final String framesJSON = frameDict.toJSONString();
-
-                /*
-                 * Need to make sure that the modelProxy is called by the thread
-                 * which started JEP. In this case, it is the VizApp thread.
-                 */
-                VizApp.runAsync(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        model.updateFrameInfo(framesJSON);
-
-                        /*
-                         * Make sure the HazardServices selected time is in-sync
-                         * with the frame being viewed.
-                         */
-                        if ((frameCount > 0) && (frameIndex != -1)) {
-                            try {
-                                updateSelectedTime(
-                                        dataTimeList.get(frameIndex).toString(),
-                                        HazardServicesAppBuilder.CAVE_ORIGINATOR);
-                            } catch (VizException e) {
-                                statusHandler.error(
-                                        "HazardServicesMessageHandler:", e);
-                            }
-                        }
-                    }
-                });
-
             }
-
         }
+        return frameDict;
+    }
+
+    private class FrameUpdater implements Runnable {
+
+        private final Dict frameDict;
+
+        private FrameUpdater(final Dict frameDict) {
+            this.frameDict = frameDict;
+        }
+
+        @Override
+        public void run() {
+            model.updateFrameInfo(frameDict.toJSONString());
+
+            /*
+             * Make sure the HazardServices selected time is in-sync with the
+             * frame being viewed.
+             */
+            Integer frameCount = frameDict
+                    .getDynamicallyTypedValue(FRAME_COUNT);
+            Integer frameIndex = frameDict
+                    .getDynamicallyTypedValue(FRAME_INDEX);
+            List<Long> dataTimeList = frameDict
+                    .getDynamicallyTypedValue(FRAME_TIMES);
+            if ((frameCount > 0) && (frameIndex != -1)) {
+                try {
+                    updateSelectedTime(dataTimeList.get(frameIndex).toString(),
+                            HazardServicesAppBuilder.CAVE_ORIGINATOR);
+                } catch (VizException e) {
+                    statusHandler.error("HazardServicesMessageHandler:", e);
+                }
+            }
+        }
+
     }
 
     /**
@@ -1000,10 +1026,10 @@ public final class HazardServicesMessageHandler {
             String events = model.getSelectedEvents();
             model.changeState(events, PREVIEW_ENDED);
             preview();
-        } else if (label.equals(CONTEXT_MENU_DELETE_POINT)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_POINT);
-        } else if (label.equals(CONTEXT_MENU_ADD_POINT)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.ADD_POINT);
+        } else if (label.equals(CONTEXT_MENU_DELETE_NODE)) {
+            appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_NODE);
+        } else if (label.equals(CONTEXT_MENU_ADD_NODE)) {
+            appBuilder.modifyShape(HazardServicesDrawingAction.ADD_NODE);
         } else if (label.contains(CONTEXT_MENU_DELETE)) {
             deleteEvent(model.getSelectedEvents());
         } else if (label.contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
@@ -1043,8 +1069,7 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Closes the JEP connection and frees up the JEP resources. There may be
-     * some leaked memory associated with numpy.
+     * Prepare for shutdown by removing references to the model.
      */
     public void prepareForShutdown() {
         model = null;
@@ -1118,7 +1143,6 @@ public final class HazardServicesMessageHandler {
             String hazardEventSets) {
         String returnDict_json = model.createProductsFromHazardEventSets(
                 issueFlag, hazardEventSets);
-
         if (!issueFlag.equalsIgnoreCase(TRUE_FLAG)) {
             appBuilder.showProductEditorView(returnDict_json);
             notifyModelEventsChanged();

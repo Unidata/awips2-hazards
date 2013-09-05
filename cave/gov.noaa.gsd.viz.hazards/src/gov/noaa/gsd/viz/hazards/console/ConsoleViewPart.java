@@ -12,7 +12,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +40,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           and foreground colors in order to stay
  *                                           in synch with CAVE mode.
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
+ * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
+ *                                           points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -332,7 +333,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         // Get the dictionary from the JSON, and the list of settings
         // from that.
         Dict settingDict = Dict.getInstance(jsonSettings);
-        ArrayList<Dict> settings = settingDict
+        List<Dict> settings = settingDict
                 .getDynamicallyTypedValue(Utilities.SETTINGS_LIST);
         if ((settings == null) || (settings.size() < 1)) {
             return;

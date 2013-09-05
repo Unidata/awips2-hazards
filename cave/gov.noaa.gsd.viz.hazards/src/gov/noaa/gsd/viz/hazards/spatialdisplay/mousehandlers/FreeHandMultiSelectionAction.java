@@ -13,7 +13,6 @@ import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
@@ -57,32 +56,18 @@ import com.vividsolutions.jts.geom.LinearRing;
  * 
  * @author Xiangbao jing
  */
-public final class MultiSelectionAction extends CopyEventDrawingAction {
+public final class FreeHandMultiSelectionAction extends NonDrawingAction {
     /**
      * For logging...
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(MultiSelectionAction.class);
+            .getHandler(FreeHandMultiSelectionAction.class);
 
     protected AttrDlg drawingAttributes = null;
 
     private final ISessionManager sessionManager;
 
-    public static final String pgenType = "TornadoWarning";
-
-    public static final String pgenCategory = "MET";
-
-    /**
-     * Call this function to retrieve an instance of the EventBoxDrawingAction.
-     * 
-     * @param sessionManager
-     */
-    public static MultiSelectionAction getInstance(
-            ISessionManager sessionManager) {
-        return new MultiSelectionAction(sessionManager);
-    }
-
-    private MultiSelectionAction(ISessionManager sessionManager) {
+    public FreeHandMultiSelectionAction(ISessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -103,7 +88,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
         return new SelectionHandler();
     }
 
-    public class SelectionHandler extends CopyEventDrawingAction.CopyHandler {
+    public class SelectionHandler extends NonDrawingAction.NonDrawingHandler {
         // Minimum screen distance for identify started a selection by area.
         private final int MIN_DISTANCE = 10;
 
@@ -212,7 +197,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
 
                     // Is any event selected?
                     List<AbstractDrawableComponent> containingComponentsList = getDrawingLayer()
-                            .getContainingComponents(loc);
+                            .getContainingComponents(loc, x, y);
 
                     // No, do nothing
                     if (containingComponentsList == null) {
@@ -224,9 +209,7 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                     // otherwise, remove it.
                     for (AbstractDrawableComponent drawableComponent : containingComponentsList) {
                         String selectedElementEventID = getDrawingLayer()
-                                .elementClicked(
-                                        (DrawableElement) drawableComponent,
-                                        false, false);
+                                .elementClicked(drawableComponent, false, false);
                         if (selectedElementEventID == null) {
                             continue;
                         }
@@ -237,9 +220,8 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                         } else {
                             // if is not existing, add on
                             clickedElementList.add(selectedElementEventID);
-                            getDrawingLayer().elementClicked(
-                                    (DrawableElement) drawableComponent, false,
-                                    false);
+                            getDrawingLayer().elementClicked(drawableComponent,
+                                    false, false);
                         }
                     }
 
@@ -316,14 +298,13 @@ public final class MultiSelectionAction extends CopyEventDrawingAction {
                         .getActiveLayer().getComponentIterator();
                 while (iterator.hasNext()) {
                     AbstractDrawableComponent comp = iterator.next();
-                    Geometry p = ((IHazardServicesShape) comp).getPolygon();
+                    Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
                     // The event is inside the selected area
                     if (p != null && polygon.contains(p)) {
                         // What it's thevent ID
                         String selectedEventId = getDrawingLayer()
-                                .elementClicked((DrawableElement) comp, false,
-                                        false);
+                                .elementClicked(comp, false, false);
 
                         // Put the ID in the selected ID list
                         if (selectedEventId != null) {

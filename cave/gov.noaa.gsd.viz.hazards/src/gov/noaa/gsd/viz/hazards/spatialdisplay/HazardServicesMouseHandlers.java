@@ -18,19 +18,19 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 15, 2013            Bryon.Lawrence      Initial creation
- * 
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
 public enum HazardServicesMouseHandlers {
-    MULTI_SELECTION, // Multi selection mouse handler
+    FREE_HAND_MULTI_SELECTION, // Free-hand multi selection mouse handler
     SINGLE_SELECTION, // Single selection mouse handler
-    EVENTBOX_DRAWING, // Polygon drawing action
+    NODE_DRAWING, // Noded (point/line-path/noded-polygon) drawing action
     FREEHAND_DRAWING, // Freehand drawing action
-    DRAG_DROP_DRAWING, // Drag me to storm drawing action
+    STORM_TOOL_DRAG_DOT_DRAWING, // Drag me to storm drawing action
     DRAW_BY_AREA, // Draw by area drawing action
-    SELECTION_RECTANGLE
-    // Rectangle multi-selection tool.
+    RECTANGLE_MULTI_SELECTION // Rectangle multi-selection mouse handler
 }

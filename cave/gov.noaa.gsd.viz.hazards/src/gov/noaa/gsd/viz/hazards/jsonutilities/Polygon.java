@@ -11,9 +11,9 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
 
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -29,7 +29,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
- * 
+ * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ *                                             points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -71,7 +72,7 @@ final public class Polygon extends Shape {
         this.borderStyle = borderStyle;
         this.borderColor = borderColor;
 
-        this.points = new ArrayList<double[]>();
+        this.points = Lists.newArrayList();
 
         for (Coordinate point : points) {
             double pointArray[] = new double[2];
@@ -114,7 +115,7 @@ final public class Polygon extends Shape {
     }
 
     public static void main(String args[]) {
-        ArrayList<double[]> points = new ArrayList<double[]>();
+        List<double[]> points = Lists.newArrayList();
         points.add(new double[] { 42.0, -120 });
         points.add(new double[] { 42.1, -120.1 });
 
@@ -122,8 +123,6 @@ final public class Polygon extends Shape {
                 "255 255 255", 1, "DASHED", "255 255 255", points);
         Gson gson = new Gson();
         String json = gson.toJson(testPolygon);
-
-        System.out.println("JSON string: " + json);
 
         // Try going the other way...
         @SuppressWarnings("unused")

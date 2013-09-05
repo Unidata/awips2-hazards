@@ -859,7 +859,7 @@ class Product(object):
     def _createPolygonEntries(self):
         polygonEntries = []
         for eventDict in self._segmentEventDicts:
-            polygons = self._extractPolygons(eventDict)
+            polygons = self._extractPointsFromShapes(eventDict)
             for polygon in polygons:
                 polyDict = collections.OrderedDict()
                 pointList = []
@@ -875,18 +875,18 @@ class Product(object):
         polyDict['polygon'] = polygonEntries
         return polyDict
     
-    def _extractPolygons(self, eventDict):
+    def _extractPointsFromShapes(self, eventDict):
         '''
-        Return the lat/lon polygon points from the eventDict
-        There could be multiple polygons
+        Return the lat/lon points from the eventDict
+        There could be multiple shapes
         '''
-        polygons = []
+        shapesPoints = []
         shapes = eventDict.get('shapes', [])
         for shape in shapes:
-            if shape.get('shapeType') == 'polygon':
+            if shape.get('shapeType') in ['polygon', 'line', 'point']:
                 points = shape.get('points', [])
-                polygons.append(points)
-        return polygons
+                shapesPoints.append(points)
+        return shapesPoints
     
     def _createTimeMotionLocationEntry(self):
         '''
@@ -1002,9 +1002,9 @@ class Product(object):
             eDict['saveSiteID'] = self._siteID
             eDict['siteID'] = self._fullStationID
 
-            # eDict['geoType'] = 'area' or 'point'
+            # eDict['geoType'] = 'area', 'line', or 'point'
             if eDict.get('geoType') == 'area':
-                polygons = self._extractPolygons(eDict)
+                polygons = self._extractPointsFromShapes(eDict)
                 ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType, 
                                 polygons, siteID=self._siteID)
                 newUgcs = []
@@ -1014,13 +1014,35 @@ class Product(object):
                     
                 eDict['ugcs'] = newUgcs
                 eDict['shapeType'] = 'polygon'
+            elif eDict.get('geoType') == 'line':
+                # For now, we treat line points as polygon points, and
+                # match UGCs from those. But really it should treat them
+                # as actual lines when matching UGCs. 
+                lines = self._extractPointsFromShapes(eDict)
+                ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType, 
+                                lines, siteID=self._siteID)
+                newUgcs = []
+                for ugc in ugcs:
+                    if ugc in newUgcs: continue
+                    newUgcs.append(ugc)
+                    
+                eDict['ugcs'] = newUgcs
+                eDict['shapeType'] = 'line'
             else:
                 ugcs = []
                 #  For points, convert a lat/lon to a UGC
                 #  forecastPoint': {'id': 'DCTN1', 'name': 'Decatur', 
                 #   'point': ['-96.2413888888889', '42.0072222222222']}
                 forecastPoint = eDict.get('forecastPoint')
-                lon, lat = forecastPoint.get('point')
+                if forecastPoint is None:
+                    shapes = eDict.get('shapes', [])
+                    for shape in shapes:
+                        if shape.get('shapeType') == 'point':
+                            points = shape.get('points', [])
+                            lon, lat = points[0] 
+                            break
+                else:
+                    lon, lat = forecastPoint.get('point')
                 ugcs = self._mapInfo.getUGCsMatchPolygons(self._pointUgcType, 
                             [[(float(lon),float(lat))]], siteID=self._siteID)
                 if not ugcs:
