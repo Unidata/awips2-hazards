@@ -36,6 +36,12 @@ import com.google.gson.JsonPrimitive;
  * ------------ ---------- ----------- --------------------------
  * 4/5/2012                Bryon.Lawrence    Initial creation
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Sep 06, 2013 1921       bryon.lawrence    Changed deserialization of Number from Float
+ *                                           to Double. We were losing too much 
+ *                                           precision with the conversion to Float. This
+ *                                           code will be OBE once we remove the rest of
+ *                                           the JSON serialization/deserialization in
+ *                                           the HMI.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -144,12 +150,7 @@ public class DictDeserializer implements JsonDeserializer<Dict> {
             returnObject = object.getAsBoolean();
         } else if (object.isNumber()) {
             Number number = object.getAsNumber();
-            /*
-             * Return a Float here because JUtil.py javaObjToPyVal handles it
-             * when it is passed to the RiverFloodRecommender for example. The
-             * long term solution may be a switch from {@link Dict} to Jackson.
-             */
-            returnObject = Float.valueOf(number.floatValue());
+            returnObject = Double.valueOf(number.doubleValue());
         } else if (object.isString()) {
             returnObject = object.getAsString();
         }
