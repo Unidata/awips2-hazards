@@ -102,6 +102,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Aug 29, 2013 1921    Bryon.Lawrence  Modified getContextMenuEntries to support 
  *                                      hazard-specific context menu entries. This was
  *                                      done to fix "Add/Remove Shapes" functionality
+ * Sep 06, 2013 1921    Bryon.Lawrence  Modified getContextMenuEntries to support the
+ *                                      "Remove Potential Hazards" option.
  * </pre>
  * 
  * @author bsteffen
@@ -740,9 +742,17 @@ public abstract class ModelAdapter {
         }
         entries.add("Send to Back");
         entries.add("Bring to Front");
-        if (states.contains(HazardState.POTENTIAL)) {
+
+        /*
+         * Check for potential events.
+         */
+        Collection<IHazardEvent> potentialEvents = model.getEventManager()
+                .getEventsByState(HazardState.POTENTIAL);
+
+        if (!potentialEvents.isEmpty()) {
             entries.add("Remove Potential Hazards");
         }
+
         entries.add("Hazard Occurrence Alerts");
         return toJson(entries.toArray(new String[0]));
 
