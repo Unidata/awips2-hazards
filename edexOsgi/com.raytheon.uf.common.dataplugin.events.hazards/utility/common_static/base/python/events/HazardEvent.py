@@ -38,7 +38,6 @@ import shapely
 from Event import Event
 
 from java.util import Date
-from com.vividsolutions.jts.io import WKTReader
 from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants, HazardConstants_ProductClass as ProductClass, HazardConstants_HazardState as HazardState
 
 
@@ -46,7 +45,6 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         
     def __init__(self, wrappedObject):
         self.jobj = wrappedObject
-        self.reader = WKTReader()
         self.toPythonObj(wrappedObject)
         
     def getSiteID(self):
@@ -113,11 +111,11 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setStartTime(dt)
     
     def getGeometry(self):
-        return shapely.wkt.loads(self.jobj.getGeometry().asText())
+        return JUtil.javaObjToPyVal(self.jobj.getGeometry())
     
     def setGeometry(self, geometry):
         if geometry is not None :
-            self.jobj.setGeometry(self.reader.read(geometry.wkt))
+            self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
     
     def getHazardMode(self):
         if self.jobj.getHazardMode() is not None :
