@@ -220,8 +220,9 @@ public class SessionConfigurationManager implements
                 }
             }
         }
-        LocalizationFile[] files = pathManager.listStaticFiles(
-                "hazardServices/settings/", null, false, true);
+        LocalizationFile[] files = pathManager
+                .listStaticFiles("hazardServices/settings/",
+                        new String[] { ".py" }, false, true);
         List<ConfigLoader<Settings>> allSettings = new ArrayList<ConfigLoader<Settings>>();
         for (LocalizationFile file : files) {
             ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
