@@ -4,7 +4,7 @@ Bundle-Name: Productgen
 Bundle-SymbolicName: com.raytheon.uf.edex.productgen
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Require-Bundle: com.raytheon.uf.edex.database;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
  com.raytheon.uf.common.hazards.productgen;bundle-version="1.0.0",

@@ -149,6 +149,7 @@ public class Event {
         startTime = event.getStartTime().getTime();
         endTime = event.getEndTime().getTime();
         if (event.getIssueTime() != null) {
+            issueTime = event.getIssueTime().getTime();
             creationTime = event.getIssueTime().getTime();
         } else {
             Object cTimeAttr = attr.get("creationTime");

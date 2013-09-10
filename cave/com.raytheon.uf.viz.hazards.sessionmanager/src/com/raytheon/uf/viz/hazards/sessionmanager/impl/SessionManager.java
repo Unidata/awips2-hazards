@@ -161,5 +161,6 @@ public class SessionManager implements ISessionManager {
         productManager.shutdown();
 
         alertsManager.shutdown();
+        recommenderEngine.shutdownEngine();
     }
 }

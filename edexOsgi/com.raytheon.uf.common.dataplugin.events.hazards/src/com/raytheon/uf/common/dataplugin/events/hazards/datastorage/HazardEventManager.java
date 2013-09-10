@@ -141,7 +141,8 @@ public class HazardEventManager implements IHazardEventManager {
         for (LocalizationLevel level : keys) {
             try {
                 PythonScript py = new PythonScript(executeFile.getFile()
-                        .getAbsolutePath(), ".");
+                        .getAbsolutePath(),
+                        HazardEventManager.class.getClassLoader());
                 // TODO need to tell python which one to execute, using level
                 fields.putAll((Map<String, List<String>>) py.execute(
                         "loadConfig", args));
