@@ -151,18 +151,12 @@ WSW = {
             "fieldName": "pils", 
             "sortDir": "none"
         }, 
-        "Description": {
-            "sortDir": "none", 
-            "width": 100, 
-            "fieldName": "description", 
-            "type": "string"
-        },
         "Alert": {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
         }
-    }, 
+    },          
     "toolbarTools": [
     ], 
     "defaultHazardCategory": "longFused"

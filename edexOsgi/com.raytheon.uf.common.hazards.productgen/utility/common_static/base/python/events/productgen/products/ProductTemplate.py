@@ -10,9 +10,10 @@
     Aug  14, 2013  784,1360  Tracy.L.Hansen      Organized more according to Product Parts and Dictionary,
                                                  Added handling of sections within segments,
                                                  Returning updated HazardEventSet with Product Dictionaries
-                                                 Issues 784, 1369
-     
-    
+                                                 Issues 784, 1369     
+    Sept 9,  2013  1298       Tracy.L.Hansen     Setting hazard event to ended, setting product information
+                                                 on ended hazard events, correctly reporting currentStage, 
+                                                 floodStage
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 '''
@@ -162,26 +163,30 @@ class Product(object):
                 ProductPart('segments', productParts=segmentParts),
                 ProductPart('endProduct')
                 ]
-        
-    def _getVariables(self, hazardEventSet): 
+
+    def _unpackHazardEventSet(self, hazardEventSet):  
         '''
-         Set up class variables
-         
-         Must convert Java object hazardEventSet to Python eventDicts
-           NOTE: The Framework will be fixed to send a Python Hazard Event Set
-           and then we will unpack the eventDicts and meta information
-        '''  
-        
+        Must convert Java object hazardEventSet to Python eventDicts
+        NOTE: The Framework will be fixed to send a Python Hazard Event Set
+        and then we will unpack the eventDicts and meta information
+        '''
         # Translate Hazard Event Set from Java to Python                
         iterator = hazardEventSet.iterator()
         eventList = ArrayList()
         while iterator.hasNext():
             event = iterator.next()
             eventList.add(event)    
-        self._eventDicts = self.bridge.handleRecommenderResult('ProductGenerator', eventList, enclosed=False)                             
+        eventDicts = self.bridge.handleRecommenderResult('ProductGenerator', eventList, enclosed=False)                             
         attributes = hazardEventSet.getAttributes()
         metaDict = JUtil.javaMapToPyDict(attributes)
-         
+        return eventDicts, metaDict
+              
+    def _getVariables(self, hazardEventSet): 
+        '''
+         Set up class variables
+        '''  
+        self._eventDicts, metaDict = self._unpackHazardEventSet(hazardEventSet) 
+                
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on
         self._wrappers = []        
@@ -230,7 +235,7 @@ class Product(object):
         siteEntry = self._siteInfo.get(self._backupSiteID)        
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
-        
+                
     def _makeProducts_FromHazardEvents(self, eventDicts): 
         '''
         
@@ -295,9 +300,7 @@ class Product(object):
             productDicts.append(productDict)
                         
         # If issuing, save the VTEC records for legacy products       
-        self._saveVTEC() 
-        #self.logger.info(self._productCategory + '::_makeProducts_FromHazardEvents returning: '+\
-        #                       json.dumps(productDicts, indent=4))
+        self._saveVTEC(eventDicts) 
         hazardEvents = self._tpc.createHazardEvents(eventDicts, self._siteID)
         #hazardEvents = self.bridge.eventDictsToHazardEvents(eventDicts)
         return productDicts, hazardEvents
@@ -742,7 +745,7 @@ class Product(object):
         Stub to retrieve edited text using the given identifying information:
                 key, self._productCategory, productID, segment, eventID 
         If not found, use the default value provided
-        The solution may also add the identifying information to the prodDict key 
+        The solution may also need to add identifying information to the prodDict key 
            
         '''
         # Check the Edited Text Database for the entry using the
@@ -1091,7 +1094,7 @@ class Product(object):
 
         return metaDataList
         
-    def _saveVTEC(self):
+    def _saveVTEC(self, eventDicts):
         '''
         if issuing: 
             For each VTEC Engine generated in the product, save the vtec records 
@@ -1100,6 +1103,15 @@ class Product(object):
             for wrapper in self._wrappers:
                 wrapper.mergeResults() 
             self.logger.info(self._productCategory +' Saving VTEC')
+            # Handle Ended eventIDs 
+            # Set the state to 'ended' for events that are completely canceled or expired.
+            # Note that for some long-fused hazards e.g. FA.A, one eventID could be
+            # associated with both a CAN and a NEW and we do not want to change the 
+            # state to "ended".
+            for eventDict in eventDicts:
+                vtecCodes = eventDict.get('vtecCodes', [])
+                if ('CAN' in vtecCodes or 'EXP' in vtecCodes) and not ['NEW','CON','EXA','EXT','EXB','UPG','ROU'] in vtecCodes:
+                    eventDict['state'] = 'ended'
                     
     def checkTestMode(self, sessionDict, str):
         # testMode is set, then we are in product test mode.
@@ -1147,7 +1159,8 @@ class Product(object):
         This is specified in the Meta Data for certain flood type hazards.  The key field would be 
         'immediateCause', the user-entered value might be 'ER (Excessive Rainfall)' and the productString 
         returned would then be 'ER'.
-        '''     
+        '''   
+        
         value = eventDict.get(fieldName) 
         if not value:
             return '' 
@@ -1163,7 +1176,7 @@ class Product(object):
 
     def getMetaDataValue(self, metaData, fieldName, value):                     
         '''
-        Given a value, return corresponding the productString (or displayString) from the metaData. 
+        Given a value, return the corresponding productString (or displayString) from the metaData. 
         @param metaData:  dictionary specifying information to be entered through the Hazard Information Dialog
         @param fieldName: key field in the dictionaries, e.g. 'cta'
         @param value: chosen value for the key field
@@ -1178,6 +1191,7 @@ class Product(object):
                         returnVal = choice.get('productString')
                         if returnVal is None:
                             returnVal = choice.get('displayString')
+                        returnVal = returnVal.replace('  ', '')
                         returnVal = returnVal.replace('\n', ' ')
                         returnVal = returnVal.replace('</br>', '\n')
                         return returnVal
@@ -1266,9 +1280,9 @@ class Product(object):
         '''                
         stageTime = eventDict.get('startTime') # Use start time for now -- '8:45 AM Monday'
         timeOfStage =  self._tpc.getFormattedTime(stageTime/1000, '%I:%M %p %A', shiftToLocal=1, stripLeading=1).upper() 
-        currentStage = self.getMetadataItemForEvent(eventDict, metaData,'currentStage')
+        currentStage = eventDict.get('currentStage')
         if currentStage is not None:
-            stageHeight = `currentStage` + ' feet'
+            stageHeight = `int(float(currentStage))` + ' feet'
             stagePhrase = '* At '+timeOfStage+' the stage was '+stageHeight + '\n'
         else:
             stagePhrase = ''
@@ -1281,14 +1295,14 @@ class Product(object):
         else:
             severityPhrase = ''
                     
-        floodStage = self.getMetadataItemForEvent(eventDict, metaData,'floodStage')
+        floodStage = eventDict.get('floodStage')
         if floodStage is not None:
-            floodStage = `floodStage`
-            floodStagePhrase = '* Flood stage is '+floodStage + 'feet \n'
+            floodStage = `int(float(floodStage))`
+            floodStagePhrase = '* Flood stage is '+floodStage + ' feet \n'
         else:
             floodStagePhrase = ''
                 
-        crest = self.getMetadataItemForEvent(eventDict, metaData,'crest')
+        crest = eventDict.get('crest')
         if crest is not None:
             try:
                 crestTime = self._tpc.getFormattedTime(int(crest)/1000, '%A %p', shiftToLocal=1, stripLeading=1).upper() #'Monday Morning'
@@ -1329,6 +1343,8 @@ class Product(object):
             'CAN': ('BASIS FOR CANCELLATION OF THE WATCH', 'DefaultOnly'),
             }
         basis = self.getMetadataItemForEvent(eventDict, metaData,  'basis')
+        basisLocation = self.getMetadataItemForEvent(eventDict, metaData,  'basisLocation')
+        basis = basis.replace("!** LOCATION **!", basisLocation)
         default, framing = defaultBasis[vtecRecord['act']]        
         basisPhrase = self._tpc.substituteBulletedText(basis, default, framing, lineLength)            
         return basisPhrase

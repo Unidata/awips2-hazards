@@ -255,20 +255,16 @@ public class SessionProductManager implements ISessionProductManager {
                                 HazardState.ENDED.toString())) {
                     selectedEvent.setState(HazardState.ENDED);
                 } else {
-
                     for (IHazardEvent event : information.getProducts().get(0)
                             .getEventSet()) {
                         if (selectedEvent.getEventID().equals(
                                 event.getEventID())) {
-
                             ObservedHazardEvent newEvent = new ObservedHazardEvent(
                                     event, (SessionEventManager) eventManager);
-
                             SessionEventUtilities.mergeHazardEvents(newEvent,
                                     selectedEvent);
                             break;
                         }
-
                     }
 
                     /*
@@ -277,10 +273,8 @@ public class SessionProductManager implements ISessionProductManager {
                      */
                     selectedEvent
                             .removeHazardAttribute(HazardConstants.REPLACES);
-
                     selectedEvent.setState(HazardState.ISSUED);
                 }
-
                 /*
                  * Clear the undo/redo events.
                  */

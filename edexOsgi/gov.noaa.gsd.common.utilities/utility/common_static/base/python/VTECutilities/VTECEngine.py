@@ -2336,13 +2336,13 @@ class VTECEngine(VTECTableUtil):
         '''Returns a formatted vtec/htec time string.
 
         Keyword Arguments:
-        t -- time value in milliseconds since epoch. If None, then return
+        t -- time value in seconds since epoch. If None, then return
           the 'ongoing' or 'until further notice' string.
 
         Returns the formatted string.
         ''' 
         if t:
-            return time.strftime('%y%m%dT%H%MZ', self.gmtime_fromMS(t))
+            return time.strftime('%y%m%dT%H%MZ', self.gmtime_fromMS(t*1000))
         else:
             return '000000T0000Z'
 

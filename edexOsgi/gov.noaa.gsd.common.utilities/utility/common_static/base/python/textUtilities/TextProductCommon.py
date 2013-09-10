@@ -83,6 +83,7 @@ class TextProductCommon(object):
                     if value:
                         hazardEvent.setIssueTime(datetime.fromtimestamp(value / 1000))
                         hazardDict['saveIssueTime'] = value
+                        hazardDict['issueTime'] = value
                 elif key == 'startTime': hazardEvent.setStartTime(datetime.fromtimestamp(value / 1000))
                 elif key == 'endTime': hazardEvent.setEndTime(datetime.fromtimestamp(value / 1000))
                 elif key == 'mode': hazardEvent.setHazardMode(value)
