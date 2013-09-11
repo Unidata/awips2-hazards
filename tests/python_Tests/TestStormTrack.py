@@ -44,7 +44,7 @@ class TestStormTrack(unittest.TestCase):
             sys.stdout.write("\n"+inputTestData["caseDesc"]+"\n")
         from StormTrackTool import Recommender
         recommenderObject = Recommender()
-        result = recommenderObject.executeImpl( \
+        result = recommenderObject.updateEventAttributes( \
                  sessionAttributes, dialogInputMap, spatialInputMap)
 
         self.assertEqual(json.dumps(result, sort_keys=True), \

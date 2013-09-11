@@ -7,6 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import gov.noaa.gsd.viz.hazards.display.HazardServicesEditorUtilities;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.DotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
@@ -20,19 +22,29 @@ import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
+import java.awt.Color;
+import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.DataTime;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiPolygon;
@@ -56,6 +68,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Sep  6, 2013    752     bryon.lawrence      Refactored storm track display logic.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -90,7 +103,7 @@ public class HazardServicesDrawableBuilder {
     }
 
     public AbstractDrawableComponent buildPoint(IHazardEvent hazardEvent,
-            int shapeNum, Layer activeLayer) {
+            int shapeNum, Layer activeLayer, String symbol) {
         DECollection collectionComponent = new DECollection();
         try {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
@@ -104,8 +117,8 @@ public class HazardServicesDrawableBuilder {
                     shapeNum, hazardEvent);
 
             collectionComponent.add(new HazardServicesPoint(drawingAttributes,
-                    DOT, DOT, points, activeLayer, hazardEvent.getEventID(),
-                    true));
+                    symbol, symbol, points, activeLayer, hazardEvent
+                            .getEventID(), true));
 
             HazardServicesDrawingAttributes drawingAttributes = new PointDrawingAttributes(
                     shell, sessionManager, PointDrawingAttributes.Element.INNER);
@@ -113,8 +126,9 @@ public class HazardServicesDrawableBuilder {
             points = drawingAttributes.buildCoordinates(shapeNum, hazardEvent);
 
             collectionComponent.add(new HazardServicesPoint(drawingAttributes,
-                    DOT, DOT, points, activeLayer, hazardEvent.getEventID(),
-                    false));
+                    symbol, symbol, points, activeLayer, hazardEvent
+                            .getEventID(), false));
+
         } catch (VizException e) {
             statusHandler.error(
                     "HazardServicesDrawableBuilder.buildPoint(): build "
@@ -154,6 +168,43 @@ public class HazardServicesDrawableBuilder {
     }
 
     /**
+     * Builds a PGEN drawable representing the track line associated with a
+     * storm track.
+     * 
+     * @param hazardEvent
+     *            The hazard event containing track information.
+     * @param points
+     *            The coordinates (lat/lon) representing the track line.
+     * @param activeLayer
+     *            The layer the PGEN drawables are displayed on.
+     * @return A line representing a storm track.
+     * 
+     */
+    public AbstractDrawableComponent buildTrackLine(IHazardEvent hazardEvent,
+            List<Coordinate> points, Layer activeLayer) {
+        AbstractDrawableComponent drawableComponent = null;
+
+        try {
+            drawingAttributes = new LineDrawingAttributes(PlatformUI
+                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
+                    sessionManager);
+
+            drawingAttributes.setAttributes(0, hazardEvent);
+
+            drawableComponent = new HazardServicesLine(drawingAttributes, LINE,
+                    drawingAttributes.getLineStyle().toString(), points,
+                    activeLayer, hazardEvent.getEventID());
+
+        } catch (VizException e) {
+            statusHandler.error(
+                    "HazardServicesDrawableBuilder.buildTrackLine(): build "
+                            + "of shape failed.", e);
+        }
+
+        return drawableComponent;
+    }
+
+    /**
      * Builds a PGEN drawable representing a polygon
      */
     public AbstractDrawableComponent buildPolygon(IHazardEvent hazardEvent,
@@ -176,36 +227,6 @@ public class HazardServicesDrawableBuilder {
         } catch (VizException e) {
             statusHandler.error(
                     "HazardServicesDrawableBuilder.buildPolygon(): build "
-                            + "of shape failed.", e);
-        }
-
-        return drawableComponent;
-    }
-
-    /**
-     * Builds a PGEN drawable representing a star
-     * 
-     * @param shapeNum
-     */
-    public AbstractDrawableComponent buildStar(IHazardEvent hazardEvent,
-            int shapeNum, Layer activeLayer) {
-        AbstractDrawableComponent drawableComponent = null;
-
-        try {
-            drawingAttributes = new StarDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    sessionManager);
-            List<Coordinate> points = drawingAttributes.buildCoordinates(
-                    shapeNum, hazardEvent);
-            drawingAttributes.setAttributes(shapeNum, hazardEvent);
-
-            drawableComponent = new HazardServicesSymbol(drawingAttributes,
-                    FILLED_STAR, FILLED_STAR, points, activeLayer,
-                    hazardEvent.getEventID());
-
-        } catch (VizException e) {
-            statusHandler.error(
-                    "HazardServicesDrawableBuilder.buildStar(): build "
                             + "of shape failed.", e);
         }
 
@@ -267,40 +288,196 @@ public class HazardServicesDrawableBuilder {
             ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
-        for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
-                .getNumGeometries(); shapeNum++) {
 
-            AbstractDrawableComponent drawableComponent = addShapeComponent(
-                    toolLayer, hazardEvent, activeLayer, result, shapeNum);
+        if (forModifyingStormTrack(hazardEvent)) {
+            addComponentsForStormTrackModification(hazardEvent, result,
+                    toolLayer, activeLayer);
+        } else {
+            for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
+                    .getNumGeometries(); shapeNum++) {
 
-            addTextComponent(toolLayer, hazardEvent.getEventID(), result,
-                    drawableComponent);
+                AbstractDrawableComponent drawableComponent = addShapeComponent(
+                        toolLayer, hazardEvent, activeLayer, result, shapeNum);
+
+                addTextComponent(toolLayer, hazardEvent.getEventID(), result,
+                        drawableComponent);
+            }
         }
         return result;
+    }
+
+    public static boolean forModifyingStormTrack(IHazardEvent hazardEvent) {
+        return hazardEvent.getHazardAttribute(HazardConstants.TRACK_POINTS) != null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addComponentsForStormTrackModification(
+            IHazardEvent hazardEvent, List<AbstractDrawableComponent> result,
+            ToolLayer toolLayer, Layer activeLayer) {
+
+        Boolean subduePolygon = false;
+
+        /*
+         * Build the line string based on the tracking points in the hazard. The
+         * track should not be a part of the hazard geometries, because they are
+         * not a part of the hazard area. Only the polygon is a part of the
+         * hazard area. The line and track points should not be displayed for an
+         * issued or proposed hazard.
+         */
+
+        /*
+         * Add the polygon first so that it is drawn beneath the track line and
+         * points.
+         */
+        AbstractDrawableComponent polygonDrawable = addShapeComponent(
+                toolLayer, hazardEvent, activeLayer, result, 0);
+
+        addTextComponent(toolLayer, hazardEvent.getEventID(), result,
+                polygonDrawable);
+
+        if (hazardEvent.getState() != HazardState.ISSUED
+                && hazardEvent.getState() != HazardState.PROPOSED) {
+            LineString trackLineString = (LineString) hazardEvent
+                    .getHazardAttribute(HazardConstants.STORM_TRACK_LINE);
+
+            List<Coordinate> coordinates = Lists.newArrayList(trackLineString
+                    .getCoordinates());
+            AbstractDrawableComponent component = buildTrackLine(hazardEvent,
+                    coordinates, activeLayer);
+            ((IHazardServicesShape) component).setIsEditable(false);
+            result.add(component);
+            toolLayer.addElement(component);
+            List<Integer> pivotIndices = (List<Integer>) hazardEvent
+                    .getHazardAttribute(HazardConstants.PIVOTS);
+            List<Map<String, Serializable>> shapes = (List<Map<String, Serializable>>) hazardEvent
+                    .getHazardAttribute(HazardConstants.TRACK_POINTS);
+
+            DataTime currentFrame = HazardServicesEditorUtilities.currentFrame();
+
+            for (int timeIndex = 0; timeIndex < trackLineString.getNumPoints(); timeIndex++) {
+                Coordinate centerPoint = trackLineString
+                        .getCoordinateN(timeIndex);
+                Map<String, Serializable> shape = shapes.get(timeIndex);
+                Long pointID = (Long) shape.get(HazardConstants.POINTID);
+                Date pointDate = new Date(pointID);
+                Color[] colors;
+                if (pointDate.equals(currentFrame.getRefTime())) {
+                    colors = new Color[] { Color.WHITE, Color.WHITE };
+                } else {
+                    colors = new Color[] { Color.GRAY, Color.GRAY };
+                }
+                if (pivotIndices.contains(timeIndex)) {
+
+                    component = buildStar(centerPoint, pointID, 0, hazardEvent,
+                            activeLayer, colors);
+                } else {
+                    component = buildDot(centerPoint, pointID, 0, hazardEvent,
+                            activeLayer, colors);
+                }
+                result.add(component);
+                toolLayer.addElement(component);
+            }
+
+            /*
+             * Test whether or not the polygon should be subdued.
+             */
+            ISessionTimeManager timeManager = sessionManager.getTimeManager();
+            TimeRange selectedRange = timeManager.getSelectedTimeRange();
+            Date selectedTime = timeManager.getSelectedTime();
+
+            if (!toolLayer.doesEventOverlapSelectedTime(hazardEvent,
+                    selectedRange, selectedTime)) {
+                subduePolygon = true;
+            }
+
+        }
+
+        if (subduePolygon) {
+            polygonDrawable.setColors(new Color[] { Color.GRAY, Color.BLACK });
+        }
+    }
+
+    /**
+     * Builds a PGEN drawable representing a star
+     * 
+     * @param shapeNum
+     * @param colors
+     */
+    public AbstractDrawableComponent buildStar(Coordinate centerPoint,
+            Long pointID, int shapeNum, IHazardEvent hazardEvent,
+            Layer activeLayer, Color[] colors) {
+        AbstractDrawableComponent drawableComponent = null;
+
+        try {
+            StarDrawingAttributes drawingAttributes = new StarDrawingAttributes(
+                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                            .getShell(), sessionManager);
+            drawingAttributes.setTextPosition(TextPositioner.TOP);
+            List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
+                    1.0, centerPoint);
+            drawingAttributes.setPointID(pointID);
+            drawingAttributes.setColors(colors);
+
+            drawableComponent = new HazardServicesSymbol(drawingAttributes,
+                    FILLED_STAR, FILLED_STAR, points, activeLayer,
+                    hazardEvent.getEventID());
+
+        } catch (VizException e) {
+            statusHandler.error(
+                    "HazardServicesDrawableBuilder.buildStar(): build "
+                            + "of shape failed.", e);
+        }
+
+        return drawableComponent;
+    }
+
+    /**
+     * Builds a PGEN drawable representing a DOT
+     * 
+     * @param shapeNum
+     * @param colors
+     */
+    public AbstractDrawableComponent buildDot(Coordinate centerPoint,
+            Long pointID, int shapeNum, IHazardEvent hazardEvent,
+            Layer activeLayer, Color[] colors) {
+        AbstractDrawableComponent drawableComponent = null;
+
+        try {
+            DotDrawingAttributes drawingAttributes = new DotDrawingAttributes(
+                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                            .getShell(), sessionManager);
+            drawingAttributes.setTextPosition(TextPositioner.TOP);
+            List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
+                    1.0, centerPoint);
+            drawingAttributes.setPointID(pointID);
+            drawingAttributes.setColors(colors);
+
+            drawableComponent = new HazardServicesSymbol(drawingAttributes,
+                    DOT, DOT, points, activeLayer, hazardEvent.getEventID());
+
+        } catch (VizException e) {
+            statusHandler.error(
+                    "HazardServicesDrawableBuilder.buildStar(): build "
+                            + "of shape failed.", e);
+        }
+
+        return drawableComponent;
     }
 
     private AbstractDrawableComponent addShapeComponent(ToolLayer toolLayer,
             IHazardEvent hazardEvent, Layer activeLayer,
             List<AbstractDrawableComponent> drawableComponents, int shapeNum) {
-        AbstractDrawableComponent drawableComponent = null;
+        AbstractDrawableComponent drawableComponent;
 
-        Class<?> geometryClass = hazardEvent.getGeometry().getClass();
-
-        if (geometryClass.equals(Point.class)) {
-            drawableComponent = buildPoint(hazardEvent, shapeNum, activeLayer);
-        } else if (geometryClass.equals(LineString.class)) {
-            drawableComponent = buildLine(hazardEvent, shapeNum, activeLayer);
-        } else if (geometryClass.equals(Polygon.class)
-                || geometryClass.equals(MultiPolygon.class)) {
-            drawableComponent = buildPolygon(hazardEvent, shapeNum, activeLayer);
-        }
-
-        /**
-         * TODO Handle stars for Storm track tool
-         */
-        else {
-            throw new IllegalArgumentException("Not yet supporting geometry "
-                    + geometryClass);
+        Geometry geometry = hazardEvent.getGeometry();
+        if (geometry.getClass() == GeometryCollection.class) {
+            GeometryCollection gc = (GeometryCollection) hazardEvent
+                    .getGeometry();
+            drawableComponent = addComponentForGeometry(hazardEvent,
+                    activeLayer, shapeNum, gc.getGeometryN(shapeNum));
+        } else {
+            drawableComponent = addComponentForGeometry(hazardEvent,
+                    activeLayer, shapeNum, geometry);
         }
 
         /**
@@ -315,6 +492,31 @@ public class HazardServicesDrawableBuilder {
         toolLayer.addElement(drawableComponent);
         drawableComponents.add(drawableComponent);
         return drawableComponent;
+    }
+
+    private AbstractDrawableComponent addComponentForGeometry(
+            IHazardEvent hazardEvent, Layer activeLayer, int shapeNum,
+            Geometry geometry) {
+        AbstractDrawableComponent result;
+        Class<?> geometryClass = geometry.getClass();
+        if (geometryClass.equals(Point.class)) {
+            result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT);
+
+        } else if (geometryClass.equals(LineString.class)) {
+            result = buildLine(hazardEvent, shapeNum, activeLayer);
+        } else if (geometryClass.equals(Polygon.class)
+                || geometryClass.equals(MultiPolygon.class)) {
+            result = buildPolygon(hazardEvent, shapeNum, activeLayer);
+        }
+
+        /**
+         * TODO Handle stars for Storm track tool
+         */
+        else {
+            throw new IllegalArgumentException("Not yet supporting geometry "
+                    + geometryClass);
+        }
+        return result;
     }
 
     public void addTextComponent(ToolLayer toolLayer, String id,

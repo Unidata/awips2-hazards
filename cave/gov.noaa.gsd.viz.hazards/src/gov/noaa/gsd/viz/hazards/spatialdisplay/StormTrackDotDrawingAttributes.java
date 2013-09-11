@@ -135,7 +135,7 @@ public class StormTrackDotDrawingAttributes extends
         double[] centerCoordInPixels = editor.getActiveDisplayPane()
                 .getRenderableDisplay().getExtent().getCenter();
         Coordinate centerPointInPixels = new Coordinate(centerCoordInPixels[0],
-                centerCoordInPixels[1]);
+                centerCoordInPixels[1], 0.0);
         Coordinate centerPointInWorld = pixelToWorld(centerPointInPixels);
 
         List<Coordinate> result = buildCircleCoordinates(radius,

@@ -11,14 +11,10 @@ import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.*;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 
-import java.util.List;
-
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * The PGEN drawing attributes associated with a star drawn on the Spatial
@@ -122,20 +118,6 @@ public class StarDrawingAttributes extends HazardServicesDrawingAttributes {
     @Override
     public double getSizeScale() {
         return SIZE_SCALE;
-    }
-
-    @Override
-    public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
-        super.setAttributes(shapeNum, hazardEvent);
-        setPointTime(shapeNum, hazardEvent);
-
-    }
-
-    @Override
-    public List<Coordinate> buildCoordinates(int shapeNum,
-            IHazardEvent hazardEvent) {
-        throw new UnsupportedOperationException(
-                "Needs to be coded once the storm track tool is properly designed");
     }
 
 }

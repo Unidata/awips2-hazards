@@ -171,4 +171,14 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
         this.id = id;
     }
 
+    @Override
+    public boolean isEditable() {
+        return false;
+    }
+
+    @Override
+    public void setIsEditable(boolean isEditable) {
+        throw new UnsupportedOperationException("Text is never editable");
+    }
+
 }

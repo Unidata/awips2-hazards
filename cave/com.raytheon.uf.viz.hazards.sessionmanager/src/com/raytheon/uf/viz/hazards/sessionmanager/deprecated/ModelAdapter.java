@@ -104,9 +104,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      done to fix "Add/Remove Shapes" functionality
  * Sep 06, 2013 1921    Bryon.Lawrence  Modified getContextMenuEntries to support the
  *                                      "Remove Potential Hazards" option.
- * Sept 9, 2013 1298    Tracy.L.Hansen  Product information in Hazard Event needs to be
- *                                      re-initialized when copying a Hazard Event to
- *                                      create a new one e.g. FA.A --> FA.W
+ * Sep 10, 2013  752    Bryon.Lawrence  Modified updateEventData to reset the eventID
+ *                                      on newly created hazards.
  * </pre>
  * 
  * @author bsteffen
@@ -298,17 +297,10 @@ public abstract class ModelAdapter {
                 if (!eventManager.canChangeType(event)) {
                     oldEvent = event;
                     event = new BaseHazardEvent(event);
+                    event.setEventID("");
                     event.setState(HazardState.PENDING);
                     event.addHazardAttribute(HazardConstants.REPLACES,
                             configManager.getHeadline(oldEvent));
-                    // New event should not have product information
-                    event.removeHazardAttribute("expirationTime");
-                    event.removeHazardAttribute("issueTime");
-                    event.removeHazardAttribute("vtecCodes");
-                    event.removeHazardAttribute("etns");
-                    event.removeHazardAttribute("pils");
-                    Date d = new Date();
-                    event.setIssueTime(d);
                     Collection<IHazardEvent> selection = eventManager
                             .getSelectedEvents();
                     event = eventManager.addEvent(event);
@@ -404,6 +396,7 @@ public abstract class ModelAdapter {
                 eventManager.setSelectedEvents(selection);
             }
             event.setGeometry(jevent.getGeometry());
+            event.addHazardAttribute("polyModified", new Boolean(true));
         }
     }
 

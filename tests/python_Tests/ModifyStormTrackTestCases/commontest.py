@@ -1,574 +1,423 @@
 InputTestCaseData = { \
-    "caseDesc" : "Move current frame point away from pivot",
-    "sessionAttributes" :
-            {
-            "selectedEventDict": {
-                "eventID": "191", 
-                "pivots": [
-                    1297137600000
-                ], 
-                "backupSiteID": "OAX", 
-                "headline": "TORNADO WARNING", 
-                "stormMotion": {
-                    "bearing": 225, 
-                    "speed": 20
-                }, 
-                "creationTime": 1297137600002, 
-                "phen": "TO", 
-                "modifyCallbackToolName": "ModifyStormTrackTool", 
-                "shapes": [
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297127700002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.89545440673828, 
-                            41.10292053222656
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297128600002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.8180160522461, 
-                            41.1623649597168
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297129500002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.74043273925781, 
-                            41.22175979614258
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297130400002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.66270446777344, 
-                            41.28110122680664
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297131300002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.5848388671875, 
-                            41.34039306640625
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297132200002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.50682830810547, 
-                            41.399627685546875
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297133100002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.42868041992188, 
-                            41.45881271362305
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297134000002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.35038757324219, 
-                            41.5179443359375
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297134900002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.2719497680664, 
-                            41.577022552490234
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297135800002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.19337463378906, 
-                            41.63604736328125
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297136700002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.1146469116211, 
-                            41.69501876831055
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297137600002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -96.03578186035156, 
-                            41.753936767578125
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297138500002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -95.95677185058594, 
-                            41.812801361083984
-                        ]
-                    }, 
-                    {
-                        "pointType": "tracking", 
-                        "pointID": 1297139400002, 
-                        "shapeType": "point", 
-                        "point": [
-                            -95.87760925292969, 
-                            41.87160873413086
-                        ]
-                    }, 
-                    {
-                        "include": "true", 
-                        "points": [
-                            [
-                                -95.8772201538086, 
-                                42.03061294555664
-                            ], 
-                            [
-                                -95.6640853881836, 
-                                41.87112045288086
-                            ], 
-                            [
-                                -96.03578186035156, 
-                                41.626731872558594
-                            ], 
-                            [
-                                -96.20629119873047, 
-                                41.75381088256836
-                            ]
-                        ], 
-                        "shapeType": "polygon"
-                    }
-                ], 
-                "subType": "", 
-                "state": "pending", 
-                "siteID": "OAX", 
-                "cta": [], 
-                "startTime": 1297137600002, 
-                "fullType": "TO.W (TORNADO WARNING)", 
-                "sig": "W", 
-                "endTime": 1297139400002, 
-                "type": "TO.W", 
-                "draggedPoints": [
-                    [
-                        [
-                            -96.03578186035156, 
-                            41.753936767578125
-                        ], 
-                        1297137600000
-                    ]
-                ]
-            }, 
-            "selectedTime": "1297127700002", 
-            "staticSettings": {
-                "settingsID": "TOR", 
-                "hidHazardCategories": [
-                    "Short Fused"
-                ], 
-                "defaultBaseLayer": "Google Hybrid", 
-                "hazardsFilter": "TOR", 
-                "visibleTypes": [
-                    "TO.W", 
-                    "SV.W", 
-                    "EW.W"
-                ], 
-                "radar": "true", 
-                "defaultVectorLayers": [], 
-                "controlLayers": [
-                    "Hazards", 
-                    "LandScan Population", 
-                    "CO Gov", 
-                    "CO Airports", 
-                    "USA WFO Locations", 
-                    "USA EM State Offices", 
-                    "CO EOC Offices"
-                ], 
-                "caveSettings": "True", 
-                "pointHazardShape": "triangle", 
-                "hazardCategoriesAndTypes": [
-                    {
-                        "displayString": "Convective", 
-                        "children": [
-                            "TO.W", 
-                            "SV.W", 
-                            "EW.W"
-                        ]
-                    }
-                ], 
-                "draggedTrackPointShape": "star", 
-                "visibleStates": [
-                    "potential", 
-                    "proposed", 
-                    "pending", 
-                    "issued", 
-                    "ended"
-                ], 
-                "toolbarTools": [
-                    {
-                        "toolName": "StormTrackTool", 
-                        "displayName": "Storm Track"
-                    }
-                ], 
-                "defaultControlLayers": [
-                    "Hazards"
-                ], 
-                "defaultTimeDisplayDuration": 14400000, 
-                "trackPointShape": "circle", 
-                "maxDuration": 90, 
-                "columns": {
-                    "VTEC Code": {
-                        "type": "string", 
-                        "fieldName": "vtecCode", 
-                        "sortDir": "none"
-                    }, 
-                    "Issue Time": {
-                        "fieldName": "issueTime", 
-                        "width": 123, 
-                        "type": "date", 
-                        "sortDir": "none"
-                    }, 
-                    "Hazard Type": {
-                        "type": "string", 
-                        "fieldName": "type", 
-                        "sortDir": "ascending", 
-                        "hintTextFieldName": "headline"
-                    }, 
-                    "Description": {
-                        "fieldName": "description", 
-                        "width": 100, 
-                        "type": "string", 
-                        "sortDir": "none"
-                    }, 
-                    "State": {
-                        "fieldName": "state", 
-                        "width": 60, 
-                        "type": "string", 
-                        "sortDir": "none"
-                    }, 
-                    "Site ID": {
-                        "type": "string", 
-                        "fieldName": "siteID", 
-                        "sortDir": "none"
-                    }, 
-                    "Phen": {
-                        "fieldName": "phen", 
-                        "width": 50, 
-                        "type": "string", 
-                        "sortDir": "none"
-                    }, 
-                    "Start Time": {
-                        "fieldName": "startTime", 
-                        "width": 126, 
-                        "type": "date", 
-                        "sortDir": "none"
-                    }, 
-                    "End Time": {
-                        "fieldName": "endTime", 
-                        "width": 128, 
-                        "type": "date", 
-                        "sortDir": "none"
-                    }, 
-                    "Sig": {
-                        "fieldName": "sig", 
-                        "width": 50, 
-                        "type": "string", 
-                        "sortDir": "none"
-                    }, 
-                    "ETN": {
-                        "type": "number", 
-                        "fieldName": "ETN", 
-                        "sortDir": "none"
-                    }, 
-                    "Purge Time": {
-                        "fieldName": "purgeTime", 
-                        "width": 130, 
-                        "type": "date", 
-                        "sortDir": "none"
-                    }, 
-                    "Event ID": {
-                        "type": "string", 
-                        "fieldName": "eventID", 
-                        "sortDir": "none"
-                    }
-                }, 
-                "mapCenter": {
-                    "lat": 39.29999923706055, 
-                    "lon": -104.69999694824219, 
-                    "zoom": 7
-                }, 
-                "defaultSiteID": "BOU", 
-                "temporalCounts": {
-                    "distance": 12, 
-                    "step": 2000, 
-                    "panDistance": 7200000, 
-                    "loopCount": 0, 
-                    "increment": 300000
-                }, 
-                "defaultCategory": "Convective", 
-                "visibleSites": [
-                    "BOU", 
-                    "OAX"
-                ], 
-                "displayName": "Canned TOR", 
-                "defaultDuration": 1800000, 
-                "visibleColumns": [
-                    "Event ID", 
-                    "Hazard Type", 
-                    "State", 
-                    "Start Time", 
-                    "End Time"
-                ], 
-                "defaultImageLayers": [], 
-                "durationIncrement": 1, 
-                "defaultHazardCategory": "shortFused"
-            }, 
-            "framesInfo": {
-                "frameTimeList": [
-                    1297127700002, 
-                    1297128600002, 
-                    1297129500002, 
-                    1297130400002, 
-                    1297131300002, 
-                    1297132200002, 
-                    1297133100002, 
-                    1297134000002, 
-                    1297134900002, 
-                    1297135800002, 
-                    1297136700002, 
-                    1297137600002
-                ], 
-                "frameIndex": 0, 
-                "frameCount": 12
-            }, 
-            "currentTime": "1297137600002"
-        },
-    "spatialInputMap" :
+"caseDesc" : "Move current frame point away from pivot",
+"sessionAttributes" :
+{
+    "staticSettings": {
+        "defaultDuration": 1800000, 
+        "defaultSiteID": "OAX"
+    }, 
+    "framesInfo": {
+        "frameTimeList": [
+            1297127700000, 
+            1297128600000, 
+            1297129500000, 
+            1297130400000, 
+            1297131300000, 
+            1297132200000, 
+            1297133100000, 
+            1297134000000, 
+            1297134900000, 
+            1297135800000, 
+            1297136700000, 
+            1297137600000
+        ], 
+        "frameIndex": 0, 
+        "currentFrame": "2011-02-08 01:15:00.0", 
+        "frameCount": 12
+    }, 
+    "currentTime": 1297137600000
+},
+"eventAttributes" :
+{
+    "pivots": [
+        11
+    ], 
+    "checked": True, 
+    "trackPoints": [
         {
-            "eventID": "191", 
-            "pointID": 1297127700002, 
-            "newLonLat": [
-                -96.83812713623047, 
-                41.362911224365234
-            ], 
-            "shapeType": "dot"
+            "pointType": "tracking", 
+            "pointID": 1297127700000, 
+            "shapeType": "point", 
+            "point": [
+                -96.67389678955078, 
+                40.94460678100586
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297128600000, 
+            "shapeType": "point", 
+            "point": [
+                -96.59663391113281, 
+                41.004051208496094
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297129500000, 
+            "shapeType": "point", 
+            "point": [
+                -96.51923370361328, 
+                41.06344223022461
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297130400000, 
+            "shapeType": "point", 
+            "point": [
+                -96.44168853759766, 
+                41.12278366088867
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297131300000, 
+            "shapeType": "point", 
+            "point": [
+                -96.364013671875, 
+                41.18206787109375
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297132200000, 
+            "shapeType": "point", 
+            "point": [
+                -96.28618621826172, 
+                41.24130630493164
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297133100000, 
+            "shapeType": "point", 
+            "point": [
+                -96.2082290649414, 
+                41.30048751831055
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297134000000, 
+            "shapeType": "point", 
+            "point": [
+                -96.130126953125, 
+                41.359619140625
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297134900000, 
+            "shapeType": "point", 
+            "point": [
+                -96.0518798828125, 
+                41.41869354248047
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297135800000, 
+            "shapeType": "point", 
+            "point": [
+                -95.9734878540039, 
+                41.477718353271484
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297136700000, 
+            "shapeType": "point", 
+            "point": [
+                -95.89495849609375, 
+                41.53668975830078
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297137600000, 
+            "shapeType": "point", 
+            "point": [
+                -95.8162841796875, 
+                41.59560775756836
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297138500000, 
+            "shapeType": "point", 
+            "point": [
+                -95.73746490478516, 
+                41.65447235107422
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297139400000, 
+            "shapeType": "point", 
+            "point": [
+                -95.65850067138672, 
+                41.713279724121094
+            ]
         }
+    ], 
+    "issued": False, 
+    "stormMotion": {
+        "bearing": 225, 
+        "speed": 20
+    }, 
+    "selected": True, 
+    "pivotTimes": [
+        1297137600000
+    ], 
+    "modifyCallbackToolName": "ModifyStormTrackTool", 
+    "state": "pending", 
+    "startTime": 1297137600000, 
+    "creationTime": 1297137600000, 
+    "endTime": 1297139400000, 
+    "type": "TO.W", 
+    "hazardCategory": "Convective"
+},
+"spatialInputMap" :
+{
+    "eventID": "60", 
+    "newLatLon": [
+        -96.71375470091003, 
+        41.26898811798565
+    ], 
+    "pointID": 1297127700000.0, 
+    "shapeType": "dot"
+}
 }
 
-TestCaseResults = { \
-
-            "eventID": "191", 
-            "pivots": [
-                1297127700002, 
-                1297137600002
+TestCaseResults = \
+{
+    "pivots": [
+        0, 
+        11
+    ], 
+    "checked": True, 
+    "forJavaObj": {
+        "track": [
+            [
+                -96.71375470091003, 
+                41.26898811798565
             ], 
-            "backupSiteID": "OAX", 
-            "headline": "TORNADO WARNING", 
-            "stormMotion": {
-                "bearing": 237.1904880852871, 
-                "speed": 15.641697873153278
-            }, 
-            "creationTime": 1297137600002, 
-            "phen": "TO", 
-            "modifyCallbackToolName": "ModifyStormTrackTool", 
-            "shapes": [
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297127700002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.83812713623047, 
-                        41.362911224365234
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297128600002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.76558722546356, 
-                        41.39868865950635
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297129500002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.69296745708567, 
-                        41.434420486890275
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297130400002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.62026774484713, 
-                        41.47010659887632
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297131300002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.54748800292415, 
-                        41.50574688765364
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297132200002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.47462814592286, 
-                        41.54134124524161
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297133100002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.401688088883, 
-                        41.576889563490134
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297134000002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.32866774728201, 
-                        41.612391734080134
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297134900002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.25556703703883, 
-                        41.64784764852382
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297135800002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.18238587451788, 
-                        41.683257198165215
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297136700002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.10912417653302, 
-                        41.718620274180424
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297137600002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -96.03578186035156, 
-                        41.753936767578125
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297138500002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -95.96235884369818, 
-                        41.789206569199955
-                    ]
-                }, 
-                {
-                    "pointType": "tracking", 
-                    "pointID": 1297139400002, 
-                    "shapeType": "point", 
-                    "point": [
-                        -95.88885504475896, 
-                        41.82442956972097
-                    ]
-                }, 
-                {
-                    "include": "true", 
-                    "shapeType": "polygon", 
-                    "points": [
-                        [
-                            -95.84333189568963, 
-                            41.97978164573295
-                        ], 
-                        [
-                            -95.68048098717338, 
-                            41.79039984116413
-                        ], 
-                        [
-                            -96.07171774346361, 
-                            41.62959623511651
-                        ], 
-                        [
-                            -96.2025176030745, 
-                            41.780676901166835
-                        ]
-                    ]
-                }
+            [
+                -96.63253965245585, 
+                41.29896816877639
             ], 
-            "subType": "", 
-            "state": "pending", 
-            "siteID": "OAX", 
-            "cta": [], 
-            "startTime": 1297137600002, 
-            "fullType": "TO.W (TORNADO WARNING)", 
-            "sig": "W", 
-            "endTime": 1297139400002, 
-            "type": "TO.W", 
-            "draggedPoints": [
-                [
-                    [
-                        -96.83812713623047, 
-                        41.362911224365234
-                    ], 
-                    1297127700002
-                ], 
-                [
-                    [
-                        -96.03578186035156, 
-                        41.753936767578125
-                    ], 
-                    1297137600002
-                ]
+            [
+                -96.55124997661942, 
+                41.328891086828655
+            ], 
+            [
+                -96.46988566891802, 
+                41.35875675940655
+            ], 
+            [
+                -96.38844672564396, 
+                41.388565073720834
+            ], 
+            [
+                -96.3069331438682, 
+                41.41831591693004
+            ], 
+            [
+                -96.22534492144399, 
+                41.44800917614164
+            ], 
+            [
+                -96.14368205701064, 
+                41.47764473841316
+            ], 
+            [
+                -96.06194454999712, 
+                41.507222490753456
+            ], 
+            [
+                -95.98013240062573, 
+                41.53674232012373
+            ], 
+            [
+                -95.89824560991586, 
+                41.566204113438815
+            ], 
+            [
+                -95.8162841796875, 
+                41.59560775756835
+            ], 
+            [
+                -95.8162841796875, 
+                41.59560775756835
+            ], 
+            [
+                -95.8162841796875, 
+                41.59560775756835
             ]
+        ], 
+        "hazardPolygon": [
+            [
+                -95.5808861257477, 
+                41.804089139878585
+            ], 
+            [
+                -95.4517180859864, 
+                41.60095291330328
+            ], 
+            [
+                -95.87269085864946, 
+                41.475616544068416
+            ], 
+            [
+                -95.97681907128418, 
+                41.637758326619554
+            ]
+        ]
+    }, 
+    "trackPoints": [
+        {
+            "pointType": "tracking", 
+            "pointID": 1297127700000, 
+            "shapeType": "point", 
+            "point": [
+                -96.71375470091003, 
+                41.26898811798565
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297128600000, 
+            "shapeType": "point", 
+            "point": [
+                -96.63253965245585, 
+                41.29896816877639
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297129500000, 
+            "shapeType": "point", 
+            "point": [
+                -96.55124997661942, 
+                41.328891086828655
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297130400000, 
+            "shapeType": "point", 
+            "point": [
+                -96.46988566891802, 
+                41.35875675940655
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297131300000, 
+            "shapeType": "point", 
+            "point": [
+                -96.38844672564396, 
+                41.388565073720834
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297132200000, 
+            "shapeType": "point", 
+            "point": [
+                -96.3069331438682, 
+                41.41831591693004
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297133100000, 
+            "shapeType": "point", 
+            "point": [
+                -96.22534492144399, 
+                41.44800917614164
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297134000000, 
+            "shapeType": "point", 
+            "point": [
+                -96.14368205701064, 
+                41.47764473841316
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297134900000, 
+            "shapeType": "point", 
+            "point": [
+                -96.06194454999712, 
+                41.507222490753456
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297135800000, 
+            "shapeType": "point", 
+            "point": [
+                -95.98013240062573, 
+                41.53674232012373
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297136700000, 
+            "shapeType": "point", 
+            "point": [
+                -95.89824560991586, 
+                41.566204113438815
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297137600000, 
+            "shapeType": "point", 
+            "point": [
+                -95.8162841796875, 
+                41.59560775756835
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297138500000, 
+            "shapeType": "point", 
+            "point": [
+                -95.73424811256506, 
+                41.62495313933796
+            ]
+        }, 
+        {
+            "pointType": "tracking", 
+            "pointID": 1297139400000, 
+            "shapeType": "point", 
+            "point": [
+                -95.65213741198095, 
+                41.654240145530466
+            ]
+        }
+    ], 
+    "issued": False, 
+    "stormMotion": {
+        "bearing": 244.40484388368344, 
+        "speed": 16.32857188248256
+    }, 
+    "selected": True, 
+    "pivotTimes": [
+        1297127700000.0, 
+        1297137600000
+    ], 
+    "modifyCallbackToolName": "ModifyStormTrackTool", 
+    "state": "pending", 
+    "startTime": 1297137600000, 
+    "creationTime": 1297137600000, 
+    "endTime": 1297139400000, 
+    "type": "TO.W", 
+    "hazardCategory": "Convective"
 }

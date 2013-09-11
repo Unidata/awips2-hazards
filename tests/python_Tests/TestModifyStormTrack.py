@@ -38,14 +38,15 @@ class TestModifyStormTrack(unittest.TestCase):
             self.assertEqual(expectedResult,"OK")
             return
         sessionAttributes = inputTestData["sessionAttributes"]
+        eventAttributes = inputTestData["eventAttributes"]
         dialogInputMap = {}
         spatialInputMap = inputTestData["spatialInputMap"]
         if "caseDesc" in inputTestData :
             sys.stdout.write("\n"+inputTestData["caseDesc"]+"\n")
         from ModifyStormTrackTool import Recommender
         recommenderObject = Recommender()
-        result = recommenderObject.executeImpl( \
-                 sessionAttributes, dialogInputMap, spatialInputMap)
+        result = recommenderObject.updateEventAttributes( sessionAttributes, \
+                 eventAttributes, dialogInputMap, spatialInputMap)
 
         self.assertEqual(json.dumps(result, sort_keys=True), \
                          json.dumps(expectedResult, sort_keys=True) )

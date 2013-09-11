@@ -35,6 +35,8 @@ public abstract class HazardServicesShape extends Line implements
 
     private String id;
 
+    private boolean isEditable = true;
+
     private final HazardServicesDrawingAttributes drawingAttributes;
 
     @Override
@@ -63,5 +65,15 @@ public abstract class HazardServicesShape extends Line implements
 
     @Override
     public abstract Geometry getGeometry();
+
+    @Override
+    public boolean isEditable() {
+        return isEditable;
+    }
+
+    @Override
+    public void setIsEditable(boolean isEditable) {
+        this.isEditable = isEditable;
+    }
 
 }

@@ -75,4 +75,15 @@ public interface IHazardServicesShape {
      */
     public Geometry getGeometry();
 
+    /**
+     * @return True if the user can edit this shape.
+     */
+    public boolean isEditable();
+
+    /**
+     * 
+     * Set the editable status of this shape.
+     */
+    public void setIsEditable(boolean isEditable);
+
 }

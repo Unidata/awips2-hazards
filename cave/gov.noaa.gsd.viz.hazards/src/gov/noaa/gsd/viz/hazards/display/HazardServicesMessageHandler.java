@@ -17,7 +17,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -29,7 +28,6 @@ import java.util.Set;
 
 import org.eclipse.swt.widgets.Display;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -44,9 +42,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -54,8 +50,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
-import com.raytheon.viz.ui.VizWorkbenchManager;
-import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
@@ -169,15 +163,6 @@ public final class HazardServicesMessageHandler {
     private final String CONTEXT_MENU_ISSUE = "Issue";
 
     private final String CONTEXT_MENU_PROPOSE = "Propose";
-
-    /**
-     * Constants representing CAVE frame information.
-     */
-    private final String FRAME_TIMES = "frameTimeList";
-
-    private final String FRAME_INDEX = "frameIndex";
-
-    private final String FRAME_COUNT = "frameCount";
 
     // Private Static Constants
 
@@ -474,16 +459,11 @@ public final class HazardServicesMessageHandler {
         eventSet.addAttribute(HazardConstants.CURRENT_TIME, sessionManager
                 .getTimeManager().getCurrentTime().getTime());
 
-        Dict frameInfo = buildFrameInformation();
+        Dict frameInfo = HazardServicesEditorUtilities.buildFrameInformation();
         eventSet.addAttribute("framesInfo", (Serializable) asMap(frameInfo));
 
-        HashMap<String, Serializable> staticSettings = Maps.newHashMap();
-
-        /**
-         * TODO Get this from the session manager somehow.
-         */
-        staticSettings.put("defaultDuration", 1800000);
-        eventSet.addAttribute("staticSettings", staticSettings);
+        HashMap<String, Serializable> staticSettings = buildStaticSettings();
+        eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
                 eventSet, asMap(spatialInfo), asMap(dialogInfo),
@@ -495,6 +475,18 @@ public final class HazardServicesMessageHandler {
 
     }
 
+    /**
+     * TODO Get this from the session manager somehow.
+     */
+    @Deprecated
+    private HashMap<String, Serializable> buildStaticSettings() {
+        HashMap<String, Serializable> staticSettings = Maps.newHashMap();
+
+        staticSettings.put("defaultDuration", 1800000);
+        staticSettings.put("defaultSiteID", "OAX");
+        return staticSettings;
+    }
+
     private Map<String, Serializable> asMap(Dict runData) {
         if (runData == null) {
             return null;
@@ -502,7 +494,9 @@ public final class HazardServicesMessageHandler {
         HashMap<String, Serializable> result = Maps.newHashMap();
         for (Entry<String, Object> entry : runData.entrySet()) {
             Object val = entry.getValue();
-            if (val instanceof Serializable) {
+            if (val instanceof Dict) {
+                result.put(entry.getKey(), (Serializable) asMap((Dict) val));
+            } else if (val instanceof Serializable) {
                 result.put(entry.getKey(), (Serializable) val);
             } else {
                 throw new RuntimeException(entry + ", "
@@ -654,13 +648,18 @@ public final class HazardServicesMessageHandler {
      * Appropriate adjustments are made to the event and then the Spatial
      * Display is re-drawn
      * 
-     * @param jsonText
+     * @param json
      *            A JSON string containing a dict to replace portions of the
      *            event with.
      * @throws VizException
      */
-    public void modifySpatialDisplayObject(String jsonText) throws VizException {
-        model.modifyEventArea(jsonText);
+    public void modifySpatialDisplayObject(String json) throws VizException {
+        Dict asDict = Dict.getInstance(json);
+        if (asDict.get(HazardConstants.SYMBOL_NEW_LAT_LON) != null) {
+            runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL, asDict, null);
+        } else {
+            model.modifyEventArea(json);
+        }
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.EVENTS));
     }
@@ -923,57 +922,15 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Convenience method for retrieving the current editor. Each perspective
-     * has its own editor. So, when a reference to the current editor is needed,
-     * it is safer to query for the current editor than to rely on a stored
-     * editor reference.
-     * 
-     * @return Reference to the current CAVE editor.
-     */
-    public AbstractEditor getCurrentEditor() {
-        return ((AbstractEditor) VizWorkbenchManager.getInstance()
-                .getActiveEditor());
-    }
-
-    /**
      * Updates the model with CAVE frame information.
      */
     public void sendFrameInformationToSessionManager() {
 
-        Dict frameDict = buildFrameInformation();
+        Dict frameDict = HazardServicesEditorUtilities.buildFrameInformation();
         if (!frameDict.isEmpty()) {
             VizApp.runAsync(new FrameUpdater(frameDict));
         }
 
-    }
-
-    private Dict buildFrameInformation() {
-        AbstractEditor editor = getCurrentEditor();
-        FramesInfo framesInfo = editor.getActiveDisplayPane().getDescriptor()
-                .getFramesInfo();
-
-        Dict frameDict = new Dict();
-        if (framesInfo != null) {
-            final int frameCount = framesInfo.getFrameCount();
-            final int frameIndex = framesInfo.getFrameIndex();
-            DataTime[] dataFrames = framesInfo.getFrameTimes();
-
-            if (frameIndex >= 0) {
-                final List<Long> dataTimeList = Lists.newArrayList();
-
-                if (dataFrames != null) {
-                    for (DataTime dataTime : dataFrames) {
-                        Calendar cal = dataTime.getValidTime();
-                        dataTimeList.add(cal.getTimeInMillis());
-                    }
-                }
-
-                frameDict.put(FRAME_COUNT, frameCount);
-                frameDict.put(FRAME_INDEX, frameIndex);
-                frameDict.put(FRAME_TIMES, dataTimeList);
-            }
-        }
-        return frameDict;
     }
 
     private class FrameUpdater implements Runnable {
@@ -993,11 +950,11 @@ public final class HazardServicesMessageHandler {
              * frame being viewed.
              */
             Integer frameCount = frameDict
-                    .getDynamicallyTypedValue(FRAME_COUNT);
+                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_COUNT);
             Integer frameIndex = frameDict
-                    .getDynamicallyTypedValue(FRAME_INDEX);
+                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_INDEX);
             List<Long> dataTimeList = frameDict
-                    .getDynamicallyTypedValue(FRAME_TIMES);
+                    .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
             if ((frameCount > 0) && (frameIndex != -1)) {
                 try {
                     updateSelectedTime(dataTimeList.get(frameIndex).toString(),
