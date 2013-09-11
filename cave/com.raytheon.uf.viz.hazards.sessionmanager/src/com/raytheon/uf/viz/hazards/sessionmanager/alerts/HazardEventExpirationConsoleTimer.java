@@ -13,11 +13,11 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 
 /**
- * Description: A {@link HazardEventAlert} that is a count-down timer in the
- * console.
+ * Description: A {@link IHazardEventExpirationAlert} that is a count-down timer
+ * in the console.
  * 
  * <pre>
  * 
@@ -32,10 +32,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertT
  * @version 1.0
  */
 public class HazardEventExpirationConsoleTimer extends
-        HazardEventExpirationTimer implements IHazardEventExpirationAlert {
+        HazardEventExpirationAlert implements IHazardEventExpirationAlert {
 
     public HazardEventExpirationConsoleTimer(String eventID,
-            HazardAlertTimerConfigCriterion alertCriterion) {
+            HazardEventExpirationAlertConfigCriterion alertCriterion) {
         super(eventID, alertCriterion);
     }
 

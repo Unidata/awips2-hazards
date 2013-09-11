@@ -55,16 +55,17 @@ public class HazardAlertsConfigJaxbTest {
             categoryConfig.setHazardTypes(Sets
                     .newHashSet(new HazardType("FF", "A", "Convective"),
                             new HazardType("FF", "W", "Convective")));
-            List<HazardAlertTimerConfigCriterion> alertConfiguration = Lists
+            List<HazardEventExpirationAlertConfigCriterion> alertConfiguration = Lists
                     .newArrayList();
-            Color color = new Color(10, 20, 30);
-            Set<HazardAlertTimerConfigCriterion.Location> locations = 
-        	    EnumSet.noneOf(HazardAlertTimerConfigCriterion.Location.class);
-            locations.add(HazardAlertTimerConfigCriterion.Location.CONSOLE);
-            HazardAlertTimerConfigCriterion criterion = new HazardAlertTimerConfigCriterion(
-                    "10 min", HazardAlertTimerConfigCriterion.Units.MINUTES,
-                    locations,
-                    10 * TimeUtil.MILLIS_PER_MINUTE, color, true, false, true);
+            Color color = new Color(1.0f, 1.0f, 0.0f);
+            Set<HazardEventExpirationAlertConfigCriterion.Manifestation> manifestations = EnumSet
+                    .noneOf(HazardEventExpirationAlertConfigCriterion.Manifestation.class);
+            manifestations.add(HazardEventExpirationAlertConfigCriterion.Manifestation.CONSOLE);
+            manifestations.add(HazardEventExpirationAlertConfigCriterion.Manifestation.POPUP);
+            HazardEventExpirationAlertConfigCriterion criterion = new HazardEventExpirationAlertConfigCriterion(
+                    "10 min", HazardEventExpirationAlertConfigCriterion.Units.MINUTES,
+                    manifestations, 10 * TimeUtil.MILLIS_PER_MINUTE, color, true,
+                    false, true);
             alertConfiguration.add(criterion);
             categoryConfig.setConfiguration(alertConfiguration);
             configByCategory.add(categoryConfig);

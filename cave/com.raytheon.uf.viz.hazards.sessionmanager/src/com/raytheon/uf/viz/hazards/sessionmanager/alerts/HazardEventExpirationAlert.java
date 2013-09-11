@@ -12,32 +12,32 @@ package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 import java.util.Date;
 
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 
 /**
- * Description: TODO
+ * Description: Basic implementation of a {@link IHazardEventExpirationAlert}
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * MMM DD, YYYY            daniel.s.schaffer@noaa.gov      Initial creation
+ * Sep 09, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
  * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class HazardEventExpirationTimer extends HazardEventAlert implements
+public class HazardEventExpirationAlert extends HazardEventAlert implements
         IHazardEventExpirationAlert {
 
-    protected final HazardAlertTimerConfigCriterion alertCriterion;
+    protected final HazardEventExpirationAlertConfigCriterion alertCriterion;
 
     private Date hazardExpiration;
 
-    public HazardEventExpirationTimer(String eventID,
-            HazardAlertTimerConfigCriterion alertCriterion) {
+    public HazardEventExpirationAlert(String eventID,
+            HazardEventExpirationAlertConfigCriterion alertCriterion) {
         super(eventID);
         this.alertCriterion = alertCriterion;
     }
@@ -66,6 +66,11 @@ public class HazardEventExpirationTimer extends HazardEventAlert implements
     @Override
     public void setHazardExpiration(Date hazardExpiration) {
         this.hazardExpiration = hazardExpiration;
+    }
+
+    @Override
+    public Long getMillisBeforeExpiration() {
+        return alertCriterion.getMillisBeforeExpiration();
     }
 
 }

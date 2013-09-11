@@ -11,15 +11,18 @@ package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
 import java.util.Date;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
 /**
- * Description: TODO
+ * Description: An {@link IHazardAlert} based on expiration time of a
+ * {@link IHazardEvent}
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * MMM DD, YYYY            daniel.s.schaffer@noaa.gov      Initial creation
+ * Sep 09, 2013  1325          daniel.s.schaffer@noaa.gov      Initial creation
  * 
  * </pre>
  * 
@@ -31,5 +34,7 @@ public interface IHazardEventExpirationAlert extends IHazardAlert {
     public Date getHazardExpiration();
 
     public void setHazardExpiration(Date hazardExpiration);
+
+    public Long getMillisBeforeExpiration();
 
 }

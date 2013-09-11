@@ -15,7 +15,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Interface describing the methods that must be implemented by a class that
- * functions as an alert view, managed by an alert presenter.
+ * functions as an alert config view, managed by an alert config presenter.
  * 
  * <pre>
  * 
@@ -29,7 +29,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IAlertsView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IAlertsConfigView<C, E extends Enum<E>> extends IView<C, E> {
 
     // Public Methods
 
@@ -39,7 +39,7 @@ public interface IAlertsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param presenter
      *            Presenter managing this view.
      */
-    public void initialize(AlertsPresenter presenter);
+    public void initialize(AlertsConfigPresenter presenter);
 
     /**
      * Show the alert detail subview.

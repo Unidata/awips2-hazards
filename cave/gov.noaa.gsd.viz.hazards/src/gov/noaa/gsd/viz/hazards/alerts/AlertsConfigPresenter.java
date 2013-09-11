@@ -37,7 +37,7 @@ import com.google.common.eventbus.EventBus;
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsPresenter extends HazardServicesPresenter<IAlertsView<?, ?>> {
+public class AlertsConfigPresenter extends HazardServicesPresenter<IAlertsConfigView<?, ?>> {
 
     // Public Constructors
 
@@ -51,7 +51,7 @@ public class AlertsPresenter extends HazardServicesPresenter<IAlertsView<?, ?>> 
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public AlertsPresenter(IHazardServicesModel model, IAlertsView<?, ?> view,
+    public AlertsConfigPresenter(IHazardServicesModel model, IAlertsConfigView<?, ?> view,
             EventBus eventBus) {
         super(model, view, eventBus);
     }
@@ -99,7 +99,7 @@ public class AlertsPresenter extends HazardServicesPresenter<IAlertsView<?, ?>> 
      *            View to be initialized.
      */
     @Override
-    protected final void initialize(IAlertsView<?, ?> view) {
+    protected final void initialize(IAlertsConfigView<?, ?> view) {
         getView().initialize(this);
     }
 }

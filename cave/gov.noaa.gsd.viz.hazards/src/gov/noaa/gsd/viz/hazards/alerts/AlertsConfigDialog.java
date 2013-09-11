@@ -49,7 +49,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author daniel.s.schaffer
  * @version 1.0
  */
-class AlertDialog extends BasicDialog {
+class AlertsConfigDialog extends BasicDialog {
 
     // Private Static Constants
 
@@ -74,7 +74,7 @@ class AlertDialog extends BasicDialog {
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(AlertDialog.class);
+            .getHandler(AlertsConfigDialog.class);
 
     // Private Constants
 
@@ -127,7 +127,7 @@ class AlertDialog extends BasicDialog {
     /**
      * Presenter.
      */
-    private final AlertsPresenter presenter;
+    private final AlertsConfigPresenter presenter;
 
     /**
      * Fields dictionary, used to hold the dialog's fields.
@@ -182,7 +182,7 @@ class AlertDialog extends BasicDialog {
      *            in <code>jsonFieldsParams</code> as a dictionary, one entry
      *            for each field identifier.
      */
-    public AlertDialog(AlertsPresenter presenter, Shell parent,
+    public AlertsConfigDialog(AlertsConfigPresenter presenter, Shell parent,
             DictList fields, Dict values) {
         super(parent);
         this.presenter = presenter;

@@ -21,7 +21,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationTimer;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 
 /**
@@ -43,7 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirationTimer, P extends CountdownTimerDisplayProperties> {
+public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirationAlert, P extends CountdownTimerDisplayProperties> {
 
     // Private Static Constants
 
@@ -76,11 +76,9 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
 
         // Values
 
-        DAYS(TimeUnit.DAYS.toMillis(2L), TimeUnit.DAYS.toMillis(1L)), DAY_AND_HOURS(
-                TimeUnit.DAYS.toMillis(1L), TimeUnit.HOURS.toMillis(1L)), HOURS(
-                TimeUnit.HOURS.toMillis(6L), TimeUnit.HOURS.toMillis(1L)), HOURS_AND_MINUTES(
+        DAYS(TimeUnit.DAYS.toMillis(1L), TimeUnit.DAYS.toMillis(1L)), HOURS_AND_MINUTES(
                 TimeUnit.HOURS.toMillis(1L), TimeUnit.MINUTES.toMillis(1L)), MINUTES(
-                TimeUnit.MINUTES.toMillis(15L), TimeUnit.MINUTES.toMillis(1L)), MINUTES_AND_SECONDS(
+                TimeUnit.MINUTES.toMillis(1L), TimeUnit.MINUTES.toMillis(1L)), SECONDS(
                 0L, TimeUnit.SECONDS.toMillis(1L)), ZERO(Long.MIN_VALUE,
                 Long.MAX_VALUE);
 
@@ -128,30 +126,21 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
         public static String getTimeDeltaString(long timeDelta) {
             switch (getStringFormatForTimeDelta(timeDelta)) {
             case DAYS:
-                return TimeUnit.MILLISECONDS.toDays(timeDelta) + " days";
-            case DAY_AND_HOURS:
-                long hours = TimeUnit.MILLISECONDS.toHours(timeDelta
-                        - TimeUnit.DAYS.toMillis(1L));
-                return "1 day, " + hours + " " + (hours == 1L ? "hr" : "hrs");
-            case HOURS:
-                return TimeUnit.MILLISECONDS.toHours(timeDelta) + " hrs";
+                long days = TimeUnit.MILLISECONDS.toDays(timeDelta);
+                return days + "-" + (days + 1) + " days";
             case HOURS_AND_MINUTES:
-                hours = TimeUnit.MILLISECONDS.toHours(timeDelta);
+                long hours = TimeUnit.MILLISECONDS.toHours(timeDelta);
                 return hours
                         + " "
                         + (hours == 1L ? "hr" : "hrs")
-                        + ", "
+                        + " "
                         + TimeUnit.MILLISECONDS.toMinutes(timeDelta
                                 - TimeUnit.HOURS.toMillis(hours)) + " min";
             case MINUTES:
                 return TimeUnit.MILLISECONDS.toMinutes(timeDelta) + " min";
-            case MINUTES_AND_SECONDS:
-                long minutes = TimeUnit.MILLISECONDS.toMinutes(timeDelta);
-                return String.format(
-                        "00:%02d:%02d",
-                        minutes,
-                        TimeUnit.MILLISECONDS.toSeconds(timeDelta
-                                - TimeUnit.MINUTES.toMillis(minutes)));
+            case SECONDS:
+                return String.format("00:%00:%02d",
+                        TimeUnit.MILLISECONDS.toSeconds(timeDelta));
             case ZERO:
                 return "00:00:00";
             default:
@@ -611,7 +600,7 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
             // Determine the earliest update time required of all the count-
             // down timers.
             long nextUpdate = Long.MAX_VALUE;
-            for (HazardEventExpirationTimer alert : activeAlerts) {
+            for (HazardEventExpirationAlert alert : activeAlerts) {
                 long thisNextUpdate = updateTimesForActiveAlerts.get(alert);
                 if (thisNextUpdate < nextUpdate) {
                     nextUpdate = thisNextUpdate;
