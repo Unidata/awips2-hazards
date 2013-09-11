@@ -26,7 +26,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.viz.core.style.AbstractStylePreferences;
+import com.raytheon.uf.common.style.AbstractStylePreferences;
 
 /**
  * 
