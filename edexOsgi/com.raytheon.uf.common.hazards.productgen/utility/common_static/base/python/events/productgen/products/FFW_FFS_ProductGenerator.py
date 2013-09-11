@@ -158,7 +158,7 @@ class Product(ProductTemplate.Product):
         #  RANCH AND BEVERLY HILLS. 
         '''        
         para = "* LOCATIONS IN THE WARNING INCLUDE BUT" + \
-               " ARE NOT LIMITED TO"
+               " ARE NOT LIMITED TO "
         para += self.getCityInfo(self._ugcs)
         return "\n"+para
 
