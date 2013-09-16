@@ -17,15 +17,16 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationSpatialTimer;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationTimer;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventExpirationAlert;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 
 /**
  * Description: A factory that builds {@link IHazardEventAlert}s based on given
- * {@link HazardAlertTimerConfigCriterion} and a given {@link IHazardEvent}
+ * {@link HazardEventExpirationAlertConfigCriterion} and a given
+ * {@link IHazardEvent}
  * 
  * <pre>
  * 
@@ -42,27 +43,33 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertT
 public class HazardEventExpirationAlertFactory {
 
     public List<IHazardEventAlert> createAlerts(
-            HazardAlertTimerConfigCriterion alertCriterion,
+            HazardEventExpirationAlertConfigCriterion alertCriterion,
             IHazardEvent hazardEvent) {
 
         List<IHazardEventAlert> result = Lists.newArrayList();
 
-        Set<HazardAlertTimerConfigCriterion.Location> locations = alertCriterion
-                .getLocations();
-        for (HazardAlertTimerConfigCriterion.Location location : locations) {
+        Set<HazardEventExpirationAlertConfigCriterion.Manifestation> locations = alertCriterion
+                .getManifestations();
+        for (HazardEventExpirationAlertConfigCriterion.Manifestation location : locations) {
 
             switch (location) {
 
             case CONSOLE:
-                HazardEventExpirationTimer consoleAlert = buildConsoleAlert(
+                IHazardEventAlert consoleAlert = buildConsoleAlert(
                         alertCriterion, hazardEvent);
                 result.add(consoleAlert);
                 break;
 
             case SPATIAL:
-                HazardEventExpirationSpatialTimer spatialAlert = buildSpatialAlert(
+                IHazardEventAlert spatialAlert = buildSpatialAlert(
                         alertCriterion, hazardEvent);
                 result.add(spatialAlert);
+                break;
+
+            case POPUP:
+                IHazardEventAlert popupAlert = buildPopupAlert(alertCriterion,
+                        hazardEvent);
+                result.add(popupAlert);
                 break;
             }
         }
@@ -70,26 +77,35 @@ public class HazardEventExpirationAlertFactory {
         return result;
     }
 
-    private HazardEventExpirationSpatialTimer buildSpatialAlert(
-            HazardAlertTimerConfigCriterion alertCriterion,
+    private IHazardEventAlert buildPopupAlert(
+            HazardEventExpirationAlertConfigCriterion alertCriterion,
             IHazardEvent hazardEvent) {
-        HazardEventExpirationSpatialTimer spatialAlert = new HazardEventExpirationSpatialTimer(
+        HazardEventExpirationPopUpAlert result = new HazardEventExpirationPopUpAlert(
                 hazardEvent.getEventID(), alertCriterion);
-        computeActivationTime(alertCriterion, hazardEvent, spatialAlert);
-        return spatialAlert;
+        computeActivationTime(alertCriterion, hazardEvent, result);
+        return result;
     }
 
-    private HazardEventExpirationTimer buildConsoleAlert(
-            HazardAlertTimerConfigCriterion alertCriterion,
+    private IHazardEventAlert buildSpatialAlert(
+            HazardEventExpirationAlertConfigCriterion alertCriterion,
             IHazardEvent hazardEvent) {
-        HazardEventExpirationConsoleTimer consoleAlert = new HazardEventExpirationConsoleTimer(
+        HazardEventExpirationSpatialTimer result = new HazardEventExpirationSpatialTimer(
                 hazardEvent.getEventID(), alertCriterion);
-        computeActivationTime(alertCriterion, hazardEvent, consoleAlert);
-        return consoleAlert;
+        computeActivationTime(alertCriterion, hazardEvent, result);
+        return result;
+    }
+
+    private IHazardEventAlert buildConsoleAlert(
+            HazardEventExpirationAlertConfigCriterion alertCriterion,
+            IHazardEvent hazardEvent) {
+        HazardEventExpirationConsoleTimer result = new HazardEventExpirationConsoleTimer(
+                hazardEvent.getEventID(), alertCriterion);
+        computeActivationTime(alertCriterion, hazardEvent, result);
+        return result;
     }
 
     private void computeActivationTime(
-            HazardAlertTimerConfigCriterion alertCriterion,
+            HazardEventExpirationAlertConfigCriterion alertCriterion,
             IHazardEvent hazardEvent, IHazardEventExpirationAlert alert) {
         Long timeBeforeExpiration = alertCriterion.getMillisBeforeExpiration();
 

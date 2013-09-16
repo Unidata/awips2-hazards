@@ -44,7 +44,7 @@ public class HazardEventExpirationAlertsConfig implements ISerializableObject {
     @XmlElement(name = "configuration")
     private List<HazardAlertCategoryConfig> configByCategory;
 
-    public List<HazardAlertTimerConfigCriterion> getCriteria(
+    public List<HazardEventExpirationAlertConfigCriterion> getCriteria(
             HazardType hazardType) {
         for (HazardAlertCategoryConfig categoryConfig : configByCategory) {
             if (categoryConfig.containsHazardType(hazardType)) {

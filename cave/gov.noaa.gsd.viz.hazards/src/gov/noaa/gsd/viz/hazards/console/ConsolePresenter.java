@@ -73,7 +73,6 @@ public class ConsolePresenter extends
     public ConsolePresenter(IHazardServicesModel model,
             IConsoleView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
-        getModel().getSessionManager().registerForNotification(this);
     }
 
     // Public Methods
@@ -132,6 +131,7 @@ public class ConsolePresenter extends
      */
     @Override
     protected final void initialize(IConsoleView<?, ?> view) {
+        getModel().getSessionManager().registerForNotification(this);
 
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.

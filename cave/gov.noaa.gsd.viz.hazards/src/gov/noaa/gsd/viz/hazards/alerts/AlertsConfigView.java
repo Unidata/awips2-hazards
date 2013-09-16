@@ -43,8 +43,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsView implements
-        IAlertsView<Action, RCPMainUserInterfaceElement> {
+public class AlertsConfigView implements
+        IAlertsConfigView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -63,14 +63,14 @@ public class AlertsView implements
      */
     @SuppressWarnings("unused")
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(AlertsView.class);
+            .getHandler(AlertsConfigView.class);
 
     // Private Variables
 
     /**
      * Presenter.
      */
-    private AlertsPresenter presenter = null;
+    private AlertsConfigPresenter presenter = null;
 
     /**
      * Alerts toggle action.
@@ -80,7 +80,7 @@ public class AlertsView implements
     /**
      * Setting dialog.
      */
-    private AlertDialog alertDialog = null;
+    private AlertsConfigDialog alertDialog = null;
 
     /**
      * Dialog dispose listener.
@@ -97,7 +97,7 @@ public class AlertsView implements
     /**
      * Construct a standard instance.
      */
-    public AlertsView() {
+    public AlertsConfigView() {
 
         // No action.
     }
@@ -111,7 +111,7 @@ public class AlertsView implements
      *            Presenter managing this view.
      */
     @Override
-    public final void initialize(AlertsPresenter presenter) {
+    public final void initialize(AlertsConfigPresenter presenter) {
         this.presenter = presenter;
     }
 
@@ -169,7 +169,7 @@ public class AlertsView implements
     @Override
     public final void showAlertDetail(DictList fields, Dict values) {
         if (alertDialog == null) {
-            alertDialog = new AlertDialog(presenter, PlatformUI.getWorkbench()
+            alertDialog = new AlertsConfigDialog(presenter, PlatformUI.getWorkbench()
                     .getActiveWorkbenchWindow().getShell(), fields, values);
             alertDialog.open();
             alertDialog.getShell().addDisposeListener(dialogDisposeListener);

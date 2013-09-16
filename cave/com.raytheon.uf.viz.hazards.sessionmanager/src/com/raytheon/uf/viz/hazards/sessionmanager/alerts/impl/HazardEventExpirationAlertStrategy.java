@@ -29,7 +29,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertTimerConfigCriterion;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
@@ -176,10 +176,10 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     }
 
     private void generateAlertsForIssuedHazardEvent(IHazardEvent hazardEvent) {
-        List<HazardAlertTimerConfigCriterion> alertCriteria = alertConfiguration
+        List<HazardEventExpirationAlertConfigCriterion> alertCriteria = alertConfiguration
                 .getCriteria(new HazardType(hazardEvent.getPhenomenon(),
                         hazardEvent.getSignificance(), hazardEvent.getSubtype()));
-        for (HazardAlertTimerConfigCriterion alertCriterion : alertCriteria) {
+        for (HazardEventExpirationAlertConfigCriterion alertCriterion : alertCriteria) {
             alertedEvents.put(hazardEvent.getEventID(), hazardEvent);
             List<IHazardEventAlert> alerts = alertFactory.createAlerts(
                     alertCriterion, hazardEvent);

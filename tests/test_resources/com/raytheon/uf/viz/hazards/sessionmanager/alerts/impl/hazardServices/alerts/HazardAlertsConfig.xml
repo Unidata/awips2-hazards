@@ -6,7 +6,6 @@
             <hazardTypes>
                 <phenomenon>FF</phenomenon>
                 <significance>A</significance>
-                <subType>NonConvective</subType>
             </hazardTypes>
             <hazardTypes>
                 <phenomenon>FF</phenomenon>
@@ -17,7 +16,7 @@
                 <name>10 min</name>
                 <expirationTime>10</expirationTime>
                 <units>minutes</units>
-                <locations>Console</locations>
+                <manifestations>Console</manifestations>
                 <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
@@ -29,13 +28,12 @@
             <hazardTypes>
                 <phenomenon>FL</phenomenon>
                 <significance>W</significance>
-                <subType>NonConvective</subType>
             </hazardTypes>
             <criteria>
                 <name>6 hours</name>
                 <expirationTime>6</expirationTime>
                 <units>hours</units>
-                <locations>Spatial</locations>
+                <manifestations>Spatial</manifestations>
                 <color r="1.0" g="0.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
@@ -48,19 +46,38 @@
             <hazardTypes>
                 <phenomenon>SV</phenomenon>
                 <significance>W</significance>
-                <subType>NonConvective</subType>
             </hazardTypes>
             <criteria>
                 <name>1 hours</name>
                 <expirationTime>1</expirationTime>
                 <units>hours</units>
-                <locations>Console</locations>
-                <locations>Spatial</locations>
+                <manifestations>Console</manifestations>
+                <manifestations>Spatial</manifestations>
+                <manifestations>Popup</manifestations>
                 <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>
                 <isItalic>false</isItalic>
                 <fontSize>12</fontSize>
+            </criteria>
+        </configuration>
+        <configuration>
+            <category>Area Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FA</phenomenon>
+                <significance>W</significance>
+            </hazardTypes>
+            <criteria>
+                <name>10 minutes</name>
+                <expirationTime>10</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+            <criteria>
+                <name>5 minutes</name>
+                <expirationTime>5</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
             </criteria>
         </configuration>
     </eventExpiration>

@@ -7,8 +7,9 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.viz.hazards.alerts.AlertsPresenter;
-import gov.noaa.gsd.viz.hazards.alerts.AlertsView;
+import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
+import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
+import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.ConsoleView;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
@@ -194,7 +195,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Alerts presenter.
      */
-    private AlertsPresenter alertsPresenter = null;
+    private AlertsConfigPresenter alertsConfigPresenter = null;
 
     /**
      * Spatial presenter.
@@ -246,6 +247,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private ToolLayer toolLayer;
 
     private ISessionManager sessionManager;
+
+    private AlertVizPresenter alertVizPresenter;
 
     // Public Static Methods
 
@@ -360,8 +363,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // Create the hazard detail view.
         createHazardDetailDisplay(loadedFromBundle);
 
-        // Create the alerts view.
-        createAlertsDisplay();
+        createAlertsConfigDisplay();
+
+        createAlertVizPresenter();
 
         // Create the product staging presenter and view.
         createProductStagingDisplay();
@@ -432,7 +436,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         contributors.add((SettingsView) settingsPresenter.getView());
         contributors.add((ToolsView) toolsPresenter.getView());
         contributors.add((HazardDetailView) hazardDetailPresenter.getView());
-        contributors.add((AlertsView) alertsPresenter.getView());
+        contributors.add((AlertsConfigView) alertsConfigPresenter.getView());
         contributors.add((SpatialView) spatialPresenter.getView());
         contributors.add(consoleView);
         consoleView.acceptContributionsToMainUI(contributors,
@@ -472,14 +476,41 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
-     * Create the alerts view and presenter.
+     * Create the alerts config view and presenter.
      */
-    private void createAlertsDisplay() {
-        if (alertsPresenter == null) {
+    private void createAlertsConfigDisplay() {
+        if (alertsConfigPresenter == null) {
 
-            alertsPresenter = new AlertsPresenter(
-                    messageHandler.getModelProxy(), new AlertsView(), eventBus);
-            presenters.add(alertsPresenter);
+            alertsConfigPresenter = new AlertsConfigPresenter(
+                    messageHandler.getModelProxy(), new AlertsConfigView(),
+                    eventBus);
+            presenters.add(alertsConfigPresenter);
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private void createAlertVizPresenter() {
+        if (alertVizPresenter == null) {
+            IView<?, ?> alertVizView = new IView() {
+
+                @Override
+                public void dispose() {
+                    /*
+                     * Nothing to do here.
+                     */
+                }
+
+                @Override
+                public List<?> contributeToMainUI(Enum type) {
+                    /*
+                     * No contributions here.
+                     */
+                    return Lists.newArrayList();
+                }
+
+            };
+            alertVizPresenter = new AlertVizPresenter(
+                    messageHandler.getModelProxy(), alertVizView, eventBus);
         }
     }
 

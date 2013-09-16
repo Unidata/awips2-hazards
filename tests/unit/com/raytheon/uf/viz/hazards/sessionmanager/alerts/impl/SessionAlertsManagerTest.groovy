@@ -17,12 +17,14 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.raytheon.uf.common.localization.LocalizationFile
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertState
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationSpatialTimer
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ConfigLoader
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionNotificationSender
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
@@ -170,24 +172,27 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         scheduledAlerts.size() == 0
     }
 
-    def "A hazard event is issued that schedules a console and spatial count-down timer"() {
+    def "A hazard event is issued that schedules a console and spatial count-down timers and a pop-up alert"() {
 
         when: "The hazard is issued"
 
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
         hazardEvent.setPhenomenon("SV")
+        hazardEvent.setSubtype(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
         HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(0)
         HazardEventExpirationConsoleTimer consoleAlert = scheduledAlerts.get(1)
+        HazardEventExpirationPopUpAlert popupAlert = scheduledAlerts.get(2)
 
         then: "The proper alerts are scheduled"
-        scheduledAlerts.size() == 2
+        scheduledAlerts.size() == 3
         consoleAlert.getEventID() == EVENT_1
         spatialAlert.getEventID() == EVENT_1
+        popupAlert.getEventID() == EVENT_1
     }
 
     def "A hazard event is issued that triggers a spatial alert immediately"() {
@@ -197,6 +202,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 1, 0, 0))
         hazardEvent.setPhenomenon("FL")
+        hazardEvent.setSubtype(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
@@ -207,6 +213,27 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         activeAlerts.size() == 2
         alert.getEventID() == EVENT_1
         alert.getFontSize() == 12
+    }
+
+    def "A hazard event is issued that triggers a pop-up alert immediately and a 2nd one later"() {
+
+        when: "The hazard is issued"
+
+        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+                new DateTime(2013, 7, 25, 15, 1, 0, 0))
+        hazardEvent.setPhenomenon("FA")
+        hazardEvent.setSubtype(null)
+
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        alertsManager.handleNotification(hazardNotification)
+        List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
+        HazardEventExpirationPopUpAlert alert = activeAlerts.get(1)
+        List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
+
+        then: "The proper alerts are activated/scheduled"
+        activeAlerts.size() == 2
+        alert.getEventID() == EVENT_1
+        scheduledAlerts.size() == 1
     }
 
     def "A hazard event is issued that does not initially result in an alert"() {
@@ -260,6 +287,51 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         then: "The alert is canceled"
         activeAlerts.size() == 0
+    }
+
+    def "Pop-up messages are correct"() {
+        when: "1 day or more"
+        HazardEventExpirationAlertConfigCriterion criterion = new HazardEventExpirationAlertConfigCriterion()
+        criterion.setExpirationTime(24)
+        criterion.setUnits(HazardEventExpirationAlertConfigCriterion.Units.HOURS)
+        HazardEventExpirationPopUpAlert alert = new HazardEventExpirationPopUpAlert(EVENT_1, criterion)
+
+        then: "Message is expressed in day ranges"
+        alert.getText() == "Event event_1 will expire in 1 to 2 days"
+
+        when: "One hour exactly"
+        criterion.setExpirationTime(1)
+
+        then: "Message is expressed in hours and minutes"
+        alert.getText().contains("in 1 hours and 0 minutes")
+
+        when: "More than one hour"
+        criterion.setExpirationTime(61)
+        criterion.setUnits(HazardEventExpirationAlertConfigCriterion.Units.MINUTES)
+
+        then: "Message is expressed in hours and minutes"
+        alert.getText().contains("in 1 hours and 1 minutes")
+
+        when: "1 minute exactly"
+        criterion.setExpirationTime(1)
+        criterion.setUnits(HazardEventExpirationAlertConfigCriterion.Units.MINUTES)
+
+        then: "Message is expressed in minutes"
+        alert.getText().contains("in 1 minutes")
+
+        when: "More than one minute"
+        criterion.setExpirationTime(2)
+        criterion.setUnits(HazardEventExpirationAlertConfigCriterion.Units.MINUTES)
+
+        then: "Message is expressed in minutes"
+        alert.getText().contains("in 2 minutes")
+
+        when: "seconds left"
+        criterion.setExpirationTime(59)
+        criterion.setUnits(HazardEventExpirationAlertConfigCriterion.Units.SECONDS)
+
+        then: "Message is expressed in seconds"
+        alert.getText().contains("in 59 seconds")
     }
 
     private HazardEventForAlertsTesting buildHazardEvent(String eventID, DateTime dateTime) {

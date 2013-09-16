@@ -53,7 +53,7 @@ public class HazardAlertCategoryConfig implements ISerializableObject {
     private Set<HazardType> hazardTypes;
 
     @XmlElement
-    private List<HazardAlertTimerConfigCriterion> criteria;
+    private List<HazardEventExpirationAlertConfigCriterion> criteria;
 
     @SuppressWarnings("unused")
     private HazardAlertCategoryConfig() {
@@ -77,7 +77,7 @@ public class HazardAlertCategoryConfig implements ISerializableObject {
      *            hazardType
      * @return the criteria corresponding to this hazardType
      */
-    public List<HazardAlertTimerConfigCriterion> getCriteria(
+    public List<HazardEventExpirationAlertConfigCriterion> getCriteria(
             HazardType hazardType) {
         if (!hazardTypes.contains(hazardType)) {
             throw new IllegalArgumentException("No criteria for hazardType "
@@ -113,7 +113,7 @@ public class HazardAlertCategoryConfig implements ISerializableObject {
      * @param configuration
      *            the configuration to set
      */
-    void setConfiguration(List<HazardAlertTimerConfigCriterion> criteria) {
+    void setConfiguration(List<HazardEventExpirationAlertConfigCriterion> criteria) {
         this.criteria = criteria;
     }
 
