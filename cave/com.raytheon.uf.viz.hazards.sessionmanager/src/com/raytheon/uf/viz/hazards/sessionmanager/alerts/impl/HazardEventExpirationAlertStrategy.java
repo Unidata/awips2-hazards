@@ -29,8 +29,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -86,7 +86,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         this.alertConfiguration = loadAlertConfiguration(sessionConfigurationManager);
         this.hazardEventManager = hazardEventManager;
         this.hazardFilterStrategy = hazardFilterStrategy;
-        this.alertFactory = new HazardEventExpirationAlertFactory();
+        this.alertFactory = new HazardEventExpirationAlertFactory(
+                sessionTimeManager);
         this.alertedEvents = Maps.newHashMap();
     }
 

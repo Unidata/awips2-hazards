@@ -98,10 +98,12 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         alertsManager.shutdown()
     }
 
-    def "Check that the proper alerts are created upon initialization"() {
+
+
+    def "The proper alerts are created upon initialization"() {
         when: "get the active alerts"
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
-        HazardEventExpirationConsoleTimer alert = activeAlerts.get(0)
+        HazardEventExpirationSpatialTimer alert = activeAlerts.get(0)
 
         then: "The proper alert is created"
         activeAlerts.size() == 1
@@ -155,7 +157,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
-        HazardEventExpirationConsoleTimer alert = scheduledAlerts.get(0)
+        HazardEventExpirationSpatialTimer alert = scheduledAlerts.get(0)
 
         then: "The proper alert is scheduled but active alerts are unchanged"
         scheduledAlerts.size() == 1
@@ -183,6 +185,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
+        List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
         HazardEventExpirationSpatialTimer spatialAlert = scheduledAlerts.get(0)
         HazardEventExpirationConsoleTimer consoleAlert = scheduledAlerts.get(1)
@@ -193,6 +196,9 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         consoleAlert.getEventID() == EVENT_1
         spatialAlert.getEventID() == EVENT_1
         popupAlert.getEventID() == EVENT_1
+
+        and: "The immediate alert is activated"
+        activeAlerts.size() == 2
     }
 
     def "A hazard event is issued that triggers a spatial alert immediately"() {
@@ -332,6 +338,18 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         then: "Message is expressed in seconds"
         alert.getText().contains("in 59 seconds")
+    }
+
+    def "Activation time based on percent completion"() {
+        when: "The criteria is 25% through event completion"
+        HazardEventExpirationAlertFactory factory = new HazardEventExpirationAlertFactory(sessionTimeManager);
+        HazardEventExpirationAlertConfigCriterion criterion = mock(HazardEventExpirationAlertConfigCriterion.class)
+        when(criterion.getUnits()).thenReturn(HazardEventExpirationAlertConfigCriterion.Units.PERCENT)
+        when(criterion.getExpirationTime()).thenReturn(25L)
+
+        then: "The activationTime is 25% between the current time and the expiration time"
+        Date activationTime = factory.computeActivationTime(criterion, event0)
+        activationTime == new DateTime(2013, 7, 25, 14, 54, 0, 0).toDate()
     }
 
     private HazardEventForAlertsTesting buildHazardEvent(String eventID, DateTime dateTime) {
