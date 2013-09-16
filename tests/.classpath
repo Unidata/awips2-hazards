@@ -35,5 +35,6 @@
 	<classpathentry kind="src" path="/com.raytheon.uf.viz.hazards.sessionmanager"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.colormap"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.hazards.utilities"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

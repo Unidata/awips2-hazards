@@ -63,7 +63,8 @@ public class ProductScriptFactory extends
      */
     private final static String[] hazardServicesSpecificUtilityDirs = {
             "bridge", "dataStorage", "logUtilities", "shapeUtilities",
-            "textUtilities", "VTECutilities", "geoUtilities" };
+            "textUtilities", "VTECutilities", "geoUtilities",
+            "localizationUtilities" };
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);

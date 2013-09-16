@@ -1,8 +1,8 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static gov.noaa.gsd.common.utilities.Utils.*;
+import static gov.noaa.gsd.common.hazards.utilities.Utils.*;
 import static org.junit.Assert.*;
-import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.hazards.utilities.Utils;
 
 import java.util.Arrays;
 import java.util.List;

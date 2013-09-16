@@ -1,6 +1,7 @@
-package gov.noaa.gsd.common.utilities;
+package gov.noaa.gsd.common.hazards.utilities;
 
 import static org.joda.time.DateTimeConstants.*;
+
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;

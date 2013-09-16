@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.utilities.Timer;
+import gov.noaa.gsd.common.hazards.utilities.Timer;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;

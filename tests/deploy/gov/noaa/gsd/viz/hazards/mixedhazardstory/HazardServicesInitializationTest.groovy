@@ -3,7 +3,7 @@ import static org.junit.Assert.*;
 
 
 
-import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.hazards.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.TestingUtils;
 import gov.noaa.gsd.viz.hazards.display.ModelDecorator
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;

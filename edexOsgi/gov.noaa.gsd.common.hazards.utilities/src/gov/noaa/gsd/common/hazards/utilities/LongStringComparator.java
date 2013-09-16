@@ -7,7 +7,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.common.utilities;
+package gov.noaa.gsd.common.hazards.utilities;
 
 import java.util.Comparator;
 

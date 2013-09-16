@@ -1,7 +1,7 @@
 /**
  * 
  */
-package gov.noaa.gsd.common.utilities;
+package gov.noaa.gsd.common.hazards.utilities;
 
 import java.util.HashMap;
 

@@ -4,7 +4,7 @@ import sys
 import os
 import traceback
 import collections
-from HazardServicesLogger import *
+from UFStatusLogger import *
 
 #
 # The purpose of this class is to take multiple structures that are
@@ -131,7 +131,7 @@ class jsonCombine :
     # ctor takes up to two objects that are either JSON strings or serializable
     # into JSON
     def __init__(self, b=None, o=None) :
-        self.logger = HazardServicesLogger.getInstance()
+        self.logger = UFStatusLogger.getInstance()
         self.final = False
         self.base = None
         self.btype = 0

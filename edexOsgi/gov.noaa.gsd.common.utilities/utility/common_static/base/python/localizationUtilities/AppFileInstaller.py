@@ -33,7 +33,7 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.auth.resp import Successful
 from dynamicserialize.dstypes.com.raytheon.uf.common.plugin.nwsauth.user import User
 
 from ufpy import ThriftClient
-from HazardServicesLogger import *
+from UFStatusLogger import *
 
 import numpy
 import sys
@@ -127,7 +127,7 @@ class AppFileInstaller():
             return codeRootAFI
         for part in pathList[0:rootPart-1] :
             codeRootAFI += "/"+part
-        HazardServicesLogger.getInstance().logMessage(\
+        UFStatusLogger.getInstance().logMessage(\
           "Accessing localization files from code base.", "Info")
         return codeRootAFI
 

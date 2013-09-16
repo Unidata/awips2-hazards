@@ -11,7 +11,7 @@ import getpass
 from jsonCombine import *
 from xml2Json import *
 import HazardServicesImporter
-from HazardServicesLogger import *
+from UFStatusLogger import *
 
 try:
     from LocalFileInstaller import *
@@ -74,7 +74,7 @@ class LocalizationInterface():
         global caveEdexPort
         self.__curUser = getpass.getuser()
         self.__defLoc = None
-        self.__logger = HazardServicesLogger.getInstance()
+        self.__logger = UFStatusLogger.getInstance()
         self.__repat = None
         self.__resrch = None
         if edexHost!="" :

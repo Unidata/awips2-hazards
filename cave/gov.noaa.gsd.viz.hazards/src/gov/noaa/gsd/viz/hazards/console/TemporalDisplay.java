@@ -9,8 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.common.utilities.DateStringComparator;
-import gov.noaa.gsd.common.utilities.LongStringComparator;
+import gov.noaa.gsd.common.hazards.utilities.DateStringComparator;
+import gov.noaa.gsd.common.hazards.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;

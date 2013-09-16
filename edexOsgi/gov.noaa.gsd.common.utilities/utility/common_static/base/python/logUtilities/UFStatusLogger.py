@@ -14,6 +14,8 @@ Date         Ticket#    Engineer    Description
 ------------ ---------- ----------- --------------------------
 Jan 11, 2013            Bryon.Lawrence      Initial creation
 Apr 18, 2013            Jim Ramer           Enabled formal alertviz logging.
+Sep 16, 2013            Bryon.Lawrence      Renamed for general use
+                                            outside of HazardServices.
 
 @author Bryon.Lawrence@noaa.gov
 @version 1.0
@@ -28,9 +30,9 @@ try :
 except :
     import logging
 
-class HazardServicesLogger():
+class UFStatusLogger():
     
-    fileName = '/tmp/HazardServices.log'
+    fileName = '/tmp/UFStatusLogger.log'
     instanceFactory = {}
     
     def __init__(self, package, module):
@@ -53,8 +55,8 @@ class HazardServicesLogger():
             self._ufStatusAvailable = True
         except:    
             timeString = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            if len(HazardServicesLogger.instanceFactory)==0 :
-                f = open(HazardServicesLogger.fileName, 'a')
+            if len(UFStatusLogger.instanceFactory)==0 :
+                f = open(UFStatusLogger.fileName, 'a')
                 f.write(timeString + '\n')
                 traceback.print_exc(file=f)
                 f.close()
@@ -65,7 +67,7 @@ class HazardServicesLogger():
         This is a static method. It does not take 
         self as an argument.
         @return: a singleton instance of the 
-                 HazardServicesLogger
+                 UFStatusLogger
         """
 
         package = "unknown.package"
@@ -92,12 +94,12 @@ class HazardServicesLogger():
         except :
             pass
 
-        thisInstance = HazardServicesLogger.instanceFactory.get(package+module)
+        thisInstance = UFStatusLogger.instanceFactory.get(package+module)
         if thisInstance != None :
             return thisInstance
 
-        thisInstance = HazardServicesLogger(package, module)
-        HazardServicesLogger.instanceFactory[package+module] = thisInstance
+        thisInstance = UFStatusLogger(package, module)
+        UFStatusLogger.instanceFactory[package+module] = thisInstance
 
         return thisInstance
     
@@ -105,7 +107,7 @@ class HazardServicesLogger():
                    category="WORKSTATION", source="CAVE"):
         """
         Logs a message to the AWIPS II UFStatus utilities
-        if available. Otherwise, logs to /tmp/HazardServices.log.
+        if available. Otherwise, logs to /tmp/UFStatusLogger.log.
         @param message: The message to log 
         @param status: The level of importance:  Fatal, Error,
                                                  Warning, Info,
@@ -142,7 +144,7 @@ class HazardServicesLogger():
             #
             # Write to a file in /tmp
             timeString = strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            f = open(HazardServicesLogger.fileName, 'a')
+            f = open(UFStatusLogger.fileName, 'a')
             output = status + '|' + category + '|' + timeString + '\n'
             f.write(output)
             f.write(message + '\n')

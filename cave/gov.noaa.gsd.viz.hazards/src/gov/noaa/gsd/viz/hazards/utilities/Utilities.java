@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.hazards.utilities.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -587,6 +587,7 @@ public class Utilities {
             "python" + File.separator + "shapeUtilities",
             "python" + File.separator + "textUtilities",
             "python" + File.separator + "VTECutilities",
+            "python" + File.separator + "localizationUtilities",
             "python" + File.separator + "events" + File.separator + "utilities",
             "python" + File.separator + "events" + File.separator
                     + "recommenders" + File.separator

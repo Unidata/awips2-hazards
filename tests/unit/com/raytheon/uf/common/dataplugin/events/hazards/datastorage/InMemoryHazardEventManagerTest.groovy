@@ -20,7 +20,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.Hazard
 import com.raytheon.uf.common.time.TimeRange
 import com.vividsolutions.jts.geom.Geometry
 
-import gov.noaa.gsd.common.utilities.DateTimes
+import gov.noaa.gsd.common.hazards.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.HazardEventsBuilder
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 

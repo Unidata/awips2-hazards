@@ -5,25 +5,8 @@ Bundle-SymbolicName: gov.noaa.gsd.common.utilities
 Bundle-Version: 1.0.0
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
- com.google.guava;bundle-version="1.0.0",
  com.raytheon.uf.common.auth;bundle-version="1.12.1174",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Export-Package: com.google.gson,
- com.google.gson.annotations,
- com.google.gson.internal,
- com.google.gson.internal.bind,
- com.google.gson.reflect,
- com.google.gson.stream,
- gov.noaa.gsd.common.utilities,
- org.joda.time,
- org.joda.time.base,
- org.joda.time.chrono,
- org.joda.time.convert,
- org.joda.time.field,
- org.joda.time.format,
- org.joda.time.tz
-Bundle-ClassPath: .,
- gson-2.1.jar,
- joda-time-2.0.jar
+Bundle-ClassPath: .
 Import-Package: com.google.common.collect

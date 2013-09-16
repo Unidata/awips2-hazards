@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards;
 
-import gov.noaa.gsd.common.utilities.DateTimes;
+import gov.noaa.gsd.common.hazards.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.jsonutilities.ComparableLazilyParsedNumber;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;

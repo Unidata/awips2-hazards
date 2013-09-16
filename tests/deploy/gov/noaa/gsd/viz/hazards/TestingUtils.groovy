@@ -12,7 +12,7 @@ package gov.noaa.gsd.viz.hazards
 import java.io.File;
 import java.util.List;
 
-import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.hazards.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel
 import gov.noaa.gsd.viz.hazards.display.ModelDecorator;
 import gov.noaa.gsd.viz.hazards.utilities.FileUtilities
