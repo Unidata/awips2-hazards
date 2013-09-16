@@ -7,14 +7,17 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
@@ -26,6 +29,8 @@ import java.util.List;
 import org.eclipse.swt.SWT;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -46,6 +51,9 @@ import com.vividsolutions.jts.geom.Point;
  * November 2011             Bryon.Lawrence   Initial creation
  * Jul 15, 2013      585     Chris.Golden     Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Sep 10, 2013      782     Bryon.Lawrence   Updated getShapesForEvents to 
+ *                                            consider storm track events
+ * 
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -309,6 +317,7 @@ public class SelectionAction extends NonDrawingAction {
 
                 if ((selectedElement != null)
                         && (selectedElement instanceof IHazardServicesShape)) {
+
                     IHazardServicesShape eventShape = (IHazardServicesShape) selectedElement;
                     String jsonString = JSONUtilities.createModifiedHazardJSON(
                             eventShape, getShapesForEvent(eventShape.getID()),
@@ -335,10 +344,45 @@ public class SelectionAction extends NonDrawingAction {
                                     .equals(HazardServicesLine.class))) {
                         coords = ((Line) ghostEl).getPoints();
                     }
-                    String jsonString = JSONUtilities.createModifiedHazardJSON(
-                            origShape, getShapesForEvent(origShape.getID()),
-                            coords);
+                    String jsonString;
+                    if (selectedDEclass.equals(HazardServicesSymbol.class)) {
+                        Symbol movedSymbol = (Symbol) ghostEl;
+
+                        HazardServicesSymbol origSymbol = (HazardServicesSymbol) selectedDE;
+                        String eventID = origSymbol.getID();
+                        Coordinate newCoord = movedSymbol.getLocation();
+
+                        // Create JSON for this modified object.
+                        // Convert the object to JSON.
+                        Dict modifiedAreaObject = new Dict();
+
+                        // Look for a pointID. If it is there, then
+                        // include it in the JSON message. If it is
+                        // not there, then don't include it in the message.
+                        long pointID = origSymbol.getPointID();
+
+                        modifiedAreaObject
+                                .put(HazardConstants.POINTID, pointID);
+
+                        modifiedAreaObject.put(
+                                Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
+                        modifiedAreaObject.put(
+                                Utilities.HAZARD_EVENT_SHAPE_TYPE,
+                                Utilities.HAZARD_EVENT_SHAPE_TYPE_DOT);
+                        double[] newLonLat = new double[2];
+                        newLonLat[0] = newCoord.x;
+                        newLonLat[1] = newCoord.y;
+                        modifiedAreaObject.put(
+                                HazardConstants.SYMBOL_NEW_LAT_LON, newLonLat);
+                        jsonString = modifiedAreaObject.toJSONString();
+
+                    } else {
+                        jsonString = JSONUtilities.createModifiedHazardJSON(
+                                origShape,
+                                getShapesForEvent(origShape.getID()), coords);
+                    }
                     getDrawingLayer().notifyModifiedEvent(jsonString);
+
                 }
             } else if (!allowPanning) {
                 /*
@@ -554,12 +598,9 @@ public class SelectionAction extends NonDrawingAction {
                             getSpatialPresenter().getView().setCursor(
                                     SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
 
-                            // Determine if the vertices on this shape
-                            // may be edited.
-                            LineString editableVertices = ((IHazardServicesShape) nadc)
-                                    .getEditableVertices();
+                            IHazardServicesShape shape = (IHazardServicesShape) nadc;
 
-                            if (editableVertices != null) {
+                            if (shape.isEditable()) {
                                 // Set the flag indicating that the handle
                                 // bars on the selected polygon may be
                                 // displayed.
@@ -571,15 +612,15 @@ public class SelectionAction extends NonDrawingAction {
                                 Coordinate mouseScreenCoord = new Coordinate(x,
                                         y);
 
-                                GeometryFactory gf = editableVertices
-                                        .getFactory();
+                                GeometryFactory gf = shape
+                                        .getEditableVertices().getFactory();
 
                                 Point clickPointScreen = gf
                                         .createPoint(mouseScreenCoord);
 
                                 // Create a line string with screen coordinates.
-                                Coordinate[] shapeCoords = editableVertices
-                                        .getCoordinates();
+                                Coordinate[] shapeCoords = shape
+                                        .getEditableVertices().getCoordinates();
 
                                 Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
 
@@ -758,12 +799,10 @@ public class SelectionAction extends NonDrawingAction {
             AbstractDrawableComponent selectedElement = getDrawingLayer()
                     .getSelectedHazardIHISLayer();
 
-            if ((selectedElement != null)
-                    && (moveType != null)
+            if ((selectedElement != null) && (moveType != null)
                     && (moveType == MoveType.SINGLE_POINT)
                     && (movePointIndex >= 0)
-                    && (((IHazardServicesShape) selectedElement)
-                            .getEditableVertices() != null)) {
+                    && (((IHazardServicesShape) selectedElement).isEditable())) {
                 List<Coordinate> coords = selectedElement.getPoints();
 
                 // For now, make sure there are at least three points left for
@@ -819,24 +858,52 @@ public class SelectionAction extends NonDrawingAction {
             List<AbstractDrawableComponent> hazards = getDrawingLayer()
                     .getDataManager().getActiveLayer().getDrawables();
 
+            /*
+             * This is tricky, but the storm track tool displays geometries
+             * which are not actually part of the hazard area (e.g. the line and
+             * track points). Only the polygon should be included in the hazard
+             * geometries.
+             */
             if (hazards != null) {
-                for (AbstractDrawableComponent hazard : hazards) {
-                    Class<?> hazardClass = hazard.getClass();
 
-                    if (((hazardClass.equals(HazardServicesLine.class))
-                            || (hazardClass.equals(HazardServicesPolygon.class))
-                            || (hazardClass.equals(HazardServicesPoint.class) && ((HazardServicesPoint) hazard)
-                                    .isOuter() == false) || (hazardClass
-                                .equals(HazardServicesSymbol.class)))
-                            && ((IHazardServicesShape) hazard).getID().equals(
-                                    eventID)) {
-                        shapes.add((IHazardServicesShape) hazard);
+                IHazardEvent event = getDrawingLayer().getAppBuilder()
+                        .getSessionManager().getEventManager()
+                        .getEventById(eventID);
+
+                if (HazardServicesDrawableBuilder.forModifyingStormTrack(event)) {
+
+                    for (AbstractDrawableComponent hazard : hazards) {
+                        Class<?> hazardClass = hazard.getClass();
+
+                        if (hazardClass.equals(HazardServicesPolygon.class)
+                                && ((IHazardServicesShape) hazard).getID()
+                                        .equals(eventID)) {
+                            shapes.add((IHazardServicesShape) hazard);
+                        }
                     }
+
+                } else {
+
+                    for (AbstractDrawableComponent hazard : hazards) {
+                        Class<?> hazardClass = hazard.getClass();
+
+                        if (((hazardClass.equals(HazardServicesLine.class))
+                                || (hazardClass
+                                        .equals(HazardServicesPolygon.class))
+                                || (hazardClass
+                                        .equals(HazardServicesPoint.class) && ((HazardServicesPoint) hazard)
+                                        .isOuter() == false) || (hazardClass
+                                    .equals(HazardServicesSymbol.class)))
+                                && ((IHazardServicesShape) hazard).getID()
+                                        .equals(eventID)) {
+                            shapes.add((IHazardServicesShape) hazard);
+                        }
+                    }
+
                 }
             }
 
             return shapes;
         }
-
     }
 }

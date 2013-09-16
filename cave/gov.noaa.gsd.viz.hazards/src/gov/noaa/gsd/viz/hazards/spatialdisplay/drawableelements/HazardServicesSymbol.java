@@ -207,4 +207,14 @@ public class HazardServicesSymbol extends Symbol implements
     public long getPointID() {
         return pointID;
     }
+
+    @Override
+    public boolean isEditable() {
+        return false;
+    }
+
+    @Override
+    public void setIsEditable(boolean isEditable) {
+        throw new UnsupportedOperationException("Symbols are never editable");
+    }
 }

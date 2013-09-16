@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.IMultiPoint;
@@ -115,7 +116,8 @@ public class JSONUtilities {
             } else if (shape.getClass().equals(HazardServicesPolygon.class)) {
                 newJsonShape = new Polygon("", "true", "true", "true", "", 2,
                         "", "", coords);
-            } else if (shape.getClass().equals(HazardServicesPoint.class)) {
+            } else if (shape.getClass().equals(HazardServicesPoint.class)
+                    || shape.getClass().equals(HazardServicesSymbol.class)) {
                 newJsonShape = new Point("", "true", "true", "true", "", coord,
                         eventID);
             } else {

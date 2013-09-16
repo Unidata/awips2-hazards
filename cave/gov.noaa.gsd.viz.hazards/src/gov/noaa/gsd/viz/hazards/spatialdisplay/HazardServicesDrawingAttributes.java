@@ -237,13 +237,13 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         return colors;
     }
 
-    protected List<Coordinate> buildCircleCoordinates(double radius,
+    public List<Coordinate> buildCircleCoordinates(double radius,
             Coordinate centerPointInWorld) {
         Coordinate centerCoordInPixels = worldToPixel(new Coordinate(
-                centerPointInWorld.x, centerPointInWorld.y));
+                centerPointInWorld.x, centerPointInWorld.y, 0.0));
 
         Coordinate circumferenceCoordInPixels = new Coordinate(
-                centerCoordInPixels.x - radius, centerCoordInPixels.y);
+                centerCoordInPixels.x - radius, centerCoordInPixels.y, 0.0);
 
         Coordinate circumferenceCoordInWorld = pixelToWorld(circumferenceCoordInPixels);
 
@@ -261,9 +261,10 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
     }
 
     protected Coordinate pixelToWorld(Coordinate coords) {
-        double[] pixelAsArray = new double[] { coords.x, coords.y };
+        double[] pixelAsArray = new double[] { coords.x, coords.y, coords.z };
         double[] worldAsArray = descriptor.pixelToWorld(pixelAsArray);
-        Coordinate result = new Coordinate(worldAsArray[0], worldAsArray[1]);
+        Coordinate result = new Coordinate(worldAsArray[0], worldAsArray[1],
+                worldAsArray[2]);
         return result;
     }
 

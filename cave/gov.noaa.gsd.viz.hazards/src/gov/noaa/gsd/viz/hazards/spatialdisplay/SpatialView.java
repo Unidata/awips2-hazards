@@ -827,7 +827,7 @@ public class SpatialView implements
             break;
 
         case STORM_TOOL_DRAG_DOT_DRAWING:
-            spatialDisplay.drawEventAreas(false);
+            spatialDisplay.drawStormTrackDot();
             break;
 
         case DRAW_BY_AREA:

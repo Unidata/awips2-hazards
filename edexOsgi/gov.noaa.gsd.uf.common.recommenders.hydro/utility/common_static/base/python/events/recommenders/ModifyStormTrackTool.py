@@ -51,11 +51,31 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         return None
 
+    def indexOfClosest(self, value, values):
+        '''
+        @summary: Returns the index of the member of list 'values' that is
+                  closest to 'value'
+        @param value: Arbitrary number
+        @param values: List of numbers.
+        @return: closest index or -1 if values is empty list.
+        '''
+        closestIndex = -1
+        closestDifference = 0
+        tryIndex = 0
+        for tryValue in values :
+            tryDifference = abs(tryValue-value)
+            if closestIndex<0 or tryDifference<closestDifference :
+                closestDifference = tryDifference
+                closestIndex = tryIndex
+            tryIndex = tryIndex+1
+        return closestIndex
+
     # Note that since there are hidden millisecond to second conversions
     # (and vice-versa) in the underlying code, we always allow a slop of
     # 999 milliseconds when comparing two millisecond times for equivalence.
     
-    def executeImpl(self, sessionAttributes, dialogInputMap, spatialInputMap):
+    def updateEventAttributes(self, sessionAttributes, eventAttributes, \
+                    dialogInputMap, spatialInputMap):
         '''
         @param sessionAttributes: Session attributes associated with eventSet.
         @param dialogInputMap: A map containing user selections from the dialog
@@ -64,21 +84,23 @@ class Recommender(RecommenderTemplate.Recommender):
         definedSpatialInfo() routine
         @return: updated session attributes.
         '''
-
         staticSettings = sessionAttributes["staticSettings"]
-        eventDict = sessionAttributes["selectedEventDict"]
+        eventDict = eventAttributes
         modifyDict = spatialInputMap
 
-        defaultDuration = staticSettings.get("defaultDuration", 3600*1000)
         framesInfo = sessionAttributes.get("framesInfo")
         sessionFrameTimes = framesInfo["frameTimeList"]
         lastFrameIndex = len(sessionFrameTimes)-1
         currentTime = long(sessionAttributes["currentTime"])
+        currentFrameIndex = framesInfo["frameIndex"]
+        currentFrameTime = sessionFrameTimes[currentFrameIndex]
         startTime = eventDict["startTime"]
         endTime = eventDict["endTime"]
 
-        # Get information about 'dragmeto' point.
-        draggedPoint = spatialInputMap["newLonLat"]
+        # Get information about new 'dragmeto' point.
+        draggedPoint = spatialInputMap.get("newLatLon")
+        if draggedPoint == None :
+            draggedPoint = spatialInputMap["newLonLat"]
         draggedPointTime = spatialInputMap["pointID"]
         if draggedPointTime < VERIFY_MILLISECONDS :
             draggedPointTime = draggedPointTime * MILLIS_PER_SECOND
@@ -87,16 +109,11 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # Filter our shape list to remove any points that do not match a frame,
         # note information about the earliest and latest point, plus polygon.
-        eventShapes = eventDict.get("shapes", [])
+        eventShapes = eventDict.get("trackPoints", [])
         shapeList = []
         time1 = 0
         time2 = 0
-        polygonShape = None
         for eventShape in eventShapes :
-            if eventShape.get("shapeType")=="polygon" :
-                if "points" in eventShape :
-                    polygonShape = eventShape
-                continue
             if eventShape.get("shapeType")!="point" :
                 continue
             shapeTime = eventShape.get("pointID", 0)
@@ -114,26 +131,26 @@ class Recommender(RecommenderTemplate.Recommender):
             elif shapeTime>time2 :
                 time2 = shapeTime
                 latLon2 = LatLonCoord(shapePoint[1], shapePoint[0])
-            for oneFrTim in sessionFrameTimes :
-                dtNow = oneFrTim-shapeTime
+            for frameTime in sessionFrameTimes :
+                dtNow = frameTime-shapeTime
                 if dtNow>-TIME_EQUIVALENCE_TOLERANCE and \
                    dtNow<TIME_EQUIVALENCE_TOLERANCE :
                     shapeList.append(eventShape)
+                    shapeList[-1]["pointID"] = frameTime
                     break
  
         # Compute a working delta time between frames.
+        endFrameTime = sessionFrameTimes[lastFrameIndex]
         if lastFrameIndex<1 :
             frameTimeStep = endTime-startTime
         else :
-            frameTimeSpan = \
-                 sessionFrameTimes[lastFrameIndex]-sessionFrameTimes[0]
+            frameTimeSpan = endFrameTime-sessionFrameTimes[0]
             frameTimeStep = frameTimeSpan/lastFrameIndex
 
         # Note cases where we force ourselves back to the previous state.
         revert = False
-        if draggedPointTime>sessionFrameTimes[lastFrameIndex]+frameTimeStep/4 :
+        if draggedPointTime>endFrameTime+frameTimeStep/4 :
             revert = True
-        currentFrameTime = long(sessionAttributes.get("selectedTime", 0))
         dtNow = currentFrameTime-draggedPointTime
         if dtNow<-TIME_EQUIVALENCE_TOLERANCE or \
            dtNow>TIME_EQUIVALENCE_TOLERANCE :
@@ -143,13 +160,13 @@ class Recommender(RecommenderTemplate.Recommender):
         pointTrack = PointTrack()
         if revert :
             pointTrack.twoLatLonOrigTimeInit_( \
-                     latLon1, time1, latLon2, time2, startTime)
+                         latLon1, time1, latLon2, time2, startTime)
 
         # Try to match up our pivots with our points.
-        pivotList = eventDict.get("pivots", [])
-        pivotLatLonList = []
-        pivotTimeList = []
-        for pivot in pivotList :
+        inputPivotTimes = eventDict.get("pivotTimes", [])
+        pivotLatLonWorking = []
+        pivotTimeWorking = []
+        for pivot in inputPivotTimes :
             closestTime = 0
             closestDt = 99999999999
             closestLatLon = None
@@ -159,7 +176,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 shapeTime = shape.get("pointID", 0)
                 if shapeTime==0 :
                     continue
-                if shapeTime in pivotTimeList :
+                if shapeTime in pivotTimeWorking :
                     continue
                 shapePoint = shape.get("point", [])
                 if len(shapePoint)<2 :
@@ -176,15 +193,15 @@ class Recommender(RecommenderTemplate.Recommender):
                     break
             if closestTime==0:
                 continue
-            pivotLatLonList.append(closestLatLon)
-            pivotTimeList.append(closestTime)
+            pivotLatLonWorking.append(closestLatLon)
+            pivotTimeWorking.append(closestTime)
 
         # locate the first matched pivot that is not for the same time as
         # our dragged point.
         i = 0
-        nPivots = len(pivotTimeList)
+        nPivots = len(pivotTimeWorking)
         while i<nPivots :
-            dtNow = pivotTimeList[i]-draggedPointTime
+            dtNow = pivotTimeWorking[i]-draggedPointTime
             if dtNow<-TIME_EQUIVALENCE_TOLERANCE or \
                dtNow>TIME_EQUIVALENCE_TOLERANCE :
                 break
@@ -202,22 +219,28 @@ class Recommender(RecommenderTemplate.Recommender):
         latLon0 = LatLonCoord(draggedPoint[1], draggedPoint[0])
         motion0 = Motion(stormMotion["speed"], stormMotion["bearing"])
         if revert :
-            pass
+            pivotTimeList = pivotTimeWorking
+            pivotLatLonList = pivotLatLonWorking
         elif i<nPivots :
-            latLon2 = pivotLatLonList[i]
-            time2 = pivotTimeList[i]
+            latLon2 = pivotLatLonWorking[i]
+            time2 = pivotTimeWorking[i]
             pointTrack.twoLatLonOrigTimeInit_( \
                  latLon0, draggedPointTime, latLon2, time2, startTime)
-            pivotList = [draggedPointTime, pivotTimeList[i] ]
-            pivotLatLonList = [latLon0, pivotLatLonList[i] ]
+            pivotTimeList = [draggedPointTime, time2 ]
+            pivotLatLonList = [latLon0, latLon2 ]
         else :
             pointTrack.latLonMotionOrigTimeInit_( \
                  latLon0, draggedPointTime, motion0, startTime)
-            pivotList = [draggedPointTime]
+            pivotTimeList = [draggedPointTime]
             pivotLatLonList = [latLon0]
+        pivotList = []
+        for pivotTime in pivotTimeList :
+            pivotList.append( \
+              self.indexOfClosest(pivotTime, sessionFrameTimes) )
 
         # Create points for our frames.
         shapeList = []
+        trackCoordinates = []
         for frameTime in sessionFrameTimes :
             frameLatLon = pointTrack.trackPoint(frameTime)
             trackPointShape = {}
@@ -225,6 +248,7 @@ class Recommender(RecommenderTemplate.Recommender):
             trackPointShape["shapeType"] = "point"
             trackPointShape["pointID"] = frameTime
             trackPointShape["point"] = [frameLatLon.lon, frameLatLon.lat]
+            trackCoordinates.append([frameLatLon.lon, frameLatLon.lat])
             shapeList.append(trackPointShape)
 
         # Reacquire the motion from the start of the event instead of the
@@ -240,7 +264,6 @@ class Recommender(RecommenderTemplate.Recommender):
         # to the last frame, so we add the buffer of 1/3 the time step.
         futureTimeList = [endTime]
         nexttime = endTime-frameTimeStep
-        endFrameTime = sessionFrameTimes[lastFrameIndex]
         endFrameTime = endFrameTime + frameTimeStep/3
         while nexttime > endFrameTime :
             futureTimeList.insert(0, nexttime)
@@ -254,69 +277,49 @@ class Recommender(RecommenderTemplate.Recommender):
             futurePointShape["shapeType"] = "point"
             futurePointShape["pointID"] = futureTime
             futurePointShape["point"] = [futureLatLon.lon, futureLatLon.lat]
+            trackCoordinates.append([futureLatLon.lon, futureLatLon.lat])
             shapeList.append(futurePointShape)
 
         # Return type should just be set to an object for now.
-        #returnType = runDict.get("returnType")
         returnType = "pyObjects"
 
         # Use existing polygon or ask for new one, as appropriate.
+        hazardPolygon = None
         polyModified = eventDict.get("polyModified", False)
         if revert :
             polyModified = True
-        if polygonShape == None :
-            polyModified = False
-        if polyModified:
-            hazardPolygon = polygonShape["points"]
-            shapeList.append(polygonShape)
         if not polyModified:
             latLonPoly = pointTrack.polygonDef(startTime, endTime)
             hazardPolygon = []
             for latLonVertex in latLonPoly :
                 hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
-            oneshape = { "include" : "true" }
-            oneshape["shapeType"] = "polygon"
-            oneshape["points"] = hazardPolygon
-            shapeList.append(oneshape)
 
         # Encode our set of working pivot locations and times into our new
         # list of "draggedPoints".
-        draggedPoints = []
-        nPivots = len(pivotList)
-        i = 0
-        while i < nPivots :
-            latLon = pivotLatLonList[i]
-            draggedPoints.append( \
-              (  ( latLon.lon, latLon.lat ) , pivotList[i]  )    )
-            i = i + 1
-        eventDict["draggedPoints"] = draggedPoints
+        # draggedPoints = []
+        # nPivots = len(pivotList)
+        # i = 0
+        # while i < nPivots :
+        #     latLon = pivotLatLonList[i]
+        #     draggedPoints.append( \
+        #       (  ( latLon.lon, latLon.lat ) , pivotList[i]  )    )
+        #     i = i + 1
+        # eventDict["draggedPoints"] = draggedPoints
 
         # Finalize our set of output attributes.
-        phenomena = eventDict["phen"]
-        sigTrn = { "W" : "WARNING", "A" : "WATCH", "Y" : "ADVISORY" }
-        significance = sigTrn.get(eventDict.get("sig"))
-        if significance == None :
-            significance = eventDict.get("sig")
-        subtype = eventDict.get("subType")
-        if subtype == "" :
-            subtype = None
-        hazardState = eventDict.get("state", "")
-        if hazardState != "" :
-            hazardState = hazardState.upper()
-        eventDict["shapes"] = shapeList
+        eventDict["trackPoints"] = shapeList
         eventDict["stormMotion"] = stormMotion
         eventDict["pivots"] = pivotList
+        eventDict["pivotTimes"] = pivotTimeList
 
-        # Cache some stuff the logic that composes the returned event set needs.
-        self.forExecute = {}
-        self.forExecute["eventID"] = eventDict["eventID"]
-        self.forExecute["SiteID"] =  staticSettings["defaultSiteID"]
-        self.forExecute["currentTime"] = currentTime
-        self.forExecute["startTime"] = startTime
-        self.forExecute["endTime"] = endTime
-        self.forExecute["phenomena"] = phenomena
-        self.forExecute["significance"] = significance
-        self.forExecute["hazardPolygon"] = hazardPolygon
+        # Cache some stuff the logic that composes the returned Java backed
+        # HazardEvent object needs. We will make this a temporary member of the
+        # attributes, which the parent method execute() will delete. This way,
+        # the correctness of this information can be evaluated in unit tests.
+        forJavaObj = {}
+        forJavaObj["track"] = trackCoordinates
+        forJavaObj["hazardPolygon"] = hazardPolygon
+        eventDict["forJavaObj"] = forJavaObj
 
         return eventDict
     
@@ -336,50 +339,40 @@ class Recommender(RecommenderTemplate.Recommender):
         import EventFactory
         import GeometryFactory
 
-        # Try to pick up the existing event from what is passed in.
-        sessionAttributes = eventSet.getAttributes()
+        # Pick up the existing event from what is passed in.
+        layerEventId = spatialInputMap.get("eventID")
         events = eventSet.getEvents()
-        hazardEvent = None
-        for e in events :
-            hazardEvent = e
-            break
+        haveEvent = False
+        for event in events :
+            if event.getEventID() == layerEventId :
+                hazardEvent = event
+                haveEvent = True
+                break
+        if not haveEvent :
+            print "No matching input event in ModifyStormTrackTool.py"
+        sessionAttributes = eventSet.getAttributes()
+        eventAttributes = hazardEvent.getHazardAttributes()
 
-        # Eventually we should have an event passed in to us, which we will
-        # only have to modify.
-        # if hazardEvent == None :
-        #     return []
+        # updateEventAttributes does all the stuff we can safely do in a unit
+        # test, basically whatever does not require Jep.  Remove "stormTrackLine"
+        # element, as it is not JSON serializable, which messes up unit tests.
+        del eventAttributes["stormTrackLine"]
+        resultDict = self.updateEventAttributes(sessionAttributes, \
+                                eventAttributes,  dialogInputMap, spatialInputMap)
 
+        # Peel out stuff that is piggybacking on the attributes but is really
+        # meant to go into the HazardEvent.
+        forJavaObj = resultDict["forJavaObj"]
+        del resultDict["forJavaObj"]
 
-        # executeImpl does all the stuff we can safely do in a unit test,
-        # basically whatever does not require Jep
-        resultDict = self.executeImpl(sessionAttributes, \
-                                      dialogInputMap, spatialInputMap)
-
-        # Start creating our HazardEvent object, which is really backed by a
-        # Java object.  str cast accounts for occasional json promotion of ascii
-        # strings to unicode strings, which makes JEP barf.
-        hazardEvent = EventFactory.createEvent()
-        hazardEvent.setEventID(str(self.forExecute["eventID"]))
-        hazardEvent.setSiteID(str(self.forExecute["SiteID"]))
-        hazardEvent.setHazardState("PENDING")
-
-        # New recommender framework requires some datetime objects, which must
-        # be in units of seconds.
-        hazardEvent.setIssueTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["currentTime"]/MILLIS_PER_SECOND) )
-        hazardEvent.setStartTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["startTime"]/MILLIS_PER_SECOND) )
-        hazardEvent.setEndTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["endTime"]/MILLIS_PER_SECOND) )
-
-        hazardEvent.setPhenomenon(self.forExecute["phenomena"])
-        hazardEvent.setSignificance(self.forExecute["significance"])
-        geometry = GeometryFactory.createPolygon( \
-                  self.forExecute["hazardPolygon"])
-        hazardEvent.setGeometry(geometry)
-        hazardEvent.setHazardMode("O")
+        # Update our event and return it.
+        resultDict["stormTrackLine"] = \
+                   GeometryFactory.createLineString(forJavaObj["track"])
+        hazardPolygon = forJavaObj.get("hazardPolygon")
+        if hazardPolygon != None :
+            geometry = GeometryFactory.createPolygon(hazardPolygon)
+            hazardEvent.setGeometry(geometry)
         hazardEvent.setHazardAttributes(resultDict)
-        
         return hazardEvent
 
     def toString(self):

@@ -75,6 +75,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Jul 19, 2013 1257       bsteffen    Notification support for session manager.
+ * Sep 10, 2013  752       blawrenc    Modified addEvent to check if the event
+ *                                     being added already exists.
  * 
  * </pre>
  * 
@@ -226,6 +228,23 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     protected IHazardEvent addEvent(IHazardEvent event, boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
+
+        /*
+         * Need to account for the case where the event being added already
+         * exists in the event manager. This can happen with recommender
+         * callbacks. For example, the ModifyStormTrackTool will modify
+         * information corresponding to an existing event.
+         */
+        String eventID = oevent.getEventID();
+
+        if (eventID.length() > 0) {
+            IHazardEvent existingEvent = getEventById(eventID);
+
+            if (existingEvent != null) {
+                SessionEventUtilities.mergeHazardEvents(oevent, existingEvent);
+                return existingEvent;
+            }
+        }
 
         if (event.getState() == null || event.getState() == HazardState.PENDING
                 || event.getState() == HazardState.POTENTIAL) {

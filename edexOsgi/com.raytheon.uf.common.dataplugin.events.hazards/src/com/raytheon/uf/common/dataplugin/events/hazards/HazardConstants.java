@@ -176,7 +176,7 @@ public final class HazardConstants {
 
     public static final String GEOMETRY = "geometry";
 
-    public static final String POINTID = "pointID";
+    public static final String SYMBOL_NEW_LAT_LON = "newLatLon";
 
     public static final String STARTTIME = "startTime";
 
@@ -269,8 +269,22 @@ public final class HazardConstants {
 
     public static final String GEOMETRY_MAP_NAME_KEY = "geometryMapName";
 
-    /*
-     * Constants related to Spatial Action types.
-     */
     public static final String NEW_EVENT_SHAPE = "NewEventShape";
+
+    /*
+     * TODO The following need to be moved to something specific to storm track
+     */
+    public static final String POINTID = "pointID";
+
+    public static final String SHAPES = "shapes";
+
+    public static final String PIVOTS = "pivots";
+
+    public static final String TRACK_POINTS = "trackPoints";
+
+    public static final String STORM_TRACK_LINE = "stormTrackLine";
+
+    public static final String MODIFY_STORM_TRACK_TOOL = "ModifyStormTrackTool";
+
+    public static final String STATIC_SETTINGS = "staticSettings";
 }

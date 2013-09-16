@@ -52,7 +52,77 @@ class Recommender(RecommenderTemplate.Recommender):
                       "label":"Drag Me To Storm", "returnType":"Point"}
         return resultDict
 
-    def executeImpl(self, sessionAttributes, dialogInputMap, spatialInputMap):
+    def indexOfClosest(self, value, values):
+        '''
+        @summary: Returns the index of the member of list 'values' that is
+                  closest to 'value'
+        @param value: Arbitrary number
+        @param values: List of numbers.
+        @return: closest index or -1 if values is empty list.
+        '''
+        closestIndex = -1
+        closestDifference = 0
+        tryIndex = 0
+        for tryValue in values :
+            tryDifference = abs(tryValue-value)
+            if closestIndex<0 or tryDifference<closestDifference :
+                closestDifference = tryDifference
+                closestIndex = tryIndex
+            tryIndex = tryIndex+1
+        return closestIndex
+
+    def getInitialEventDuration(self, staticSettings) :
+        '''
+        @summary: Focal points can customize this method to change the initial
+                  duration of the event.
+        @param staticSettings: "staticSettings" member of session attributes.
+        @return: Initial length of Hazard Event.
+        '''
+        # Use the default duration for the current setting, but also assume it
+        # does not make much sense for an event associated with a tracked
+        # object to last more than three hours.
+        initialDuration = staticSettings.get("defaultDuration", MILLIS_PER_HOUR)
+        if initialDuration > 3 * MILLIS_PER_HOUR :
+            initialDuration = 3 * MILLIS_PER_HOUR
+        return initialDuration
+
+    def getInitialWxEventMovement(self, duration) :
+        '''
+        @summary: Focal points can customize this method to change the initial
+                  motion of the weather event.
+        @param duration: "staticSettings" member of session attributes.
+        @return: A dictionary containing the "speed" and "bearing".
+        '''
+        # For now default the initial motion and bearing.  The longer the
+        # initial duration, the slower our initial motion.
+        defaultSpeed = 20  # kts
+        motion = {}
+        motion["speed"] = defaultSpeed * 30 * MILLIS_PER_MINUTE / duration
+        motion["bearing"] = 225  # from SW
+        return motion
+
+    def initializeTypeOfEvent(self, staticSettings) :
+        '''
+        @summary: Focal points can customize this method to change the initial
+                  phenomena, significance, and subtype for the hazard.
+        @param staticSettings: "staticSettings" member of session attributes.
+        @return: A tuple containing the phenomena, significance, and subtype
+        '''
+        # Eventually we want the hazard type to be totally undefined when
+        # we fire up the tracker.  However, for now we can make the initial
+        # type be sensitive to the current setting.
+        phenomena = "TO"
+        significance = "WARNING"
+        subType = "TO.W"
+        visibleTypes = staticSettings.get("visibleTypes")
+        if visibleTypes != None :
+            if "FF.W.Convective" in visibleTypes :
+                phenomena = "FF"
+                subType = "FF.W.Convective"
+        return ( phenomena, significance, subType )
+
+    def updateEventAttributes(self, sessionAttributes, dialogInputMap, \
+                                spatialInputMap):
         '''
         @param sessionAttributes: Session attributes associated with eventSet.
         @param dialogInputMap: A map containing user selections from the dialog
@@ -64,52 +134,46 @@ class Recommender(RecommenderTemplate.Recommender):
 
         staticSettings = sessionAttributes["staticSettings"]
 
-        # We assume it does not make much sense for an event associated with a
-        # tracked object to last more than three hours.
-        defaultDuration = staticSettings.get("defaultDuration", MILLIS_PER_HOUR)
-        if defaultDuration > 3*MILLIS_PER_HOUR :
-            defaultDuration = 3*MILLIS_PER_HOUR
+        # Call method that sets the initial event duration in milliseconds.
+        # This is a reasonable thing for a focal point to customize.
+        initialDuration = self.getInitialEventDuration(staticSettings)
 
         # Pull the rest of the time info we need out of the session info.
         framesInfo = sessionAttributes.get("framesInfo")
         sessionFrameTimes = framesInfo["frameTimeList"]
-        lastFrameIndex = len(sessionFrameTimes)-1
+        lastFrameIndex = len(sessionFrameTimes) - 1
         currentTime = long(sessionAttributes["currentTime"])
         startTime = currentTime
-        endTime = startTime + defaultDuration
+        endTime = startTime + initialDuration
 
         # Get information about 'dragmeto' point. In previous incarnations,
         # there has been some uncertainty as to what the units of the
         # draggedPointTime are.
-        import os
-	spatialInput = spatialInputMap["spatialInfo"]
-        print "spatialInput ", spatialInput
-        os.sys.__stdout__.flush()
+        spatialInput = spatialInputMap["spatialInfo"]
+
         points = spatialInput["points"]
-        print "points ", points
-        os.sys.__stdout__.flush()
         draggedPointTuple = points[0]
         draggedPoint = draggedPointTuple[0]
         draggedPointTime = long(draggedPointTuple[1])
         if draggedPointTime < VERIFY_MILLISECONDS :
             draggedPointTime = draggedPointTime * MILLIS_PER_SECOND
 
-        # For now default the initial motion and bearing.  Longer the default
-        # duration, the slower our default motion.
-        defaultSpeed = 20 # kts
-        stormMotion = {}
-        stormMotion["speed"] = \
-              defaultSpeed * 30*MILLIS_PER_MINUTE / defaultDuration
-        stormMotion["bearing"] = 225 # from SW
+        # Call method that sets the initial motion of the weather event.
+        # This is a reasonable thing for a focal point to customize.
+        stormMotion = self.getInitialWxEventMovement(initialDuration)
 
         # Construct a PointTrack object, and reinitialize it with the default
         # motion located where our starting point was dragged to.
         pointTrack = PointTrack()
         latLon0 = LatLonCoord(draggedPoint[0], draggedPoint[1])
         motion0 = Motion(stormMotion["speed"], stormMotion["bearing"])
-        pointTrack.latLonMotionOrigTimeInit_( \
+        pointTrack.latLonMotionOrigTimeInit_(\
              latLon0, draggedPointTime, motion0, startTime)
-        pivotList = [ draggedPointTime ]
+        pivotIndex = self.indexOfClosest(draggedPointTime, sessionFrameTimes)
+        pivotTime = sessionFrameTimes[pivotIndex]
+        pivotTimeList = [ pivotTime ]
+        pivotList = [ pivotIndex ]
+        trackCoordinates = []
 
         # Create a list of tracking points for each frame.
         shapeList = []
@@ -121,6 +185,7 @@ class Recommender(RecommenderTemplate.Recommender):
             trackPointShape["pointID"] = frameTime
             trackPointShape["point"] = [frameLatLon.lon, frameLatLon.lat]
             shapeList.append(trackPointShape)
+            trackCoordinates.append([frameLatLon.lon, frameLatLon.lat])
 
         # Reacquire the motion from the start of the event instead of the
         # last frame.  In most cases wont make much difference, but can once
@@ -130,24 +195,24 @@ class Recommender(RecommenderTemplate.Recommender):
         stormMotion["bearing"] = motion0.bearing
 
         # Compute a working delta time between frames.
-        if lastFrameIndex<1 :
-            frameTimeStep = endTime-startTime
+        if lastFrameIndex < 1 :
+            frameTimeStep = endTime - startTime
         else :
             frameTimeSpan = \
-                 sessionFrameTimes[lastFrameIndex]-sessionFrameTimes[0]
-            frameTimeStep = frameTimeSpan/lastFrameIndex
+                 sessionFrameTimes[lastFrameIndex] - sessionFrameTimes[0]
+            frameTimeStep = frameTimeSpan / lastFrameIndex
 
         # Make a list of times for projected points for the track that are shown
         # to the user.  We want the last future time to be exactly at the end of
         # the hazard, and we do not want the first future time to be too close
         # to the last frame, so we add the buffer of 1/3 the time step.
         futureTimeList = [endTime]
-        nexttime = endTime-frameTimeStep
+        nexttime = endTime - frameTimeStep
         endFrameTime = sessionFrameTimes[lastFrameIndex]
-        endFrameTime = endFrameTime + frameTimeStep/3
+        endFrameTime = endFrameTime + frameTimeStep / 3
         while nexttime > endFrameTime :
             futureTimeList.insert(0, nexttime)
-            nexttime = nexttime-frameTimeStep
+            nexttime = nexttime - frameTimeStep
 
         # Create a list of tracking points for each future point.
         for futureTime in futureTimeList :
@@ -155,54 +220,56 @@ class Recommender(RecommenderTemplate.Recommender):
             futurePointShape = {}
             futurePointShape["pointType"] = "tracking"
             futurePointShape["shapeType"] = "point"
-            futurePointShape["pointID"] = futureTime
             futurePointShape["point"] = [futureLatLon.lon, futureLatLon.lat]
+            futurePointShape["pointID"] = futureTime
             shapeList.append(futurePointShape)
+            trackCoordinates.append([futureLatLon.lon, futureLatLon.lat])
 
         # now get the polygon
         latLonPoly = pointTrack.polygonDef(startTime, endTime)
         hazardPolygon = []
         for latLonVertex in latLonPoly :
             hazardPolygon.append([latLonVertex.lon, latLonVertex.lat])
-        polygonShape = { "include" : "true" }
-        polygonShape["shapeType"] = "polygon"
-        polygonShape["points"] = hazardPolygon
-        shapeList.append(polygonShape)
+        #polygonShape = { "include" : "true" }
+        #polygonShape["shapeType"] = "polygon"
+        #polygonShape["points"] = hazardPolygon
+        #shapeList.append(polygonShape)
+
+        # Call method that initializes the phenomena, significance, and subtype
+        # for hazard. This is a reasonable thing for a focal point to customize.
+        ( phenomena, significance, subType ) = \
+                 self.initializeTypeOfEvent(staticSettings)
 
         # Finalize our set of output attributes.
         resultDict = {}
         resultDict["modifyCallbackToolName"] = "ModifyStormTrackTool"
         resultDict["creationTime"] = currentTime
-        resultDict["shapes"] = shapeList
+        resultDict["trackPoints"] = shapeList
         resultDict["startTime"] = startTime
         resultDict["endTime"] = endTime
-        resultDict["draggedPoints"] = \
-            [ (  (latLon0.lon, latLon0.lat), draggedPointTime ) ]
+        # resultDict["draggedPoints"] = \
+        #     [ ((latLon0.lon, latLon0.lat), draggedPointTime) ]
         resultDict["state"] = "pending"
         resultDict["stormMotion"] = stormMotion
         resultDict["pivots"] = pivotList
+        resultDict["pivotTimes"] = pivotTimeList
+        resultDict["type"] = subType
 
-        # Eventually we want the hazard type to be totally undefined when
-        # we fire up the tracker.  However, for now we can make the initial
-        # type be sensitive to the current setting.
-        phenomena = "TO"
-        resultDict["type"] = "TO.W"
-        significance = "WARNING"
-        visibleTypes = staticSettings.get("visibleTypes")
-        if visibleTypes != None :
-            if "FF.W.Convective" in visibleTypes :
-                phenomena = "FF"
-                resultDict["type"] = "FF.W.Convective"
+        # Cache some stuff the logic that composes the returned Java backed
+        # HazardEvent object needs. We will make this a temporary member of the
+        # attributes, which the parent method execute() will delete. This way,
+        # the correctness of this information can be evaluated in unit tests.
+        forJavaObj = {}
+        forJavaObj["SiteID"] = staticSettings["defaultSiteID"]
+        forJavaObj["currentTime"] = currentTime
+        forJavaObj["startTime"] = startTime
+        forJavaObj["endTime"] = endTime
+        forJavaObj["phenomena"] = phenomena
+        forJavaObj["significance"] = significance
+        forJavaObj["track"] = trackCoordinates
+        forJavaObj["hazardPolygon"] = hazardPolygon
+        resultDict["forJavaObj"] = forJavaObj
 
-        # Cache some stuff the logic that composes the returned event set needs.
-        self.forExecute = {}
-        self.forExecute["SiteID"] =  staticSettings["defaultSiteID"]
-        self.forExecute["currentTime"] = currentTime
-        self.forExecute["startTime"] = startTime
-        self.forExecute["endTime"] = endTime
-        self.forExecute["phenomena"] = phenomena
-        self.forExecute["significance"] = significance
-        self.forExecute["hazardPolygon"] = hazardPolygon
 
         return resultDict
 
@@ -222,33 +289,46 @@ class Recommender(RecommenderTemplate.Recommender):
         import EventFactory
         import GeometryFactory
 
-        # executeImpl does all the stuff we can safely do in a unit test,
-        # basically whatever does not require Jep
-        resultDict = self.executeImpl(eventSet.getAttributes(), \
+        # updateEventAttributes does all the stuff we can safely do in a unit
+        # test, basically whatever does not require Jep
+        resultDict = self.updateEventAttributes(eventSet.getAttributes(), \
                                       dialogInputMap, spatialInputMap)
+
+        # Peel out stuff that is piggybacking on the attributes but is really
+        # meant to go into the HazardEvent.
+        forJavaObj = resultDict["forJavaObj"]
+        del resultDict["forJavaObj"]
 
         # Start creating our HazardEvent object, which is really backed by a
         # Java object.  str cast accounts for occasional json promotion of ascii
         # strings to unicode strings, which makes JEP barf.
         hazardEvent = EventFactory.createEvent()
         hazardEvent.setEventID("")
-        hazardEvent.setSiteID(str(self.forExecute["SiteID"]))
+        hazardEvent.setSiteID(str(forJavaObj["SiteID"]))
         hazardEvent.setHazardState("PENDING")
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.
-        hazardEvent.setIssueTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["currentTime"]/MILLIS_PER_SECOND) )
-        hazardEvent.setStartTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["startTime"]/MILLIS_PER_SECOND) )
-        hazardEvent.setEndTime( datetime.datetime.fromtimestamp( \
-          self.forExecute["endTime"]/MILLIS_PER_SECOND) )
+        hazardEvent.setIssueTime(datetime.datetime.fromtimestamp(\
+          forJavaObj["currentTime"] / MILLIS_PER_SECOND))
+        hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
+          forJavaObj["startTime"] / MILLIS_PER_SECOND))
+        hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
+          forJavaObj["endTime"] / MILLIS_PER_SECOND))
 
-        hazardEvent.setPhenomenon(self.forExecute["phenomena"])
-        hazardEvent.setSignificance(self.forExecute["significance"])
-        geometry = GeometryFactory.createPolygon( \
-                  self.forExecute["hazardPolygon"])
+        hazardEvent.setPhenomenon(forJavaObj["phenomena"])
+        hazardEvent.setSignificance(forJavaObj["significance"])
+
+        #
+        # The track should not be considered to be an actual hazard geometry.
+        # The hazard geometry is just the the polygon. Creating a line geometry
+        # as an attribute is  a convenient way to return track point information
+        # to the client.
+        resultDict["stormTrackLine"] = \
+            GeometryFactory.createLineString(forJavaObj["track"])
+        geometry = GeometryFactory.createPolygon(forJavaObj["hazardPolygon"])
         hazardEvent.setGeometry(geometry)
+
         hazardEvent.setHazardMode("O")
         hazardEvent.setHazardAttributes(resultDict)
         

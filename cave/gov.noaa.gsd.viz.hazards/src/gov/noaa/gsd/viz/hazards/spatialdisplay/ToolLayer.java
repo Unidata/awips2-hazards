@@ -57,6 +57,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -121,6 +122,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Aug 22, 2013    1936    Chris.Golden   Added console countdown timers.
  * Aug 27, 2013 1921       Bryon.Lawrence Replaced code to support multi-hazard selection using
  *                                        Shift and Ctrl keys.
+ * Sep 10, 2013  752       Bryon.Lawrence Modified to use static method 
+ *                                        forModifyingStormTrack in HazardServicesDrawableBuilder
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -481,7 +484,10 @@ public class ToolLayer extends
             List<AbstractDrawableComponent> drawables = drawableBuilder
                     .buildDrawableComponents(this, hazardEvent,
                             getActiveLayer());
-            trackPersistentShapes(hazardEvent, drawables);
+            Boolean isPersistent = (Boolean) hazardEvent
+                    .getHazardAttribute(Utilities.PERSISTENT_SHAPE);
+            trackPersistentShapes(isPersistent, hazardEvent.getEventID(),
+                    drawables);
         }
 
         setObjects(dataManager.getActiveLayer().getDrawables());
@@ -489,21 +495,36 @@ public class ToolLayer extends
 
     }
 
-    private void trackPersistentShapes(IHazardEvent hazardEvent,
+    public void drawStormTrackDot() {
+
+        AbstractDrawableComponent shapeComponent = drawableBuilder
+                .buildStormTrackDotComponent(getActiveLayer());
+        List<AbstractDrawableComponent> drawableComponents = Lists
+                .newArrayList(shapeComponent);
+        addElement(shapeComponent);
+        drawableComponents.add(shapeComponent);
+        drawableBuilder.addTextComponent(this, Utilities.DRAG_DROP_DOT,
+                drawableComponents, shapeComponent);
+
+        trackPersistentShapes(true, Utilities.DRAG_DROP_DOT, drawableComponents);
+        setObjects(dataManager.getActiveLayer().getDrawables());
+        issueRefresh();
+    }
+
+    private void trackPersistentShapes(Boolean isPersistent, String id,
             List<AbstractDrawableComponent> drawables) {
         /*
          * This ensures that a persistent shape with the same id as one that
          * already exists will override it.
          */
-        Boolean isPersistent = (Boolean) hazardEvent
-                .getHazardAttribute(Utilities.PERSISTENT_SHAPE);
+
         if (isPersistent != null && isPersistent) {
-            if (persistentShapeMap.containsKey(hazardEvent.getEventID())) {
-                persistentShapeMap.remove(hazardEvent.getEventID());
+            if (persistentShapeMap.containsKey(id)) {
+                persistentShapeMap.remove(id);
             }
 
             if (!drawables.isEmpty()) {
-                persistentShapeMap.put(hazardEvent.getEventID(), drawables);
+                persistentShapeMap.put(id, drawables);
             }
         }
     }
@@ -526,16 +547,44 @@ public class ToolLayer extends
         Iterator<IHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
-            TimeRange eventRange = new TimeRange(event.getStartTime(),
-                    event.getEndTime());
-            if (selectedRange == null || !selectedRange.isValid()) {
-                if (!eventRange.contains(selectedTime)) {
+
+            /*
+             * Test for unissued storm track operations. These should not be
+             * filtered out by time.
+             */
+            if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && event
+                    .getState() != HazardState.ISSUED)) {
+
+                if (!doesEventOverlapSelectedTime(event, selectedRange,
+                        selectedTime)) {
                     it.remove();
                 }
-            } else if (!eventRange.overlaps(selectedRange)) {
-                it.remove();
             }
         }
+    }
+
+    /**
+     * Convenience method for testing if the event is contained within the
+     * selected time or selected time range.
+     * 
+     * @param
+     * @return
+     */
+    public Boolean doesEventOverlapSelectedTime(IHazardEvent event,
+            TimeRange selectedRange, Date selectedTime) {
+
+        TimeRange eventRange = new TimeRange(event.getStartTime(),
+                event.getEndTime());
+        Boolean overlaps = true;
+        if (selectedRange == null || !selectedRange.isValid()) {
+            if (!eventRange.contains(selectedTime)) {
+                overlaps = false;
+            }
+        } else if (!eventRange.overlaps(selectedRange)) {
+            overlaps = false;
+        }
+
+        return overlaps;
     }
 
     /*
@@ -1393,8 +1442,7 @@ public class ToolLayer extends
             throws VizException {
 
         if ((selectedHazardIHISLayer != null) && (drawSelectedHandleBars)) {
-            if (((IHazardServicesShape) selectedHazardIHISLayer)
-                    .getEditableVertices() != null) {
+            if (((IHazardServicesShape) selectedHazardIHISLayer).isEditable()) {
 
                 if (!handleBarPoints.isEmpty()) {
 
