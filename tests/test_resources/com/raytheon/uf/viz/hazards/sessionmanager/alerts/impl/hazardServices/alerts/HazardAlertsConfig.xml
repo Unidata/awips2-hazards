@@ -16,7 +16,7 @@
                 <name>10 min</name>
                 <expirationTime>10</expirationTime>
                 <units>minutes</units>
-                <manifestations>Console</manifestations>
+                <manifestations>Spatial</manifestations>
                 <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
                 <isBlinking>true</isBlinking>

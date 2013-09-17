@@ -44,7 +44,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 public class HazardEventExpirationAlertConfigCriterion {
 
     public enum Units {
-        HOURS("hours"), MINUTES("minutes"), SECONDS("seconds");
+        HOURS("hours"), MINUTES("minutes"), SECONDS("seconds"), PERCENT(
+                "percent");
 
         private final String displayValue;
 
@@ -168,8 +169,8 @@ public class HazardEventExpirationAlertConfigCriterion {
 
     }
 
-    HazardEventExpirationAlertConfigCriterion(String name, Units units,
-            Set<Manifestation> manifestations, long millisBeforeExpiration,
+    public HazardEventExpirationAlertConfigCriterion(String name, Units units,
+            Set<Manifestation> manifestations, long expirationTime,
             Color color, boolean isBold, boolean isItalic, boolean isBlinking) {
         this.name = name;
         this.units = units.toString();
@@ -177,7 +178,7 @@ public class HazardEventExpirationAlertConfigCriterion {
         for (Manifestation manifestation : manifestations) {
             this.manifestations.add(manifestation.toString());
         }
-        this.expirationTime = millisBeforeExpiration;
+        this.expirationTime = expirationTime;
         this.color = color;
         this.isBold = isBold;
         this.isItalic = isItalic;
@@ -239,7 +240,7 @@ public class HazardEventExpirationAlertConfigCriterion {
         return HashCodeBuilder.reflectionHashCode(this);
     }
 
-    Long getExpirationTime() {
+    public Long getExpirationTime() {
         return expirationTime;
     }
 

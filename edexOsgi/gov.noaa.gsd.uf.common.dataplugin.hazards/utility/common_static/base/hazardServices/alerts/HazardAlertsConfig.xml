@@ -44,9 +44,9 @@
                 <significance>W</significance>
             </hazardTypes>
             <criteria>
-                <name>9 hours</name>
-                <expirationTime>9</expirationTime>
-                <units>hours</units>
+                <name>1%</name>
+                <expirationTime>1</expirationTime>
+                <units>percent</units>
                 <manifestations>Console</manifestations>
                 <color r="1.0" g="0.0" b="0.0" a="1.0"/>
                 <isBold>true</isBold>
@@ -61,19 +61,18 @@
                 <significance>W</significance>
             </hazardTypes>
             <criteria>
-                <name>8 hours</name>
-                <expirationTime>8</expirationTime>
-                <units>hours</units>
+                <name>7 hours, 59 minutes</name>
+                <expirationTime>479</expirationTime>
+                <units>minutes</units>
                 <manifestations>Console</manifestations>
-                <manifestations>Popup</manifestations>
                 <color r="1.0" g="1.0" b="0.0" a="1.0"/>
                 <isBold>false</isBold>
                 <isBlinking>false</isBlinking>
                 <isItalic>false</isItalic>
             </criteria>
             <criteria>
-                <name>7 hours, 59 minute</name>
-                <expirationTime>479</expirationTime>
+                <name>7 hours, 58 minute</name>
+                <expirationTime>478</expirationTime>
                 <units>minutes</units>
                 <manifestations>Console</manifestations>
                 <manifestations>Popup</manifestations>

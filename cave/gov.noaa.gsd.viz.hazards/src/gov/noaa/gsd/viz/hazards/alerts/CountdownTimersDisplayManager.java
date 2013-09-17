@@ -139,7 +139,7 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
             case MINUTES:
                 return TimeUnit.MILLISECONDS.toMinutes(timeDelta) + " min";
             case SECONDS:
-                return String.format("00:%00:%02d",
+                return String.format("00:00:%02d",
                         TimeUnit.MILLISECONDS.toSeconds(timeDelta));
             case ZERO:
                 return "00:00:00";

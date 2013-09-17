@@ -63,7 +63,7 @@ WSW = {
         "Event ID",
         "Hazard Type", 
         "State", 
-        "Alert",
+        "Time Remaining",
         "Start Time", 
         "End Time"
     ], 
@@ -151,7 +151,13 @@ WSW = {
             "fieldName": "pils", 
             "sortDir": "none"
         }, 
-        "Alert": {
+        "Description": {
+            "sortDir": "none", 
+            "width": 100, 
+            "fieldName": "description", 
+            "type": "string"
+        },
+        "Time Remaining": {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
