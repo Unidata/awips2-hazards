@@ -108,7 +108,7 @@ MetaData_FLY = [
              "label":"Calls to Action (1 or more):",
              "fieldName": "cta",
              "lines": 3,
-             "values": "Flooded Roadways",
+             "values": ["Flooded Roadways"],
              "choices": [ 
                      {"displayString": "No call to action.", 
                       "productString": "No call to action.",
