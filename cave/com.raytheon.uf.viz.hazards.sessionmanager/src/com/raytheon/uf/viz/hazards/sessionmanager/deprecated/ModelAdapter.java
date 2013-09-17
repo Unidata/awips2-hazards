@@ -42,6 +42,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.colormap.Color;
@@ -106,6 +107,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      "Remove Potential Hazards" option.
  * Sep 10, 2013  752    Bryon.Lawrence  Modified updateEventData to reset the eventID
  *                                      on newly created hazards.
+ * Sep 13, 2013 1921    Chris.Golden    Added ability to handle arbitrary long values
+ *                                      in getComponentData().
  * </pre>
  * 
  * @author bsteffen
@@ -347,11 +350,21 @@ public abstract class ModelAdapter {
                 event.setEndTime(new Date(jnode.get(key).getLongValue()));
             } else if (jnode.get(key).isArray()) {
                 ArrayNode arrayNode = (ArrayNode) jnode.get(key);
-                String[] array = new String[arrayNode.size()];
-                for (int i = 0; i < array.length; i += 1) {
-                    array[i] = arrayNode.get(i).getValueAsText();
+                List<String> stringList = Lists.newArrayList();
+
+                for (int i = 0; i < arrayNode.size(); i++) {
+                    stringList.add(arrayNode.get(i).getValueAsText());
                 }
-                event.addHazardAttribute(key, array);
+
+                /*
+                 * Do no pass data as arrays. It is better to pass them as
+                 * lists. Using arrays causes problems. For instance, an event
+                 * passed to the the Product Generation Framework will have its
+                 * cta array converted to a Python list. When returned to the
+                 * HMI, this Python list is converted to a Java list. So, arrays
+                 * are not consistently handled. The type is not preserved.
+                 */
+                event.addHazardAttribute(key, (Serializable) stringList);
             } else if (jnode.get(key).isContainerNode()) {
                 throw new UnsupportedOperationException(
                         "Support for container node not implemented yet.");
@@ -1129,6 +1142,7 @@ public abstract class ModelAdapter {
      * ISessionEventManager.getSelectedEvents()
      */
     @Deprecated
+    @SuppressWarnings("unchecked")
     public String getComponentData(String component, String eventID) {
         ISessionEventManager eventManager = model.getEventManager();
         ISessionTimeManager timeManager = model.getTimeManager();
@@ -1211,7 +1225,16 @@ public abstract class ModelAdapter {
                         node.put(entry.getKey(), tmpArray);
                     } else if (entry.getValue() instanceof Integer) {
                         node.put(entry.getKey(), (Integer) entry.getValue());
+                    } else if (entry.getValue() instanceof Long) {
+                        node.put(entry.getKey(), (Long) entry.getValue());
+                    } else if (entry.getValue() instanceof List) {
+                        ArrayNode tmpArray = jsonObjectMapper.createArrayNode();
+                        for (Object obj : (List<Object>) entry.getValue()) {
+                            tmpArray.add(obj.toString());
+                        }
+                        node.put(entry.getKey(), tmpArray);
                     }
+
                 }
                 jevents.add(jobj);
             }

@@ -108,7 +108,7 @@ MetaData_FLA = [
              "label":"Calls to Action (1 or more):",
              "fieldName": "cta",
              "lines": 3,
-             "values": "NOAA Weather Radio",
+             "values": ["NOAA Weather Radio"],
              "choices": [ 
                      {"displayString": "No call to action.",
                       "productString": "No call to action.",

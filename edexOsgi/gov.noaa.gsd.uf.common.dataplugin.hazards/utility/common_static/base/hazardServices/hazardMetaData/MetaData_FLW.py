@@ -108,7 +108,7 @@ MetaData_FLW = [
              "label":"Calls to Action (1 or more):",
              "fieldName": "cta",
              "lines": 3,
-             "values": "None",
+             "values": ["None"],
              "choices": [ 
                      {"displayString": "No call to action.",
                       "productString": "No call to action.",

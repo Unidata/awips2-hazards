@@ -585,15 +585,4 @@ public class HazardDetailView extends
     private boolean isViewPartDocked() {
         return (getViewPart() == null ? false : getViewPart().isDocked());
     }
-
-    /**
-     * Returns whether or not HID actions should be fired.
-     * 
-     * @return True - HID actions should not be fired-off. False - HID Actions
-     *         should be fired off.
-     */
-    public boolean doNotForwardActions() {
-        return doNotForwardActions;
-    }
-
 }

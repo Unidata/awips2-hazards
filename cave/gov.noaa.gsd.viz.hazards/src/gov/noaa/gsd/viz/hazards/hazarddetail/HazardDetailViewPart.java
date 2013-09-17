@@ -100,10 +100,17 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           was assigned said new type, leading to
  *                                           exceptions.
  * Aug 22, 2013   1921     Bryon.Lawrence    Added a check for whether or not HID actions
- *                                           should be fired in the setWidgetStates
+ *                                           should be fired in the setMegawidgetsStates()
  *                                           method. This was resulting in a HID action
  *                                           message being sent when the HID was updated
  *                                           due to a model state change.
+ * Sep 11, 2013   1298     Chris.Golden      Fixed bugs causing time scale megawidgets to
+ *                                           not show the correct visible time range.
+ *                                           Added code to give good default values for
+ *                                           time scale megawidgets. Replaced erroneous
+ *                                           references (variable names, comments, etc.)
+ *                                           to "widget" with "megawidget" to avoid
+ *                                           confusion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -128,8 +135,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             .getHandler(HazardDetailViewPart.class);
 
     /**
-     * Points table widget identifier, a special string used as an identifier
-     * for a points metadata table widget, if one is showing.
+     * Points table megawidget identifier, a special string used as an
+     * identifier for a points metadata table megawidget, if one is showing.
      */
     private static final String POINTS_TABLE_IDENTIFIER = "__pointsTable__";
 
@@ -149,8 +156,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private static final String POINTS_TABLE_NAME_COLUMN_IDENTIFIER = "name";
 
     /**
-     * Event time range widget identifier, a special string used as an
-     * identifier for the time range widget.
+     * Event time range megawidget identifier, a special string used as an
+     * identifier for the time range megawidget.
      */
     private static final String TIME_RANGE_IDENTIFIER = START_TIME_STATE + ":"
             + END_TIME_STATE;
@@ -257,7 +264,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Private Variables
 
         /**
-         * Component associated with this widget.
+         * Component associated with this megawidget.
          */
         private Table table = null;
 
@@ -302,7 +309,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             table.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    updatePointWidgetValues((Table) e.widget);
+                    updatePointMegawidgetValues((Table) e.widget);
                 }
             });
             table.setEnabled(specifier.isEnabled());
@@ -326,7 +333,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         /**
-         * Update the table to match the widgets.
+         * Update the table to match the megawidgets.
          */
         public final void update() {
             updatePointsTable(table);
@@ -468,7 +475,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * @return Description of the specified state.
          * @throws MegawidgetStateException
          *             If the specified state is not of a valid type for this
-         *             <code> StatefulWidget</code> implementation.
+         *             <code>StatefulMegawidget</code> implementation.
          */
         @Override
         protected final String doGetStateDescription(String identifier,
@@ -536,9 +543,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         public <P extends Widget> Megawidget createMegawidget(P parent,
                 Map<String, Object> creationParams) throws MegawidgetException {
 
-            // Return the created widget.
+            // Return the created megawidget.
             return new PointsTableMegawidget(this, (Composite) parent,
-                    widgetCreationParams);
+                    megawidgetCreationParams);
         }
     }
 
@@ -589,19 +596,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private long maximumVisibleTime = Utilities.MAX_TIME;
 
     /**
-     * Widget specifier factory.
+     * Megawidget specifier factory.
      */
-    private final MegawidgetSpecifierFactory widgetSpecifierFactory = new MegawidgetSpecifierFactory();
+    private final MegawidgetSpecifierFactory megawidgetSpecifierFactory = new MegawidgetSpecifierFactory();
 
     /**
-     * Event time range widget.
+     * Event time range megawidget.
      */
-    private TimeScaleMegawidget timeRangeWidget = null;
+    private TimeScaleMegawidget timeRangeMegawidget = null;
 
     /**
-     * Set of all time scale widgets currently in existence.
+     * Set of all time scale megawidgets currently in existence.
      */
-    private final Set<TimeScaleMegawidget> timeScaleWidgets = Sets.newHashSet();
+    private final Set<TimeScaleMegawidget> timeScaleMegawidgets = Sets
+            .newHashSet();
 
     /**
      * Content panel that holds whichever metadata panel is currently displayed.
@@ -637,23 +645,24 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final Map<String, String> categoriesForTypes = Maps.newHashMap();
 
     /**
-     * Hash table pairing widget creation time parameter identifiers with their
-     * corresponding values.
+     * Hash table pairing megawidget creation time parameter identifiers with
+     * their corresponding values.
      */
-    private final Map<String, Object> widgetCreationParams = Maps.newHashMap();
-
-    /**
-     * Hash table pairing hazard types with lists of the associated widget
-     * specifiers.
-     */
-    private final Map<String, List<MegawidgetSpecifier>> widgetsForTypes = Maps
+    private final Map<String, Object> megawidgetCreationParams = Maps
             .newHashMap();
 
     /**
-     * Hash table pairing hazard types with lists of the associated widget
+     * Hash table pairing hazard types with lists of the associated megawidget
+     * specifiers.
+     */
+    private final Map<String, List<MegawidgetSpecifier>> megawidgetsForTypes = Maps
+            .newHashMap();
+
+    /**
+     * Hash table pairing hazard types with lists of the associated megawidget
      * specifiers for the individual points of the hazard.
      */
-    private final Map<String, List<MegawidgetSpecifier>> pointWidgetsForTypes = Maps
+    private final Map<String, List<MegawidgetSpecifier>> pointMegawidgetsForTypes = Maps
             .newHashMap();
 
     /**
@@ -663,23 +672,25 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
-     * metadata widget identifiers with their associated widgets.
+     * metadata megawidget identifiers with their associated megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> widgetsForIdsForTypes = Maps
+    private final Map<String, Map<String, Megawidget>> megawidgetsForIdsForTypes = Maps
             .newHashMap();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
-     * point-specific metadata widget identifiers with their associated widgets.
+     * point-specific metadata megawidget identifiers with their associated
+     * megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointWidgetsForIdsForTypes = Maps
+    private final Map<String, Map<String, Megawidget>> pointMegawidgetsForIdsForTypes = Maps
             .newHashMap();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
-     * point-specific metadata state identifiers with their associated widgets.
+     * point-specific metadata state identifiers with their associated
+     * megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointWidgetsForStateIdsForTypes = Maps
+    private final Map<String, Map<String, Megawidget>> pointMegawidgetsForStateIdsForTypes = Maps
             .newHashMap();
 
     /**
@@ -766,7 +777,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param generalWidgets
      *            JSON specifying the general widgets that the view part must
      *            contain.
-     * @param hazardWidgets
+     * @param hazardMegawidgets
      *            JSON specifying the widgets that the view part must contain
      *            for each of the hazards that the general widgets allow the
      *            user to select.
@@ -784,11 +795,24 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         maximumVisibleTime = maxVisibleTime;
         this.hazardDetailView = hazardDetailView;
 
-        // Iterate through the time scale widgets, changing
+        // Fill in the megawidget creation parameters
+        // hash table, used to provide parameters
+        // to megawidgets created via megawidget speci-
+        // fiers at the megawidgets' creation time.
+        // Depending upon how this part has been
+        // instantiated, this invocation may occur be-
+        // fore or after createPartControl() has been
+        // called, so this is done here to ensure that
+        // either way, the creation parameters are
+        // filled in properly.
+        initializeMegawidgetCreationParams();
+
+        // Iterate through the time scale megawidgets, changing
         // their visible time ranges to match the current
         // range.
-        for (TimeScaleMegawidget widget : timeScaleWidgets) {
-            widget.setVisibleTimeRange(minimumVisibleTime, maximumVisibleTime);
+        for (TimeScaleMegawidget megawidget : timeScaleMegawidgets) {
+            megawidget.setVisibleTimeRange(minimumVisibleTime,
+                    maximumVisibleTime);
         }
 
         // Parse the strings into a JSON object and a JSON array.
@@ -853,18 +877,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
         }
 
-        // Get the widget specifier lists for the event types.
-        widgetsForTypes.clear();
-        pointWidgetsForTypes.clear();
+        // Get the megawidget specifier lists for the event types.
+        megawidgetsForTypes.clear();
+        pointMegawidgetsForTypes.clear();
         for (int j = 0; j < jsonHazardWidgets.size(); j++) {
 
-            // Get the event types to which this list of widget
+            // Get the event types to which this list of megawidget
             // specifiers applies, ignoring any that already
-            // have an associated widget specifier list due to
+            // have an associated megawidget specifier list due to
             // a previous iteration. This last part is neces-
             // sary because an event type might appear in more
             // than one set of event types (each set being
-            // associated with a list of widget specifiers), in
+            // associated with a list of megawidget specifiers), in
             // which case the first set in which it appears is
             // considered to be the set in which it actually
             // belongs.
@@ -876,7 +900,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
             Set<String> typesSet = Sets.newHashSet();
             for (String type : types) {
-                if (widgetsForTypes.containsKey(type) == false) {
+                if (megawidgetsForTypes.containsKey(type) == false) {
                     typesSet.add(type);
                 }
             }
@@ -884,19 +908,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // If after dropping any event types that have
             // already been taken care of in previous itera-
             // tions there is still a non-empty set of event
-            // types left, put together any widget specifiers
+            // types left, put together any megawidget specifiers
             // for this set.
             if (typesSet.isEmpty() == false) {
 
-                // Create the widget specifiers for the event
+                // Create the megawidget specifiers for the event
                 // type as a whole.
-                List<MegawidgetSpecifier> widgetSpecifiers = Lists
+                List<MegawidgetSpecifier> megawidgetSpecifiers = Lists
                         .newArrayList();
                 List<Dict> objects = getJsonObjectList(jsonItem
                         .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
                     for (Dict object : objects) {
-                        widgetSpecifiers.add(widgetSpecifierFactory
+                        megawidgetSpecifiers.add(megawidgetSpecifierFactory
                                 .createMegawidgetSpecifier(object));
                     }
                 } catch (Exception e) {
@@ -904,29 +928,29 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             + "Error parsing JSON for hazard megawidgets.", e);
                 }
                 for (String type : typesSet) {
-                    widgetsForTypes.put(type, widgetSpecifiers);
+                    megawidgetsForTypes.put(type, megawidgetSpecifiers);
                 }
 
-                // Create the widget specifiers for the event
+                // Create the megawidget specifiers for the event
                 // type's individual points, if any. Any
-                // widget specifiers for points must be pre-
-                // ceded by a points table widget specifier,
+                // megawidget specifiers for points must be pre-
+                // ceded by a points table megawidget specifier,
                 // which is synthesized here and placed at
-                // the head of the list. The widget immedi-
+                // the head of the list. The megawidget immedi-
                 // ately following the table is padded so
                 // that it does not get too far into the
                 // table's personal space.
                 Object pointObject = jsonItem
                         .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
                 if (pointObject != null) {
-                    widgetSpecifiers = Lists.newArrayList();
+                    megawidgetSpecifiers = Lists.newArrayList();
                     objects = getJsonObjectList(pointObject);
                     Dict tableObject = new Dict();
                     tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                             POINTS_TABLE_IDENTIFIER);
                     tableObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
                     try {
-                        widgetSpecifiers.add(new PointsTableSpecifier(
+                        megawidgetSpecifiers.add(new PointsTableSpecifier(
                                 tableObject));
                         boolean first = true;
                         for (Dict object : objects) {
@@ -943,7 +967,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                             10);
                                 }
                             }
-                            widgetSpecifiers.add(widgetSpecifierFactory
+                            megawidgetSpecifiers.add(megawidgetSpecifierFactory
                                     .createMegawidgetSpecifier(object));
                         }
                     } catch (Exception e) {
@@ -953,7 +977,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                         e);
                     }
                     for (String type : typesSet) {
-                        pointWidgetsForTypes.put(type, widgetSpecifiers);
+                        pointMegawidgetsForTypes
+                                .put(type, megawidgetSpecifiers);
                     }
                 }
             }
@@ -979,20 +1004,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Configure the parent layout.
         parent.setLayout(new GridLayout(1, false));
 
-        // Fill in the widget creation parameters
+        // Fill in the megawidget creation parameters
         // hash table, used to provide parameters
-        // to widgets created via widget speci-
-        // fiers at the widgets' creation time.
-        widgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
-        widgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
-        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
-                Utilities.MIN_TIME);
-        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
-                Utilities.MAX_TIME);
-        widgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
-                minimumVisibleTime);
-        widgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
-                maximumVisibleTime);
+        // to megawidgets created via megawidget speci-
+        // fiers at the megawidgets' creation time.
+        // Depending upon how this part has been
+        // instantiated, this invocation may occur be-
+        // fore or after initialize() has been called,
+        // so this is done here to ensure that either
+        // way, the creation parameters are filled in
+        // properly.
+        initializeMegawidgetCreationParams();
 
         // Create the main panel of the view part.
         Composite tabTop = new Composite(parent, SWT.NONE);
@@ -1005,7 +1027,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // since it actually uses only one com-
         // posite as the control for all its
         // tabs, and simply reconfigures the
-        // widgets therein for each different
+        // megawidgets therein for each different
         // tab selection.
         eventTabFolder = new CTabFolder(tabTop, SWT.TOP);
         eventTabFolder.setBorderVisible(true);
@@ -1148,20 +1170,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
                     stateLabels);
             scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
-            timeRangeWidget = (TimeScaleMegawidget) (new TimeScaleSpecifier(
+            timeRangeMegawidget = (TimeScaleMegawidget) (new TimeScaleSpecifier(
                     scaleObject)).createMegawidget(timeRangePanel,
-                    widgetCreationParams);
-            timeScaleWidgets.add(timeRangeWidget);
+                    megawidgetCreationParams);
+            timeScaleMegawidgets.add(timeRangeMegawidget);
             if (primaryParamValues.size() > 0) {
-                timeRangeWidget.setUncommittedState(
+                timeRangeMegawidget.setUncommittedState(
                         START_TIME_STATE,
                         primaryParamValues.get(visibleHazardIndex).get(
                                 Utilities.HAZARD_EVENT_START_TIME));
-                timeRangeWidget.setUncommittedState(
+                timeRangeMegawidget.setUncommittedState(
                         END_TIME_STATE,
                         primaryParamValues.get(visibleHazardIndex).get(
                                 Utilities.HAZARD_EVENT_END_TIME));
-                timeRangeWidget.commitStateChanges();
+                timeRangeMegawidget.commitStateChanges();
             }
         } catch (Exception e) {
             statusHandler
@@ -1209,11 +1231,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         });
 
         // Clear the various data structures holding metadata
-        // widget information, since any such widgets should
+        // megawidget information, since any such megawidgets should
         // be recreated at this point.
         panelsForTypes.clear();
-        widgetsForIdsForTypes.clear();
-        pointWidgetsForIdsForTypes.clear();
+        megawidgetsForIdsForTypes.clear();
+        pointMegawidgetsForIdsForTypes.clear();
 
         // Show the currently selected hazard type's metadata
         // panel.
@@ -1341,22 +1363,23 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Receive notification that the given specifier's widget has been invoked
-     * or has changed state. Widgets will only call this method if they were
-     * marked as being notifiers when they were constructed.
+     * Receive notification that the given specifier's megawidget has been
+     * invoked or has changed state. Megawidgets will only call this method if
+     * they were marked as being notifiers when they were constructed.
      * 
-     * @param widget
-     *            Widget that was invoked.
+     * @param megawidget
+     *            Megawidget that was invoked.
      * @param extraCallback
-     *            Extra callback information associated with this widget, or
+     *            Extra callback information associated with this megawidget, or
      *            <code>null</code> if no such extra information is provided.
      */
     @Override
-    public void megawidgetInvoked(INotifier widget, String extraCallback) {
+    public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
 
         // If there are no event dictionaries or if the
         // megawidget is stateful, do nothing.
-        if ((primaryParamValues.size() == 0) || (widget instanceof IStateful)) {
+        if ((primaryParamValues.size() == 0)
+                || (megawidget instanceof IStateful)) {
             return;
         }
 
@@ -1373,7 +1396,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Fire off an action indicating that this
-        // widget was invoked.
+        // megawidget was invoked.
         String eventString = null;
         try {
             eventString = eventInfo.toJSONString();
@@ -1381,76 +1404,76 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             statusHandler.error("HazardDetailViewPart.megawidgetInvoked(): "
                     + "Could not serialize JSON.", e);
         }
-        fireHIDAction(new HazardDetailAction(widget.getSpecifier()
+        fireHIDAction(new HazardDetailAction(megawidget.getSpecifier()
                 .getIdentifier(), eventString));
     }
 
     /**
-     * Receive notification that the given specifier's widget's state has
+     * Receive notification that the given specifier's megawidget's state has
      * changed.
      * 
-     * @param widget
-     *            Widget that experienced the state change.
+     * @param megawidget
+     *            Megawidget that experienced the state change.
      * @param identifier
      *            Identifier of the state that has changed.
      * @param state
      *            New state.
      */
     @Override
-    public void megawidgetStateChanged(IStateful widget, String identifier,
+    public void megawidgetStateChanged(IStateful megawidget, String identifier,
             Object state) {
 
-        // If the widget that experienced a state
-        // change is the time range widget, handle
+        // If the megawidget that experienced a state
+        // change is the time range megawidget, handle
         // it separately. If there are no event
         // dictionaries, do nothing.
         if (primaryParamValues.size() == 0) {
             return;
-        } else if (widget == timeRangeWidget) {
+        } else if (megawidget == timeRangeMegawidget) {
             timeRangeChanged();
             return;
         }
 
-        // Get the point widgets for the current type,
+        // Get the point megawidgets for the current type,
         // if any.
-        boolean isPointWidget = false;
-        Map<String, Megawidget> widgetsForIds = pointWidgetsForIdsForTypes
+        boolean isPointMegawidget = false;
+        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
-        if (widgetsForIds != null) {
+        if (megawidgetsForIds != null) {
 
             // Determine whether this is a point
-            // widget or an areal widget.
-            for (Megawidget otherWidget : widgetsForIds.values()) {
-                if (widget == otherWidget) {
-                    isPointWidget = true;
+            // megawidget or an areal megawidget.
+            for (Megawidget otherMegawidget : megawidgetsForIds.values()) {
+                if (megawidget == otherMegawidget) {
+                    isPointMegawidget = true;
                     break;
                 }
             }
 
-            // If this is a point widget, the table
+            // If this is a point megawidget, the table
             // needs updating.
-            if (isPointWidget) {
-                ((PointsTableMegawidget) widgetsForIds
+            if (isPointMegawidget) {
+                ((PointsTableMegawidget) megawidgetsForIds
                         .get(POINTS_TABLE_IDENTIFIER)).update();
             }
         }
 
-        // If the widget is a point widget, then up-
+        // If the megawidget is a point megawidget, then up-
         // date the value for the corresponding point;
         // otherwise, just update the main event's
         // corresponding value.
         String eventID;
-        if (isPointWidget) {
+        if (isPointMegawidget) {
             eventID = (String) pointsParamValues
                     .get(visibleHazardIndex)
-                    .get(((PointsTableMegawidget) widgetsForIds
+                    .get(((PointsTableMegawidget) megawidgetsForIds
                             .get(POINTS_TABLE_IDENTIFIER))
                             .getSelectedRowIndex())
                     .get(Utilities.HAZARD_EVENT_IDENTIFIER);
             pointsParamValues
                     .get(visibleHazardIndex)
-                    .get(((PointsTableMegawidget) widgetsForIds
+                    .get(((PointsTableMegawidget) megawidgetsForIds
                             .get(POINTS_TABLE_IDENTIFIER))
                             .getSelectedRowIndex()).put(identifier, state);
         } else {
@@ -1478,7 +1501,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Get the event information based upon the current values of the various
-     * widgets.
+     * megawidgets.
      * 
      * @return JSON string.
      */
@@ -1539,8 +1562,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Use the specified JSON string to set the values of the various widgets in
-     * the window.
+     * Use the specified JSON string to set the values of the various
+     * megawidgets in the window.
      * 
      * @param eventDictList
      *            List of dictionaries, each providing the key-value pairs that
@@ -1559,7 +1582,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Parse the passed-in JSON and configure the
-        // widgets accordingly.
+        // megawidgets accordingly.
         List<String> eventIDs = Lists.newArrayList();
         List<String> types = Lists.newArrayList();
         try {
@@ -1647,7 +1670,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     // to be kept separately so as to allow
                     // them to have metadata specified for
                     // them individually in the points table.
-                    boolean keepPointsSeparate = pointWidgetsForTypes
+                    boolean keepPointsSeparate = pointMegawidgetsForTypes
                             .containsKey(fullType);
                     if (keepPointsSeparate) {
                         statusHandler
@@ -1796,14 +1819,40 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         minimumVisibleTime = minVisibleTime;
         maximumVisibleTime = maxVisibleTime;
 
-        // Iterate through the time scale widgets, changing their
+        // Remember the new minimum and maximum visible times in
+        // the megawidget creation parameters, so that any time
+        // scale megawidgets created later have the correct visible
+        // time ranges.
+        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                minimumVisibleTime);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                maximumVisibleTime);
+
+        // Iterate through the time scale megawidgets, changing their
         // visible time ranges to match the new range.
-        for (TimeScaleMegawidget widget : timeScaleWidgets) {
-            widget.setVisibleTimeRange(minimumVisibleTime, maximumVisibleTime);
+        for (TimeScaleMegawidget megawidget : timeScaleMegawidgets) {
+            megawidget.setVisibleTimeRange(minimumVisibleTime,
+                    maximumVisibleTime);
         }
     }
 
     // Private Methods
+
+    /**
+     * Initialize the megawidget creation parameters map.
+     */
+    private void initializeMegawidgetCreationParams() {
+        megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
+        megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
+                Utilities.MIN_TIME);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
+                Utilities.MAX_TIME);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
+                minimumVisibleTime);
+        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
+                maximumVisibleTime);
+    }
 
     /**
      * Create a button bar for the action buttons.
@@ -1896,12 +1945,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void configurePointsTable(Table table, TableColumnLayout layout) {
 
-        // Get the point widget specifiers for the
+        // Get the point megawidget specifiers for the
         // current type.
-        List<MegawidgetSpecifier> widgetSpecifiers = pointWidgetsForTypes
+        List<MegawidgetSpecifier> megawidgetSpecifiers = pointMegawidgetsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
-        if (widgetSpecifiers == null) {
+        if (megawidgetSpecifiers == null) {
             statusHandler
                     .info("HazardDetailViewPart.configurePointsTable(): Could "
                             + "not find point megawidget specifiers for type = \""
@@ -1911,13 +1960,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Count the number of state identifiers
-        // that any stateful widgets in the point
-        // widget specifiers include.
+        // that any stateful megawidgets in the point
+        // megawidget specifiers include.
         int numColumns = 0;
-        for (MegawidgetSpecifier widgetSpecifier : widgetSpecifiers) {
-            if ((widgetSpecifier instanceof IStatefulSpecifier)
-                    && ((widgetSpecifier instanceof PointsTableSpecifier) == false)) {
-                numColumns += ((IStatefulSpecifier) widgetSpecifier)
+        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+            if ((megawidgetSpecifier instanceof IStatefulSpecifier)
+                    && ((megawidgetSpecifier instanceof PointsTableSpecifier) == false)) {
+                numColumns += ((IStatefulSpecifier) megawidgetSpecifier)
                         .getStateIdentifiers().size();
             }
         }
@@ -1927,7 +1976,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // tive weights of the columns. The first
         // column is always reserved for the name
         // of the point, which does not have a
-        // corresponding widget specifier.
+        // corresponding megawidget specifier.
         String[] titles = new String[numColumns + 1];
         String[] identifiers = new String[numColumns + 1];
         int[] relativeWeights = new int[numColumns + 1];
@@ -1937,15 +1986,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Skipping the first column, which is al-
         // ways for the name of the point, iterate
         // through the state identifiers of the
-        // stateful widget specifiers, dedicating
+        // stateful megawidget specifiers, dedicating
         // a column to each.
         int col = 1;
         int totalWeight = 0;
-        for (MegawidgetSpecifier widgetSpecifier : widgetSpecifiers) {
-            if ((widgetSpecifier instanceof IStatefulSpecifier) == false) {
+        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+            if ((megawidgetSpecifier instanceof IStatefulSpecifier) == false) {
                 continue;
             }
-            IStatefulSpecifier statefulSpecifier = (IStatefulSpecifier) widgetSpecifier;
+            IStatefulSpecifier statefulSpecifier = (IStatefulSpecifier) megawidgetSpecifier;
             for (String identifier : statefulSpecifier.getStateIdentifiers()) {
                 titles[col] = statefulSpecifier.getStateShortLabel(identifier);
                 if ((titles[col] == null) || titles[col].isEmpty()) {
@@ -1993,11 +2042,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
         table.clearAll();
 
-        // Get the point widgets for the current type.
-        Map<String, Megawidget> widgetsForIds = pointWidgetsForStateIdsForTypes
+        // Get the point megawidgets for the current type.
+        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
-        if (widgetsForIds == null) {
+        if (megawidgetsForIds == null) {
             statusHandler
                     .info("HazardDetailViewPart.populatePointsTable(): Could "
                             + "not find point megawidgets for type = \""
@@ -2055,7 +2104,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     description = (String) value;
                 } else {
                     try {
-                        description = ((IStateful) widgetsForIds
+                        description = ((IStateful) megawidgetsForIds
                                 .get(identifier)).getStateDescription(
                                 identifier, value);
                     } catch (Exception e) {
@@ -2077,14 +2126,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Select the first row.
         table.setSelection(0);
 
-        // Update the point widgets' values to
+        // Update the point megawidgets' values to
         // match the first row of the table.
-        updatePointWidgetValues(table);
+        updatePointMegawidgetValues(table);
     }
 
     /**
      * Update the points table's selected row to match those of the points
-     * widgets.
+     * megawidgets.
      * 
      * @param table
      *            Points table.
@@ -2096,11 +2145,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return;
         }
 
-        // Get the point widgets for the current type.
-        Map<String, Megawidget> widgetsForIds = pointWidgetsForStateIdsForTypes
+        // Get the point megawidgets for the current type.
+        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
-        if (widgetsForIds == null) {
+        if (megawidgetsForIds == null) {
             statusHandler
                     .info("HazardDetailViewPart.updatePointsTable(): Could "
                             + "not find point megawidgets for type = \""
@@ -2122,15 +2171,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Iterate through the table cells, setting
         // their states to match the states found in
-        // the widgets.
+        // the megawidgets.
         for (int col = 1; col < table.getColumnCount(); col++) {
             String identifier = (String) table.getColumn(col).getData();
-            IStateful widget = (IStateful) widgetsForIds.get(identifier);
+            IStateful megawidget = (IStateful) megawidgetsForIds
+                    .get(identifier);
             try {
-                Object state = widget.getState(identifier);
+                Object state = megawidget.getState(identifier);
                 items[0].setData(identifier, state);
                 items[0].setText(col,
-                        widget.getStateDescription(identifier, state));
+                        megawidget.getStateDescription(identifier, state));
             } catch (Exception e) {
                 statusHandler.error(
                         "HazardDetailViewPart.updatePointsTable(): "
@@ -2142,26 +2192,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Update the point widgets' values to match those of the points table's
+     * Update the point megawidgets' values to match those of the points table's
      * selected row.
      * 
      * @param table
      *            Points table.
      */
-    private void updatePointWidgetValues(Table table) {
+    private void updatePointMegawidgetValues(Table table) {
 
         // If the table has no lines, do nothing.
         if (table.getItemCount() == 0) {
             return;
         }
 
-        // Get the point widgets for the current type.
-        Map<String, Megawidget> widgetsForIds = pointWidgetsForStateIdsForTypes
+        // Get the point megawidgets for the current type.
+        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
-        if (widgetsForIds == null) {
+        if (megawidgetsForIds == null) {
             statusHandler
-                    .info("HazardDetailViewPart.updatePointWidgetValues(): "
+                    .info("HazardDetailViewPart.updatePointMegawidgetValues(): "
                             + "Could not find point megawidgets for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
                                     Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
@@ -2179,25 +2229,29 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return;
         }
 
-        // Iterate through the point widgets, setting
+        // Iterate through the point megawidgets, setting
         // their states to match the states found in
         // the selected row of the table.
-        Set<IExplicitCommitStateful> widgetsNeedingCommit = Sets.newHashSet();
-        for (String identifier : widgetsForIds.keySet()) {
-            if ((widgetsForIds.get(identifier) instanceof IStateful) == false) {
+        Set<IExplicitCommitStateful> megawidgetsNeedingCommit = Sets
+                .newHashSet();
+        for (String identifier : megawidgetsForIds.keySet()) {
+            if ((megawidgetsForIds.get(identifier) instanceof IStateful) == false) {
                 continue;
             }
-            IStateful widget = (IStateful) widgetsForIds.get(identifier);
-            if (widget instanceof PointsTableMegawidget) {
+            IStateful megawidget = (IStateful) megawidgetsForIds
+                    .get(identifier);
+            if (megawidget instanceof PointsTableMegawidget) {
                 continue;
             }
             try {
-                if (widget instanceof IExplicitCommitStateful) {
-                    ((IExplicitCommitStateful) widget).setUncommittedState(
+                if (megawidget instanceof IExplicitCommitStateful) {
+                    ((IExplicitCommitStateful) megawidget).setUncommittedState(
                             identifier, items[0].getData(identifier));
-                    widgetsNeedingCommit.add((IExplicitCommitStateful) widget);
+                    megawidgetsNeedingCommit
+                            .add((IExplicitCommitStateful) megawidget);
                 } else {
-                    widget.setState(identifier, items[0].getData(identifier));
+                    megawidget.setState(identifier,
+                            items[0].getData(identifier));
                 }
             } catch (Exception e) {
                 statusHandler.error(
@@ -2207,21 +2261,21 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 + items[0].getData(identifier), e);
             }
         }
-        for (IExplicitCommitStateful widget : widgetsNeedingCommit) {
+        for (IExplicitCommitStateful megawidget : megawidgetsNeedingCommit) {
             try {
-                widget.commitStateChanges();
+                megawidget.commitStateChanges();
             } catch (Exception e) {
                 statusHandler
                         .error("HazardDetailViewPart.updatePointsTable(): "
                                 + "Unable to commit change(s) to state in point "
                                 + "megawidget "
-                                + widget.getSpecifier().getIdentifier(), e);
+                                + megawidget.getSpecifier().getIdentifier(), e);
             }
         }
     }
 
     /**
-     * Set the part's widgets' values to match the current event info.
+     * Set the part's megawidgets' values to match the current event info.
      */
     private void synchWithEventInfo() {
 
@@ -2244,17 +2298,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         typeCombo.setText(type);
 
         // Set the start and end time in the time
-        // range widgets.
+        // range megawidgets.
         try {
-            timeRangeWidget.setUncommittedState(
+            timeRangeMegawidget.setUncommittedState(
                     START_TIME_STATE,
                     primaryParamValues.get(visibleHazardIndex).get(
                             Utilities.HAZARD_EVENT_START_TIME));
-            timeRangeWidget.setUncommittedState(
+            timeRangeMegawidget.setUncommittedState(
                     END_TIME_STATE,
                     primaryParamValues.get(visibleHazardIndex).get(
                             Utilities.HAZARD_EVENT_END_TIME));
-            timeRangeWidget.commitStateChanges();
+            timeRangeMegawidget.commitStateChanges();
         } catch (Exception e) {
             statusHandler
                     .error("HazardDetailViewPart.synchWithEventInfo(): "
@@ -2263,37 +2317,37 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Show the metadata for this type; if it
-        // was already showing, then the widgets'
+        // was already showing, then the megawidgets'
         // states still have to be synced with
         // the current values.
         if (showMetadataForType(type) == false) {
-            synchMetadataWidgetsWithEventInfo();
+            synchMetadataMegawidgetsWithEventInfo();
         }
     }
 
     /**
-     * Synch the metadata widgets with current hazard event information.
+     * Synch the metadata megawidgets with current hazard event information.
      */
-    private void synchMetadataWidgetsWithEventInfo() {
+    private void synchMetadataMegawidgetsWithEventInfo() {
 
-        // Synch the main metadata widgets.
+        // Synch the main metadata megawidgets.
         String fullType = (String) primaryParamValues.get(visibleHazardIndex)
                 .get(Utilities.HAZARD_EVENT_FULL_TYPE);
-        setWidgetsStates(widgetsForIdsForTypes.get(fullType),
+        setMegawidgetsStates(megawidgetsForIdsForTypes.get(fullType),
                 primaryParamValues.get(visibleHazardIndex));
 
-        // If point widgets exist, synch them as well, in-
+        // If point megawidgets exist, synch them as well, in-
         // cluding the points table.
-        Map<String, Megawidget> pointWidgetsForIds = pointWidgetsForIdsForTypes
+        Map<String, Megawidget> pointMegawidgetsForIds = pointMegawidgetsForIdsForTypes
                 .get(fullType);
         Map<String, Object> pointParamValues = (pointsParamValues
                 .get(visibleHazardIndex) != null ? pointsParamValues.get(
                 visibleHazardIndex).get(0) : null);
-        if (pointWidgetsForIds != null) {
-            setPointWidgetsEnabled(pointWidgetsForIds,
+        if (pointMegawidgetsForIds != null) {
+            setPointMegawidgetsEnabled(pointMegawidgetsForIds,
                     (pointParamValues != null));
-            setWidgetsStates(pointWidgetsForIds, pointParamValues);
-            ((PointsTableMegawidget) pointWidgetsForIds
+            setMegawidgetsStates(pointMegawidgetsForIds, pointParamValues);
+            ((PointsTableMegawidget) pointMegawidgetsForIds
                     .get(POINTS_TABLE_IDENTIFIER)).populate();
         }
     }
@@ -2375,18 +2429,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             creationOccurred = true;
 
             // Determine whether or not point-speci-
-            // fic widgets are needed for this hazard
+            // fic megawidgets are needed for this hazard
             // type; if so, construct a tab folder
             // with two tabs, one for general meta-
-            // data widgets, the other for the point-
-            // specific widgets; otherwise, just
+            // data megawidgets, the other for the point-
+            // specific megawidgets; otherwise, just
             // construct a single group holding the
-            // general metadata widgets if the latter
+            // general metadata megawidgets if the latter
             // are required, or an empty panel other-
             // wise.
-            List<MegawidgetSpecifier> pointWidgetSpecifiers = pointWidgetsForTypes
+            List<MegawidgetSpecifier> pointMegawidgetSpecifiers = pointMegawidgetsForTypes
                     .get(type);
-            if (pointWidgetSpecifiers != null) {
+            if (pointMegawidgetSpecifiers != null) {
 
                 // Create the tab folder widget.
                 panel = new CTabFolder(metadataContentPanel, SWT.TOP);
@@ -2395,55 +2449,57 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         .getTabHeight() + 8);
 
                 // Create the area tab page to hold the
-                // general area widgets.
+                // general area megawidgets.
                 CTabItem tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
                 tabItem.setText(AREA_DETAILS_TAB_TEXT);
                 Composite areaPage = new Composite(panel, SWT.NONE);
-                Map<String, Megawidget> widgetsForIds = Maps.newHashMap();
-                addWidgetsToPanel(widgetsForTypes.get(type), areaPage,
-                        widgetsForIds, null,
+                Map<String, Megawidget> megawidgetsForIds = Maps.newHashMap();
+                addMegawidgetsToPanel(megawidgetsForTypes.get(type), areaPage,
+                        megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
-                widgetsForIdsForTypes.put(type, widgetsForIds);
+                megawidgetsForIdsForTypes.put(type, megawidgetsForIds);
                 tabItem.setControl(areaPage);
 
                 // Create points tab page to hold the
-                // points-specific widgets.
+                // points-specific megawidgets.
                 tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
                 tabItem.setText(POINTS_DETAILS_TAB_TEXT);
                 Composite pointsPage = new Composite(panel, SWT.NONE);
-                widgetsForIds = Maps.newHashMap();
-                Map<String, Megawidget> widgetsForStateIds = Maps.newHashMap();
-                addWidgetsToPanel(
-                        pointWidgetSpecifiers,
+                megawidgetsForIds = Maps.newHashMap();
+                Map<String, Megawidget> megawidgetsForStateIds = Maps
+                        .newHashMap();
+                addMegawidgetsToPanel(
+                        pointMegawidgetSpecifiers,
                         pointsPage,
-                        widgetsForIds,
-                        widgetsForStateIds,
+                        megawidgetsForIds,
+                        megawidgetsForStateIds,
                         (pointsParamValues.get(visibleHazardIndex) == null ? null
                                 : pointsParamValues.get(visibleHazardIndex)
                                         .get(0)));
-                pointWidgetsForIdsForTypes.put(type, widgetsForIds);
-                pointWidgetsForStateIdsForTypes.put(type, widgetsForStateIds);
-                ((PointsTableMegawidget) widgetsForIds
+                pointMegawidgetsForIdsForTypes.put(type, megawidgetsForIds);
+                pointMegawidgetsForStateIdsForTypes.put(type,
+                        megawidgetsForStateIds);
+                ((PointsTableMegawidget) megawidgetsForIds
                         .get(POINTS_TABLE_IDENTIFIER)).populate();
                 if (pointsParamValues.get(visibleHazardIndex) == null) {
-                    setPointWidgetsEnabled(widgetsForIds, false);
+                    setPointMegawidgetsEnabled(megawidgetsForIds, false);
                 }
                 tabItem.setControl(pointsPage);
 
                 // Lay out the tab folder.
                 panel.pack();
-            } else if ((widgetsForTypes.get(type) != null)
-                    && (widgetsForTypes.get(type).size() > 0)) {
+            } else if ((megawidgetsForTypes.get(type) != null)
+                    && (megawidgetsForTypes.get(type).size() > 0)) {
 
                 // Create the group panel to hold all the
-                // widgets.
+                // megawidgets.
                 panel = new Group(metadataContentPanel, SWT.NONE);
                 ((Group) panel).setText(DETAILS_SECTION_TEXT);
-                Map<String, Megawidget> widgetsForIds = Maps.newHashMap();
-                addWidgetsToPanel(widgetsForTypes.get(type), panel,
-                        widgetsForIds, null,
+                Map<String, Megawidget> megawidgetsForIds = Maps.newHashMap();
+                addMegawidgetsToPanel(megawidgetsForTypes.get(type), panel,
+                        megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
-                widgetsForIdsForTypes.put(type, widgetsForIds);
+                megawidgetsForIdsForTypes.put(type, megawidgetsForIds);
             } else {
                 panel = new Composite(metadataContentPanel, SWT.NONE);
             }
@@ -2544,18 +2600,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Enable or disable the specified point widgets.
+     * Enable or disable the specified point megawidgets.
      * 
-     * @param widgetsForIds
-     *            Hash table mapping identifiers to widgets, the latter forming
-     *            collectively the set of widgets to be enabled or disabled.
+     * @param megawidgetsForIds
+     *            Hash table mapping identifiers to megawidgets, the latter
+     *            forming collectively the set of megawidgets to be enabled or
+     *            disabled.
      * @param enabled
-     *            Flag indicating whether to enable or disable the widgets.
+     *            Flag indicating whether to enable or disable the megawidgets.
      */
-    private void setPointWidgetsEnabled(Map<String, Megawidget> widgetsForIds,
-            boolean enabled) {
-        for (Megawidget widget : widgetsForIds.values()) {
-            widget.setEnabled(enabled);
+    private void setPointMegawidgetsEnabled(
+            Map<String, Megawidget> megawidgetsForIds, boolean enabled) {
+        for (Megawidget megawidget : megawidgetsForIds.values()) {
+            megawidget.setEnabled(enabled);
         }
     }
 
@@ -2564,21 +2621,22 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void timeRangeChanged() {
 
-        // Do nothing if the appropriate widget is not
+        // Do nothing if the appropriate megawidget is not
         // found.
-        if (timeRangeWidget == null) {
+        if (timeRangeMegawidget == null) {
             return;
         }
 
         // Get the times and save them.
         try {
-            Long startTime = (Long) timeRangeWidget.getState(START_TIME_STATE);
+            Long startTime = (Long) timeRangeMegawidget
+                    .getState(START_TIME_STATE);
             if (startTime == null) {
                 return;
             }
             primaryParamValues.get(visibleHazardIndex).put(
                     Utilities.HAZARD_EVENT_START_TIME, startTime);
-            Long endTime = (Long) timeRangeWidget.getState(END_TIME_STATE);
+            Long endTime = (Long) timeRangeMegawidget.getState(END_TIME_STATE);
             if (endTime == null) {
                 return;
             }
@@ -2615,31 +2673,35 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Add metadata widgets as specified to the provided panel.
+     * Add metadata megawidgets as specified to the provided panel.
      * 
-     * @param widgetSpecifiers
-     *            List of widget specifiers indicating the widgets to be added.
+     * @param megawidgetSpecifiers
+     *            List of megawidget specifiers indicating the megawidgets to be
+     *            added.
      * @param panel
-     *            Panel to which to add the widgets.
-     * @param widgetsForIds
-     *            Hash table pairing widget identifiers with their associated
-     *            widgets. All created widgets have entries created within this
-     *            table during the course of the invocation of this method, one
-     *            per widget.
-     * @param widgetsForStateIds
+     *            Panel to which to add the megawidgets.
+     * @param megawidgetsForIds
+     *            Hash table pairing megawidget identifiers with their
+     *            associated megawidgets. All created megawidgets have entries
+     *            created within this table during the course of the invocation
+     *            of this method, one per megawidget.
+     * @param megawidgetsForStateIds
      *            Hash table pairing state identifiers with their associated
-     *            widgets. All created widgets have entries created within this
-     *            table during the course of the invocation of this method, one
-     *            per state held by a widget, so if a widget has two states, it
-     *            will have two entries in the table. If <code>null</code>, no
-     *            recording of widgets paired with state identifiers occurs.
+     *            megawidgets. All created megawidgets have entries created
+     *            within this table during the course of the invocation of this
+     *            method, one per state held by a megawidget, so if a megawidget
+     *            has two states, it will have two entries in the table. If
+     *            <code>
+     *            null</code>, no recording of megawidgets paired with state
+     *            identifiers occurs.
      * @param paramValues
      *            Hash table pairing state identifiers with their starting state
      *            values, if any.
      */
-    private void addWidgetsToPanel(List<MegawidgetSpecifier> widgetSpecifiers,
-            Composite panel, Map<String, Megawidget> widgetsForIds,
-            Map<String, Megawidget> widgetsForStateIds,
+    private void addMegawidgetsToPanel(
+            List<MegawidgetSpecifier> megawidgetSpecifiers, Composite panel,
+            Map<String, Megawidget> megawidgetsForIds,
+            Map<String, Megawidget> megawidgetsForStateIds,
             Map<String, Object> paramValues) {
 
         // Create the grid layout for the panel.
@@ -2647,7 +2709,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         gridLayout.marginWidth = 7;
         panel.setLayout(gridLayout);
 
-        // Create the widgets based on the specifica-
+        // Create the megawidgets based on the specifica-
         // tions, adding an entry for each to the
         // hash table pairing them with their identi-
         // fiers; if they are also stateful, then
@@ -2655,27 +2717,29 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // them with their states, one entry per
         // state that each contains.
         Set<Megawidget> megawidgets = Sets.newHashSet();
-        for (MegawidgetSpecifier widgetSpecifier : widgetSpecifiers) {
-            Megawidget widget = null;
+        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+            Megawidget megawidget = null;
             try {
-                widget = widgetSpecifier.createMegawidget(panel,
-                        widgetCreationParams);
+                megawidget = megawidgetSpecifier.createMegawidget(panel,
+                        megawidgetCreationParams);
             } catch (MegawidgetException e) {
                 statusHandler
-                        .error("HazardDetailViewPart.addWidgetsToPanel(): Hazard "
+                        .error("HazardDetailViewPart.addMegawidgetsToPanel(): Hazard "
                                 + "event type metadata megawidget creation error.",
                                 e);
             }
-            megawidgets.add(widget);
-            widgetsForIds.put(widgetSpecifier.getIdentifier(), widget);
-            if ((widgetsForStateIds != null) && (widget instanceof IStateful)) {
-                for (String identifier : ((IStatefulSpecifier) widgetSpecifier)
+            megawidgets.add(megawidget);
+            megawidgetsForIds.put(megawidgetSpecifier.getIdentifier(),
+                    megawidget);
+            if ((megawidgetsForStateIds != null)
+                    && (megawidget instanceof IStateful)) {
+                for (String identifier : ((IStatefulSpecifier) megawidgetSpecifier)
                         .getStateIdentifiers()) {
-                    widgetsForStateIds.put(identifier, widget);
+                    megawidgetsForStateIds.put(identifier, megawidget);
                 }
             }
-            if (widget instanceof TimeScaleMegawidget) {
-                timeScaleWidgets.add((TimeScaleMegawidget) widget);
+            if (megawidget instanceof TimeScaleMegawidget) {
+                timeScaleMegawidgets.add((TimeScaleMegawidget) megawidget);
             }
         }
 
@@ -2683,56 +2747,60 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // another.
         Megawidget.alignMegawidgetsElements(megawidgets);
 
-        // Set the widgets' states to match the
+        // Set the megawidgets' states to match the
         // initial values.
-        setWidgetsStates(widgetsForIds, paramValues);
+        setMegawidgetsStates(megawidgetsForIds, paramValues);
 
         // Lay out the panel.
         panel.pack();
     }
 
     /**
-     * Set the metadata widgets' states as specified.
+     * Set the metadata megawidgets' states as specified.
      * 
-     * @param widgetsForIds
-     *            Hash table pairing widget identifiers with their associated
-     *            widgets. All created widgets have entries created within the
-     *            table during the course of the invocation of this method.
+     * @param megawidgetsForIds
+     *            Hash table pairing megawidget identifiers with their
+     *            associated megawidgets. All created megawidgets have entries
+     *            created within the table during the course of the invocation
+     *            of this method.
      * @param paramValues
-     *            Hash table pairing widget identifiers with their starting
+     *            Hash table pairing megawidget identifiers with their starting
      *            state values, if any.
      */
-    private void setWidgetsStates(Map<String, Megawidget> widgetsForIds,
+    private void setMegawidgetsStates(
+            Map<String, Megawidget> megawidgetsForIds,
             Map<String, Object> paramValues) {
 
         // If there are initial state values, set the
-        // widgets to match them. If there is no state
+        // megawidgets to match them. If there is no state
         // value for a particular state identifier and
-        // the widget has a default value for it, make
+        // the megawidget has a default value for it, make
         // an entry in the hazard event mapping that
         // identifier to the default value. This ensures
         // that default values for megawidgets are used
         // as default values for hazard events.
-        if ((paramValues != null) && (widgetsForIds != null)) {
+        if ((paramValues != null) && (megawidgetsForIds != null)) {
 
-            // Iterate through the widgets, finding any
+            // Iterate through the megawidgets, finding any
             // that are stateful and for those, setting
             // the states to match those given in the
             // parameter values dictionary, or if the
             // latter has no value for a given state
-            // identifier and the widget has a starting
+            // identifier and the megawidget has a starting
             // value, adding a mapping for that state
             // identifier and default value to the
             // dictionary.
             Set<String> identifiersGivenDefaultValues = Sets.newHashSet();
-            Set<IExplicitCommitStateful> widgetsNeedingCommit = Sets
+            Set<IExplicitCommitStateful> megawidgetsNeedingCommit = Sets
                     .newHashSet();
-            for (String widgetIdentifier : widgetsForIds.keySet()) {
-                Megawidget widget = widgetsForIds.get(widgetIdentifier);
-                if ((widget instanceof IStateful) == false) {
+            for (String megawidgetIdentifier : megawidgetsForIds.keySet()) {
+                Megawidget megawidget = megawidgetsForIds
+                        .get(megawidgetIdentifier);
+                if ((megawidget instanceof IStateful) == false) {
                     continue;
                 }
-                for (String identifier : ((IStatefulSpecifier) widget
+                boolean timeScaleMegawidgetStatesNeedSetting = false;
+                for (String identifier : ((IStatefulSpecifier) megawidget
                         .getSpecifier()).getStateIdentifiers()) {
 
                     // Use the value from the parameter
@@ -2742,15 +2810,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     // default value instead.
                     boolean useDefaultValue = !paramValues
                             .containsKey(identifier);
+                    if (megawidget instanceof TimeScaleMegawidget) {
+                        useDefaultValue = (useDefaultValue || ((Number) paramValues
+                                .get(identifier)).longValue() == 0L);
+                    }
                     if (useDefaultValue == false) {
                         Object value = paramValues.get(identifier);
                         try {
-                            setWidgetState((IStateful) widget, identifier,
-                                    value, widgetsNeedingCommit);
+                            setMegawidgetState((IStateful) megawidget,
+                                    identifier, value, megawidgetsNeedingCommit);
                         } catch (MegawidgetStateException e) {
                             useDefaultValue = true;
                             statusHandler
-                                    .info("HazardDetailViewPart.setWidgetsStates(): "
+                                    .info("HazardDetailViewPart.setMegawidgetsStates(): "
                                             + "Unable to set state for "
                                             + identifier
                                             + " to "
@@ -2759,69 +2831,117 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         }
                     }
                     if (useDefaultValue) {
-                        try {
 
-                            // Use the default (starting) value of the
-                            // megawidget specifier, not the current
-                            // value of the megawidget itself, since
-                            // it may have been changed by other
-                            // events previously. If a default value
-                            // exists, make this the current value of
-                            // the event dictionary for that identifier,
-                            // and set the megawidget to match. If no
-                            // default starting value is found, use
-                            // the current value of the megawidget in-
-                            // stead.
-                            Object defaultValue = ((IStatefulSpecifier) widget
-                                    .getSpecifier())
-                                    .getStartingState(identifier);
-                            if (defaultValue != null) {
-                                identifiersGivenDefaultValues.add(identifier);
-                                paramValues.put(identifier, defaultValue);
-                                Object widgetState = ((IStateful) widget)
-                                        .getState(identifier);
-                                if ((widgetState == null)
-                                        || (widgetState.equals(defaultValue) == false)) {
-                                    setWidgetState((IStateful) widget,
-                                            identifier, defaultValue,
-                                            widgetsNeedingCommit);
-                                }
-                            } else {
-                                defaultValue = ((IStateful) widget)
-                                        .getState(identifier);
+                        // If this is a time scale megawidget, remember
+                        // that its starting values need setting. Other-
+                        // wise, use the default starting value.
+                        if (megawidget instanceof TimeScaleMegawidget) {
+                            timeScaleMegawidgetStatesNeedSetting = true;
+                            break;
+                        } else {
+                            try {
+
+                                // Use the default (starting) value of the
+                                // megawidget specifier, not the current
+                                // value of the megawidget itself, since
+                                // it may have been changed by other
+                                // events previously. If a default value
+                                // exists, make this the current value of
+                                // the event dictionary for that identifier,
+                                // and set the megawidget to match. If no
+                                // default starting value is found, use
+                                // the current value of the megawidget in-
+                                // stead.
+                                Object defaultValue = ((IStatefulSpecifier) megawidget
+                                        .getSpecifier())
+                                        .getStartingState(identifier);
                                 if (defaultValue != null) {
                                     identifiersGivenDefaultValues
                                             .add(identifier);
                                     paramValues.put(identifier, defaultValue);
+                                    Object megawidgetState = ((IStateful) megawidget)
+                                            .getState(identifier);
+                                    if ((megawidgetState == null)
+                                            || (megawidgetState
+                                                    .equals(defaultValue) == false)) {
+                                        setMegawidgetState(
+                                                (IStateful) megawidget,
+                                                identifier, defaultValue,
+                                                megawidgetsNeedingCommit);
+                                    }
+                                } else {
+                                    defaultValue = ((IStateful) megawidget)
+                                            .getState(identifier);
+                                    if (defaultValue != null) {
+                                        identifiersGivenDefaultValues
+                                                .add(identifier);
+                                        paramValues.put(identifier,
+                                                defaultValue);
+                                    }
                                 }
+                            } catch (Exception e) {
+                                statusHandler
+                                        .error("HazardDetailViewPart.setMegawidgetsStates(): "
+                                                + "Unable to fetch default state for "
+                                                + identifier + ".", e);
                             }
-                        } catch (Exception e) {
-                            statusHandler
-                                    .error("HazardDetailViewPart.setWidgetsStates(): "
-                                            + "Unable to fetch default state for "
-                                            + identifier + ".", e);
                         }
+                    }
+                }
+
+                // If this is a time scale megawidget and its state
+                // needs setting, set the starting values of its
+                // thumbs to equidistant temporal points along the
+                // current start-end time range of the event. This
+                // ensures that their starting values are not bogus.
+                if (timeScaleMegawidgetStatesNeedSetting) {
+                    try {
+                        long start = (Long) timeRangeMegawidget
+                                .getState(START_TIME_STATE);
+                        long end = (Long) timeRangeMegawidget
+                                .getState(END_TIME_STATE);
+                        List<String> identifiers = ((IStatefulSpecifier) megawidget
+                                .getSpecifier()).getStateIdentifiers();
+                        long interval = (identifiers.size() == 1 ? 0L
+                                : (end - start) / (identifiers.size() - 1L));
+                        long defaultValue = start;
+                        for (int j = 0; j < identifiers.size(); j++, defaultValue += interval) {
+                            String identifier = identifiers.get(j);
+                            identifiersGivenDefaultValues.add(identifier);
+                            paramValues.put(identifier, defaultValue);
+                            setMegawidgetState((IStateful) megawidget,
+                                    identifier, defaultValue,
+                                    megawidgetsNeedingCommit);
+                        }
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "HazardDetailViewPart.setMegawidgetsStates(): "
+                                        + "Unable to set starting states for "
+                                        + megawidget.getSpecifier()
+                                                .getIdentifier() + ".", e);
                     }
                 }
             }
 
-            // Commit changes to any widgets that must
+            // Commit changes to any megawidgets that must
             // be explicitly commit.
-            for (IExplicitCommitStateful widget : widgetsNeedingCommit) {
+            for (IExplicitCommitStateful megawidget : megawidgetsNeedingCommit) {
                 try {
-                    widget.commitStateChanges();
+                    megawidget.commitStateChanges();
                 } catch (Exception e) {
                     statusHandler
-                            .error("HazardDetailViewPart.setWidgetStates(): "
+                            .error("HazardDetailViewPart.setMegawidgetsStates(): "
                                     + "Unable to commit change(s) to state for "
-                                    + widget.getSpecifier().getIdentifier(), e);
+                                    + megawidget.getSpecifier().getIdentifier(),
+                                    e);
                 }
             }
 
             // If any default values were taken from the
-            // widgets and placed in the event dictionary,
-            // send off a notification that these values
-            // changed.
+            // megawidgets (or in the case of time scale
+            // megawidgets, calculated on the fly) and
+            // placed in the event dictionary, send off a
+            // notification that these values changed.
             if (identifiersGivenDefaultValues.size() > 0) {
                 Dict eventInfo = new Dict();
                 eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER,
@@ -2834,13 +2954,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     jsonText = eventInfo.toJSONString();
                 } catch (Exception e) {
                     statusHandler
-                            .error("HazardDetailViewPart.setWidgetsStates(): conversion "
+                            .error("HazardDetailViewPart.setMegawidgetsStates(): conversion "
                                     + "of event info to JSON string failed.", e);
                 }
-                if (!hazardDetailView.doNotForwardActions()) {
-                    hazardDetailView.fireAction(new HazardDetailAction(
-                            "updateEventMetadata", jsonText), true);
-                }
+                hazardDetailView.fireAction(new HazardDetailAction(
+                        "updateEventMetadata", jsonText), true);
             }
         }
     }
@@ -2850,29 +2968,30 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * specified state identifier, recording it as requiring an explicit commit
      * if this is the case.
      * 
-     * @param widget
+     * @param megawidget
      *            Megawidget to have its state set.
      * @param identifier
      *            State identifier to be set.
      * @param value
      *            New value of the state identifier.
-     * @param widgetsNeedingCommit
-     *            Set of megawidgets needing an explicit commit; <code>widget
+     * @param megawidgetsNeedingCommit
+     *            Set of megawidgets needing an explicit commit;
+     *            <code>megawidget
      *            </code> will be added to this set by this invocation if it is
      *            an <code>IExplicitCommitStateful</code> instance.
      * @throws MegawidgetStateException
      *             If a state exception occurs while attempting to set the
      *             megawidget's state.
      */
-    private void setWidgetState(IStateful widget, String identifier,
-            Object value, Set<IExplicitCommitStateful> widgetsNeedingCommit)
+    private void setMegawidgetState(IStateful megawidget, String identifier,
+            Object value, Set<IExplicitCommitStateful> megawidgetsNeedingCommit)
             throws MegawidgetStateException {
-        if (widget instanceof IExplicitCommitStateful) {
-            ((IExplicitCommitStateful) widget).setUncommittedState(identifier,
-                    value);
-            widgetsNeedingCommit.add((IExplicitCommitStateful) widget);
+        if (megawidget instanceof IExplicitCommitStateful) {
+            ((IExplicitCommitStateful) megawidget).setUncommittedState(
+                    identifier, value);
+            megawidgetsNeedingCommit.add((IExplicitCommitStateful) megawidget);
         } else {
-            widget.setState(identifier, value);
+            megawidget.setState(identifier, value);
         }
 
     }
