@@ -39,7 +39,6 @@ import com.raytheon.uf.common.dataplugin.text.AfosWmoIdDataContainer;
 import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
 import com.raytheon.uf.common.dataplugin.text.request.GetAfosIdRequest;
 import com.raytheon.uf.common.dissemination.OUPRequest;
-import com.raytheon.uf.common.dissemination.OUPResponse;
 import com.raytheon.uf.common.dissemination.OfficialUserProduct;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -58,6 +57,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * ------------ ---------- ----------- --------------------------
  * Jan 11, 2013            jsanchez     Initial creation
  * Jun 20, 2013 1122       jsanchez     Added a disseminate method.
+ * Sep 12, 2013 717        jsanchez     Changed disseminate to return void type.
  * 
  * </pre>
  * 
@@ -240,9 +240,8 @@ public class ProductUtils {
      * Disseminates the text product via the OUPRequest.
      * 
      * @param product
-     * @return 'true' if successful. Otherwise, 'false'.
      */
-    public static boolean disseminate(String product) {
+    public static void disseminate(String product) {
 
         try {
             String awipsWanPil = null;
@@ -282,13 +281,10 @@ public class ProductUtils {
             OUPRequest req = new OUPRequest();
             req.setCheckBBB(true);
             req.setProduct(oup);
-            OUPResponse resp = (OUPResponse) RequestRouter.route(req);
-            return !resp.hasFailure();
+            RequestRouter.route(req);
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Error transmitting text product", e);
         }
-
-        return false;
     }
 }

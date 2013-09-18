@@ -36,9 +36,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.gfe.HazardEventConverter;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
+import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -85,6 +89,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                     seeing.
  * Aug 29, 2013 1921       blawrenc    Added logic to issue that the "replaces" information is
  *                                     removed from an event upon issuance.
+ * Sep 12, 2013 717        jsanchez    Disseminated the legacy text product.
  * 
  * </pre>
  * 
@@ -93,6 +98,8 @@ import com.vividsolutions.jts.geom.Puntal;
  */
 
 public class SessionProductManager implements ISessionProductManager {
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(SessionProductManager.class);
 
     private final ISessionTimeManager timeManager;
 
@@ -247,6 +254,15 @@ public class SessionProductManager implements ISessionProductManager {
     public void issue(ProductInformation information) {
 
         for (IHazardEvent selectedEvent : information.getSelectedEvents()) {
+
+            // checks if selected events conflicting with existing grids based
+            // on time and phensigs
+            if (HazardEventConverter.hasConflicts(selectedEvent)) {
+                statusHandler
+                        .error("The new event has a conflicting with existing grids.");
+                break;
+            }
+
             if (selectedEvent.getState() != HazardState.ENDED) {
                 Serializable previewState = selectedEvent
                         .getHazardAttribute(HazardConstants.PREVIEW_STATE);
@@ -264,6 +280,16 @@ public class SessionProductManager implements ISessionProductManager {
                             SessionEventUtilities.mergeHazardEvents(newEvent,
                                     selectedEvent);
                             break;
+                        }
+                    }
+
+                    // disseminates the legacy product
+                    for (IGeneratedProduct product : information.getProducts()) {
+                        List<Object> objs = product.getEntry("Legacy");
+                        if (objs != null) {
+                            for (Object obj : objs) {
+                                ProductUtils.disseminate(String.valueOf(obj));
+                            }
                         }
                     }
 

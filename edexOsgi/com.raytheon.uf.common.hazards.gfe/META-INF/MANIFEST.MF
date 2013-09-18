@@ -11,5 +11,12 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.dataplugin.gfe;bundle-version="1.12.1174",
  com.raytheon.uf.common.actionregistry;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174"
+ com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174",
+ com.raytheon.uf.common.message;bundle-version="1.12.1174",
+ com.raytheon.uf.common.geospatial;bundle-version="1.12.1174",
+ com.raytheon.uf.common.time;bundle-version="1.12.1174",
+ com.raytheon.uf.common.python;bundle-version="1.12.1174",
+ com.raytheon.uf.common.localization;bundle-version="1.12.1174",
+ com.raytheon.uf.common.localization.python;bundle-version="1.0.0"
 Import-Package: com.raytheon.uf.common.status
+Export-Package: com.raytheon.uf.common.hazards.gfe

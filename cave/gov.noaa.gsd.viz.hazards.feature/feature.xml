@@ -132,10 +132,17 @@
          unpack="false"/>
 
    <plugin
-         id="gov.noaa.gsd.common.hazards.utilities"
+         id="com.raytheon.uf.common.hazards.gfe"
          download-size="0"
          install-size="0"
          version="0.0.0"
          unpack="false"/>
 
+      <plugin
+         id="gov.noaa.gsd.common.hazards.utilities"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+  
 </feature>
