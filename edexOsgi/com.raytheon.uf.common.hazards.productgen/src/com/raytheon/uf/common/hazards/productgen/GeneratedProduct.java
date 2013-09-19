@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 
 /**
  * 
@@ -38,17 +38,18 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
  * ------------ ---------- ----------- --------------------------
  * Oct 19, 2012            jsanchez     Initial creation
  * Aug 20, 2013 1360       blawrenc     Added event set.
+ * Sep 19, 2013 2046       mnash        Update for product generation.
  * 
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
-public class GeneratedProduct implements IGeneratedProduct {
+public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
 
     private final String productID;
 
-    private EventSet<BaseHazardEvent> eventSet;
+    private EventSet<IEvent> eventSet;
 
     /** Resulting products generated */
     private Map<String, List<Object>> entries = new HashMap<String, List<Object>>();
@@ -97,13 +98,29 @@ public class GeneratedProduct implements IGeneratedProduct {
     }
 
     @Override
-    public EventSet<BaseHazardEvent> getEventSet() {
+    public EventSet<IEvent> getEventSet() {
         return eventSet;
     }
 
     @Override
-    public void setEventSet(EventSet<BaseHazardEvent> eventSet) {
+    public void setEventSet(EventSet<IEvent> eventSet) {
         this.eventSet = eventSet;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.common.hazards.productgen.ITextProduct#getText(java.lang
+     * .String)
+     */
+    @Override
+    public String getText(String key) {
+        StringBuilder builder = new StringBuilder();
+        for (Object entry : entries.get(key)) {
+            builder.append(entry.toString());
+        }
+        return builder.toString();
     }
 
 }

@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.commons.lang.Validate;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
@@ -41,7 +41,7 @@ import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * 
- * Generates product into different formats based on a HazardEventSet.
+ * Generates product into different formats based on a eventSet.
  * 
  * <pre>
  * 
@@ -50,6 +50,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 10, 2013            jsanchez     Initial creation
+ * Sep 19, 2013 2046       mnash        Update for less dependencies.
  * 
  * </pre>
  * 
@@ -66,7 +67,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
             .newInstance(new ProductScriptFactory());
 
     /**
-     * Generates the hazardEventSet into different formats. The job is performed
+     * Generates the eventSet into different formats. The job is performed
      * asynchronously and will be passed to the session manager.
      * 
      * @param product
@@ -74,22 +75,22 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            python class "ExampleFFW.py" which should be in the
      *            /common_static/base/python/events/productgen/products
      *            directory
-     * @param hazardEventSet
-     *            the EventSet<IHazardEvent> object that will provide the
-     *            information for the product generator
+     * @param eventSet
+     *            the EventSet<IEvent> object that will provide the information
+     *            for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String product, EventSet<IHazardEvent> hazardEventSet,
+    public void generate(String product, EventSet<IEvent> eventSet,
             String[] formats,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
         // Validates the parameter values
-        validate(formats, product, hazardEventSet, listener);
+        validate(formats, product, eventSet, listener);
 
         IPythonExecutor<ProductScript, List<IGeneratedProduct>> executor = new ProductScriptExecutor(
-                product, hazardEventSet, formats);
+                product, eventSet, formats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);
@@ -99,7 +100,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     /**
-     * Generates an array of hazardEventSets into different formats.The job is
+     * Generates an array of eventSets into different formats.The job is
      * performed asynchronously and will be passed to the session manager.
      * 
      * @param product
@@ -107,19 +108,19 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            python class "ExampleFFW.py" which should be in the
      *            /common_static/base/python/events/productgen/products
      *            directory
-     * @param hazardEventSets
-     *            an array of EventSet<IHazardEvent> objects that will provide
-     *            the information for the product generator
+     * @param eventSets
+     *            an array of EventSet<IEvent> objects that will provide the
+     *            information for the product generator
      * @param formats
      *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String product,
-            EventSet<IHazardEvent>[] hazardEventSets, String[] formats,
+    public void generate(String product, EventSet<IEvent>[] eventSets,
+            String[] formats,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
-        for (EventSet<IHazardEvent> hazardEventSet : hazardEventSets) {
-            generate(product, hazardEventSet, formats, listener);
+        for (EventSet<IEvent> eventSet : eventSets) {
+            generate(product, eventSet, formats, listener);
         }
     }
 
@@ -157,16 +158,15 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * 
      * @param formats
      * @param product
-     * @param hazardEventSet
+     * @param eventSet
      */
     private void validate(String[] formats, String product,
-            EventSet<IHazardEvent> hazardEventSet,
+            EventSet<IEvent> eventSet,
             IPythonJobListener<List<IGeneratedProduct>> listener) {
         Validate.notNull(formats, "'FORMATS' must be set.");
         Validate.notNull(product, "'PRODUCT' must be set.");
-        Validate.notNull(hazardEventSet, "'HAZARD EVENT SET' must be set");
-        Validate.isTrue(!hazardEventSet.isEmpty(),
-                "HAZARD EVENT SET can't be empty");
+        Validate.notNull(eventSet, "'HAZARD EVENT SET' must be set");
+        Validate.isTrue(!eventSet.isEmpty(), "HAZARD EVENT SET can't be empty");
         Validate.notNull(listener, "'listener' must be set.");
     }
 

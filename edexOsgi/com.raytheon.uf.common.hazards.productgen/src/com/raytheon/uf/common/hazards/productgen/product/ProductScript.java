@@ -28,7 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
@@ -68,7 +68,7 @@ public class ProductScript extends PythonScriptController {
     private static final String PYTHON_CLASS = "Product";
 
     /** Parameter name in the execute method */
-    private static final String HAZARD_EVENT_SET = "hazardEventSet";
+    private static final String EVENT_SET = "eventSet";
 
     /** Executing method in the python module */
     private static final String METHOD_NAME = "execute";
@@ -124,11 +124,11 @@ public class ProductScript extends PythonScriptController {
     }
 
     /**
-     * Generates a list of IGeneratedProducts from the hazardEventSet
+     * Generates a list of IGeneratedProducts from the eventSet
      * 
      * @param product
-     * @param hazardEventSet
-     *            the EventSet<IHazardEvent> o
+     * @param eventSet
+     *            the EventSet<IEvent> o
      * @param formats
      *            an array of the formats the IGeneratedProduct should be in
      *            (i.e. XML)
@@ -136,11 +136,11 @@ public class ProductScript extends PythonScriptController {
      */
     @SuppressWarnings("unchecked")
     public List<IGeneratedProduct> generateProduct(String product,
-            EventSet<IHazardEvent> hazardEventSet, String[] formats) {
+            EventSet<IEvent> eventSet, String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
-        args.put(HAZARD_EVENT_SET, hazardEventSet);
+        args.put(EVENT_SET, eventSet);
         args.put("formats", Arrays.asList(formats));
         List<IGeneratedProduct> retVal = null;
         try {

@@ -21,7 +21,8 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.viz.hazards.sessionmanager;bundle-version="1.0.0",
  com.raytheon.uf.common.recommenders;bundle-version="1.0.0",
  com.raytheon.uf.common.style;bundle-version="1.0.0",
- gov.noaa.gsd.common.hazards.utilities;bundle-version="1.0.0"
+ gov.noaa.gsd.common.hazards.utilities;bundle-version="1.0.0",
+ com.raytheon.uf.viz.productgen
 Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.spatialdisplay

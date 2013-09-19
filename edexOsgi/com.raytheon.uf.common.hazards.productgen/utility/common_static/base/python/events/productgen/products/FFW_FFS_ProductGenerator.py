@@ -47,10 +47,10 @@ class Product(ProductTemplate.Product):
         """  
         return {}
 
-    def execute(self, hazardEventSet):          
+    def execute(self, eventSet):          
         '''
         Inputs:
-        @param hazardEventSet: a list of hazard events (eventDicts) plus
+        @param eventSet: a list of hazard events (eventDicts) plus
                                a map of additional variables
         @return productDicts: Each execution of a generator can produce 1 or more 
              products from the set of hazard events
@@ -60,7 +60,7 @@ class Product(ProductTemplate.Product):
         self.logger.info("Start ProductGeneratorTemplate:execute FFW_FFS")
         
         # Extract information for execution
-        self._getVariables(hazardEventSet)
+        self._getVariables(eventSet)
         if not self._eventDicts:
             return []
         # Here is the format of the dictionary that is returned for

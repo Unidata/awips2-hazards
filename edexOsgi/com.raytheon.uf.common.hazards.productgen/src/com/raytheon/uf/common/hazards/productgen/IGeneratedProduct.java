@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 
 /**
  * 
@@ -66,7 +66,7 @@ public interface IGeneratedProduct {
      * @param
      * @return A set of events
      */
-    public EventSet<BaseHazardEvent> getEventSet();
+    public EventSet<IEvent> getEventSet();
 
     /**
      * 
@@ -74,6 +74,6 @@ public interface IGeneratedProduct {
      *            event set
      * @return
      */
-    public void setEventSet(EventSet<BaseHazardEvent> eventSet);
+    public void setEventSet(EventSet<IEvent> eventSet);
 
 }

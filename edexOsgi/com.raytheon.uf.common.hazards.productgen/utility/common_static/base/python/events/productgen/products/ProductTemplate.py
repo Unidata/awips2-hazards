@@ -9,7 +9,7 @@
     July  8, 2013  784,1290  Tracy.L.Hansen      Added ProductParts and changes for ESF product generator
     Aug  14, 2013  784,1360  Tracy.L.Hansen      Organized more according to Product Parts and Dictionary,
                                                  Added handling of sections within segments,
-                                                 Returning updated HazardEventSet with Product Dictionaries
+                                                 Returning updated eventSet with Product Dictionaries
                                                  Issues 784, 1369     
     Sept 9,  2013  1298       Tracy.L.Hansen     Setting hazard event to ended, setting product information
                                                  on ended hazard events, correctly reporting currentStage, 
@@ -99,7 +99,7 @@ class Product(object):
         '''  
         return {}
     
-    def execute(self, hazardEventSet):          
+    def execute(self, eventSet):          
         '''
         Must be overridden by the Product Generator
         '''
@@ -164,28 +164,28 @@ class Product(object):
                 ProductPart('endProduct')
                 ]
 
-    def _unpackHazardEventSet(self, hazardEventSet):  
+    def _unpackEventSet(self, eventSet):  
         '''
-        Must convert Java object hazardEventSet to Python eventDicts
+        Must convert Java object eventSet to Python eventDicts
         NOTE: The Framework will be fixed to send a Python Hazard Event Set
         and then we will unpack the eventDicts and meta information
         '''
         # Translate Hazard Event Set from Java to Python                
-        iterator = hazardEventSet.iterator()
+        iterator = eventSet.iterator()
         eventList = ArrayList()
         while iterator.hasNext():
             event = iterator.next()
             eventList.add(event)    
         eventDicts = self.bridge.handleRecommenderResult('ProductGenerator', eventList, enclosed=False)                             
-        attributes = hazardEventSet.getAttributes()
+        attributes = eventSet.getAttributes()
         metaDict = JUtil.javaMapToPyDict(attributes)
         return eventDicts, metaDict
               
-    def _getVariables(self, hazardEventSet): 
+    def _getVariables(self, eventSet): 
         '''
          Set up class variables
         '''  
-        self._eventDicts, metaDict = self._unpackHazardEventSet(hazardEventSet) 
+        self._eventDicts, metaDict = self._unpackEventSet(eventSet) 
                 
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on

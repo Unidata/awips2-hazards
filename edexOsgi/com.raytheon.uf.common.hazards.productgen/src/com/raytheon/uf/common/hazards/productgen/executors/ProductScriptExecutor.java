@@ -22,7 +22,7 @@ package com.raytheon.uf.common.hazards.productgen.executors;
 import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
@@ -47,7 +47,7 @@ public class ProductScriptExecutor extends
         AbstractProductExecutor<List<IGeneratedProduct>> {
 
     /** provide the information for the product generator */
-    private EventSet<IHazardEvent> hazardEventSet;
+    private EventSet<IEvent> eventSet;
 
     /** String array of formats */
     private String[] formats;
@@ -60,20 +60,20 @@ public class ProductScriptExecutor extends
      * 
      * @param product
      *            name of the product generator
-     * @param hazardEventSet
-     *            the EventSet<IHazardEvent> object that will provide the
-     *            information for the product generator
+     * @param eventSet
+     *            the EventSet<IEvent> object that will provide the information
+     *            for the product generator
      */
     public ProductScriptExecutor(String product,
-            EventSet<IHazardEvent> hazardEventSet, String[] formats) {
+            EventSet<IEvent> eventSet, String[] formats) {
         this.product = product;
-        this.hazardEventSet = hazardEventSet;
+        this.eventSet = eventSet;
         this.formats = formats;
     }
 
     @Override
     public List<IGeneratedProduct> execute(ProductScript script) {
-        return script.generateProduct(product, hazardEventSet, formats);
+        return script.generateProduct(product, eventSet, formats);
     }
 
 }

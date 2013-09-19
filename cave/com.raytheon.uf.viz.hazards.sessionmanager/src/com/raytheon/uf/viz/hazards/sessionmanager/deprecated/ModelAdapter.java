@@ -112,6 +112,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Sept 18, 2013 1298    Tracy.L.Hansen Product information in Hazard Event needs to be
  *                                      re-initialized when copying a Hazard Event to
  *                                      create a new one e.g. FA.A --> FA.W
+ * Sep 19, 2013 2046    mnash           Update for product generation.
  * </pre>
  * 
  * @author bsteffen
@@ -1078,14 +1079,18 @@ public abstract class ModelAdapter {
         for (IGeneratedProduct product : generatedProductsList) {
             GeneratedProduct genProduct = new GeneratedProduct();
             genProduct.setProductID(product.getProductID());
-            genProduct.setLegacy(product.getEntry("Legacy").get(0).toString());
+            for (String formatKey : product.getEntries().keySet()) {
+                genProduct.addProduct(formatKey, product.getEntry(formatKey)
+                        .get(0).toString());
+            }
             products.add(genProduct);
         }
         if (products.isEmpty()) {
             GeneratedProduct genProduct = new GeneratedProduct();
             genProduct.setProductID("EMPTY");
             genProduct
-                    .setLegacy(" EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. ");
+                    .addProduct("EMPTY",
+                            " EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. ");
             products.add(genProduct);
         }
         if (result.getGeneratedProducts() != null) {

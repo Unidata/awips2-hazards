@@ -1101,7 +1101,7 @@ public final class HazardServicesMessageHandler {
         String returnDict_json = model.createProductsFromHazardEventSets(
                 issueFlag, hazardEventSets);
         if (!issueFlag.equalsIgnoreCase(TRUE_FLAG)) {
-            appBuilder.showProductEditorView(returnDict_json);
+            // appBuilder.showProductEditorView(returnDict_json);
             notifyModelEventsChanged();
         }
     }

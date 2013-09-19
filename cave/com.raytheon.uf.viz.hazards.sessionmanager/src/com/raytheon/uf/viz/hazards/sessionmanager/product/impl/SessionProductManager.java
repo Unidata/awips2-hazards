@@ -35,6 +35,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -94,6 +95,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Aug 29, 2013 1921       blawrenc    Added logic to issue that the "replaces" information is
  *                                     removed from an event upon issuance.
  * Sep 12, 2013 717        jsanchez    Disseminated the legacy text product.
+ * Sep 19, 2013 2046       mnash       Update for product generation.
  * 
  * Sept 16, 2013 1298      thansen     Added popup dialog trying to preview or issue non-supported 
  *                                     hazards
@@ -223,7 +225,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void generate(ProductInformation information, boolean issue) {
-        EventSet<IHazardEvent> events = new EventSet<IHazardEvent>();
+        EventSet<IEvent> events = new EventSet<IEvent>();
         events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                 .getCurrentTime().getTime());
         events.addAttribute(HazardConstants.SITEID, configManager.getSiteID());
@@ -367,8 +369,9 @@ public class SessionProductManager implements ISessionProductManager {
                                 HazardState.ENDED.toString())) {
                     selectedEvent.setState(HazardState.ENDED);
                 } else {
-                    for (IHazardEvent event : information.getProducts().get(0)
+                    for (IEvent ev : information.getProducts().get(0)
                             .getEventSet()) {
+                        IHazardEvent event = (IHazardEvent) ev;
                         if (selectedEvent.getEventID().equals(
                                 event.getEventID())) {
                             ObservedHazardEvent newEvent = new ObservedHazardEvent(

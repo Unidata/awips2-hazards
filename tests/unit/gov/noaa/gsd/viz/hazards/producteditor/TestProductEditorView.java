@@ -214,4 +214,14 @@ public class TestProductEditorView implements
         return shellClosedInvoker;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView#openDialog()
+     */
+    @Override
+    public void openDialog() {
+    }
+
 }

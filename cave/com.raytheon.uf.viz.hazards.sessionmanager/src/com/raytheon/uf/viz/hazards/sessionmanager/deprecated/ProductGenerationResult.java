@@ -19,10 +19,10 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
  * Reverse engineered to represent product generation result as JSON.
@@ -34,6 +34,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 28, 2013 1257       bsteffen    Initial creation
+ * Sep 19, 2013 2046       mnash       Update for product generation.
  * 
  * </pre>
  * 
@@ -84,17 +85,20 @@ public class ProductGenerationResult {
     @Deprecated
     public static class GeneratedProduct {
 
-        @JsonProperty("Legacy")
-        private String legacy;
+        private Map<String, String> products = new HashMap<String, String>();
 
         private String productID;
 
-        public String getLegacy() {
-            return legacy;
+        public Map<String, String> getProducts() {
+            return products;
         }
 
-        public void setLegacy(String legacy) {
-            this.legacy = legacy;
+        public void setProducts(Map<String, String> products) {
+            this.products = products;
+        }
+
+        public void addProduct(String format, String product) {
+            this.products.put(format, product);
         }
 
         public String getProductID() {

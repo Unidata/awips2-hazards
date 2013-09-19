@@ -13,14 +13,18 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
+import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
 
 /**
  * Product editor view, an implementation of IProductEditorView that provides an
@@ -33,6 +37,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jan, 2013               Bryon.Lawrence    Initial induction into repo.
  * Feb 19, 2013            Bryon.Lawrence    Converted MVP architecture.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Sep 19, 2013     2046    mnash           Update for product generation.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -42,6 +47,10 @@ public final class ProductEditorView implements
         IProductEditorView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
+
+    private List<Dict> hazardEventSets;
+
+    private List<Dict> generatedProducts;
 
     /**
      * Logging mechanism.
@@ -55,7 +64,9 @@ public final class ProductEditorView implements
     /**
      * Product editor dialog.
      */
-    private ProductEditorDialog productEditorDialog = null;
+    private ProductGenerationDialog productGenerationDialog = null;
+
+    // private ProductEditorDialog productEditorDialog = null;
 
     // Public Constructors
 
@@ -77,9 +88,9 @@ public final class ProductEditorView implements
 
     @Override
     public void dispose() {
-        if (productEditorDialog != null) {
-            productEditorDialog.close();
-            productEditorDialog = null;
+        if (productGenerationDialog != null) {
+            productGenerationDialog.close();
+            productGenerationDialog = null;
         }
     }
 
@@ -91,18 +102,32 @@ public final class ProductEditorView implements
 
     @Override
     public boolean showProductEditorDetail(String productInfo) {
-        closeProductEditorDialog();
         Dict productDict = Dict.getInstance(productInfo);
-        List<Dict> generatedProductsDictList = productDict
+        generatedProducts = productDict
                 .getDynamicallyTypedValue("generatedProducts");
-        List<Dict> hazardEventSetsList = productDict
+        hazardEventSets = productDict
                 .getDynamicallyTypedValue("hazardEventSets");
 
-        if (productInfo != "") {
-            productEditorDialog = new ProductEditorDialog(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    generatedProductsDictList, hazardEventSetsList);
-            productEditorDialog.open();
+        if ("".equals(productInfo) == false) {
+            productGenerationDialog = new ProductGenerationDialog(PlatformUI
+                    .getWorkbench().getActiveWorkbenchWindow().getShell());
+            // FIXME TODO XXX this is a temporary change, will be OBE by JSON
+            // removal.
+            List<IGeneratedProduct> products = new ArrayList<IGeneratedProduct>();
+            if (generatedProducts != null) {
+                for (Dict d : generatedProducts) {
+                    Dict val = (Dict) d.get("products");
+                    GeneratedProduct product = new GeneratedProduct(
+                            (String) d.get("productID"));
+                    for (String format : val.keySet()) {
+                        List<Object> text = new ArrayList<Object>();
+                        text.add(val.get(format));
+                        product.addEntry(format, text);
+                    }
+                    products.add(product);
+                }
+            }
+            productGenerationDialog.setProducts(products);
             return true;
         }
 
@@ -112,37 +137,41 @@ public final class ProductEditorView implements
     @Override
     public void closeProductEditorDialog() {
 
-        if ((productEditorDialog != null)
-                && (productEditorDialog.getShell() != null)
-                && (!productEditorDialog.getShell().isDisposed())) {
-            productEditorDialog.close();
+        if ((productGenerationDialog != null)
+                && (productGenerationDialog.getShell() != null)
+                && (!productGenerationDialog.getShell().isDisposed())) {
+            productGenerationDialog.close();
         }
 
-        productEditorDialog = null;
+        productGenerationDialog = null;
     }
 
     @Override
     public List<Dict> getGeneratedProductsDictList() {
-        return productEditorDialog.getGeneratedProductsDictList();
+        return generatedProducts;
     }
 
     @Override
     public List<Dict> getHazardEventSetsList() {
-        return productEditorDialog.getHazardEventSetsList();
+        return hazardEventSets;
     }
 
     @Override
     public ICommandInvoker getIssueInvoker() {
-        return productEditorDialog.getIssueInvoker();
+        return productGenerationDialog.getIssueInvoker();
     }
 
     @Override
     public ICommandInvoker getDismissInvoker() {
-        return productEditorDialog.getDismissInvoker();
+        return productGenerationDialog.getDismissInvoker();
     }
 
     @Override
     public ICommandInvoker getShellClosedInvoker() {
-        return productEditorDialog.getShellClosedInvoker();
+        return productGenerationDialog.getShellClosedInvoker();
+    }
+
+    public void openDialog() {
+        productGenerationDialog.open();
     }
 }

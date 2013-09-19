@@ -33,6 +33,7 @@ import com.google.common.eventbus.EventBus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Sep 19, 2013 2046    mnash           Update for product generation.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -82,6 +83,7 @@ public class ProductEditorPresenter extends
     public final void showProductEditorDetail(String productInfo) {
         getView().showProductEditorDetail(productInfo);
         bind();
+        getView().openDialog();
     }
 
     // Protected Methods

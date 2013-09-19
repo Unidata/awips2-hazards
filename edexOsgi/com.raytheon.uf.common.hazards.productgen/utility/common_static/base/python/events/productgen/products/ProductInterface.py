@@ -53,9 +53,9 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
     
-    def execute(self, moduleName, className, hazardEventSet, formats):
-        # TODO Convert hazardEventSet to a python hazardEventSet
-        kwargs = { 'hazardEventSet' : hazardEventSet }
+    def execute(self, moduleName, className, eventSet, formats):
+        # TODO Convert eventSet to a python eventSet
+        kwargs = { 'eventSet' : eventSet }
         dataList, hazardEvents = self.runMethod(moduleName, className, 'execute', **kwargs)
         if not isinstance(dataList, list):
             raise Exception('Expecting a list from ' + moduleName + '.execute()')

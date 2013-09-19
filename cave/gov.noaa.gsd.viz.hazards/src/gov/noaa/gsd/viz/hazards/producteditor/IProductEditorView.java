@@ -23,6 +23,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
+ * Sep 19, 2013 2046       mnash        Update for product generation.
  * 
  * </pre>
  * 
@@ -88,4 +89,6 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * @return Command invoker associated with the dialog's close button.
      */
     public ICommandInvoker getShellClosedInvoker();
+
+    public void openDialog();
 }
