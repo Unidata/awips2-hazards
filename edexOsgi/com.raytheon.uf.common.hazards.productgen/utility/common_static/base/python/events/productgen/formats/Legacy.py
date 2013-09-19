@@ -90,9 +90,10 @@ class Format(FormatTemplate.Formatter):
             elif name == 'callsToAction':
                 if 'callsToAction' in dataDict and dataDict['callsToAction']:
                     callsToAction = dataDict['callsToAction']
-                    text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
-                    for cta in callsToAction['callToAction']:
-                        text += cta + '\n\n'
+                    if callsToAction['callToAction']:
+                        text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
+                        for cta in callsToAction['callToAction']:
+                            text += cta + '\n\n'
             elif name == 'polygonText':
                 if 'polygonText' in dataDict and dataDict['polygonText']:
                     text += dataDict['polygonText'] + '\n\n'

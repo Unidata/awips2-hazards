@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
+
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -91,6 +95,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                     removed from an event upon issuance.
  * Sep 12, 2013 717        jsanchez    Disseminated the legacy text product.
  * 
+ * Sept 16, 2013 1298      thansen     Added popup dialog trying to preview or issue non-supported 
+ *                                     hazards
  * </pre>
  * 
  * @author bsteffen
@@ -130,6 +136,8 @@ public class SessionProductManager implements ISessionProductManager {
     public Collection<ProductInformation> getSelectedProducts() {
         List<ProductInformation> result = new ArrayList<ProductInformation>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
+        List<String> supportedHazards = new ArrayList<String>();
+        Set<String> unsupportedHazards = new HashSet<String>();
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
             Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
             Set<IHazardEvent> potentialEvents = new HashSet<IHazardEvent>();
@@ -142,6 +150,7 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getPhenSigSubType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
+                        supportedHazards.add(key);
                         if (e.getHazardAttribute(
                                 ISessionEventManager.ATTR_SELECTED)
                                 .equals(true)) {
@@ -163,6 +172,47 @@ public class SessionProductManager implements ISessionProductManager {
                 info.setDialogInfo(Collections.<String, String> emptyMap());
                 info.setFormats(new String[] { "XML", "Legacy", "CAP" });
                 result.add(info);
+            }
+        }
+        /*
+         * Put up dialog to warn user that products are not supported for some
+         * requested hazard types
+         */
+        for (IHazardEvent e : eventManager.getEvents()) {
+            String key = HazardEventUtilities.getPhenSigSubType(e);
+            boolean found = false;
+            for (String supported : supportedHazards) {
+                if (supported.equals(key)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found
+                    && e.getHazardAttribute(ISessionEventManager.ATTR_SELECTED)
+                            .equals(true)) {
+                unsupportedHazards.add(key);
+            }
+        }
+        if (!unsupportedHazards.isEmpty()) {
+            String message = "Products for the following hazard types are not yet supported: ";
+            for (String type : unsupportedHazards) {
+                message += type + " ";
+            }
+            String[] buttons;
+            if (!result.isEmpty()) {
+                message += "\nPress Continue to generate products for the supported hazard types.";
+                buttons = new String[] { "Cancel", "Continue" };
+            } else {
+                buttons = new String[] { "OK" };
+            }
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageDialog dialog = new MessageDialog(shell,
+                    "Unsupported HazardTypes", null, message,
+                    MessageDialog.ERROR, buttons, 0);
+            int response = dialog.open();
+            if (response == 0) {
+                result = new ArrayList<ProductInformation>();
             }
         }
         // TODO remove the reverse. Currently removing the reverse breaks
@@ -250,6 +300,52 @@ public class SessionProductManager implements ISessionProductManager {
         productGen.generate(product, events, formats, listener);
     }
 
+    // @Override
+    public void issue_new(ProductInformation information) {
+
+        /*
+         * Need to look at all events in the SessionManager because some events
+         * for which products were generated may not have been selected. For
+         * example, two FA.A's, one selected, one not, and the user adds the
+         * second one via the product staging dialog.
+         */
+        for (IHazardEvent sessionEvent : eventManager.getEvents()) {
+            /*
+             * Update Hazard Events with product information returned from the
+             * Product Generators
+             */
+            for (IHazardEvent updatedEvent : information.getProducts().get(0)
+                    .getEventSet()) {
+                if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
+
+                    ObservedHazardEvent newEvent = new ObservedHazardEvent(
+                            updatedEvent, (SessionEventManager) eventManager);
+
+                    SessionEventUtilities.mergeHazardEvents(newEvent,
+                            sessionEvent);
+                    /*
+                     * This ensures that the "replaces" string is removed for
+                     * the next generation of a product.
+                     */
+                    sessionEvent
+                            .removeHazardAttribute(HazardConstants.REPLACES);
+
+                    if (updatedEvent.getState().equals(HazardState.ENDED)) {
+                        sessionEvent.setState(HazardState.ENDED);
+                    } else {
+                        sessionEvent.setState(HazardState.ISSUED);
+                    }
+                    /*
+                     * Clear the undo/redo events.
+                     */
+                    ((IUndoRedoable) sessionEvent).clearUndoRedo();
+                    break;
+                }
+
+            }
+        }
+    }
+
     @Override
     public void issue(ProductInformation information) {
 
@@ -282,7 +378,6 @@ public class SessionProductManager implements ISessionProductManager {
                             break;
                         }
                     }
-
                     // disseminates the legacy product
                     for (IGeneratedProduct product : information.getProducts()) {
                         List<Object> objs = product.getEntry("Legacy");

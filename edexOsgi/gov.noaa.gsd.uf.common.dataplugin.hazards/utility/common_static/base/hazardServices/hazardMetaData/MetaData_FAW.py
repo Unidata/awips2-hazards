@@ -36,7 +36,7 @@ MetaData_FAW = [
             },
             {
              "fieldType":"RadioButtons",
-             "fieldName": "immediateCause",
+             "fieldName": "primaryCause",
              "label":"Primary Cause:",
              "values": "ER",
              "choices": [ 
@@ -126,23 +126,16 @@ MetaData_FAW = [
                                           rainfall that will cause flooding in the warning area.''',},
                        ], 
             },
-            {
-             'fieldType':'Text',
-             'fieldName': 'basisLocation',
-             'label': 'Reported Location:',
-             'values': '',
-             'length': 90,
-             },
            # ADDITIONAL INFO
             {
              "fieldType":"CheckList",
              "fieldName": "additionalInfo",
              "label": "Additional Info:",
              "choices": [    
-                     {"identifier":"listOfCities", "displayString": "Include the list of cities", 
-                     },
-                     {"identifier":"listOfDrainages", "displayString": "Include the Automated list of drainages", 
-                     },
+                     {"identifier":"listOfCities", "displayString": "Select for a list of cities", 
+                      "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." },
+                     {"identifier":"listOfDrainages", "displayString": "Automated list of drainages", 
+                      "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." },
                      {"identifier":"addtlRain", "displayString": "Additional rainfall of XX inches expected", 
                       "productString": 
                     '''Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the

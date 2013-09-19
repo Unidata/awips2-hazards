@@ -126,4 +126,5 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             generatedProduct.setEventSet(eventSet)    
             generatedProductList.add(generatedProduct)
             
+            
         return generatedProductList

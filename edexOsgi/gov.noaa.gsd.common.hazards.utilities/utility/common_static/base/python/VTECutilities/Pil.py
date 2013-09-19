@@ -26,5 +26,7 @@ class Pil:
                 return "FFW"
             else:
                 return "FFS"
+        if self._productCategory == "ESF":
+            return "ESF"
             
        
