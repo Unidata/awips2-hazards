@@ -2201,13 +2201,27 @@ class TemporalDisplay {
             int columnWidth = column.getWidth();
 
             // Get the difference between the table bounds and the
-            // client area, which should give the scrollbar width.
+            // client area, which should give the vertical scrollbar
+            // width.
             Rectangle tableBounds = table.getBounds();
-            int cellTableEndXDiff = tableBounds.width
-                    - table.getClientArea().width;
+            int clientAreaWidth = table.getClientArea().width;
+            int cellTableEndXDiff = tableBounds.width - clientAreaWidth;
+
+            // Determine how much of the width of the time range
+            // cell is horizontally scrolled out of view, if any.
+            // This will only occur if a horizontal scrollbar is
+            // showing.
+            int cellWidthScrolledOutOfView = 0;
+            ScrollBar scrollBar = table.getHorizontalBar();
+            if ((scrollBar != null)
+                    && (scrollBar.getMaximum() > clientAreaWidth)) {
+                cellWidthScrolledOutOfView = (scrollBar.getMaximum() - clientAreaWidth)
+                        - scrollBar.getSelection();
+            }
 
             // Determine the horizontal boundaries of the ruler.
-            int cellBeginXPixels = tableBounds.width - columnWidth
+            int cellBeginXPixels = tableBounds.width
+                    + cellWidthScrolledOutOfView - columnWidth
                     - cellTableEndXDiff;
             int cellEndXPixels = cellTableEndXDiff;
 
@@ -2547,10 +2561,14 @@ class TemporalDisplay {
                 // drawn, not the width of the entire column.
                 countdownTimerColumnWidth = event.width;
 
-                // If the cell is selected, use the standard
-                // background, but make sure the foreground is
-                // not drawn in the default manner.
-                if ((event.detail & SWT.SELECTED) != 0) {
+                // If the cell is selected or the background
+                // color is white, use the standard background,
+                // but make sure the foreground is not drawn in
+                // the default manner.
+                if (((event.detail & SWT.SELECTED) != 0)
+                        || (countdownTimerDisplayProperties
+                                .getBackgroundColor().equals(Display
+                                .getCurrent().getSystemColor(SWT.COLOR_WHITE)))) {
                     event.detail &= ~(SWT.FOREGROUND | SWT.HOT);
                     return;
                 }
@@ -2583,11 +2601,21 @@ class TemporalDisplay {
                 }
 
                 // Paint the foreground using the appropriate
-                // color.
+                // color. If the foreground color is black, no
+                // blinking is occurring, and the item is se-
+                // lected, use white instead.
                 Color oldForeground = event.gc.getForeground();
                 Font oldFont = event.gc.getFont();
-                event.gc.setForeground(countdownTimerDisplayProperties
-                        .getForegroundColor());
+                Color foreground = countdownTimerDisplayProperties
+                        .getForegroundColor();
+                if (((event.detail & SWT.SELECTED) != 0)
+                        && (countdownTimerDisplayProperties.isBlinking() == false)
+                        && foreground.equals(Display.getCurrent()
+                                .getSystemColor(SWT.COLOR_BLACK))) {
+                    foreground = Display.getCurrent().getSystemColor(
+                            SWT.COLOR_WHITE);
+                }
+                event.gc.setForeground(foreground);
                 event.gc.setFont(countdownTimerDisplayProperties.getFont());
                 String text = ((TableItem) event.item).getText(event.index);
                 Point size = event.gc.stringExtent(text);
@@ -2654,6 +2682,38 @@ class TemporalDisplay {
                                 "SelectedEventsChanged", selectedIdentifiers
                                         .toArray(new String[selectedIdentifiers
                                                 .size()])));
+                    }
+                }
+            }
+        });
+
+        // Add a listener for horizontal scrollbar movements that
+        // prompt the repositioning of the timeline in the last
+        // column's header.
+        table.getHorizontalBar().addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if ((ruler != null) && !ruler.isDisposed() && ruler.isVisible()) {
+
+                    // Get the table bounds for calculations
+                    // to be made as to the size and position
+                    // of the timeline ruler. Since the width
+                    // is sometimes given as 0, schedule an-
+                    // other resize event to fire off later
+                    // in this case. If this is not done,
+                    // the timeline ruler is given the wrong
+                    // bounds.
+                    Rectangle tableBounds = table.getBounds();
+                    if (tableBounds.width == 0) {
+                        Display.getCurrent().asyncExec(new Runnable() {
+                            @Override
+                            public void run() {
+                                visibleColumnCountChanged();
+                            }
+                        });
+                    } else {
+                        fitRulerToColumn(table
+                                .getColumn(getIndexOfColumnInTable(TIME_SCALE_COLUMN_NAME)));
                     }
                 }
             }
