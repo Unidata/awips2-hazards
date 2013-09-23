@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
+import java.util.List;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
@@ -48,5 +50,13 @@ public interface IHazardAlertStrategy {
      * schedule or cancel {@link IHazardAlert}s
      */
     IHazardSessionAlertsManager getAlertsManager();
+
+    /**
+     * @return any alerts that are superceded by the given alert. For example,
+     *         if yellow count-down-timer is goes off at 11:00 but is then
+     *         replaced by a red-count-down timer at 11:30.
+     */
+    List<IHazardAlert> findSupercededAlerts(IHazardAlert alert,
+            List<IHazardAlert> activeAlerts);
 
 }

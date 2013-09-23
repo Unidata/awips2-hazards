@@ -2,67 +2,14 @@
 <hazardAlerts>
     <eventExpiration>
         <configuration>
-            <category>Flood Hydro Convective Warning</category>
-            <hazardTypes>
-                <phenomenon>FF</phenomenon>
-                <significance>W</significance>
-                <subType>Convective</subType>
-            </hazardTypes>
-            <criteria>
-                <name>1 min</name>
-                <expirationTime>1</expirationTime>
-                <units>minutes</units>
-                <manifestations>Console</manifestations>
-                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
-                <isBold>true</isBold>
-                <isBlinking>false</isBlinking>
-                <isItalic>false</isItalic>
-            </criteria>
-        </configuration>
-        <configuration>
-            <category>Flood Hydro Non-Convective Warning</category>
-            <hazardTypes>
-                <phenomenon>FF</phenomenon>
-                <significance>W</significance>
-                <subType>NonConvective</subType>
-            </hazardTypes>
-            <criteria>
-                <name>10 min</name>
-                <expirationTime>10</expirationTime>
-                <units>minutes</units>
-                <manifestations>Console</manifestations>
-                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
-                <isBold>true</isBold>
-                <isBlinking>false</isBlinking>
-                <isItalic>false</isItalic>
-            </criteria>
-        </configuration>
-        <configuration>
-            <category>Hydro Long Term</category>
-            <hazardTypes>
-                <phenomenon>FL</phenomenon>
-                <significance>W</significance>
-            </hazardTypes>
-            <criteria>
-                <name>1%</name>
-                <expirationTime>1</expirationTime>
-                <units>percent</units>
-                <manifestations>Console</manifestations>
-                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
-                <isBold>true</isBold>
-                <isBlinking>false</isBlinking>
-                <isItalic>true</isItalic>
-            </criteria>
-        </configuration>
-        <configuration>
-            <category>Area Flood Warning</category>
+            <category>Areal Flood Watch</category>
             <hazardTypes>
                 <phenomenon>FA</phenomenon>
-                <significance>W</significance>
+                <significance>A</significance>
             </hazardTypes>
             <criteria>
-                <name>7 hours, 59 minutes</name>
-                <expirationTime>479</expirationTime>
+                <name>1st warning</name>
+                <expirationTime>30</expirationTime>
                 <units>minutes</units>
                 <manifestations>Console</manifestations>
                 <color r="1.0" g="1.0" b="0.0" a="1.0"/>
@@ -71,8 +18,8 @@
                 <isItalic>false</isItalic>
             </criteria>
             <criteria>
-                <name>7 hours, 58 minute</name>
-                <expirationTime>478</expirationTime>
+                <name>2nd warning</name>
+                <expirationTime>15</expirationTime>
                 <units>minutes</units>
                 <manifestations>Console</manifestations>
                 <manifestations>Popup</manifestations>
@@ -82,5 +29,299 @@
                 <isItalic>false</isItalic>
             </criteria>
         </configuration>
+
+        <configuration>
+            <category>Areal Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FA</phenomenon>
+                <significance>W</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>50</expirationTime>
+                <units>percent_completed</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Areal Flood Advisory</category>
+            <hazardTypes>
+                <phenomenon>FA</phenomenon>
+                <significance>Y</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>30</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Flash Flood Watch</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>A</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>30</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <manifestations>Popup</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Convective Flash Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>W</significance>
+		<subType>Convective</subType>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>50</expirationTime>
+                <units>percent_completed</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>30</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>NonConvective Flash Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FF</phenomenon>
+                <significance>W</significance>
+		<subType>NonConvective</subType>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>50</expirationTime>
+                <units>percent_completed</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>90</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Flood Watch</category>
+            <hazardTypes>
+                <phenomenon>FL</phenomenon>
+                <significance>A</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>8</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Flood Warning</category>
+            <hazardTypes>
+                <phenomenon>FL</phenomenon>
+                <significance>W</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>8</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Flood Advisory</category>
+            <hazardTypes>
+                <phenomenon>FL</phenomenon>
+                <significance>Y</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>8</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
+        <configuration>
+            <category>Hydrologic Statement</category>
+            <hazardTypes>
+                <phenomenon>HY</phenomenon>
+                <significance>S</significance>
+            </hazardTypes>
+            <criteria>
+                <name>1st warning</name>
+                <expirationTime>8</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="1.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>2nd warning</name>
+                <expirationTime>1</expirationTime>
+                <units>hours</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>false</isBold>
+                <isBlinking>false</isBlinking>
+                <isItalic>false</isItalic>
+            </criteria>
+            <criteria>
+                <name>3rd warning</name>
+                <expirationTime>15</expirationTime>
+                <units>minutes</units>
+                <manifestations>Popup</manifestations>
+            </criteria>
+        </configuration>
+
     </eventExpiration>
 </hazardAlerts>

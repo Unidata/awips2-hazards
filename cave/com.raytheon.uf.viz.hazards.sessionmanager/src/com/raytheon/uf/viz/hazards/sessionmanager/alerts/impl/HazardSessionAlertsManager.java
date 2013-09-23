@@ -134,10 +134,21 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
             scheduledAlertJobs.remove(hazardAlertJob);
             IHazardAlert alert = hazardAlertJob.getHazardAlert();
             alert.setState(HazardAlertState.ACTIVE);
+            removeSupercededAlerts(alert);
             activeAlerts.add(alert);
+            postAlertsModifiedNotification();
         }
-        postAlertsModifiedNotification();
 
+    }
+
+    private void removeSupercededAlerts(IHazardAlert alert) {
+        for (IHazardAlertStrategy alertStrategy : alertStrategies.values()) {
+            List<IHazardAlert> supercededAlerts = alertStrategy
+                    .findSupercededAlerts(alert, activeAlerts);
+            for (IHazardAlert supercededAlert : supercededAlerts) {
+                activeAlerts.remove(supercededAlert);
+            }
+        }
     }
 
     @Override
@@ -154,8 +165,8 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
                 }
                 scheduledAlertJobs.remove(alertJobToRemove);
             }
+            postAlertsModifiedNotification();
         }
-        postAlertsModifiedNotification();
 
     }
 
