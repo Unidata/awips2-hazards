@@ -45,7 +45,7 @@ public class HazardEventExpirationAlertConfigCriterion {
 
     public enum Units {
         HOURS("hours"), MINUTES("minutes"), SECONDS("seconds"), PERCENT(
-                "percent");
+                "percent_completed");
 
         private final String displayValue;
 

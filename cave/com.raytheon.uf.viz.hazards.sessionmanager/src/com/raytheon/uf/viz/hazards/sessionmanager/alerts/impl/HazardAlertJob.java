@@ -53,7 +53,8 @@ public class HazardAlertJob extends Job implements IHazardAlertJob {
 
     @Override
     protected IStatus run(IProgressMonitor monitor) {
-        statusHandler.debug("activating alert");
+        statusHandler.debug("activating alert, activating time is "
+                + hazardAlert.getActivationTime());
         alertsManager.activateAlert(this);
         return Status.OK_STATUS;
     }

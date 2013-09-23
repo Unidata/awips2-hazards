@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -180,17 +181,19 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         List<HazardEventExpirationAlertConfigCriterion> alertCriteria = alertConfiguration
                 .getCriteria(new HazardType(hazardEvent.getPhenomenon(),
                         hazardEvent.getSignificance(), hazardEvent.getSubtype()));
+        List<IHazardEventAlert> alerts = Lists.newArrayList();
         for (HazardEventExpirationAlertConfigCriterion alertCriterion : alertCriteria) {
             alertedEvents.put(hazardEvent.getEventID(), hazardEvent);
-            List<IHazardEventAlert> alerts = alertFactory.createAlerts(
-                    alertCriterion, hazardEvent);
-            for (IHazardEventAlert alert : alerts) {
+            alerts.addAll(alertFactory
+                    .createAlerts(alertCriterion, hazardEvent));
 
-                Long delay = Math.max(0, alert.getActivationTime().getTime()
-                        - sessionTimeManager.getCurrentTime().getTime());
-                alertsManager.scheduleAlert(alert, delay);
-            }
+        }
+        alertFactory.addImmediateAlertsAsNecessary(hazardEvent, alerts);
+        for (IHazardEventAlert alert : alerts) {
 
+            Long delay = Math.max(0, alert.getActivationTime().getTime()
+                    - sessionTimeManager.getCurrentTime().getTime());
+            alertsManager.scheduleAlert(alert, delay);
         }
     }
 
@@ -219,4 +222,28 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         return alertsManager;
     }
 
+    @Override
+    public List<IHazardAlert> findSupercededAlerts(IHazardAlert alert,
+            List<IHazardAlert> activeAlerts) {
+        List<IHazardAlert> result = Lists.newArrayList();
+
+        /*
+         * TODO How can we do this without reflection.
+         */
+        if (alert instanceof IHazardEventAlert) {
+            for (IHazardAlert activeAlert : activeAlerts) {
+                if (activeAlert.getClass() == alert.getClass()) {
+
+                    IHazardEventAlert activeEventAlert = (IHazardEventAlert) activeAlert;
+                    IHazardEventAlert eventAlert = (IHazardEventAlert) alert;
+                    if (activeEventAlert.getEventID().equals(
+                            eventAlert.getEventID())) {
+                        result.add(activeAlert);
+                    }
+
+                }
+            }
+        }
+        return result;
+    }
 }

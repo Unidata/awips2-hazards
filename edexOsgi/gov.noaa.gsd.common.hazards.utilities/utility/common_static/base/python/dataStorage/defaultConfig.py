@@ -1106,7 +1106,7 @@ columns = [
                       "displayString": "PILs"
                      },
                      {
-                      "displayString": "Alert"
+                      "displayString": "Time Remaining"
                      },
                      {
                       "displayString": "Description"

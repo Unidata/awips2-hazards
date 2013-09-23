@@ -65,17 +65,7 @@ public class HazardEventExpirationAlertFactory {
             switch (location) {
 
             case CONSOLE:
-                /*
-                 * Forecasters wanted an the count-down timer to display
-                 * immediately in black
-                 */
-                IHazardEventAlert immediateConsoleAlert = buildImmediateCountDownTimer(hazardEvent);
-                result.add(immediateConsoleAlert);
 
-                /*
-                 * Then when the delta before expiration occurs, the black
-                 * version is replaced with the configured version.
-                 */
                 IHazardEventAlert consoleAlert = buildConsoleAlert(
                         alertCriterion, hazardEvent);
                 result.add(consoleAlert);
@@ -209,5 +199,28 @@ public class HazardEventExpirationAlertFactory {
 
         activationTimeInMillis = hazardExpiration - timeBeforeExpiration;
         return activationTimeInMillis;
+    }
+
+    public void addImmediateAlertsAsNecessary(IHazardEvent hazardEvent,
+            List<IHazardEventAlert> alerts) {
+        boolean areConsoleAlertsAfterCurrentTime = false;
+        for (IHazardEventAlert alert : alerts) {
+            if (alert.getClass() == HazardEventExpirationConsoleTimer.class) {
+                if (alert.getActivationTime().getTime() < sessionTimeManager
+                        .getCurrentTime().getTime()) {
+                    /*
+                     * Since there already is an active console alert, no
+                     * immediate alerts needed
+                     */
+                    return;
+                } else {
+                    areConsoleAlertsAfterCurrentTime = true;
+                }
+            }
+        }
+
+        if (areConsoleAlertsAfterCurrentTime) {
+            alerts.add(buildImmediateCountDownTimer(hazardEvent));
+        }
     }
 }
