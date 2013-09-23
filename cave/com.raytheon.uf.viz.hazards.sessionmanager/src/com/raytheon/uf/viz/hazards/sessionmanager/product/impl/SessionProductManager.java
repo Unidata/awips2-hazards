@@ -316,8 +316,8 @@ public class SessionProductManager implements ISessionProductManager {
              * Update Hazard Events with product information returned from the
              * Product Generators
              */
-            for (IHazardEvent updatedEvent : information.getProducts().get(0)
-                    .getEventSet()) {
+            for (IEvent ev : information.getProducts().get(0).getEventSet()) {
+                IHazardEvent updatedEvent = (IHazardEvent) ev;
                 if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
 
                     ObservedHazardEvent newEvent = new ObservedHazardEvent(
