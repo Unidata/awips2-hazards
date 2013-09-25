@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -55,8 +54,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
+import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
@@ -113,6 +116,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      re-initialized when copying a Hazard Event to
  *                                      create a new one e.g. FA.A --> FA.W
  * Sep 19, 2013 2046    mnash           Update for product generation.
+ * Sep 25, 2013 1298    blawrenc        Updated the reset method to operate
+ *                                      on LocalizationFile not File. This 
+ *                                      helps to ensure that localization is 
+ *                                      properly updated when files are
+ *                                      deleted from it.
  * </pre>
  * 
  * @author bsteffen
@@ -120,6 +128,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  */
 @Deprecated
 public abstract class ModelAdapter {
+
+    /**
+     * Logging mechanism.
+     */
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ModelAdapter.class);
 
     private final ISessionManager model;
 
@@ -513,11 +527,15 @@ public abstract class ModelAdapter {
                     LocalizationContext.LocalizationLevel.USER);
 
             for (String fileToDelete : filesToDeleteOnReset) {
-                File file = pathManager.getLocalizationFile(
-                        localizationContext, fileToDelete).getFile();
+                LocalizationFile localizationFile = pathManager
+                        .getLocalizationFile(localizationContext, fileToDelete);
 
-                if (file.exists()) {
-                    file.delete();
+                if (localizationFile.exists()) {
+                    try {
+                        localizationFile.delete();
+                    } catch (LocalizationOpFailedException e) {
+                        statusHandler.error("Error while reseting.", e);
+                    }
                 }
             }
         }

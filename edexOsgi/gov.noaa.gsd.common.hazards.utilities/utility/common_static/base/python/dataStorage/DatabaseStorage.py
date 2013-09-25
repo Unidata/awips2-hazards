@@ -1,12 +1,32 @@
+"""
+ Contains methods for accessing Hazard Services
+ datasets including VTEC information. This class
+ needs to be revisited as several methods have
+ been overcome by events.
+ 
+ @since: February 2012
+ @author: GSD Hazard Services Team
+ 
+ History:
+ Date         Ticket#    Engineer    Description
+ ------------ ---------- ----------- --------------------------
+ Sept 25, 2013   1298    blawrenc     Made fixes to prevent
+                                      vtecTestRecords_local.json
+                                      from being orphaned and 
+                                      removed from localization.
+"""
+
 import json, os, cPickle, time, fcntl, random, stat
 import Logger as LogStream
 import defaultConfig as defaultConfig
-        
+from PathManager import PathManager
+       
 class DatabaseStorage:
 
     def __init__(self):
         # Build the path to the database files.
         # These files live in the same directory as this module.
+        self._localizationPath = 'gfe/userPython/'
         self._readOnlyDbPath = self.buildDatabasePath()
         self._dbPath = self.getUserPath("HazardServices")
         self._cannedDataPath = self.getCannedDataPath()
@@ -22,15 +42,9 @@ class DatabaseStorage:
         self._lastSeqNumFilePath = self._dbPath + ".lastSeqNum.json"
         
     def getUserPath(self, category):
-        from com.raytheon.uf.common.localization import PathManagerFactory, LocalizationContext
-        from com.raytheon.uf.common.localization import LocalizationContext_LocalizationType as LocalizationType
-        from com.raytheon.uf.common.localization import LocalizationContext_LocalizationLevel as LocalizationLevel
-        pathMgr = PathManagerFactory.getPathManager()
-        path = 'gfe/userPython/'
-        lc = pathMgr.getContext(LocalizationType.valueOf('CAVE_STATIC'), LocalizationLevel.valueOf('USER'))
-        lf = pathMgr.getLocalizationFile(lc, path)
-        fullpath = lf.getFile().getPath()
-
+        pathMgr = PathManager()
+        lf = pathMgr.getLocalizationFile(str(self._localizationPath), 'CAVE_STATIC', 'USER')
+        fullpath = lf.getPath()
         return fullpath + "/"
 
     def getCannedDataPath(self):
@@ -118,7 +132,7 @@ class DatabaseStorage:
         return self.getLocalData(self._dbPath+dataType, ["oid","key", "etn"], dataFormat="list")
             
     def writeVtecDatabase(self, dataType, vtecDicts):
-        self.writeJsonFile(self._dbPath+dataType + "_local", id, vtecDicts, True) 
+        self.writeJsonFile(self._localizationPath+dataType + "_local", id, vtecDicts, True) 
         self.flush()
         
     def deleteVtecDatabase(self, vtecDicts):
@@ -386,10 +400,14 @@ class DatabaseStorage:
             mode = "w"
         else:
             mode = "w+"
-        fd = open(filename + ".json", mode)
+
+        pathMgr = PathManager()
+        vtecFile = pathMgr.getLocalizationFile(str(filename + ".json"), 'CAVE_STATIC', 'USER')            
+        fd = vtecFile.getFile(mode)
         fd.write(json.dumps(dataDicts, sort_keys=True, indent=4))
         fd.close()
-        
+        vtecFile.save()
+          
     def flush(self):
         """ Flush the print buffer """
         os.sys.__stdout__.flush()
