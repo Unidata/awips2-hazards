@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards;
 
 import gov.noaa.gsd.common.hazards.utilities.DateTimes;
-import gov.noaa.gsd.viz.hazards.jsonutilities.ComparableLazilyParsedNumber;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
@@ -112,7 +111,7 @@ public class HazardEventsBuilder {
                                 "Only support shapes with one polygon");
                     }
                     Dict shape = shapes.get(0);
-                    List<List<ComparableLazilyParsedNumber>> points = shape
+                    List<List<Double>> points = shape
                             .getDynamicallyTypedValue("points");
                     Geometry geometry = buildGeometry(points);
                     event.setGeometry(geometry);
@@ -142,18 +141,15 @@ public class HazardEventsBuilder {
         }
     }
 
-    private Geometry buildGeometry(
-            List<List<ComparableLazilyParsedNumber>> points) {
+    private Geometry buildGeometry(List<List<Double>> points) {
         /**
          * We have to deal with the fact that the first point has to be
          * replicated in order to make this a polygon.
          */
         Coordinate[] coordinates = new Coordinate[points.size() + 1];
         int index = 0;
-        for (List<ComparableLazilyParsedNumber> point : points) {
-            Float x = point.get(0).floatValue();
-            Float y = point.get(1).floatValue();
-            coordinates[index] = new Coordinate(x, y);
+        for (List<Double> point : points) {
+            coordinates[index] = new Coordinate(point.get(0), point.get(1));
             index += 1;
         }
         coordinates[index] = coordinates[0];

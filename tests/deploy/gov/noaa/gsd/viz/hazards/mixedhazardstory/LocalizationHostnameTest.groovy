@@ -1,10 +1,7 @@
 package gov.noaa.gsd.viz.hazards.mixedhazardstory
-import static org.junit.Assert.*;
+import static org.junit.Assert.*
 import gov.noaa.gsd.viz.hazards.TestingUtils
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-
-
-
+import gov.noaa.gsd.viz.hazards.utilities.Utilities
 import spock.lang.*
 
 /**
@@ -21,13 +18,13 @@ import spock.lang.*
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 12, 2013            blawrenc    Initial creation
+ * Sep 30, 2013            blawrenc    Fixed test failure
  *
  * </pre>
  *
  * @author bryon.lawrence
  * @version 1.0
  */
-@Ignore
 class LocalizationHostnameTest extends spock.lang.Specification {
     jep.Jep jepInstance
     String  localhostname
@@ -85,7 +82,7 @@ class LocalizationHostnameTest extends spock.lang.Specification {
 
         File currentDir = new File(System.getProperty("user.dir")).getParentFile();
         String basePath = currentDir.getPath();
-        List<String> sourcePaths = Utilities.buildPythonSourcePaths(basePath);
+        List<String> sourcePaths = new ArrayList<String>();
         List<String> pythonUtilityPaths = Utilities.buildPythonPath();
         sourcePaths.addAll(pythonUtilityPaths);
 

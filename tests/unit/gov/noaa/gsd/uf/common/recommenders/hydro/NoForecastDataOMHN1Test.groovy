@@ -9,14 +9,13 @@
  */
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.*
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
+import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
-
-import spock.lang.*
 
 
 /**
@@ -30,6 +29,7 @@ import spock.lang.*
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2012            bryon.lawrence      Initial creation
+ * Sep 30, 2013            bryon.lawrence      Fixed test failure
  * 
  * </pre>
  * 
@@ -636,13 +636,14 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
 
         then: "One hazard should be recommended"
 
-        List<IHazardEvent> results = recommender.getFloodDictList true
-        results.size() == 1
+        Set<IHazardEvent> resultSet = recommender.getFloodDictList true
+        resultSet.size() == 1
 
         and: "There should be no rise above time"
 
-        IHazardEvent recommendation = results.get(0);
-        Map<String, Serializable> attributeMap = recommendation.getHazardAttributes();
+        Iterator iterator = resultSet.iterator()
+        IHazardEvent recommendation = iterator.next()
+        Map<String, Serializable> attributeMap = recommendation.getHazardAttributes()
 
         recommendation.getEndTime().getTime() == 1355363415000
         attributeMap.riseAbove == 1355320215000

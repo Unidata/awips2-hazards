@@ -1,18 +1,15 @@
 package gov.noaa.gsd.viz.hazards
-import static org.junit.Assert.*;
-
+import static org.junit.Assert.*
+import gov.noaa.gsd.viz.hazards.utilities.Utilities
 
 import org.joda.time.DateTime
 
+import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.vividsolutions.jts.geom.Polygon
-
-
-import gov.noaa.gsd.viz.hazards.utilities.Utilities
-import spock.lang.*
 
 /**
  *
@@ -37,7 +34,6 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
     }
 
 
-    @Ignore
     def "Basic" () {
         when: "Build from JSON"
         String eventsAsJson = Utilities.getCannedEventsAsJSON()
@@ -71,8 +67,6 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
         anEvent.getEndTime() == endTime
         anEvent.getIssueTime() == issueTime
         anEvent.getHazardMode() == ProductClass.OPERATIONAL
-        callsToAction.size() == 2
-        callsToAction.get(0).contains("Additional rainfall")
         geometry.getNumPoints() == 5
     }
 }

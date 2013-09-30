@@ -9,15 +9,12 @@
  */
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import static org.junit.Assert.*;
-
-import java.util.List;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-
+import static org.junit.Assert.*
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
 import spock.lang.*
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 
 
 /**
@@ -31,6 +28,7 @@ import spock.lang.*
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2012            bryon.lawrence      Initial creation
+ * Sep 30, 2013            bryon.lawrence      Fixed test failure
  * 
  * </pre>
  * 
@@ -601,13 +599,14 @@ class EndTime0ShiftHoursTest extends spock.lang.Specification {
                 spatialInputMap)
 
         then: "One hazard should be recommended"
-        List<IHazardEvent> results = recommender.getFloodDictList(true)
-        results.size() == 1
+        Set<IHazardEvent> resultSet = recommender.getFloodDictList(true)
+        resultSet.size() == 1
 
         and: "The hazard end time should equal the fall below time"
-        IHazardEvent recommendation = results.get(0);
+        Iterator iterator = resultSet.iterator()
+        IHazardEvent recommendation = iterator.next()
         Date endDate = recommendation.getEndTime()
-        Map<String, Serializable> attributeMap = recommendation.getHazardAttributes();
+        Map<String, Serializable> attributeMap = recommendation.getHazardAttributes()
         long fallBelowTime = attributeMap.get("fallBelow")
 
         endDate.getTime() == fallBelowTime
