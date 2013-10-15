@@ -11,11 +11,14 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
 /**
@@ -77,11 +80,30 @@ public class SessionEventUtilities {
             oldEvent.removeHazardAttribute(key);
         }
 
-        if (oldEvent instanceof ObservedHazardEvent) {
-            ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
-            obEvent.setState(newEvent.getState(), true, false);
-        } else {
-            oldEvent.setState(newEvent.getState());
+        if (isEnded(oldEvent) == false) {
+            if (oldEvent instanceof ObservedHazardEvent) {
+                ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
+                obEvent.setState(newEvent.getState(), true, false);
+            } else {
+                oldEvent.setState(newEvent.getState());
+            }
         }
+    }
+
+    /**
+     * Determine if the {@link IHazardEvent} has ended based on the time that is
+     * being used.
+     * 
+     * @param event
+     * @return
+     */
+    public static boolean isEnded(IHazardEvent event) {
+        Date currTime = SimulatedTime.getSystemTime().getTime();
+        if (event.getState() == HazardState.ENDED
+                || (event.getState() == HazardState.ISSUED && (event
+                        .getEndTime().before(currTime)))) {
+            return true;
+        }
+        return false;
     }
 }

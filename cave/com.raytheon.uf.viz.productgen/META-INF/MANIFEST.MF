@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Productgen
-Bundle-SymbolicName: com.raytheon.uf.viz.productgen
+Bundle-SymbolicName: com.raytheon.uf.viz.productgen;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.raytheon.uf.viz.productgen.Activator
 Bundle-Vendor: RAYTHEON
@@ -11,7 +11,14 @@ Require-Bundle: org.eclipse.core.runtime,
  com.raytheon.uf.common.hazards.productgen;bundle-version="1.0.0",
  org.eclipse.jface;bundle-version="3.8.0",
  gov.noaa.gsd.viz.mvp;bundle-version="1.0.0",
- com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0"
+ com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
+ com.raytheon.uf.common.status;bundle-version="1.12.1174",
+ com.raytheon.uf.common.python.concurrent;bundle-version="1.0.0",
+ com.raytheon.uf.viz.localization;bundle-version="1.12.1174",
+ com.raytheon.uf.common.localization;bundle-version="1.12.1174",
+ org.apache.velocity;bundle-version="1.7.0",
+ com.raytheon.uf.viz.core;bundle-version="1.12.1174",
+ org.eclipse.ui;bundle-version="3.8.2"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.productgen.dialog

@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +52,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     private EventSet<IEvent> eventSet;
 
     /** Resulting products generated */
-    private Map<String, List<Object>> entries = new HashMap<String, List<Object>>();
+    private Map<String, List<Object>> entries = new LinkedHashMap<String, List<Object>>();
 
     /** Errors thrown executing python product classes */
     private String errors;

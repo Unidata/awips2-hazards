@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,6 +34,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -49,6 +56,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -111,6 +119,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private HazardEventConverter hazardEventConverter;
 
+    private Timer eventExpirationTimer = new Timer(true);
+
+    private final Map<String, TimerTask> expirationTasks = new ConcurrentHashMap<String, TimerTask>();
+
+    private ISimulatedTimeChangeListener timeListener;
+
     public SessionEventManager(ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             IHazardEventManager dbManager,
@@ -127,6 +141,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
             statusHandler.error("Unable to instantiate hazard event converter",
                     e);
         }
+        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
+                createTimeListener());
     }
 
     @Subscribe
@@ -217,6 +233,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     }
                 }
             }
+            for (IHazardEvent event : events) {
+                scheduleExpirationTask((ObservedHazardEvent) event);
+            }
         }
     }
 
@@ -281,6 +300,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
         if (oevent.getState() == null) {
             oevent.setState(HazardState.PENDING, false, false);
+        }
+
+        if (SessionEventUtilities.isEnded(oevent)) {
+            oevent.setState(HazardState.ENDED);
         }
         String sig = oevent.getSignificance();
         if (sig != null) {
@@ -421,6 +444,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                             // TODO PV3 task delete grid.
                         }
                     }
+                    scheduleExpirationTask(event);
                 } catch (Throwable e) {
                     statusHandler.handle(Priority.PROBLEM,
                             e.getLocalizedMessage(), e);
@@ -430,6 +454,88 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
+    }
+
+    /**
+     * Schedules the tasks on the {@link Timer} to be executed at a later time,
+     * unless they are already past the time necessary at which it will happen
+     * immediately then.
+     * 
+     * @param event
+     */
+    private void scheduleExpirationTask(final ObservedHazardEvent event) {
+        if (eventExpirationTimer != null) {
+            if (event.getState() == HazardState.ISSUED) {
+                final String eventId = event.getEventID();
+                TimerTask existingTask = expirationTasks.get(eventId);
+                if (existingTask != null) {
+                    existingTask.cancel();
+                    expirationTasks.remove(eventId);
+                }
+                TimerTask task = new TimerTask() {
+                    @Override
+                    public void run() {
+                        event.setState(HazardState.ENDED, true, false);
+                        expirationTasks.remove(eventId);
+                    }
+                };
+                Date scheduledTime = event.getEndTime();
+                // need to determine what to do with this, somewhere we need to
+                // be resetting the expiration time if we manually end the
+                // hazard?
+                // if (event.getHazardAttribute(HazardConstants.EXPIRATIONTIME)
+                // != null) {
+                // scheduledTime = new Date(
+                // // TODO, change this when we are getting back
+                // // expiration time as a date
+                // (Long) event
+                // .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+                // }
+
+                // round down to the nearest minute, so we see exactly when it
+                // happens
+                scheduledTime = DateUtils.truncate(scheduledTime,
+                        Calendar.MINUTE);
+                long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
+                        - SimulatedTime.getSystemTime().getTime().getTime());
+                System.out.println(eventId);
+                System.out.println("ms : " + scheduleTimeMillis);
+                System.out.println(TimeUnit.SECONDS.convert(scheduleTimeMillis,
+                        TimeUnit.MILLISECONDS));
+                if (SimulatedTime.getSystemTime().isFrozen() == false
+                        || (SimulatedTime.getSystemTime().isFrozen() && scheduleTimeMillis == 0)) {
+                    eventExpirationTimer.schedule(task, scheduleTimeMillis);
+                    expirationTasks.put(eventId, task);
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a time listener so that we can reschedule the {@link TimerTask}
+     * when necessary (the Simulated Time has changed or is frozen)
+     * 
+     * @return
+     */
+    private ISimulatedTimeChangeListener createTimeListener() {
+        timeListener = new ISimulatedTimeChangeListener() {
+
+            @Override
+            public void timechanged() {
+                for (TimerTask task : expirationTasks.values()) {
+                    task.cancel();
+                    expirationTasks.clear();
+                }
+
+                for (IHazardEvent event : events) {
+                    if (event.getState() == HazardState.ENDED) {
+                        event.setState(HazardState.ISSUED);
+                    }
+                    scheduleExpirationTask((ObservedHazardEvent) event);
+                }
+            }
+        };
+        return timeListener;
     }
 
     private void addModification(String eventId) {
@@ -509,9 +615,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void shutdown() {
-        /**
-         * Nothing to do right now.
-         */
+        eventExpirationTimer.cancel();
+        eventExpirationTimer = null;
+        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
+                timeListener);
     }
-
 }
