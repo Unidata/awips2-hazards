@@ -1,6 +1,8 @@
+
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
+import gov.noaa.gsd.common.hazards.utilities.Utils
 
 import org.joda.time.DateTime
 
@@ -14,15 +16,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
-import com.raytheon.uf.common.localization.LocalizationFile
+import com.raytheon.uf.common.serialization.JAXBManager
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertState
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationSpatialTimer
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ConfigLoader
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertConfigCriterion
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender
@@ -370,15 +370,15 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     }
 
     private mockConfigurationManager() {
+        // For now hardwire this to come straight out of EDEX directories, would eventually
+        // like to figure out a way to pull from the source code directories.
+        String locFilePath =
+          "/awips2/edex/data/utility/common_static/base/hazardServices/alerts/HazardAlertsConfig.xml";
+        String xmlData = Utils.textFileAsString(locFilePath);
+        JAXBManager jaxbManager = new JAXBManager(HazardAlertsConfig.class);
+        HazardAlertsConfig config = jaxbManager.unmarshalFromXml(xmlData)
         sessionConfigurationManager = mock(ISessionConfigurationManager.class)
-        File alertFile = new File(getClass().getResource(
-                SessionConfigurationManager.ALERTS_CONFIG_PATH).getPath())
-        LocalizationFile lfile = mock(LocalizationFile.class)
-        when(lfile.getFile()).thenReturn(alertFile)
-        when(lfile.getName()).thenReturn(alertFile.getName())
-        ConfigLoader<HazardAlertsConfig> configLoader = new ConfigLoader<HazardAlertsConfig>(
-                lfile, HazardAlertsConfig.class, null, null)
-        configLoader.run()
-        when(sessionConfigurationManager.getAlertConfig()).thenReturn(configLoader.getConfig())
+
+        when(sessionConfigurationManager.getAlertConfig()).thenReturn(config)
     }
 }
