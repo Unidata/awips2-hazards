@@ -98,7 +98,7 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                     productID = wmoHeader.get('productID')
                   
                 generatedProduct = GeneratedProduct(productID)
-                products = {}
+                productDict = {}
                 for format in formats:
                     try:
                         module = importlib.import_module(format) 
@@ -108,23 +108,22 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
                             product = result
                         else:
                             product = [result] 
-                        products[format] = product
+                        productDict[format] = product
                     except Exception, e:
-                        products[format] = 'Failed to execute ' + format + '. Make sure it exists.'
+                        productDict[format] = 'Failed to execute ' + format + '. Make sure it exists.'
                         #self.logger.exception("An Exception Occurred" + traceback.format_exc(limit=20))
                         exc_type, exc_value, exc_traceback = sys.exc_info()
                         print traceback.format_exc(limit=20)
                         #traceback.print_tb(exc_traceback, limit=20)
                         os.sys.__stdout__.flush()
                 
-                jmap = JUtil.pyDictToJavaMap(products)
+                jmap = JUtil.pyDictToJavaMap(productDict)
                 generatedProduct.setEntries(jmap)
             else:
                 generatedProduct = GeneratedProduct(None)
                 generatedProduct.setErrors('Can not format data. Not a python dictionary')
-            
+                            
             generatedProduct.setEventSet(eventSet)    
             generatedProductList.add(generatedProduct)
-            
-            
+
         return generatedProductList

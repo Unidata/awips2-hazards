@@ -1123,22 +1123,23 @@ class VTECEngine(VTECTableUtil):
         siteFilter = [self._siteID4, self._spcSiteID4]
         allGEOVtecRecords = [a for a in rawVtecRecords if a['officeid'] in siteFilter]
         LogStream.logDebug('Active Table: after site filter:\n',
-          self.printVtecRecords(rawVtecRecords, combine=True))
+          self.printVtecRecords(allGEOVtecRecords, combine=True))
 
         # further filtering on the active table
         actTable = self.filterTestMode(allGEOVtecRecords,
           testMode=self._vtecMode == 'T')
         LogStream.logDebug('Active Table: after filter test mode:\n',
-          self.printVtecRecords(rawVtecRecords, combine=True))
+          self.printVtecRecords(actTable, combine=True))
         actTable = self.filterAllowedHazards(actTable)
         LogStream.logDebug('Active Table: after filterAllowedHazards:\n',
-          self.printVtecRecords(rawVtecRecords, combine=True))
+          self.printVtecRecords(actTable, combine=True))
         actTable = self.filterGeoZones(actTable, limitGeoZones)
         LogStream.logDebug('Active Table: after filterGeoZones:\n',
-          self.printVtecRecords(rawVtecRecords, combine=True))
+          self.printVtecRecords(actTable, combine=True))
         actTable = self.filterEventIDs(actTable, limitEventIDs)
         LogStream.logDebug('Active Table: after filterEventIDs:\n',
-          self.printVtecRecords(rawVtecRecords, combine=True))
+          self.printVtecRecords(actTable, combine=True))
+
 
         # determine zones in use
         zones = set([a['id'] for a in actTable])

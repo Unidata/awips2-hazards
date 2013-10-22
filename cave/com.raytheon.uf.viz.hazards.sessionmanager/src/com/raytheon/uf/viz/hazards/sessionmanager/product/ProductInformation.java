@@ -28,7 +28,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
 /**
  * 
- * Informatation about a product that is used to configure it for generation.
+ * Information about a product that is used to configure it for generation.
  * 
  * <pre>
  * 
@@ -47,9 +47,9 @@ public class ProductInformation {
 
     private String productName;
 
-    private Set<IHazardEvent> selectedEvents;
+    private Set<IHazardEvent> productEvents;
 
-    private Set<IHazardEvent> potentialEvents;
+    private Set<IHazardEvent> possibleProductEvents;
 
     private Map<String, String> dialogInfo;
 
@@ -69,21 +69,20 @@ public class ProductInformation {
         this.productName = productName;
     }
 
-    public Set<IHazardEvent> getSelectedEvents() {
-        return selectedEvents;
+    public Set<IHazardEvent> getProductEvents() {
+        return productEvents;
     }
 
-    public void setSelectedEvents(Set<IHazardEvent> selectedEvents) {
-        this.selectedEvents = selectedEvents;
+    public void setProductEvents(Set<IHazardEvent> productEvents) {
+        this.productEvents = productEvents;
     }
 
-    public Set<IHazardEvent> getPotentialEvents() {
-        return potentialEvents;
+    public Set<IHazardEvent> getPossibleProductEvents() {
+        return possibleProductEvents;
     }
 
-    public void setPotentialEvents(
-Set<IHazardEvent> potentialEvents) {
-        this.potentialEvents = potentialEvents;
+    public void setPossibleProductEvents(Set<IHazardEvent> possibleProductEvents) {
+        this.possibleProductEvents = possibleProductEvents;
     }
 
     public Map<String, String> getDialogInfo() {

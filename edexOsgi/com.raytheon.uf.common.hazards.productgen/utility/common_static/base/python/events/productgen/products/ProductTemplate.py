@@ -179,6 +179,7 @@ class Product(object):
         eventDicts = self.bridge.handleRecommenderResult('ProductGenerator', eventList, enclosed=False)                             
         attributes = eventSet.getAttributes()
         metaDict = JUtil.javaMapToPyDict(attributes)
+        
         return eventDicts, metaDict
               
     def _getVariables(self, eventSet): 
@@ -301,6 +302,8 @@ class Product(object):
                         
         # If issuing, save the VTEC records for legacy products       
         self._saveVTEC(eventDicts) 
+        print "PGT Output EventDicts", eventDicts
+        self.flush()
         hazardEvents = self._tpc.createHazardEvents(eventDicts, self._siteID)
         # hazardEvents = self.bridge.eventDictsToHazardEvents(eventDicts)
         return productDicts, hazardEvents
@@ -537,6 +540,8 @@ class Product(object):
         #
         # We use the first segmentEventDict for calculating the ugc header information
         #  since the ugcs will be the same for all hazard events in the segment
+        print "PGT createSegment vtecRecords, segment ", self._segmentVtecRecords, segment
+        self.flush()
         self._ugcs = self._segmentEventDicts[0].get('ugcs', [])    
         self._ugcs.sort()  
         self._timeZones = self._tpc.hazardTimeZones(self._ugcs)

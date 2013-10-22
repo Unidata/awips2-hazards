@@ -99,6 +99,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * 
  * Sept 16, 2013 1298      thansen     Added popup dialog trying to preview or issue non-supported 
  *                                     hazards
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -141,12 +142,11 @@ public class SessionProductManager implements ISessionProductManager {
         List<String> supportedHazards = new ArrayList<String>();
         Set<String> unsupportedHazards = new HashSet<String>();
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
-            Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
-            Set<IHazardEvent> potentialEvents = new HashSet<IHazardEvent>();
+            Set<IHazardEvent> productEvents = new HashSet<IHazardEvent>();
+            Set<IHazardEvent> possibleProductEvents = new HashSet<IHazardEvent>();
 
             for (IHazardEvent e : eventManager.getEvents()) {
-                if (e.getPhenomenon() == null || e.getSignificance() == null
-                        || e.getState() == HazardState.POTENTIAL) {
+                if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
                 String key = HazardEventUtilities.getPhenSigSubType(e);
@@ -156,18 +156,19 @@ public class SessionProductManager implements ISessionProductManager {
                         if (e.getHazardAttribute(
                                 ISessionEventManager.ATTR_SELECTED)
                                 .equals(true)) {
-                            selectedEvents.add(e);
-                        } else {
-                            potentialEvents.add(e);
+                            productEvents.add(e);
+                        } else if (e.getState() != HazardState.POTENTIAL
+                                && e.getState() != HazardState.ENDED) {
+                            possibleProductEvents.add(e);
                         }
                     }
                 }
             }
-            if (!selectedEvents.isEmpty()) {
+            if (!productEvents.isEmpty()) {
                 ProductInformation info = new ProductInformation();
                 info.setProductName(entry.getKey());
-                info.setSelectedEvents(selectedEvents);
-                info.setPotentialEvents(potentialEvents);
+                info.setProductEvents(productEvents);
+                info.setPossibleProductEvents(possibleProductEvents);
                 // TODO actually get dialog info. Currently getting the dialog
                 // info breaks the Replace Watch with Warning Story.
                 // info.setDialogInfo(productGen.getDialogInfo(entry.getKey()));
@@ -249,7 +250,7 @@ public class SessionProductManager implements ISessionProductManager {
                 events.addAttribute(entry.getKey(), entry.getValue());
             }
         }
-        for (IHazardEvent event : information.getSelectedEvents()) {
+        for (IHazardEvent event : information.getProductEvents()) {
             event = new BaseHazardEvent(event);
             for (Entry<String, Serializable> entry : event
                     .getHazardAttributes().entrySet()) {
@@ -302,8 +303,8 @@ public class SessionProductManager implements ISessionProductManager {
         productGen.generate(product, events, formats, listener);
     }
 
-    // @Override
-    public void issue_new(ProductInformation information) {
+    @Override
+    public void issue(ProductInformation information) {
 
         /*
          * Need to look at all events in the SessionManager because some events
@@ -334,6 +335,8 @@ public class SessionProductManager implements ISessionProductManager {
 
                     if (updatedEvent.getState().equals(HazardState.ENDED)) {
                         sessionEvent.setState(HazardState.ENDED);
+                        sessionEvent.addHazardAttribute(
+                                ISessionEventManager.ATTR_SELECTED, false);
                     } else {
                         sessionEvent.setState(HazardState.ISSUED);
                     }
@@ -346,12 +349,31 @@ public class SessionProductManager implements ISessionProductManager {
 
             }
         }
+        /*
+         * Disseminate the products
+         */
+        for (IGeneratedProduct product : information.getProducts()) {
+            /*
+             * This is temporary: issueFormats should be user configurable and
+             * will be addressed by Issue #691 -- Clean up Configuration Files
+             */
+            String[] issueFormats = { "Legacy", "CAP", "XML" };
+            for (String format : issueFormats) {
+                List<Object> objs = product.getEntry(format);
+                if (objs != null) {
+                    for (Object obj : objs) {
+                        ProductUtils.disseminate(String.valueOf(obj));
+                    }
+                }
+            }
+        }
+
     }
 
-    @Override
-    public void issue(ProductInformation information) {
+    // @Override
+    public void issue_old(ProductInformation information) {
 
-        for (IHazardEvent selectedEvent : information.getSelectedEvents()) {
+        for (IHazardEvent selectedEvent : information.getProductEvents()) {
 
             // checks if selected events conflicting with existing grids based
             // on time and phensigs
@@ -381,6 +403,7 @@ public class SessionProductManager implements ISessionProductManager {
                             break;
                         }
                     }
+
                     // disseminates the legacy product
                     for (IGeneratedProduct product : information.getProducts()) {
                         List<Object> objs = product.getEntry("Legacy");

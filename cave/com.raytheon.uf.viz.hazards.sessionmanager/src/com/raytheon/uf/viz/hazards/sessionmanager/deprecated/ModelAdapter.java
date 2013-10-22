@@ -826,8 +826,8 @@ public abstract class ModelAdapter {
         for (ProductInformation info : products) {
             if (info.getDialogInfo() != null && !info.getDialogInfo().isEmpty()) {
                 gen = false;
-            } else if (info.getPotentialEvents() != null
-                    && !info.getPotentialEvents().isEmpty()) {
+            } else if (info.getPossibleProductEvents() != null
+                    && !info.getPossibleProductEvents().isEmpty()) {
                 gen = false;
             }
             if (!gen) {
@@ -853,10 +853,10 @@ public abstract class ModelAdapter {
                 sets[setIndex] = new HazardEventSet();
                 StagingInfo stage = new StagingInfo();
                 Field[] fields = { new Field() };
-                fields[0].setLines(info.getSelectedEvents().size());
+                fields[0].setLines(info.getProductEvents().size());
                 List<IHazardEvent> echoices = new ArrayList<IHazardEvent>();
-                echoices.addAll(info.getSelectedEvents());
-                echoices.addAll(info.getPotentialEvents());
+                echoices.addAll(info.getProductEvents());
+                echoices.addAll(info.getPossibleProductEvents());
                 int choiceIndex = 0;
                 Choice[] choices = new Choice[echoices.size()];
                 for (IHazardEvent event : echoices) {
@@ -883,7 +883,7 @@ public abstract class ModelAdapter {
                         .setLabel("When issuing this hazard, there are other related hazards that could be included in the legacy product:");
                 stage.setFields(fields);
                 Map<String, String[]> valueDict = new HashMap<String, String[]>();
-                valueDict.put("eventIDs", toIDs(info.getSelectedEvents()));
+                valueDict.put("eventIDs", toIDs(info.getProductEvents()));
                 stage.setValueDict(valueDict);
                 sets[setIndex].setStagingInfo(stage);
                 sets[setIndex].setDialogInfo(info.getDialogInfo());
@@ -924,20 +924,20 @@ public abstract class ModelAdapter {
             String[] events = set.getStagingInfo().getValueDict()
                     .get("eventIDs");
             for (String eventID : events) {
-                for (IHazardEvent event : info.getSelectedEvents()) {
+                for (IHazardEvent event : info.getProductEvents()) {
                     if (event.getEventID().equals(eventID)) {
                         selectedEvents.add(event);
                         break;
                     }
                 }
-                for (IHazardEvent event : info.getPotentialEvents()) {
+                for (IHazardEvent event : info.getPossibleProductEvents()) {
                     if (event.getEventID().equals(eventID)) {
                         selectedEvents.add(event);
                         break;
                     }
                 }
             }
-            info.setSelectedEvents(selectedEvents);
+            info.setProductEvents(selectedEvents);
             productManager.generate(info,
                     issueFlag.equalsIgnoreCase(Boolean.TRUE.toString()));
 
