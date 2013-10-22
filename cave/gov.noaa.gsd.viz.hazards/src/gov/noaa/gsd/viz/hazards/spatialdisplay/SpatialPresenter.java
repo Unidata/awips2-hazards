@@ -153,7 +153,7 @@ public class SpatialPresenter extends
      *            View to be initialized.
      */
     @Override
-    protected void initialize(ISpatialView<?, ?> view) {
+    public void initialize(ISpatialView<?, ?> view) {
         if (mouseFactory == null) {
             mouseFactory = new MouseHandlerFactory(this);
         }

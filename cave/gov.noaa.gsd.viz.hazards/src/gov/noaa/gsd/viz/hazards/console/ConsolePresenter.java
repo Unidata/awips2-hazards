@@ -130,7 +130,7 @@ public class ConsolePresenter extends
      *            View to be initialized.
      */
     @Override
-    protected final void initialize(IConsoleView<?, ?> view) {
+    public final void initialize(IConsoleView<?, ?> view) {
         getModel().getSessionManager().registerForNotification(this);
 
         // Determine whether the time line navigation buttons should be in

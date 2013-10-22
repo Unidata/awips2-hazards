@@ -12,7 +12,9 @@ import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.ConsoleView;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
+import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -30,12 +32,15 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData;
 import gov.noaa.gsd.viz.hazards.timer.HazardServicesTimer;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +60,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -112,12 +118,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Public Static Constants
 
     /**
-     * Preferences key used to determine whether or not to start off the views
-     * as hidden when loaded from a bundle.
-     */
-    private static final String START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE = "startViewsHiddenWhenLoadedFromBundle";
-
-    /**
      * Timer interval in milliseconds.
      */
     public static final long TIMER_UPDATE_MS = TimeUnit.SECONDS.toMillis(10);
@@ -155,6 +155,22 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Private Static Constants
 
     /**
+     * Auto-tests enabled environment variable.
+     */
+    private static final String AUTO_TESTS_ENABLED_ENVIRONMENT_VARIABLE = "HAZARD_SERVICES_AUTO_TESTS_ENABLED";
+
+    /**
+     * Preferences key used to determine whether or not to start off the views
+     * as hidden when loaded from a bundle.
+     */
+    private static final String START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE = "startViewsHiddenWhenLoadedFromBundle";
+
+    /**
+     * Run automated tests command string.
+     */
+    private static final String AUTO_TEST_COMMAND_MENU_TEXT = "Run Automated Tests";
+
+    /**
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
@@ -165,7 +181,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Event bus.
      */
-    private EventBus eventBus;
+    private final EventBus eventBus = new EventBus();
 
     /**
      * Message handler for all incoming messages.
@@ -250,17 +266,18 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private AlertVizPresenter alertVizPresenter;
 
+    public interface IQuestionAnswerer {
+        public boolean getUserAnswerToQuestion(String question);
+    }
+
+    private IQuestionAnswerer questionAnswerer;
+
+    private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
+
     // Public Static Methods
 
-    /**
-     * Get a true/false, or OK/cancel, or yes/no answer from the user.
-     * 
-     * @param question
-     *            Question to be asked.
-     * @return True if the answer was true/OK/yes, false otherwise.
-     */
-    public static boolean getUserAnswerToQuestion(String question) {
-        return MessageDialog.openQuestion(null, "Hazard Services", question);
+    public boolean getUserAnswerToQuestion(String question) {
+        return questionAnswerer.getUserAnswerToQuestion(question);
     }
 
     /**
@@ -287,6 +304,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public HazardServicesAppBuilder(ToolLayer toolLayer) {
         initialize(toolLayer);
+
     }
 
     // Methods
@@ -302,7 +320,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void initialize(ToolLayer toolLayer) {
         currentTime = null;
         this.toolLayer = toolLayer;
-        this.eventBus = new EventBus();
 
         ((ToolLayerResourceData) toolLayer.getResourceData())
                 .setAppBuilder(this);
@@ -327,6 +344,23 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         new HazardServicesMessageListener(messageHandler, eventBus);
 
+        /**
+         * Get a true/false, or OK/cancel, or yes/no answer from the user.
+         * 
+         * @param question
+         *            Question to be asked.
+         * @return True if the answer was true/OK/yes, false otherwise.
+         */
+        this.questionAnswerer = new IQuestionAnswerer() {
+
+            @Override
+            public boolean getUserAnswerToQuestion(String question) {
+                return MessageDialog.openQuestion(null, "Hazard Services",
+                        question);
+            }
+
+        };
+
     }
 
     /**
@@ -337,6 +371,37 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @return
      */
     public void buildGUIs(boolean loadedFromBundle) {
+
+        // Initialize the automated tests if appropriate.
+        String autoTestsEnabled = System
+                .getenv("HAZARD_SERVICES_AUTO_TESTS_ENABLED");
+        if (autoTestsEnabled != null) {
+            AutomatedTests tests = new AutomatedTests();
+            tests.run(this);
+
+            // Build a menubar contributor that adds the
+            // automated test menu item.
+            appBuilderMenubarContributor = new IMainUiContributor<Action, RCPMainUserInterfaceElement>() {
+                @Override
+                public List<? extends Action> contributeToMainUI(
+                        RCPMainUserInterfaceElement type) {
+                    if (type == RCPMainUserInterfaceElement.MENUBAR) {
+                        Action autoTestAction = new BasicAction(
+                                AUTO_TEST_COMMAND_MENU_TEXT, null,
+                                Action.AS_PUSH_BUTTON, null) {
+                            @Override
+                            public void run() {
+                                eventBus.post(new ConsoleAction(
+                                        HazardConstants.RUN_AUTOMATED_TESTS));
+                            }
+                        };
+                        return Lists.newArrayList(autoTestAction);
+                    }
+                    return Collections.emptyList();
+                }
+            };
+        }
+
         /*
          * Create the Spatial Display layer in the active CAVE editor. This is
          * what hazards will be drawn on.
@@ -419,9 +484,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void buildMenuBar() {
         ConsoleView consoleView = (ConsoleView) consolePresenter.getView();
-        List<IView<Action, RCPMainUserInterfaceElement>> contributors = Lists
+        List<IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors = Lists
                 .newArrayList();
         contributors.add(consoleView);
+        if (appBuilderMenubarContributor != null) {
+            contributors.add(appBuilderMenubarContributor);
+        }
         consoleView.acceptContributionsToMainUI(contributors,
                 RCPMainUserInterfaceElement.MENUBAR);
     }
@@ -451,14 +519,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            instantiated as a result of a bundle load.
      */
     private void createConsole(boolean loadedFromBundle) {
+        ConsoleView consoleView = new ConsoleView(loadedFromBundle);
         if (consolePresenter == null) {
             consolePresenter = new ConsolePresenter(
-                    messageHandler.getModelProxy(), new ConsoleView(
-                            loadedFromBundle), eventBus);
+                    messageHandler.getModelProxy(), consoleView, eventBus);
             presenters.add(consolePresenter);
         } else {
-            consolePresenter.setView(new ConsoleView(loadedFromBundle));
+            consolePresenter.setView(consoleView);
         }
+        consolePresenter.initialize(consoleView);
     }
 
     /**
@@ -481,9 +550,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createAlertsConfigDisplay() {
         if (alertsConfigPresenter == null) {
 
+            AlertsConfigView alertsConfigView = new AlertsConfigView();
             alertsConfigPresenter = new AlertsConfigPresenter(
-                    messageHandler.getModelProxy(), new AlertsConfigView(),
-                    eventBus);
+                    messageHandler.getModelProxy(), alertsConfigView, eventBus);
+            alertsConfigPresenter.initialize(alertsConfigView);
             presenters.add(alertsConfigPresenter);
         }
     }
@@ -511,6 +581,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             };
             alertVizPresenter = new AlertVizPresenter(
                     messageHandler.getModelProxy(), alertVizView, eventBus);
+            alertVizPresenter.initialize(alertVizView);
         }
     }
 
@@ -522,15 +593,17 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            instantiated as a result of a bundle load.
      */
     private void createHazardDetailDisplay(boolean loadedFromBundle) {
+        HazardDetailView hazardDetailView = new HazardDetailView(
+                loadedFromBundle);
         if (hazardDetailPresenter == null) {
             hazardDetailPresenter = new HazardDetailPresenter(
-                    messageHandler.getModelProxy(), new HazardDetailView(
-                            loadedFromBundle), eventBus);
+                    messageHandler.getModelProxy(), hazardDetailView, eventBus);
             presenters.add(hazardDetailPresenter);
         } else {
-            hazardDetailPresenter
-                    .setView(new HazardDetailView(loadedFromBundle));
+
+            hazardDetailPresenter.setView(hazardDetailView);
         }
+        hazardDetailPresenter.initialize(hazardDetailView);
     }
 
     /**
@@ -542,9 +615,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createSettingsDisplay() {
         if (settingsPresenter == null) {
 
+            SettingsView settingsView = new SettingsView();
             settingsPresenter = new SettingsPresenter(
-                    messageHandler.getModelProxy(), new SettingsView(),
-                    eventBus);
+                    messageHandler.getModelProxy(), settingsView, eventBus);
+            settingsPresenter.initialize(settingsView);
             presenters.add(settingsPresenter);
         }
     }
@@ -554,8 +628,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createToolsDisplay() {
         if (toolsPresenter == null) {
+            ToolsView toolsView = new ToolsView();
             toolsPresenter = new ToolsPresenter(messageHandler.getModelProxy(),
-                    new ToolsView(), eventBus);
+                    toolsView, eventBus);
+            toolsPresenter.initialize(toolsView);
             presenters.add(toolsPresenter);
         }
     }
@@ -566,45 +642,51 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * We'll have to see if we ever want to recreate it.
      */
     private void createSpatialDisplay(ToolLayer toolLayer) {
+        SpatialView spatialView = new SpatialView(toolLayer);
         if (spatialPresenter == null) {
             spatialPresenter = new SpatialPresenter(
-                    messageHandler.getModelProxy(), new SpatialView(toolLayer),
-                    eventBus);
+                    messageHandler.getModelProxy(), spatialView, eventBus);
             presenters.add(spatialPresenter);
         } else {
             spatialPresenter.getView().dispose();
-            spatialPresenter.setView(new SpatialView(toolLayer));
+            spatialPresenter.setView(spatialView);
         }
+        spatialPresenter.initialize(spatialView);
     }
 
     /**
      * Create the product staging view and presenter.
      */
     private void createProductStagingDisplay() {
+        ProductStagingView productStagingView = new ProductStagingView();
         if (productStagingPresenter == null) {
             productStagingPresenter = new ProductStagingPresenter(
-                    messageHandler.getModelProxy(), new ProductStagingView(),
+                    messageHandler.getModelProxy(), productStagingView,
                     eventBus);
             presenters.add(productStagingPresenter);
         } else {
             productStagingPresenter.getView().dispose();
-            productStagingPresenter.setView(new ProductStagingView());
+
+            productStagingPresenter.setView(productStagingView);
         }
+        productStagingPresenter.initialize(productStagingView);
     }
 
     /**
      * Create the product editor view and presenter.
      */
     private void createProductEditorDisplay() {
+        ProductEditorView productEditorView = new ProductEditorView();
         if (productEditorPresenter == null) {
             productEditorPresenter = new ProductEditorPresenter(
-                    messageHandler.getModelProxy(), new ProductEditorView(),
-                    eventBus);
+                    messageHandler.getModelProxy(), productEditorView, eventBus);
             presenters.add(productEditorPresenter);
         } else {
             productEditorPresenter.getView().dispose();
-            productEditorPresenter.setView(new ProductEditorView());
+
+            productEditorPresenter.setView(productEditorView);
         }
+        productEditorPresenter.initialize(productEditorView);
     }
 
     /**
@@ -1045,5 +1127,49 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     public ISessionManager getSessionManager() {
         return sessionManager;
+    }
+
+    void setToolsPresenter(ToolsPresenter toolsPresenter) {
+        this.toolsPresenter = toolsPresenter;
+    }
+
+    public ConsolePresenter getConsolePresenter() {
+        return consolePresenter;
+    }
+
+    public ProductStagingPresenter getProductStagingPresenter() {
+        return productStagingPresenter;
+    }
+
+    public ToolsPresenter getToolsPresenter() {
+        return toolsPresenter;
+    }
+
+    public SpatialPresenter getSpatialPresenter() {
+        return spatialPresenter;
+    }
+
+    public ToolLayer getToolLayer() {
+        return toolLayer;
+    }
+
+    public IHazardServicesModel getModel() {
+        return messageHandler.getModelProxy();
+    }
+
+    public HazardDetailPresenter getHazardDetailPresenter() {
+        return hazardDetailPresenter;
+    }
+
+    public ProductEditorPresenter getProductEditorPresenter() {
+        return productEditorPresenter;
+    }
+
+    public void setQuestionAnswerer(IQuestionAnswerer questionAnswerer) {
+        this.questionAnswerer = questionAnswerer;
+    }
+
+    public IQuestionAnswerer getQuestionAnswerer() {
+        return questionAnswerer;
     }
 }

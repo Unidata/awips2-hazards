@@ -70,6 +70,7 @@ import org.eclipse.swt.widgets.Widget;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -1496,7 +1497,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     "HazardDetailViewPart.megawidgetStateChanged(): conversion "
                             + "of event info to JSON string failed.", e);
         }
-        fireHIDAction(new HazardDetailAction("updateEventMetadata", jsonText));
+        fireHIDAction(new HazardDetailAction(
+                HazardConstants.UPDATE_EVENT_METADATA, jsonText));
     }
 
     /**
@@ -1927,11 +1929,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void buttonPressed(int buttonId) {
         if (buttonId == PROPOSE_ID) {
-            fireHIDAction(new HazardDetailAction("Propose"));
+            fireHIDAction(new HazardDetailAction(
+                    HazardConstants.HazardAction.PROPOSE.getValue()));
         } else if (buttonId == ISSUE_ID) {
-            fireHIDAction(new HazardDetailAction("Issue"));
+            fireHIDAction(new HazardDetailAction(
+                    HazardConstants.HazardAction.ISSUE.getValue()));
         } else if (buttonId == PREVIEW_ID) {
-            fireHIDAction(new HazardDetailAction("Preview"));
+            fireHIDAction(new HazardDetailAction(
+                    HazardConstants.HazardAction.PREVIEW.getValue()));
         }
     }
 
@@ -2958,7 +2963,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                     + "of event info to JSON string failed.", e);
                 }
                 hazardDetailView.fireAction(new HazardDetailAction(
-                        "updateEventMetadata", jsonText), true);
+                        HazardConstants.UPDATE_EVENT_METADATA, jsonText), true);
             }
         }
     }

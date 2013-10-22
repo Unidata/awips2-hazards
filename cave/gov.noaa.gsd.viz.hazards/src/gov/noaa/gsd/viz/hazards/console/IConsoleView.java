@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.List;
@@ -81,7 +82,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            Type of main UI contributions to accept from the contributors.
      */
     public void acceptContributionsToMainUI(
-            List<? extends IView<C, E>> contributors, E type);
+            List<? extends IMainUiContributor<C, E>> contributors, E type);
 
     /**
      * Ensure the view is visible.

@@ -83,7 +83,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     }
 
     @Override
-    protected void initialize(IView<?, ?> view) {
+    public void initialize(IView<?, ?> view) {
         renderedAlerts = Lists.newArrayList();
         statusHandler = UFStatus.getHandler(getClass());
         getModel().getSessionManager().registerForNotification(this);

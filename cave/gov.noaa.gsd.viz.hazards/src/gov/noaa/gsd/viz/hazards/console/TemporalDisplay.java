@@ -105,6 +105,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -2679,7 +2680,8 @@ class TemporalDisplay {
                         selectedIndices = table.getSelectionIndices();
                         updateEventDictListSelection(selectedIdentifiers);
                         fireConsoleActionOccurred(new ConsoleAction(
-                                "SelectedEventsChanged", selectedIdentifiers
+                                HazardConstants.SELECTED_EVENTS_CHANGED,
+                                selectedIdentifiers
                                         .toArray(new String[selectedIdentifiers
                                                 .size()])));
                     }

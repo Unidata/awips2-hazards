@@ -49,7 +49,17 @@ public final class HazardConstants {
 
     // part of the hazard lifecycle that the user will see
     public enum HazardState {
-        PENDING, POTENTIAL, PROPOSED, ISSUED, ENDED;
+        PENDING("pending"), POTENTIAL("potential"), PROPOSED("proposed"), ISSUED(
+                "issued"), ENDED("ended");
+        private final String value;
+
+        private HazardState(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
     }
 
     public static HazardState hazardStateFromString(String value) {
@@ -118,6 +128,20 @@ public final class HazardConstants {
          */
         public String getAbbreviation() {
             return abbreviation;
+        }
+    }
+
+    public static enum HazardAction {
+        PROPOSE("Propose"), PREVIEW("Preview"), ISSUE("Issue");
+
+        private final String value;
+
+        private HazardAction(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 
@@ -210,6 +234,10 @@ public final class HazardConstants {
 
     public static final String TYPE = "type";
 
+    public static final String CAUSE = "cause";
+
+    public static final String COLOR = "color";
+
     /*
      * The following are used to identify elements in the session state.
      */
@@ -231,6 +259,8 @@ public final class HazardConstants {
     public static final String PREVIEW_STATE = "previewState";
 
     public static final String REPLACES = "replaces";
+
+    public static final String GENERATED_PRODUCTS = "generatedProducts";
 
     /*
      * The following are related to hazard geometries and their supporting meta
@@ -262,6 +292,30 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_ADD_REMOVE_SHAPES = "Add/Remove Shapes";
 
+    public static final String CONEXT_MENU_SELECTED = "ContextMenuSelected";
+
+    public static final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
+
+    public static final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
+
+    public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
+
+    public static final String CONTEXT_MENU_SAVE = "Save";
+
+    public static final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
+
+    public static final String CONTEXT_MENU_DELETE = "Delete";
+
+    public static final String CONTEXT_MENU_ADD_NODE = "Add Node";
+
+    public static final String CONTEXT_MENU_DELETE_NODE = "Delete Node";
+
+    public static final String CONTEXT_MENU_END = "End";
+
+    public static final String CONTEXT_MENU_ISSUE = "Issue";
+
+    public static final String CONTEXT_MENU_PROPOSE = "Propose";
+
     /*
      * Constants specific to draw-by-area hazard creation operations.
      */
@@ -270,6 +324,27 @@ public final class HazardConstants {
     public static final String GEOMETRY_MAP_NAME_KEY = "geometryMapName";
 
     public static final String NEW_EVENT_SHAPE = "NewEventShape";
+
+    /*
+     * Constants relating to running tools
+     * 
+     * TODO Make into an enum?
+     */
+    public static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
+
+    public static final String RIVER_FLOOD_RECOMMENDER = "RiverFloodRecommender";
+
+    /*
+     * Constants relating to settings
+     */
+    public static final String HYDROLOGY_SETTING = "Hydrology";
+
+    /*
+     * Constants relating to hazard actions
+     */
+    public static final String UPDATE_EVENT_METADATA = "updateEventMetadata";
+
+    public static final String SELECTED_EVENTS_CHANGED = "SelectedEventsChanged";
 
     /*
      * TODO The following need to be moved to something specific to storm track
@@ -287,4 +362,6 @@ public final class HazardConstants {
     public static final String MODIFY_STORM_TRACK_TOOL = "ModifyStormTrackTool";
 
     public static final String STATIC_SETTINGS = "staticSettings";
+
+    public static final String RUN_AUTOMATED_TESTS = "runAutomatedTests";
 }

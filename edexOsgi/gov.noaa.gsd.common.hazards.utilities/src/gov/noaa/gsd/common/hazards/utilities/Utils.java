@@ -2,7 +2,6 @@ package gov.noaa.gsd.common.hazards.utilities;
 
 import static org.joda.time.DateTimeConstants.*;
 
-
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -1096,7 +1095,7 @@ public class Utils {
         }
     }
 
-    public static String stackTraceAsString(Exception e) {
+    public static String stackTraceAsString(Error e) {
         StringBuilder sb = new StringBuilder();
         sb.append(e.getMessage() + "\n");
         StackTraceElement[] stackTrace = e.getStackTrace();

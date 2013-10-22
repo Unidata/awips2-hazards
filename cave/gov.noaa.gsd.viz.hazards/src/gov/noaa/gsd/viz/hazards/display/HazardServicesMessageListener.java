@@ -120,11 +120,10 @@ public class HazardServicesMessageListener {
     public void spatialDisplayActionOccurred(
             final SpatialDisplayAction spatialDisplayAction) {
         String actionType = spatialDisplayAction.getActionType();
-        statusHandler
-                .debug("Mediator SpatialDisplayActionOccurred actionType: "
-                        + actionType);
+        statusHandler.debug("SpatialDisplayActionOccurred actionType: "
+                + actionType);
 
-        if (actionType.equals("SelectedEventsChanged")) {
+        if (actionType.equals(HazardConstants.SELECTED_EVENTS_CHANGED)) {
             try {
                 statusHandler.debug("HazardServicesMessageListener."
                         + "spatialDisplayActionOccurred(): eventIDs: "
@@ -190,7 +189,7 @@ public class HazardServicesMessageListener {
             String lonLat = spatialDisplayAction.getDragToLongitude() + ","
                     + spatialDisplayAction.getDragToLatitude();
             messageHandler.runTool(lonLat, null, null);
-        } else if (actionType.equals("ContextMenuSelected")) {
+        } else if (actionType.equals(HazardConstants.CONEXT_MENU_SELECTED)) {
             String label = spatialDisplayAction.getContextMenuLabel();
             messageHandler.handleContextMenuSelection(label);
         } else if (actionType.equals("DisplayDisposed")) {
@@ -269,7 +268,8 @@ public class HazardServicesMessageListener {
             // but this was not needed. We kept the event around
             // in case in the future the Mediator needs to know
             // about temporal display redraws.
-        } else if (consoleAction.getAction().equals("SelectedEventsChanged")) {
+        } else if (consoleAction.getAction().equals(
+                HazardConstants.SELECTED_EVENTS_CHANGED)) {
             try {
                 String eventIDsString = HazardServicesMessageHandler
                         .convertEventIDs(consoleAction.getSelectedEventIDs());
@@ -322,7 +322,7 @@ public class HazardServicesMessageListener {
                 "updateEventType")) {
             messageHandler.updateEventType(hazardDetailAction.getJSONText());
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
-                "updateEventMetadata")) {
+                HazardConstants.UPDATE_EVENT_METADATA)) {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
                     HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
         } else {

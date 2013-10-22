@@ -125,7 +125,7 @@ public class SettingsPresenter extends
      *            View to be initialized.
      */
     @Override
-    protected void initialize(ISettingsView<?, ?> view) {
+    public void initialize(ISettingsView<?, ?> view) {
         view.initialize(this, getModel().getSettingsList(), getModel()
                 .getConfigItem("filterConfig"), getModel().getDynamicSettings());
     }
