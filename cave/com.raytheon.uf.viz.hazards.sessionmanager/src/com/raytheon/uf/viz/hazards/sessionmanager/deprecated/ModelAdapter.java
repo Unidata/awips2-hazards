@@ -121,6 +121,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      helps to ensure that localization is 
  *                                      properly updated when files are
  *                                      deleted from it.
+ * Oct 22, 2013 2155    blawrenc        Fixed getContextMenuEntries() to 
+ *                                      receive hazard-specific menu entries
+ *                                      as a List<String> instead of a String[].
  * </pre>
  * 
  * @author bsteffen
@@ -763,7 +766,8 @@ public abstract class ModelAdapter {
              * which applies to hazard geometries created by the draw-by-area
              * tool.
              */
-            String[] contextMenuEntries = (String[]) event
+            @SuppressWarnings("unchecked")
+            List<String> contextMenuEntries = (List<String>) event
                     .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
 
             if (contextMenuEntries != null) {
