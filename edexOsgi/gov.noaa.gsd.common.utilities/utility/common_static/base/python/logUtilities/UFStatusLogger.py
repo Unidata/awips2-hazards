@@ -16,6 +16,8 @@ Jan 11, 2013            Bryon.Lawrence      Initial creation
 Apr 18, 2013            Jim Ramer           Enabled formal alertviz logging.
 Sep 16, 2013            Bryon.Lawrence      Renamed for general use
                                             outside of HazardServices.
+Oct 23, 2013            Jim Ramer           If newly creating flat file, chmod
+                                            writable so other users can extend 
 
 @author Bryon.Lawrence@noaa.gov
 @version 1.0
@@ -56,10 +58,15 @@ class UFStatusLogger():
         except:    
             timeString = strftime("%Y-%m-%d %H:%M:%S", gmtime())
             if len(UFStatusLogger.instanceFactory)==0 :
+                chmodNow = not os.path.isfile(UFStatusLogger.fileName)
                 f = open(UFStatusLogger.fileName, 'a')
                 f.write(timeString + '\n')
                 traceback.print_exc(file=f)
                 f.close()
+                if chmodNow :
+                    # If newly creating flat file, chmod
+                    # writable so other users can extend
+                    os.chmod(UFStatusLogger.fileName, 0666)
 
     @staticmethod            
     def getInstance():
