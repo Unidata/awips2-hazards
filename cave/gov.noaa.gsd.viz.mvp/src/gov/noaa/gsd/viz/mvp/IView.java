@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.mvp;
 
-import java.util.List;
 
 /**
  * Interface describing the methods that must be implemented in order to create
@@ -31,12 +30,17 @@ import java.util.List;
  *                                          contributions in case the main UI
  *                                          is not available at the time the
  *                                          method is called.
+ * Oct 22, 2013    2166    Chris.Golden     Made subinterface of new interface
+ *                                          IMainUiContributor, in order to
+ *                                          separate the latter's functionality
+ *                                          out so as to allow non-view objects
+ *                                          to contribute to the main UI.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IView<C, E extends Enum<E>> {
+public interface IView<C, E extends Enum<E>> extends IMainUiContributor<C, E> {
 
     // Public Methods
 
@@ -44,17 +48,4 @@ public interface IView<C, E extends Enum<E>> {
      * Get the view ready for disposal.
      */
     public void dispose();
-
-    /**
-     * Get any contributions to the main UI that the implementation desires to
-     * make. Note that this method may be called multiple times per <code>type
-     * </code> to (re)populate the main UI with the specified <code>type</code>;
-     * implementations are responsible for cleaning up after contributed items
-     * that may exist from a previous call with the same <code>type</code>.
-     * 
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return List of contributions; this may be empty if none are to be made.
-     */
-    public List<? extends C> contributeToMainUI(E type);
 }

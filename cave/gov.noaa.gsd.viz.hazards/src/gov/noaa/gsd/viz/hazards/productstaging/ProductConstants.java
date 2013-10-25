@@ -36,4 +36,19 @@ public class ProductConstants {
      * Partner XML Product Key
      */
     public static final String XML_PRODUCT_KEY = "XML";
+
+    /**
+     * Partner CAP Product Key
+     */
+    public static final String CAP_PRODUCT_KEY = "CAP";
+
+    /**
+     * Product identifier
+     */
+    public static final String PRODUCT_ID = "productID";
+
+    /**
+     * Key for the collection of products generated.
+     */
+    public static final String PRODUCTS = "products";
 }

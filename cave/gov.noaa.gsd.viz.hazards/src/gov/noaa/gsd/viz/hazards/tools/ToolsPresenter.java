@@ -81,8 +81,7 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public final void showToolParameterGatherer(String toolName,
-            String jsonParams) {
+    public void showToolParameterGatherer(String toolName, String jsonParams) {
         getView().showToolParameterGatherer(toolName, jsonParams);
     }
 
@@ -95,7 +94,7 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            View to be initialized.
      */
     @Override
-    protected void initialize(IToolsView<?, ?> view) {
+    public void initialize(IToolsView<?, ?> view) {
         view.initialize(this, getModel().getToolList());
     }
 }

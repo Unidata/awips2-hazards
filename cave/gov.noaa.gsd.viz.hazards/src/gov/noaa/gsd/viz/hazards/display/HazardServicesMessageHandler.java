@@ -139,31 +139,6 @@ public final class HazardServicesMessageHandler {
      */
     private final String SELECTION_CALLBACK = "selectionCallback";
 
-    /**
-     * Entries on the right-click, pop-up menu
-     */
-    private final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
-
-    private final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
-
-    private final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
-
-    private final String CONTEXT_MENU_SAVE = "Save";
-
-    private final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
-
-    private final String CONTEXT_MENU_DELETE = "Delete";
-
-    private final String CONTEXT_MENU_ADD_NODE = "Add Node";
-
-    private final String CONTEXT_MENU_DELETE_NODE = "Delete Node";
-
-    private final String CONTEXT_MENU_END = "End";
-
-    private final String CONTEXT_MENU_ISSUE = "Issue";
-
-    private final String CONTEXT_MENU_PROPOSE = "Propose";
-
     // Private Static Constants
 
     /**
@@ -602,7 +577,7 @@ public final class HazardServicesMessageHandler {
      * Issues the events upon user confirmation.
      */
     private void issueEvents() {
-        if (HazardServicesAppBuilder.getUserAnswerToQuestion("Are you sure "
+        if (appBuilder.getUserAnswerToQuestion("Are you sure "
                 + "you want to issue the hazard event(s)?")) {
             generateProducts(true);
             notifyModelEventsChanged();
@@ -975,38 +950,40 @@ public final class HazardServicesMessageHandler {
      *            The label of the selected menu item.
      */
     public void handleContextMenuSelection(String label) {
-        if (label.contains(CONTEXT_MENU_PROPOSE)) {
+        if (label.contains(HazardConstants.CONTEXT_MENU_PROPOSE)) {
             changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
-        } else if (label.contains(CONTEXT_MENU_ISSUE)) {
+        } else if (label.contains(HazardConstants.CONTEXT_MENU_ISSUE)) {
             issueEvents();
-        } else if (label.contains(CONTEXT_MENU_END)) {
+        } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
             String events = model.getSelectedEvents();
             model.changeState(events, PREVIEW_ENDED);
             preview();
-        } else if (label.equals(CONTEXT_MENU_DELETE_NODE)) {
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_NODE)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_NODE);
-        } else if (label.equals(CONTEXT_MENU_ADD_NODE)) {
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_NODE)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.ADD_NODE);
-        } else if (label.contains(CONTEXT_MENU_DELETE)) {
+        } else if (label.contains(HazardConstants.CONTEXT_MENU_DELETE)) {
             deleteEvent(model.getSelectedEvents());
-        } else if (label.contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
+        } else if (label
+                .contains(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
             /*
              * Save off any changes the user has made in the HID. Otherwise,
              * this would be lost when selecting different events.
              */
             appBuilder.showHazardDetail();
-        } else if (label.contains(CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS)) {
+        } else if (label
+                .contains(HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS)) {
             model.removeEvents(Utilities.HAZARD_EVENT_STATE,
                     Utilities.HAZARD_EVENT_STATE_POTENTIAL);
             notifyModelEventsChanged();
-        } else if (label.contains(CONTEXT_MENU_SAVE)) {
+        } else if (label.contains(HazardConstants.CONTEXT_MENU_SAVE)) {
             model.putHazards();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
             appBuilder.loadGeometryOverlayForSelectedEvent();
-        } else if (label.equals(CONTEXT_MENU_SEND_TO_BACK)) {
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
             model.sendSelectedHazardsToBack();
             notifyModelEventsChanged();
-        } else if (label.equals(CONETXT_MENU_BRING_TO_FRONT)) {
+        } else if (label.equals(HazardConstants.CONETXT_MENU_BRING_TO_FRONT)) {
             model.sendSelectedHazardsToFront();
             notifyModelEventsChanged();
         } else {
@@ -1072,12 +1049,12 @@ public final class HazardServicesMessageHandler {
         String productDisplayAction = action.getAction();
         String productDisplayJSON = action.getJSONText();
 
-        if (productDisplayAction.equals(CONTEXT_MENU_PROPOSE)) {
+        if (productDisplayAction.equals(HazardConstants.CONTEXT_MENU_PROPOSE)) {
             changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
-        } else if (productDisplayAction.equals(CONTEXT_MENU_ISSUE)) {
-            if (HazardServicesAppBuilder
-                    .getUserAnswerToQuestion("Are you sure "
-                            + "you want to issue the hazard event(s)?")) {
+        } else if (productDisplayAction
+                .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
+            if (appBuilder.getUserAnswerToQuestion("Are you sure "
+                    + "you want to issue the hazard event(s)?")) {
                 model.createProductsFromHazardEventSets(TRUE_FLAG,
                         productDisplayJSON);
                 notifyModelEventsChanged();

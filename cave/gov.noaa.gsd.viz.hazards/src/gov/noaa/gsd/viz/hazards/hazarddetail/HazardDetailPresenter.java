@@ -140,7 +140,7 @@ public class HazardDetailPresenter extends
      *            View to be initialized.
      */
     @Override
-    protected void initialize(IHazardDetailView<?, ?> view) {
+    public void initialize(IHazardDetailView<?, ?> view) {
 
         // Get the basic initialization info for the subview.
         String basicInfo = getModel().getConfigItem(

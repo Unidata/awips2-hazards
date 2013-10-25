@@ -19,7 +19,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
-import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 
 import java.util.Collections;
 import java.util.List;
@@ -629,7 +629,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      */
     @Override
     public final void acceptContributionsToMainUI(
-            List<? extends IView<Action, RCPMainUserInterfaceElement>> contributors,
+            List<? extends IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors,
             final RCPMainUserInterfaceElement type) {
 
         // Iterate through the contributors, asking each in turn for
@@ -639,7 +639,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         // is placed after the contributions to render them visually
         // distinct from what comes next.
         final List<Action> totalContributions = Lists.newArrayList();
-        for (IView<Action, RCPMainUserInterfaceElement> contributor : contributors) {
+        for (IMainUiContributor<Action, RCPMainUserInterfaceElement> contributor : contributors) {
             List<? extends Action> contributions = contributor
                     .contributeToMainUI(type);
             totalContributions.addAll(contributions);
@@ -751,7 +751,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             Action changeSiteAction = new ChangeSiteAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     resetSettingsCommandAction, sep, changeSiteAction);
-
             return actions;
         }
     }

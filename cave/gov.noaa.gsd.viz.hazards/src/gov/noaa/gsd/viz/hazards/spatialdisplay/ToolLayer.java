@@ -57,6 +57,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -715,7 +716,7 @@ public class ToolLayer extends
      */
     private void fireSelectedEventActionOccurred(String[] eventIDs) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                "SelectedEventsChanged", eventIDs);
+                HazardConstants.SELECTED_EVENTS_CHANGED, eventIDs);
         eventBus.post(action);
     }
 
@@ -732,7 +733,7 @@ public class ToolLayer extends
      */
     private void fireContextMenuItemSelected(String menuLabel) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                "ContextMenuSelected", 0, menuLabel);
+                HazardConstants.CONEXT_MENU_SELECTED, 0, menuLabel);
         eventBus.post(action);
     }
 
@@ -1369,7 +1370,7 @@ public class ToolLayer extends
      * @param
      * @return A list of entries to add to the context menu.
      */
-    private List<String> getContextMenuEntries() {
+    public List<String> getContextMenuEntries() {
         List<String> entryList = Lists.newArrayList();
         String jsonString = appBuilder.getContextMenuEntries();
 

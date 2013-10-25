@@ -20,6 +20,7 @@ import java.util.List;
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -104,7 +105,7 @@ public final class ProductEditorView implements
     public boolean showProductEditorDetail(String productInfo) {
         Dict productDict = Dict.getInstance(productInfo);
         generatedProducts = productDict
-                .getDynamicallyTypedValue("generatedProducts");
+                .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
         hazardEventSets = productDict
                 .getDynamicallyTypedValue("hazardEventSets");
 
@@ -171,6 +172,7 @@ public final class ProductEditorView implements
         return productGenerationDialog.getShellClosedInvoker();
     }
 
+    @Override
     public void openDialog() {
         productGenerationDialog.open();
     }

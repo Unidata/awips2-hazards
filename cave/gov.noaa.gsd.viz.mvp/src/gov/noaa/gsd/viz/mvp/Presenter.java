@@ -98,9 +98,6 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
         // Remember this view, and notify the view that it will be handled
         // by this presenter.
         this.view = view;
-
-        // Initialize the view.
-        initialize(view);
     }
 
     /**
@@ -135,7 +132,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
      * @param view
      *            View to be initialized.
      */
-    protected abstract void initialize(V view);
+    public abstract void initialize(V view);
 
     /**
      * Get the model.

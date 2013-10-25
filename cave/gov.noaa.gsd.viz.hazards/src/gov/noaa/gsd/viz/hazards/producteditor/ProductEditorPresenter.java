@@ -18,6 +18,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 
 /**
  * Description: Product Editor presenter, used to mediate between the model and
@@ -95,7 +96,7 @@ public class ProductEditorPresenter extends
      *            View to be initialized.
      */
     @Override
-    protected void initialize(IProductEditorView<?, ?> view) {
+    public void initialize(IProductEditorView<?, ?> view) {
         view.initialize();
     }
 
@@ -126,7 +127,7 @@ public class ProductEditorPresenter extends
                         List<Dict> generatedProductsDictList = getView()
                                 .getGeneratedProductsDictList();
                         Dict returnDict = new Dict();
-                        returnDict.put("generatedProducts",
+                        returnDict.put(HazardConstants.GENERATED_PRODUCTS,
                                 generatedProductsDictList);
                         returnDict.put("hazardEventSets", hazardEventSetsList);
 
@@ -149,7 +150,7 @@ public class ProductEditorPresenter extends
                         List<Dict> generatedProductsDictList = getView()
                                 .getGeneratedProductsDictList();
                         Dict returnDict = new Dict();
-                        returnDict.put("generatedProducts",
+                        returnDict.put(HazardConstants.GENERATED_PRODUCTS,
                                 generatedProductsDictList);
                         returnDict.put("hazardEventSets", hazardEventSetsList);
 

@@ -126,7 +126,7 @@ public class ProductStagingPresenter extends
      *            View to be initialized.
      */
     @Override
-    protected void initialize(IProductStagingView<?, ?> view) {
+    public void initialize(IProductStagingView<?, ?> view) {
 
         // No action.
     }
