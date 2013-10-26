@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +16,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.widgets.Composite;
+
+import com.google.common.collect.Lists;
 
 /**
  * Tabbed composite megawidget, a megawidget that contains tabs, each associated
@@ -28,7 +29,11 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names, and to use new IControl
+ *                                           interface.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,15 +70,15 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
         composite = tabFolder;
 
         // Iterate through the tabs, creating for each a page
-        // with its child widgets, and assigning each to the
+        // with its child megawidgets, and assigning each to the
         // corresponding tab.
-        List<Megawidget> allChildren = new ArrayList<Megawidget>();
+        List<IControl> allChildren = Lists.newArrayList();
         for (String pageName : specifier.getPageNames()) {
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
             tabItem.setText(" " + pageName + " ");
             Composite tabPage = new Composite(tabFolder, SWT.NONE);
             tabItem.setControl(tabPage);
-            List<Megawidget> children = createChildMegawidgets(tabPage,
+            List<IControl> children = createChildMegawidgets(tabPage,
                     specifier.getColumnCountForPage(pageName),
                     specifier.getChildSpecifiersForPage(pageName), paramMap);
             allChildren.addAll(children);

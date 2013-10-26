@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +18,8 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+
+import com.google.common.collect.Lists;
 
 /**
  * Checkboxes menu megawidget, allowing the selection of zero or more choices,
@@ -31,14 +32,15 @@ import org.eclipse.swt.widgets.MenuItem;
  * ------------ ---------- ----------- --------------------------
  * Mar 28, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to implement new IMenu interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckBoxesMenuSpecifier
  */
-public class CheckBoxesMenuMegawidget extends MultipleChoicesMegawidget {
+public class CheckBoxesMenuMegawidget extends MultipleChoicesMegawidget
+        implements IMenu {
 
     // Private Variables
 
@@ -117,7 +119,7 @@ public class CheckBoxesMenuMegawidget extends MultipleChoicesMegawidget {
         }
 
         // Create the menu items.
-        items = new ArrayList<MenuItem>();
+        items = Lists.newArrayList();
         createMenuItemsForChoices(menu, -1);
     }
 
@@ -198,14 +200,6 @@ public class CheckBoxesMenuMegawidget extends MultipleChoicesMegawidget {
                 item.setEnabled(enable);
             }
         }
-    }
-
-    @Override
-    protected final void doSetEditable(boolean editable) {
-
-        // Not supported for menu-based megawidgets.
-        throw new UnsupportedOperationException(
-                "cannot change editability of menu-based megawidget");
     }
 
     // Private Methods

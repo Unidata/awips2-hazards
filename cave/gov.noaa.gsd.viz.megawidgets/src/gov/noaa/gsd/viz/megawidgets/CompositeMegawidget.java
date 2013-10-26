@@ -24,7 +24,10 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,7 +57,7 @@ public class CompositeMegawidget extends ContainerMegawidget {
             throws MegawidgetException {
         super(specifier);
 
-        // Create a composite widget and its child widgets.
+        // Create a composite widget and its child megawidgets.
         composite = new Composite(parent, SWT.NONE);
         composite.setEnabled(specifier.isEnabled());
         gridContainerPanel(composite);

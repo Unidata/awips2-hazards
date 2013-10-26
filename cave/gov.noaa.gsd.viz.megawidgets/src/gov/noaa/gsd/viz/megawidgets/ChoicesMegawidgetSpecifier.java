@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 
 /**
  * Base class for megawidget specifiers that include choices as part of their
@@ -29,7 +29,9 @@ import com.google.common.collect.ImmutableList;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Sep 25, 2013   2168     Chris.Golden      Added support for subclasses that
+ *                                           include detail child megawidgets as
+ *                                           part of their choices.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +49,8 @@ public abstract class ChoicesMegawidgetSpecifier extends
      * such choice may be either a string, meaning that the string value is used
      * as both the choice's description and its identifier, or else a
      * <code>Map</code> holding an entry for <code>CHOICE_NAME</code> and
-     * optionally, an entry for <code>CHOICE_IDENTIFIER</code>. Regardless, each
+     * optionally, an entry for <code>CHOICE_IDENTIFIER</code>. Subclasses may
+     * have additional required or optional entries in the map. Regardless, each
      * string must occur at most once as a choice name and once as a choice
      * identifier. Note that subclasses may have other items within the <code>
      * Map</code>.
@@ -113,10 +116,15 @@ public abstract class ChoicesMegawidgetSpecifier extends
          */
         private int depth;
 
+        /**
+         * Throwable that caused the problem, if any.
+         */
+        private Throwable cause;
+
         // Public Constructors
 
         /**
-         * Construct a standard instance with a depth of 1.
+         * Construct a standard instance with a depth of 1 and no nested cause.
          * 
          * @param badElementLocation
          *            Bad element location, or <code>null</code> if there is no
@@ -140,7 +148,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
         }
 
         /**
-         * Construct a standard instance.
+         * Construct a standard instance with no nested cause.
          * 
          * @param badElementLocation
          *            Bad element location, or <code>null</code> if there is no
@@ -166,6 +174,35 @@ public abstract class ChoicesMegawidgetSpecifier extends
             this.subParameterName = subParameterName;
             this.subParameterValue = subParameterValue;
             this.depth = depth;
+        }
+
+        /**
+         * Construct a standard instance with a depth of 1.
+         * 
+         * @param badElementLocation
+         *            Bad element location, or <code>null</code> if there is no
+         *            one readily identifiable bad element.
+         * @param subParameterName
+         *            Name of the choices list sub-parameter that was found to
+         *            be illegal, or <code>null</code> if no particular
+         *            problematic sub-parameter was found.
+         * @param subParameterValue
+         *            Value of the choices list sub-parameter that was found to
+         *            be illegal, or <code>null</code> if no particular
+         *            problematic sub-parameter was found.
+         * @param problem
+         *            Description of the problem.
+         * @param cause
+         *            Throwable that triggered this problem.
+         */
+        public IllegalChoicesProblem(String badElementLocation,
+                String subParameterName, Object subParameterValue,
+                String problem, Throwable cause) {
+            this.badElementLocation = badElementLocation;
+            this.problem = problem;
+            this.subParameterName = subParameterName;
+            this.subParameterValue = subParameterValue;
+            this.cause = cause;
         }
 
         // Public Methods
@@ -224,6 +261,16 @@ public abstract class ChoicesMegawidgetSpecifier extends
         }
 
         /**
+         * Get the nested cause, if any.
+         * 
+         * @return Nested cause, or <code>null</code> if there is no nested
+         *         cause.
+         */
+        public Throwable getCause() {
+            return cause;
+        }
+
+        /**
          * Prepend the parent node description to the existing description of
          * the bad element location, incrementing the depth count as well.
          * 
@@ -238,6 +285,21 @@ public abstract class ChoicesMegawidgetSpecifier extends
             }
             depth++;
         }
+
+        /**
+         * Generate a specification exception based upon this problem.
+         * 
+         * @return Specification exception.
+         */
+        public MegawidgetSpecificationException toSpecificationException() {
+            return new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_VALUE_CHOICES
+                            + getBadElementLocation(), getSubParameterValue(),
+                    (getDepth() == 0 ? "" : "parameter \""
+                            + getSubParameterName() + "\" ")
+                            + getProblem(), getCause());
+        }
+
     }
 
     // Private Variables
@@ -278,13 +340,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
         // Evaluate the legality of the choices list.
         IllegalChoicesProblem eval = evaluateChoicesLegality(choicesList);
         if (eval != null) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_VALUE_CHOICES
-                            + eval.getBadElementLocation(),
-                    eval.getSubParameterValue(), (eval.getDepth() == 0 ? ""
-                            : "parameter \"" + eval.getSubParameterName()
-                                    + "\" ")
-                            + eval.getProblem());
+            throw eval.toSpecificationException();
         }
         this.choicesList = ImmutableList.copyOf(choicesList);
     }
@@ -457,7 +513,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
         // Iterate through the elements of this list, checking
         // each as a node for legality, and checking that all
         // elements have unique identifiers.
-        Set<String> identifiers = new HashSet<String>();
+        Set<String> identifiers = Sets.newHashSet();
         for (int j = 0; j < list.size(); j++) {
 
             // Get the node at this point.

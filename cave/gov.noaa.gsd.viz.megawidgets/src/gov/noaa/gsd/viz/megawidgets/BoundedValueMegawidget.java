@@ -25,7 +25,10 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 30, 2013   1277     Chris.Golden      Initial creation.
- * 
+ * Sep 26, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,25 +92,11 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
 
     // Public Methods
 
-    /**
-     * Get the mutable property names for this megawidget.
-     * 
-     * @return Set of names for all mutable properties for this megawidget.
-     */
     @Override
     public Set<String> getMutablePropertyNames() {
         return MUTABLE_PROPERTY_NAMES;
     }
 
-    /**
-     * Get the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @return Mutable property value.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property.
-     */
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
@@ -116,22 +105,10 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
         } else if (name
                 .equals(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE)) {
             return getMaximumValue();
-        } else {
-            return super.getMutableProperty(name);
         }
+        return super.getMutableProperty(name);
     }
 
-    /**
-     * Set the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @param value
-     *            New mutable property value to be used.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property, or if the value
-     *             is invalid.
-     */
     @SuppressWarnings("unchecked")
     @Override
     public void setMutableProperty(String name, Object value)
@@ -152,19 +129,6 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
         }
     }
 
-    /**
-     * Set the mutable properties of this megawidget.
-     * 
-     * @param properties
-     *            Map containing keys drawn from the set of all valid property
-     *            names, with associated values being the new values for the
-     *            properties. Any property with a name-value pair found within
-     *            this map is set to the given value; all properties for which
-     *            no name-value pairs exist remain as they were before.
-     * @throws MegawidgetPropertyException
-     *             If at least one name specifies a nonexistent property, or if
-     *             at least one value is invalid.
-     */
     @Override
     public void setMutableProperties(Map<String, Object> properties)
             throws MegawidgetPropertyException {
@@ -188,6 +152,25 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
                 : getPropertyDynamicallyTypedObjectFromObject(maxValueObj,
                         BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
                         specifier.getBoundedValueClass(), null));
+
+        // If at least one of the two boundary values are being set, and
+        // the minimum is less than the maximum, make sure that the re-
+        // sulting range is representable. (If the minimum is not less
+        // than the maximum, that will be caught further down; this
+        // representability check is done first because it has to occur
+        // before anything is set.)
+        if ((minValue != null) || (maxValue != null)) {
+            T min = (minValue != null ? minValue : minimumValue);
+            T max = (maxValue != null ? maxValue : maximumValue);
+            if (min.compareTo(max) < 0) {
+                ensureValueRangeRepresentable(min, max);
+            }
+        }
+
+        // If both boundary values are being changed, set them in the
+        // order that will not cause a problem (lower bound must always
+        // be less than upper bound). Otherwise, just set whichever one
+        // is being changed.
         if ((minValue != null) && (maxValue != null)) {
             if (minValue.compareTo(maximumValue) >= 0) {
                 setMutableProperty(
@@ -353,6 +336,20 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
     // Protected Methods
 
     /**
+     * Ensure that the specified minimum to maximum value range is
+     * representable.
+     * 
+     * @param minimum
+     *            Minimum value to be checked.
+     * @param maximum
+     *            Maximum value to be checked.
+     * @throws MegawidgetPropertyException
+     *             If the range is not representable.
+     */
+    protected abstract void ensureValueRangeRepresentable(T minimum, T maximum)
+            throws MegawidgetPropertyException;
+
+    /**
      * Synchronize the user-facing widgets making up this megawidget to the
      * current boundaries.
      */
@@ -364,40 +361,11 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      */
     protected abstract void synchronizeWidgetsToState();
 
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected Object doGetState(String identifier) {
         return state;
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
     @Override
     protected void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -419,22 +387,6 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
         synchronizeWidgetsToState();
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by <code>getStateDescription() only
-     * after the latter has ensured that the supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
     @Override
     protected String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {

@@ -10,15 +10,20 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.graphics.FontMetrics;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Text megawidget.
@@ -29,14 +34,31 @@ import org.eclipse.swt.widgets.Text;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look, and changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TextSpecifier
  */
-public class TextMegawidget extends StatefulMegawidget {
+public class TextMegawidget extends StatefulMegawidget implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -55,6 +77,11 @@ public class TextMegawidget extends StatefulMegawidget {
      */
     private String state = null;
 
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -71,43 +98,13 @@ public class TextMegawidget extends StatefulMegawidget {
     protected TextMegawidget(TextSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is done so that it may be rendered read-only
-        // by disabling the panel, which in SWT has the
-        // effect of disabling mouse and keyboard input for
-        // the child widgets without making them look dis-
-        // abled; in order to group the widgets properly
-        // into a single megawidget; and to allow the space
-        // for the label, if it exists, to be sized to match
-        // other labels.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(2, false);
-        gridLayout.marginWidth = gridLayout.marginHeight = 0;
-        gridLayout.horizontalSpacing = 10;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(
-                (specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
-                SWT.CENTER, true, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            label.setLayoutData(gridData);
-        } else {
-            label = null;
-        }
+        // Create the composite holding the components, and
+        // the label if appropriate.
+        Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
+                UiBuilder.CompositeType.SINGLE_ROW, specifier);
+        label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the text component.
         text = new Text(panel, SWT.BORDER);
@@ -115,9 +112,16 @@ public class TextMegawidget extends StatefulMegawidget {
         text.setEnabled(specifier.isEnabled());
 
         // Place the text component in the grid.
-        gridData = new GridData((specifier.isHorizontalExpander() ? SWT.FILL
-                : SWT.LEFT), SWT.CENTER, true, false);
+        GridData gridData = new GridData(
+                (specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
+                SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
+        GC gc = new GC(text);
+        FontMetrics fontMetrics = gc.getFontMetrics();
+        gridData.widthHint = text.computeSize(
+                (specifier.getVisibleTextLength() + 1)
+                        * fontMetrics.getAverageCharWidth(), SWT.DEFAULT).x;
+        gc.dispose();
         text.setLayoutData(gridData);
 
         // Bind the text's change event to trigger a
@@ -134,7 +138,7 @@ public class TextMegawidget extends StatefulMegawidget {
             }
         });
 
-        // Set the editability of the widget to false
+        // Set the editability of the megawidget to false
         // if necessary.
         if (isEditable() == false) {
             doSetEditable(false);
@@ -143,46 +147,66 @@ public class TextMegawidget extends StatefulMegawidget {
 
     // Public Methods
 
-    /**
-     * Determine the left decoration width for this megawidget, if the widget
-     * has a decoration (label, etc.) to the left of its main component
-     * widget(s). This is used to query all sibling megawidgets to determine
-     * which one has the largest left decoration.
-     * 
-     * @return Width in pixels required for the left decoration of this
-     *         megawidget, or 0 if the megawidget has no left decoration.
-     */
     @Override
-    public int getLeftDecorationWidth() {
-        return (label == null ? 0 : getWidestWidgetWidth(label));
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
     }
 
-    /**
-     * Set the left decoration width for this megawidget to that specified, if
-     * the widget has a decoration to the left of its main component widget(s).
-     * This is used to set sibling megawidgets to all use the width of the
-     * largest left decoration used by the siblings, if any.
-     * 
-     * @param width
-     *            Width to be used if this megawidget has a left decoration.
-     */
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public int getLeftDecorationWidth() {
+        return (label == null ? 0 : helper.getWidestWidgetWidth(label));
+    }
+
     @Override
     public void setLeftDecorationWidth(int width) {
         if (label != null) {
-            setWidgetsWidth(width, label);
+            helper.setWidgetsWidth(width, label);
         }
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
     }
 
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -191,54 +215,11 @@ public class TextMegawidget extends StatefulMegawidget {
         text.setEnabled(enable);
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        text.getParent().setEnabled(editable);
-        text.setBackground(getBackgroundColor(editable, text, label));
-    }
-
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected final Object doGetState(String identifier) {
         return state;
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -256,27 +237,24 @@ public class TextMegawidget extends StatefulMegawidget {
         text.setText(value.toString());
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by
-     * <code>getStateDescription() only after
-     * the latter has ensured that the supplied state
-     * identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
         return (state == null ? null : state.toString());
+    }
+
+    // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        text.getParent().setEnabled(editable);
+        text.setBackground(helper.getBackgroundColor(editable, text, label));
     }
 }

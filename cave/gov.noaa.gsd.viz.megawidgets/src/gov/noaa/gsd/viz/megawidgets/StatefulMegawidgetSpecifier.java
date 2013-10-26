@@ -9,14 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Stateful megawidget specifier base class, from which specific types of
@@ -37,7 +37,8 @@ import com.google.common.collect.ImmutableList;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to work with new version of
+ *                                           superclass.
  * </pre>
  * 
  * @author Chris.Golden
@@ -153,7 +154,7 @@ public abstract class StatefulMegawidgetSpecifier extends
         // determine which state identifiers are legal, and
         // ensure that no repeating or zero-length state
         // identifiers were supplied.
-        List<String> stateIdentifiers = new ArrayList<String>();
+        List<String> stateIdentifiers = Lists.newArrayList();
         String[] identifiers = getIdentifier().split(":");
         for (String identifier : identifiers) {
             if ((identifier == null) || (identifier.length() == 0)) {
@@ -205,84 +206,39 @@ public abstract class StatefulMegawidgetSpecifier extends
 
     // Public Methods
 
-    /**
-     * Get the state identifiers valid for this specifier.
-     * 
-     * @return Set of valid state identifiers.
-     */
     @Override
     public final List<String> getStateIdentifiers() {
         return stateIdentifiers;
     }
 
-    /**
-     * Get the state label for the specified state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the label is desired.
-     * @return State label.
-     */
     @Override
     public final String getStateLabel(String identifier) {
         return labelsForStateIdentifiers.get(identifier);
     }
 
-    /**
-     * Get the short state label for the specified state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the short label is desired.
-     * @return Short state label.
-     */
     @Override
     public final String getStateShortLabel(String identifier) {
         return shortLabelsForStateIdentifiers.get(identifier);
     }
 
-    /**
-     * Get the relative weight of the specified state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the relative weight is
-     *            desired.
-     * @return State relative weight.
-     */
     @Override
     public final int getRelativeWeight(String identifier) {
         return relativeWeightsForStateIdentifiers.get(identifier);
     }
 
-    /**
-     * Get the default value of the specified state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the default value is
-     *            desired.
-     * @return Default state value.
-     */
     @Override
     public final Object getStartingState(String identifier) {
         return valuesForStateIdentifiers.get(identifier);
     }
 
-    /**
-     * Create the GUI components making up the specified megawidget.
-     * 
-     * @param parent
-     *            Parent widget in which to place the megawidget.
-     * @param creationParams
-     *            Hash table mapping identifiers to values that subclasses might
-     *            require when creating a megawidget.
-     * @return Created megawidget.
-     * @throws MegawidgetException
-     *             If an exception occurs during creation or initialization of
-     *             the megawidget.
-     */
     @Override
-    public <P extends Widget> Megawidget createMegawidget(P parent,
-            Map<String, Object> creationParams) throws MegawidgetException {
-        return setToDefaultState((StatefulMegawidget) super.createMegawidget(
-                parent, creationParams));
+    public <P extends Widget, M extends IMegawidget> M createMegawidget(
+            P parent, Class<M> superClass, Map<String, Object> creationParams)
+            throws MegawidgetException {
+        M megawidget = super.createMegawidget(parent, superClass,
+                creationParams);
+        setToDefaultState((IStateful) megawidget);
+        return megawidget;
     }
 
     // Protected Methods
@@ -354,7 +310,7 @@ public abstract class StatefulMegawidgetSpecifier extends
             // a new mapping for all keys to the default
             // parameter value.
             if (defaultMap == null) {
-                map = new HashMap<String, T>();
+                map = Maps.newHashMap();
                 for (String identifier : stateIdentifiers) {
                     map.put(identifier, defaultValue);
                 }
@@ -377,7 +333,7 @@ public abstract class StatefulMegawidgetSpecifier extends
             // values, associating each value with the
             // state identifier at the corresponding
             // index.
-            map = new HashMap<String, T>();
+            map = Maps.newHashMap();
             for (String identifier : stateIdentifiers) {
                 map.put(identifier,
                         convertValue(identifier, providedMap.get(identifier),
@@ -396,7 +352,7 @@ public abstract class StatefulMegawidgetSpecifier extends
 
             // Create the mapping of the single state
             // identifier to the given value.
-            map = new HashMap<String, T>();
+            map = Maps.newHashMap();
             map.put(stateIdentifiers.get(0),
                     convertValue(stateIdentifiers.get(0), object,
                             valueConverter, key, description));
@@ -411,13 +367,11 @@ public abstract class StatefulMegawidgetSpecifier extends
      * 
      * @param megawidget
      *            Megawidget to be set to the default state.
-     * @return Megawidget that had its state set, for chaining convenience
-     *         purposes.
      * @throws MegawidgetStateException
      *             If the default state is invalid.
      */
-    protected final StatefulMegawidget setToDefaultState(
-            StatefulMegawidget megawidget) throws MegawidgetStateException {
+    protected final void setToDefaultState(IStateful megawidget)
+            throws MegawidgetStateException {
 
         // Iterate through the state identifiers, set-
         // ting each corresponding state to its de-
@@ -443,7 +397,6 @@ public abstract class StatefulMegawidgetSpecifier extends
         if (toBeCommitted) {
             ((IExplicitCommitStateful) megawidget).commitStateChanges();
         }
-        return megawidget;
     }
 
     // Private Methods

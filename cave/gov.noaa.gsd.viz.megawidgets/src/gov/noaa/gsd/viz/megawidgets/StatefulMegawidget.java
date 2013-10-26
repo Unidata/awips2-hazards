@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -26,7 +27,10 @@ import com.google.common.collect.Sets;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Replaced erroneous references
+ *                                           (variable names, comments, etc.) to
+ *                                           "widget" with "megawidget" to avoid
+ *                                           confusion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -85,30 +89,16 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
 
     // Public Methods
 
-    /**
-     * Get the mutable property names for this megawidget.
-     * 
-     * @return Set of names for all mutable properties for this megawidget.
-     */
     @Override
     public Set<String> getMutablePropertyNames() {
         return MUTABLE_PROPERTY_NAMES;
     }
 
-    /**
-     * Get the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @return Mutable property value.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property.
-     */
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
         if (name.equals(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
-            Map<String, Object> map = new HashMap<String, Object>();
+            Map<String, Object> map = Maps.newHashMap();
             for (String identifier : ((StatefulMegawidgetSpecifier) getSpecifier())
                     .getStateIdentifiers()) {
                 try {
@@ -122,22 +112,10 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
                 }
             }
             return map;
-        } else {
-            return super.getMutableProperty(name);
         }
+        return super.getMutableProperty(name);
     }
 
-    /**
-     * Set the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @param value
-     *            New mutable property value to be used.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property, or if the value
-     *             is invalid.
-     */
     @SuppressWarnings("unchecked")
     @Override
     public void setMutableProperty(String name, Object value)
@@ -165,15 +143,6 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
         }
     }
 
-    /**
-     * Get the current state for the specified identifier.
-     * 
-     * @param identifiere
-     *            Identifier for which state is desired.
-     * @return Object making up the current state for that identifier.
-     * @throws MegawidgetStateException
-     *             If the supplied state identifier is not valid.
-     */
     @Override
     public final Object getState(String identifier)
             throws MegawidgetStateException {
@@ -186,19 +155,6 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
         return doGetState(identifier);
     }
 
-    /**
-     * Set the current state for the specified identifier.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if its state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this
-     *             <code>StatefulWidget</code> implementation, or if the
-     *             supplied state identifier is not valid.
-     */
     @Override
     public final void setState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -235,20 +191,6 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
         isSettingState = false;
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget</code> implementation, or if the
-     *             supplied state identifier is not valid.
-     */
     @Override
     public final String getStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
@@ -281,19 +223,19 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      * Set the current state for the specified identifier. This method is called
      * by <code>setState()</code> only after the latter has ensured that the
      * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the widget to notify its
-     * listener of an invocation.
+     * that this setting of the state will not trigger the megawidget to notify
+     * its listener of an invocation.
      * 
      * @param identifier
      *            Identifier for which state is to be set. Implementations may
      *            assume that the state identifier supplied by this parameter is
-     *            valid for this widget.
+     *            valid for this megawidget.
      * @param state
      *            Object making up the state to be used for this identifier, or
      *            <code>null</code> if this state should be reset.
      * @throws MegawidgetStateException
      *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
+     *             IStateful</code> implementation.
      */
     protected abstract void doSetState(String identifier, Object state)
             throws MegawidgetStateException;
@@ -314,7 +256,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      * @return Description of the specified state.
      * @throws MegawidgetStateException
      *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
+     *             <code>IStateful </code> implementation.
      */
     protected abstract String doGetStateDescription(String identifier,
             Object state) throws MegawidgetStateException;

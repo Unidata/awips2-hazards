@@ -22,7 +22,11 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to allow the creation
+ *                                           of a specifier to include a
+ *                                           restriction on what superclass
+ *                                           is expected of which the result
+ *                                           should be an instance.
  * </pre>
  * 
  * @author Chris.Golden
@@ -33,26 +37,10 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
 
     // Public Methods
 
-    /**
-     * Create a megawidget specifier based upon the parameters contained within
-     * the given map.
-     * <p>
-     * <strong>Note</strong>: Any megawidget specifier to be constructed using
-     * this method must be an instance of a non-inner class.
-     * 
-     * @param parameters
-     *            Map holding parameters that will be used to configure a
-     *            megawidget created by this specifier as a set of key-value
-     *            pairs. The megawidget being specified must have a unique
-     *            identifier within the set of megawidget specifiers created by
-     *            this factory.
-     * @return Megawidget specifier that was created.
-     * @throws MegawidgetSpecificationException
-     *             If the megawidget specifier parameters are invalid.
-     */
+    @SuppressWarnings("unchecked")
     @Override
-    public MegawidgetSpecifier createMegawidgetSpecifier(
-            Map<String, Object> parameters)
+    public <S extends ISpecifier> S createMegawidgetSpecifier(
+            Class<S> superClass, Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
 
         // Determine the name of the class of megawidget to be
@@ -95,13 +83,12 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
 
         // If the class is not a subclass of MegawidgetSpecifier,
         // complain.
-        if (MegawidgetSpecifier.class.isAssignableFrom(specifierClass) == false) {
+        if (superClass.isAssignableFrom(specifierClass) == false) {
             throw new MegawidgetSpecificationException(
                     getIdentifierForException(parameters),
                     (String) specifierName, null, null,
                     "not a valid megawidget specifier (class " + specifierClass
-                            + " is not a subclass of "
-                            + MegawidgetSpecifier.class + ")");
+                            + " is not a subclass of " + superClass + ")");
         }
 
         // If a factory is not specified in the parameters, put
@@ -117,11 +104,10 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
         // in parameters.
         Class<?>[] constructorArgTypes = { Map.class };
         Object[] constructorArgValues = { parameters };
-        MegawidgetSpecifier megawidgetSpecifier = null;
+        S megawidgetSpecifier = null;
         try {
-            megawidgetSpecifier = (MegawidgetSpecifier) specifierClass
-                    .getConstructor(constructorArgTypes).newInstance(
-                            constructorArgValues);
+            megawidgetSpecifier = (S) specifierClass.getConstructor(
+                    constructorArgTypes).newInstance(constructorArgValues);
         } catch (Throwable e) {
             if (e instanceof NoSuchMethodException) {
                 throw new MegawidgetSpecificationException(

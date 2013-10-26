@@ -735,6 +735,7 @@ fawOptions = [
             {
              "fieldName": "miscLabel",
              "fieldType":"Label",
+             "wrap": True,
              "label":"If either 'include small streams' or 'include urban areas and small streams' above was selected, 'floodgate opening' in primary cause below should not be selected.  If 'floodgate opening' is the desired option, do not select 'include small streams' or 'include urban areas and small streams'. ",
             },
             {

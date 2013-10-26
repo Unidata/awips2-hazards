@@ -20,7 +20,10 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -36,11 +39,11 @@ public interface INotificationListener {
      * invoked or has changed state. Megawidgets will only call this method if
      * they were marked as being notifiers when they were constructed.
      * 
-     * @param widget
+     * @param megawidget
      *            Megawidget that was invoked.
      * @param extraCallback
      *            Extra callback information associated with this megawidget, or
      *            <code>null</code> if no such extra information is provided.
      */
-    public void megawidgetInvoked(INotifier widget, String extraCallback);
+    public void megawidgetInvoked(INotifier megawidget, String extraCallback);
 }

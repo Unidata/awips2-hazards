@@ -14,14 +14,19 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
+import gov.noaa.gsd.viz.megawidgets.ControlSpecifierOptionsManager;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesTreeSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IControl;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IExplicitCommitStateful;
+import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.INotificationListener;
 import gov.noaa.gsd.viz.megawidgets.INotifier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
 import gov.noaa.gsd.viz.megawidgets.IStatefulSpecifier;
-import gov.noaa.gsd.viz.megawidgets.Megawidget;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
@@ -260,7 +265,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * 
      * @see PointsTableSpecifier
      */
-    private class PointsTableMegawidget extends StatefulMegawidget {
+    private class PointsTableMegawidget extends StatefulMegawidget implements
+            IControl {
 
         // Private Variables
 
@@ -268,6 +274,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * Component associated with this megawidget.
          */
         private Table table = null;
+
+        /**
+         * Control component helper.
+         */
+        private final ControlComponentHelper helper;
 
         // Protected Constructors
 
@@ -285,6 +296,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         protected PointsTableMegawidget(PointsTableSpecifier specifier,
                 Composite parent, Map<String, Object> paramMap) {
             super(specifier, paramMap);
+            helper = new ControlComponentHelper(specifier);
 
             // Create a composite in which the table resides;
             // this is done because the table needs to be inside
@@ -326,6 +338,39 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Public Methods
 
+        @Override
+        public final boolean isEditable() {
+            return helper.isEditable();
+        }
+
+        @Override
+        public final void setEditable(boolean editable) {
+            helper.setEditable(editable);
+            doSetEditable(editable);
+        }
+
+        @Override
+        public final int getLeftDecorationWidth() {
+            return 0;
+        }
+
+        @Override
+        public final void setLeftDecorationWidth(int width) {
+
+            // No action.
+        }
+
+        @Override
+        public final int getRightDecorationWidth() {
+            return 0;
+        }
+
+        @Override
+        public final void setRightDecorationWidth(int width) {
+
+            // No action.
+        }
+
         /**
          * Populate the table.
          */
@@ -363,19 +408,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         protected final void doSetEnabled(boolean enable) {
             table.setEnabled(enable);
-        }
-
-        /**
-         * Change the component widgets to ensure their state matches that of
-         * the editable flag.
-         * 
-         * @param editable
-         *            Flag indicating whether the component widgets are to be
-         *            editable or read-only.
-         */
-        @Override
-        protected final void doSetEditable(boolean editable) {
-            table.setBackground(getBackgroundColor(editable, table, null));
         }
 
         /**
@@ -485,6 +517,21 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // Not implemented.
             throw new UnsupportedOperationException();
         }
+
+        // Private Methods
+
+        /**
+         * Change the component widgets to ensure their state matches that of
+         * the editable flag.
+         * 
+         * @param editable
+         *            Flag indicating whether the component widgets are to be
+         *            editable or read-only.
+         */
+        private void doSetEditable(boolean editable) {
+            table.setBackground(helper
+                    .getBackgroundColor(editable, table, null));
+        }
     }
 
     /**
@@ -494,7 +541,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * 
      * @see PointsTableMegawidget
      */
-    private class PointsTableSpecifier extends StatefulMegawidgetSpecifier {
+    private class PointsTableSpecifier extends StatefulMegawidgetSpecifier
+            implements IControlSpecifier {
+
+        // Private Variables
+
+        /**
+         * Control options manager.
+         */
+        private final ControlSpecifierOptionsManager optionsManager;
 
         // Public Constructors
 
@@ -510,9 +565,59 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         public PointsTableSpecifier(Map<String, Object> parameters)
                 throws MegawidgetSpecificationException {
             super(parameters);
+            optionsManager = new ControlSpecifierOptionsManager(this,
+                    parameters,
+                    ControlSpecifierOptionsManager.BooleanSource.TRUE);
         }
 
         // Public Methods
+
+        /**
+         * Get the flag indicating whether or not the megawidget is to be
+         * created in an editable state.
+         * 
+         * @return True if the megawidget is to be created as editable, false
+         *         otherwise.
+         */
+        @Override
+        public final boolean isEditable() {
+            return optionsManager.isEditable();
+        }
+
+        /**
+         * Get the width of the megawidget in columns within its parent.
+         * 
+         * @return Number of columns it should span.
+         */
+        @Override
+        public final int getWidth() {
+            return optionsManager.getWidth();
+        }
+
+        /**
+         * Determine whether or not the megawidget fills the width of the column
+         * it is occupying within its parent. This may be used by parent
+         * megawidgets to determine whether their children may be laid out side
+         * by side in the same column or not.
+         * 
+         * @return True if the megawidget fills the width of the column it
+         *         occupies, false otherwise.
+         */
+        @Override
+        public final boolean isFullWidthOfColumn() {
+            return optionsManager.isFullWidthOfColumn();
+        }
+
+        /**
+         * Get the spacing between this megawidget and the one above it in
+         * pixels.
+         * 
+         * @return Spacing.
+         */
+        @Override
+        public final int getSpacing() {
+            return optionsManager.getSpacing();
+        }
 
         /**
          * Create the GUI components making up the specified megawidget. This
@@ -540,12 +645,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          *             If an error occurs while creating or initializing the
          *             megawidget.
          */
+        @SuppressWarnings("unchecked")
         @Override
-        public <P extends Widget> Megawidget createMegawidget(P parent,
+        public <P extends Widget, M extends IMegawidget> M createMegawidget(
+                P parent, Class<M> superClass,
                 Map<String, Object> creationParams) throws MegawidgetException {
 
             // Return the created megawidget.
-            return new PointsTableMegawidget(this, (Composite) parent,
+            return (M) new PointsTableMegawidget(this, (Composite) parent,
                     megawidgetCreationParams);
         }
     }
@@ -656,14 +763,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Hash table pairing hazard types with lists of the associated megawidget
      * specifiers.
      */
-    private final Map<String, List<MegawidgetSpecifier>> megawidgetsForTypes = Maps
+    private final Map<String, List<ISpecifier>> megawidgetsForTypes = Maps
             .newHashMap();
 
     /**
      * Hash table pairing hazard types with lists of the associated megawidget
      * specifiers for the individual points of the hazard.
      */
-    private final Map<String, List<MegawidgetSpecifier>> pointMegawidgetsForTypes = Maps
+    private final Map<String, List<ISpecifier>> pointMegawidgetsForTypes = Maps
             .newHashMap();
 
     /**
@@ -675,7 +782,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Hash table pairing hazard types with hash tables, the latter pairing
      * metadata megawidget identifiers with their associated megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> megawidgetsForIdsForTypes = Maps
+    private final Map<String, Map<String, IControl>> megawidgetsForIdsForTypes = Maps
             .newHashMap();
 
     /**
@@ -683,7 +790,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * point-specific metadata megawidget identifiers with their associated
      * megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointMegawidgetsForIdsForTypes = Maps
+    private final Map<String, Map<String, IControl>> pointMegawidgetsForIdsForTypes = Maps
             .newHashMap();
 
     /**
@@ -691,7 +798,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * point-specific metadata state identifiers with their associated
      * megawidgets.
      */
-    private final Map<String, Map<String, Megawidget>> pointMegawidgetsForStateIdsForTypes = Maps
+    private final Map<String, Map<String, IControl>> pointMegawidgetsForStateIdsForTypes = Maps
             .newHashMap();
 
     /**
@@ -915,14 +1022,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
                 // Create the megawidget specifiers for the event
                 // type as a whole.
-                List<MegawidgetSpecifier> megawidgetSpecifiers = Lists
-                        .newArrayList();
+                List<ISpecifier> megawidgetSpecifiers = Lists.newArrayList();
                 List<Dict> objects = getJsonObjectList(jsonItem
                         .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
                     for (Dict object : objects) {
                         megawidgetSpecifiers.add(megawidgetSpecifierFactory
-                                .createMegawidgetSpecifier(object));
+                                .createMegawidgetSpecifier(
+                                        IControlSpecifier.class, object));
                     }
                 } catch (Exception e) {
                     statusHandler.error("HazardDetailViewPart.initialize(): "
@@ -949,7 +1056,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     Dict tableObject = new Dict();
                     tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                             POINTS_TABLE_IDENTIFIER);
-                    tableObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
+                    tableObject.put(IControlSpecifier.MEGAWIDGET_SPACING, 5);
                     try {
                         megawidgetSpecifiers.add(new PointsTableSpecifier(
                                 tableObject));
@@ -958,18 +1065,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             if (first) {
                                 first = false;
                                 int spacing = (object
-                                        .get(MegawidgetSpecifier.MEGAWIDGET_SPACING) == null ? 0
+                                        .get(IControlSpecifier.MEGAWIDGET_SPACING) == null ? 0
                                         : ((Number) object
-                                                .get(MegawidgetSpecifier.MEGAWIDGET_SPACING))
+                                                .get(IControlSpecifier.MEGAWIDGET_SPACING))
                                                 .intValue());
                                 if (spacing < 10) {
                                     object.put(
-                                            MegawidgetSpecifier.MEGAWIDGET_SPACING,
+                                            IControlSpecifier.MEGAWIDGET_SPACING,
                                             10);
                                 }
                             }
                             megawidgetSpecifiers.add(megawidgetSpecifierFactory
-                                    .createMegawidgetSpecifier(object));
+                                    .createMegawidgetSpecifier(
+                                            IControlSpecifier.class, object));
                         }
                     } catch (Exception e) {
                         statusHandler
@@ -1170,10 +1278,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             stateLabels.put(END_TIME_STATE, END_TIME_TEXT);
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
                     stateLabels);
-            scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_SPACING, 5);
-            timeRangeMegawidget = (TimeScaleMegawidget) (new TimeScaleSpecifier(
-                    scaleObject)).createMegawidget(timeRangePanel,
-                    megawidgetCreationParams);
+            scaleObject.put(IControlSpecifier.MEGAWIDGET_SPACING, 5);
+            timeRangeMegawidget = new TimeScaleSpecifier(scaleObject)
+                    .createMegawidget(timeRangePanel,
+                            TimeScaleMegawidget.class, megawidgetCreationParams);
             timeScaleMegawidgets.add(timeRangeMegawidget);
             if (primaryParamValues.size() > 0) {
                 timeRangeMegawidget.setUncommittedState(
@@ -1438,14 +1546,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Get the point megawidgets for the current type,
         // if any.
         boolean isPointMegawidget = false;
-        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForIdsForTypes
+        Map<String, IControl> megawidgetsForIds = pointMegawidgetsForIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds != null) {
 
             // Determine whether this is a point
             // megawidget or an areal megawidget.
-            for (Megawidget otherMegawidget : megawidgetsForIds.values()) {
+            for (IControl otherMegawidget : megawidgetsForIds.values()) {
                 if (megawidget == otherMegawidget) {
                     isPointMegawidget = true;
                     break;
@@ -1952,7 +2060,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Get the point megawidget specifiers for the
         // current type.
-        List<MegawidgetSpecifier> megawidgetSpecifiers = pointMegawidgetsForTypes
+        List<ISpecifier> megawidgetSpecifiers = pointMegawidgetsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (megawidgetSpecifiers == null) {
@@ -1968,7 +2076,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // that any stateful megawidgets in the point
         // megawidget specifiers include.
         int numColumns = 0;
-        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+        for (ISpecifier megawidgetSpecifier : megawidgetSpecifiers) {
             if ((megawidgetSpecifier instanceof IStatefulSpecifier)
                     && ((megawidgetSpecifier instanceof PointsTableSpecifier) == false)) {
                 numColumns += ((IStatefulSpecifier) megawidgetSpecifier)
@@ -1995,7 +2103,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // a column to each.
         int col = 1;
         int totalWeight = 0;
-        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+        for (ISpecifier megawidgetSpecifier : megawidgetSpecifiers) {
             if ((megawidgetSpecifier instanceof IStatefulSpecifier) == false) {
                 continue;
             }
@@ -2048,7 +2156,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         table.clearAll();
 
         // Get the point megawidgets for the current type.
-        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
+        Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
@@ -2151,7 +2259,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Get the point megawidgets for the current type.
-        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
+        Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
@@ -2211,7 +2319,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Get the point megawidgets for the current type.
-        Map<String, Megawidget> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
+        Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
                         Utilities.HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
@@ -2343,7 +2451,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // If point megawidgets exist, synch them as well, in-
         // cluding the points table.
-        Map<String, Megawidget> pointMegawidgetsForIds = pointMegawidgetsForIdsForTypes
+        Map<String, IControl> pointMegawidgetsForIds = pointMegawidgetsForIdsForTypes
                 .get(fullType);
         Map<String, Object> pointParamValues = (pointsParamValues
                 .get(visibleHazardIndex) != null ? pointsParamValues.get(
@@ -2443,7 +2551,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // general metadata megawidgets if the latter
             // are required, or an empty panel other-
             // wise.
-            List<MegawidgetSpecifier> pointMegawidgetSpecifiers = pointMegawidgetsForTypes
+            List<ISpecifier> pointMegawidgetSpecifiers = pointMegawidgetsForTypes
                     .get(type);
             if (pointMegawidgetSpecifiers != null) {
 
@@ -2458,7 +2566,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 CTabItem tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
                 tabItem.setText(AREA_DETAILS_TAB_TEXT);
                 Composite areaPage = new Composite(panel, SWT.NONE);
-                Map<String, Megawidget> megawidgetsForIds = Maps.newHashMap();
+                Map<String, IControl> megawidgetsForIds = Maps.newHashMap();
                 addMegawidgetsToPanel(megawidgetsForTypes.get(type), areaPage,
                         megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2471,7 +2579,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 tabItem.setText(POINTS_DETAILS_TAB_TEXT);
                 Composite pointsPage = new Composite(panel, SWT.NONE);
                 megawidgetsForIds = Maps.newHashMap();
-                Map<String, Megawidget> megawidgetsForStateIds = Maps
+                Map<String, IControl> megawidgetsForStateIds = Maps
                         .newHashMap();
                 addMegawidgetsToPanel(
                         pointMegawidgetSpecifiers,
@@ -2500,7 +2608,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // megawidgets.
                 panel = new Group(metadataContentPanel, SWT.NONE);
                 ((Group) panel).setText(DETAILS_SECTION_TEXT);
-                Map<String, Megawidget> megawidgetsForIds = Maps.newHashMap();
+                Map<String, IControl> megawidgetsForIds = Maps.newHashMap();
                 addMegawidgetsToPanel(megawidgetsForTypes.get(type), panel,
                         megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2615,8 +2723,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Flag indicating whether to enable or disable the megawidgets.
      */
     private void setPointMegawidgetsEnabled(
-            Map<String, Megawidget> megawidgetsForIds, boolean enabled) {
-        for (Megawidget megawidget : megawidgetsForIds.values()) {
+            Map<String, IControl> megawidgetsForIds, boolean enabled) {
+        for (IControl megawidget : megawidgetsForIds.values()) {
             megawidget.setEnabled(enabled);
         }
     }
@@ -2703,10 +2811,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Hash table pairing state identifiers with their starting state
      *            values, if any.
      */
-    private void addMegawidgetsToPanel(
-            List<MegawidgetSpecifier> megawidgetSpecifiers, Composite panel,
-            Map<String, Megawidget> megawidgetsForIds,
-            Map<String, Megawidget> megawidgetsForStateIds,
+    private void addMegawidgetsToPanel(List<ISpecifier> megawidgetSpecifiers,
+            Composite panel, Map<String, IControl> megawidgetsForIds,
+            Map<String, IControl> megawidgetsForStateIds,
             Map<String, Object> paramValues) {
 
         // Create the grid layout for the panel.
@@ -2721,12 +2828,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // add entries to the other table pairing
         // them with their states, one entry per
         // state that each contains.
-        Set<Megawidget> megawidgets = Sets.newHashSet();
-        for (MegawidgetSpecifier megawidgetSpecifier : megawidgetSpecifiers) {
-            Megawidget megawidget = null;
+        Set<IControl> megawidgets = Sets.newHashSet();
+        for (ISpecifier megawidgetSpecifier : megawidgetSpecifiers) {
+            IControl megawidget = null;
             try {
                 megawidget = megawidgetSpecifier.createMegawidget(panel,
-                        megawidgetCreationParams);
+                        IControl.class, megawidgetCreationParams);
             } catch (MegawidgetException e) {
                 statusHandler
                         .error("HazardDetailViewPart.addMegawidgetsToPanel(): Hazard "
@@ -2750,7 +2857,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Align the megawidgets visually with one
         // another.
-        Megawidget.alignMegawidgetsElements(megawidgets);
+        ControlComponentHelper.alignMegawidgetsElements(megawidgets);
 
         // Set the megawidgets' states to match the
         // initial values.
@@ -2772,8 +2879,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Hash table pairing megawidget identifiers with their starting
      *            state values, if any.
      */
-    private void setMegawidgetsStates(
-            Map<String, Megawidget> megawidgetsForIds,
+    private void setMegawidgetsStates(Map<String, IControl> megawidgetsForIds,
             Map<String, Object> paramValues) {
 
         // If there are initial state values, set the
@@ -2799,7 +2905,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Set<IExplicitCommitStateful> megawidgetsNeedingCommit = Sets
                     .newHashSet();
             for (String megawidgetIdentifier : megawidgetsForIds.keySet()) {
-                Megawidget megawidget = megawidgetsForIds
+                IControl megawidget = megawidgetsForIds
                         .get(megawidgetIdentifier);
                 if ((megawidget instanceof IStateful) == false) {
                     continue;
@@ -2909,7 +3015,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 .getSpecifier()).getStateIdentifiers();
                         long interval = (identifiers.size() == 1 ? 0L
                                 : (end - start) / (identifiers.size() - 1L));
-                        long defaultValue = start;
+                        long defaultValue = (identifiers.size() == 1 ? (start + end) / 2
+                                : start);
                         for (int j = 0; j < identifiers.size(); j++, defaultValue += interval) {
                             String identifier = identifiers.get(j);
                             identifiersGivenDefaultValues.add(identifier);

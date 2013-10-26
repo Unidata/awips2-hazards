@@ -19,7 +19,7 @@ MetaData_FLA = [
              "fieldName": "pointID",
              "fieldType": "Text",
              "label": "Forecast Point:",
-             "length": 5,
+             "maxChars": 5,
              "values": "XXXXX"
             },                
              {             
@@ -27,6 +27,7 @@ MetaData_FLA = [
              "fieldType":"ComboBox",
              "label":"Immediate Cause:",
              "values": "ER",
+             "expandHorizontally": True,
              "choices": [
                  {"displayString": "ER (Excessive Rainfall)","productString": "ER","identifier": "ER"},
                  {"displayString": "SM (Snow Melt)", "productString": "SM","identifier": "SM"},
@@ -50,6 +51,7 @@ MetaData_FLA = [
              "fieldType":"ComboBox",
              "label":"Flood Severity:",
              "shortValueLabels":"Sev",
+             "expandHorizontally": True,
              "choices":[
                       {"displayString": "N (None)","identifier": "N","productString": ""},
                       {"displayString": "0 (Areal Flood or Flash Flood Products)","identifier": "0","productString": ""},
@@ -64,6 +66,7 @@ MetaData_FLA = [
              "fieldType":"ComboBox",
              "label":"Flood Record Status:",
              "shortValueLabels":"Rec",
+             "expandHorizontally": True,
              "choices":[
                       {"displayString": "NO (Record Flood Not Expected)","identifier": "NO"},
                       {"displayString": "NR (Near Record or Record Flood Expected)","identifier": "NR"},
@@ -71,15 +74,6 @@ MetaData_FLA = [
                       {"displayString": "OO (for areal flood warnings, areal flash flood products, and flood advisories (point and areal))","identifier": "OO"},
                      ],
             },  
-            {
-             "fieldName":"riseAbove:crest:fallBelow",
-             "fieldType":"TimeScale",
-             "valueLabels": {"riseAbove": "Rise Above Time:","crest": "Crest Time:","fallBelow": "Fall Below Time:"},
-             "shortValueLabels": {"riseAbove": "Rise","crest": "Crest","fallBelow": "Fall"},
-             "relativeValueWeights": {"riseAbove": 3,"crest": 3,"fallBelow": 3},
-             "notify":1,
-             "spacing": 5,  
-            },
                 
             # The following product sections contain logic and/or 
             # information from the hydro database

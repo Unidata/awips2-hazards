@@ -9,14 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier.IllegalChoicesProblem;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -31,7 +29,7 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 25, 2013   1277     Chris.Golden      Initial creation
- * 
+ * Sep 25, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -86,48 +84,22 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
 
     // Public Methods
 
-    /**
-     * Get the mutable property names for this megawidget.
-     * 
-     * @return Set of names for all mutable properties for this megawidget.
-     */
     @Override
     public Set<String> getMutablePropertyNames() {
         return (isChoicesListMutable() ? MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES
                 : MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
     }
 
-    /**
-     * Get the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @return Mutable property value.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property.
-     */
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
         if (isChoicesListMutable()
                 && name.equals(ChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES)) {
             return doGetChoices();
-        } else {
-            return super.getMutableProperty(name);
         }
+        return super.getMutableProperty(name);
     }
 
-    /**
-     * Set the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @param value
-     *            New mutable property value to be used.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property, or if the value
-     *             is invalid.
-     */
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
@@ -139,19 +111,6 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
         }
     }
 
-    /**
-     * Set the mutable properties of this megawidget.
-     * 
-     * @param properties
-     *            Map containing keys drawn from the set of all valid property
-     *            names, with associated values being the new values for the
-     *            properties. Any property with a name-value pair found within
-     *            this map is set to the given value; all properties for which
-     *            no name-value pairs exist remain as they were before.
-     * @throws MegawidgetPropertyException
-     *             If at least one name specifies a nonexistent property, or if
-     *             at least one value is invalid.
-     */
     @Override
     public void setMutableProperties(Map<String, Object> properties)
             throws MegawidgetPropertyException {
@@ -249,7 +208,7 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
         }
 
         // Evaluate the legality of the choices hierarchy.
-        IllegalChoicesProblem eval = specifier
+        ChoicesMegawidgetSpecifier.IllegalChoicesProblem eval = specifier
                 .evaluateChoicesLegality(choicesList);
         if (eval != null) {
             throw new MegawidgetPropertyException(specifier.getIdentifier(),
@@ -267,7 +226,7 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
             Object state = getState(specifier.getIdentifier());
             List<?> list = null;
             if (state instanceof String) {
-                List<Object> objectList = new ArrayList<Object>();
+                List<Object> objectList = Lists.newArrayList();
                 objectList.add(state);
                 list = objectList;
             } else {
@@ -299,7 +258,7 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
      * 
      * @return List of choice identifiers as a comma-separated string of text.
      */
-    protected String getChoicesAsString() {
+    protected final String getChoicesAsString() {
         ChoicesMegawidgetSpecifier specifier = getSpecifier();
         StringBuilder stringBuilder = new StringBuilder();
         for (Object choice : choices) {
@@ -320,9 +279,9 @@ public abstract class ChoicesMegawidget extends StatefulMegawidget {
      * 
      * @return List of choice identifiers.
      */
-    protected List<String> getChoiceIdentifiers() {
+    protected final List<String> getChoiceIdentifiers() {
         ChoicesMegawidgetSpecifier specifier = getSpecifier();
-        List<String> identifiers = new ArrayList<String>();
+        List<String> identifiers = Lists.newArrayList();
         for (Object choice : choices) {
             identifiers.add(specifier.getIdentifierOfNode(choice));
         }

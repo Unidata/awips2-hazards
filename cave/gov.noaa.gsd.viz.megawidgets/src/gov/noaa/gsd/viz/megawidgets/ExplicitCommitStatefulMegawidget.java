@@ -9,8 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.HashMap;
 import java.util.Map;
+
+import com.google.common.collect.Maps;
 
 /**
  * Explicit-commit stateful megawidget created by a megawidget specifier. Such
@@ -25,7 +26,7 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,26 +58,11 @@ public abstract class ExplicitCommitStatefulMegawidget extends
     protected ExplicitCommitStatefulMegawidget(
             StatefulMegawidgetSpecifier specifier, Map<String, Object> paramMap) {
         super(specifier, paramMap);
-        uncommittedStatesForIds = new HashMap<String, Object>();
+        uncommittedStatesForIds = Maps.newHashMap();
     }
 
     // Public Methods
 
-    /**
-     * Add a state change to occur for the specified identifier later, when
-     * <code>commitStateChanges()</code> is invoked.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be changed later, when an
-     *            explicit commit is requested.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if its state should be reset.
-     * @throws MegawidgetStateException
-     *             If the new state is not of a valid type for this <code>
-     *             StatefulMegawidget</code> implementation, or if the supplied
-     *             state identifier is not valid.
-     */
     @Override
     public final void setUncommittedState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -107,13 +93,6 @@ public abstract class ExplicitCommitStatefulMegawidget extends
         uncommittedStatesForIds.put(identifier, state);
     }
 
-    /**
-     * Commit any accumulated uncommitted state changes.
-     * 
-     * @throws MegawidgetStateException
-     *             If the new states are not valid due to interdependency
-     *             conflicts.
-     */
     @Override
     public final void commitStateChanges() throws MegawidgetStateException {
 
@@ -147,7 +126,7 @@ public abstract class ExplicitCommitStatefulMegawidget extends
      * @param identifier
      *            Identifier for which state is intended. Implementations may
      *            assume that the state identifier supplied by this parameter is
-     *            valid for this widget.
+     *            valid for this megawidget.
      * @param state
      *            Object making up the state that is intended for this
      *            identifier, or <code>null</code> if the intention is to reset
@@ -181,20 +160,6 @@ public abstract class ExplicitCommitStatefulMegawidget extends
             Map<String, Object> newStatesForIds)
             throws MegawidgetStateException;
 
-    /**
-     * Set the states to the values in the specified map.
-     * 
-     * @param states
-     *            Map containing keys drawn from the set of all valid state
-     *            identifiers, with associated values being the new values for
-     *            the states. Any state with a identifier-value pair found
-     *            within this map is set to the given value; all states for
-     *            which no identifier-value pairs exist remain as they were
-     *            before.
-     * @throws MegawidgetPropertyException
-     *             If at least one identifier specifies a nonexistent state, or
-     *             if at least one value is invalid.
-     */
     @Override
     protected void setStates(Map<String, Object> states)
             throws MegawidgetPropertyException {

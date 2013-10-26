@@ -23,7 +23,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed to work with new
+ *                                           child specifier manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -31,7 +32,7 @@ import java.util.Map;
  * @see ContainerMegawidget
  */
 public abstract class SinglePageMegawidgetSpecifier extends
-        ContainerMegawidgetSpecifier {
+        ContainerMegawidgetSpecifier<IControlSpecifier> {
 
     // Public Static Constants
 
@@ -74,7 +75,7 @@ public abstract class SinglePageMegawidgetSpecifier extends
      */
     public SinglePageMegawidgetSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(IControlSpecifier.class, parameters);
 
         // Ensure that the column count, if present, is accep-
         // table, and if not present is assigned a default
@@ -101,8 +102,9 @@ public abstract class SinglePageMegawidgetSpecifier extends
         }
         if (childrenObject != null) {
             try {
-                addChildMegawidgetSpecifiers(createMegawidgetSpecifiers(
-                        childrenObject, columnCount));
+                getChildManager().addChildMegawidgetSpecifiers(
+                        getChildManager().createMegawidgetSpecifiers(
+                                childrenObject, columnCount));
             } catch (Exception e) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), CHILD_MEGAWIDGETS, childrenObject,

@@ -9,17 +9,17 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Time delta specifier, used to create a spinner-based megawidget that allows
@@ -38,14 +38,17 @@ import com.google.common.collect.ImmutableList;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Changed to implement ISingleLineSpecifier
+ *                                           and use ControlSpecifierOptionsManager
+ *                                           (composition over inheritance).
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TimeDeltaMegawidget
  */
-public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
+public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
+        implements ISingleLineSpecifier {
 
     // Public Static Constants
 
@@ -104,7 +107,8 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
          * Hash table mapping identifiers to their units with which they are
          * associated.
          */
-        private static final Map<String, Unit> UNITS_FOR_IDENTIFIERS = new HashMap<String, Unit>();
+        private static final Map<String, Unit> UNITS_FOR_IDENTIFIERS = Maps
+                .newHashMap();
 
         // Initialize the hash table.
         static {
@@ -248,6 +252,17 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
     // Private Variables
 
     /**
+     * Control options manager.
+     */
+    private final ControlSpecifierOptionsManager optionsManager;
+
+    /**
+     * Flag indicating whether or not the megawidget is to expand to fill all
+     * available horizontal space within its parent.
+     */
+    private final boolean horizontalExpander;
+
+    /**
      * List of units to be used, in the order they are to be displayed in the
      * list of units available.
      */
@@ -278,6 +293,12 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
     public TimeDeltaSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters, Long.class, 0L, null);
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                ControlSpecifierOptionsManager.BooleanSource.FALSE);
+
+        // Get the horizontal expansion flag if available.
+        horizontalExpander = getSpecifierBooleanValueFromObject(
+                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
 
         // Ensure that the possible units are present as an
         // array of strings.
@@ -294,7 +315,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_UNIT_CHOICES, null, null);
         }
-        Set<Unit> unitSet = new HashSet<Unit>();
+        Set<Unit> unitSet = Sets.newHashSet();
         for (int j = 0; j < choicesList.size(); j++) {
             Unit unit = Unit.get((String) choicesList.get(j));
             if (unit == null) {
@@ -304,7 +325,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
             }
             unitSet.add(unit);
         }
-        List<Unit> units = new ArrayList<Unit>(unitSet);
+        List<Unit> units = Lists.newArrayList(unitSet);
         Collections.sort(units);
         this.units = ImmutableList.copyOf(units);
 
@@ -371,6 +392,31 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long> {
     }
 
     // Public Methods
+
+    @Override
+    public final boolean isEditable() {
+        return optionsManager.isEditable();
+    }
+
+    @Override
+    public final int getWidth() {
+        return optionsManager.getWidth();
+    }
+
+    @Override
+    public final boolean isFullWidthOfColumn() {
+        return optionsManager.isFullWidthOfColumn();
+    }
+
+    @Override
+    public final int getSpacing() {
+        return optionsManager.getSpacing();
+    }
+
+    @Override
+    public final boolean isHorizontalExpander() {
+        return horizontalExpander;
+    }
 
     /**
      * Get the list of units.

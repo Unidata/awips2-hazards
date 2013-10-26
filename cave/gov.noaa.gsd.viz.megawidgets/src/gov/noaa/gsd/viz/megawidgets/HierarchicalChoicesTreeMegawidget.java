@@ -9,24 +9,27 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Choices tree megawidget, allowing the selection of zero or more choices in a
@@ -39,7 +42,11 @@ import org.eclipse.swt.widgets.Widget;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look, and changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +54,20 @@ import org.eclipse.swt.widgets.Widget;
  * @see HierarchicalChoicesTreeSpecifier
  */
 public class HierarchicalChoicesTreeMegawidget extends
-        HierarchicalChoicesMegawidget {
+        HierarchicalChoicesMegawidget implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(HierarchicalChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Classes
 
@@ -106,7 +126,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      * one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
-    private final List<String> selectedNodeIdentifiers = new ArrayList<String>();
+    private final List<String> selectedNodeIdentifiers = Lists.newArrayList();
 
     /**
      * Map of choice identifiers that were last found to be expanded to
@@ -120,6 +140,11 @@ public class HierarchicalChoicesTreeMegawidget extends
      * what came before.
      */
     private final NodesMap expandedNodes = new NodesMap();
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
 
     // Protected Constructors
 
@@ -138,33 +163,14 @@ public class HierarchicalChoicesTreeMegawidget extends
             HierarchicalChoicesTreeSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is needed in order to group the widgets pro-
-        // perly into a single megawidget.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(1, true);
-        gridLayout.marginWidth = 0;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-        } else {
-            label = null;
-        }
+        // Create the composite holding the components, and
+        // the label if appropriate.
+        Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
+                UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
+                specifier);
+        label = UiBuilder.buildLabel(panel, specifier);
 
         // Create a tree to hold the checkable choices hier-
         // archy, and add said choices.
@@ -172,7 +178,7 @@ public class HierarchicalChoicesTreeMegawidget extends
         tree.setLinesVisible(false);
         tree.setHeaderVisible(false);
         tree.setEnabled(specifier.isEnabled());
-        gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         gridData.heightHint = (specifier.getNumVisibleLines() * tree
                 .getItemHeight()) + 7;
         tree.setLayoutData(gridData);
@@ -180,51 +186,37 @@ public class HierarchicalChoicesTreeMegawidget extends
             convertStateToTree(tree, choice, null);
         }
 
-        // Add the Select All and Select None buttons, if appropriate.
-        if (specifier.shouldShowAllNoneButtons()) {
-            Composite allNoneContainer = new Composite(panel, SWT.FILL);
-            FillLayout fillLayout = new FillLayout();
-            fillLayout.spacing = 10;
-            fillLayout.marginWidth = 10;
-            fillLayout.marginHeight = 5;
-            allNoneContainer.setLayout(fillLayout);
-            allButton = new Button(allNoneContainer, SWT.PUSH);
-            allButton.setText("  All  ");
-            allButton.setEnabled(specifier.isEnabled()
-                    && specifier.isEditable());
-            allButton.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    state.clear();
-                    state.addAll(choices);
-                    setAllItemsCheckedState(
-                            HierarchicalChoicesTreeMegawidget.this.tree
-                                    .getItems(), true);
-                    notifyListeners();
-                }
-            });
-            noneButton = new Button(allNoneContainer, SWT.PUSH);
-            noneButton.setText("  None  ");
-            noneButton.setEnabled(specifier.isEnabled()
-                    && specifier.isEditable());
-            noneButton.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    state.clear();
-                    setAllItemsCheckedState(
-                            HierarchicalChoicesTreeMegawidget.this.tree
-                                    .getItems(), false);
-                    notifyListeners();
-                }
-            });
-            allNoneContainer.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER,
-                    true, false));
+        // Add the Select All and Select None buttons if appropriate.
+        List<Button> buttons = UiBuilder.buildAllNoneButtons(panel, specifier,
+                new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        state.clear();
+                        state.addAll(choices);
+                        setAllItemsCheckedState(
+                                HierarchicalChoicesTreeMegawidget.this.tree
+                                        .getItems(), true);
+                        notifyListeners();
+                    }
+                }, new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        state.clear();
+                        setAllItemsCheckedState(
+                                HierarchicalChoicesTreeMegawidget.this.tree
+                                        .getItems(), false);
+                        notifyListeners();
+                    }
+                });
+        if (buttons.isEmpty() == false) {
+            allButton = buttons.get(0);
+            noneButton = buttons.get(1);
         } else {
             allButton = noneButton = null;
         }
 
         // Bind check events to trigger a change in the
-        // record of the state for the widget.
+        // record of the state for the megawidget.
         tree.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -235,7 +227,7 @@ public class HierarchicalChoicesTreeMegawidget extends
                     return;
                 }
 
-                // If the widget is editable, record
+                // If the megawidget is editable, record
                 // the state change; otherwise, undo
                 // what was just done.
                 if (isEditable()) {
@@ -267,16 +259,67 @@ public class HierarchicalChoicesTreeMegawidget extends
         }
     }
 
+    // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -289,26 +332,6 @@ public class HierarchicalChoicesTreeMegawidget extends
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        tree.setBackground(getBackgroundColor(editable, tree, label));
-        if (allButton != null) {
-            allButton.setEnabled(isEnabled() && editable);
-            noneButton.setEnabled(isEnabled() && editable);
-        }
-    }
-
-    /**
-     * Prepare for the choices list to be changed.
-     */
     @Override
     protected final void prepareForChoicesChange() {
 
@@ -334,10 +357,6 @@ public class HierarchicalChoicesTreeMegawidget extends
         recordExpandedNodes(tree.getItems(), expandedNodes);
     }
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current choices.
-     */
     @Override
     protected final void synchronizeWidgetsToChoices() {
 
@@ -386,10 +405,6 @@ public class HierarchicalChoicesTreeMegawidget extends
         tree.getVerticalBar().setSelection(scrollPosition);
     }
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
-     */
     @Override
     protected final void synchronizeWidgetsToState() {
 
@@ -406,6 +421,22 @@ public class HierarchicalChoicesTreeMegawidget extends
     }
 
     // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        tree.setBackground(helper.getBackgroundColor(editable, tree, label));
+        if (allButton != null) {
+            allButton.setEnabled(isEnabled() && editable);
+            noneButton.setEnabled(isEnabled() && editable);
+        }
+    }
 
     /**
      * Clear the selection of all items in the specified tree.
@@ -590,7 +621,7 @@ public class HierarchicalChoicesTreeMegawidget extends
         // one that is checked or grayed to the state
         // hierarchy, as well as any descendants that are
         // checked or grayed.
-        List<Object> children = new ArrayList<Object>();
+        List<Object> children = Lists.newArrayList();
         for (TreeItem item : items) {
             if ((item.getChecked() == false) && (item.getGrayed() == false)) {
                 continue;
@@ -598,7 +629,7 @@ public class HierarchicalChoicesTreeMegawidget extends
             if (item.getItemCount() == 0) {
                 children.add(item.getData());
             } else {
-                Map<String, Object> node = new HashMap<String, Object>();
+                Map<String, Object> node = Maps.newHashMap();
                 node.put(HierarchicalChoicesTreeSpecifier.CHOICE_NAME,
                         item.getText());
                 node.put(HierarchicalChoicesTreeSpecifier.CHOICE_IDENTIFIER,

@@ -21,6 +21,7 @@ MetaData_FFW_Convective = [
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "ER",
+            "expandHorizontally": True,
             "choices": [
                 # use "_override_by_key_identifier_", in override file to support incremental override
                 {"identifier":"ER", "productString":"ER", "displayString":"ER (Excessive Rainfall)"},
@@ -47,8 +48,16 @@ MetaData_FFW_Convective = [
              "label": "Include",
              "choices": [
                 { "identifier": "ffwEmergency",
-                  "displayString": "**SELECT FOR FLASH FLOOD EMERGENCY**",
-                  "productString": "...Flash flood emergency for !** LOCATION **!..."
+                  "displayString": "**FLASH FLOOD EMERGENCY**:",
+                  "productString": "...Flash flood emergency for !** LOCATION **!...",
+                  "detailFields": [
+                      {
+                       "fieldType": "Text",
+                       "fieldName": "includeFfwEmergencyLocation",
+                       "expandHorizontally": True,
+                       "maxChars": 40,
+                       "visibleChars": 12
+                      }]
                 },
                 {"identifier":"+SM", "displayString":"Also Snow Melt",
                  "productString":"Rapid snow melt is causing flooding.",},
@@ -83,9 +92,25 @@ MetaData_FFW_Convective = [
                  "productString":"up to two inches of rain has already fallen.",},
                 {"identifier":"rain3", "displayString":"Three inches so far",
                  "productString":"up to three inches of rain has already fallen.",},
-                {"identifier":"rainEdit", "displayString":"User defined amount",
-                 "productString":"!** RAINFALL AMOUNTS **! inches of rain have fallen.",},
-                       ], 
+                {"identifier":"rainEdit", "displayString":"",
+                 "productString":"!** RAINFALL AMOUNTS **! inches of rain have fallen.",
+                 "detailFields": [
+                       {
+                        "fieldType": "FractionSpinner",
+                        "fieldName": "rainAmtRainEditInches",
+                        "minValue": 0,
+                        "maxValue": 99,
+                        "incrementDelta": 1,
+                        "precision": 1
+                       },
+                       {
+                        "fieldType": "Label",
+                        "fieldName": "rainAmtRainEditLabel",
+                        "label": "inches of rain have fallen"
+                       }
+                 ]
+                },
+               ], 
             },
             # BASIS
             {
@@ -114,11 +139,20 @@ MetaData_FFW_Convective = [
              "fieldName": "debrisFlows",
              "label": "Debris Flow Info:",
              "choices": [    
-                     {"identifier":"burnScar", "displayString": "Burn scar area with debris flow", 
+                     {"identifier":"burnScar", "displayString": "Burn scar area with debris flow through", 
                       "productString": 
                   '''Excessive rainfall over the burn scar will result in debris flow moving
                      through the !** DRAINAGE **!. The debris flow can consist of 
-                     rock...mud...vegetation and other loose materials.''',},
+                     rock...mud...vegetation and other loose materials.''',
+                     "detailFields": [
+                          {
+                           "fieldType": "Text",
+                           "fieldName": "debrisFlowsBurnScarLocation",
+                           "expandHorizontally": True,
+                           "maxChars": 40,
+                           "visibleChars": 12
+                           }]
+                     },
                      {"identifier":"mudSlide", "displayString": "Mud Slides", 
                       "productString": 
                   '''Excessive rainfall over the warning area will cause mud slides near steep
@@ -128,7 +162,7 @@ MetaData_FFW_Convective = [
             },
            # ADDITIONAL INFO
             {
-             "fieldType":"CheckList",
+             "fieldType":"CheckBoxes",
              "fieldName": "additionalInfo",
              "label": "Additional Info:",
              "choices": [    
@@ -136,16 +170,101 @@ MetaData_FFW_Convective = [
                       "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." },
                      {"identifier":"listOfDrainages", "displayString": "Automated list of drainages", 
                       "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." },
-                     {"identifier":"addtlRain", "displayString": "Additional rainfall of XX inches expected", 
+                     {"identifier":"addtlRain", "displayString": "Additional rainfall of", 
                       "productString": 
                     '''Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the
-                       warned area.''',},
+                       warned area.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "additionalInfoAddtlRainInches",
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "incrementDelta": 1,
+                             "precision": 1
+                            },
+                            {
+                             "fieldType": "Label",
+                             "fieldName": "additionalInfoAddtlRainLabel",
+                             "label": "inches expected"
+                            }
+                       ]
+                     },
                      {"identifier":"particularStream",
-                      "displayString": "Flooding is occurring in a particular stream/river", 
+                      "displayString": "Flood waters are moving down", 
                       "productString": 
                     '''FLood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to 
                        !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by
-                       !**TIME(S)**!.''',},
+                       !**TIME(S)**!.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "additionalInfoParticularStreamName",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow2",
+                             "numColumns": 4,
+                             "columnSpacing": 3,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel1",
+                                   "label": "from"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamFrom",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  },
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel2",
+                                   "label": "to"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamTo",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow3",
+                             "numColumns": 1,
+                             "columnSpacing": 2,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel3",
+                                   "label": "The flood crest is expected to reach:"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamDestination",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldName":"additionalInfoParticularStreamTime",
+                             "fieldType":"TimeScale",
+                             "valueLabels": "by:"
+                            }
+                      ]
+                     },
                      {"identifier":"recedingWater", "displayString": "EXP-CAN:Water is receding",
                       "productString": 
                     '''Flood waters have receded...and are no longer expected to pose a threat

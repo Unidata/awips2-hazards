@@ -22,7 +22,10 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Replaced erroneous references
+ *                                           (variable names, comments, etc.) to
+ *                                           "widget" with "megawidget" to avoid
+ *                                           confusion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -56,40 +59,11 @@ public abstract class SingleChoiceMegawidget extends ChoicesMegawidget {
 
     // Protected Methods
 
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected final Object doGetState(String identifier) {
         return state;
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the widget to notify its
-     * listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulMegawidget</code> implementation.
-     */
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -113,24 +87,6 @@ public abstract class SingleChoiceMegawidget extends ChoicesMegawidget {
         synchronizeWidgetsToState();
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by
-     * <code>getStateDescription() only after
-     * the latter has ensured that the supplied state
-     * identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this <code>
-     *             StatefulMegawidget</code> implementation.
-     */
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {

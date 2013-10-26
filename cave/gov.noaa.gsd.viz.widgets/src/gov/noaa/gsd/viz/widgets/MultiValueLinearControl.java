@@ -943,7 +943,8 @@ public abstract class MultiValueLinearControl extends Canvas {
         // passes these checks.
         if ((value < minimumValue) || (value > maximumValue)) {
             throw new IllegalArgumentException("value " + value
-                    + " for constrained thumb " + index + " out of range");
+                    + " for constrained thumb " + index + " out of range ("
+                    + minimumValue + " to " + maximumValue + ")");
         } else if ((index > 0)
                 && (value < constrainedThumbValues.get(index - 1)
                         + minimumConstrainedThumbGap)) {

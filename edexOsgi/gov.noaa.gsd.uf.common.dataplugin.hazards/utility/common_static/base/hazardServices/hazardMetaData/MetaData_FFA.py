@@ -19,6 +19,7 @@ MetaData_FFA = [
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "ER",
+            "expandHorizontally": True,
             "choices": [
                 {"displayString": "ER (Excessive Rainfall)","productString": "ER","identifier": "ER",},
                 {"displayString": "SM (Snow Melt)", "productString": "SM","identifier": "SM",},

@@ -21,13 +21,14 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to extend new ISpecifier
+ *                                           interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IMenuSpecifier {
+public interface IMenuSpecifier extends ISpecifier {
 
     // Public Static Constants
 

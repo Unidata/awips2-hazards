@@ -22,14 +22,19 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Changed to implement IControlSpecifier
+ *                                           and use ControlSpecifierOptionsManager
+ *                                           (composition over inheritance), and to
+ *                                           implement the new IMultiLineSpecifier
+ *                                           interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ListBuilderMegawidget
  */
-public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier {
+public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier
+        implements IControlSpecifier, IMultiLineSpecifier {
 
     // Public Static Constants
 
@@ -41,15 +46,12 @@ public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier {
      */
     public static final String MEGAWIDGET_SELECTED_LABEL = "selectedLabel";
 
-    /**
-     * Megawidget number of visible lines parameter name; a megawidget may
-     * include a positive integer associated with this name to indicate that it
-     * wishes to have this number of rows visible at once in its lists. If not
-     * specified, the number of visible lines is assumed to be 6.
-     */
-    public static final String MEGAWIDGET_VISIBLE_LINES = "lines";
-
     // Private Variables
+
+    /**
+     * Control options manager.
+     */
+    private final ControlSpecifierOptionsManager optionsManager;
 
     /**
      * Selected items label.
@@ -76,6 +78,8 @@ public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier {
     public ListBuilderSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
         // Ensure that the selected items label, if present,
         // is acceptable.
@@ -102,6 +106,31 @@ public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier {
 
     // Public Methods
 
+    @Override
+    public final boolean isEditable() {
+        return optionsManager.isEditable();
+    }
+
+    @Override
+    public final int getWidth() {
+        return optionsManager.getWidth();
+    }
+
+    @Override
+    public final boolean isFullWidthOfColumn() {
+        return optionsManager.isFullWidthOfColumn();
+    }
+
+    @Override
+    public final int getSpacing() {
+        return optionsManager.getSpacing();
+    }
+
+    @Override
+    public final int getNumVisibleLines() {
+        return numVisibleLines;
+    }
+
     /**
      * Get the selected items label.
      * 
@@ -109,14 +138,5 @@ public class ListBuilderSpecifier extends FlatChoicesMegawidgetSpecifier {
      */
     public final String getSelectedLabel() {
         return selectedLabel;
-    }
-
-    /**
-     * Get the number of visible lines.
-     * 
-     * @return Number of visible lines.
-     */
-    public final int getNumVisibleLines() {
-        return numVisibleLines;
     }
 }

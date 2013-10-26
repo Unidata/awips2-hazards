@@ -9,10 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Base class for megawidget specifiers that include a flat list of choices as
@@ -26,7 +27,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 25, 2013   1277     Chris.Golden      Initial creation
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,8 +61,8 @@ public abstract class FlatChoicesMegawidgetSpecifier extends
     }
 
     @Override
-    protected final IllegalChoicesProblem evaluateChoicesMapLegality(
-            Map<?, ?> map, int index) {
+    protected IllegalChoicesProblem evaluateChoicesMapLegality(Map<?, ?> map,
+            int index) {
         return null;
     }
 
@@ -72,16 +73,15 @@ public abstract class FlatChoicesMegawidgetSpecifier extends
 
     @SuppressWarnings("unchecked")
     @Override
-    protected final List<Object> createChoicesCopy(List<?> list) {
+    protected List<Object> createChoicesCopy(List<?> list) {
 
         // Create a new list, and copy each element into it from
         // the old list. If an element is a map, then make a
         // copy of the map instead of using the original.
-        List<Object> listCopy = new ArrayList<Object>();
+        List<Object> listCopy = Lists.newArrayList();
         for (Object item : list) {
             if (item instanceof Map) {
-                listCopy.add(new HashMap<String, Object>(
-                        (Map<String, Object>) item));
+                listCopy.add(Maps.newHashMap((Map<String, Object>) item));
             } else {
                 listCopy.add(item);
             }

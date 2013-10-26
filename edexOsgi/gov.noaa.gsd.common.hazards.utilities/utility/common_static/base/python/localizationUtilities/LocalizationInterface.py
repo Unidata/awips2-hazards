@@ -282,39 +282,6 @@ class LocalizationInterface():
             i = b+len(pathArg)
         return pyText
 
-    # This method formats an object into python that can initialize the
-    # indicated variable as this object.  This method is not normally meant
-    # to be called by outside clients.
-    def formatAsPythonInit(self, dataObject, variableName) :
-        result = json.dumps(dataObject, indent=4)
-
-        # JSON has different representations for the python symbols
-        # None, True, and False.
-        c1 = 0
-        c2 = result.find('"',c1)
-        while True :
-            if c2<0 :
-                c2 = len(result)
-            if c2-c1>4 :
-                c = result.find("null",c1,c2)
-                while c>=0 :
-                    result = result[:c]+"None"+result[c+4:]
-                    c = result.find("null",c+4,c2)
-                c = result.find("true",c1,c2)
-                while c>=0 :
-                    result = result[:c]+"True"+result[c+4:]
-                    c = result.find("true",c+4,c2)
-                c = result.find("false",c1,c2)
-                while c>=0 :
-                    result = result[:c]+"False"+result[c+5:]
-                    c = result.find("false",c+5,c2)
-            c1 = result.find('"',c2+1)
-            if c1<0 :
-                break
-            c2 = result.find('"',c1+1)
-
-        return variableName + " = \\\n" + result + "\n"
-
     # This method allows one to write data to a localization file.  'fileData'
     # is a string that will become the contents of the resulting localization
     # file; for a short string it will try to first interpret it as the name
@@ -399,7 +366,7 @@ class LocalizationInterface():
             try :
                 pyRoot = self.getPyRootFromFileName(locPath0)
                 if pyRoot :
-                    result = self.formatAsPythonInit(fileData, pyRoot)
+                    result = HazardServicesImporter.formatAsPythonInit(fileData, pyRoot)
                 else :
                     result = json.dumps(fileData, indent=4)
                 return self.__lfi.putFile(locPath0, result)
@@ -953,7 +920,7 @@ return ResponseMessageGeneric(stdout)
         if ttt==2 and myx2j!=None :
             return myx2j.unconvert(myJC.combine())
         if ttt==4 :
-            return self.formatAsPythonInit(myJC.combine(), pyRoot)
+            return HazardServicesImporter.formatAsPythonInit(myJC.combine(), pyRoot)
         if ttt==1 :
             return json.dumps(myJC.combine(), indent=4)
         if len(classDef)<=1 :

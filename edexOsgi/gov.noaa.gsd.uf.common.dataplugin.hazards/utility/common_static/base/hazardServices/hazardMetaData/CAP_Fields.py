@@ -6,6 +6,7 @@ CAP_Fields = [
             'fieldType':'ComboBox',
             'label':'Urgency:',
             'values': 'Immediate',
+            'expandHorizontally': True,
             'choices': ['Immediate', 'Expected', 'Future','Past','Unknown']
             },
            { 
@@ -14,6 +15,7 @@ CAP_Fields = [
             'fieldType':'ComboBox',
             'label':'Response Type:',
             'values': 'Avoid',
+            'expandHorizontally': True,
             'choices': ['Shelter','Evacuate','Prepare','Execute','Avoid','Monitor','Assess','AllClear','None']
             },                    
            { 
@@ -21,6 +23,7 @@ CAP_Fields = [
             'fieldType':'ComboBox',
             'label':'Severity:',
             'values': 'Severe',
+            'expandHorizontally': True,
             'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
             },
            { 
@@ -28,15 +31,24 @@ CAP_Fields = [
             'fieldType':'ComboBox',
             'label':'Certainty:',
             'values': 'Likely',
+            'expandHorizontally': True,
             'choices': ['Observed','Likely','Possible','Unlikely','Unknown']
             },
             {
             'fieldName': 'WEA_Text',
             'fieldType':'Text',
-            'label':'WEA Text (%s is end time/day):',
+            'label':'WEA Text:',
             'values': '',
-            'length': 90,
-             },                   
+            'maxChars': 90,
+            'visibleChars': 6,
+            'expandHorizontally': True
+            },                   
+            {
+            'fieldName': 'WEA_Label',
+            'fieldType':'Label',
+            'label':'Note: In WEA text, "%s" is replaced with end time/day.',
+            'wrap': True
+            }                   
 ]
 
 

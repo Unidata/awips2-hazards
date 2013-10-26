@@ -9,18 +9,21 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Combo box megawidget, providing a dropdown combo box allowing the selection
@@ -33,14 +36,32 @@ import org.eclipse.swt.widgets.Label;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look. Also changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ComboBoxSpecifier
  */
-public class ComboBoxMegawidget extends SingleChoiceMegawidget {
+public class ComboBoxMegawidget extends SingleChoiceMegawidget implements
+        IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(SingleChoiceMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -57,12 +78,19 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
     /**
      * Map of choice identifiers to their names.
      */
-    private final Map<String, String> choiceNamesForIdentifiers = new HashMap<String, String>();
+    private final Map<String, String> choiceNamesForIdentifiers = Maps
+            .newHashMap();
 
     /**
      * Map of choice names to their identifiers.
      */
-    private final Map<String, String> choiceIdentifiersForNames = new HashMap<String, String>();
+    private final Map<String, String> choiceIdentifiersForNames = Maps
+            .newHashMap();
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
 
     // Protected Constructors
 
@@ -80,41 +108,17 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
     protected ComboBoxMegawidget(ComboBoxSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is done so that it may be rendered read-only
-        // by disabling the panel, which in SWT has the
-        // effect of disabling mouse and keyboard input for
-        // the child widgets without making them look dis-
-        // abled; in order to group the widgets properly
-        // into a single megawidget; and to allow the space
-        // for the label, if it exists, to be sized to match
-        // other labels.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(2, false);
-        gridLayout.marginWidth = gridLayout.marginHeight = 0;
-        gridLayout.horizontalSpacing = 10;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            label.setLayoutData(gridData);
-        } else {
-            label = null;
-        }
+        // Create the composite holding the components, and
+        // the label if appropriate.
+        Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
+                UiBuilder.CompositeType.SINGLE_ROW, specifier);
+        boolean expandHorizontally = specifier.isHorizontalExpander();
+        ((GridData) panel.getLayoutData()).horizontalAlignment = (expandHorizontally ? SWT.FILL
+                : SWT.LEFT);
+        ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = expandHorizontally;
+        label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the combo box.
         comboBox = new Combo(panel, SWT.READ_ONLY);
@@ -122,7 +126,11 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
         comboBox.setEnabled(specifier.isEnabled());
 
         // Place the combo box in the grid.
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        GridData gridData = new GridData((expandHorizontally ? SWT.FILL
+                : SWT.LEFT), SWT.CENTER, true, false);
+        if (expandHorizontally) {
+            gridData.minimumWidth = 0;
+        }
         gridData.horizontalSpan = (label == null ? 2 : 1);
         comboBox.setLayoutData(gridData);
 
@@ -153,6 +161,64 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
 
     // Public Methods
 
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public int getLeftDecorationWidth() {
+        return (label == null ? 0 : helper.getWidestWidgetWidth(label));
+    }
+
+    @Override
+    public void setLeftDecorationWidth(int width) {
+        if (label != null) {
+            helper.setWidgetsWidth(width, label);
+        }
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
     /**
      * Get the available choices hierarchy.
      * 
@@ -174,36 +240,6 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
     public final void setChoices(Object value)
             throws MegawidgetPropertyException {
         doSetChoices(value);
-    }
-
-    /**
-     * Determine the left decoration width for this megawidget, if the widget
-     * has a decoration (label, etc.) to the left of its main component
-     * widget(s). This is used to query all sibling megawidgets to determine
-     * which one has the largest left decoration.
-     * 
-     * @return Width in pixels required for the left decoration of this
-     *         megawidget, or 0 if the megawidget has no left decoration.
-     */
-    @Override
-    public int getLeftDecorationWidth() {
-        return (label == null ? 0 : getWidestWidgetWidth(label));
-    }
-
-    /**
-     * Set the left decoration width for this megawidget to that specified, if
-     * the widget has a decoration to the left of its main component widget(s).
-     * This is used to set sibling megawidgets to all use the width of the
-     * largest left decoration used by the siblings, if any.
-     * 
-     * @param width
-     *            Width to be used if this megawidget has a left decoration.
-     */
-    @Override
-    public void setLeftDecorationWidth(int width) {
-        if (label != null) {
-            setWidgetsWidth(width, label);
-        }
     }
 
     // Protected Methods
@@ -251,13 +287,21 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget {
         comboBox.setEnabled(enable);
     }
 
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        comboBox.getParent().setEnabled(editable);
-        comboBox.setBackground(getBackgroundColor(editable, comboBox, label));
-    }
-
     // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        comboBox.getParent().setEnabled(editable);
+        comboBox.setBackground(helper.getBackgroundColor(editable, comboBox,
+                label));
+    }
 
     /**
      * Populate the combo box with choices.

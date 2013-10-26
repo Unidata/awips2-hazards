@@ -11,9 +11,10 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier.IllegalChoicesProblem;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com.google.common.collect.Lists;
 
 /**
  * Hierarchical choices megawidget, allowing the selection of zero or more
@@ -26,7 +27,8 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup, and added missing
+ *                                           implementation of doGetStateDescription().
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,7 +42,7 @@ public abstract class HierarchicalChoicesMegawidget extends ChoicesMegawidget {
     /**
      * State associated with the tree.
      */
-    protected final List<Object> state = new ArrayList<Object>();
+    protected final List<Object> state = Lists.newArrayList();
 
     // Protected Constructors
 
@@ -91,44 +93,21 @@ public abstract class HierarchicalChoicesMegawidget extends ChoicesMegawidget {
         return true;
     }
 
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected final Object doGetState(String identifier) {
         return ((HierarchicalChoicesMegawidgetSpecifier) getSpecifier())
                 .createChoicesCopy(state);
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
+
+        // If the state is not a list, an error has occurred.
+        if ((state != null) && ((state instanceof List) == false)) {
+            throw new MegawidgetStateException(identifier, getSpecifier()
+                    .getType(), state, "must be list of choices");
+        }
 
         // Ensure that the provided hierarchy is legal.
         List<?> hierarchy = (List<?>) state;
@@ -163,31 +142,24 @@ public abstract class HierarchicalChoicesMegawidget extends ChoicesMegawidget {
         synchronizeWidgetsToState();
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by <code>getStateDescription() only
-     * after the latter has ensured that the supplied state identifier is
-     * valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // It would be difficult to condense a tree down
-        // to a shortened descriptions, so this is not
-        // supported.
-        throw new UnsupportedOperationException();
+        // If the state is not a list and is not null, an error
+        // has occurred.
+        if (state == null) {
+            return "";
+        } else if ((state instanceof List) == false) {
+            throw new MegawidgetStateException(identifier, getSpecifier()
+                    .getType(), state, "must be list of choices");
+        }
+
+        // Iterate through the elements of the provided state,
+        // concatenating the description of each to the buffer.
+        StringBuilder buffer = new StringBuilder();
+        addElementsDescriptionsToBuffer(buffer, (List<?>) state);
+        return buffer.toString();
     }
 
     /**
@@ -196,5 +168,53 @@ public abstract class HierarchicalChoicesMegawidget extends ChoicesMegawidget {
     protected final void notifyListeners() {
         notifyListener(getSpecifier().getIdentifier(), state);
         notifyListener();
+    }
+
+    // Private Methods
+
+    /**
+     * Get a text string describing the specified choice state element.
+     * 
+     * @param element
+     *            State element; may be either a string or a map giving the
+     *            parameters governing the choice.
+     * @return Text string describing the specified choice state element.
+     */
+    private String getStateElementDescription(Object element) {
+        StringBuilder buffer = new StringBuilder(
+                ((ChoicesMegawidgetSpecifier) getSpecifier())
+                        .getNameOfNode(element));
+        if (element instanceof Map) {
+            List<?> children = (List<?>) ((Map<?, ?>) element)
+                    .get(HierarchicalChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
+            if (children != null) {
+                buffer.append(" (");
+                addElementsDescriptionsToBuffer(buffer, children);
+                buffer.append(")");
+            }
+        }
+        return buffer.toString();
+    }
+
+    /**
+     * Add the specified choice elements' descriptions to the specified string
+     * buffer.
+     * 
+     * @param buffer
+     *            Buffer to which descriptions are to be added.
+     * @param elements
+     *            List of elements for which to generate descriptions.
+     */
+    private void addElementsDescriptionsToBuffer(StringBuilder buffer,
+            List<?> elements) {
+        boolean beyondFirst = false;
+        for (Object element : elements) {
+            if (beyondFirst) {
+                buffer.append(", ");
+            } else {
+                beyondFirst = true;
+            }
+            buffer.append(getStateElementDescription(element));
+        }
     }
 }

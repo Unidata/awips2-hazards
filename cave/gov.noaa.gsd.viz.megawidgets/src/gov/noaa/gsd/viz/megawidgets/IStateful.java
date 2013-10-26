@@ -23,7 +23,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,10 +37,9 @@ public interface IStateful extends IMegawidget {
     // Public Static Constants
 
     /**
-     * State change listener widget creation time parameter name; if specified
-     * in the map passed to <code>
-     * createMegawidget()</code>, its value must be an object of type
-     * <code>IStateChangeListener</code>.
+     * State change listener megawidget creation time parameter name; if
+     * specified in the map passed to <code>createMegawidget()</code>, its value
+     * must be an object of type <code>IStateChangeListener</code>.
      */
     public static final String STATE_CHANGE_LISTENER = "stateChangeListener";
 

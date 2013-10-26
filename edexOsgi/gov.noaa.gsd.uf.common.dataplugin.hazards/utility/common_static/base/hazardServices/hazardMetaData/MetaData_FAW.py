@@ -32,6 +32,7 @@ MetaData_FAW = [
             {
              "fieldName": "miscLabel",
              "fieldType":"Label",
+             "wrap": True,
              "label":"If either 'include small streams' or 'include urban areas and small streams' above was selected, 'floodgate opening' in primary cause below should not be selected.  If 'floodgate opening' is the desired option, do not select 'include small streams' or 'include urban areas and small streams'. ",
             },
             {
@@ -64,9 +65,24 @@ MetaData_FAW = [
                  "productString":"up to two inches of rain has already fallen.",},
                 {"identifier":"rain3", "displayString":"Three inches so far",
                  "productString":"up to three inches of rain has already fallen.",},
-                {"identifier":"rainEdit", "displayString":"User defined amount",
-                 "productString":"!** RAINFALL AMOUNTS **! inches of rain have fallen.",},
-                       ], 
+                {"identifier":"rainEdit", "displayString":"",
+                 "productString":"!** RAINFALL AMOUNTS **! inches of rain have fallen.",
+                 "detailFields": [
+                       {
+                        "fieldType": "FractionSpinner",
+                        "fieldName": "rainAmtRainEditInches",
+                        "minValue": 0,
+                        "maxValue": 99,
+                        "incrementDelta": 1,
+                        "precision": 1
+                       },
+                       {
+                        "fieldType": "Label",
+                        "fieldName": "rainAmtRainEditLabel",
+                        "label": "inches of rain have fallen"
+                       }
+                 ]
+                }]
             },
             # BASIS
             {
@@ -86,49 +102,166 @@ MetaData_FAW = [
                      {"identifier":"radGagTS", "displayString": "Radar and gauges with thunderstorm", 
                       "productString": '''Doppler radar and automated rain gauges indicated thunderstorms
                                           with heavy rain over the area. That rain will cause flooding.''',},
-                      {"identifier":"wxSpot", "displayString": "Weather spotters report flooding...", 
-                      "productString": "Trained weather spotters reported flooding in !** LOCATION **!.",},
-                      {"identifier":"wxSpotHR", "displayString": "Weather spotters report heavy rain...", 
+                      {"identifier":"wxSpot", "displayString": "Weather spotters report flooding in", 
+                      "productString": "Trained weather spotters reported flooding in !** LOCATION **!.",
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisWxSpotLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"wxSpotHR", "displayString": "Weather spotters report heavy rain in", 
                       "productString": '''Trained weather spotters reported heavy rain in !** LOCATION **!
-                                          that will cause flooding.''',},
-                      {"identifier":"wxSpotTS", "displayString": "Weather spotters report heavy thunderstorm rain...", 
+                                          that will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisWxSpotHrLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"wxSpotTS", "displayString": "Weather spotters report thunderstorm in", 
                       "productString": '''Trained weather spotters reported heavy rain in !** LOCATION **!
-                                          due to thunderstorms that will cause flooding. ''',},
-                     {"identifier":"lawEnf", "displayString": "Law enforcement reported flooding...",
-                      "productString": "Local law enforcement reported flooding in !** LOCATION **!.",},
-                     {"identifier":"lawEnfHR", "displayString": "Law enforcement reported heavy rain...",
+                                          due to thunderstorms that will cause flooding. ''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisWxSpotTsLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"lawEnf", "displayString": "Law enforcement report flooding in",
+                      "productString": "Local law enforcement reported flooding in !** LOCATION **!.",
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisLawEnfLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"lawEnfHR", "displayString": "Law enforcement report heavy rain in",
                       "productString": '''Local law enforcement reported heavy rain in !** LOCATION **!
-                                          that will cause flooding.''',},
-                     {"identifier":"lawEnfTS", "displayString": "Law enforcement reported heavy thunderstorm rain...",
+                                          that will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisLawEnfHrLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"lawEnfTS", "displayString": "Law enforcement report thunderstorm in",
                       "productString": '''Local law enforcement reported thunderstorms with heavy rain
-                                          over !** LOCATION **! that will cause flooding.''',},
-                     {"identifier":"emerMgmt", "displayString": "Emergency Mgmt reported flooding...",
-                      "productString": "Emergency management reported flooding in !** LOCATION **!.",},
-                     {"identifier":"emerMgmtHR", "displayString": "Emergency Mgmt reported heavy rain...",
+                                          over !** LOCATION **! that will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisLawEnfTsLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"emerMgmt", "displayString": "Emergency Mgmt report flooding in",
+                      "productString": "Emergency management reported flooding in !** LOCATION **!.",
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisEmerMgmtLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"emerMgmtHR", "displayString": "Emergency Mgmt report heavy rain",
                       "productString": '''Emergency management reported heavy rain in !** LOCATION **!. The
-                                          heavy rain will cause flooding.''',},
-                     {"identifier":"emerMgmtTS", "displayString": "Emergency Mgmt reported heavy thunderstorm rain...",
+                                          heavy rain will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisEmerMgmtHrLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"emerMgmtTS", "displayString": "Emergency Mgmt report thunderstorm in",
                       "productString": '''Emergency management reported thunderstorms with heavy rain
-                                          in !** LOCATION **!. The heavy rain will cause flooding.''',},
-                     {"identifier":"public", "displayString": "Public reported flooding...",
-                      "productString": "The public reported flooding in !** LOCATION **!.",},
-                     {"identifier":"publicHR", "displayString": "Public reported heavy rain...",
+                                          in !** LOCATION **!. The heavy rain will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisEmerMgmtTsLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"public", "displayString": "Public report flooding in",
+                      "productString": "The public reported flooding in !** LOCATION **!.",
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisPublicLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"publicHR", "displayString": "Public report heavy rain in",
                       "productString": '''The public reported heavy rain in !** LOCATION **!. That
-                                          heavy rain will cause flooding.''',},
-                     {"identifier":"publicTS", "displayString": "Public reported heavy thunderstorm rain...",
+                                          heavy rain will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisPublicHrLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"publicTS", "displayString": "Public report thunderstorm in",
                       "productString": '''The public reported thunderstorms with heavy rain in
-                                          !** LOCATION **!. The heavy rain will cause flooding.''',},
-                     {"identifier":"satInd", "displayString": "Satellite estimates indicated...", 
+                                          !** LOCATION **!. The heavy rain will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisPublicTsLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"satInd", "displayString": "Satellite estimates indicate heavy rain in", 
                       "productString": '''Satellite estimates indicate heavy rain in !** LOCATION **!.
-                                          That heavy rain will cause flooding.''',},
-                     {"identifier":"satGagInd", "displayString": "Satellite estimates and automated gauges", 
+                                          That heavy rain will cause flooding.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "basisSatIndLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            }]
+                      },
+                      {"identifier":"satGagInd", "displayString": "Satellite estimates and automated gauges", 
                       "productString": '''Satellite estimates and rain gauge data indicate heavy 
-                                          rainfall that will cause flooding in the warning area.''',},
-                       ], 
+                                          rainfall that will cause flooding in the warning area.'''}
+                       ]
             },
            # ADDITIONAL INFO
             {
-             "fieldType":"CheckList",
+             "fieldType":"CheckBoxes",
              "fieldName": "additionalInfo",
              "label": "Additional Info:",
              "choices": [    
@@ -136,16 +269,101 @@ MetaData_FAW = [
                       "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." },
                      {"identifier":"listOfDrainages", "displayString": "Automated list of drainages", 
                       "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." },
-                     {"identifier":"addtlRain", "displayString": "Additional rainfall of XX inches expected", 
+                     {"identifier":"addtlRain", "displayString": "Additional rainfall of", 
                       "productString": 
                     '''Additional rainfall amounts of !** EDIT AMOUNT **! are possible in the
-                       warned area.''',},
+                       warned area.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "additionalInfoAddtlRainInches",
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "incrementDelta": 1,
+                             "precision": 1
+                            },
+                            {
+                             "fieldType": "Label",
+                             "fieldName": "additionalInfoAddtlRainLabel",
+                             "label": "inches expected"
+                            }
+                       ]
+                      },
                      {"identifier":"particularStream",
-                      "displayString": "Flooding is occurring in a particular stream/river", 
+                      "displayString": "Flood waters are moving down",
                       "productString": 
-                    '''FLood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to 
+                      '''FLood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to 
                        !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by
-                       !**TIME(S)**!.''',},
+                       !**TIME(S)**!.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "additionalInfoParticularStreamName",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow2",
+                             "numColumns": 4,
+                             "columnSpacing": 3,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel1",
+                                   "label": "from"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamFrom",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  },
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel2",
+                                   "label": "to"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamTo",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow3",
+                             "numColumns": 1,
+                             "columnSpacing": 2,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel3",
+                                   "label": "The flood crest is expected to reach:"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamDestination",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldName":"additionalInfoParticularStreamTime",
+                             "fieldType":"TimeScale",
+                             "valueLabels": "by:"
+                            }
+                      ]
+                     },
                      {"identifier":"recedingWater", "displayString": "EXP-CAN:Water is receding",
                       "productString": 
                     '''Flood waters have receded...and are no longer expected to pose a threat

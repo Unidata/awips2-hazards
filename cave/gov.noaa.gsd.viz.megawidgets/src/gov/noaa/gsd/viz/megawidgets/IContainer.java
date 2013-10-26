@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.List;
-
 /**
- * Interface describing the methods to be implemented by a megawidget that is to
- * act as a container of other megawidgets. Any subclasses of <code>Megawidget
- * </code> must implement this interface if they are to hold other megawidgets.
+ * /** Interface describing the methods to be implemented by a megawidget that
+ * is to act as a container of other megawidgets. Any subclasses of <code>
+ * Megawidget</code> must implement this interface if they are to hold other
+ * megawidgets. The parameter <code>M</code> provides the superclass of all the
+ * child megawidgets that this parent may have.
  * 
  * <pre>
  * 
@@ -22,7 +22,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 25, 2013    2168    Chris.Golden      Refactored to inherit from new
+ *                                           interface IParent.
  * </pre>
  * 
  * @author Chris.Golden
@@ -30,15 +31,7 @@ import java.util.List;
  * @see Megawidget
  * @see IContainerSpecifier
  */
-public interface IContainer extends IMegawidget {
+public interface IContainer<M extends IMegawidget> extends IParent<M> {
 
-    // Public Methods
-
-    /**
-     * Get the list of child megawidgets of this widget.
-     * 
-     * @return List of child megawidgets of this widget. The list must not be
-     *         modified by the caller.
-     */
-    public List<Megawidget> getChildren();
+    // Empty interface for now...
 }

@@ -53,14 +53,16 @@ class Product(ProductTemplate.Product):
 #        overviewHeadlineDict["fieldName"] = "overviewHeadline"
 #        overviewHeadlineDict["label"] = "Overview Headline"
 #        overviewHeadlineDict["fieldType"] = "Text"
-#        overviewHeadlineDict["length"] = 200
+#        overviewHeadlineDict["maxChars"] = 200
+#        overviewHeadlineDict["visibleChars"] = 50
 #        overviewHeadlineDict["expandHorizontally"] = 1
 #
 #        overviewFieldDict = {}
 #        overviewFieldDict["fieldName"] = "overview"
 #        overviewFieldDict["label"] = "Overview"
 #        overviewFieldDict["fieldType"] = "Text"
-#        overviewFieldDict["length"] = 200
+#        overviewFieldDict["maxChars"] = 200
+#        overviewFieldDict["visibleChars"] = 50
 #        overviewFieldDict["expandHorizontally"] = 1        
 #        
 #        dialogDict = {}

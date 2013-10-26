@@ -9,15 +9,15 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
- * Multi page megawidget specifier base class, from which specific types of
+ * Multi-page megawidget specifier base class, from which specific types of
  * container megawidget specifiers that have multiple pages or panels of child
  * megawidgets may be derived.
  * 
@@ -27,7 +27,8 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed to work with new
+ *                                           child specifier manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,12 +36,12 @@ import com.google.common.collect.ImmutableList;
  * @see ContainerMegawidget
  */
 public abstract class MultiPageMegawidgetSpecifier extends
-        ContainerMegawidgetSpecifier {
+        ContainerMegawidgetSpecifier<IControlSpecifier> {
 
     // Public Static Constants
 
     /**
-     * Pages parameter name; each multi page megawidget must contain a reference
+     * Pages parameter name; each multi-page megawidget must contain a reference
      * to a <code>List</code> object associated with this name. The provided
      * list must contain zero or more <code>Map</code> objects, each one holding
      * an entry for <code>PAGE_NAME</code>, and an entry for
@@ -51,27 +52,28 @@ public abstract class MultiPageMegawidgetSpecifier extends
 
     /**
      * Page name parameter name; each map in the list associated with
-     * <code>WIDGET_PAGES</code> must contain a reference to a string associated
-     * with this name. The string serves to label and identify the page.
+     * <code>MEGAWIDGET_PAGES</code> must contain a reference to a string
+     * associated with this name. The string serves to label and identify the
+     * page.
      */
     public static final String PAGE_IDENTIFIER = "pageName";
 
     /**
      * Page fields parameter name; each map in the list associated with
-     * <code>WIDGET_PAGES</code> must contain a reference to a <code>List</code>
-     * object associated with this name. The provided list must contain zero or
-     * more child megawidget specifier parameter maps, each in the form of a
-     * <code>Map
-     * </code>, from which a megawidget specifier will be constructed.
+     * <code>MEGAWIDGET_PAGES</code> must contain a reference to a
+     * <code>List</code> object associated with this name. The provided list
+     * must contain zero or more child megawidget specifier parameter maps, each
+     * in the form of a <code>Map</code>, from which a megawidget specifier will
+     * be constructed.
      */
     public static final String PAGE_FIELDS = "pageFields";
 
     /**
      * Page column count parameter name; each map in the list associated with
-     * <code>WIDGET_PAGES</code> may contain a reference to a positive integer
-     * associated with this name. The integer indicates the number of columns
-     * that this page provides in which its children may lay themselves out. If
-     * not specified, the default is 1.
+     * <code>MEGAWIDGET_PAGES</code> may contain a reference to a positive
+     * integer associated with this name. The integer indicates the number of
+     * columns that this page provides in which its children may lay themselves
+     * out. If not specified, the default is 1.
      */
     public static final String PAGE_COLUMN_COUNT = "numColumns";
 
@@ -85,13 +87,14 @@ public abstract class MultiPageMegawidgetSpecifier extends
     /**
      * Hash table pairing page names with their column counts.
      */
-    private final Map<String, Integer> columnCountsForPages = new HashMap<String, Integer>();
+    private final Map<String, Integer> columnCountsForPages = Maps.newHashMap();
 
     /**
      * Hash table pairing page names with lists of their child megawidget
      * specifiers.
      */
-    private final Map<String, List<MegawidgetSpecifier>> childrenForPages = new HashMap<String, List<MegawidgetSpecifier>>();
+    private final Map<String, List<IControlSpecifier>> childrenForPages = Maps
+            .newHashMap();
 
     // Public Constructors
 
@@ -107,11 +110,11 @@ public abstract class MultiPageMegawidgetSpecifier extends
      */
     public MultiPageMegawidgetSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(IControlSpecifier.class, parameters);
 
         // Ensure that the page list is acceptable, and store it.
         List<?> pagesObject = null;
-        List<String> pageNames = new ArrayList<String>();
+        List<String> pageNames = Lists.newArrayList();
         try {
             pagesObject = (List<?>) parameters.get(MEGAWIDGET_PAGES);
         } catch (Exception e) {
@@ -169,10 +172,10 @@ public abstract class MultiPageMegawidgetSpecifier extends
                     throw new MegawidgetSpecificationException(getIdentifier(),
                             getType(), PAGE_FIELDS, null, null);
                 }
-                List<MegawidgetSpecifier> children = null;
+                List<IControlSpecifier> children = null;
                 try {
-                    children = createMegawidgetSpecifiers(childrenObject,
-                            columnCount);
+                    children = getChildManager().createMegawidgetSpecifiers(
+                            childrenObject, columnCount);
                 } catch (MegawidgetSpecificationException e) {
                     throw new MegawidgetSpecificationException(getIdentifier(),
                             getType(), PAGE_FIELDS, childrenObject,
@@ -182,7 +185,7 @@ public abstract class MultiPageMegawidgetSpecifier extends
                 // Add the child megawidget specifiers for this page to the
                 // list of all children, and remember the parameters for
                 // this page.
-                addChildMegawidgetSpecifiers(children);
+                getChildManager().addChildMegawidgetSpecifiers(children);
                 pageNames.add(pageName);
                 columnCountsForPages.put(pageName, columnCount);
                 childrenForPages.put(pageName, children);
@@ -224,7 +227,7 @@ public abstract class MultiPageMegawidgetSpecifier extends
      *            Name of the page.
      * @return Child megawidget specifiers.
      */
-    public final List<MegawidgetSpecifier> getChildSpecifiersForPage(
+    public final List<IControlSpecifier> getChildSpecifiersForPage(
             String pageName) {
         return childrenForPages.get(pageName);
     }

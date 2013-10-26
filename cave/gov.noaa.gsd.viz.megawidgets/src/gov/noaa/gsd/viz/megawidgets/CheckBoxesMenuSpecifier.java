@@ -21,7 +21,8 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Mar 28, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Changed to use options manager to
+ *                                           avoid code duplication.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,16 +35,9 @@ public class CheckBoxesMenuSpecifier extends FlatChoicesMegawidgetSpecifier
     // Private Variables
 
     /**
-     * Flag indicating whether or not the menu items should be part of the
-     * parent menu, instead of on a separate submenu.
+     * Menu options manager.
      */
-    private final boolean onParentMenu;
-
-    /**
-     * Flag indicating whether or not a separator should be showing above the
-     * menu items or submenu.
-     */
-    private final boolean showSeparator;
+    private final MenuSpecifierOptionsManager optionsManager;
 
     // Public Constructors
 
@@ -60,42 +54,18 @@ public class CheckBoxesMenuSpecifier extends FlatChoicesMegawidgetSpecifier
     public CheckBoxesMenuSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
-
-        // Record the value of the on parent menu flag.
-        onParentMenu = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_ON_PARENT_MENU),
-                MEGAWIDGET_ON_PARENT_MENU, false);
-
-        // Record the value of the show separator flag.
-        showSeparator = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SHOW_SEPARATOR),
-                MEGAWIDGET_SHOW_SEPARATOR, false);
+        optionsManager = new MenuSpecifierOptionsManager(this, parameters);
     }
 
     // Public Methods
 
-    /**
-     * Determine whether or not the menu items should be part of the parent
-     * menu.
-     * 
-     * @return Flag indicating whether or not the menu items should be part of
-     *         the parent menu. If <code>false</code>, they are to be shown on a
-     *         separate submenu.
-     */
     @Override
     public final boolean shouldBeOnParentMenu() {
-        return onParentMenu;
+        return optionsManager.shouldBeOnParentMenu();
     }
 
-    /**
-     * Determine whether or not a separator should be shown above this
-     * megawidget's menu items or submenu.
-     * 
-     * @return Flag indicating whether or not a separator should be shown above
-     *         this megawidget's menu items or submenu.
-     */
     @Override
     public final boolean shouldShowSeparator() {
-        return showSeparator;
+        return optionsManager.shouldShowSeparator();
     }
 }

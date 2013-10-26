@@ -19,7 +19,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -40,14 +39,19 @@ import com.google.common.collect.Sets;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look, and to implement new
+ *                                           IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TimeDeltaSpecifier
  */
-public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
+public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
+        IControl {
 
     // Protected Static Constants
 
@@ -58,6 +62,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
     static {
         Set<String> names = Sets
                 .newHashSet(BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         names.add(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -89,6 +94,11 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
      */
     private Unit unit = null;
 
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -105,41 +115,15 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
     protected TimeDeltaMegawidget(TimeDeltaSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is done so that it may be rendered read-only
-        // by disabling the panel, which in SWT has the
-        // effect of disabling mouse and keyboard input for
-        // the child widgets without making them look dis-
-        // abled; in order to group the widgets properly
-        // into a single megawidget; and to allow the space
-        // for the label, if it exists, to be sized to match
-        // other labels.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(3, false);
-        gridLayout.marginWidth = gridLayout.marginHeight = 0;
-        gridLayout.horizontalSpacing = 10;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the parent's grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            label.setLayoutData(gridData);
-        } else {
-            label = null;
-        }
+        // Create the composite holding the components, and
+        // the label if appropriate.
+        Composite panel = UiBuilder.buildComposite(parent, 3, SWT.NONE,
+                UiBuilder.CompositeType.SINGLE_ROW, specifier);
+        ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = specifier
+                .isHorizontalExpander();
+        label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the spinner.
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
@@ -152,7 +136,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
         spinner.setEnabled(specifier.isEnabled());
 
         // Place the spinner in the panel's grid.
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
         spinner.setLayoutData(gridData);
 
@@ -237,117 +221,72 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
 
     // Public Methods
 
-    /**
-     * Get the mutable property names for this megawidget.
-     * 
-     * @return Set of names for all mutable properties for this megawidget.
-     */
     @Override
     public Set<String> getMutablePropertyNames() {
         return MUTABLE_PROPERTY_NAMES;
     }
 
-    /**
-     * Get the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @return Mutable property value.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property.
-     */
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
-        if (name.equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        } else if (name
+                .equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
             return getCurrentUnit();
-        } else {
-            return super.getMutableProperty(name);
         }
+        return super.getMutableProperty(name);
     }
 
-    /**
-     * Set the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @param value
-     *            New mutable property value to be used.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property, or if the value
-     *             is invalid.
-     */
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
-        if (name.equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else if (name
+                .equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
             setCurrentUnit(value);
         } else {
             super.setMutableProperty(name, value);
         }
     }
 
-    /**
-     * Determine the left decoration width for this megawidget, if the widget
-     * has a decoration (label, etc.) to the left of its main component
-     * widget(s). This is used to query all sibling megawidgets to determine
-     * which one has the largest left decoration.
-     * 
-     * @return Width in pixels required for the left decoration of this
-     *         megawidget, or 0 if the megawidget has no left decoration.
-     */
     @Override
-    public int getLeftDecorationWidth() {
-        return (label == null ? 0 : getWidestWidgetWidth(label));
+    public final boolean isEditable() {
+        return helper.isEditable();
     }
 
-    /**
-     * Set the left decoration width for this megawidget to that specified, if
-     * the widget has a decoration to the left of its main component widget(s).
-     * This is used to set sibling megawidgets to all use the width of the
-     * largest left decoration used by the siblings, if any.
-     * 
-     * @param width
-     *            Width to be used if this megawidget has a left decoration.
-     */
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public int getLeftDecorationWidth() {
+        return (label == null ? 0 : helper.getWidestWidgetWidth(label));
+    }
+
     @Override
     public void setLeftDecorationWidth(int width) {
         if (label != null) {
-            setWidgetsWidth(width, label);
+            helper.setWidgetsWidth(width, label);
         }
     }
 
-    /**
-     * Determine the right decoration width for this megawidget, if the widget
-     * has a decoration (label, etc.) to the right of its main component
-     * widget(s). This is used to query all sibling megawidgets to determine
-     * which one has the largest right decoration.
-     * 
-     * @return Width in pixels required for the right decoration of this
-     *         megawidget, or 0 if the megawidget has no right decoration.
-     */
     @Override
     public int getRightDecorationWidth() {
-        return (combo == null ? (unitLabel == null ? 0
-                : getWidestWidgetWidth(unitLabel))
-                : getWidestWidgetWidth(combo));
+        return (combo == null ? (unitLabel == null ? 0 : helper
+                .getWidestWidgetWidth(unitLabel)) : helper
+                .getWidestWidgetWidth(combo));
     }
 
-    /**
-     * Set the right decoration width for this megawidget to that specified, if
-     * the widget has a decoration to the right of its main component widget(s).
-     * This is used to set sibling megawidgets to all use the width of the
-     * largest right decoration used by the siblings, if any.
-     * 
-     * @param width
-     *            Width to be used if this megawidget has a right decoration.
-     */
     @Override
     public void setRightDecorationWidth(int width) {
         if (combo != null) {
-            setWidgetsWidth(width, combo);
+            helper.setWidgetsWidth(width, combo);
         } else if (unitLabel != null) {
-            setWidgetsWidth(width, unitLabel);
+            helper.setWidgetsWidth(width, unitLabel);
         }
     }
 
@@ -405,32 +344,23 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
 
     // Protected Methods
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current boundaries.
-     */
+    @Override
+    protected void ensureValueRangeRepresentable(Long minimum, Long maximum)
+            throws MegawidgetPropertyException {
+
+        // No action; any long range is always representable.
+    }
+
     @Override
     protected final void synchronizeWidgetsToBounds() {
         setSpinnerParameters(unit);
     }
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
-     */
     @Override
     protected final void synchronizeWidgetsToState() {
         spinner.setSelection(unit.convertMillisecondsToUnit(state));
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -445,34 +375,6 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        spinner.getParent().setEnabled(editable);
-        spinner.setBackground(getBackgroundColor(editable, spinner, label));
-        if (combo != null) {
-            combo.setBackground(getBackgroundColor(editable, combo, label));
-        }
-    }
-
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected final Object doGetState(String identifier) {
         if (state == null) {
@@ -482,24 +384,6 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
                 .convertMillisecondsToUnit(state);
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -520,29 +404,6 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
         synchronizeWidgetsToState();
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by <code>getStateDescription() only
-     * after the latter has ensured that the supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            int minValue = getMinimumValue(); int maxValue =
-     *            getMaximumValue(); spinner.setMinimum(minValue);
-     *            spinner.setMaximum(maxValue); if (scale != null) {
-     *            scale.setMinimum(minValue); scale.setMaximum(maxValue); }
-     *            spinner.setTextLimit(Math.max(getDigitsForValue(minValue),
-     *            getDigitsForValue(maxValue)));
-     * 
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
@@ -553,6 +414,24 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> {
     }
 
     // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        spinner.getParent().setEnabled(editable);
+        spinner.setBackground(helper.getBackgroundColor(editable, spinner,
+                label));
+        if (combo != null) {
+            combo.setBackground(helper.getBackgroundColor(editable, combo,
+                    label));
+        }
+    }
 
     /**
      * Get the number of characters that are required to show the specified

@@ -23,8 +23,11 @@ import java.util.Map;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 30, 2013   1277     Chris.Golden      Initial creation.
- * 
+ * Apr 30, 2013    1277    Chris.Golden      Initial creation.
+ * Sep 26, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,7 +93,8 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      * 
      * @param parameters
      *            Map holding the parameters that will be used to configure a
-     *            widget created by this specifier as a set of key-value pairs.
+     *            megawidget created by this specifier as a set of key-value
+     *            pairs.
      * @param boundedValueClass
      *            Class of the bounded value; required in order to provide
      *            proper exception messages in situations where the bounding

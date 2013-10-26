@@ -16,9 +16,7 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +36,8 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -51,14 +51,19 @@ import com.google.common.collect.Sets;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 18, 2013   2168     Chris.Golden      Fixed bug that caused notification
+ *                                           of state change to be fired before
+ *                                           construction of the megawidget was
+ *                                           complete, and changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TimeScaleSpecifier
  */
-public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
+public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
+        implements IControl {
 
     // Protected Static Constants
 
@@ -69,6 +74,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
     static {
         Set<String> names = Sets
                 .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         names.add(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
         names.add(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -201,6 +207,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
      */
     private boolean changeInProgress = false;
 
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -217,6 +228,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
     protected TimeScaleMegawidget(TimeScaleSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
         // Create a panel in which to place the widgets. This
         // is needed in order to group the widgets properly into
@@ -250,8 +262,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
 
         // Iterate through the state identifiers, creating
         // components for each.
-        textsForIds = new HashMap<String, Text>();
-        labels = new ArrayList<Label>();
+        textsForIds = Maps.newHashMap();
+        labels = Lists.newArrayList();
         for (String identifier : specifier.getStateIdentifiers()) {
 
             // Create a label widget.
@@ -292,6 +304,9 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
             textsForIds.put(identifier, text);
         }
 
+        // Create the state map.
+        this.statesForIds = Maps.newHashMap();
+
         // Create the multi-thumbed scale component.
         scale = new MultiValueScale(panel,
                 (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_TIME),
@@ -307,8 +322,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         scale.setMinimumDeltaBetweenConstrainedThumbs(MINUTE_INTERVAL);
         long[] startingValues = new long[specifier.getStateIdentifiers().size()];
         for (int j = 0; j < startingValues.length; j++) {
-            startingValues[j] = scale.getMinimumAllowableValue()
-                    + (MINUTE_INTERVAL * j);
+            startingValues[j] = (startingValues.length == 1 ? (scale
+                    .getMinimumAllowableValue() + scale
+                    .getMaximumAllowableValue()) / 2L : scale
+                    .getMinimumAllowableValue() + (MINUTE_INTERVAL * j));
+            this.statesForIds.put(specifier.getStateIdentifiers().get(j),
+                    startingValues[j]);
         }
         scale.setConstrainedThumbValues(startingValues);
         for (int j = 1; j < startingValues.length; j++) {
@@ -321,22 +340,21 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         gridData.verticalIndent = specifier.getSpacing();
         scale.setLayoutData(gridData);
 
-        // Create the state map.
-        this.statesForIds = new HashMap<String, Long>();
-
         // Associate the state identifiers with the
         // components that go with them.
         for (String key : textsForIds.keySet()) {
             textsForIds.get(key).setData(key);
         }
 
+        // Update the text fields to match the starting
+        // values.
+        this.updateTextEntryFieldsToMatchScaleValues();
+
         // Binding the scale component's value change
         // events to trigger a change in the record
         // of the state for the widget, and a change
         // in the corresponding text component.
         scale.addMultiValueLinearControlListener(new IMultiValueLinearControlListener() {
-
-            private boolean initialized = false;
 
             @Override
             public void visibleValueRangeChanged(
@@ -352,11 +370,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                     MultiValueLinearControl.ChangeSource source) {
 
                 // If the change source is not user-
-                // GUI interaction and this method
-                // has been called at least once be-
-                // fore, do nothing
-                if (initialized
-                        && (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION)) {
+                // GUI interaction, do nothing
+                if (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION) {
                     return;
                 }
 
@@ -376,12 +391,9 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                     // it has changed, and if so,
                     // make a note of the new value
                     // and forward the change to any
-                    // listeners. If this is the first
-                    // time this method has been in-
-                    // voked, do it regardless.
+                    // listeners.
                     String identifier = stateIdentifiers.get(j);
-                    if ((initialized == false)
-                            || (statesForIds.get(identifier) == null)
+                    if ((statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
                         statesForIds.put(identifier, values[j]);
                         TimeScaleMegawidget.this.textsForIds.get(identifier)
@@ -389,10 +401,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                         notifyListener(identifier, values[j]);
                     }
                 }
-
-                // Remember that this method has been
-                // invoked.
-                initialized = true;
 
                 // Reset the in-progress flag.
                 changeInProgress = false;
@@ -409,12 +417,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                 // No action.
             }
         });
-
-        // Set the thumb values for the scale again in
-        // order to trigger updates of the text widgets
-        // to match said values, now that the above
-        // listener has been installed.
-        scale.setConstrainedThumbValues(startingValues);
 
         // Iterate through the state identifiers,
         // setting up text bindings for each of them.
@@ -448,52 +450,30 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
 
     // Public Methods
 
-    /**
-     * Get the mutable property names for this megawidget.
-     * 
-     * @return Set of names for all mutable properties for this megawidget.
-     */
     @Override
     public Set<String> getMutablePropertyNames() {
         return MUTABLE_PROPERTY_NAMES;
     }
 
-    /**
-     * Get the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @return Mutable property value.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property.
-     */
     @Override
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
-        if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        } else if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
             return getLowerVisibleTime();
         } else if (name.equals(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)) {
             return getUpperVisibleTime();
-        } else {
-            return super.getMutableProperty(name);
         }
+        return super.getMutableProperty(name);
     }
 
-    /**
-     * Set the current mutable property value for the specified name.
-     * 
-     * @param name
-     *            Name of the mutable property value to be fetched.
-     * @param value
-     *            New mutable property value to be used.
-     * @throws MegawidgetPropertyException
-     *             If the name specifies a nonexistent property, or if the value
-     *             is invalid.
-     */
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
-        if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
             setVisibleTimeRange(
                     getPropertyLongValueFromObject(value, name, null),
                     getUpperVisibleTime());
@@ -505,19 +485,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         }
     }
 
-    /**
-     * Set the mutable properties of this megawidget.
-     * 
-     * @param properties
-     *            Map containing keys drawn from the set of all valid property
-     *            names, with associated values being the new values for the
-     *            properties. Any property with a name-value pair found within
-     *            this map is set to the given value; all properties for which
-     *            no name-value pairs exist remain as they were before.
-     * @throws MegawidgetPropertyException
-     *             If at least one name specifies a nonexistent property, or if
-     *             at least one value is invalid.
-     */
     @Override
     public void setMutableProperties(Map<String, Object> properties)
             throws MegawidgetPropertyException {
@@ -571,35 +538,40 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         }
     }
 
-    /**
-     * Determine the left decoration width for this megawidget, if the widget
-     * has a decoration (label, etc.) to the left of its main component
-     * widget(s). This is used to query all sibling megawidgets to determine
-     * which one has the largest left decoration.
-     * 
-     * @return Width in pixels required for the left decoration of this
-     *         megawidget, or 0 if the megawidget has no left decoration.
-     */
     @Override
-    public int getLeftDecorationWidth() {
-        return ((labels == null) || (labels.size() == 0) ? 0
-                : getWidestWidgetWidth(labels.toArray(new Label[labels.size()])));
+    public final boolean isEditable() {
+        return helper.isEditable();
     }
 
-    /**
-     * Set the left decoration width for this megawidget to that specified, if
-     * the widget has a decoration to the left of its main component widget(s).
-     * This is used to set sibling megawidgets to all use the width of the
-     * largest left decoration used by the siblings, if any.
-     * 
-     * @param width
-     *            Width to be used if this megawidget has a left decoration.
-     */
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public int getLeftDecorationWidth() {
+        return ((labels == null) || (labels.size() == 0) ? 0 : helper
+                .getWidestWidgetWidth(labels.toArray(new Label[labels.size()])));
+    }
+
     @Override
     public void setLeftDecorationWidth(int width) {
         if ((labels != null) && (labels.size() > 0)) {
-            setWidgetsWidth(width, labels.toArray(new Label[labels.size()]));
+            helper.setWidgetsWidth(width,
+                    labels.toArray(new Label[labels.size()]));
         }
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
     }
 
     /**
@@ -634,14 +606,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
 
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (mainLabel != null) {
@@ -658,62 +622,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         scale.setEnabled(enable);
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component wigets are to be
-     *            editable or read-only.
-     */
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        for (Text text : textsForIds.values()) {
-            text.getParent().setEnabled(editable);
-            text.setBackground(getBackgroundColor(
-                    editable,
-                    text,
-                    ((labels == null) || (labels.size() == 0) ? (mainLabel == null ? null
-                            : mainLabel)
-                            : labels.get(0))));
-        }
-        scale.setEditable(editable);
-    }
-
-    /**
-     * Get the current state for the specified identifier. This method is called
-     * by <code>getState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier for which state is desired. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @return Object making up the current state for the specified identifier.
-     */
     @Override
     protected final Object doGetState(String identifier) {
         return statesForIds.get(identifier);
     }
 
-    /**
-     * Set the current state for the specified identifier. This method is called
-     * by <code>setState()</code> only after the latter has ensured that the
-     * supplied state identifier is valid, and has set a flag that indicates
-     * that this setting of the state will not trigger the megawidget to notify
-     * its listener of an invocation.
-     * 
-     * @param identifier
-     *            Identifier for which state is to be set. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state to be used for this identifier, or
-     *            <code>null</code> if this state should be reset.
-     * @throws MegawidgetStateException
-     *             If new state is not of a valid type for this <code>
-     *             StatefulWidget</code> implementation.
-     */
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
@@ -746,24 +659,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         changeInProgress = false;
     }
 
-    /**
-     * Get a shortened description of the specified state for the specified
-     * identifier. This method is called by
-     * <code>getStateDescription() only after
-     * the latter has ensured that the supplied state
-     * identifier is valid.
-     * 
-     * @param identifier
-     *            Identifier to which the state would be assigned.
-     *            Implementations may assume that the state identifier supplied
-     *            by this parameter is valid for this megawidget.
-     * @param state
-     *            State for which to generate a shortened description.
-     * @return Description of the specified state.
-     * @throws MegawidgetStateException
-     *             If the specified state is not of a valid type for this
-     *             <code>StatefulWidget </code> implementation.
-     */
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
@@ -771,21 +666,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
                 getStateLongValueFromObject(state, identifier, null), false));
     }
 
-    /**
-     * Ensure that the specified state is valid for the specified identifier.
-     * 
-     * @param identifier
-     *            Identifier for which state is intended. Implementations may
-     *            assume that the state identifier supplied by this parameter is
-     *            valid for this megawidget.
-     * @param state
-     *            Object making up the state that is intended for this
-     *            identifier, or <code>null</code> if the intention is to reset
-     *            the state.
-     * @throws MegawidgetStateException
-     *             If new state is not valid for this <code>
-     *             ExplicitCommitStatefulWidget</code> implementation.
-     */
     @Override
     protected void ensureStateIsValid(String identifier, Object state)
             throws MegawidgetStateException {
@@ -801,24 +681,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         }
     }
 
-    /**
-     * Commit all specified uncommitted states for their corresponding
-     * identifiers. This method is called by <code>commitStateChanges()</code>
-     * only after the latter has ensured that there are state changes in the
-     * specified mapping to be made, that they are valid, and after it has set a
-     * flag that indicates that this committing of the state will not trigger
-     * the widget to notify its listener of an invocation. This method should
-     * commit all state changes in an atomic fashion, that is, any
-     * interdependencies of the states should be checked only after all state
-     * changes have been committed.
-     * 
-     * @param newStatesForIds
-     *            Mapping from state identifiers to the uncommitted state
-     *            changes each should experience.
-     * @throws MegawidgetStateException
-     *             If the new states are not valid due to interdependency
-     *             conflicts.
-     */
     @Override
     protected void doCommitStateChanges(Map<String, Object> newStatesForIds)
             throws MegawidgetStateException {
@@ -861,6 +723,25 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
     }
 
     // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        for (Text text : textsForIds.values()) {
+            text.getParent().setEnabled(editable);
+            text.setBackground(helper
+                    .getBackgroundColor(editable, text, ((labels == null)
+                            || (labels.size() == 0) ? (mainLabel == null ? null
+                            : mainLabel) : labels.get(0))));
+        }
+        scale.setEditable(editable);
+    }
 
     /**
      * Format the specified epoch time in milliseconds as a date-time string.
@@ -941,5 +822,28 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget {
         } else {
             text.setText(formatAsDate(oldValue, true));
         }
+    }
+
+    /**
+     * Update the text entry fields to match the current values.
+     */
+    protected final void updateTextEntryFieldsToMatchScaleValues() {
+
+        // Set the flag indicating that the
+        // scale value should not be validated.
+        changeInProgress = true;
+
+        // Iterate through the thumbs, setting
+        // the text entry field for each to
+        // the value of that thumb.
+        TimeScaleSpecifier specifier = getSpecifier();
+        List<String> stateIdentifiers = specifier.getStateIdentifiers();
+        for (String stateIdentifier : stateIdentifiers) {
+            textsForIds.get(stateIdentifier).setText(
+                    formatAsDate(statesForIds.get(stateIdentifier), true));
+        }
+
+        // Reset the in-progress flag.
+        changeInProgress = false;
     }
 }

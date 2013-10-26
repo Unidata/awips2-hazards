@@ -10,11 +10,15 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Label megawidget created by a label megawidget specifier.
@@ -25,14 +29,28 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 26, 2013    2168    Chris.Golden      Added ability to handle new wrap
+ *                                           flag, and to implement new
+ *                                           IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see LabelSpecifier
  */
-public class LabelMegawidget extends Megawidget {
+public class LabelMegawidget extends Megawidget implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets.newHashSet(Megawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -40,6 +58,11 @@ public class LabelMegawidget extends Megawidget {
      * Label.
      */
     private final Label label;
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
 
     // Protected Constructors
 
@@ -57,9 +80,10 @@ public class LabelMegawidget extends Megawidget {
     protected LabelMegawidget(LabelSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier);
+        helper = new ControlComponentHelper(specifier);
 
         // Create a label widget.
-        label = new Label(parent, SWT.WRAP);
+        label = new Label(parent, (specifier.isToWrap() ? SWT.WRAP : SWT.NONE));
         label.setText(specifier.getLabel());
         label.setEnabled(specifier.isEnabled());
 
@@ -70,36 +94,90 @@ public class LabelMegawidget extends Megawidget {
         // sized.
         GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gridData.horizontalSpan = specifier.getWidth();
-        specifier.ensureChildIsResizedWithParent(parent, label);
+        if (specifier.isToWrap()) {
+            specifier.ensureChildIsResizedWithParent(parent, label);
+        }
         gridData.verticalIndent = specifier.getSpacing();
         label.setLayoutData(gridData);
     }
 
+    // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the widget components are to be
-     *            enabled or disabled.
-     */
     @Override
     protected void doSetEnabled(boolean enable) {
         label.setEnabled(enable);
     }
+
+    // Private Methods
 
     /**
      * Change the component widgets to ensure their state matches that of the
      * editable flag.
      * 
      * @param editable
-     *            Flag indicating whether the widget components are to be
+     *            Flag indicating whether the component widgets are to be
      *            editable or read-only.
      */
-    @Override
-    protected final void doSetEditable(boolean editable) {
+    private void doSetEditable(boolean editable) {
 
         // No action.
     }

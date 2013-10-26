@@ -9,10 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Base class for megawidget specifiers that include a hierarchical list of
@@ -39,7 +40,7 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation.
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,11 +137,11 @@ public class HierarchicalChoicesMegawidgetSpecifier extends
         // the old list. If an element is a map, then make a
         // copy of the map instead of using the original, and
         // also copy the child list within that map.
-        List<Object> listCopy = new ArrayList<Object>();
+        List<Object> listCopy = Lists.newArrayList();
         for (Object item : list) {
             if (item instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) item;
-                Map<String, Object> mapCopy = new HashMap<String, Object>();
+                Map<String, Object> mapCopy = Maps.newHashMap();
                 for (Object key : map.keySet()) {
                     if (key.equals(HierarchicalChoicesMegawidgetSpecifier.CHOICE_CHILDREN)) {
                         mapCopy.put((String) key,

@@ -11,19 +11,21 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Checklist megawidget, allowing the selection of zero or more choices, each
@@ -36,14 +38,32 @@ import org.eclipse.swt.widgets.TableItem;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look. Also changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckListSpecifier
  */
-public class CheckListMegawidget extends MultipleChoicesMegawidget {
+public class CheckListMegawidget extends MultipleChoicesMegawidget implements
+        IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -63,7 +83,7 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
     private final Button allButton;
 
     /**
-     * Deslect all items button.
+     * Deselect all items button.
      */
     private final Button noneButton;
 
@@ -83,6 +103,11 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
      */
     private String selectedChoiceIdentifier;
 
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -99,40 +124,21 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
     protected CheckListMegawidget(CheckListSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is needed in order to group the widgets pro-
-        // perly into a single megawidget.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(1, true);
-        gridLayout.marginWidth = 0;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-        } else {
-            label = null;
-        }
+        // Create a panel in which to place the widgets and
+        // a label, if appropriate.
+        Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
+                UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
+                specifier);
+        label = UiBuilder.buildLabel(panel, specifier);
 
         // Create a table to hold the checkable choices.
         table = new Table(panel, SWT.CHECK | SWT.BORDER | SWT.FULL_SELECTION);
         table.setLinesVisible(false);
         table.setHeaderVisible(false);
         table.setEnabled(specifier.isEnabled());
-        gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         table.setLayoutData(gridData);
         new TableColumn(table, SWT.NONE);
 
@@ -151,44 +157,30 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
         gridData.heightHint = (specifier.getNumVisibleLines() * table
                 .getItemHeight()) + 7;
 
-        // Add the Select All and Select None buttons, if appropriate.
-        if (specifier.shouldShowAllNoneButtons()) {
-            Composite allNoneContainer = new Composite(panel, SWT.FILL);
-            FillLayout fillLayout = new FillLayout();
-            fillLayout.spacing = 10;
-            fillLayout.marginWidth = 10;
-            fillLayout.marginHeight = 5;
-            allNoneContainer.setLayout(fillLayout);
-            allButton = new Button(allNoneContainer, SWT.PUSH);
-            allButton.setText("  All  ");
-            allButton.setEnabled(specifier.isEnabled()
-                    && specifier.isEditable());
-            allButton.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    ChoicesMegawidgetSpecifier specifier = getSpecifier();
-                    state.clear();
-                    for (Object choice : choices) {
-                        state.add(specifier.getIdentifierOfNode(choice));
+        // Add the Select All and Select None buttons if appropriate.
+        List<Button> buttons = UiBuilder.buildAllNoneButtons(panel, specifier,
+                new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        ChoicesMegawidgetSpecifier specifier = getSpecifier();
+                        state.clear();
+                        for (Object choice : choices) {
+                            state.add(specifier.getIdentifierOfNode(choice));
+                        }
+                        setAllItemsCheckedState(true);
+                        notifyListeners();
                     }
-                    setAllItemsCheckedState(true);
-                    notifyListeners();
-                }
-            });
-            noneButton = new Button(allNoneContainer, SWT.PUSH);
-            noneButton.setText("  None  ");
-            noneButton.setEnabled(specifier.isEnabled()
-                    && specifier.isEditable());
-            noneButton.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    state.clear();
-                    setAllItemsCheckedState(false);
-                    notifyListeners();
-                }
-            });
-            allNoneContainer.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER,
-                    true, false));
+                }, new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        state.clear();
+                        setAllItemsCheckedState(false);
+                        notifyListeners();
+                    }
+                });
+        if (buttons.isEmpty() == false) {
+            allButton = buttons.get(0);
+            noneButton = buttons.get(1);
         } else {
             allButton = noneButton = null;
         }
@@ -236,6 +228,63 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
     }
 
     // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
 
     /**
      * Get the available choices hierarchy.
@@ -327,16 +376,23 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    @Override
-    protected final void doSetEditable(boolean editable) {
-        table.setBackground(getBackgroundColor(editable, table, label));
+    // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
+        table.setBackground(helper.getBackgroundColor(editable, table, label));
         if (allButton != null) {
             allButton.setEnabled(isEnabled() && editable);
             noneButton.setEnabled(isEnabled() && editable);
         }
     }
-
-    // Private Methods
 
     /**
      * Create the table items for the choices.

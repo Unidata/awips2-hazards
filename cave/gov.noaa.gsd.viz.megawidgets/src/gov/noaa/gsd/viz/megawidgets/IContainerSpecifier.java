@@ -9,15 +9,18 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.List;
-
 /**
  * Interface describing the methods to be implemented by a megawidget specifier
- * that is a container for other megawidget specifiers. Any subclasses of <code>
+ * that is a container for other megawidget specifiers, providing configurable
+ * padding and column layout for its children. Any subclasses of <code>
  * MegawidgetSpecifier</code> must implement this interface if they are to hold
- * other megawidget specifiers. Also, any such subclasses must only produce
- * <code>Megawidget</code> objects that implement the <code>IContainer</code>
- * interface.
+ * other megawidget specifiers and offer such configurable layout options. Also,
+ * any such subclasses must only produce <code>Megawidget</code> objects that
+ * implement the <code>IParent</code> interface. The <code>C</code> parameter
+ * indicates what type of <code>ISpecifier</code> each child specifier must be.
+ * <p>
+ * Note that each instance of this interface should use an instance of <code>
+ * ChildSpecifiersManager</code> to manage its child specifiers.
  * 
  * <pre>
  * 
@@ -25,16 +28,21 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Added column spacing parameter,
+ *                                           and changed to extend
+ *                                           IParentSpecifier and to have
+ *                                           the generic C parameter.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see IContainer
+ * @see IParent
  * @see Megawidget
  * @see MegawidgetSpecifier
+ * @see ChildSpecifiersManager
  */
-public interface IContainerSpecifier {
+public interface IContainerSpecifier<C extends ISpecifier> extends
+        IParentSpecifier<C> {
 
     // Public Static Constants
 
@@ -67,6 +75,13 @@ public interface IContainerSpecifier {
     public static final String BOTTOM_MARGIN = "bottomMargin";
 
     /**
+     * Column spacing parameter name; a megawidget may include a non-negative
+     * integer associated with this name to indicate that it wishes to this many
+     * pixels between columns. If not specified, 15 pixels are used by default.
+     */
+    public static final String COLUMN_SPACING = "columnSpacing";
+
+    /**
      * Expand to fill horizontal space parameter name; a megawidget may include
      * a boolean associated with this name to indicate whether or not the
      * container megawidget should expand to fill any available horizontal space
@@ -84,25 +99,7 @@ public interface IContainerSpecifier {
      */
     public static final String EXPAND_VERTICALLY = "expandVertically";
 
-    /**
-     * Megawidget specifier factory parameter name; each container widget
-     * specifier must contain a reference to an
-     * <code>IMegawidgetSpecifierFactory</code> object associated with this
-     * name. The provided factory will be used to construct any child megawidget
-     * specifiers of the container.
-     */
-    public static final String MEGAWIDGET_SPECIFIER_FACTORY = "widgetSpecifierFactory";
-
     // Public Methods
-
-    /**
-     * Get the list of all megawidget specifiers that are children of this
-     * specifier.
-     * 
-     * @return List of child megawidget specifiers; this list must not be
-     *         modified by the caller.
-     */
-    public List<MegawidgetSpecifier> getChildMegawidgetSpecifiers();
 
     /**
      * Get the left margin.
@@ -133,6 +130,13 @@ public interface IContainerSpecifier {
     public int getBottomMargin();
 
     /**
+     * Get the column spacing.
+     * 
+     * @return Column spacing.
+     */
+    public int getColumnSpacing();
+
+    /**
      * Determine whether or not the megawidget is to expand to take up available
      * horizontal space within its parent.
      * 
@@ -149,11 +153,4 @@ public interface IContainerSpecifier {
      *         vertically.
      */
     public boolean isVerticalExpander();
-
-    /**
-     * Get the megawidget specifier factory.
-     * 
-     * @return Megawidget specifier factory.
-     */
-    public IMegawidgetSpecifierFactory getMegawidgetSpecifierFactory();
 }

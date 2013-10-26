@@ -44,14 +44,14 @@ class HazardServicesImporter(object):
         system modules if one by this name doesn't already
         exist.
         @param full_name: The full name of the module to create.
-        @return: A module representing the import. 
+        @return: A module represesnting the import. 
         """
         mod = sys.modules.get(full_name)
         
         if mod is None:
             mod = imp.new_module(full_name)
             mod.__loader__ = self
-            commandString = full_name + " = " + json.dumps(self.data)
+            commandString = HazardServicesImporter.formatAsPythonInit(self.data, full_name)   
             exec commandString in mod.__dict__ 
             sys.modules[full_name] = mod
         
@@ -68,12 +68,10 @@ class HazardServicesImporter(object):
         if module_name in self.metaDataFileList: 
             criteria = {'filter':{'name':module_name}, 'incrementalOverride':self.incrementalOverrideImports,\
                         'incrementalOverrideImports':self.incrementalOverrideImports}
-            #print "HazardServicesImporter: criteria: ", criteria 
             hazardMetaData = HazardServicesConfig.HazardServicesConfig("hazardMetaData")
             configData = hazardMetaData.getConfigData(criteria)
             return configData if (configData is not None and len(configData) > 0) else None
         else:
-            #print "Skipped: ", module_name
             return None 
     
     def checkCategories (self, module_name):
@@ -87,13 +85,11 @@ class HazardServicesImporter(object):
         if module_name in self.categoriesFileList:
             criteria = {'filter':{'name':module_name}, 'incrementalOverride':self.incrementalOverrideImports,\
                         'incrementalOverrideImports':self.incrementalOverrideImports}
-            #print "HazardServicesImporter: critieria ", criteria 
 
             hazardCategories = HazardServicesConfig.HazardServicesConfig("hazardCategories")
             configData = hazardCategories.getConfigData(criteria)
             return configData if (configData is not None and len(configData) > 0) else None
         else:
-            #print "Skipped: ", module_name
             return None
     
     def checkForHazardConfig (self, module_name):
@@ -114,3 +110,41 @@ class HazardServicesImporter(object):
         if HazardServicesImporter.singleInstance is None:
                 HazardServicesImporter.singleInstance = HazardServicesImporter(incrementalOverrideImports=incrementalOverrideImports)
         return HazardServicesImporter.singleInstance
+    
+    @staticmethod
+    def formatAsPythonInit(dataObject, variableName) :
+        """
+        This method formats an object into python that can initialize the
+        indicated variable as this object.
+        @param dataObject:  The data object to translate into python.
+        @param variableName: The name of the variable to assign the translated
+                             data object to. 
+        """
+        result = json.dumps(dataObject, indent=4)
+
+        # JSON has different representations for the python symbols
+        # None, True, and False.
+        c1 = 0
+        c2 = result.find('"',c1)
+        while True :
+            if c2<0 :
+                c2 = len(result)
+            if c2-c1>4 :
+                c = result.find("null",c1,c2)
+                while c>=0 :
+                    result = result[:c]+"None"+result[c+4:]
+                    c = result.find("null",c+4,c2)
+                c = result.find("true",c1,c2)
+                while c>=0 :
+                    result = result[:c]+"True"+result[c+4:]
+                    c = result.find("true",c+4,c2)
+                c = result.find("false",c1,c2)
+                while c>=0 :
+                    result = result[:c]+"False"+result[c+5:]
+                    c = result.find("false",c+5,c2)
+            c1 = result.find('"',c2+1)
+            if c1<0 :
+                break
+            c2 = result.find('"',c1+1)
+
+        return variableName + " = \\\n" + result + "\n"

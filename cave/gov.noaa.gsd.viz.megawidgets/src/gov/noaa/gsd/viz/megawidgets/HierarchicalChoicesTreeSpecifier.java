@@ -26,7 +26,11 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 21, 2013    2168    Chris.Golden      Changed to implement IControlSpecifier
+ *                                           and use ControlSpecifierOptionsManager,
+ *                                           and also to implement new interfaces
+ *                                           IMultiSelectableSpecifier and
+ *                                           IMultiLineSpecifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,28 +38,15 @@ import java.util.Map;
  * @see HierarchicalChoicesTreeMegawidget
  */
 public class HierarchicalChoicesTreeSpecifier extends
-        HierarchicalChoicesMegawidgetSpecifier {
-
-    // Public Static Constants
-
-    /**
-     * Megawidget number of visible lines parameter name; a megawidget may
-     * include a positive integer associated with this name to indicate that it
-     * wishes to have this number of rows visible at once. If not specified, the
-     * number of visible lines is assumed to be 6.
-     */
-    public static final String MEGAWIDGET_VISIBLE_LINES = "lines";
-
-    /**
-     * Megawidget include-select-all/select-none-buttons parameter name; a
-     * megawidget may include a boolean value associated with this name to
-     * indicate whether or not it wishes to have All and None buttons included
-     * to allow the user to easily select or deselect all the items in the check
-     * list. If not specified, it is assumed to be true.
-     */
-    public static final String MEGAWIDGET_SHOW_ALL_NONE_BUTTONS = "showAllNoneButtons";
+        HierarchicalChoicesMegawidgetSpecifier implements IControlSpecifier,
+        IMultiSelectableSpecifier, IMultiLineSpecifier {
 
     // Private Variables
+
+    /**
+     * Control options manager.
+     */
+    private final ControlSpecifierOptionsManager optionsManager;
 
     /**
      * Number of visible lines.
@@ -83,6 +74,8 @@ public class HierarchicalChoicesTreeSpecifier extends
     public HierarchicalChoicesTreeSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
         // Ensure that the visible lines count, if present,
         // is acceptable, and if not present is assigned a
@@ -105,21 +98,32 @@ public class HierarchicalChoicesTreeSpecifier extends
 
     // Public Methods
 
-    /**
-     * Get the number of visible lines.
-     * 
-     * @return Number of visible lines.
-     */
+    @Override
+    public final boolean isEditable() {
+        return optionsManager.isEditable();
+    }
+
+    @Override
+    public final int getWidth() {
+        return optionsManager.getWidth();
+    }
+
+    @Override
+    public final boolean isFullWidthOfColumn() {
+        return optionsManager.isFullWidthOfColumn();
+    }
+
+    @Override
+    public final int getSpacing() {
+        return optionsManager.getSpacing();
+    }
+
+    @Override
     public final int getNumVisibleLines() {
         return numVisibleLines;
     }
 
-    /**
-     * Determine whether or not the All and None buttons should be shown.
-     * 
-     * @return Flag indicating whether or not the All and None buttons should be
-     *         shown.
-     */
+    @Override
     public final boolean shouldShowAllNoneButtons() {
         return showAllNoneButtons;
     }

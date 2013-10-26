@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 
 /**
  * Time scale megawidget specifier, providing specification of a megawidget that
@@ -28,14 +28,17 @@ import com.google.common.collect.ImmutableMap;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Changed to implement IControlSpecifier
+ *                                           and use ControlSpecifierOptionsManager
+ *                                           (composition over inheritance).
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TimeScaleMegawidget
  */
-public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
+public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
+        IControlSpecifier {
 
     // Public Static Constants
 
@@ -74,6 +77,11 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
     // Private Variables
 
     /**
+     * Control options manager.
+     */
+    private final ControlSpecifierOptionsManager optionsManager;
+
+    /**
      * Map pairing state identifier keys with their indices in the list provided
      * by the <code>getStateIdentifiers()</code> method.
      */
@@ -94,10 +102,12 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
     public TimeScaleSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
         // Compile a mapping of state identifiers to their
         // indices (giving their ordering).
-        Map<String, Integer> indicesForIds = new HashMap<String, Integer>();
+        Map<String, Integer> indicesForIds = Maps.newHashMap();
         List<String> stateIdentifiers = getStateIdentifiers();
         for (int j = 0; j < stateIdentifiers.size(); j++) {
             indicesForIds.put(stateIdentifiers.get(j), j);
@@ -106,6 +116,26 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
     }
 
     // Public Methods
+
+    @Override
+    public final boolean isEditable() {
+        return optionsManager.isEditable();
+    }
+
+    @Override
+    public final int getWidth() {
+        return optionsManager.getWidth();
+    }
+
+    @Override
+    public final boolean isFullWidthOfColumn() {
+        return optionsManager.isFullWidthOfColumn();
+    }
+
+    @Override
+    public final int getSpacing() {
+        return optionsManager.getSpacing();
+    }
 
     /**
      * Get the mapping of state identifier keys to their indices in the list
@@ -119,19 +149,6 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier {
 
     // Protected Methods
 
-    /**
-     * Get the maximum number of state identifiers that may be associated with
-     * the megawidget specifier. Subclasses may thus indicate how many different
-     * state identifiers they may be associated with at once.
-     * <p>
-     * <strong>Note</strong>: This method is invoked during
-     * <code>StatefulMegawidgetSpecifier</code> construction, and thus must be
-     * implemented to not rely upon (or alter) subclass-member-specific
-     * variables. Thus, it should return a constant.
-     * 
-     * @return Maximum number of state identifiers that may be associated with
-     *         the megawidget specifier.
-     */
     @Override
     protected int getMaximumStateIdentifierCount() {
 

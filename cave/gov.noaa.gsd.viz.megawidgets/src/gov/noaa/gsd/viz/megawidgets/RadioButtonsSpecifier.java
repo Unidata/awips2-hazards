@@ -12,7 +12,9 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.util.Map;
 
 /**
- * Radio buttons megawidget specifier.
+ * Radio buttons megawidget specifier. Each radio button may have zero or more
+ * detail fields associated with it, each of the latter being itself a
+ * megawidget.
  * 
  * <pre>
  * 
@@ -20,15 +22,17 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Apr 30, 2013    1277    Chris.Golden      Added support for mutable properties.
+ * Sep 25, 2013    2168    Chris.Golden      Added support for optional detail
+ *                                           fields next to the choice buttons.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see RadioButtonsMegawidget
  */
-public class RadioButtonsSpecifier extends FlatChoicesMegawidgetSpecifier {
+public class RadioButtonsSpecifier extends
+        FlatChoicesWithDetailMegawidgetSpecifier {
 
     // Public Constructors
 

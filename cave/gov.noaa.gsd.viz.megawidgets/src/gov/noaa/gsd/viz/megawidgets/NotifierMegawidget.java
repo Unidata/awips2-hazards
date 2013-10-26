@@ -21,7 +21,10 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Replaced erroneous references
+ *                                           (variable names, comments, etc.) to
+ *                                           "widget" with "megawidget" to avoid
+ *                                           confusion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,8 +51,8 @@ public abstract class NotifierMegawidget extends Megawidget implements
      * @param specifier
      *            Specifier.
      * @param paramMap
-     *            Hash table mapping widget creation time parameter identifiers
-     *            to values.
+     *            Hash table mapping megawidget creation time parameter
+     *            identifiers to values.
      */
     protected NotifierMegawidget(NotifierMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {

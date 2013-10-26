@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.DND;
@@ -39,6 +38,10 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
 
 /**
@@ -52,14 +55,32 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Replaced some GUI creation code with
+ *                                           calls to UiBuilder methods to avoid
+ *                                           code duplication and encourage uni-
+ *                                           form look, and changed to implement
+ *                                           new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ListBuilderSpecifier
  */
-public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
+public class ListBuilderMegawidget extends MultipleChoicesMegawidget implements
+        IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -157,7 +178,8 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     /**
      * Map of choice identifiers to their names.
      */
-    private final Map<String, String> choiceNamesForIdentifiers = new HashMap<String, String>();
+    private final Map<String, String> choiceNamesForIdentifiers = Maps
+            .newHashMap();
 
     /**
      * Last position of the available table's vertical scrollbar. This is used
@@ -181,7 +203,8 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      * or one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
-    private final List<String> selectedAvailableChoiceIdentifiers = new ArrayList<String>();
+    private final List<String> selectedAvailableChoiceIdentifiers = Lists
+            .newArrayList();
 
     /**
      * List of choices in the selected table that were last selected. This is
@@ -189,7 +212,13 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
      * or one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
-    private final List<String> selectedSelectedChoiceIdentifiers = new ArrayList<String>();
+    private final List<String> selectedSelectedChoiceIdentifiers = Lists
+            .newArrayList();
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
 
     // Protected Constructors
 
@@ -207,19 +236,15 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     protected ListBuilderMegawidget(ListBuilderSpecifier specifier,
             Composite parent, Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is needed in order to group the widgets pro-
-        // perly into a single megawidget.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(4, false);
-        gridLayout.marginWidth = 0;
-        gridLayout.horizontalSpacing = 13;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
+        // Create the panel that will contain the components,
+        // and customize its horizontal spacing to be more
+        // appropriate for this megawidget.
+        Composite panel = UiBuilder.buildComposite(parent, 4, SWT.NONE,
+                UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
+                specifier);
+        ((GridLayout) panel.getLayout()).horizontalSpacing = 13;
 
         // Create the button images supplier.
         imagesSupplier = new ButtonImages(panel);
@@ -234,19 +259,8 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
 
         // Add a label for the available items list if one
         // is required.
-        if (availableText != null) {
-
-            // Create a label widget.
-            availableLabel = new Label(panel, SWT.NONE);
-            availableLabel.setText(availableText);
-            availableLabel.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            availableLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER,
-                    false, false));
-        } else {
-            availableLabel = null;
-        }
+        availableLabel = (availableText != null ? UiBuilder.buildLabel(panel,
+                availableText, specifier) : null);
 
         // If at least one label is being used, add a
         // spacer to fill the space between the labels,
@@ -269,7 +283,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
             // the seledcted list is labeled, meaning
             // the two columns to the left of that label
             // must be filled by the spacer.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+            GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             gridData.horizontalSpan = ((availableText != null)
                     && (selectedText != null) ? 1 : (availableText != null ? 3
                     : 2));
@@ -277,25 +291,19 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
             spacer.setLayoutData(gridData);
         }
 
-        // Add a label for the selected items list if one
-        // is required; if not, then add a spacer if one
-        // was created for the available items list.
+        // Add a label for the selected items list and a
+        // spacer to its right if the label is appropriate.
         if (selectedText != null) {
 
-            // Create a label widget.
-            selectedLabel = new Label(panel, SWT.NONE);
-            selectedLabel.setText(selectedText);
-            selectedLabel.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            selectedLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER,
-                    false, false));
+            // Create the label.
+            selectedLabel = UiBuilder
+                    .buildLabel(panel, selectedText, specifier);
 
             // Create a spacer widget.
             Composite spacer = new Composite(panel, SWT.NONE);
 
             // Place the spacer in the grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+            GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             gridData.widthHint = gridData.heightHint = 1;
             spacer.setLayoutData(gridData);
         } else {
@@ -305,22 +313,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // Associate choice identifiers with their names.
         associateChoiceIdentifiersWithNames();
 
-        // Create the available items list. A table is
-        // used because tables offer functionality like
-        // being able to determine what row lies under
-        // a given point.
-        availableTable = new Table(panel, SWT.BORDER + SWT.MULTI
-                + SWT.FULL_SELECTION);
-        availableTable.setHeaderVisible(false);
-        availableTable.setLinesVisible(false);
-        availableTable.setEnabled(specifier.isEnabled());
-        TableColumn column = new TableColumn(availableTable, SWT.NONE);
-        for (Object choice : choices) {
-            TableItem item = new TableItem(availableTable, SWT.NONE);
-            item.setText(0, specifier.getNameOfNode(choice));
-            item.setData(specifier.getIdentifierOfNode(choice));
-        }
-        column.pack();
+        // Create the table selection listener.
         SelectionListener listListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -329,31 +322,20 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
                 }
             }
         };
-        availableTable.addSelectionListener(listListener);
-        gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        availableTable.setLayoutData(gridData);
 
-        // Determine the height of the list. This must
-        // be done after the above to ensure it will have
-        // the right height. Unfortunately using either
-        // computeSize() or computeTrim() to try to get
-        // the extra vertical space required for the
-        // borders, etc. seems to return a bizarrely high
-        // value (20 even without a header showing), so
-        // an arbitrary number of pixels is added in this
-        // case as a cheesy workaround.
-        gridData.heightHint = (specifier.getNumVisibleLines() * availableTable
-                .getItemHeight()) + 7;
+        // Create the available items table.
+        availableTable = buildTable(panel, listListener, specifier);
+        TableColumn column = availableTable.getColumn(0);
+        for (Object choice : choices) {
+            TableItem item = new TableItem(availableTable, SWT.NONE);
+            item.setText(0, specifier.getNameOfNode(choice));
+            item.setData(specifier.getIdentifierOfNode(choice));
+        }
+        column.pack();
 
         // Create a panel to hold the buttons between the
         // two lists.
-        Composite middlePanel = new Composite(panel, SWT.NONE);
-        FillLayout fillLayout = new FillLayout(SWT.VERTICAL);
-        fillLayout.spacing = 5;
-        middlePanel.setLayout(fillLayout);
-        gridData = new GridData(SWT.CENTER, SWT.CENTER, false, true);
-        gridData.widthHint = 50;
-        middlePanel.setLayoutData(gridData);
+        Composite middlePanel = buildButtonPanel(panel);
 
         // Create the button listener.
         SelectionListener buttonListener = new SelectionAdapter() {
@@ -387,71 +369,30 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         };
 
         // Create the add and remove buttons.
-        addAll = new Button(middlePanel, SWT.PUSH);
-        addAll.setImage(imagesSupplier
-                .getImage(ButtonImages.ButtonImage.AddAll));
-        addAll.addSelectionListener(buttonListener);
-
-        addSelected = new Button(middlePanel, SWT.PUSH);
-        addSelected.setImage(imagesSupplier
-                .getImage(ButtonImages.ButtonImage.Add));
-        addSelected.addSelectionListener(buttonListener);
-
-        removeSelected = new Button(middlePanel, SWT.PUSH);
-        removeSelected.setImage(imagesSupplier
-                .getImage(ButtonImages.ButtonImage.Remove));
-        removeSelected.addSelectionListener(buttonListener);
-
-        removeAll = new Button(middlePanel, SWT.PUSH);
-        removeAll.setImage(imagesSupplier
-                .getImage(ButtonImages.ButtonImage.RemoveAll));
-        removeAll.addSelectionListener(buttonListener);
+        addAll = buildButton(middlePanel, ButtonImages.ButtonImage.AddAll,
+                buttonListener);
+        addSelected = buildButton(middlePanel, ButtonImages.ButtonImage.Add,
+                buttonListener);
+        removeSelected = buildButton(middlePanel,
+                ButtonImages.ButtonImage.Remove, buttonListener);
+        removeAll = buildButton(middlePanel,
+                ButtonImages.ButtonImage.RemoveAll, buttonListener);
 
         // Create the selected items list. As with the
         // available items list, a table is used instead
         // of a list due to the additional functionality
         // provided in SWT by tables over lists.
-        selectedTable = new Table(panel, SWT.BORDER + SWT.MULTI
-                + SWT.FULL_SELECTION);
-        selectedTable.setHeaderVisible(false);
-        selectedTable.setLinesVisible(false);
-        selectedTable.setEnabled(specifier.isEnabled());
-        column = new TableColumn(selectedTable, SWT.NONE);
-        selectedTable.addSelectionListener(listListener);
-        gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-        selectedTable.setLayoutData(gridData);
-
-        // Determine the height of the list. This must
-        // be done after the above to ensure it will have
-        // the right height. Unfortunately using either
-        // computeSize() or computeTrim() to try to get
-        // the extra vertical space required for the
-        // borders, etc. seems to return a bizarrely high
-        // value (20 even without a header showing), so
-        // an arbitrary number of pixels is added in this
-        // case as a cheesy workaround.
-        gridData.heightHint = (specifier.getNumVisibleLines() * selectedTable
-                .getItemHeight()) + 7;
+        selectedTable = buildTable(panel, listListener, specifier);
 
         // Create a panel to hold the buttons to the right
         // of the selected list.
-        Composite rightPanel = new Composite(panel, SWT.NONE);
-        fillLayout = new FillLayout(SWT.VERTICAL);
-        fillLayout.spacing = 5;
-        rightPanel.setLayout(fillLayout);
-        gridData = new GridData(SWT.CENTER, SWT.CENTER, false, true);
-        gridData.widthHint = 50;
-        rightPanel.setLayoutData(gridData);
+        Composite rightPanel = buildButtonPanel(panel);
 
         // Create the move up and down buttons.
-        moveUp = new Button(rightPanel, SWT.PUSH);
-        moveUp.setImage(imagesSupplier.getImage(ButtonImages.ButtonImage.Up));
-        moveUp.addSelectionListener(buttonListener);
-
-        moveDown = new Button(rightPanel, SWT.PUSH);
-        moveDown.setImage(imagesSupplier
-                .getImage(ButtonImages.ButtonImage.Down));
-        moveDown.addSelectionListener(buttonListener);
+        moveUp = buildButton(rightPanel, ButtonImages.ButtonImage.Up,
+                buttonListener);
+        moveDown = buildButton(rightPanel, ButtonImages.ButtonImage.Down,
+                buttonListener);
 
         // Set the state of the buttons appropriately.
         enableOrDisableButtons();
@@ -496,7 +437,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
                     // empty string causes an excep-
                     // tion to be thrown.
                     if (dropTargetList == null) {
-                        StringBuffer buffer = new StringBuffer();
+                        StringBuilder buffer = new StringBuilder();
                         for (String choice : getItemsFromList(dragSourceList,
                                 true, false, null)) {
                             if (buffer.length() > 0) {
@@ -677,6 +618,63 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
 
     // Public Methods
 
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
     /**
      * Get the available choices hierarchy.
      * 
@@ -744,7 +742,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         for (Table table : tables) {
             List<String> selectedChoiceIdentifiers = (table == availableTable ? selectedAvailableChoiceIdentifiers
                     : selectedSelectedChoiceIdentifiers);
-            List<TableItem> selectedTableItems = new ArrayList<TableItem>();
+            List<TableItem> selectedTableItems = Lists.newArrayList();
             for (TableItem item : table.getItems()) {
                 if (selectedChoiceIdentifiers.contains(item.getData())) {
                     selectedTableItems.add(item);
@@ -812,17 +810,104 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         enableOrDisableButtons();
     }
 
-    @Override
-    protected void doSetEditable(boolean editable) {
+    // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
         Label label = (availableLabel != null ? availableLabel : selectedLabel);
-        availableTable.setBackground(getBackgroundColor(editable,
+        availableTable.setBackground(helper.getBackgroundColor(editable,
                 availableTable, label));
-        selectedTable.setBackground(getBackgroundColor(editable, selectedTable,
-                label));
+        selectedTable.setBackground(helper.getBackgroundColor(editable,
+                selectedTable, label));
         enableOrDisableButtons();
     }
 
-    // Private Methods
+    /**
+     * Create a table.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @param listener
+     *            Selection listener for the table.
+     * @param specifier
+     *            Megawidget specifier.
+     * @return New table.
+     */
+    private Table buildTable(Composite parent, SelectionListener listener,
+            ListBuilderSpecifier specifier) {
+
+        // Create the list. A table is used because tables
+        // offer functionality like being able to determine
+        // what row lies under a given point.
+        Table table = new Table(parent, SWT.BORDER + SWT.MULTI
+                + SWT.FULL_SELECTION);
+        table.setHeaderVisible(false);
+        table.setLinesVisible(false);
+        table.setEnabled(specifier.isEnabled());
+        new TableColumn(table, SWT.NONE);
+        table.addSelectionListener(listener);
+        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        table.setLayoutData(gridData);
+
+        // Determine the height of the list. This must
+        // be done after the above to ensure it will have
+        // the right height. Unfortunately using either
+        // computeSize() or computeTrim() to try to get
+        // the extra vertical space required for the
+        // borders, etc. seems to return a bizarrely high
+        // value (20 even without a header showing), so
+        // an arbitrary number of pixels is added in this
+        // case as a cheesy workaround.
+        gridData.heightHint = (specifier.getNumVisibleLines() * table
+                .getItemHeight()) + 7;
+
+        // Return the result.
+        return table;
+    }
+
+    /**
+     * Build a button panel.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @return New button panel.
+     */
+    private Composite buildButtonPanel(Composite parent) {
+        Composite panel = new Composite(parent, SWT.NONE);
+        FillLayout fillLayout = new FillLayout(SWT.VERTICAL);
+        fillLayout.spacing = 5;
+        panel.setLayout(fillLayout);
+        GridData gridData = new GridData(SWT.CENTER, SWT.CENTER, false, true);
+        gridData.widthHint = 50;
+        panel.setLayoutData(gridData);
+        return panel;
+    }
+
+    /**
+     * Create a button.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @param image
+     *            Image to be displayed.
+     * @param listener
+     *            Listener to be notified of button invocations.
+     * @return New button.
+     */
+    private Button buildButton(Composite parent,
+            ButtonImages.ButtonImage image, SelectionListener listener) {
+        Button button = new Button(parent, SWT.PUSH);
+        button.setImage(imagesSupplier.getImage(image));
+        button.addSelectionListener(listener);
+        return button;
+    }
 
     /**
      * Associate choice identifiers with names.
@@ -944,7 +1029,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // list after the selected items are removed, if
         // any, as well as getting a list of the items
         // to be removed in ascending index order.
-        List<String> identifiers = new ArrayList<String>();
+        List<String> identifiers = Lists.newArrayList();
         int firstUnselectedAfterSelected = getIndexOfFirstUnselectedAfterSelected(
                 availableTable, identifiers);
 
@@ -1132,7 +1217,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // one above it that is unselected, or just
         // -1 if the selection includes the first
         // item in the list.
-        List<String> identifiers = new ArrayList<String>();
+        List<String> identifiers = Lists.newArrayList();
         index = getClosestUnselectedIndexAtOrAboveIndex(selectedTable, index,
                 identifiers);
 
@@ -1358,7 +1443,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
         // each the index indicating where it lives
         // in the choices list.
         int[] indices = new int[items.size()];
-        List<String> choiceNames = new ArrayList<String>();
+        List<String> choiceNames = Lists.newArrayList();
         ListBuilderSpecifier specifier = getSpecifier();
         for (Object choice : choices) {
             choiceNames.add(specifier.getNameOfNode(choice));
@@ -1403,7 +1488,7 @@ public class ListBuilderMegawidget extends MultipleChoicesMegawidget {
     private List<String> getItemsFromList(Table table, boolean selectedOnly,
             boolean needIdentifiers, List<String> list) {
         if (list == null) {
-            list = new ArrayList<String>();
+            list = Lists.newArrayList();
         } else {
             list.clear();
         }

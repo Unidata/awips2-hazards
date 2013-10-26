@@ -18,7 +18,7 @@ MetaData_FLW = [
              "fieldName": "pointID",
              "fieldType": "Text",
              "label": "Forecast Point:",
-             "length": 5,
+             "maxChars": 5,
              "values": "XXXXX"
             },
             {
@@ -26,6 +26,7 @@ MetaData_FLW = [
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "ER",
+            "expandHorizontally": True,
             "choices": [
                 {"displayString": "ER (Excessive Rainfall)","productString": "ER","identifier": "ER",},
                 {"displayString": "SM (Snow Melt)", "productString": "SM","identifier": "SM",},
@@ -49,6 +50,7 @@ MetaData_FLW = [
             "fieldType":"ComboBox",
             "label":"Flood Severity:",
             "shortValueLabels":"Sev",
+            "expandHorizontally": True,
             "choices":[
                      {"displayString": "N (None)","identifier": "N","productString": "",},
                      {"displayString": "0 (Areal Flood or Flash Flood Products)","identifier": "0","productString": "",},
@@ -63,6 +65,7 @@ MetaData_FLW = [
             "fieldType":"ComboBox",
             "label":"Flood Record Status:",
             "shortValueLabels":"Rec",
+            "expandHorizontally": True,
             "choices":[
                      {"displayString": "NO (Record Flood Not Expected)","identifier": "NO" },
                      {"displayString": "NR (Near Record or Record Flood Expected)","identifier": "NR"},
@@ -94,9 +97,25 @@ MetaData_FLW = [
              "lines": 2,
              "values": "Default",
              "choices": [ 
-                     {"displayString": "The current weather is...",
+                     {"displayString": "Current weather will yield at least",
                       "productString": "The current weather is dominated by a !** EDIT HYDROMETEOROLOGICAL BASIS HERE **!. This weather system will produce rainfall amounts ranging from  !**EDIT RAINFALL AMOUNTS **!",
-                      "identifier": "Current Weather" },
+                      "identifier": "Current Weather",
+                      "detailFields": [
+                            {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "basisCurrentWeatherInches",
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "incrementDelta": 1,
+                             "precision": 1
+                            },
+                            {
+                             "fieldType": "Label",
+                             "fieldName": "basisCurrentWeatherLabel",
+                             "label": "inches of rain"
+                            }
+                       ]
+                     },
                      {"displayString": "Default basis statement...",
                       "productString": "!** INSERT HYDROMETEOROLOGICAL BASIS HERE **!",
                       "identifier":"Default"},

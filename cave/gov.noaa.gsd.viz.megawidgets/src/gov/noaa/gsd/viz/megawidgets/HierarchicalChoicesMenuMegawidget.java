@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +18,9 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 /**
  * Hierarchical choices menu megawidget, allowing the selection of zero or more
@@ -32,7 +33,7 @@ import org.eclipse.swt.widgets.MenuItem;
  * ------------ ---------- ----------- --------------------------
  * Mar 27, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,7 +41,7 @@ import org.eclipse.swt.widgets.MenuItem;
  * @see HierarchicalChoicesMenuSpecifier
  */
 public class HierarchicalChoicesMenuMegawidget extends
-        HierarchicalChoicesMegawidget {
+        HierarchicalChoicesMegawidget implements IMenu {
 
     // Private Variables
 
@@ -115,7 +116,7 @@ public class HierarchicalChoicesMenuMegawidget extends
 
         // Create menu items and any nested submenus required
         // for the hierarchical state choices.
-        items = new ArrayList<MenuItem>();
+        items = Lists.newArrayList();
         for (Object choice : choices) {
             items.add(convertStateToMenuItem(menu, -1, choice, listener));
         }
@@ -123,14 +124,6 @@ public class HierarchicalChoicesMenuMegawidget extends
 
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (topItem != null) {
@@ -142,35 +135,12 @@ public class HierarchicalChoicesMenuMegawidget extends
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * editable flag.
-     * 
-     * @param editable
-     *            Flag indicating whether the component widgets are to be
-     *            editable or read-only.
-     */
-    @Override
-    protected final void doSetEditable(boolean editable) {
-
-        // Not supported for menu-based megawidgets.
-        throw new UnsupportedOperationException(
-                "cannot change editability of menu-based megawidget");
-    }
-
-    /**
-     * Prepare for the choices list to be changed.
-     */
     @Override
     protected final void prepareForChoicesChange() {
 
         // No action.
     }
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current choices.
-     */
     @Override
     protected final void synchronizeWidgetsToChoices() {
 
@@ -197,10 +167,6 @@ public class HierarchicalChoicesMenuMegawidget extends
         synchronizeWidgetsToState();
     }
 
-    /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
-     */
     @Override
     protected final void synchronizeWidgetsToState() {
         synchronizeMenuToState(items.toArray(new MenuItem[items.size()]), state);
@@ -225,7 +191,7 @@ public class HierarchicalChoicesMenuMegawidget extends
         // Iterate through the state list, recording each selected item's
         // identifier paired with its sub-list (if it is a branch node in
         // the state tree) or with nothing (if it is a leaf).
-        Map<String, List<?>> subListsForSelectedIdentifiers = new HashMap<String, List<?>>();
+        Map<String, List<?>> subListsForSelectedIdentifiers = Maps.newHashMap();
         if (state != null) {
             for (Object element : state) {
                 String identifier;
@@ -316,14 +282,14 @@ public class HierarchicalChoicesMenuMegawidget extends
         // one that is checked or grayed to the state
         // hierarchy, as well as any descendants that are
         // checked or grayed.
-        List<Object> children = new ArrayList<Object>();
+        List<Object> children = Lists.newArrayList();
         for (MenuItem item : items) {
             if (item.getStyle() == SWT.CHECK) {
                 if (item.getSelection()) {
                     children.add(item.getData());
                 }
             } else {
-                Map<String, Object> node = new HashMap<String, Object>();
+                Map<String, Object> node = Maps.newHashMap();
                 node.put(HierarchicalChoicesMenuSpecifier.CHOICE_NAME,
                         item.getText());
                 node.put(HierarchicalChoicesMenuSpecifier.CHOICE_IDENTIFIER,

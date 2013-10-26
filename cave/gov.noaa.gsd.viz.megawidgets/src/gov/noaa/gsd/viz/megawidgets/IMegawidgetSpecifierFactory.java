@@ -23,7 +23,11 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to allow the creation
+ *                                           of a specifier to include a
+ *                                           restriction on what superclass
+ *                                           is expected of which the result
+ *                                           should be an instance.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,6 +45,10 @@ public interface IMegawidgetSpecifierFactory {
      * <strong>Note</strong>: Any megawidget specifier to be constructed using
      * this method must be an instance of a non-inner class.
      * 
+     * @param superClass
+     *            Class that must be the superclass of the created megawidget
+     *            specifier. This allows specifiers of only a certain subclass
+     *            of <code>ISpecifier</code> to be required.
      * @param parameters
      *            Map holding parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
@@ -51,7 +59,7 @@ public interface IMegawidgetSpecifierFactory {
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public MegawidgetSpecifier createMegawidgetSpecifier(
-            Map<String, Object> parameters)
+    public <S extends ISpecifier> S createMegawidgetSpecifier(
+            Class<S> superClass, Map<String, Object> parameters)
             throws MegawidgetSpecificationException;
 }

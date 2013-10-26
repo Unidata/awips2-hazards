@@ -15,7 +15,7 @@ import java.util.Map;
  * Notifier megawidget specifier base class, from which specific types of
  * notifier megawidget specifiers may be derived. A notifier megawidget
  * specifier allows the specification of megawidgets for later creation that may
- * notify listeners (one per widget) when they are invoked.
+ * notify listeners (one per megawidget) when they are invoked.
  * 
  * <pre>
  * 
@@ -24,7 +24,10 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Replaced erroneous references
+ *                                           (variable names, comments, etc.) to
+ *                                           "widget" with "megawidget" to avoid
+ *                                           confusion.
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,13 +75,6 @@ public abstract class NotifierMegawidgetSpecifier extends MegawidgetSpecifier
 
     // Public Methods
 
-    /**
-     * Get the extra callback information to be passed back with a notification,
-     * if any.
-     * 
-     * @return Extra callback information to be passed back with a notification,
-     *         or <code>null</code> if there is no extra information.
-     */
     @Override
     public final String getCallbackData() {
         return extraCallback;

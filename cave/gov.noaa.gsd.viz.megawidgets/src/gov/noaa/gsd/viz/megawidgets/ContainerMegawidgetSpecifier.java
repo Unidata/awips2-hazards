@@ -9,14 +9,13 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Container megawidget specifier base class, from which specific types of
- * container megawidget specifiers may be derived.
+ * container megawidget specifiers may be derived. The <code>C</code> parameter
+ * indicates what type of <code>ISpecifier</code> each child specifier must be.
  * 
  * <pre>
  * 
@@ -24,15 +23,23 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Added columnSpacing parameter.
+ *                                           Also moved child-specifier-
+ *                                           tracking functionality into
+ *                                           ChildSpecifierManager to allow
+ *                                           it to be reused in classes that
+ *                                           are not derived from this one.
+ *                                           Finally, implemented new
+ *                                           IControlSpecifier interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ContainerMegawidget
  */
-public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
-        implements IContainerSpecifier {
+public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
+        extends MegawidgetSpecifier implements IContainerSpecifier<C>,
+        IControlSpecifier {
 
     // Private Static Constants
 
@@ -53,21 +60,20 @@ public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
     // Private Variables
 
     /**
-     * Child megawidget specifiers.
+     * Child megawidget specifiers manager.
      */
-    private final List<MegawidgetSpecifier> childWidgetSpecifiers = new ArrayList<MegawidgetSpecifier>();
-
-    /**
-     * Megawidget specifier factory, used for building any child megawidget
-     * specifiers.
-     */
-    private final IMegawidgetSpecifierFactory factory;
+    private final ChildSpecifiersManager<C> childManager;
 
     /**
      * Margins in pixels, the first being left, the second being top, the third
      * right, and the fourth bottom.
      */
     private final int[] margins = new int[4];
+
+    /**
+     * Column spacing in pixels.
+     */
+    private final int columnSpacing;
 
     /**
      * Expander flags, indicating whether the megawidget should expand to fill
@@ -81,6 +87,9 @@ public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
     /**
      * Construct a standard instance.
      * 
+     * @param superClass
+     *            Class that must be the superclass of any child megawidget
+     *            specifier.
      * @param parameters
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
@@ -88,11 +97,13 @@ public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public ContainerMegawidgetSpecifier(Map<String, Object> parameters)
+    public ContainerMegawidgetSpecifier(Class<C> superClass,
+            Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
 
         // Ensure that the factory is present and acceptable.
+        IMegawidgetSpecifierFactory factory = null;
         try {
             factory = (IMegawidgetSpecifierFactory) parameters
                     .get(MEGAWIDGET_SPECIFIER_FACTORY);
@@ -107,11 +118,19 @@ public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
                     getType(), MEGAWIDGET_SPECIFIER_FACTORY, null, null);
         }
 
+        // Create the children manager.
+        childManager = new ChildSpecifiersManager<C>(superClass, factory);
+
         // Ensure that the margins, if present, are acceptable.
         for (int j = 0; j < MARGIN_NAMES.length; j++) {
             margins[j] = getSpecifierIntegerValueFromObject(
                     parameters.get(MARGIN_NAMES[j]), MARGIN_NAMES[j], 0);
         }
+
+        // Ensure that the column spacing, if present, is
+        // acceptable.
+        columnSpacing = getSpecifierIntegerValueFromObject(
+                parameters.get(COLUMN_SPACING), COLUMN_SPACING, 15);
 
         // Ensure that the expand flags, if present, are
         // acceptable.
@@ -123,149 +142,54 @@ public abstract class ContainerMegawidgetSpecifier extends MegawidgetSpecifier
 
     // Public Methods
 
-    /**
-     * Get the list of all megawidget specifiers that are children of this
-     * specifier.
-     * 
-     * @return List of child megawidget specifiers; this list must not be
-     *         modified by the caller.
-     */
     @Override
-    public final List<MegawidgetSpecifier> getChildMegawidgetSpecifiers() {
-        return childWidgetSpecifiers;
+    public final List<C> getChildMegawidgetSpecifiers() {
+        return childManager.getChildMegawidgetSpecifiers();
     }
 
-    /**
-     * Get the left margin.
-     * 
-     * @return left margin.
-     */
     @Override
     public final int getLeftMargin() {
         return margins[0];
     }
 
-    /**
-     * Get the top margin.
-     * 
-     * @return Top margin.
-     */
     @Override
     public final int getTopMargin() {
         return margins[1];
     }
 
-    /**
-     * Get the right margin.
-     * 
-     * @return Right margin.
-     */
     @Override
     public final int getRightMargin() {
         return margins[2];
     }
 
-    /**
-     * Get the bottom margin.
-     * 
-     * @return bottom margin.
-     */
     @Override
     public final int getBottomMargin() {
         return margins[3];
     }
 
-    /**
-     * Determine whether or not the megawidget is to expand to take up available
-     * horizontal space within its parent.
-     * 
-     * @return Flag indicating whether or not the megawidget is to expand
-     *         horizontally.
-     */
+    @Override
+    public final int getColumnSpacing() {
+        return columnSpacing;
+    }
+
     @Override
     public final boolean isHorizontalExpander() {
         return expander[0];
     }
 
-    /**
-     * Determine whether or not the megawidget is to expand to take up available
-     * vertical space within its parent.
-     * 
-     * @return Flag indicating whether or not the megawidget is to expand
-     *         vertically.
-     */
     @Override
     public final boolean isVerticalExpander() {
         return expander[1];
     }
 
-    /**
-     * Get the megawidget specifier factory.
-     * 
-     * @return Megawidget specifier factory.
-     */
-    @Override
-    public final IMegawidgetSpecifierFactory getMegawidgetSpecifierFactory() {
-        return factory;
-    }
-
     // Protected Methods
 
     /**
-     * Construct the megawidget specifiers given the specified parameters. This
-     * may be invoked by subclasses to build a list of child megawidget
-     * specifiers.
+     * Get the container child specifiers manager.
      * 
-     * @param parameters
-     *            List holding the list of map objects that each provide the
-     *            parameters for a megawidget specifier.
-     * @param numColumns
-     *            Number of columns in which the child megawidgets may be laid
-     *            out.
-     * @return List of created megawidget specifiers.
-     * @throws MegawidgetSpecificationException
-     *             If the megawidget specifier parameters are invalid.
+     * @return Container child specifiers manager.
      */
-    @SuppressWarnings("unchecked")
-    protected final List<MegawidgetSpecifier> createMegawidgetSpecifiers(
-            List<?> parameters, int numColumns)
-            throws MegawidgetSpecificationException {
-        List<MegawidgetSpecifier> specifiers = new ArrayList<MegawidgetSpecifier>();
-        for (Object object : parameters) {
-            Map<String, Object> map = (Map<String, Object>) object;
-            map.put(MEGAWIDGET_PARENT_COLUMN_COUNT, new Integer(numColumns));
-            specifiers.add(factory.createMegawidgetSpecifier(map));
-        }
-        return specifiers;
-    }
-
-    /**
-     * Add the specified child megawidget specifier to the end of the list of
-     * all child megawidget specifiers for this container. This method or the
-     * method <code>addChildMegawidgetSpecifiers()</code> should be used by
-     * subclasses to expose child megawidget specifiers they have created via
-     * <code>getChildMegawidgetSpecifiers()</code>.
-     * 
-     * @param specifier
-     *            Child megawidget specifier to be added.
-     */
-    protected final void addChildMegawidgetSpecifier(
-            MegawidgetSpecifier specifier) {
-        childWidgetSpecifiers.add(specifier);
-    }
-
-    /**
-     * Add the specified child megawidget specifiers to the end of the list of
-     * all child megawidget specifiers for this container. This method or the
-     * method <code>addChildMegawidgetSpecifier()</code> should be used by
-     * subclasses to expose child megawidget specifiers they have created via
-     * <code>getChildMegawidgetSpecifiers()</code>.
-     * 
-     * @param specifiers
-     *            Child megawidget specifiers to be added.
-     */
-    protected final void addChildMegawidgetSpecifiers(
-            Collection<? extends MegawidgetSpecifier> specifiers) {
-        childWidgetSpecifiers.addAll(specifiers);
+    protected final ChildSpecifiersManager<C> getChildManager() {
+        return childManager;
     }
 }

@@ -9,25 +9,27 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Radio buttons megawidget, providing a series of radio buttons from which the
- * user may choose a single selection.
+ * user may choose a single selection. Each radio button may have zero or more
+ * megawidgets associated with it as detail fields, allowing the input of
+ * additional information related to the associated choice.
  * 
  * <pre>
  * 
@@ -35,15 +37,32 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Apr 30, 2013    1277    Chris.Golden      Added support for mutable properties.
+ * Sep 25, 2013    2168    Chris.Golden      Added support for optional detail
+ *                                           fields next to the choice buttons,
+ *                                           and changed to implement new IControl
+ *                                           interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see RadioButtonsSpecifier
  */
-public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
+public class RadioButtonsMegawidget extends SingleChoiceMegawidget implements
+        IParent<IControl>, IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -57,6 +76,16 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
      */
     private final List<Button> radioButtons;
 
+    /**
+     * Detail child megawidget manager.
+     */
+    private final ChoicesDetailChildrenManager childManager = null;
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -69,59 +98,22 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
      * @param paramMap
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
+     * @throws MegawidgetException
+     *             If an error occurs while creating or initializing any
+     *             megawidgets acting as detail fields for the various choices.
      */
     protected RadioButtonsMegawidget(RadioButtonsSpecifier specifier,
-            Composite parent, Map<String, Object> paramMap) {
+            Composite parent, Map<String, Object> paramMap)
+            throws MegawidgetException {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a grouping composite for the widget, so that
-        // the radio button components are grouped together in
-        // terms of exclusive selection state.
-        Composite subParent = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(1, false);
-        gridLayout.marginWidth = 0;
-        subParent.setLayout(gridLayout);
-
-        // Place the grouping composite in the grid.
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        subParent.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(subParent, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-        } else {
-            label = null;
-        }
-
-        // For each value, add a radio button.
-        List<Button> radioButtons = new ArrayList<Button>();
-        for (Object choice : choices) {
-
-            // Create the radio button.
-            Button radioButton = new Button(subParent, SWT.RADIO);
-            radioButton.setText(specifier.getNameOfNode(choice));
-            radioButton.setData(specifier.getIdentifierOfNode(choice));
-            radioButton.setEnabled(specifier.isEnabled());
-
-            // Place the widget in the grid.
-            radioButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
-                    false));
-            radioButtons.add(radioButton);
-        }
-
-        // Bind each radio button selection event to
-        // trigger a change in the record of the state
-        // for the widget.
+        // Create and lay out the label and radio button widgets.
+        Composite panel = UiBuilder.buildComposite(parent, 1,
+                SWT.NO_RADIO_GROUP,
+                UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED,
+                specifier);
+        this.label = UiBuilder.buildLabel(panel, specifier);
         SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -129,21 +121,93 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
                 if (radioButton.getSelection() == false) {
                     return;
                 }
+                for (Button otherButton : RadioButtonsMegawidget.this.radioButtons) {
+                    if (otherButton != radioButton) {
+                        otherButton.setSelection(false);
+                    }
+                }
                 state = (String) radioButton.getData();
                 notifyListener(getSpecifier().getIdentifier(), state);
                 notifyListener();
             }
         };
-        for (Button radioButton : radioButtons) {
-            radioButton.addSelectionListener(listener);
-        }
-        this.radioButtons = ImmutableList.copyOf(radioButtons);
+        this.radioButtons = UiBuilder
+                .buildChoiceButtons(
+                        panel,
+                        specifier,
+                        SWT.RADIO,
+                        (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new ChoicesDetailChildrenManager(
+                                listener, paramMap) : null), listener);
 
-        // Render the radio buttons uneditable if ne-
-        // cessary.
+        // Make the widgets read-only if the megawidget is not editable.
         if (isEditable() == false) {
             doSetEditable(false);
         }
+    }
+
+    // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final List<IControl> getChildren() {
+        return (childManager == null ? Collections.<IControl> emptyList()
+                : childManager.getDetailMegawidgets());
     }
 
     // Protected Methods
@@ -172,14 +236,6 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
         }
     }
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
@@ -190,6 +246,8 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
         }
     }
 
+    // Private Methods
+
     /**
      * Change the component widgets to ensure their state matches that of the
      * editable flag.
@@ -198,8 +256,7 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget {
      *            Flag indicating whether the component widgets are to be
      *            editable or read-only.
      */
-    @Override
-    protected final void doSetEditable(boolean editable) {
+    private void doSetEditable(boolean editable) {
         if (radioButtons.size() > 0) {
             radioButtons.get(0).getParent().setEnabled(editable);
         }

@@ -20,6 +20,7 @@ MetaData_FFW_NonConvective = [
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "DM",
+            "expandHorizontally": True,
             "choices": [
                 # use "_override_by_key_identifier_", in override file to support incremental override
                 {"identifier":"ER", "productString":"ER", "displayString":"ER (Excessive Rainfall)"},
@@ -46,10 +47,17 @@ MetaData_FFW_NonConvective = [
              "label": "",
              "choices": [
                 { "identifier": "ffwEmergency",
-                  "displayString": "**SELECT FOR FLASH FLOOD EMERGENCY**",
-                  "productString": "...Flash flood emergency for !** LOCATION **!..."
-                },
-                 ],
+                  "displayString": "**FLASH FLOOD EMERGENCY**",
+                  "productString": "...Flash flood emergency for !** LOCATION **!...",
+                  "detailFields": [
+                      {
+                       "fieldType": "Text",
+                       "fieldName": "includeFfwEmergencyLocation",
+                       "expandHorizontally": True,
+                       "maxChars": 40,
+                       "visibleChars": 12
+                      }]
+                }]
             },
            {
             # SEVERITY 
@@ -90,7 +98,7 @@ MetaData_FFW_NonConvective = [
             },
            # ADDITIONAL INFO
              {
-              "fieldType":"CheckList",
+              "fieldType":"CheckBoxes",
               "fieldName": "additionalInfo",
               "label": "Additional Info:",
               "choices": [    
@@ -101,19 +109,103 @@ MetaData_FFW_NonConvective = [
                      {"identifier":"listOfDrainages", "displayString": "Automated list of drainages", 
                       "productString": "ARBITRARY ARGUMENTS USED BY DRAINAGES LIST GENERATOR." },
                      {"identifier":"particularStream",
-                      "displayString": "Flooding is occurring in a particular stream/river", 
+                      "displayString": "Flood waters are moving down", 
                       "productString": 
                     '''FLood waters are moving down !**NAME OF CHANNEL**! from !**LOCATION**! to 
                        !**LOCATION**!. The flood crest is expected to reach !**LOCATION(S)**! by
-                       !**TIME(S)**!.''',},
+                       !**TIME(S)**!.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "additionalInfoParticularStreamName",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow2",
+                             "numColumns": 4,
+                             "columnSpacing": 3,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel1",
+                                   "label": "from"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamFrom",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  },
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel2",
+                                   "label": "to"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamTo",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldType": "Composite",
+                             "fieldName": "additionalInfoParticularStreamRow3",
+                             "numColumns": 1,
+                             "columnSpacing": 2,
+                             "expandHorizontally": True,
+                             "fields": [
+                                  {
+                                   "fieldType": "Label",
+                                   "fieldName": "additionalInfoParticularStreamLabel3",
+                                   "label": "The flood crest is expected to reach:"
+                                  },
+                                  {
+                                   "fieldType": "Text",
+                                   "fieldName": "additionalInfoParticularStreamDestination",
+                                   "expandHorizontally": True,
+                                   "maxChars": 40,
+                                   "visibleChars": 12
+                                  }
+                             ]
+                            },
+                            {
+                             "fieldName":"additionalInfoParticularStreamTime",
+                             "fieldType":"TimeScale",
+                             "valueLabels": "by:"
+                            }
+                      ]
+                     },
                      {"identifier":"endGeneric", "displayString": "EXP-CAN:Generic Statement",
                       "productString": 
                     '''The water is receding...and is no longer expected to pose a significant threat.
                        Please continue to heed any road closures.''',},
-                     {"identifier":"endRiver", "displayString": "EXP-CAN:River Flooding",
+                     {"identifier":"endRiver", "displayString": "EXP-CAN:River Flooding for",
                       "productString": 
                     '''Flooding on the !** **! river has receded and is no longer expected to pose
-                       a significant threat. Please continue to heed all road closures.''',},
+                       a significant threat. Please continue to heed all road closures.''',
+                      "detailFields": [
+                            {
+                             "fieldType": "Text",
+                             "fieldName": "additionalInfoEndRiverLocation",
+                             "expandHorizontally": True,
+                             "maxChars": 40,
+                             "visibleChars": 12
+                            },
+                            {
+                             "fieldType": "Label",
+                             "fieldName": "additionalInfoEndRiverLabel",
+                             "label": "River"
+                            }
+                       ]
+                     },
                         ], 
              },
            # CALLS TO ACTION

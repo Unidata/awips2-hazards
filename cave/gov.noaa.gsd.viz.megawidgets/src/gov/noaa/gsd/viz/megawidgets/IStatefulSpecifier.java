@@ -24,7 +24,7 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 22, 2013   2168     Chris.Golden      Changed to extend INotifierSpecifier.
  * </pre>
  * 
  * @author Chris.Golden
@@ -33,7 +33,7 @@ import java.util.List;
  * @see Megawidget
  * @see MegawidgetSpecifier
  */
-public interface IStatefulSpecifier {
+public interface IStatefulSpecifier extends INotifierSpecifier {
 
     // Public Static Constants
 

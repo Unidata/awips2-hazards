@@ -21,14 +21,30 @@ import java.util.Map;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Changed to implement ISingleLineSpecifier
+ *                                           and use ControlSpecifierOptionsManager
+ *                                           (composition over inheritance).
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ComboBoxMegawidget
  */
-public class ComboBoxSpecifier extends FlatChoicesMegawidgetSpecifier {
+public class ComboBoxSpecifier extends FlatChoicesMegawidgetSpecifier implements
+        ISingleLineSpecifier {
+
+    // Private Variables
+
+    /**
+     * Control options manager.
+     */
+    private final ControlSpecifierOptionsManager optionsManager;
+
+    /**
+     * Flag indicating whether or not the megawidget is to expand to fill all
+     * available horizontal space within its parent.
+     */
+    private final boolean horizontalExpander;
 
     // Public Constructors
 
@@ -45,5 +61,38 @@ public class ComboBoxSpecifier extends FlatChoicesMegawidgetSpecifier {
     public ComboBoxSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
+                ControlSpecifierOptionsManager.BooleanSource.FALSE);
+
+        // Get the horizontal expansion flag if available.
+        horizontalExpander = getSpecifierBooleanValueFromObject(
+                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+    }
+
+    // Public Methods
+
+    @Override
+    public final boolean isEditable() {
+        return optionsManager.isEditable();
+    }
+
+    @Override
+    public final int getWidth() {
+        return optionsManager.getWidth();
+    }
+
+    @Override
+    public final boolean isFullWidthOfColumn() {
+        return optionsManager.isFullWidthOfColumn();
+    }
+
+    @Override
+    public final int getSpacing() {
+        return optionsManager.getSpacing();
+    }
+
+    @Override
+    public final boolean isHorizontalExpander() {
+        return horizontalExpander;
     }
 }

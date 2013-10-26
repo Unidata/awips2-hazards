@@ -20,7 +20,10 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 25, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,13 +37,13 @@ public interface IStateChangeListener {
     /**
      * Receive notification that the given megawidget's state has changed.
      * 
-     * @param widget
+     * @param megawidget
      *            Megawidget that experienced the state change.
      * @param identifier
      *            Identifier of the state that has changed.
      * @param state
      *            New state.
      */
-    public void megawidgetStateChanged(IStateful widget, String identifier,
+    public void megawidgetStateChanged(IStateful megawidget, String identifier,
             Object state);
 }

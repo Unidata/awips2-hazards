@@ -21,7 +21,8 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Oct 22, 2013    2168    Chris.Golden      Changed to extend new
+ *                                           ISpecifier interface.
  * </pre>
  * 
  * @author Chris.Golden
@@ -30,7 +31,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * @see Megawidget
  * @see MegawidgetSpecifier
  */
-public interface INotifierSpecifier {
+public interface INotifierSpecifier extends ISpecifier {
 
     // Public Static Constants
 

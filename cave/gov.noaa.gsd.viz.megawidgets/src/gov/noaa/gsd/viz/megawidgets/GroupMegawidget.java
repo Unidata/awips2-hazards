@@ -25,7 +25,10 @@ import org.eclipse.swt.widgets.Group;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Sep 24, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ *                                           references to "megawidget"
+ *                                           in comments and variable
+ *                                           names.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,7 +58,7 @@ public class GroupMegawidget extends ContainerMegawidget {
         super(specifier);
 
         // Create the group panel in which to place the child
-        // widgets, and give it its title if it has one.
+        // megawidgets, and give it its title if it has one.
         Group panel = new Group(parent, SWT.NONE);
         if (specifier.getLabel() != null) {
             panel.setText(specifier.getLabel());
@@ -64,7 +67,7 @@ public class GroupMegawidget extends ContainerMegawidget {
         gridContainerPanel(panel);
         composite = panel;
 
-        // Create its child widgets.
+        // Create its child megawidgets.
         children = createChildMegawidgets(panel, specifier.getColumnCount(),
                 specifier.getChildMegawidgetSpecifiers(), paramMap);
     }

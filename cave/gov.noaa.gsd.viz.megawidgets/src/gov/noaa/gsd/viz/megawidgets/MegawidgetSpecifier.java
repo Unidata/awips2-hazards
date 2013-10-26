@@ -11,8 +11,6 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,20 +25,11 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Widget;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 /**
- * Megawidget specifier base class, from which specific types of megawidget
- * specifiers may be derived. A megawidget specifier allows the specification of
- * megawidgets for later creation; the type and configuration of each such
- * megawidget is specified via a <code>Map</code> containing key-value pairs,
- * with each key being a string chosen from one of the string constants defined
- * within this class or within a subclass, and the value being something
- * appropriate to that key, as specified by that key's description. Some
- * key-value pairs are mandatory, and others are optional, again as described.
- * <p>
- * For window-based megawidgets (those that require a <code>Composite</code> as
- * their parent), megawidgets expect that the parent is using a <code>GridLayout
- * </code> with two columns. A suggestion as to how a megawidget positions
- * itself within the layout may be included via its specifier.
+ * Megawidget specifier abstract base class.
  * <p>
  * All concrete subclasses must have a constructor taking arguments identical to
  * those taken by the constructor of this class. Furthermore, all concrete
@@ -59,95 +48,23 @@ import org.eclipse.swt.widgets.Widget;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 21, 2013   2168     Chris.Golden      Extracted control-specific options
+ *                                           and placed them in a new control
+ *                                           specifier options manager class, as
+ *                                           the former didn't belong here (since
+ *                                           not all megawidgets are controls;
+ *                                           some are menus). Also changed to
+ *                                           implement new ISpecifier interface.
+ *                                           Also added helper methods for
+ *                                           getting floats and doubles from
+ *                                           arbitrary specifier value objects.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see Megawidget
  */
-public abstract class MegawidgetSpecifier {
-
-    // Public Static Constants
-
-    /**
-     * Megawidget type parameter name; each widget must include a value
-     * associated with this name. Valid values include any string matching the
-     * name of an instantiable subclass minus the "Specifier"; for example, if
-     * an instantiable subclass named "LabelSpecifier" exists, a valid value
-     * would be "Label".
-     */
-    public static final String MEGAWIDGET_TYPE = "fieldType";
-
-    /**
-     * Megawidget class package parameter name; each megawidget may include a
-     * value associated with this name. A valid value is the fully-qualified
-     * package name (for example, "gov.noaa.gsd.viz.megawidgets") of which the
-     * megawidget specifier for this <code>MEGAWIDGET_TYPE
-     * </code> is a part. If not specified, it defaults to this class's package.
-     */
-    public static final String MEGAWIDGET_CLASS_PACKAGE = "classPackage";
-
-    /**
-     * Megawidget identifier parameter name; each megawidget must include a
-     * value associated with this name. Any string is valid as a value, as long
-     * as it is unique within the set of all megawidgets that may be
-     * instantiated at any given time.
-     */
-    public static final String MEGAWIDGET_IDENTIFIER = "fieldName";
-
-    /**
-     * Megawidget enabled parameter name; a megawidget may include a boolean
-     * value associated with this name, in order to indicate whether or not the
-     * megawidget should be enabled when it is first created. If not specified,
-     * the megawidget is created in an enabled state.
-     */
-    public static final String MEGAWIDGET_ENABLED = "enable";
-
-    /**
-     * Megawidget editable parameter name; a megawidget may include a boolean
-     * value associated with this name, in order to indicate whether or not the
-     * megawidget should be editable when it is first created. An editable
-     * megawidget is one that contains state that may be changed, or that is
-     * used potentially to modify other state. If not specified, it is assumed
-     * to be <code>
-     * true</code>.
-     */
-    public static final String MEGAWIDGET_EDITABLE = "editable";
-
-    /**
-     * Megawidget label parameter name; a megawidget may include a value
-     * associated with this name. Any string is valid as a value.
-     */
-    public static final String MEGAWIDGET_LABEL = "label";
-
-    /**
-     * Megawidget width parameter name; a megawidget may include a value
-     * associated with this name. Valid values include any positive integer less
-     * than or equal to the number of columns that the parent megawidget
-     * contains, or, if the parent is not a megawidget, 1. If not specified, the
-     * default is 1.
-     */
-    public static final String MEGAWIDGET_WIDTH = "width";
-
-    /**
-     * Megawidget spacing parameter name; a megawidget may include a
-     * non-negative integer associated with this name to indicate that it wishes
-     * to be spaced by this many pixels from the megawidget above it (or if at
-     * the top of the parent <code>Composite</code>, from the top of the client
-     * area of the parent). If not specified, the default is 0 pixels.
-     */
-    public static final String MEGAWIDGET_SPACING = "spacing";
-
-    // Protected Static Constants
-
-    /**
-     * Megawidget parent column count parameter name; a megawidget may include a
-     * positive integer associated with this name, indicating how many columns
-     * the parent of the megawidget has available within which this megawidget
-     * may lay itself out. If not specified, the default is 1.
-     */
-    protected static final String MEGAWIDGET_PARENT_COLUMN_COUNT = "parentNumColumns";
+public abstract class MegawidgetSpecifier implements ISpecifier {
 
     // Private Static Variables
 
@@ -155,7 +72,8 @@ public abstract class MegawidgetSpecifier {
      * Hash table mapping parent composites to lists of widgets that must be
      * notified when the parents change size.
      */
-    private static Map<Composite, List<Control>> resizeAwareControlListsForParents = new HashMap<Composite, List<Control>>();
+    private static Map<Composite, List<Control>> resizeAwareControlListsForParents = Maps
+            .newHashMap();
 
     /**
      * Hash table mapping parent composites to their control listeners, if any.
@@ -163,7 +81,8 @@ public abstract class MegawidgetSpecifier {
      * in the lists associated with the same parents in <code>
      * resizeAwareControlListsForParents</code>.
      */
-    private static Map<Composite, ControlListener> controlListenersForParents = new HashMap<Composite, ControlListener>();
+    private static Map<Composite, ControlListener> controlListenersForParents = Maps
+            .newHashMap();
 
     /**
      * Hash table mapping parent composites to their dispose listeners, if any.
@@ -171,7 +90,8 @@ public abstract class MegawidgetSpecifier {
      * control listeners and lists of widgets associated with the parents when
      * the latter are disposed of.
      */
-    private static Map<Composite, DisposeListener> disposeListenersForParents = new HashMap<Composite, DisposeListener>();
+    private static Map<Composite, DisposeListener> disposeListenersForParents = Maps
+            .newHashMap();
 
     // Private Variables
 
@@ -187,31 +107,9 @@ public abstract class MegawidgetSpecifier {
     private final boolean enabled;
 
     /**
-     * Flag indicating whether the megawidget should be created in an editable
-     * or a read-only state.
-     */
-    private final boolean editable;
-
-    /**
      * Label.
      */
     private final String label;
-
-    /**
-     * Number of columns which the megawidget should take up within its parent.
-     */
-    private final int width;
-
-    /**
-     * Spacing between this megawidget and whatever is above it.
-     */
-    private final int spacing;
-
-    /**
-     * Number of columns provided by the parent in which this megawidget is to
-     * lay itself out.
-     */
-    private final int parentColumnCount;
 
     // Public Constructors
 
@@ -246,11 +144,6 @@ public abstract class MegawidgetSpecifier {
         enabled = getSpecifierBooleanValueFromObject(
                 parameters.get(MEGAWIDGET_ENABLED), MEGAWIDGET_ENABLED, true);
 
-        // Ensure that the editable flag, if present, is
-        // acceptable.
-        editable = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_EDITABLE), MEGAWIDGET_EDITABLE, true);
-
         // Ensure that the label, if present, is acceptable.
         try {
             label = (String) parameters.get(MEGAWIDGET_LABEL);
@@ -259,49 +152,16 @@ public abstract class MegawidgetSpecifier {
                     MEGAWIDGET_LABEL, parameters.get(MEGAWIDGET_LABEL),
                     "must be string");
         }
-
-        // Get the number of columns available within the
-        // parent.
-        parentColumnCount = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_PARENT_COLUMN_COUNT),
-                MEGAWIDGET_PARENT_COLUMN_COUNT, 1);
-
-        // Ensure that the width, if present, is acceptable,
-        // and if not present is assigned a default value.
-        width = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_WIDTH), MEGAWIDGET_WIDTH, 1);
-        if ((width < 1) || (width > parentColumnCount)) {
-            throw new MegawidgetSpecificationException(identifier, getType(),
-                    MEGAWIDGET_WIDTH, width, "must be between 1 and "
-                            + parentColumnCount + " (inclusive)");
-        }
-
-        // Ensure that the spacing, if present, is acceptable,
-        // and if not present is assigned a default value.
-        spacing = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_SPACING), MEGAWIDGET_SPACING, 0);
-        if (spacing < 0) {
-            throw new MegawidgetSpecificationException(identifier, getType(),
-                    MEGAWIDGET_SPACING, spacing, "must be non-negative");
-        }
     }
 
     // Public Methods
 
-    /**
-     * Get the identifier.
-     * 
-     * @return Identifier.
-     */
+    @Override
     public final String getIdentifier() {
         return identifier;
     }
 
-    /**
-     * Get the type.
-     * 
-     * @return Type.
-     */
+    @Override
     public final String getType() {
         String className = getClass().getSimpleName();
         int endIndex = className.lastIndexOf("Specifier");
@@ -311,70 +171,21 @@ public abstract class MegawidgetSpecifier {
         return className;
     }
 
-    /**
-     * Get the flag indicating whether or not the megawidget is to be created in
-     * an enabled state.
-     * 
-     * @return True if the megawidget is to be created as enabled, false
-     *         otherwise.
-     */
+    @Override
     public final boolean isEnabled() {
         return enabled;
     }
 
-    /**
-     * Get the flag indicating whether or not the megawidget is to be created in
-     * an editable state.
-     * 
-     * @return True if the megawidget is to be created as editable, false
-     *         otherwise.
-     */
-    public final boolean isEditable() {
-        return editable;
-    }
-
-    /**
-     * Get the label.
-     * 
-     * @return Label.
-     */
+    @Override
     public final String getLabel() {
         return label;
     }
 
-    /**
-     * Get the width of the megawidget in columns within its parent.
-     * 
-     * @return Number of columns it should span.
-     */
-    public final int getWidth() {
-        return width;
-    }
-
-    /**
-     * Get the spacing.
-     * 
-     * @return Spacing.
-     */
-    public final int getSpacing() {
-        return spacing;
-    }
-
-    /**
-     * Create the GUI components making up the specified megawidget.
-     * 
-     * @param parent
-     *            Parent widget in which to place the megawidget.
-     * @param creationParams
-     *            Hash table mapping identifiers to values that subclasses might
-     *            require when creating a megawidget.
-     * @return Created megawidget.
-     * @throws MegawidgetException
-     *             If an exception occurs during creation or initialization of
-     *             the megawidget.
-     */
-    public <P extends Widget> Megawidget createMegawidget(P parent,
-            Map<String, Object> creationParams) throws MegawidgetException {
+    @SuppressWarnings("unchecked")
+    @Override
+    public <P extends Widget, M extends IMegawidget> M createMegawidget(
+            P parent, Class<M> superClass, Map<String, Object> creationParams)
+            throws MegawidgetException {
 
         // Determine the full path and name of the megawidget class
         // of which an instance is to be created.
@@ -399,11 +210,12 @@ public abstract class MegawidgetSpecifier {
                             + classPathAndName + ")");
         }
 
-        // If the class is not a subclass of Megawidget, complain.
-        if (Megawidget.class.isAssignableFrom(megawidgetClass) == false) {
+        // If the class is not a subclass of the provided
+        // superclass, complain.
+        if (superClass.isAssignableFrom(megawidgetClass) == false) {
             throw new MegawidgetSpecificationException(identifier, getType(),
                     null, null, "not a valid megawidget (" + megawidgetClass
-                            + " is not a subclass of " + Megawidget.class + ")");
+                            + " is not a subclass of " + superClass + ")");
         }
 
         // Iterate through all declared constructors for the
@@ -418,7 +230,7 @@ public abstract class MegawidgetSpecifier {
         // the class of the supplied parent object.
         Class<?>[] neededArgTypes = { getClass(), parent.getClass(), Map.class };
         Constructor<?> bestConstructor = null;
-        int bestWidgetClassGenerationalDifference = -1;
+        int bestMegawidgetClassGenerationalDifference = -1;
         for (Constructor<?> constructor : megawidgetClass
                 .getDeclaredConstructors()) {
 
@@ -435,10 +247,10 @@ public abstract class MegawidgetSpecifier {
             // See how many generations apart the parent
             // object's class is from the parameter type
             // for the constructor.
-            int widgetClassGenerationalDifference = 0;
-            for (Class<?> widgetClass = neededArgTypes[1]; widgetClass != argTypes[1]; widgetClass = widgetClass
+            int megawidgetClassGenerationalDifference = 0;
+            for (Class<?> otherMegawidgetClass = neededArgTypes[1]; otherMegawidgetClass != argTypes[1]; otherMegawidgetClass = otherMegawidgetClass
                     .getSuperclass()) {
-                widgetClassGenerationalDifference++;
+                megawidgetClassGenerationalDifference++;
             }
 
             // If this is the only fitting constructor so
@@ -446,15 +258,15 @@ public abstract class MegawidgetSpecifier {
             // from the parent object's class so far, mark
             // it as the best.
             if ((bestConstructor == null)
-                    || (widgetClassGenerationalDifference < bestWidgetClassGenerationalDifference)) {
+                    || (megawidgetClassGenerationalDifference < bestMegawidgetClassGenerationalDifference)) {
                 bestConstructor = constructor;
-                bestWidgetClassGenerationalDifference = widgetClassGenerationalDifference;
+                bestMegawidgetClassGenerationalDifference = megawidgetClassGenerationalDifference;
             }
 
             // If this constructor's parameter is of the
             // same type as the parent object's class, use
             // this constructor.
-            if (widgetClassGenerationalDifference == 0) {
+            if (megawidgetClassGenerationalDifference == 0) {
                 break;
             }
         }
@@ -470,10 +282,9 @@ public abstract class MegawidgetSpecifier {
         // Construct an instance of the class using the passed-
         // in parameters with the constructor found above.
         Object[] constructorArgValues = { this, parent, creationParams };
-        Megawidget megawidget = null;
+        M megawidget = null;
         try {
-            megawidget = (Megawidget) bestConstructor
-                    .newInstance(constructorArgValues);
+            megawidget = (M) bestConstructor.newInstance(constructorArgValues);
         } catch (Throwable e) {
             if (e instanceof IllegalAccessException) {
                 throw new MegawidgetSpecificationException(
@@ -518,15 +329,6 @@ public abstract class MegawidgetSpecifier {
     // Protected Methods
 
     /**
-     * Get the parent column count.
-     * 
-     * @return Parent column count.
-     */
-    protected final int getParentColumnCount() {
-        return parentColumnCount;
-    }
-
-    /**
      * Add a listener to the specified parent that notifies the specified child
      * when the parent's size has been changed.
      * 
@@ -546,7 +348,7 @@ public abstract class MegawidgetSpecifier {
 
                 // Create the list to hold controls that
                 // wish to be notified of parent resizes.
-                list = new ArrayList<Control>();
+                list = Lists.newArrayList();
                 resizeAwareControlListsForParents.put(parent, list);
 
                 // Create a control listener for the parent
@@ -737,6 +539,141 @@ public abstract class MegawidgetSpecifier {
             throws MegawidgetSpecificationException {
         try {
             return getLongObjectFromObject(object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Get a float from the specified object as a specifier parameter. The
+     * object must be either <code>null</code> (only allowed if <code>defValue
+     * </code> is not <code>null</code>), or an object of type <code>
+     * Number</code>. This method is used to ensure that any value specified as
+     * a number, but within the bounds of a standard float, is properly handled.
+     * 
+     * @param object
+     *            Object holding the float value.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Float value.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    protected final float getSpecifierFloatValueFromObject(Object object,
+            String paramName, Float defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getFloatValueFromObject(object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Get a float from the specified object as a specifier parameter. The
+     * object must be either <code>null</code> (only allowed if <code>defValue
+     * </code> is not <code>null</code>), or an object of type <code>
+     * Number</code>. This method is used to ensure that any value specified as
+     * a number, but within the bounds of a standard float, is properly handled.
+     * If the object is a <code>Float</code>, it is simply cast to this type and
+     * returned.
+     * 
+     * @param object
+     *            Object holding the float value.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Float object.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    protected final Float getSpecifierFloatObjectFromObject(Object object,
+            String paramName, Float defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getFloatObjectFromObject(object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Get a double from the specified object as a specifier parameter. The
+     * object must be either <code>null</code> (only allowed if <code>defValue
+     * </code> is not <code>null</code>), or an object of type <code>
+     * Number</code>. This method is used to ensure that any value specified as
+     * a number is properly handled.
+     * 
+     * @param object
+     *            Object holding the double value.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Double value.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    protected final double getSpecifierDoubleValueFromObject(Object object,
+            String paramName, Double defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getDoubleValueFromObject(object, defValue);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(e.getIdentifier(),
+                    e.getType(), paramName, e.getBadValue(), e.getMessage(),
+                    e.getCause());
+        }
+    }
+
+    /**
+     * Get a double from the specified object as a specifier parameter. The
+     * object must be either <code>null</code> (only allowed if <code>
+     * defValue</code> is not <code>null</code>), or an object of type <code>
+     * Number</code>. This method is used to ensure that any value specified as
+     * a number is properly handled. If the object is a <code>Double</code>, it
+     * is simply cast to this type and returned.
+     * 
+     * @param object
+     *            Object holding the double value.
+     * @param paramName
+     *            Name of the parameter for which <code>object</code> is the
+     *            value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Double object.
+     * @throws MegawidgetSpecificationException
+     *             If the megawidget specifier parameter is invalid.
+     */
+    protected final Double getSpecifierDoubleObjectFromObject(Object object,
+            String paramName, Double defValue)
+            throws MegawidgetSpecificationException {
+        try {
+            return getDoubleObjectFromObject(object, defValue);
         } catch (MegawidgetException e) {
             throw new MegawidgetSpecificationException(e.getIdentifier(),
                     e.getType(), paramName, e.getBadValue(), e.getMessage(),
@@ -993,6 +930,136 @@ public abstract class MegawidgetSpecifier {
     }
 
     /**
+     * Get a float from the specified object. The object must be either <code>
+     * null</code> (only allowed if <code>defValue</code> is not <code>
+     * null</code>), or an object of type <code>Number</code>. This method is
+     * used to ensure that any value specified as a number, but within the
+     * bounds of a standard float, is properly handled.
+     * 
+     * @param object
+     *            Object holding the float value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Float value.
+     * @throws MegawidgetException
+     *             If a float value cannot be obtained from the object.
+     */
+    float getFloatValueFromObject(Object object, Float defValue)
+            throws MegawidgetException {
+        if (object == null) {
+            if (defValue == null) {
+                throw new MegawidgetException(identifier, getType(), null, null);
+            } else {
+                return defValue.floatValue();
+            }
+        } else if (object instanceof Number) {
+            Number number = (Number) object;
+            double value = number.doubleValue();
+            if ((value < Float.MIN_VALUE) || (value > Float.MAX_VALUE)) {
+                throw new MegawidgetException(identifier, getType(), number,
+                        "must be float");
+            } else {
+                return (int) value;
+            }
+        } else {
+            throw new MegawidgetException(identifier, getType(), object,
+                    "must be float");
+        }
+    }
+
+    /**
+     * Get a float object from the specified object. The object must be either
+     * <code>null</code> (only allowed if <code>defValue</code> is not <code>
+     * null</code>), or an object of type <code>Number</code>. This method is
+     * used to ensure that any value specified as a number, but within the
+     * bounds of a standard float, is properly handled. If the object is a
+     * <code>Float</code>, it is simply cast to this type and returned.
+     * 
+     * @param object
+     *            Object holding the float value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Float object.
+     * @throws MegawidgetException
+     *             If a float object cannot be obtained from the object.
+     */
+    Float getFloatObjectFromObject(Object object, Float defValue)
+            throws MegawidgetException {
+        if (object instanceof Float) {
+            return (Float) object;
+        } else {
+            return getFloatValueFromObject(object, defValue);
+        }
+    }
+
+    /**
+     * Get a double from the specified object. The object must be either <code>
+     * null</code> (only allowed if <code>defValue</code> is not <code>
+     * null</code>), or an object of type <code>Number</code>. This method is
+     * used to ensure that any value specified as a number is properly handled.
+     * 
+     * @param object
+     *            Object holding the double value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Double value.
+     * @throws MegawidgetException
+     *             If a double value cannot be obtained from the object.
+     */
+    double getDoubleValueFromObject(Object object, Double defValue)
+            throws MegawidgetException {
+        if (object == null) {
+            if (defValue == null) {
+                throw new MegawidgetException(identifier, getType(), null, null);
+            } else {
+                return defValue.doubleValue();
+            }
+        } else if (object instanceof Number) {
+            return ((Number) object).doubleValue();
+        } else {
+            throw new MegawidgetException(identifier, getType(), object,
+                    "must be double");
+        }
+    }
+
+    /**
+     * Get a double object from the specified object. The object must be either
+     * <code>null</code> (only allowed if <code>defValue</code> is not <code>
+     * null</code>), or an object of type <code>Number</code>. This method is
+     * used to ensure that any value specified as a number is properly handled.
+     * If the object is a <code>Double</code>, it is simply cast to this type
+     * and returned.
+     * 
+     * @param object
+     *            Object holding the double value.
+     * @param defValue
+     *            If present, this is the default value to be returned if <code>
+     *            object</code> is <code>null</code>; if this parameter is
+     *            <code>null</code>, then finding no value for <code>object
+     *            </code> causes an exception.
+     * @return Double object.
+     * @throws MegawidgetException
+     *             If a double object cannot be obtained from the object.
+     */
+    Double getDoubleObjectFromObject(Object object, Double defValue)
+            throws MegawidgetException {
+        if (object instanceof Double) {
+            return (Double) object;
+        } else {
+            return getDoubleValueFromObject(object, defValue);
+        }
+    }
+
+    /**
      * Get a boolean from the specified object. The object must be either
      * <code>null</code> (only allowed if <code>defValue</code> is not
      * <code>null</code>), or an object of type <code>Boolean</code>, <code>
@@ -1114,6 +1181,10 @@ public abstract class MegawidgetSpecifier {
                 return (T) getIntegerObjectFromObject(value, null);
             } else if (requiredClass.equals(Long.class)) {
                 return (T) getLongObjectFromObject(value, null);
+            } else if (requiredClass.equals(Float.class)) {
+                return (T) getFloatObjectFromObject(value, null);
+            } else if (requiredClass.equals(Double.class)) {
+                return (T) getDoubleObjectFromObject(value, null);
             } else if (requiredClass.equals(Boolean.class)) {
                 return (T) getBooleanObjectFromObject(value, null);
             } else {

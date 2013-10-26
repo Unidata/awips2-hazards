@@ -9,25 +9,27 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Checkboxes megawidget, allowing the selection of zero or more choices, each
- * represented visually as a labeled checkbox.
+ * represented visually as a labeled checkbox. Each checkbox may have zero or
+ * more megawidgets associated with it as detail fields, allowing the input of
+ * additional information related to the associated choice.
  * 
  * <pre>
  * 
@@ -35,15 +37,33 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Apr 30, 2013    1277    Chris.Golden      Added support for mutable properties.
+ * Sep 25, 2013    2168    Chris.Golden      Added support for optional detail
+ *                                           fields next to the choice buttons,
+ *                                           and changed to implement new IControl
+ *                                           interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see CheckBoxesSpecifier
+ * @see CheckBoxesSpecifier S extends IContainerSpecifier<C>, M extends
+ *      IMegawidget<C>, C extends ISpecifier
  */
-public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
+public class CheckBoxesMegawidget extends MultipleChoicesMegawidget implements
+        IParent<IControl>, IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -57,6 +77,16 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
      */
     private final List<Button> checkBoxes;
 
+    /**
+     * Detail child megawidget manager.
+     */
+    private final ChoicesDetailChildrenManager childManager = null;
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
+
     // Protected Constructors
 
     /**
@@ -69,62 +99,21 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
      * @param paramMap
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
+     * @throws MegawidgetException
+     *             If an error occurs while creating or initializing any
+     *             megawidgets acting as detail fields for the various choices.
      */
     protected CheckBoxesMegawidget(CheckBoxesSpecifier specifier,
-            Composite parent, Map<String, Object> paramMap) {
+            Composite parent, Map<String, Object> paramMap)
+            throws MegawidgetException {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets.
-        // This is done so that they may be rendered read-
-        // only by disabling the panel, which in SWT has
-        // the effect of disabling mouse and keyboard in-
-        // put for the child widgets without making them
-        // look disabled; and because it is required to
-        // group the widgets properly into a single mega-
-        // widget.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(1, true);
-        gridLayout.marginWidth = 0;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.FILL, false, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        gridData.verticalIndent = specifier.getSpacing();
-        panel.setLayoutData(gridData);
-
-        // Add a label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
-
-            // Create a label widget.
-            label = new Label(panel, SWT.NONE);
-            label.setText(specifier.getLabel());
-            label.setEnabled(specifier.isEnabled());
-
-            // Place the label in the grid.
-            label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-        } else {
-            label = null;
-        }
-
-        // For each value, add a checkbox.
-        List<Button> checkBoxes = new ArrayList<Button>();
-        for (Object choice : choices) {
-
-            // Create the checkbox.
-            Button checkBox = new Button(panel, SWT.CHECK);
-            checkBox.setText(specifier.getNameOfNode(choice));
-            checkBox.setData(specifier.getIdentifierOfNode(choice));
-            checkBox.setEnabled(specifier.isEnabled());
-
-            // Place the widget in the grid.
-            checkBox.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
-                    false));
-            checkBoxes.add(checkBox);
-        }
-
-        // Bind each checkbox selection event to
-        // trigger a change in the record of the state
-        // for the widget.
+        // Create and lay out the label and checkbox widgets.
+        Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
+                UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED,
+                specifier);
+        this.label = UiBuilder.buildLabel(panel, specifier);
         SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -139,15 +128,83 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
                 notifyListener();
             }
         };
-        for (Button checkBox : checkBoxes) {
-            checkBox.addSelectionListener(listener);
-        }
-        this.checkBoxes = ImmutableList.copyOf(checkBoxes);
+        this.checkBoxes = UiBuilder
+                .buildChoiceButtons(
+                        panel,
+                        specifier,
+                        SWT.CHECK,
+                        (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new ChoicesDetailChildrenManager(
+                                listener, paramMap) : null), listener);
 
-        // Render the checkboxes uneditable if necessary.
+        // Make the widgets read-only if the megawidget is not editable.
         if (isEditable() == false) {
             doSetEditable(false);
         }
+    }
+
+    // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final List<IControl> getChildren() {
+        return (childManager == null ? Collections.<IControl> emptyList()
+                : childManager.getDetailMegawidgets());
     }
 
     // Protected Methods
@@ -186,8 +243,17 @@ public class CheckBoxesMegawidget extends MultipleChoicesMegawidget {
         }
     }
 
-    @Override
-    protected final void doSetEditable(boolean editable) {
+    // Private Methods
+
+    /**
+     * Change the component widgets to ensure their state matches that of the
+     * editable flag.
+     * 
+     * @param editable
+     *            Flag indicating whether the component widgets are to be
+     *            editable or read-only.
+     */
+    private void doSetEditable(boolean editable) {
         if (checkBoxes.size() > 0) {
             checkBoxes.get(0).getParent().setEnabled(editable);
         }

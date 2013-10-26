@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -17,6 +18,9 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 /**
  * Megawidget providing a simple push button.
@@ -28,14 +32,27 @@ import org.eclipse.swt.widgets.Composite;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Oct 23, 2013   2168     Chris.Golden      Changed to implement new IControl interface.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ButtonSpecifier
  */
-public class ButtonMegawidget extends NotifierMegawidget {
+public class ButtonMegawidget extends NotifierMegawidget implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = Sets
+                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Variables
 
@@ -43,6 +60,11 @@ public class ButtonMegawidget extends NotifierMegawidget {
      * Button.
      */
     private final Button button;
+
+    /**
+     * Control component helper.
+     */
+    private final ControlComponentHelper helper;
 
     // Protected Constructors
 
@@ -60,6 +82,7 @@ public class ButtonMegawidget extends NotifierMegawidget {
     protected ButtonMegawidget(ButtonSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        helper = new ControlComponentHelper(specifier);
 
         // Create a button widget.
         button = new Button(parent, SWT.PUSH);
@@ -87,20 +110,73 @@ public class ButtonMegawidget extends NotifierMegawidget {
         }
     }
 
+    // Public Methods
+
+    @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
+    public final boolean isEditable() {
+        return helper.isEditable();
+    }
+
+    @Override
+    public final void setEditable(boolean editable) {
+        helper.setEditable(editable);
+        doSetEditable(editable);
+    }
+
+    @Override
+    public final int getLeftDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setLeftDecorationWidth(int width) {
+
+        // No action.
+    }
+
+    @Override
+    public final int getRightDecorationWidth() {
+        return 0;
+    }
+
+    @Override
+    public final void setRightDecorationWidth(int width) {
+
+        // No action.
+    }
+
     // Protected Methods
 
-    /**
-     * Change the component widgets to ensure their state matches that of the
-     * enabled flag.
-     * 
-     * @param enable
-     *            Flag indicating whether the component widgets are to be
-     *            enabled or disabled.
-     */
     @Override
     protected final void doSetEnabled(boolean enable) {
         button.setEnabled(enable && isEditable());
     }
+
+    // Private Methods
 
     /**
      * Change the component widgets to ensure their state matches that of the
@@ -110,8 +186,7 @@ public class ButtonMegawidget extends NotifierMegawidget {
      *            Flag indicating whether the component widgets are to be
      *            editable or read-only.
      */
-    @Override
-    protected final void doSetEditable(boolean editable) {
+    private void doSetEditable(boolean editable) {
         button.setEnabled(editable && isEnabled());
     }
 }
