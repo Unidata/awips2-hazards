@@ -370,11 +370,8 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     }
 
     private mockConfigurationManager() {
-        // For now hardwire this to come straight out of EDEX directories, would eventually
-        // like to figure out a way to pull from the source code directories.
-        String locFilePath =
-          "/awips2/edex/data/utility/common_static/base/hazardServices/alerts/HazardAlertsConfig.xml";
-        String xmlData = Utils.textFileAsString(locFilePath);
+        String path = getClass().getResource("HazardAlertsConfig.xml").path;
+        String xmlData = Utils.textFileAsString(path);
         JAXBManager jaxbManager = new JAXBManager(HazardAlertsConfig.class);
         HazardAlertsConfig config = jaxbManager.unmarshalFromXml(xmlData)
         sessionConfigurationManager = mock(ISessionConfigurationManager.class)
