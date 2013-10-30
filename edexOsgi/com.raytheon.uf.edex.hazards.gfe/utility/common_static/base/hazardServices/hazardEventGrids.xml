@@ -1,0 +1,5 @@
+<!-- The list of phenSigs in this file will determine if a hazard event should have a gfe grid created. -->
+<hazardEventGrids>
+	<phenSig>FA.A</phenSig>
+	<phenSig>FF.A</phenSig>
+</hazardEventGrids>

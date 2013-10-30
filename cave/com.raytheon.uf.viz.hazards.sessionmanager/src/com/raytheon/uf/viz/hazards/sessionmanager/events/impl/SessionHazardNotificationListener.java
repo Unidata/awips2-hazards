@@ -24,11 +24,9 @@ import java.lang.ref.WeakReference;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.gfe.HazardEventConverter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.notification.INotificationObserver;
 import com.raytheon.uf.viz.core.notification.NotificationException;
 import com.raytheon.uf.viz.core.notification.NotificationMessage;
@@ -47,6 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2013 1257       bsteffen    Initial creation
  * Aug 16, 2013 1325       daniel.s.schaffer@noaa.gov    Alerts integration
+ * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
  * 
  * </pre>
  * 
@@ -60,8 +59,6 @@ public class SessionHazardNotificationListener implements INotificationObserver 
 
     private final Reference<ISessionEventManager> manager;
 
-    private HazardEventConverter hazardEventConverter;
-
     public SessionHazardNotificationListener(ISessionEventManager manager) {
         this(manager, true);
     }
@@ -72,14 +69,6 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         if (observe) {
             NotificationManagerJob.addObserver(HazardNotification.HAZARD_TOPIC,
                     this);
-        }
-
-        try {
-            this.hazardEventConverter = new HazardEventConverter(
-                    LocalizationManager.getInstance().getCurrentSite());
-        } catch (Exception e) {
-            statusHandler.error("Unable to instantiate hazard event converter",
-                    e);
         }
     }
 
@@ -121,13 +110,6 @@ public class SessionHazardNotificationListener implements INotificationObserver 
                 return;
             }
             manager.addEvent(newEvent);
-            // if (hazardEventConverter != null
-            // && hazardEventConverter.needsConversion(newEvent)) {
-            // Date currentDate = new Date(SimulatedTime.getSystemTime()
-            // .getMillis());
-            // hazardEventConverter.storeHazardEventAsGrid(newEvent,
-            // currentDate);
-            // }
             break;
         }
     }

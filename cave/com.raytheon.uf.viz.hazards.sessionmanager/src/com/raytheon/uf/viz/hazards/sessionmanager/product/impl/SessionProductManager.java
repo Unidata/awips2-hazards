@@ -41,7 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.gfe.HazardEventConverter;
+import com.raytheon.uf.common.hazards.gfe.HasConfictsRequest;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
@@ -49,7 +49,9 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
@@ -99,6 +101,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * 
  * Sept 16, 2013 1298      thansen     Added popup dialog trying to preview or issue non-supported 
  *                                     hazards
+ * Oct 23, 2013 2277       jsanchez    Use thrift request to check for grid conflicts.
  * 
  * </pre>
  * 
@@ -319,6 +322,12 @@ public class SessionProductManager implements ISessionProductManager {
              */
             for (IEvent ev : information.getProducts().get(0).getEventSet()) {
                 IHazardEvent updatedEvent = (IHazardEvent) ev;
+                if (checkForConflicts(updatedEvent)) {
+                    statusHandler
+                            .info("There is a grid conflict with the hazard event.");
+                    // TODO It needs to be decided if we should prevent the user
+                    // from issuing a hazard if there is a grid conflict.
+                }
                 if (sessionEvent.getEventID().equals(updatedEvent.getEventID())) {
 
                     ObservedHazardEvent newEvent = new ObservedHazardEvent(
@@ -370,19 +379,31 @@ public class SessionProductManager implements ISessionProductManager {
 
     }
 
+    private boolean checkForConflicts(IHazardEvent hazardEvent) {
+        boolean hasConflicts = true;
+        try {
+            // checks if selected events conflicting with existing grids
+            // based on time and phensigs
+            HasConfictsRequest request = new HasConfictsRequest();
+            request.setPhenSig(hazardEvent.getPhenomenon() + "."
+                    + hazardEvent.getSignificance());
+            request.setSiteID(hazardEvent.getSiteID());
+            request.setStartTime(hazardEvent.getStartTime());
+            request.setEndTime(hazardEvent.getEndTime());
+            hasConflicts = (Boolean) ThriftClient.sendRequest(request);
+        } catch (VizException e) {
+            statusHandler
+                    .error("Unable to check if selected event has any grid conflicts.",
+                            e);
+        }
+
+        return hasConflicts;
+    }
+
     // @Override
     public void issue_old(ProductInformation information) {
 
         for (IHazardEvent selectedEvent : information.getProductEvents()) {
-
-            // checks if selected events conflicting with existing grids based
-            // on time and phensigs
-            if (HazardEventConverter.hasConflicts(selectedEvent)) {
-                statusHandler
-                        .error("The new event has a conflicting with existing grids.");
-                break;
-            }
-
             if (selectedEvent.getState() != HazardState.ENDED) {
                 Serializable previewState = selectedEvent
                         .getHazardAttribute(HazardConstants.PREVIEW_STATE);

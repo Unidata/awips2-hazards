@@ -51,14 +51,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
-import com.raytheon.uf.common.hazards.gfe.HazardEventConverter;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
@@ -88,7 +86,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Sep 10, 2013  752       blawrenc    Modified addEvent to check if the event
  *                                     being added already exists.
  * Sep 12, 2013 717        jsanchez    Converted certain hazard events to grids.
- * 
+ * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
  * 
  * </pre>
  * 
@@ -117,8 +115,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private final Deque<String> eventModifications = new LinkedList<String>();
 
-    private HazardEventConverter hazardEventConverter;
-
     private Timer eventExpirationTimer = new Timer(true);
 
     private final Map<String, TimerTask> expirationTasks = new ConcurrentHashMap<String, TimerTask>();
@@ -134,13 +130,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
         this.dbManager = dbManager;
         this.notificationSender = notificationSender;
         new SessionHazardNotificationListener(this);
-        try {
-            this.hazardEventConverter = new HazardEventConverter(
-                    LocalizationManager.getInstance().getCurrentSite());
-        } catch (Exception e) {
-            statusHandler.error("Unable to instantiate hazard event converter",
-                    e);
-        }
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 createTimeListener());
     }
@@ -432,18 +421,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     dbEvent.removeHazardAttribute(ATTR_CHECKED);
                     dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
                     dbManager.storeEvent(dbEvent);
-                    // TODO move this to a listener to a topic
-                    if (hazardEventConverter != null
-                            && hazardEventConverter.needsConversion(dbEvent)) {
-                        if (newState == HazardState.ISSUED) {
-                            Date currentDate = new Date(SimulatedTime
-                                    .getSystemTime().getMillis());
-                            hazardEventConverter.storeHazardEventAsGrid(
-                                    dbEvent, currentDate);
-                        } else if (newState == HazardState.ENDED) {
-                            // TODO PV3 task delete grid.
-                        }
-                    }
                     scheduleExpirationTask(event);
                 } catch (Throwable e) {
                     statusHandler.handle(Priority.PROBLEM,

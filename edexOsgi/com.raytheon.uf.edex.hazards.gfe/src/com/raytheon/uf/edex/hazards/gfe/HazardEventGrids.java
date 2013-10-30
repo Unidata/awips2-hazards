@@ -17,18 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.gfe;
+package com.raytheon.uf.edex.hazards.gfe;
 
-import java.util.List;
-import java.util.Map;
-
-import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
-import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
-import com.raytheon.uf.common.time.TimeRange;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Indentifies which GFERecords need just be ingested and what discrete grid
- * slices need to be merged.
+ * Java object to represent an xml file.
  * 
  * <pre>
  * 
@@ -36,26 +33,26 @@ import com.raytheon.uf.common.time.TimeRange;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 30, 2013 717        jsanchez     Initial creation
+ * Oct 24, 2013 2277       jsanchez     Initial creation
  * 
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
+@XmlAccessorType(XmlAccessType.NONE)
+@XmlRootElement(name = "hazardEventGrids")
+public class HazardEventGrids {
 
-public class SeparatedRecords {
+    @XmlElement(name = "phenSig")
+    private String[] phenSigs;
 
-    /**
-     * List of new GFERecords that need to be ingested in the gfe table but do
-     * not need a merge
-     */
-    public List<GFERecord> newRecords;
+    public String[] getPhenSigs() {
+        return phenSigs;
+    }
 
-    /**
-     * Map of a list of discrete grid slices that need to be merged to create a
-     * GFERecord.
-     */
-    public Map<TimeRange, List<DiscreteGridSlice>> slicesToMerge;
+    public void setPhenSigs(String[] phenSigs) {
+        this.phenSigs = phenSigs;
+    }
 
 }

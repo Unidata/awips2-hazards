@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.gfe;
+package com.raytheon.uf.edex.hazards.gfe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +51,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 29, 2013 717        jsanchez     Initial creation
+ * Aug 29, 2013 2277       jsanchez     Initial creation
  * 
  * </pre>
  * 
@@ -66,18 +66,8 @@ public class DiscreteGridSliceUtil {
 
     public static final String DK_NONE = "<None>";
 
-    private String siteID;
+    private DiscreteGridSliceUtil() {
 
-    private GridParmInfo gridParmInfo;
-
-    /**
-     * Constructor.
-     * 
-     * @param gridParmInfo
-     */
-    public DiscreteGridSliceUtil(GridParmInfo gridParmInfo) {
-        this.gridParmInfo = gridParmInfo;
-        this.siteID = gridParmInfo.getParmID().getDbId().getSiteId();
     }
 
     /**
@@ -86,19 +76,22 @@ public class DiscreteGridSliceUtil {
      * 
      * @param gridSlice
      * @param timeRange
+     * @param currentDate
+     * 
      * @return
      */
-    private List<DiscreteGridSlice> separate(DiscreteGridSlice gridSlice,
+    public static List<DiscreteGridSlice> separate(DiscreteGridSlice gridSlice,
             TimeRange timeRange, Date currentDate) {
-        List<DiscreteGridSlice> gridSlices = new ArrayList<DiscreteGridSlice>();
-
+        GridParmInfo gridParmInfo = gridSlice.getGridParmInfo();
         Grid2DByte byteGrid = gridSlice.getDiscreteGrid();
         DiscreteKey[] splitHazKeys = gridSlice.getKey();
+
         Set<String> uniqueKeys = new TreeSet<String>();
         for (DiscreteKey discreteKey : splitHazKeys) {
             uniqueKeys.addAll(discreteKey.getSubKeys());
         }
 
+        List<DiscreteGridSlice> gridSlices = new ArrayList<DiscreteGridSlice>();
         for (String uKey : uniqueKeys) {
             if (uKey.equals(DK_NONE)) {
                 continue;
@@ -128,7 +121,12 @@ public class DiscreteGridSliceUtil {
             // create Grid History
             GridDataHistory gdh = new GridDataHistory(OriginType.CALCULATED,
                     parmID, timeRange);
-            gdh.setUpdateTime(currentDate);
+            if (currentDate != null) {
+                gdh.setUpdateTime(currentDate);
+            } else {
+                gdh.setUpdateTime(gridSlice.getGridDataHistory().get(0)
+                        .getUpdateTime());
+            }
             GridDataHistory[] gdha = new GridDataHistory[] { gdh };
 
             DiscreteGridSlice createdGrid = new DiscreteGridSlice(timeRange,
@@ -146,7 +144,9 @@ public class DiscreteGridSliceUtil {
      * @param phensig
      * @return
      */
-    public DiscreteKey[] createSimpleDiscreteKeys(ParmID parmID, String phensig) {
+    public static DiscreteKey[] createSimpleDiscreteKeys(ParmID parmID,
+            String phensig) {
+        String siteID = parmID.getDbId().getSiteId();
         DiscreteKey noneKey = new DiscreteKey(siteID, DK_NONE, parmID);
         DiscreteKey discreteKey = new DiscreteKey(siteID, phensig, parmID);
         Set<DiscreteKey> discretekeys = new TreeSet<DiscreteKey>(
@@ -164,7 +164,7 @@ public class DiscreteGridSliceUtil {
      *            the time range of the newRecord.
      * @return
      */
-    public SeparatedRecords separateGFERecords(GFERecord newRecord,
+    public static SeparatedRecords separateGFERecords(GFERecord newRecord,
             List<GFERecord> records, Date currentDate) {
         SeparatedRecords separateRecords = new SeparatedRecords();
         List<GFERecord> newRecords = new ArrayList<GFERecord>();
@@ -284,7 +284,8 @@ public class DiscreteGridSliceUtil {
      * @param timeRange
      * @return
      */
-    private GFERecord adjustTimeRange(GFERecord record, TimeRange timeRange) {
+    private static GFERecord adjustTimeRange(GFERecord record,
+            TimeRange timeRange) {
         GFERecord adjustedRecord = new GFERecord(record.getParmId(), timeRange);
         adjustedRecord.setGridHistory(record.getGridHistory());
         adjustedRecord.setMessageData(record.getMessageData());
@@ -297,11 +298,11 @@ public class DiscreteGridSliceUtil {
      * @param timeRangeMap
      * @return
      */
-    public List<GFERecord> mergeGridSlices(
+    public static List<GFERecord> mergeGridSlices(GridParmInfo gridParmInfo,
             Map<TimeRange, List<DiscreteGridSlice>> timeRangeMap) {
         List<GFERecord> newRecords = new ArrayList<GFERecord>(timeRangeMap
                 .keySet().size());
-
+        String siteID = gridParmInfo.getParmID().getDbId().getSiteId();
         for (TimeRange timeRange : timeRangeMap.keySet()) {
             List<DiscreteGridSlice> discreteGridSlices = timeRangeMap
                     .get(timeRange);
@@ -375,12 +376,7 @@ public class DiscreteGridSliceUtil {
                     gridParmInfo, gdha, grid2DByte,
                     discretekeys.toArray(new DiscreteKey[discretekeys.size()]));
 
-            String error = gridSlice.isValid();
-            if (error != null) {
-                statusHandler.error(error);
-            }
             record.setMessageData(gridSlice);
-
             newRecords.add(record);
         }
 
@@ -390,7 +386,7 @@ public class DiscreteGridSliceUtil {
     /*
      * Ported from HazardUtils._makeNewKey
      */
-    private String makeNewKey(String oldKey, String phenSig) {
+    private static String makeNewKey(String oldKey, String phenSig) {
         // check for the dumb cases
         if (oldKey.equalsIgnoreCase(DK_NONE)
                 || oldKey.equalsIgnoreCase(phenSig)) {
@@ -423,7 +419,7 @@ public class DiscreteGridSliceUtil {
     /*
      * Ported from HazardUtils._combinedKey
      */
-    private String combinedKey(String subKeys, String newKey) {
+    private static String combinedKey(String subKeys, String newKey) {
         List<String> subKeyList = Arrays.asList(subKeys.split("^"));
 
         // check for same keys
@@ -467,5 +463,119 @@ public class DiscreteGridSliceUtil {
             }
         }
         return defaultCombo;
+    }
+
+    /**
+     * Checks if the two discrete grid slice lists are equal
+     * 
+     * @param dgList1
+     * @param dgList2
+     * @return
+     */
+    private static boolean isEqual(List<DiscreteGridSlice> dgList1,
+            List<DiscreteGridSlice> dgList2) {
+        List<DiscreteKey> keys1 = new ArrayList<DiscreteKey>();
+        for (DiscreteGridSlice dg1 : dgList1) {
+            keys1.add(dg1.getKey()[1]);
+        }
+        List<DiscreteKey> keys2 = new ArrayList<DiscreteKey>();
+        for (DiscreteGridSlice dg2 : dgList2) {
+            keys2.add(dg2.getKey()[1]);
+        }
+        return keys1.containsAll(keys2);
+    }
+
+    /**
+     * Removes the grid for the phenSig from the existing records.
+     * 
+     * @param phenSigToRemove
+     * @param timeRange
+     * @param gridParmInfo
+     * @param intersectingRecords
+     * @param adjacentRecordsMap
+     * @return
+     */
+    public static SeparatedRecords remove(String phenSigToRemove,
+            TimeRange timeRange, GridParmInfo gridParmInfo,
+            List<GFERecord> intersectingRecords,
+            Map<TimeRange, List<DiscreteGridSlice>> adjacentRecordsMap) {
+        SeparatedRecords separatedRecords = new SeparatedRecords();
+
+        // only this individual grid needs to be deleted and there does
+        // not need to be any additional re-merging.
+        if (intersectingRecords.size() == 1) {
+            GFERecord record = intersectingRecords.get(0);
+            DiscreteGridSlice slice = (DiscreteGridSlice) record
+                    .getMessageData();
+            List<String> keys = slice.getKey()[1].getSubKeys();
+            if (keys.size() == 1 && keys.contains(phenSigToRemove)) {
+                // just delete the individual grid can return from here
+                separatedRecords.timeRangesToRemove = Arrays
+                        .asList(new TimeRange[] { record.getTimeRange() });
+                return separatedRecords;
+            }
+        }
+
+        Map<TimeRange, List<DiscreteGridSlice>> updatedMap = new HashMap<TimeRange, List<DiscreteGridSlice>>();
+        List<TimeRange> toRemoveList = new ArrayList<TimeRange>();
+        // split individual slices
+        for (GFERecord record : intersectingRecords) {
+            List<DiscreteGridSlice> discreteGridSlices = DiscreteGridSliceUtil
+                    .separate((DiscreteGridSlice) record.getMessageData(),
+                            record.getTimeRange(), null);
+            DiscreteGridSlice removeSlice = null;
+            for (DiscreteGridSlice gridSlice : discreteGridSlices) {
+                if (gridSlice.getKey()[1].getSubKeys()
+                        .contains(phenSigToRemove)) {
+                    removeSlice = gridSlice;
+                    break;
+                }
+            }
+            if (removeSlice != null) {
+                // remove hazard event from the slices
+                discreteGridSlices.remove(removeSlice);
+            }
+
+            if (discreteGridSlices.isEmpty()) {
+                toRemoveList.add(record.getTimeRange());
+            } else {
+                updatedMap.put(record.getTimeRange(), discreteGridSlices);
+            }
+
+        }
+
+        separatedRecords.timeRangesToRemove = new ArrayList<TimeRange>(
+                toRemoveList);
+        toRemoveList.clear();
+
+        Map<TimeRange, List<DiscreteGridSlice>> addMap = new HashMap<TimeRange, List<DiscreteGridSlice>>();
+        // check and merge updated map with adjacent map
+        for (TimeRange tr : updatedMap.keySet()) {
+            List<DiscreteGridSlice> list = updatedMap.get(tr);
+            if (list.isEmpty()) {
+                continue;
+            }
+            for (TimeRange adjacentTR : adjacentRecordsMap.keySet()) {
+                List<DiscreteGridSlice> adjacentList = adjacentRecordsMap
+                        .get(adjacentTR);
+                if (tr.isAdjacentTo(adjacentTR)
+                        && list.size() == adjacentList.size()
+                        && isEqual(list, adjacentList)) {
+                    // create a new time range if the slices are the same
+                    addMap.put(tr.span(adjacentTR), list);
+                    toRemoveList.add(tr);
+                    break;
+                }
+            }
+        }
+
+        updatedMap.putAll(addMap);
+
+        for (TimeRange toRemove : toRemoveList) {
+            updatedMap.remove(toRemove);
+        }
+
+        separatedRecords.newRecords = mergeGridSlices(gridParmInfo, updatedMap);
+        return separatedRecords;
     }
 }
