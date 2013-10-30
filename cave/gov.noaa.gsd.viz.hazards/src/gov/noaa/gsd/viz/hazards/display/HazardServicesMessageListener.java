@@ -139,7 +139,7 @@ public class HazardServicesMessageListener {
                         + "spatialDisplayActionOccurred(): "
                         + "Unable to handle selected events changed.", e);
             }
-        } else if (actionType.equals("ModifyEventArea")) {
+        } else if (actionType.equals(HazardConstants.MODIFY_EVENT_AREA)) {
             String jsonText = spatialDisplayAction.getModifyEventJSON();
 
             try {
@@ -319,7 +319,7 @@ public class HazardServicesMessageListener {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
                     HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
-                "updateEventType")) {
+                HazardConstants.UPDATE_EVENT_TYPE)) {
             messageHandler.updateEventType(hazardDetailAction.getJSONText());
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 HazardConstants.UPDATE_EVENT_METADATA)) {

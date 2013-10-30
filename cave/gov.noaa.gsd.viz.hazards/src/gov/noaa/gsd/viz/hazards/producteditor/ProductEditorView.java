@@ -107,7 +107,7 @@ public final class ProductEditorView implements
         generatedProducts = productDict
                 .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
         hazardEventSets = productDict
-                .getDynamicallyTypedValue("hazardEventSets");
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
 
         if ("".equals(productInfo) == false) {
             productGenerationDialog = new ProductGenerationDialog(PlatformUI

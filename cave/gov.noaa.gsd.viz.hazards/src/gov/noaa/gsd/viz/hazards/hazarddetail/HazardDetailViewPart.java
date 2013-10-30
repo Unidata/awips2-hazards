@@ -1282,8 +1282,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
                 // Send off the JSON to notify listeners of
                 // the change.
-                fireHIDAction(new HazardDetailAction("updateEventType",
-                        jsonText));
+                fireHIDAction(new HazardDetailAction(
+                        HazardConstants.UPDATE_EVENT_TYPE, jsonText));
             }
         });
 

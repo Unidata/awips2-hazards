@@ -129,7 +129,8 @@ public class ProductEditorPresenter extends
                         Dict returnDict = new Dict();
                         returnDict.put(HazardConstants.GENERATED_PRODUCTS,
                                 generatedProductsDictList);
-                        returnDict.put("hazardEventSets", hazardEventSetsList);
+                        returnDict.put(HazardConstants.HAZARD_EVENT_SETS,
+                                hazardEventSetsList);
 
                         action.setJSONText(returnDict.toJSONString());
                         ProductEditorPresenter.this.fireAction(action);
@@ -152,7 +153,8 @@ public class ProductEditorPresenter extends
                         Dict returnDict = new Dict();
                         returnDict.put(HazardConstants.GENERATED_PRODUCTS,
                                 generatedProductsDictList);
-                        returnDict.put("hazardEventSets", hazardEventSetsList);
+                        returnDict.put(HazardConstants.HAZARD_EVENT_SETS,
+                                hazardEventSetsList);
 
                         action.setJSONText(returnDict.toJSONString());
                         ProductEditorPresenter.this.fireAction(action);

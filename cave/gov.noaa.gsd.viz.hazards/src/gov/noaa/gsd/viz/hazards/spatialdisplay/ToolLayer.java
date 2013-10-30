@@ -748,7 +748,7 @@ public class ToolLayer extends
     private void fireModifiedEventActionOccurred(String modifyEventJSON) {
 
         SpatialDisplayAction action = new SpatialDisplayAction(
-                "ModifyEventArea");
+                HazardConstants.MODIFY_EVENT_AREA);
         action.setModifyEventJSON(modifyEventJSON);
         eventBus.post(action);
 

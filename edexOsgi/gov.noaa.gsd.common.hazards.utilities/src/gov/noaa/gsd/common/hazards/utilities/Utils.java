@@ -1095,7 +1095,7 @@ public class Utils {
         }
     }
 
-    public static String stackTraceAsString(Error e) {
+    public static String stackTraceAsString(Throwable e) {
         StringBuilder sb = new StringBuilder();
         sb.append(e.getMessage() + "\n");
         StackTraceElement[] stackTrace = e.getStackTrace();

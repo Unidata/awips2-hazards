@@ -33,6 +33,7 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -274,7 +275,7 @@ class ProductStagingDialog extends BasicDialog {
         tabFolder.setBorderVisible(true);
         new ModeListener(tabFolder);
         List<Dict> hazardEventSetList = productStagingInfo
-                .getDynamicallyTypedValue("hazardEventSets");
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
         for (int i = 0; i < hazardEventSetList.size(); i++) {
             Dict tabInfo = hazardEventSetList.get(i);
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);

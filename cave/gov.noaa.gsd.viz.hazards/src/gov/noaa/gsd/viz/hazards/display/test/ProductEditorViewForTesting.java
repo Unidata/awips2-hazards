@@ -18,6 +18,8 @@ import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+
 /**
  * Description: Mock {@link IProductEditorView} used for testing.
  * 
@@ -38,6 +40,10 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     private String productInfo;
 
+    private List<Dict> generatedProducts;
+
+    private List<Dict> hazardEventSets;
+
     @Override
     public void dispose() {
     }
@@ -53,7 +59,12 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @Override
     public boolean showProductEditorDetail(String productInfo) {
+        Dict productDict = Dict.getInstance(productInfo);
         this.productInfo = productInfo;
+        this.generatedProducts = productDict
+                .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
+        this.hazardEventSets = productDict
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
         return true;
     }
 
@@ -63,12 +74,12 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @Override
     public List getGeneratedProductsDictList() {
-        throw new UnsupportedOperationException();
+        return generatedProducts;
     }
 
     @Override
     public List getHazardEventSetsList() {
-        throw new UnsupportedOperationException();
+        return hazardEventSets;
     }
 
     @Override

@@ -29,7 +29,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 08, 2013  2166      daniel.s.schaffer@noaa.gov
- * 
+ * Oct 29, 2013 2166       daniel.s.schaffer@noaa.gov      Cleaned up handling of errors
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -65,8 +65,24 @@ public class AutomatedTests {
         if (testCompleted.getTestClass().equals(
                 MixedHazardStoryFunctionalTest.class)) {
             new SimpleHazardStoryFunctionalTest(appBuilder).run();
-        } else {
-            statusHandler.debug("All tests passed!!!!");
+
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                SimpleHazardStoryFunctionalTest.class)) {
+            new ChangeHazardAreaFunctionalTest(appBuilder).run();
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                ChangeHazardAreaFunctionalTest.class)) {
+            new SampleFunctionalTest(appBuilder).run();
+        }
+
+        else {
+            statusHandler.debug("All tests completed");
+            appBuilder.getEventBus().post(
+                    new ConsoleAction(HazardConstants.RESET_ACTION,
+                            HazardConstants.RESET_EVENTS));
         }
     }
 

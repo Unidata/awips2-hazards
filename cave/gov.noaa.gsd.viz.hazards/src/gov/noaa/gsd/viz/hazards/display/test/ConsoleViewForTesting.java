@@ -21,6 +21,8 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     private Dict dynamicSetting;
 
+    private ImmutableList activeAlerts;
+
     public ConsoleViewForTesting() {
         hazardEvents = new DictList();
     }
@@ -120,7 +122,7 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     @Override
     public void setActiveAlerts(ImmutableList activeAlerts) {
-
+        this.activeAlerts = activeAlerts;
     }
 
     @Override
@@ -145,5 +147,9 @@ public class ConsoleViewForTesting implements IConsoleView {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    ImmutableList getActiveAlerts() {
+        return activeAlerts;
     }
 }

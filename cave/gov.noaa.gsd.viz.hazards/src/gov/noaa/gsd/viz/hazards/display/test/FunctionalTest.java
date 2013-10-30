@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.common.hazards.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -24,6 +25,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
+import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -31,7 +34,14 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
 /**
- * Description: Base class for automated testing.
+ * Description: Base class for automated testing. The approach is to create mock
+ * {@link IView}s that basically beans. When methods are called to render hazard
+ * GUIs, the mock versions will, instead, store the information to be displayed
+ * into instance fields. The tests then query these instance fields to see if
+ * the expected values would have been displayed. The mock {@link IView}s are
+ * injected into the corresponding {@link Presenter}s before the test begins.
+ * After the test completes, the original {@link IView}s are injected back into
+ * the {@link Presenter}s so that Hazards can continue to be run normally.
  * 
  * <pre>
  * 
@@ -39,6 +49,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
+ * Oct 29, 2013 2166       daniel.s.schaffer@noaa.gov      Cleaned up handling of errors
  * 
  * </pre>
  * 
@@ -46,6 +57,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * @version 1.0
  */
 public abstract class FunctionalTest {
+
+    protected static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
+
+    protected static final String RIVER_FLOOD_RECOMMENDER = "RiverFloodRecommender";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
@@ -94,14 +109,11 @@ public abstract class FunctionalTest {
 
     protected ToolLayer toolLayer;
 
-    protected static boolean testsEnabled = true;
-
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
-        if (testsEnabled) {
-            this.appBuilder = appBuilder;
-            this.eventBus = appBuilder.getEventBus();
-            registerForEvents();
-        }
+        this.appBuilder = appBuilder;
+        this.eventBus = appBuilder.getEventBus();
+        registerForEvents();
+
     }
 
     private void registerForEvents() {
@@ -110,10 +122,14 @@ public abstract class FunctionalTest {
     }
 
     protected void run() {
-        eventBus.post(new ConsoleAction(HazardConstants.RESET_ACTION,
-                HazardConstants.RESET_EVENTS));
+        resetEvents();
         mockViews();
 
+    }
+
+    private void resetEvents() {
+        eventBus.post(new ConsoleAction(HazardConstants.RESET_ACTION,
+                HazardConstants.RESET_EVENTS));
     }
 
     protected void mockViews() {
@@ -186,19 +202,46 @@ public abstract class FunctionalTest {
         }
     }
 
+    protected void handleException(Exception e) {
+        String message = "Test error\n";
+        message += e.getClass().getName();
+        message += "\n" + Utils.stackTraceAsString(e);
+        fail(message);
+    }
+
     protected void fail(String message) {
-        endTest();
-        testsEnabled = false;
-        throw new RuntimeException(String.format("%s %s ", message, this
-                .getClass().getSimpleName()));
+        testFailure();
+        String errorMessage = String.format("%s %s ", message, this.getClass()
+                .getSimpleName());
+
+        /*
+         * This helps ensure the tester knows immediately a test error occurred.
+         */
+        statusHandler.error(errorMessage);
+
+        /*
+         * Stack trace helps testers see where the failure occurred
+         */
+        throw new RuntimeException(errorMessage);
+
     }
 
     protected void testError() {
-        throw new IllegalStateException("A test error occurred");
+        String errorMessage = "A test error occurred";
+        statusHandler.error(errorMessage);
+        throw new IllegalStateException(errorMessage);
 
     }
 
-    protected void endTest() {
+    protected void testSuccess() {
+        endTest(true);
+    }
+
+    protected void testFailure() {
+        endTest(false);
+    }
+
+    protected void endTest(boolean success) {
         toolsPresenter.setView(realToolsView);
 
         consolePresenter.setView(realConsoleView);
@@ -213,8 +256,10 @@ public abstract class FunctionalTest {
 
         appBuilder.setQuestionAnswerer(realQuestionAnswerer);
         unRegisterForEvents();
-        statusHandler.debug(String.format("%s Successful", this.getClass()
-                .getSimpleName()));
+        if (success) {
+            statusHandler.debug(String.format("%s Successful", this.getClass()
+                    .getSimpleName()));
+        }
         eventBus.post(new TestCompleted(this.getClass()));
 
     }

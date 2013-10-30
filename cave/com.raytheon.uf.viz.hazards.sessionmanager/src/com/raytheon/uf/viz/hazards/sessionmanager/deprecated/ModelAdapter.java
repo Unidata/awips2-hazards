@@ -1179,6 +1179,14 @@ public abstract class ModelAdapter {
      * ISessionEventManager.getCheckedEvents() or
      * ISessionEventManager.getSelectedEvents()
      */
+
+    /*
+     * TODO For events that have been replaced (i.e. FL.A to FL.W), this method
+     * does returns the old type, not the new. The full type and
+     * phen/sig/subtype are all correct. Apparently the type is not used
+     * anywhere so nothing bad has happened so far. Solve this when we refactor
+     * this method away.
+     */
     @Deprecated
     @SuppressWarnings("unchecked")
     public String getComponentData(String component, String eventID) {

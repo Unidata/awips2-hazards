@@ -262,6 +262,8 @@ public final class HazardConstants {
 
     public static final String GENERATED_PRODUCTS = "generatedProducts";
 
+    public static final String HAZARD_EVENT_SETS = "hazardEventSets";
+
     /*
      * The following are related to hazard geometries and their supporting meta
      * information.
@@ -275,6 +277,8 @@ public final class HazardConstants {
     public static final String LINE_TYPE = "line";
 
     public static final String AREA_TYPE = "area";
+
+    public static final String POINTS = "points";
 
     /*
      * Information related to the type of a reset action.
@@ -326,15 +330,6 @@ public final class HazardConstants {
     public static final String NEW_EVENT_SHAPE = "NewEventShape";
 
     /*
-     * Constants relating to running tools
-     * 
-     * TODO Make into an enum?
-     */
-    public static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
-
-    public static final String RIVER_FLOOD_RECOMMENDER = "RiverFloodRecommender";
-
-    /*
      * Constants relating to settings
      */
     public static final String HYDROLOGY_SETTING = "Hydrology";
@@ -344,7 +339,11 @@ public final class HazardConstants {
      */
     public static final String UPDATE_EVENT_METADATA = "updateEventMetadata";
 
+    public static final String UPDATE_EVENT_TYPE = "updateEventType";
+
     public static final String SELECTED_EVENTS_CHANGED = "SelectedEventsChanged";
+
+    public static final String MODIFY_EVENT_AREA = "ModifyEventArea";
 
     /*
      * TODO The following need to be moved to something specific to storm track
@@ -364,4 +363,10 @@ public final class HazardConstants {
     public static final String STATIC_SETTINGS = "staticSettings";
 
     public static final String RUN_AUTOMATED_TESTS = "runAutomatedTests";
+
+    public static final String END_SELECTED_HAZARDS = "End Selected Hazards";
+
+    public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected Hazards";
+
+    public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 }
