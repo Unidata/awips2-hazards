@@ -24,6 +24,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
@@ -32,6 +33,8 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -84,9 +87,9 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
     /*
      * The tabs to be manipulated when product generation reruns.
      */
-    private Map<String, Map<String, AbstractFormatTab>> formatTabs = new HashMap<String, Map<String, AbstractFormatTab>>();
+    private List<String> formatTabs = new ArrayList<String>();
 
-    private Map<String, CTabItem> productTabs = new HashMap<String, CTabItem>();
+    private Multimap<String, CTabItem> productTabs = ArrayListMultimap.create();
 
     /*
      * The progress bar to display that the formatting is being done currently.
@@ -126,6 +129,10 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
      * understand.
      */
     private Map<String, Map<String, ProductEditorComposite>> compositeMap = new LinkedHashMap<String, Map<String, ProductEditorComposite>>();
+
+    private Composite editingFormatsComp;
+
+    private Composite editingDataComp;
 
     /*
      * TODO, the following need to be looked into whether they are necessary
@@ -297,44 +304,29 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
         Set<String> formats = product.getEntries().keySet();
         String productId = product.getProductID();
 
-        if (formatTabs.get(productId) == null) {
-            formatTabs.put(productId, new HashMap<String, AbstractFormatTab>());
-        }
-
-        for (String key : formatTabs.get(productId).keySet()) {
-            if (formats.contains(key) == false) {
-                formatTabs.get(productId).get(key).getTabItem().dispose();
-            }
-        }
-        // keep the correct ones in the map
-        formatTabs.get(productId).keySet().retainAll(formats);
+        formatTabs.add(productId);
 
         for (String format : formats) {
             AbstractFormatTab tab = null;
-            if (formatTabs.get(productId).containsKey(format)) {
-                tab = formatTabs.get(productId).get(format);
-            } else {
-                Composite editorComp = new Composite(formatFolder, SWT.NONE);
-                setLayoutInfo(editorComp, 1, false, SWT.FILL, SWT.FILL, true,
-                        true, null);
+            Composite editorComp = new Composite(formatFolder, SWT.NONE);
+            setLayoutInfo(editorComp, 1, false, SWT.FILL, SWT.FILL, true, true,
+                    null);
 
-                CTabItem formatItem = new CTabItem(formatFolder, SWT.NONE);
-                formatItem.setText(format);
+            CTabItem formatItem = new CTabItem(formatFolder, SWT.NONE);
+            formatItem.setText(format);
 
-                if (product instanceof ITextProduct) {
-                    StyledText text = new StyledText(editorComp, SWT.H_SCROLL
-                            | SWT.V_SCROLL | SWT.READ_ONLY);
-                    text.setWordWrap(false);
-                    text.setAlwaysShowScrollBars(false);
-                    setLayoutInfo(text, 1, false, SWT.FILL, SWT.FILL, true,
-                            true, new Point(300, 100));
+            if (product instanceof ITextProduct) {
+                StyledText text = new StyledText(editorComp, SWT.H_SCROLL
+                        | SWT.V_SCROLL | SWT.READ_ONLY);
+                text.setWordWrap(false);
+                text.setAlwaysShowScrollBars(false);
+                setLayoutInfo(text, 1, false, SWT.FILL, SWT.FILL, true, true,
+                        new Point(400, 400));
 
-                    formatItem.setControl(editorComp);
-                    tab = new TextFormatTab();
-                    ((TextFormatTab) tab).setText(text);
-                    tab.setTabItem(formatItem);
-                    formatTabs.get(productId).put(format, tab);
-                }
+                formatItem.setControl(editorComp);
+                tab = new TextFormatTab();
+                ((TextFormatTab) tab).setText(text);
+                tab.setTabItem(formatItem);
             }
             if (product instanceof ITextProduct) {
                 String finalProduct = ((ITextProduct) product).getText(format);
@@ -347,11 +339,9 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
                     tab.getTabItem().setShowClose(false);
                     finalProduct = ProductUtils.wrapLegacy(finalProduct);
                 }
-                ((TextFormatTab) tab).getText().setText(
-                        ((ITextProduct) product).getText(format));
+                ((TextFormatTab) tab).getText().setText(finalProduct);
             }
         }
-
     }
 
     /**
@@ -362,7 +352,7 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
      */
     private void createButtonComp(Composite comp) {
         Composite buttonComp = new Composite(comp, SWT.NONE);
-        GridLayout layout = new GridLayout(4, true);
+        GridLayout layout = new GridLayout(4, false);
         GridData data = new GridData(SWT.CENTER, SWT.CENTER, true, false);
         buttonComp.setLayout(layout);
         buttonComp.setLayoutData(data);
@@ -509,25 +499,38 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
      * @param data
      */
     private void addInput(Composite comp, String productId) {
-        int count = 0;
         for (Entry<String, Serializable> entry : data.entrySet()) {
             Composite pieceComp = new Composite(comp, SWT.NONE);
-            setLayoutInfo(pieceComp, 1, false, SWT.FILL, SWT.DEFAULT, true,
-                    false, null);
+            ProductEditorComposite composite = addFields(pieceComp, productId,
+                    entry.getKey(), entry.getValue());
             if (compositeMap.containsKey(productId) == false) {
                 compositeMap.put(productId,
                         new HashMap<String, ProductEditorComposite>());
             }
-            ProductEditorComposite composite = new ProductEditorComposite(
-                    pieceComp, entry.getKey(), entry.getValue(), formatListener);
             compositeMap.get(productId).put(entry.getKey(), composite);
-            if (count != data.size() - 1) {
-                Label separator = new Label(comp, SWT.HORIZONTAL
-                        | SWT.SEPARATOR);
-                separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-            }
-            count++;
         }
+    }
+
+    /**
+     * Adds fields to the left hand side
+     * 
+     * @param comp
+     * @param productId
+     * @param key
+     * @param value
+     * @param size
+     * @param count
+     */
+    private ProductEditorComposite addFields(Composite comp, String productId,
+            String key, Serializable value) {
+        Composite pieceComp = new Composite(comp, SWT.NONE);
+        setLayoutInfo(pieceComp, 1, false, SWT.FILL, SWT.DEFAULT, true, false,
+                null);
+        ProductEditorComposite composite = new ProductEditorComposite(
+                pieceComp, key, value, formatListener);
+        Label separator = new Label(comp, SWT.HORIZONTAL | SWT.SEPARATOR);
+        separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        return composite;
     }
 
     /**
@@ -590,7 +593,10 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
                             public void run() {
                                 for (String key : productTabs.keySet()) {
                                     if (productIds.contains(key) == false) {
-                                        productTabs.get(key).dispose();
+                                        for (CTabItem item : productTabs
+                                                .get(key)) {
+                                            item.dispose();
+                                        }
                                     }
                                 }
                                 productTabs.keySet().retainAll(productIds);
