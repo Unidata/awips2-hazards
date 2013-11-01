@@ -12,11 +12,15 @@ import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -63,6 +67,32 @@ public class ProductStagingPresenter extends
                         "Continue");
                 action.setIssueFlag(issueFlag);
                 Dict productInfo = getView().getProductInfo();
+
+                /*
+                 * TODO this is certainly not ideal, and will change with the
+                 * JSON refactor as we can edit the events directly instead of
+                 * perusing through to find which ones are not selected
+                 */
+                List<?> hazardEventSets = (List<?>) productInfo
+                        .get("hazardEventSets");
+                Dict listVal = (Dict) hazardEventSets.get(0);
+                Dict stagingInfo = (Dict) listVal.get("stagingInfo");
+                Dict valueDict = (Dict) stagingInfo.get("valueDict");
+                List<?> eventIds = (List<?>) valueDict.get("eventIDs");
+                Collection<IHazardEvent> events = getSessionManager()
+                        .getEventManager().getEvents();
+                Collection<IHazardEvent> selectedEvents = getSessionManager()
+                        .getEventManager().getSelectedEvents();
+                for (IHazardEvent eve : events) {
+                    if (eventIds.contains(eve.getEventID())) {
+                        eve.addHazardAttribute(Utilities.HAZARD_EVENT_SELECTED,
+                                true);
+                        selectedEvents.add(eve);
+                    }
+                }
+                getSessionManager().getEventManager().setSelectedEvents(
+                        selectedEvents);
+
                 action.setJSONText(productInfo.toJSONString());
                 fireAction(action);
             } catch (Exception e1) {
