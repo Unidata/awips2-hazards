@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Implementation of ISessionEventManager
@@ -308,8 +309,19 @@ public class SessionEventManager extends AbstractSessionEventManager {
             }
         }
         oevent.setSiteID(configManager.getSiteID(), false);
-        // TODO operational.
-        oevent.setHazardMode(ProductClass.TEST, false);
+        ProductClass productClass;
+        switch (CAVEMode.getMode()) {
+        case OPERATIONAL:
+            productClass = ProductClass.OPERATIONAL;
+            break;
+        case PRACTICE:
+            // TODO, for now do it this way, maybe need to add user changeable
+            productClass = ProductClass.OPERATIONAL;
+            break;
+        default:
+            productClass = ProductClass.TEST;
+        }
+        oevent.setHazardMode(productClass, false);
         synchronized (events) {
             if (localEvent && !Boolean.TRUE.equals(settings.getAddToSelected())) {
                 for (IHazardEvent e : events) {
