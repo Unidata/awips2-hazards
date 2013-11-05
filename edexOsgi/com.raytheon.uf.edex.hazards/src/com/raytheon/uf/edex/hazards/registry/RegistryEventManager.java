@@ -30,6 +30,7 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.registry.RegistryHandler;
@@ -53,6 +54,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
+ * Oct 30, 2013 #1472     bkowal    Implemented retrieval from the registry
+ *                                  by phensig.
  * 
  * </pre>
  * 
@@ -181,17 +184,34 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                                 (Date) filters.get(HazardConstants.STARTTIME),
                                 (Date) filters.get(HazardConstants.ENDTIME)));
                     } else if (finalKey.equals(HazardConstants.PHENSIG)) {
-                        // List<Object> obs =
-                        // filters.get(HazardConstants.PHENSIG);
-                        // for (Object ob : obs){
-                        // // this is most likely not the ideal way to do this
-                        // String phensig = ob.toString();
-                        // listEvents.addAll(handler.getByFilter(filters))
-                        // }
-                        // TODO this should be implemented
-                        statusHandler
-                                .handle(Priority.ERROR,
-                                        "Querying by phensig is not currently supported in the registry");
+                        for (Object ob : entry.getValue()) {
+                            String phensig = ob.toString();
+
+                            String[] splitPhensig = phensig.split("\\.");
+                            if (splitPhensig.length != 2
+                                    && splitPhensig.length != 3) {
+                                statusHandler.handle(Priority.WARN,
+                                        "Improperly formatted phensig, skipping "
+                                                + phensig);
+                                continue;
+                            }
+                            HazardQueryBuilder hazardQueryBuilder = new HazardQueryBuilder();
+                            hazardQueryBuilder
+                                    .addKey(HazardConstants.PHENOMENON,
+                                            splitPhensig[0]);
+                            hazardQueryBuilder.addKey(
+                                    HazardConstants.SIGNIFICANCE,
+                                    splitPhensig[1]);
+                            if (splitPhensig.length == 3) {
+                                hazardQueryBuilder.addKey(
+                                        HazardConstants.SUBTYPE,
+                                        splitPhensig[2]);
+                            }
+                            listEvents
+                                    .addAll(handler
+                                            .getByFilter(hazardQueryBuilder
+                                                    .getQuery()));
+                        }
                     } else {
                         listEvents.addAll(handler.getByFilter(filters));
                     }

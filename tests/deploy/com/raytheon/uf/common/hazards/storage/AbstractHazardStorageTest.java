@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.storage;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -59,6 +61,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 30, 2013            mnash     Initial creation
+ * Oct 30, 2013 #1472      bkowal    Added a test for retrieving a large number of
+ *                                   hazards by phensig.
  * 
  * </pre>
  * 
@@ -296,7 +300,6 @@ public abstract class AbstractHazardStorageTest {
         }
     }
 
-    @Ignore
     @Test
     public void testByMultiplePhensig() {
         List<String> phensigs = new ArrayList<String>();
@@ -323,6 +326,52 @@ public abstract class AbstractHazardStorageTest {
                 .getByMultiplePhensigs(phensigs);
         // should get 2 back
         assertThat(list.keySet(), hasSize(2));
+        for (String eid : list.keySet()) {
+            for (IHazardEvent ev : list.get(eid)) {
+                manager.removeEvent(ev);
+            }
+        }
+    }
+
+    @Test
+    public void testByMultiplePhensigLargeRetrieval() {
+        List<String> phensigs = new ArrayList<String>();
+        IHazardEvent event = storeEvent();
+
+        // create 50 of each type of event.
+        for (int i = 0; i < 50; i++) {
+            event = createNewEvent();
+            event.setPhenomenon("FA");
+            event.setSubtype("Convective");
+            manager.storeEvent(event);
+        }
+
+        for (int i = 0; i < 50; i++) {
+            event = createNewEvent();
+            event.setPhenomenon("TO");
+            event.setSignificance("D");
+            manager.storeEvent(event);
+        }
+
+        for (int i = 0; i < 50; i++) {
+            event = createNewEvent();
+            event.setPhenomenon("FF");
+            event.setSignificance("D");
+            manager.storeEvent(event);
+        }
+
+        phensigs.add("FF.D");
+        phensigs.add("FA.P.Convective");
+        final long startTime = System.currentTimeMillis();
+        Map<String, HazardHistoryList> list = manager
+                .getByMultiplePhensigs(phensigs);
+        final long endTime = System.currentTimeMillis();
+        final long totalTime = endTime - startTime;
+        
+        // ensure that the total time is < 1 second = 0 seconds
+        assertThat(totalTime, lessThanOrEqualTo(DateUtils.MILLIS_PER_SECOND));
+        // verify that we have received the expected number of records
+        assertThat(list.keySet(), hasSize(100));
         for (String eid : list.keySet()) {
             for (IHazardEvent ev : list.get(eid)) {
                 manager.removeEvent(ev);

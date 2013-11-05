@@ -27,7 +27,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.hibernate.Criteria;
-import org.hibernate.criterion.Criterion;
+import org.hibernate.criterion.Conjunction;
+import org.hibernate.criterion.Disjunction;
 import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -57,6 +58,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
+ * Oct 30, 2013 #1472     bkowal    Updated the phensig retrieval to use disjunctions
+ *                                  and conjunctions instead of nested OR and AND
+ *                                  statements.
  * 
  * </pre>
  * 
@@ -208,7 +212,7 @@ public class DatabaseEventManager implements
                                 filters.get(HazardConstants.ENDTIME).get(0)));
                     }
                 } else if (finalKey.equals(HazardConstants.PHENSIG)) {
-                    Criterion criterion = null;
+                    Disjunction criterion = Restrictions.disjunction();
                     for (Object ob : entry.getValue()) {
                         String phensig = ob.toString();
                         String[] splitPhensig = phensig.split("\\.");
@@ -221,21 +225,18 @@ public class DatabaseEventManager implements
                         }
                         // build a criterion based on and/or according to
                         // phensigs
-                        Criterion psCriterion = Restrictions.and(
-                                Restrictions.eq(HazardConstants.PHENOMENON,
-                                        splitPhensig[0]), Restrictions.eq(
-                                        HazardConstants.SIGNIFICANCE,
+                        
+                        Conjunction psCriterion = Restrictions.conjunction();
+                        psCriterion.add(Restrictions.eq(HazardConstants.PHENOMENON,
+                                        splitPhensig[0]));
+                        psCriterion.add(Restrictions.eq(HazardConstants.SIGNIFICANCE,
                                         splitPhensig[1]));
                         if (splitPhensig.length == 3) {
-                            psCriterion = Restrictions.and(psCriterion,
-                                    Restrictions.eq(HazardConstants.SUBTYPE,
+                            psCriterion.add(Restrictions.eq(HazardConstants.SUBTYPE,
                                             splitPhensig[2]));
                         }
-                        if (criterion == null) {
-                            criterion = psCriterion;
-                        } else {
-                            criterion = Restrictions.or(psCriterion, criterion);
-                        }
+                        
+                        criterion.add(psCriterion);
                     }
                     criteria.add(criterion);
                 } else {
