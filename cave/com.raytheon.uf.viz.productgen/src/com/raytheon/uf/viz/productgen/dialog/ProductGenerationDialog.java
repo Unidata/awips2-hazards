@@ -24,7 +24,6 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
@@ -129,10 +128,6 @@ public class ProductGenerationDialog extends CaveSWTDialogBase {
      * understand.
      */
     private Map<String, Map<String, ProductEditorComposite>> compositeMap = new LinkedHashMap<String, Map<String, ProductEditorComposite>>();
-
-    private Composite editingFormatsComp;
-
-    private Composite editingDataComp;
 
     /*
      * TODO, the following need to be looked into whether they are necessary
