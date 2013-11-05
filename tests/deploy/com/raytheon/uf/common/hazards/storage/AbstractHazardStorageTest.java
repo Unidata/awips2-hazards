@@ -19,11 +19,8 @@
  **/
 package com.raytheon.uf.common.hazards.storage;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,8 +58,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 30, 2013            mnash     Initial creation
+ * <<<<<<< HEAD
  * Oct 30, 2013 #1472      bkowal    Added a test for retrieving a large number of
  *                                   hazards by phensig.
+ * =======
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * >>>>>>> Issue #2182.
  * 
  * </pre>
  * 
@@ -253,8 +254,10 @@ public abstract class AbstractHazardStorageTest {
     public void testByMultipleStartTime() {
         IHazardEvent createdEvent = storeEvent();
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.STARTTIME, createdEvent.getStartTime());
-        builder.addKey(HazardConstants.STARTTIME, createdEvent.getStartTime());
+        builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME,
+                createdEvent.getStartTime());
+        builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME,
+                createdEvent.getStartTime());
         Map<String, HazardHistoryList> list = manager.getEventsByFilter(builder
                 .getQuery());
         assertTrue("No events returned", list.isEmpty() == false);
@@ -269,8 +272,10 @@ public abstract class AbstractHazardStorageTest {
     public void testByMultipleEndTime() {
         IHazardEvent createdEvent = storeEvent();
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.ENDTIME, createdEvent.getEndTime());
-        builder.addKey(HazardConstants.ENDTIME, createdEvent.getEndTime());
+        builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME,
+                createdEvent.getEndTime());
+        builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME,
+                createdEvent.getEndTime());
         Map<String, HazardHistoryList> list = manager.getEventsByFilter(builder
                 .getQuery());
         assertTrue("No events returned", list.isEmpty() == false);
@@ -367,7 +372,7 @@ public abstract class AbstractHazardStorageTest {
                 .getByMultiplePhensigs(phensigs);
         final long endTime = System.currentTimeMillis();
         final long totalTime = endTime - startTime;
-        
+
         // ensure that the total time is < 1 second = 0 seconds
         assertThat(totalTime, lessThanOrEqualTo(DateUtils.MILLIS_PER_SECOND));
         // verify that we have received the expected number of records

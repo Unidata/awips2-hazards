@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 
 import java.util.List;
 
@@ -29,6 +29,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -45,7 +46,7 @@ final public class Point extends Shape {
     public Point(String label, String isVisible, String isSelected,
             String include, String color, Coordinate point, String pointID) {
         super(label, isVisible, isSelected, include);
-        setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT);
+        setShapeType(HAZARD_EVENT_SHAPE_TYPE_POINT);
         this.color = color;
         this.points = Lists.newArrayList(new double[] { point.x, point.y });
         this.pointID = pointID;

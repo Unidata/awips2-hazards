@@ -50,6 +50,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 22, 2013            mnash     Initial creation
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -165,10 +166,12 @@ public class WarningActionable implements IActionable {
                         event.getPhenomenon());
                 builder.addKey(HazardConstants.SIGNIFICANCE,
                         event.getSignificance());
-                builder.addKey(HazardConstants.STATE, event.getState());
+                builder.addKey(HazardConstants.HAZARD_EVENT_STATE,
+                        event.getState());
                 if (event.getSubtype() != null
                         && event.getSubtype().isEmpty() == false) {
-                    builder.addKey(HazardConstants.SUBTYPE, event.getSubtype());
+                    builder.addKey(HazardConstants.HAZARD_EVENT_SUB_TYPE,
+                            event.getSubtype());
                 }
                 Map<String, HazardHistoryList> hazards = manager
                         .getEventsByFilter(builder.getQuery());

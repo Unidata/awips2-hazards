@@ -79,7 +79,8 @@ public class DragDropAction extends NonDrawingAction {
                     return false;
                 }
 
-                long selectedTime = getSpatialPresenter().getSelectedTime();
+                long selectedTime = getSpatialPresenter().getSelectedTime()
+                        .getTime();
 
                 selectedTime /= 1000;
                 String json = JSONUtilities.createDragDropPointJSON(coord.y,

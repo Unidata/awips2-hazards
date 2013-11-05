@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -18,7 +19,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
@@ -41,6 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166      daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166      daniel.s.schaffer@noaa.gov      Test in working order
+ * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -168,25 +170,24 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     hazards = mockConsoleView.getHazardEvents();
                     assertEquals(hazards.size(), 8);
                     event = hazards.get(0);
-                    assertEquals(event.get(HazardConstants.TYPE),
+                    assertEquals(event.get(HAZARD_EVENT_TYPE),
                             FLASH_FLOOD_WATCH_PHEN_SIG);
                     event = hazards.get(1);
-                    assertEquals(event.get(HazardConstants.TYPE),
+                    assertEquals(event.get(HAZARD_EVENT_TYPE),
                             FLOOD_WATCH_PHEN_SIG);
-                    assertEquals(event.get(HazardConstants.STATE),
-                            HazardConstants.HazardState.POTENTIAL.getValue());
-                    assertEquals(event.get(HazardConstants.COLOR),
-                            "191 221 217");
+                    assertEquals(event.get(HAZARD_EVENT_STATE),
+                            HazardState.POTENTIAL.getValue());
+                    assertEquals(event.get(HAZARD_EVENT_COLOR), "191 221 217");
 
                     String e0 = hazards.get(0).getDynamicallyTypedValue(
-                            HazardConstants.EVENTID);
+                            HAZARD_EVENT_IDENTIFIER);
                     String e1 = hazards.get(1).getDynamicallyTypedValue(
-                            HazardConstants.EVENTID);
+                            HAZARD_EVENT_IDENTIFIER);
 
                     String[] eventIDs = new String[] { e0, e1 };
                     step = Steps.SELECT_RECOMMENDED;
                     SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                            HazardConstants.SELECTED_EVENTS_CHANGED, eventIDs);
+                            SELECTED_EVENTS_CHANGED, eventIDs);
                     eventBus.post(displayAction);
                     break;
                 default:
@@ -244,11 +245,10 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             final HazardDetailAction hazardDetailAction) {
         try {
             String action = hazardDetailAction.getAction();
-            if (action.equalsIgnoreCase(HazardConstants.HazardAction.PREVIEW
-                    .getValue())) {
+            if (action.equalsIgnoreCase(HazardAction.PREVIEW.getValue())) {
                 assertFalse(mockProductStagingView.isToBeIssued());
 
-            } else if (action.equals(HazardConstants.UPDATE_EVENT_TYPE)) {
+            } else if (action.equals(UPDATE_EVENT_TYPE)) {
 
                 switch (step) {
                 case UPDATING_FIRST_EVENT:
@@ -268,7 +268,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     testError();
                 }
 
-            } else if (action.equals(HazardConstants.UPDATE_EVENT_METADATA)) {
+            } else if (action.equals(UPDATE_EVENT_METADATA)) {
                 step = Steps.CONTINUED_PREVIEW_FIRST_PRODUCT;
                 previewEvent(eventBus);
             }
@@ -291,18 +291,20 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case SELECTION_ISSUE:
-                String contextMenuEntries = appBuilder.getContextMenuEntries();
+                List<String> contextMenuEntries = toolLayer
+                        .getContextMenuEntries();
+                checkMenuContextMenu(contextMenuEntries,
+                        CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
                 assertTrue(contextMenuEntries
-                        .contains(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG));
+                        .contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG));
+                assertTrue(contextMenuEntries.contains(END_SELECTED_HAZARDS));
                 assertTrue(contextMenuEntries
-                        .contains(HazardConstants.END_SELECTED_HAZARDS));
+                        .contains(PROPOSE_SELECTED_HAZARDS));
                 assertTrue(contextMenuEntries
-                        .contains(HazardConstants.PROPOSE_SELECTED_HAZARDS));
-                assertTrue(contextMenuEntries
-                        .contains(HazardConstants.REMOVE_POTENTIAL_HAZARDS));
+                        .contains(REMOVE_POTENTIAL_HAZARDS));
 
                 step = Steps.REMOVING_POTENTIAL_EVENTS;
-                postContextMenuEvent(HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS);
+                postContextMenuEvent(CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS);
                 break;
 
             case REPLACEMENT_PREVIEW_FIRST_PRODUCT:
@@ -329,8 +331,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
             case REPLACEMENT_ISSUE_THIRD_PRODUCT:
                 checkOriginalProductsEnded();
-                checkReplacementEvents(HazardConstants.HazardState.ISSUED
-                        .getValue());
+                checkReplacementEvents(HazardState.ISSUED.getValue());
                 checkEndedEventsGoneFromHid();
                 Dict metadata = new Dict();
                 metadata.put(INCLUDE, SEV2);
@@ -354,10 +355,9 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case CONTINUED_ISSUE_SECOND_PRODUCT:
-                checkReplacementEvents(HazardConstants.HazardState.ISSUED
-                        .getValue());
+                checkReplacementEvents(HazardState.ISSUED.getValue());
                 step = Steps.REMOVING_ENDED_EVENTS;
-                postContextMenuEvent(HazardConstants.CONTEXT_MENU_END);
+                postContextMenuEvent(CONTEXT_MENU_END);
                 break;
 
             case ENDED_PREVIEW_FIRST_PRODUCT:
@@ -375,8 +375,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case ENDED_ISSUE_SECOND_PRODUCT:
-                checkReplacementEvents(HazardConstants.HazardState.ENDED
-                        .getValue());
+                checkReplacementEvents(HazardState.ENDED.getValue());
                 step = Steps.TEST_ENDED;
                 testSuccess();
                 break;
@@ -390,34 +389,44 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     }
 
+    private void checkMenuContextMenu(List<String> contextMenuEntries,
+            String expected) {
+        for (String entry : contextMenuEntries) {
+            if (entry.equals(expected)) {
+                return;
+            }
+        }
+        assertFalse(true);
+    }
+
     private void postContextMenuEvent(String choice) {
         SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                HazardConstants.CONEXT_MENU_SELECTED, 0, choice);
+                CONEXT_MENU_SELECTED, 0, choice);
         eventBus.post(spatialAction);
     }
 
     private void checkReplacementEvents(String state) {
         Dict event;
         event = getEventByType(FLOOD_WARNING_PHEN_SIG);
-        assertEquals(event.get(HazardConstants.STATE), state);
+        assertEquals(event.get(HAZARD_EVENT_STATE), state);
         event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
-        assertEquals(event.get(HazardConstants.STATE), state);
+        assertEquals(event.get(HAZARD_EVENT_STATE), state);
     }
 
     private void checkOriginalProductsEnded() {
         Dict event;
         event = getEventByType(FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(HazardConstants.STATE),
-                HazardConstants.HazardState.ENDED.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATE),
+                HazardState.ENDED.getValue());
         event = getEventByType(FLASH_FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(HazardConstants.STATE),
-                HazardConstants.HazardState.ENDED.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATE),
+                HazardState.ENDED.getValue());
     }
 
     private Dict getEventByType(String eventType) {
         List<Dict> events = mockConsoleView.getHazardEvents();
         for (Dict event : events) {
-            String type = event.getDynamicallyTypedValue(HazardConstants.TYPE);
+            String type = event.getDynamicallyTypedValue(HAZARD_EVENT_TYPE);
             if (type.equals(eventType)) {
                 return event;
             }
@@ -429,7 +438,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private void checkSelectionPreview() {
         Dict productInfo = mockProductEditorView.getProductInfo();
         List<?> generatedProducts = (ArrayList<?>) productInfo
-                .get(HazardConstants.GENERATED_PRODUCTS);
+                .get(GENERATED_PRODUCTS);
         assertEquals(generatedProducts.size(), 2);
         Dict productCollection0 = (Dict) generatedProducts.get(0);
         String productId = productCollection0
@@ -470,9 +479,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         int numIssued = 0;
         for (Dict hazard : hazards) {
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.STATE);
-            if (stateAsString.equals(HazardConstants.HazardState.ISSUED
-                    .getValue())) {
+                    .getDynamicallyTypedValue(HAZARD_EVENT_STATE);
+            if (stateAsString.equals(HazardState.ISSUED.getValue())) {
                 numIssued += 1;
             }
 
@@ -510,15 +518,14 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     @SuppressWarnings("unchecked")
     private void issueEvent() {
         ProductEditorAction action = new ProductEditorAction(
-                HazardConstants.HazardAction.ISSUE.getValue());
+                HazardAction.ISSUE.getValue());
         List<Dict> hazardEventSetsList = mockProductEditorView
                 .getHazardEventSetsList();
         List<Dict> generatedProductsDictList = mockProductEditorView
                 .getGeneratedProductsDictList();
         Dict returnDict = new Dict();
-        returnDict.put(HazardConstants.GENERATED_PRODUCTS,
-                generatedProductsDictList);
-        returnDict.put(HazardConstants.HAZARD_EVENT_SETS, hazardEventSetsList);
+        returnDict.put(GENERATED_PRODUCTS, generatedProductsDictList);
+        returnDict.put(HAZARD_EVENT_SETS, hazardEventSetsList);
 
         action.setJSONText(returnDict.toJSONString());
         eventBus.post(action);
@@ -526,29 +533,28 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     private void replaceEvent(Dict event, String eventType) {
         String eventID = event
-                .getDynamicallyTypedValue(HazardConstants.EVENTID);
+                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
         Dict metadata = new Dict();
-        metadata.put(HazardConstants.EVENTID, eventID);
+        metadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
         metadata.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
-                HazardConstants.HYDROLOGY_SETTING);
-        metadata.put(Utilities.HAZARD_EVENT_FULL_TYPE, eventType);
+                HYDROLOGY_SETTING);
+        metadata.put(HAZARD_EVENT_FULL_TYPE, eventType);
 
-        eventBus.post(new HazardDetailAction(HazardConstants.UPDATE_EVENT_TYPE,
-                metadata.toJSONString()));
+        eventBus.post(new HazardDetailAction(UPDATE_EVENT_TYPE, metadata
+                .toJSONString()));
     }
 
     private void updateEvent(Dict event, Dict metadata) {
         Dict allMetadata = new Dict();
         String eventID = event
-                .getDynamicallyTypedValue(HazardConstants.EVENTID);
-        allMetadata.put(HazardConstants.EVENTID, eventID);
+                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
+        allMetadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
         for (String key : metadata.keySet()) {
             allMetadata.put(key, metadata.get(key));
         }
 
-        eventBus.post(new HazardDetailAction(
-                HazardConstants.UPDATE_EVENT_METADATA, allMetadata
-                        .toJSONString()));
+        eventBus.post(new HazardDetailAction(UPDATE_EVENT_METADATA, allMetadata
+                .toJSONString()));
     }
 
     private void checkConsoleSelections() {
@@ -566,52 +572,49 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkDamBreakRecommendation(Dict event) {
-        assertEquals(event.get(HazardConstants.TYPE),
-                FLASH_FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(HazardConstants.SITEID), OAX);
-        assertEquals(event.get(HazardConstants.CAUSE), "Dam Failure");
-        assertEquals(event.get(HazardConstants.STATE),
-                HazardConstants.HazardState.PENDING.getValue());
+        assertEquals(event.get(HAZARD_EVENT_TYPE), FLASH_FLOOD_WATCH_PHEN_SIG);
+        assertEquals(event.get(SITEID), OAX);
+        assertEquals(event.get(CAUSE), "Dam Failure");
+        assertEquals(event.get(HAZARD_EVENT_STATE),
+                HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(HazardConstants.ISSUETIME)),
-                new Double(1.2971376E12));
-        assertEquals(asDouble(event.get(HazardConstants.STARTTIME)),
-                new Double(1.2971376E12));
-        assertEquals(asDouble(event.get(HazardConstants.ENDTIME)), new Double(
+        assertEquals(asDouble(event.get(ISSUETIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
+                1.2971376E12));
+        assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
                 1.2971484E12));
-        assertEquals(event.get(HazardConstants.COLOR), "144 224 209");
+        assertEquals(event.get(HAZARD_EVENT_COLOR), "144 224 209");
     }
 
     private void checkHidFloodEventAddition() {
         DictList hidContents = mockHazardDetailView.getContents();
         assertEquals(hidContents.size(), 2);
         Dict floodEvent = (Dict) hidContents.get(1);
-        assertEquals(floodEvent.get(HazardConstants.TYPE), FLOOD_WATCH_PHEN_SIG);
+        assertEquals(floodEvent.get(HAZARD_EVENT_TYPE), FLOOD_WATCH_PHEN_SIG);
     }
 
     private void checkReplacement() {
         List<Dict> consoleEvents = this.mockConsoleView.getHazardEvents();
         assertEquals(consoleEvents.size(), 4);
         Dict updatedDamBreakEvent = consoleEvents.get(2);
-        assertEquals(updatedDamBreakEvent.get(HazardConstants.STATE),
-                HazardConstants.HazardState.PENDING.getValue());
-        assertEquals(updatedDamBreakEvent.get(HazardConstants.TYPE),
+        assertEquals(updatedDamBreakEvent.get(HAZARD_EVENT_STATE),
+                HazardState.PENDING.getValue());
+        assertEquals(updatedDamBreakEvent.get(HAZARD_EVENT_TYPE),
                 FFW_NON_CONVECTIVE_PHEN_SIG);
 
         Dict updatedRiverFloodEvent = consoleEvents.get(3);
-        assertEquals(updatedRiverFloodEvent.get(HazardConstants.TYPE),
+        assertEquals(updatedRiverFloodEvent.get(HAZARD_EVENT_TYPE),
                 FLOOD_WARNING_PHEN_SIG);
 
         DictList hidContents = mockHazardDetailView.getContents();
         assertEquals(hidContents.size(), 4);
         Dict event = (Dict) hidContents.get(2);
         String fullType = event
-                .getDynamicallyTypedValue(Utilities.HAZARD_EVENT_FULL_TYPE);
+                .getDynamicallyTypedValue(HAZARD_EVENT_FULL_TYPE);
         assertTrue(fullType.contains(FFW_NON_CONVECTIVE_PHEN_SIG));
 
         event = (Dict) hidContents.get(3);
-        fullType = event
-                .getDynamicallyTypedValue(Utilities.HAZARD_EVENT_FULL_TYPE);
+        fullType = event.getDynamicallyTypedValue(HAZARD_EVENT_FULL_TYPE);
         assertTrue(fullType.contains(FLOOD_WARNING_PHEN_SIG));
     }
 
@@ -619,8 +622,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         DictList hidContents = mockHazardDetailView.getContents();
         assertEquals(hidContents.size(), 2);
         Dict floodEvent = (Dict) hidContents.get(1);
-        assertEquals(floodEvent.get(HazardConstants.TYPE),
-                FLOOD_WARNING_PHEN_SIG);
+        assertEquals(floodEvent.get(HAZARD_EVENT_TYPE), FLOOD_WARNING_PHEN_SIG);
     }
 
     /**

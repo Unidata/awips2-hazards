@@ -41,6 +41,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -107,6 +109,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Aug 22, 2013   1936     Chris.Golden        Added support for console countdown timers.
  * Aug 29, 2013 1921       bryon.lawrence      Modified loadGeometryOverlayForSelectedEvent to
  *                                             not take a JSON list of event ids.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -153,11 +156,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public final static String CANNED_TIME = "1297137600000"; // 4Z
 
     // Private Static Constants
-
-    /**
-     * Auto-tests enabled environment variable.
-     */
-    private static final String AUTO_TESTS_ENABLED_ENVIRONMENT_VARIABLE = "HAZARD_SERVICES_AUTO_TESTS_ENABLED";
 
     /**
      * Preferences key used to determine whether or not to start off the views
@@ -252,10 +250,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private boolean forcedShutdown = false;
 
     /**
-     * Current time, represented as epoch time in milliseconds given as a
-     * string.
+     * Current time
      */
-    private String currentTime;
+    private Date currentTime;
 
     /**
      * Viz resource associated with this builder.
@@ -318,7 +315,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *             If an error occurs while attempting to initialize.
      */
     private void initialize(ToolLayer toolLayer) {
-        currentTime = null;
         this.toolLayer = toolLayer;
 
         ((ToolLayerResourceData) toolLayer.getResourceData())
@@ -335,12 +331,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * the user can interact with the CAVE status line clock only in
          * practice mode.
          */
-        currentTime = Long.toString(SimulatedTime.getSystemTime().getTime()
-                .getTime());
+        currentTime = SimulatedTime.getSystemTime().getTime();
+        this.sessionManager = SessionManagerFactory.getSessionManager();
 
-        messageHandler = new HazardServicesMessageHandler(this, currentTime,
-                "", "{}");
-        this.sessionManager = messageHandler.getSessionManager();
+        messageHandler = new HazardServicesMessageHandler(this, currentTime, "");
 
         new HazardServicesMessageListener(messageHandler, eventBus);
 
@@ -712,15 +706,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public EventBus getEventBus() {
         return eventBus;
-    }
-
-    /**
-     * Get context menu entries.
-     * 
-     * @return JSON string containing the list of context menu entries.
-     */
-    public String getContextMenuEntries() {
-        return messageHandler.getModelProxy().getContextMenuEntries();
     }
 
     /**

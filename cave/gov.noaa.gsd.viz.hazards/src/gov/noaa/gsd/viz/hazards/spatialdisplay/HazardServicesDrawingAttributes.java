@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.LineAttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
@@ -45,6 +46,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -271,7 +273,7 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
     protected void setPointTime(int shapeNum, IHazardEvent hazardEvent) {
         @SuppressWarnings("unchecked")
         List<Map<String, Serializable>> shapesList = (List<Map<String, Serializable>>) hazardEvent
-                .getHazardAttribute(Utilities.HAZARD_EVENT_SHAPES);
+                .getHazardAttribute(HAZARD_EVENT_SHAPES);
         Map<String, Serializable> shape = shapesList.get(shapeNum);
 
         Long pointTime = (Long) shape.get(Utilities.POINT_TIME);

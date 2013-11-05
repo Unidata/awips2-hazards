@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.hazards.utilities.DateStringComparator;
 import gov.noaa.gsd.common.hazards.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
@@ -105,7 +106,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -131,6 +131,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  *                                           it as it should.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Aug 09, 2013    1936    Chris.Golden      Added console countdown timers.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Chris.Golden
@@ -770,21 +771,17 @@ class TemporalDisplay {
                 // Save the new start and end times in the event
                 // dictionary.
                 for (Dict eventDict : dictsForEventIdentifiers.values()) {
-                    if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER)
-                            .equals(eventID)) {
-                        eventDict.put(Utilities.HAZARD_EVENT_START_TIME,
-                                values[0]);
-                        eventDict.put(Utilities.HAZARD_EVENT_END_TIME,
-                                values[1]);
+                    if (eventDict.get(HAZARD_EVENT_IDENTIFIER).equals(eventID)) {
+                        eventDict.put(HAZARD_EVENT_START_TIME, values[0]);
+                        eventDict.put(HAZARD_EVENT_END_TIME, values[1]);
                         break;
                     }
                 }
 
                 // Change the start and end time text in the table
                 // row, if the columns are showing.
-                String[] columnIdentifiers = {
-                        Utilities.HAZARD_EVENT_START_TIME,
-                        Utilities.HAZARD_EVENT_END_TIME };
+                String[] columnIdentifiers = { HAZARD_EVENT_START_TIME,
+                        HAZARD_EVENT_END_TIME };
                 for (int j = 0; j < columnIdentifiers.length; j++) {
                     String columnName = columnNamesForIdentifiers
                             .get(columnIdentifiers[j]);
@@ -1311,9 +1308,9 @@ class TemporalDisplay {
      * @param presenter
      *            Presenter managing the view to which this display belongs.
      * @param selectedTime
-     *            Selected time as epoch time in milliseconds.
+     *            Selected time.
      * @param currentTime
-     *            Current time as epoch time in milliseconds.
+     *            Current time.
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
@@ -1329,8 +1326,8 @@ class TemporalDisplay {
      *            etc.) are to be shown in the toolbar. If <code>false</code>,
      *            they are provided at the bottom of this composite instead.
      */
-    public void initialize(ConsolePresenter presenter, long selectedTime,
-            long currentTime, long visibleTimeRange, String hazardEvents,
+    public void initialize(ConsolePresenter presenter, Date selectedTime,
+            Date currentTime, long visibleTimeRange, String hazardEvents,
             String filterMegawidgets, ImmutableList<IHazardAlert> activeAlerts,
             boolean showControlsInToolBar) {
 
@@ -1357,14 +1354,14 @@ class TemporalDisplay {
         }
 
         // Remember the time values.
-        this.selectedTime = selectedTime;
-        this.currentTime = currentTime;
+        this.selectedTime = selectedTime.getTime();
+        this.currentTime = currentTime.getTime();
         this.visibleTimeRange = visibleTimeRange;
 
         // Set the ruler's visible time range, selected time, and
         // current time. Also send the visible time range back as a
         // model change.
-        long lowerTime = currentTime - (visibleTimeRange / 4L);
+        long lowerTime = this.currentTime - (visibleTimeRange / 4L);
         if (lowerTime < Utilities.MIN_TIME) {
             lowerTime = Utilities.MIN_TIME;
         }
@@ -1377,8 +1374,8 @@ class TemporalDisplay {
         fireConsoleActionOccurred(new ConsoleAction(
                 ("VisibleTimeRangeChanged"), Long.toString(lowerTime),
                 Long.toString(upperTime)));
-        ruler.setFreeMarkedValues(currentTime);
-        ruler.setFreeThumbValues(selectedTime);
+        ruler.setFreeMarkedValues(this.currentTime);
+        ruler.setFreeThumbValues(this.selectedTime);
 
         // Use the provided hazard events, clearing the old ones first
         // in case this is a re-initialization.
@@ -1484,12 +1481,9 @@ class TemporalDisplay {
     /**
      * Update the current time.
      * 
-     * @param currentTime
-     *            JSON string holding the current time as an epoch time in
-     *            milliseconds.
      */
-    public void updateCurrentTime(String currentTime) {
-        this.currentTime = Long.parseLong(currentTime);
+    public void updateCurrentTime(Date currentTime) {
+        this.currentTime = currentTime.getTime();
         if (ruler.isDisposed() == false) {
             ruler.setFreeMarkedValue(0, this.currentTime);
             for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
@@ -1502,14 +1496,11 @@ class TemporalDisplay {
     /**
      * Update the selected time.
      * 
-     * @param selectedTime
-     *            JSON string holding the selected time as an epoch time in
-     *            milliseconds.
      */
-    public void updateSelectedTime(String selectedTime) {
+    public void updateSelectedTime(Date selectedTime) {
 
         // Set the selected time.
-        long time = Long.parseLong(selectedTime);
+        long time = selectedTime.getTime();
         ruler.setFreeThumbValue(0, time);
 
         // Ensure that the selected time is visible, and not just at
@@ -1609,7 +1600,7 @@ class TemporalDisplay {
         // identifier and the matching hazard event.
         Dict dict = Dict.getInstance(hazardEvent);
         String identifier = dict
-                .getDynamicallyTypedValue(Utilities.HAZARD_EVENT_IDENTIFIER);
+                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
         MultiValueScale scale = (MultiValueScale) tableEditorsForIdentifiers
                 .get(identifier).getEditor();
 
@@ -1623,8 +1614,7 @@ class TemporalDisplay {
 
             // If this row has the same event identifier as the
             // changed event, perform the updates upon it.
-            if (item.getData().equals(
-                    dict.get(Utilities.HAZARD_EVENT_IDENTIFIER))) {
+            if (item.getData().equals(dict.get(HAZARD_EVENT_IDENTIFIER))) {
 
                 // Iterate through the changed keys, making the
                 // corresponding changes to the row. If the start
@@ -1639,15 +1629,15 @@ class TemporalDisplay {
                     // changed, select or deselect the item; other-
                     // wise, as long as the key is not the event
                     // identifier, change the text to match.
-                    if (key.equals(Utilities.HAZARD_EVENT_CHECKED)) {
+                    if (key.equals(HAZARD_EVENT_CHECKED)) {
                         item.setChecked((Boolean) dict
-                                .get(Utilities.HAZARD_EVENT_CHECKED));
+                                .get(HAZARD_EVENT_CHECKED));
                         continue;
-                    } else if (key.equals(Utilities.HAZARD_EVENT_COLOR)) {
+                    } else if (key.equals(HAZARD_EVENT_COLOR)) {
                         Color color = getTimeRangeColorForRGB((String) dict
                                 .get(key));
                         scale.setConstrainedThumbRangeColor(1, color);
-                    } else if (key.equals(Utilities.HAZARD_EVENT_SELECTED)) {
+                    } else if (key.equals(HAZARD_EVENT_SELECTED)) {
 
                         // Determine the new selection state, as well
                         // as the current state.
@@ -1695,7 +1685,7 @@ class TemporalDisplay {
                                 selectedIndices = table.getSelectionIndices();
                             }
                         }
-                    } else if (!key.equals(Utilities.HAZARD_EVENT_IDENTIFIER)) {
+                    } else if (!key.equals(HAZARD_EVENT_IDENTIFIER)) {
 
                         // Change the text to match the new value.
                         String columnName = columnNamesForIdentifiers.get(key);
@@ -1711,13 +1701,11 @@ class TemporalDisplay {
 
                         // If the changed value is the start or
                         // end time, make a note of it.
-                        if (key.equals(Utilities.HAZARD_EVENT_START_TIME)) {
+                        if (key.equals(HAZARD_EVENT_START_TIME)) {
                             startTime = ((Number) dict
-                                    .get(Utilities.HAZARD_EVENT_START_TIME))
-                                    .longValue();
-                        } else if (key.equals(Utilities.HAZARD_EVENT_END_TIME)) {
-                            endTime = ((Number) dict
-                                    .get(Utilities.HAZARD_EVENT_END_TIME))
+                                    .get(HAZARD_EVENT_START_TIME)).longValue();
+                        } else if (key.equals(HAZARD_EVENT_END_TIME)) {
+                            endTime = ((Number) dict.get(HAZARD_EVENT_END_TIME))
                                     .longValue();
                         }
                     }
@@ -2326,8 +2314,7 @@ class TemporalDisplay {
             numberOfRows = eventArray.size();
             for (int j = 0; j < eventArray.size(); ++j) {
                 Dict dict = eventArray.get(j);
-                String eventId = (String) dict
-                        .get(Utilities.HAZARD_EVENT_IDENTIFIER);
+                String eventId = (String) dict.get(HAZARD_EVENT_IDENTIFIER);
                 eventIdentifiers.add(eventId);
                 dictsForEventIdentifiers.put(eventId, dict);
             }
@@ -2344,10 +2331,10 @@ class TemporalDisplay {
      */
     private void mergeIntoExistingEventDict(Dict toBeMerged) {
         for (Dict eventDict : dictsForEventIdentifiers.values()) {
-            if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER).equals(
-                    toBeMerged.get(Utilities.HAZARD_EVENT_IDENTIFIER))) {
+            if (eventDict.get(HAZARD_EVENT_IDENTIFIER).equals(
+                    toBeMerged.get(HAZARD_EVENT_IDENTIFIER))) {
                 for (String key : toBeMerged.keySet()) {
-                    if (key.equals(Utilities.HAZARD_EVENT_IDENTIFIER)) {
+                    if (key.equals(HAZARD_EVENT_IDENTIFIER)) {
                         continue;
                     }
                     eventDict.put(key, toBeMerged.get(key));
@@ -2366,10 +2353,8 @@ class TemporalDisplay {
      */
     private void updateEventDictListSelection(List<String> identifiers) {
         for (Dict eventDict : dictsForEventIdentifiers.values()) {
-            eventDict
-                    .put(Utilities.HAZARD_EVENT_SELECTED, identifiers
-                            .contains(eventDict
-                                    .get(Utilities.HAZARD_EVENT_IDENTIFIER)));
+            eventDict.put(HAZARD_EVENT_SELECTED, identifiers.contains(eventDict
+                    .get(HAZARD_EVENT_IDENTIFIER)));
         }
     }
 
@@ -2652,10 +2637,9 @@ class TemporalDisplay {
                     String identifier = (String) e.item.getData();
                     boolean isChecked = ((TableItem) e.item).getChecked();
                     for (Dict eventDict : dictsForEventIdentifiers.values()) {
-                        if (eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER)
-                                .equals(identifier)) {
-                            eventDict.put(Utilities.HAZARD_EVENT_CHECKED,
-                                    isChecked);
+                        if (eventDict.get(HAZARD_EVENT_IDENTIFIER).equals(
+                                identifier)) {
+                            eventDict.put(HAZARD_EVENT_CHECKED, isChecked);
                             break;
                         }
                     }
@@ -2680,8 +2664,7 @@ class TemporalDisplay {
                         selectedIndices = table.getSelectionIndices();
                         updateEventDictListSelection(selectedIdentifiers);
                         fireConsoleActionOccurred(new ConsoleAction(
-                                HazardConstants.SELECTED_EVENTS_CHANGED,
-                                selectedIdentifiers
+                                SELECTED_EVENTS_CHANGED, selectedIdentifiers
                                         .toArray(new String[selectedIdentifiers
                                                 .size()])));
                     }
@@ -2830,8 +2813,7 @@ class TemporalDisplay {
                             String text = null;
                             for (Dict eventDict : dictsForEventIdentifiers
                                     .values()) {
-                                if (eventDict.get(
-                                        Utilities.HAZARD_EVENT_IDENTIFIER)
+                                if (eventDict.get(HAZARD_EVENT_IDENTIFIER)
                                         .equals(eventID)) {
                                     String hintTextIdentifier = hintTextIdentifiersForVisibleColumnNames
                                             .get(columnName);
@@ -2909,8 +2891,7 @@ class TemporalDisplay {
                             long date = -1L;
                             for (Dict eventDict : dictsForEventIdentifiers
                                     .values()) {
-                                if (eventDict.get(
-                                        Utilities.HAZARD_EVENT_IDENTIFIER)
+                                if (eventDict.get(HAZARD_EVENT_IDENTIFIER)
                                         .equals(eventID)) {
                                     String dateIdentifier = dateIdentifiersForVisibleColumnNames
                                             .get(columnName);
@@ -3400,8 +3381,7 @@ class TemporalDisplay {
             // Determine whether or not the row is to be selected.
             Dict eventDict = dictsForEventIdentifiers.get(eventIdentifiers
                     .get(j));
-            Object selectedObject = eventDict
-                    .get(Utilities.HAZARD_EVENT_SELECTED);
+            Object selectedObject = eventDict.get(HAZARD_EVENT_SELECTED);
             boolean selected = ((selectedObject != null) && ((Boolean) selectedObject)
                     .booleanValue());
             if (selected) {
@@ -3412,17 +3392,14 @@ class TemporalDisplay {
             // column of the table.
             MultiValueScale scale = createTimeScale(item,
                     getTimeRangeColorForRGB((String) eventDict
-                            .get(Utilities.HAZARD_EVENT_COLOR)),
-                    ((Number) eventDict.get(Utilities.HAZARD_EVENT_START_TIME))
+                            .get(HAZARD_EVENT_COLOR)),
+                    ((Number) eventDict.get(HAZARD_EVENT_START_TIME))
                             .longValue(),
-                    ((Number) eventDict.get(Utilities.HAZARD_EVENT_END_TIME))
-                            .longValue());
+                    ((Number) eventDict.get(HAZARD_EVENT_END_TIME)).longValue());
 
-            // Set the row's identifier to equal that of the hazard
-            // event.
-            item.setData(eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER));
-            item.setChecked((Boolean) eventDict
-                    .get(Utilities.HAZARD_EVENT_CHECKED));
+            // Set the row's identifier to equal that of the hazard event
+            item.setData(eventDict.get(HAZARD_EVENT_IDENTIFIER));
+            item.setChecked((Boolean) eventDict.get(HAZARD_EVENT_CHECKED));
 
             // Create the table editor for this time scale.
             createTableEditorForTimeScale(scale, item);

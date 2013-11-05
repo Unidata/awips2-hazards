@@ -7,13 +7,14 @@
  */
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -28,6 +29,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 20, 2013            daniel.s.schaffer      Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -36,7 +38,7 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 public class InMemoryHazardEventManager extends HazardEventManager {
 
-    private List<IHazardEvent> hazardEvents;
+    private final List<IHazardEvent> hazardEvents;
 
     public InMemoryHazardEventManager() {
         super(Mode.PRACTICE);
@@ -82,7 +84,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
         for (String filterName : filters.keySet()) {
             List<Object> list = filters.get(filterName);
             boolean internalTruth = true;
-            if (filterName.equals(HazardConstants.EVENTID)) {
+            if (filterName.equals(HAZARD_EVENT_IDENTIFIER)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getEventID().equals(filterValue)) {
                         internalTruth = true;
@@ -97,7 +99,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.SITEID)) {
+            if (filterName.equals(SITEID)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getSiteID().equals(filterValue)) {
                         internalTruth = true;
@@ -112,7 +114,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.STATE)) {
+            if (filterName.equals(HAZARD_EVENT_STATE)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getState().equals(filterValue)) {
                         internalTruth = true;
@@ -127,7 +129,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.SIGNIFICANCE)) {
+            if (filterName.equals(SIGNIFICANCE)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getSignificance().equals(filterValue)) {
                         internalTruth = true;
@@ -142,7 +144,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.PHENOMENON)) {
+            if (filterName.equals(PHENOMENON)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getPhenomenon().equals(filterValue)) {
                         internalTruth = true;
@@ -157,7 +159,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.GEOMETRY)) {
+            if (filterName.equals(GEOMETRY)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getGeometry().intersects(
                             (Geometry) filterValue)) {
@@ -173,7 +175,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.STARTTIME)) {
+            if (filterName.equals(HAZARD_EVENT_START_TIME)) {
                 for (Object filterValue : list) {
                     Date filterDate = (Date) filterValue;
                     Date eventDate = hazardEvent.getStartTime();
@@ -191,7 +193,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HazardConstants.ENDTIME)) {
+            if (filterName.equals(HAZARD_EVENT_END_TIME)) {
                 for (Object filterValue : list) {
                     Date filterDate = (Date) filterValue;
                     Date eventDate = hazardEvent.getEndTime();

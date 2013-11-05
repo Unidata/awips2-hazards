@@ -51,6 +51,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -115,8 +116,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
          * Tack on a filter to look for issued hazards.
          */
         HazardQueryBuilder queryBuilder = new HazardQueryBuilder();
-        queryBuilder.addKey(HazardConstants.STATE,
-                HazardConstants.HazardState.ISSUED);
+        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATE,
+                HazardState.ISSUED);
         filter.putAll(queryBuilder.getQuery());
         Collection<HazardHistoryList> hazardHistories = hazardEventManager
                 .getEventsByFilter(filter).values();

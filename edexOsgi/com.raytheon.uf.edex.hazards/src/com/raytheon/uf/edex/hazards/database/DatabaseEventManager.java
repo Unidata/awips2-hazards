@@ -58,9 +58,13 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
+ * <<<<<<< HEAD
  * Oct 30, 2013 #1472     bkowal    Updated the phensig retrieval to use disjunctions
  *                                  and conjunctions instead of nested OR and AND
  *                                  statements.
+ * =======
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * >>>>>>> Issue #2182.
  * 
  * </pre>
  * 
@@ -73,7 +77,7 @@ public class DatabaseEventManager implements
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DatabaseEventManager.class);
 
-    private CoreDao dao;
+    private final CoreDao dao;
 
     private static final DatabaseEventManager instance = new DatabaseEventManager();
 
@@ -183,33 +187,53 @@ public class DatabaseEventManager implements
                                 requestString.toString(), "metadata");
                         if (results.length > 0) {
                             criteria.add(Restrictions.in("key."
-                                    + HazardConstants.EVENTID, results));
+                                    + HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                                    results));
                         }
                     } catch (SpatialException e) {
                         statusHandler.handle(Priority.PROBLEM,
                                 e.getLocalizedMessage(), e);
                     }
 
-                } else if (finalKey.equals(HazardConstants.STARTTIME)) {
+                } else if (finalKey
+                        .equals(HazardConstants.HAZARD_EVENT_START_TIME)) {
                     // we will not support any more than two times, it doesn't
                     // make any sense, we will only support the first 2 in the
                     // filter map
-                    criteria.add(Restrictions.ge(HazardConstants.STARTTIME,
-                            filters.get(HazardConstants.STARTTIME).get(0)));
-                    if (filters.get(HazardConstants.STARTTIME).size() > 1) {
-                        criteria.add(Restrictions.le(HazardConstants.STARTTIME,
-                                filters.get(HazardConstants.STARTTIME).get(1)));
+                    criteria.add(Restrictions
+                            .ge(HazardConstants.HAZARD_EVENT_START_TIME,
+                                    filters.get(
+                                            HazardConstants.HAZARD_EVENT_START_TIME)
+                                            .get(0)));
+                    if (filters.get(HazardConstants.HAZARD_EVENT_START_TIME)
+                            .size() > 1) {
+                        criteria.add(Restrictions
+                                .le(HazardConstants.HAZARD_EVENT_START_TIME,
+                                        filters.get(
+                                                HazardConstants.HAZARD_EVENT_START_TIME)
+                                                .get(1)));
                     }
-                } else if (finalKey.equals(HazardConstants.ENDTIME)) {
+                } else if (finalKey
+                        .equals(HazardConstants.HAZARD_EVENT_END_TIME)) {
                     // same as above, only support 2 times
-                    if (filters.get(HazardConstants.ENDTIME).size() > 1) {
-                        criteria.add(Restrictions.ge(HazardConstants.ENDTIME,
-                                filters.get(HazardConstants.ENDTIME).get(0)));
-                        criteria.add(Restrictions.le(HazardConstants.ENDTIME,
-                                filters.get(HazardConstants.ENDTIME).get(1)));
+                    if (filters.get(HazardConstants.HAZARD_EVENT_END_TIME)
+                            .size() > 1) {
+                        criteria.add(Restrictions.ge(
+                                HazardConstants.HAZARD_EVENT_END_TIME,
+                                filters.get(
+                                        HazardConstants.HAZARD_EVENT_END_TIME)
+                                        .get(0)));
+                        criteria.add(Restrictions.le(
+                                HazardConstants.HAZARD_EVENT_END_TIME,
+                                filters.get(
+                                        HazardConstants.HAZARD_EVENT_END_TIME)
+                                        .get(1)));
                     } else {
-                        criteria.add(Restrictions.le(HazardConstants.ENDTIME,
-                                filters.get(HazardConstants.ENDTIME).get(0)));
+                        criteria.add(Restrictions.le(
+                                HazardConstants.HAZARD_EVENT_END_TIME,
+                                filters.get(
+                                        HazardConstants.HAZARD_EVENT_END_TIME)
+                                        .get(0)));
                     }
                 } else if (finalKey.equals(HazardConstants.PHENSIG)) {
                     Disjunction criterion = Restrictions.disjunction();
@@ -225,17 +249,18 @@ public class DatabaseEventManager implements
                         }
                         // build a criterion based on and/or according to
                         // phensigs
-                        
+
                         Conjunction psCriterion = Restrictions.conjunction();
-                        psCriterion.add(Restrictions.eq(HazardConstants.PHENOMENON,
-                                        splitPhensig[0]));
-                        psCriterion.add(Restrictions.eq(HazardConstants.SIGNIFICANCE,
-                                        splitPhensig[1]));
+                        psCriterion.add(Restrictions.eq(
+                                HazardConstants.PHENOMENON, splitPhensig[0]));
+                        psCriterion.add(Restrictions.eq(
+                                HazardConstants.SIGNIFICANCE, splitPhensig[1]));
                         if (splitPhensig.length == 3) {
-                            psCriterion.add(Restrictions.eq(HazardConstants.SUBTYPE,
-                                            splitPhensig[2]));
+                            psCriterion.add(Restrictions.eq(
+                                    HazardConstants.HAZARD_EVENT_SUB_TYPE,
+                                    splitPhensig[2]));
                         }
-                        
+
                         criterion.add(psCriterion);
                     }
                     criteria.add(criterion);

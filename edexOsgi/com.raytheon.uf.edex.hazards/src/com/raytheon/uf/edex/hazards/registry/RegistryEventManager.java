@@ -54,8 +54,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
+ * <<<<<<< HEAD
  * Oct 30, 2013 #1472     bkowal    Implemented retrieval from the registry
  *                                  by phensig.
+ * =======
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * >>>>>>> Issue #2182.
  * 
  * </pre>
  * 
@@ -152,37 +156,58 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                         }
                         listEvents.addAll(handler.getByGeometry(factory
                                 .buildGeometry(geoms)));
-                    } else if (finalKey.equals(HazardConstants.STARTTIME)
-                            || finalKey.equals(HazardConstants.ENDTIME)) {
+                    } else if (finalKey
+                            .equals(HazardConstants.HAZARD_EVENT_START_TIME)
+                            || finalKey
+                                    .equals(HazardConstants.HAZARD_EVENT_END_TIME)) {
                         // we will not support any more than two times, it
                         // doesn't make any sense, we will only support the
                         // first 2 in the filter map
-                        if (filters.containsKey(HazardConstants.STARTTIME)
-                                && filters.containsKey(HazardConstants.ENDTIME)) {
-                            listEvents.addAll(handler.getByTimeRange(
-                                    (Date) filters.get(
-                                            HazardConstants.STARTTIME).get(0),
-                                    (Date) filters.get(HazardConstants.ENDTIME)
-                                            .get(0)));
+                        if (filters
+                                .containsKey(HazardConstants.HAZARD_EVENT_START_TIME)
+                                && filters
+                                        .containsKey(HazardConstants.HAZARD_EVENT_END_TIME)) {
+                            listEvents
+                                    .addAll(handler
+                                            .getByTimeRange(
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_START_TIME)
+                                                            .get(0),
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_END_TIME)
+                                                            .get(0)));
                         } else if (filters
-                                .containsKey(HazardConstants.STARTTIME)
-                                && filters.containsKey(HazardConstants.ENDTIME) == false) {
-                            listEvents.addAll(handler.getByTimeRange(
-                                    (Date) filters.get(
-                                            HazardConstants.STARTTIME).get(0),
-                                    (Date) filters.get(
-                                            HazardConstants.STARTTIME).get(1)));
+                                .containsKey(HazardConstants.HAZARD_EVENT_START_TIME)
+                                && filters
+                                        .containsKey(HazardConstants.HAZARD_EVENT_END_TIME) == false) {
+                            listEvents
+                                    .addAll(handler
+                                            .getByTimeRange(
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_START_TIME)
+                                                            .get(0),
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_START_TIME)
+                                                            .get(1)));
                         } else {
-                            listEvents.addAll(handler.getByTimeRange(
-                                    (Date) filters.get(HazardConstants.ENDTIME)
-                                            .get(0),
-                                    (Date) filters.get(HazardConstants.ENDTIME)
-                                            .get(1)));
+                            listEvents
+                                    .addAll(handler
+                                            .getByTimeRange(
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_END_TIME)
+                                                            .get(0),
+                                                    (Date) filters
+                                                            .get(HazardConstants.HAZARD_EVENT_END_TIME)
+                                                            .get(1)));
                         }
-                    } else if (finalKey.equals(HazardConstants.ENDTIME)) {
-                        listEvents.addAll(handler.getByTimeRange(
-                                (Date) filters.get(HazardConstants.STARTTIME),
-                                (Date) filters.get(HazardConstants.ENDTIME)));
+                    } else if (finalKey
+                            .equals(HazardConstants.HAZARD_EVENT_END_TIME)) {
+                        listEvents
+                                .addAll(handler.getByTimeRange(
+                                        (Date) filters
+                                                .get(HazardConstants.HAZARD_EVENT_START_TIME),
+                                        (Date) filters
+                                                .get(HazardConstants.HAZARD_EVENT_END_TIME)));
                     } else if (finalKey.equals(HazardConstants.PHENSIG)) {
                         for (Object ob : entry.getValue()) {
                             String phensig = ob.toString();
@@ -204,7 +229,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                                     splitPhensig[1]);
                             if (splitPhensig.length == 3) {
                                 hazardQueryBuilder.addKey(
-                                        HazardConstants.SUBTYPE,
+                                        HazardConstants.HAZARD_EVENT_SUB_TYPE,
                                         splitPhensig[2]);
                             }
                             listEvents

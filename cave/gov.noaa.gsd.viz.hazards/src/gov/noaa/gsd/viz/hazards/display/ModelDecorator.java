@@ -12,6 +12,7 @@ import gov.noaa.gsd.common.hazards.utilities.Timer;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +40,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  *                                                singleton.
  * Aug 06, 2013     1265   bryon.lawrence         Added support for undo/redo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -82,36 +84,19 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public Boolean checkForEventsWithState(String eventIDs, String searchStates) {
-        final String methodName = "checkForEventsWithState";
-        logCallingMethod(methodName);
-        log(String.format("eventdIDs: %s", eventIDs));
-        log(String.format("searchStates: %s", searchStates));
-
-        benchmarkStart(methodName);
-        Boolean result = decorated.checkForEventsWithState(eventIDs,
-                searchStates);
-        benchmarkStop(methodName);
-        log(String.format("Result: %s", result));
-        return result;
-    }
-
-    @Override
-    public void initialize(String selectedTime, String currentTime,
-            String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, EventBus eventBus, String state) {
+    public void initialize(Date selectedTime, String staticSettingID,
+            String dynamicSetting_json, String caveMode, String siteID,
+            EventBus eventBus) {
         final String methodName = "initialize";
         logCallingMethod(methodName);
         log(String.format("selectedTime: %s", selectedTime));
-        log(String.format("currentTime: %s", currentTime));
         log(String.format("staticSettingID: %s", staticSettingID));
         log(String.format("dynamicSetting_json: %s", dynamicSetting_json));
         log(String.format("caveMode: %s", caveMode));
         log(String.format("siteID: %s", siteID));
-        log(String.format("state: %s", state));
         benchmarkStart(methodName);
-        decorated.initialize(selectedTime, currentTime, staticSettingID,
-                dynamicSetting_json, caveMode, siteID, eventBus, state);
+        decorated.initialize(selectedTime, staticSettingID,
+                dynamicSetting_json, caveMode, siteID, eventBus);
         benchmarkStop(methodName);
     }
 
@@ -139,17 +124,6 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String getSelectedEvents() {
-        final String methodName = "getSelectedEvents";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        String result = decorated.getSelectedEvents();
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
     public String getLastSelectedEventID() {
         final String methodName = "getLastSelectedEventID";
         logCallingMethod(methodName);
@@ -161,13 +135,13 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String getSelectedTime() {
+    public Date getSelectedTime() {
         final String methodName = "getSelectedTime";
         logCallingMethod(methodName);
         benchmarkStart(methodName);
-        String result = decorated.getSelectedTime();
+        Date result = decorated.getSelectedTime();
         benchmarkStop(methodName);
-        logResult(result);
+        logResult(result.toString());
         return result;
     }
 
@@ -194,19 +168,6 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String setTimeLineVisibleTimes(String earliest_ms, String latest_ms) {
-        final String methodName = "setTimeLineVisibleTimes";
-        logCallingMethod(methodName);
-
-        benchmarkStart(methodName);
-        String result = decorated.setTimeLineVisibleTimes(earliest_ms,
-                latest_ms);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
     public String getSelectedTimeRange() {
         final String methodName = "getSelectedTimeRange";
         logCallingMethod(methodName);
@@ -218,13 +179,13 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String getCurrentTime() {
+    public Date getCurrentTime() {
         final String methodName = "getCurrentTime";
         logCallingMethod(methodName);
         benchmarkStart(methodName);
-        String result = decorated.getCurrentTime();
+        Date result = decorated.getCurrentTime();
         benchmarkStop(methodName);
-        logResult(result);
+        logResult(result.toString());
         return result;
     }
 
@@ -251,99 +212,13 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public String getState(boolean saveState) {
-        final String methodName = "getState";
-        logCallingMethod(methodName);
-        log(String.format("saveState: %s", saveState));
-        benchmarkStart(methodName);
-        String result = decorated.getState(saveState);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String getEventValues(String eventIDs, String fieldName,
-            String returnType, String ignoreState) {
-        final String methodName = "getEventValues";
-        logCallingMethod(methodName);
-        log(String.format("eventdIDs: %s", eventIDs));
-        log(String.format("fieldName: %s", fieldName));
-        log(String.format("returnType: %s", returnType));
-        log(String.format("ignoreState: %s", ignoreState));
-        benchmarkStart(methodName);
-        String result = decorated.getEventValues(eventIDs, fieldName,
-                returnType, ignoreState);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public void updateCurrentTime(String currentTime_ms) {
-        final String methodName = "updateCurrentTime";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.updateCurrentTime(currentTime_ms);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void updateSelectedTime(String selectedTime_ms) {
+    public void updateSelectedTime(Date selectedTime) {
         final String methodName = "updateSelectedTime";
         logCallingMethod(methodName);
         log("Calling updateSelectedTime");
-        log(String.format("selectedTime_ms: %s", selectedTime_ms));
+        log(String.format("selectedTime_ms: %s", selectedTime));
         benchmarkStart(methodName);
-        decorated.updateSelectedTime(selectedTime_ms);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void updateSelectedTimeRange(String startTime_ms, String endTime_ms) {
-        final String methodName = "updateSelectedTimeRange";
-        logCallingMethod(methodName);
-        log("Calling updateSelectedTimeRange");
-        log(String.format("startTime_ms: %s", startTime_ms));
-        log(String.format("endTime_ms: %s", endTime_ms));
-        benchmarkStart(methodName);
-        decorated.updateSelectedTimeRange(startTime_ms, endTime_ms);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public String updateSelectedEvents(String eventIDs, String originator) {
-        final String methodName = "updateSelectedEvents";
-        logCallingMethod(methodName);
-        log("Calling updateSelectedEvents");
-        log(String.format("eventdIDs: %s", eventIDs));
-        log(String.format("originator: %s", originator));
-        benchmarkStart(methodName);
-        String result = decorated.updateSelectedEvents(eventIDs, originator);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public void setAddToSelected(String onOff) {
-        final String methodName = "setAddToSelected";
-        logCallingMethod(methodName);
-        log("Calling setAddToSelected");
-        log(String.format("onOff: %s", onOff));
-        benchmarkStart(methodName);
-        decorated.setAddToSelected(onOff);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void updateEventData(String jsonText, String source) {
-        final String methodName = "updateEventData";
-        logCallingMethod(methodName);
-        log(String.format("jsonText: %s", jsonText));
-        log(String.format("source: %s", source));
-        benchmarkStart(methodName);
-        decorated.updateEventData(jsonText, source);
+        decorated.updateSelectedTime(selectedTime);
         benchmarkStop(methodName);
     }
 
@@ -360,16 +235,6 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public void deleteEvent(String eventIDs) {
-        final String methodName = "deleteEvent";
-        logCallingMethod(methodName);
-        log(String.format("eventdIDs: %s", eventIDs));
-        benchmarkStart(methodName);
-        decorated.deleteEvent(eventIDs);
-        benchmarkStop(methodName);
-    }
-
-    @Override
     public void modifyEventArea(String jsonText) {
         final String methodName = "modifyEventArea";
         logCallingMethod(methodName);
@@ -377,29 +242,6 @@ public class ModelDecorator implements IHazardServicesModel {
         benchmarkStart(methodName);
         decorated.modifyEventArea(jsonText);
         benchmarkStop(methodName);
-    }
-
-    @Override
-    public String getContextMenuEntries() {
-        final String methodName = "getContextMenuEntries";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        String result = decorated.getContextMenuEntries();
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String getContextMenuEntryCallback(String menuItemName) {
-        final String methodName = "getContextMenuEntryCallback";
-        logCallingMethod(methodName);
-        log(String.format("menuItemName: %s", menuItemName));
-        benchmarkStart(methodName);
-        String result = decorated.getContextMenuEntryCallback(menuItemName);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
     }
 
     @Override
@@ -412,80 +254,6 @@ public class ModelDecorator implements IHazardServicesModel {
         benchmarkStop(methodName);
         logResult(result);
         return result;
-    }
-
-    @Override
-    public void removeEvents(String field, String value) {
-        final String methodName = "removeEvents";
-        logCallingMethod(methodName);
-        log(String.format("field: %s", field));
-        log(String.format("value: %s", value));
-        benchmarkStart(methodName);
-        decorated.removeEvents(field, value);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void handleAction(String action, String jsonText) {
-        final String methodName = "handleAction";
-        logCallingMethod(methodName);
-        log(String.format("action: %s", action));
-        log(String.format("jsonText: %s", jsonText));
-        benchmarkStart(methodName);
-        decorated.handleAction(action, jsonText);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void changeState(String eventID, String state) {
-        final String methodName = "changeState";
-        logCallingMethod(methodName);
-        log(String.format("eventID: %s", eventID));
-        log(String.format("state: %s", state));
-        benchmarkStart(methodName);
-        decorated.changeState(eventID, state);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void putHazards() {
-        final String methodName = "putHazards";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.putHazards();
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public String newStaticSettings(String setting) {
-        final String methodName = "newStaticSettings";
-        logCallingMethod(methodName);
-        log(String.format("setting: %s", setting));
-        benchmarkStart(methodName);
-        String result = decorated.newStaticSettings(setting);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public void updateStaticSettings(String setting) {
-        final String methodName = "updateStaticSettings";
-        logCallingMethod(methodName);
-        log(String.format("setting: %s", setting));
-        benchmarkStart(methodName);
-        decorated.updateStaticSettings(setting);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void deleteStaticSettings(String setting) {
-        final String methodName = "deleteStaticSettings";
-        logCallingMethod(methodName);
-        log(String.format("setting: %s", setting));
-        benchmarkStart(methodName);
-        decorated.deleteStaticSettings(setting);
-        benchmarkStop(methodName);
     }
 
     @Override
@@ -568,73 +336,6 @@ public class ModelDecorator implements IHazardServicesModel {
         benchmarkStop(methodName);
         logResult(result);
         return result;
-    }
-
-    @Override
-    public String getAlertConfigValues() {
-        final String methodName = "getAlertConfigValues";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        String result = decorated.getAlertConfigValues();
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String[] getHazardsForDynamicSettings() {
-        final String methodName = "getHazardsForDynamicSettings";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        String[] result = decorated.getHazardsForDynamicSettings();
-        benchmarkStop(methodName);
-        return result;
-    }
-
-    @Override
-    public void setHazardEventManager(Object hazardEventManager) {
-        final String methodName = "setHazardEventManager";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.setHazardEventManager(hazardEventManager);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void putEvent(String eventDictAsJSON) {
-        final String methodName = "putEvent";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.putEvent(eventDictAsJSON);
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public String getSessionEvent(String eventID) {
-        final String methodName = "getSessionEvent";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        String result = decorated.getSessionEvent(eventID);
-        benchmarkStop(methodName);
-        return result;
-    }
-
-    @Override
-    public void sendSelectedHazardsToFront() {
-        final String methodName = "sendSelectedHazardsToFront";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.sendSelectedHazardsToFront();
-        benchmarkStop(methodName);
-    }
-
-    @Override
-    public void sendSelectedHazardsToBack() {
-        final String methodName = "sendSelectedHazardsToBack";
-        logCallingMethod(methodName);
-        benchmarkStart(methodName);
-        decorated.sendSelectedHazardsToBack();
-        benchmarkStop(methodName);
     }
 
     private void log(String message) {
@@ -762,4 +463,5 @@ public class ModelDecorator implements IHazardServicesModel {
     public ISessionManager getSessionManager() {
         return decorated.getSessionManager();
     }
+
 }

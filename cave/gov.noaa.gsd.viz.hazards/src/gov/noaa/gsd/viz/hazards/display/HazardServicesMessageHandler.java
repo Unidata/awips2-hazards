@@ -7,34 +7,39 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ArrayNode;
 import org.eclipse.swt.widgets.Display;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -42,12 +47,16 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
@@ -82,6 +91,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Aug 30, 2013 1921       bryon.lawrence      Added code to pass hazard events as a part of
  *                                             the EventSet passed to a recommender when it
  *                                             is run.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author bryon.lawrence
@@ -128,17 +138,6 @@ public final class HazardServicesMessageHandler {
      */
     private final String SINGLE_SELECTED_TIME = "Single";
 
-    /**
-     * Specifies a JSON format
-     */
-    private final String JSON = "json";
-
-    /**
-     * The selection call back is the recommender to run (if any) when a hazard
-     * is selected.
-     */
-    private final String SELECTION_CALLBACK = "selectionCallback";
-
     // Private Static Constants
 
     /**
@@ -162,6 +161,14 @@ public final class HazardServicesMessageHandler {
      * An instance of the Hazard Services app builder.
      */
     private HazardServicesAppBuilder appBuilder = null;
+
+    private final ISessionEventManager sessionEventManager;
+
+    private final ISessionTimeManager sessionTimeManager;
+
+    private final ISessionConfigurationManager sessionConfigurationManager;
+
+    private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     // Public Static Methods
 
@@ -208,8 +215,7 @@ public final class HazardServicesMessageHandler {
      * @param appBuilder
      *            A reference to the Hazard Services app builder
      * @param currentTime
-     *            The current time in milliseconds, based on the CAVE current
-     *            time.
+     *            The current time, based on the CAVE current time.
      * @param dynamicSettingJSON
      *            Settings related to configurations the user has made but has
      *            not save to a static settings file.
@@ -220,26 +226,26 @@ public final class HazardServicesMessageHandler {
      */
     @SuppressWarnings("deprecation")
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            String currentTime, String dynamicSettingJSON, String state) {
+            Date currentTime, String dynamicSettingJSON) {
         this.appBuilder = appBuilder;
+        ISessionManager sessionManager = appBuilder.getSessionManager();
+        this.sessionEventManager = sessionManager.getEventManager();
+        this.sessionTimeManager = sessionManager.getTimeManager();
+        this.sessionConfigurationManager = sessionManager
+                .getConfigurationManager();
 
-        ModelAdapter adapter = new ModelAdapter();
+        ModelAdapter adapter = new ModelAdapter(sessionManager);
         adapter.getSessionManager().registerForNotification(this);
 
         model = new ModelDecorator(adapter);
-
-        IHazardEventManager hazardEventManager = new HazardEventManager(
-                HazardEventManager.Mode.PRACTICE);
-        model.setHazardEventManager(hazardEventManager);
 
         caveMode = (CAVEMode.getMode()).toString();
         siteID = LocalizationManager.getInstance().getCurrentSite();
 
         String staticSettingID = getSettingForCurrentPerspective();
 
-        model.initialize(currentTime, currentTime, staticSettingID,
-                dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus(),
-                state);
+        model.initialize(currentTime, staticSettingID, dynamicSettingJSON,
+                caveMode, siteID, appBuilder.getEventBus());
     }
 
     // Methods
@@ -258,26 +264,9 @@ public final class HazardServicesMessageHandler {
      * 
      * @throws VizException
      */
-    public void updateSelectedEvents(final String eventIDs, String originator)
-            throws VizException {
-        Boolean found = model.checkForEventsWithState(eventIDs,
-                Utilities.HAZARD_EVENT_STATE_POTENTIAL);
-
-        if (!found) {
-
-            // Run any selectionCallback tools associated with the selected
-            // events
-            String toolList = model.getEventValues(eventIDs,
-                    SELECTION_CALLBACK, JSON,
-                    Utilities.HAZARD_EVENT_STATE_POTENTIAL);
-            DictList tools = DictList.getInstance(toolList);
-            for (int i = 0; i < tools.size(); i++) {
-                String toolName = tools.getDynamicallyTypedValue(i);
-                runTool(toolName);
-            }
-        }
-
-        String updateTime = model.updateSelectedEvents(eventIDs, originator);
+    public void updateSelectedEvents(final List<String> eventIDs,
+            String originator) throws VizException {
+        String updateTime = setSelectedEvents(eventIDs, originator);
 
         if (updateTime.contains(SINGLE_SELECTED_TIME)) {
             appBuilder.notifyModelChanged(EnumSet
@@ -295,6 +284,27 @@ public final class HazardServicesMessageHandler {
             appBuilder.recenterRezoomDisplay();
         }
 
+    }
+
+    private String setSelectedEvents(List<String> eventIDs, String originator) {
+        Collection<IHazardEvent> selectedEvents = fromIDs(eventIDs);
+        Date selectedTime = sessionTimeManager.getSelectedTime();
+
+        sessionEventManager.setSelectedEvents(selectedEvents);
+        if (originator.equalsIgnoreCase("Temporal")
+                && !selectedTime.equals(sessionTimeManager.getSelectedTime())) {
+            return "Single";
+        } else {
+            return "None";
+        }
+    }
+
+    private Collection<IHazardEvent> fromIDs(List<String> eventIDs) {
+        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>();
+        for (String eventId : eventIDs) {
+            events.add(sessionEventManager.getEventById(eventId));
+        }
+        return events;
     }
 
     /**
@@ -548,11 +558,13 @@ public final class HazardServicesMessageHandler {
      * @param eventIDs
      *            Identifiers of events to be deleted.
      */
-    private void deleteEvent(String eventIDs) {
+    private void deleteEvent(Collection<IHazardEvent> events) {
         statusHandler.debug("HazardServicesMessageHandler: deleteEvent: "
-                + eventIDs);
+                + events);
 
-        model.deleteEvent(eventIDs);
+        for (IHazardEvent event : events) {
+            sessionEventManager.removeEvent(event);
+        }
         notifyModelEventsChanged();
         appBuilder.hideHazardDetail();
     }
@@ -565,12 +577,26 @@ public final class HazardServicesMessageHandler {
      *            New state of the selected events.
      */
     private void changeState(String state) {
-        String events = model.getSelectedEvents();
-
-        model.changeState(events, state);
+        _changeState(state);
 
         notifyModelEventsChanged();
         appBuilder.hideHazardDetail();
+    }
+
+    private void _changeState(String state) {
+        Collection<IHazardEvent> events = sessionEventManager
+                .getSelectedEvents();
+
+        if (state.toUpperCase().equals("PREVIEWENDED")) {
+            for (IHazardEvent event : events) {
+                event.addHazardAttribute("previewState", "ended");
+            }
+        } else {
+            HazardState hstate = HazardState.valueOf(state.toUpperCase());
+            for (IHazardEvent event : events) {
+                event.setState(hstate);
+            }
+        }
     }
 
     /**
@@ -671,9 +697,8 @@ public final class HazardServicesMessageHandler {
     public void changeSetting(String settingID, boolean saveEvents,
             boolean eventsChanged) {
 
-        model.initialize(model.getSelectedTime(), model.getCurrentTime(),
-                settingID, "", caveMode, siteID, appBuilder.getEventBus(),
-                model.getState(saveEvents));
+        model.initialize(model.getSelectedTime(), settingID, "", caveMode,
+                siteID, appBuilder.getEventBus());
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
                 IHazardServicesModel.Element.EVENTS,
@@ -692,15 +717,14 @@ public final class HazardServicesMessageHandler {
      * updates in CAVE appear in the Console. Selected time updates in the
      * Console appear in CAVE.
      * 
-     * @param selectedTime_ms
-     *            The new selected time in milliseconds
+     * @param selectedTime
      * @param originator
      *            Where the selected time was changed. Can be "CAVE_ORIGINATOR"
      *            for CAVE or "TEMPORAL_ORIGINATOR" for the Console.
      */
-    public void updateSelectedTime(String selectedTime_ms, String originator)
+    public void updateSelectedTime(Date selectedTime, String originator)
             throws VizException {
-        model.updateSelectedTime(selectedTime_ms);
+        model.updateSelectedTime(selectedTime);
 
         if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
             appBuilder.notifyModelChanged(EnumSet
@@ -724,9 +748,15 @@ public final class HazardServicesMessageHandler {
      */
     public void updateSelectedTimeRange(String selectedTimeStart_ms,
             String selectedTimeEnd_ms, String originator) {
-        model.updateSelectedTimeRange(selectedTimeStart_ms, selectedTimeEnd_ms);
+        TimeRange selectedRange = new TimeRange(toDate(selectedTimeStart_ms),
+                toDate(selectedTimeEnd_ms));
+        sessionTimeManager.setSelectedTimeRange(selectedRange);
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.SELECTED_TIME_RANGE));
+    }
+
+    private Date toDate(String timeInMillisAsLongAsString) {
+        return new Date(Long.valueOf(timeInMillisAsLongAsString));
     }
 
     /**
@@ -735,7 +765,9 @@ public final class HazardServicesMessageHandler {
      */
     public void updateVisibleTimeRange(String jsonStartTime,
             String jsonEndTime, String originator) {
-        model.setTimeLineVisibleTimes(jsonStartTime, jsonEndTime);
+        TimeRange visibleRange = new TimeRange(toDate(jsonStartTime),
+                toDate(jsonEndTime));
+        sessionTimeManager.setVisibleRange(visibleRange);
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.VISIBLE_TIME_RANGE));
     }
@@ -747,7 +779,8 @@ public final class HazardServicesMessageHandler {
      *            New state of the add-to-selected mode.
      */
     public void setAddToSelected(String state) {
-        model.setAddToSelected(state);
+        sessionConfigurationManager.getSettings().setAddToSelected(
+                state.equalsIgnoreCase("on"));
     }
 
     /**
@@ -763,7 +796,7 @@ public final class HazardServicesMessageHandler {
      * @return
      */
     public void updateEventData(String jsonText, String originator) {
-        model.updateEventData(jsonText, originator);
+        _updateEventData(jsonText, originator);
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.EVENTS));
     }
@@ -776,23 +809,130 @@ public final class HazardServicesMessageHandler {
      *            Contains information regarding the event type.
      */
     public void updateEventType(String jsonText) {
-        model.getSelectedEvents();
-        model.updateEventData(jsonText,
+        _updateEventData(jsonText,
                 HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
         notifyModelEventsChanged();
     }
 
-    /**
-     * Handle the specified action.
-     * 
-     * @param action
-     *            The action name
-     * @param jsonText
-     *            JSON describing the action.
-     * @return
-     */
-    public void handleAction(String action, String jsonText) {
-        model.handleAction(action, jsonText);
+    private void _updateEventData(String jsonText, String source) {
+        JsonNode jnode = fromJson(jsonText, JsonNode.class);
+        IHazardEvent event = sessionEventManager.getEventById(jnode.get(
+                HazardConstants.HAZARD_EVENT_IDENTIFIER).getValueAsText());
+        Iterator<String> fields = jnode.getFieldNames();
+        while (fields.hasNext()) {
+            String key = fields.next();
+            if (HazardConstants.HAZARD_EVENT_IDENTIFIER.equals(key)) {
+                ;
+            } else if (HAZARD_EVENT_FULL_TYPE.equals(key)) {
+                IHazardEvent oldEvent = null;
+                if (!sessionEventManager.canChangeType(event)) {
+                    oldEvent = event;
+                    event = new BaseHazardEvent(event);
+                    event.setEventID("");
+                    event.setState(HazardState.PENDING);
+                    event.addHazardAttribute(HazardConstants.REPLACES,
+                            sessionConfigurationManager.getHeadline(oldEvent));
+                    // New event should not have product information
+                    event.removeHazardAttribute(EXPIRATIONTIME);
+                    event.removeHazardAttribute(ISSUETIME);
+                    event.removeHazardAttribute(VTEC_CODES);
+                    event.removeHazardAttribute(ETNS);
+                    event.removeHazardAttribute(PILS);
+                    Date d = new Date();
+                    event.setIssueTime(d);
+                    Collection<IHazardEvent> selection = sessionEventManager
+                            .getSelectedEvents();
+                    event = sessionEventManager.addEvent(event);
+                    selection.add(event);
+                    sessionEventManager.setSelectedEvents(selection);
+                }
+                String fullType = jnode.get(key).getValueAsText();
+                if (!fullType.isEmpty()) {
+                    String[] phenSig = fullType.split(" ")[0].split("\\.");
+                    event.setPhenomenon(phenSig[0]);
+                    event.setSignificance(phenSig[1]);
+                    if (phenSig.length > 2) {
+                        event.setSubtype(phenSig[2]);
+                    } else {
+                        event.setSubtype(null);
+                    }
+                }
+                if (oldEvent != null) {
+                    oldEvent.addHazardAttribute("replacedBy",
+                            sessionConfigurationManager.getHeadline(event));
+                    oldEvent.addHazardAttribute("previewState",
+                            HazardConstants.HazardState.ENDED.getValue());
+                }
+            } else if (HAZARD_EVENT_START_TIME.equals(key)) {
+                if (!sessionEventManager.canChangeTimeRange(event)) {
+                    event = new BaseHazardEvent(event);
+                    event.setState(HazardState.PENDING);
+                    Collection<IHazardEvent> selection = sessionEventManager
+                            .getSelectedEvents();
+                    event = sessionEventManager.addEvent(event);
+                    selection.add(event);
+                    sessionEventManager.setSelectedEvents(selection);
+                }
+                event.setStartTime(new Date(jnode.get(key).getLongValue()));
+            } else if (HAZARD_EVENT_END_TIME.equals(key)) {
+                if (!sessionEventManager.canChangeTimeRange(event)) {
+                    event = new BaseHazardEvent(event);
+                    event.setState(HazardState.PENDING);
+                    Collection<IHazardEvent> selection = sessionEventManager
+                            .getSelectedEvents();
+                    event = sessionEventManager.addEvent(event);
+                    selection.add(event);
+                    sessionEventManager.setSelectedEvents(selection);
+                }
+                event.setEndTime(new Date(jnode.get(key).getLongValue()));
+            } else if (jnode.get(key).isArray()) {
+                ArrayNode arrayNode = (ArrayNode) jnode.get(key);
+                List<String> stringList = Lists.newArrayList();
+
+                for (int i = 0; i < arrayNode.size(); i++) {
+                    stringList.add(arrayNode.get(i).getValueAsText());
+                }
+
+                /*
+                 * Do no pass data as arrays. It is better to pass them as
+                 * lists. Using arrays causes problems. For instance, an event
+                 * passed to the the Product Generation Framework will have its
+                 * cta array converted to a Python list. When returned to the
+                 * HMI, this Python list is converted to a Java list. So, arrays
+                 * are not consistently handled. The type is not preserved.
+                 */
+                event.addHazardAttribute(key, (Serializable) stringList);
+            } else if (jnode.get(key).isContainerNode()) {
+                throw new UnsupportedOperationException(
+                        "Support for container node not implemented yet.");
+            } else {
+                JsonNode primitive = jnode.get(key);
+                if (primitive.isTextual()) {
+                    event.addHazardAttribute(key, primitive.getValueAsText());
+                } else if (primitive.isBoolean()) {
+                    event.addHazardAttribute(key, primitive.getBooleanValue());
+                } else if (primitive.isNumber()) {
+                    Object currentVal = event.getHazardAttribute(key);
+                    if (currentVal instanceof Integer) {
+                        event.addHazardAttribute(key, primitive.getIntValue());
+                    } else {
+                        event.addHazardAttribute(key,
+                                new Date(primitive.getLongValue()));
+                    }
+                } else {
+                    throw new UnsupportedOperationException("Not implemented");
+                }
+            }
+        }
+
+    }
+
+    private <T> T fromJson(String str, Class<T> clazz) {
+        try {
+            return jsonObjectMapper.readValue(str, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -802,8 +942,10 @@ public final class HazardServicesMessageHandler {
      *            JSON string holding a dictionary of key-value pairs defining
      *            the setting being saved.
      */
-    public void updateStaticSetting(String jsonSetting) {
-        model.updateStaticSettings(jsonSetting);
+    public void updateStaticSetting(String settings) {
+        Settings settingsObj = fromJson(settings, Settings.class);
+        sessionConfigurationManager.getSettings().apply(settingsObj);
+        sessionConfigurationManager.saveSettings();
     }
 
     /**
@@ -814,8 +956,16 @@ public final class HazardServicesMessageHandler {
      *            the setting being saved.
      */
     public void createStaticSetting(String jsonSetting) {
-        String settingID = model.newStaticSettings(jsonSetting);
+        String settingID = newStaticSettings(jsonSetting);
         changeSetting(settingID, true, false);
+    }
+
+    private String newStaticSettings(String settings) {
+        Settings settingsObj = fromJson(settings, Settings.class);
+        settingsObj.setSettingsID(settingsObj.getDisplayName());
+        sessionConfigurationManager.getSettings().apply(settingsObj);
+        sessionConfigurationManager.saveSettings();
+        return settingsObj.getSettingsID();
     }
 
     /**
@@ -828,10 +978,8 @@ public final class HazardServicesMessageHandler {
     public void dynamicSettingChanged(String jsonDynamicSetting) {
         IHazardServicesModel sessionManager = model;
         sessionManager.initialize(sessionManager.getSelectedTime(),
-                sessionManager.getCurrentTime(),
                 sessionManager.getCurrentSettingsID(), jsonDynamicSetting,
-                caveMode, siteID, appBuilder.getEventBus(),
-                sessionManager.getState(true));
+                caveMode, siteID, appBuilder.getEventBus());
         appBuilder.notifyModelChanged(EnumSet
                 .of(IHazardServicesModel.Element.DYNAMIC_SETTING));
     }
@@ -862,11 +1010,8 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * This method is invoked when the current CAVE time changes. It updates the
-     * current time state in the model proxy.
+     * This method is invoked when the current CAVE time changes.
      * 
-     * @param currentTime_ms
-     *            The new current time value in milliseconds
      * @param originator
      *            The originator of the current time update. For the moment,
      *            this should be set to "Cave". This should be an enumeration
@@ -874,9 +1019,7 @@ public final class HazardServicesMessageHandler {
      * 
      * @throws VizException
      */
-    public void updateCurrentTime(String currentTime_ms, String originator)
-            throws VizException {
-        model.updateCurrentTime(currentTime_ms);
+    public void updateCurrentTime(String originator) throws VizException {
 
         if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
             appBuilder.notifyModelChanged(EnumSet
@@ -932,7 +1075,7 @@ public final class HazardServicesMessageHandler {
                     .getDynamicallyTypedValue(HazardServicesEditorUtilities.FRAME_TIMES);
             if ((frameCount > 0) && (frameIndex != -1)) {
                 try {
-                    updateSelectedTime(dataTimeList.get(frameIndex).toString(),
+                    updateSelectedTime(new Date(dataTimeList.get(frameIndex)),
                             HazardServicesAppBuilder.CAVE_ORIGINATOR);
                 } catch (VizException e) {
                     statusHandler.error("HazardServicesMessageHandler:", e);
@@ -951,19 +1094,18 @@ public final class HazardServicesMessageHandler {
      */
     public void handleContextMenuSelection(String label) {
         if (label.contains(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
+            changeState(HazardConstants.HazardState.PROPOSED.getValue());
         } else if (label.contains(HazardConstants.CONTEXT_MENU_ISSUE)) {
             issueEvents();
         } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
-            String events = model.getSelectedEvents();
-            model.changeState(events, PREVIEW_ENDED);
+            _changeState(PREVIEW_ENDED);
             preview();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_NODE)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_NODE);
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_NODE)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.ADD_NODE);
         } else if (label.contains(HazardConstants.CONTEXT_MENU_DELETE)) {
-            deleteEvent(model.getSelectedEvents());
+            deleteEvent(sessionEventManager.getSelectedEvents());
         } else if (label
                 .contains(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
             /*
@@ -973,32 +1115,26 @@ public final class HazardServicesMessageHandler {
             appBuilder.showHazardDetail();
         } else if (label
                 .contains(HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS)) {
-            model.removeEvents(Utilities.HAZARD_EVENT_STATE,
-                    Utilities.HAZARD_EVENT_STATE_POTENTIAL);
+            removeEventsWithState(HazardConstants.HazardState.POTENTIAL
+                    .getValue());
             notifyModelEventsChanged();
-        } else if (label.contains(HazardConstants.CONTEXT_MENU_SAVE)) {
-            model.putHazards();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
             appBuilder.loadGeometryOverlayForSelectedEvent();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
-            model.sendSelectedHazardsToBack();
+            sessionEventManager
+                    .sortEvents(ISessionEventManager.SEND_SELECTED_BACK);
             notifyModelEventsChanged();
         } else if (label.equals(HazardConstants.CONETXT_MENU_BRING_TO_FRONT)) {
-            model.sendSelectedHazardsToFront();
+            sessionEventManager
+                    .sortEvents(ISessionEventManager.SEND_SELECTED_FRONT);
             notifyModelEventsChanged();
-        } else {
-            // Check if the selected context menu item is specific to
-            // the
-            // selected event. Retrieve the callback associated with
-            // this context menu item.
-            String callback = model.getContextMenuEntryCallback(label);
+        }
+    }
 
-            if ((callback != null) && (callback.length() > 0)) {
-                // For now, delete the event this action was
-                // started on...
-                model.deleteEvent(model.getSelectedEvents());
-                runTool(callback);
-            }
+    private void removeEventsWithState(String stateValue) {
+        HazardState state = HazardState.valueOf(stateValue.toUpperCase());
+        for (IHazardEvent event : sessionEventManager.getEventsByState(state)) {
+            sessionEventManager.removeEvent(event);
         }
     }
 
@@ -1013,7 +1149,7 @@ public final class HazardServicesMessageHandler {
      * Changes the state of an event to "Proposed".
      */
     public void setProposedState() {
-        changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
+        changeState(HazardConstants.HazardState.PROPOSED.getValue());
         appBuilder.hideHazardDetail();
         appBuilder.closeProductEditorView();
     }
@@ -1050,7 +1186,7 @@ public final class HazardServicesMessageHandler {
         String productDisplayJSON = action.getJSONText();
 
         if (productDisplayAction.equals(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeState(Utilities.HAZARD_EVENT_STATE_PROPOSED);
+            changeState(HazardConstants.HazardState.PROPOSED.getValue());
         } else if (productDisplayAction
                 .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
             if (appBuilder.getUserAnswerToQuestion("Are you sure "
@@ -1075,8 +1211,7 @@ public final class HazardServicesMessageHandler {
      */
     public void handleProductDisplayContinueAction(String issueFlag,
             String hazardEventSets) {
-        String returnDict_json = model.createProductsFromHazardEventSets(
-                issueFlag, hazardEventSets);
+        model.createProductsFromHazardEventSets(issueFlag, hazardEventSets);
         if (!issueFlag.equalsIgnoreCase(TRUE_FLAG)) {
             // appBuilder.showProductEditorView(returnDict_json);
             notifyModelEventsChanged();
@@ -1093,11 +1228,8 @@ public final class HazardServicesMessageHandler {
         if (appBuilder.getTimer().isAlive()
                 && !appBuilder.getTimer().isInterrupted()) {
 
-            long caveTimeMS = caveTime.getTime();
-
             try {
-                updateCurrentTime(Long.toString(caveTimeMS),
-                        HazardServicesAppBuilder.CAVE_ORIGINATOR);
+                updateCurrentTime(HazardServicesAppBuilder.CAVE_ORIGINATOR);
             } catch (VizException e) {
                 statusHandler.error(
                         "Error updating Hazard Services components", e);

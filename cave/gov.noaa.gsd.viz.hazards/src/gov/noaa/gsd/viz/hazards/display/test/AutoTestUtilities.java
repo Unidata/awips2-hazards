@@ -9,16 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
@@ -31,6 +31,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 30, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -130,10 +131,10 @@ public class AutoTestUtilities {
          * Build the JSON simulating a hazard type selection in the HID.
          */
         Dict dict = new Dict();
-        dict.put(HazardConstants.EVENTID, selectedEvent.getEventID());
+        dict.put(HAZARD_EVENT_IDENTIFIER, selectedEvent.getEventID());
         dict.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
                 AutoTestUtilities.HYDROLOGY);
-        dict.put(Utilities.HAZARD_EVENT_FULL_TYPE, fullType);
+        dict.put(HAZARD_EVENT_FULL_TYPE, fullType);
         return dict;
     }
 
@@ -145,13 +146,11 @@ public class AutoTestUtilities {
      * @return
      */
     static void issueEvent(EventBus eventBus) {
-        eventBus.post(new HazardDetailAction(HazardConstants.HazardAction.ISSUE
-                .getValue()));
+        eventBus.post(new HazardDetailAction(HazardAction.ISSUE.getValue()));
     }
 
     static void previewEvent(EventBus eventBus) {
-        eventBus.post(new HazardDetailAction(
-                HazardConstants.HazardAction.PREVIEW.getValue()));
+        eventBus.post(new HazardDetailAction(HazardAction.PREVIEW.getValue()));
     }
 
     @SuppressWarnings("unchecked")

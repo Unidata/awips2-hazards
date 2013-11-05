@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
@@ -14,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -55,6 +55,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 15, 2013      585   Chris.Golden        Changed to no longer be a singleton.
  * Jul 18, 2013     1264   Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -98,11 +99,10 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         if (drawingAttributesForShapeTypes.get(shapeType) == null) {
             try {
                 HazardServicesDrawingAttributes drawingAttributes = (shapeType
-                        .equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? new PolygonDrawingAttributes(
+                        .equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? new PolygonDrawingAttributes(
                         PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                                 .getShell(), sessionManager)
-                        : (shapeType
-                                .equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE) ? new LineDrawingAttributes(
+                        : (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_LINE) ? new LineDrawingAttributes(
                                 PlatformUI.getWorkbench()
                                         .getActiveWorkbenchWindow().getShell(),
                                 sessionManager) : new PointDrawingAttributes(
@@ -198,7 +198,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             }
 
             if (mouseButton == 1) {
-                if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
                     createPointShape(loc);
                 } else {
                     addPointIfNotIdenticalToPreviousPoint(loc);
@@ -206,7 +206,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             } else if (mouseButton == 3) {
 
-                if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
                     createPointShape(loc);
                 } else {
 
@@ -217,7 +217,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                     if (points.size() != 0) {
                         getDrawingLayer().removeGhostLine();
                         if (points.size() < (shapeType
-                                .equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? 3
+                                .equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? 3
                                 : 2)) {
                             points.clear();
                             getDrawingLayer().issueRefresh();
@@ -272,7 +272,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             // If this is a polygon, it must have a point at the end of its
             // list of points that is the same as its first point.
-            if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+            if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
                 points.add(points.get(0));
             }
 

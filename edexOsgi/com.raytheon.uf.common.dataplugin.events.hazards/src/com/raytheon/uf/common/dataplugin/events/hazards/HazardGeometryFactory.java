@@ -58,6 +58,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 25, 2013            mnash     Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -70,14 +71,6 @@ public class HazardGeometryFactory extends AbstractDataFactory {
     private static final String PLUGIN_NAME = "hazards";
 
     private static final String MODE = "mode";
-
-    private static final String SITEID = HazardConstants.SITEID;
-
-    private static final String EVENTID = HazardConstants.EVENTID;
-
-    private static final String HAZARDMODE = HazardConstants.HAZARDMODE;
-
-    private static final String STATE = HazardConstants.STATE;
 
     private static Map<IDataRequest, HazardResponse> cachedRequests = new ConcurrentHashMap<IDataRequest, HazardResponse>();
 
@@ -206,8 +199,10 @@ public class HazardGeometryFactory extends AbstractDataFactory {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         if (timeRange != null && timeRange.getStart().getTime() != 0
                 && timeRange.getEnd().getTime() != 0) {
-            builder.addKey(HazardConstants.STARTTIME, timeRange.getStart());
-            builder.addKey(HazardConstants.ENDTIME, timeRange.getEnd());
+            builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME,
+                    timeRange.getStart());
+            builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME,
+                    timeRange.getEnd());
         }
 
         if (request.getParameters() != null) {
@@ -263,7 +258,9 @@ public class HazardGeometryFactory extends AbstractDataFactory {
      */
     @Override
     public String[] getValidIdentifiers() {
-        return new String[] { MODE, EVENTID, SITEID, STATE, HAZARDMODE };
+        return new String[] { MODE, HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                HazardConstants.SITEID, HazardConstants.HAZARD_EVENT_STATE,
+                HazardConstants.HAZARDMODE };
     }
 
     private List<IGeometryData> makeGeometryData(
@@ -274,10 +271,13 @@ public class HazardGeometryFactory extends AbstractDataFactory {
                 DefaultGeometryData data = new DefaultGeometryData();
                 data.setGeometry(event.getGeometry());
                 Map<String, Object> attrs = new HashMap<String, Object>();
-                attrs.put(EVENTID, event.getEventID());
-                attrs.put(STATE, event.getState().name());
-                attrs.put(SITEID, event.getSiteID());
-                attrs.put(HAZARDMODE, event.getHazardMode().name());
+                attrs.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                        event.getEventID());
+                attrs.put(HazardConstants.HAZARD_EVENT_STATE, event.getState()
+                        .name());
+                attrs.put(HazardConstants.SITEID, event.getSiteID());
+                attrs.put(HazardConstants.HAZARDMODE, event.getHazardMode()
+                        .name());
                 data.setAttributes(attrs);
                 datas.add(data);
             }

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
@@ -19,7 +20,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.timer.TimerAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.List;
 
@@ -27,11 +27,11 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -60,6 +60,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
  * Aug 21, 2013    1921    daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author bryon.lawrence
@@ -123,13 +124,13 @@ public class HazardServicesMessageListener {
         statusHandler.debug("SpatialDisplayActionOccurred actionType: "
                 + actionType);
 
-        if (actionType.equals(HazardConstants.SELECTED_EVENTS_CHANGED)) {
+        if (actionType.equals(SELECTED_EVENTS_CHANGED)) {
             try {
                 statusHandler.debug("HazardServicesMessageListener."
                         + "spatialDisplayActionOccurred(): eventIDs: "
                         + spatialDisplayAction.getSelectedEventIDs());
-                String convertedEventIDs = HazardServicesMessageHandler
-                        .convertEventIDs(spatialDisplayAction
+                List<String> convertedEventIDs = Lists
+                        .newArrayList(spatialDisplayAction
                                 .getSelectedEventIDs());
                 messageHandler.updateSelectedEvents(convertedEventIDs,
                         "Spatial");
@@ -139,7 +140,7 @@ public class HazardServicesMessageListener {
                         + "spatialDisplayActionOccurred(): "
                         + "Unable to handle selected events changed.", e);
             }
-        } else if (actionType.equals(HazardConstants.MODIFY_EVENT_AREA)) {
+        } else if (actionType.equals(MODIFY_EVENT_AREA)) {
             String jsonText = spatialDisplayAction.getModifyEventJSON();
 
             try {
@@ -165,10 +166,10 @@ public class HazardServicesMessageListener {
                     || spatialDisplayAction.getActionIdentifier()
                             .equalsIgnoreCase("drawPoint")) {
                 String shapeType = (spatialDisplayAction.getActionIdentifier()
-                        .equalsIgnoreCase("drawPolygon") ? Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                        .equalsIgnoreCase("drawPolygon") ? HAZARD_EVENT_SHAPE_TYPE_POLYGON
                         : (spatialDisplayAction.getActionIdentifier()
-                                .equalsIgnoreCase("drawLine") ? Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE
-                                : Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT));
+                                .equalsIgnoreCase("drawLine") ? HAZARD_EVENT_SHAPE_TYPE_LINE
+                                : HAZARD_EVENT_SHAPE_TYPE_POINT));
 
                 // Activate the hazard drawing mouse handler.
                 messageHandler.requestMouseHandler(
@@ -189,7 +190,7 @@ public class HazardServicesMessageListener {
             String lonLat = spatialDisplayAction.getDragToLongitude() + ","
                     + spatialDisplayAction.getDragToLatitude();
             messageHandler.runTool(lonLat, null, null);
-        } else if (actionType.equals(HazardConstants.CONEXT_MENU_SELECTED)) {
+        } else if (actionType.equals(CONEXT_MENU_SELECTED)) {
             String label = spatialDisplayAction.getContextMenuLabel();
             messageHandler.handleContextMenuSelection(label);
         } else if (actionType.equals("DisplayDisposed")) {
@@ -200,7 +201,7 @@ public class HazardServicesMessageListener {
         } else if (actionType.equals("runTool")) {
             messageHandler.runTool(spatialDisplayAction.getToolName(),
                     spatialDisplayAction.getToolParameters(), null);
-        } else if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)) {
+        } else if (actionType.equals(NEW_EVENT_SHAPE)) {
             /**
              * TODO Change newEventArea to take in a POJO
              */
@@ -231,7 +232,7 @@ public class HazardServicesMessageListener {
      */
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
-        if (consoleAction.getAction().equals(HazardConstants.RESET_ACTION)) {
+        if (consoleAction.getAction().equals(RESET_ACTION)) {
             messageHandler.reset(consoleAction.getId());
         } else if (consoleAction.getAction().equals("SelectedTimeChanged")) {
             try {
@@ -254,10 +255,8 @@ public class HazardServicesMessageListener {
                     HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
         } else if (consoleAction.getAction().equals("CheckBox")) {
             Dict eventInfo = new Dict();
-            eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                    consoleAction.getId());
-            eventInfo.put(Utilities.HAZARD_EVENT_CHECKED,
-                    consoleAction.getChecked());
+            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
+            eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
             String jsonText = eventInfo.toJSONString();
             messageHandler.updateEventData(jsonText,
                     HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
@@ -268,11 +267,10 @@ public class HazardServicesMessageListener {
             // but this was not needed. We kept the event around
             // in case in the future the Mediator needs to know
             // about temporal display redraws.
-        } else if (consoleAction.getAction().equals(
-                HazardConstants.SELECTED_EVENTS_CHANGED)) {
+        } else if (consoleAction.getAction().equals(SELECTED_EVENTS_CHANGED)) {
             try {
-                String eventIDsString = HazardServicesMessageHandler
-                        .convertEventIDs(consoleAction.getSelectedEventIDs());
+                List<String> eventIDsString = Lists.newArrayList(consoleAction
+                        .getSelectedEventIDs());
                 messageHandler.updateSelectedEvents(eventIDsString, "Temporal");
 
             } catch (VizException e) {
@@ -280,11 +278,10 @@ public class HazardServicesMessageListener {
             }
         } else if (consoleAction.getAction().equals("EventTimeRangeChanged")) {
             Dict eventInfo = new Dict();
-            eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                    consoleAction.getId());
-            eventInfo.put(Utilities.HAZARD_EVENT_START_TIME,
+            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
+            eventInfo.put(HAZARD_EVENT_START_TIME,
                     Long.parseLong(consoleAction.getStartTime()));
-            eventInfo.put(Utilities.HAZARD_EVENT_END_TIME,
+            eventInfo.put(HAZARD_EVENT_END_TIME,
                     Long.parseLong(consoleAction.getEndTime()));
             messageHandler.updateEventData(eventInfo.toJSONString(),
                     HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
@@ -319,15 +316,12 @@ public class HazardServicesMessageListener {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
                     HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
-                HazardConstants.UPDATE_EVENT_TYPE)) {
+                UPDATE_EVENT_TYPE)) {
             messageHandler.updateEventType(hazardDetailAction.getJSONText());
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
-                HazardConstants.UPDATE_EVENT_METADATA)) {
+                UPDATE_EVENT_METADATA)) {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
                     HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
-        } else {
-            messageHandler.handleAction(hazardDetailAction.getAction(),
-                    hazardDetailAction.getJSONText());
         }
     }
 

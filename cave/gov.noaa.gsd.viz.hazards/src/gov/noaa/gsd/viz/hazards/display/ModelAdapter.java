@@ -21,11 +21,13 @@ package gov.noaa.gsd.viz.hazards.display;
 
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesGeneratorJobListener;
 
+import java.util.Date;
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Transforms ISessionManager into an IHazardServicesModel, most of the code
@@ -39,6 +41,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author bsteffen
@@ -51,14 +54,18 @@ public class ModelAdapter extends
 
     private EventBus eventBus;
 
+    public ModelAdapter(ISessionManager sessionManager) {
+        super(sessionManager);
+    }
+
     @Deprecated
     @Override
-    public void initialize(String selectedTime, String currentTime,
-            String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, EventBus eventBus, String state) {
+    public void initialize(Date selectedTime, String staticSettingID,
+            String dynamicSetting_json, String caveMode, String siteID,
+            EventBus eventBus) {
         this.eventBus = eventBus;
-        super.initialize(selectedTime, currentTime, staticSettingID,
-                dynamicSetting_json, caveMode, siteID, eventBus, state);
+        super.initialize(selectedTime, staticSettingID, dynamicSetting_json,
+                caveMode, siteID, eventBus);
     }
 
     @Override

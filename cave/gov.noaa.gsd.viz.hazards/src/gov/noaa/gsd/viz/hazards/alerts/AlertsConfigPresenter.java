@@ -12,8 +12,6 @@ package gov.noaa.gsd.viz.hazards.alerts;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.EnumSet;
 
@@ -32,13 +30,13 @@ import com.google.common.eventbus.EventBus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsConfigPresenter extends
-        HazardServicesPresenter<IAlertsConfigView<?, ?>> {
+public class AlertsConfigPresenter extends HazardServicesPresenter<IAlertsConfigView<?, ?>> {
 
     // Public Constructors
 
@@ -52,8 +50,8 @@ public class AlertsConfigPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public AlertsConfigPresenter(IHazardServicesModel model,
-            IAlertsConfigView<?, ?> view, EventBus eventBus) {
+    public AlertsConfigPresenter(IHazardServicesModel model, IAlertsConfigView<?, ?> view,
+            EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -76,19 +74,7 @@ public class AlertsConfigPresenter extends
      */
     public final void showAlertDetail() {
 
-        // Get the parameters for the alert subview.
-        DictList fields = DictList.getInstance(getModel().getConfigItem(
-                "alertConfig"));
-        /*
-         * TODO Temporary Kludge. The values should be set to the current
-         * configuration, not the one named "ALERTS1". But right now, it's not
-         * even possible for the user to select a different tab.
-         */
-        Dict values = (Dict) Dict
-                .getInstance(getModel().getAlertConfigValues()).get("ALERTS1");
-
-        // Have the view open the alert detail subview.
-        getView().showAlertDetail(fields, values);
+        throw new UnsupportedOperationException("Not yet implemented");
     }
 
     // Protected Methods

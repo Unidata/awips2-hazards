@@ -70,6 +70,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 16, 2012            mnash     Initial creation
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -80,8 +81,8 @@ import com.vividsolutions.jts.geom.Geometry;
 @XmlRootElement(name = "hazard")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-@RegistryObject({ HazardConstants.SITEID, HazardConstants.EVENTID,
-        HazardConstants.UNIQUEID })
+@RegistryObject({ HazardConstants.SITEID,
+        HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUEID })
 public class HazardEvent implements IHazardEvent, ISerializableObject,
         IValidator {
 
@@ -97,7 +98,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.EVENTID)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_IDENTIFIER)
     private String eventID;
 
     @DynamicSerializeElement
@@ -110,7 +111,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.STATE)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_STATE)
     private HazardState state;
 
     /**
@@ -134,18 +135,18 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      */
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.SUBTYPE)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_SUB_TYPE)
     private String subtype;
 
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.STARTTIME)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_START_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date startTime;
 
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.ENDTIME)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_END_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date endTime;
 

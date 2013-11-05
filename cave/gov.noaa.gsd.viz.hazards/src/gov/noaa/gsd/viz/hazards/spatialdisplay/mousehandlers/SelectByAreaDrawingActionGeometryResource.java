@@ -13,7 +13,6 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.EventDict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                            contributions instead of dict. A dict
  *                                            is not translated by the model adapter's
  *                                            updateEventData method.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -304,7 +304,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         String geometryLegend = zoneDisplay.getResourceData()
                                 .getMapName();
                         Dict geoReferenceDict = new Dict();
-                        geoReferenceDict.put(Utilities.HAZARD_EVENT_IDENTIFIER,
+                        geoReferenceDict.put(
+                                HazardConstants.HAZARD_EVENT_IDENTIFIER,
                                 eventID);
                         geoReferenceDict.put(
                                 HazardConstants.GEOMETRY_REFERENCE_KEY,
@@ -331,10 +332,11 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         // Convert the object to JSON.
                         EventDict modifiedEventAreaObject = new EventDict();
                         modifiedEventAreaObject.put(
-                                Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
-                        modifiedEventAreaObject.put(
-                                Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                                Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+                                HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                                eventID);
+                        modifiedEventAreaObject
+                                .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
+                                        HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
                         modifiedEventAreaObject.addShape(polygon);
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
