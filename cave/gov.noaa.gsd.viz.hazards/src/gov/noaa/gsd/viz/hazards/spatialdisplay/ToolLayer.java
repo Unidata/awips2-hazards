@@ -34,6 +34,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -54,9 +55,6 @@ import org.eclipse.swt.widgets.Display;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -125,11 +123,11 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                        Shift and Ctrl keys.
  * Sep 10, 2013  752       Bryon.Lawrence Modified to use static method 
  *                                        forModifyingStormTrack in HazardServicesDrawableBuilder
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Xiangbao Jing
  */
-@SuppressWarnings("unchecked")
 public class ToolLayer extends
         AbstractMovableToolLayer<AbstractDrawableComponent> implements
         IContextMenuContributor, IToolChangedListener, IResourceDataChanged {
@@ -1371,23 +1369,67 @@ public class ToolLayer extends
      * @return A list of entries to add to the context menu.
      */
     public List<String> getContextMenuEntries() {
-        List<String> entryList = Lists.newArrayList();
-        String jsonString = appBuilder.getContextMenuEntries();
+        ISessionEventManager eventManager = appBuilder.getSessionManager()
+                .getEventManager();
+        List<String> entries = new ArrayList<String>();
+        EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
+        for (IHazardEvent event : eventManager.getSelectedEvents()) {
+            states.add(event.getState());
 
-        JsonParser parser = new JsonParser();
+            /*
+             * Logic to handle hazard-specific contributions to the context
+             * menu. This is used, for example, by the "Add/Remove Shapes" entry
+             * which applies to hazard geometries created by the draw-by-area
+             * tool.
+             */
+            String[] contextMenuEntries = (String[]) event
+                    .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
 
-        JsonElement jsonElement = parser.parse(jsonString);
-        entryList = new Gson().fromJson(jsonElement, entryList.getClass());
+            if (contextMenuEntries != null) {
+                for (String contextMenuEntry : contextMenuEntries) {
+                    entries.add(contextMenuEntry);
+                }
+            }
+        }
+
+        entries.add(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
+        if (states.contains(HazardState.ISSUED)) {
+            entries.add(HazardConstants.END_SELECTED_HAZARDS);
+        }
+        if (!states.contains(HazardState.PROPOSED) || states.size() > 1) {
+            entries.add(HazardConstants.PROPOSE_SELECTED_HAZARDS);
+        }
+        if (!states.contains(HazardState.ISSUED) || states.size() > 1) {
+            entries.add("Issue Selected Hazards");
+            entries.add("Delete Selected Hazards");
+        }
+        if (states.contains(HazardState.PROPOSED)) {
+            entries.add("Save Proposed Hazards");
+        }
+        entries.add("Send to Back");
+        entries.add("Bring to Front");
+
+        /*
+         * Check for potential events.
+         */
+        Collection<IHazardEvent> potentialEvents = eventManager
+                .getEventsByState(HazardState.POTENTIAL);
+
+        if (!potentialEvents.isEmpty()) {
+            entries.add(HazardConstants.REMOVE_POTENTIAL_HAZARDS);
+        }
+
+        entries.add("Hazard Occurrence Alerts");
 
         if (spatialView
                 .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR)) {
-            entryList.add("Delete Node");
+            entries.add("Delete Node");
         } else if (spatialView
                 .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR)) {
-            entryList.add("Add Node");
+            entries.add("Add Node");
         }
 
-        return entryList;
+        return entries;
     }
 
     /**

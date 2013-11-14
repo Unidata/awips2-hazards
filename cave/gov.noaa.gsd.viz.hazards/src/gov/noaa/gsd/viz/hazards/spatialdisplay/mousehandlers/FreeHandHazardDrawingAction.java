@@ -11,7 +11,6 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -51,6 +50,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Apr 04, 2013            Xiangbao Jing      Initial induction into repo
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -167,7 +167,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // Convert the object to JSON.
                 String jsonString = JSONUtilities.createNewHazardJSON("",
-                        Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON,
+                        HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON,
                         reducedPointsList);
                 points.clear();
 

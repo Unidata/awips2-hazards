@@ -34,6 +34,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -127,7 +128,8 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                         .getDynamicallyTypedValue(HazardConstants.POINTS);
                 List<Double> onePoint = points.get(3);
                 onePoint.set(1, 39.0);
-                modifiedEvent.put(HazardConstants.EVENTID, eventID);
+                modifiedEvent.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                        eventID);
                 modifyAreaAction.setModifyEventJSON(modifiedEvent
                         .toJSONString());
                 eventBus.post(modifyAreaAction);

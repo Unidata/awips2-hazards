@@ -7,9 +7,9 @@
  */
 package gov.noaa.gsd.viz.hazards;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.hazards.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -18,7 +18,6 @@ import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
@@ -41,6 +40,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            daniel.s.schaffer      Initial creation
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -63,15 +63,15 @@ public class HazardEventsBuilder {
             Dict eventDict = dict.getDynamicallyTypedValue(eventId);
             Map<String, Serializable> attributes = Maps.newHashMap();
             for (String key : eventDict.keySet()) {
-                if (key.equals(HazardConstants.EVENTID)) {
+                if (key.equals(HAZARD_EVENT_IDENTIFIER)) {
                     event.setEventID(eventId);
-                } else if (key.equals(HazardConstants.STATE)) {
+                } else if (key.equals(HAZARD_EVENT_STATE)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
-                    event.setState(HazardConstants.hazardStateFromString(value));
-                } else if (key.equals(HazardConstants.SITEID)) {
+                    event.setState(hazardStateFromString(value));
+                } else if (key.equals(SITEID)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(value);
-                } else if (key.equals(HazardConstants.STARTTIME)) {
+                } else if (key.equals(HAZARD_EVENT_START_TIME)) {
                     Date date = dateFromMillis(eventDict, key);
                     event.setStartTime(date);
 
@@ -80,13 +80,13 @@ public class HazardEventsBuilder {
                      * work. See Issue #694.
                      */
                     event.setIssueTime(date);
-                } else if (key.equals(HazardConstants.ENDTIME)) {
+                } else if (key.equals(HAZARD_EVENT_END_TIME)) {
                     Date date = dateFromMillis(eventDict, key);
                     event.setEndTime(date);
-                } else if (key.equals(HazardConstants.SITEID)) {
+                } else if (key.equals(SITEID)) {
                     String site = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(site);
-                } else if (key.equals(Utilities.HAZARD_EVENT_VTEC_MODE)) {
+                } else if (key.equals(HAZARD_EVENT_VTEC_MODE)) {
                     String mode = eventDict.getDynamicallyTypedValue(key);
                     if (mode.equals("operational")) {
                         event.setHazardMode(ProductClass.OPERATIONAL);
@@ -94,18 +94,18 @@ public class HazardEventsBuilder {
                         throw new UnsupportedOperationException(
                                 "Do not support mode " + mode);
                     }
-                } else if (key.equals(Utilities.HAZARD_EVENT_PHEN)) {
+                } else if (key.equals(HAZARD_EVENT_PHEN)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setPhenomenon(value);
-                } else if (key.equals(Utilities.HAZARD_EVENT_SIG)) {
+                } else if (key.equals(HAZARD_EVENT_SIG)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSignificance(value);
-                } else if (key.equals(Utilities.HAZARD_EVENT_SUB_TYPE)) {
+                } else if (key.equals(HAZARD_EVENT_SUB_TYPE)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSubtype(value);
-                } else if (key.equals(Utilities.HAZARD_EVENT_SHAPES)) {
+                } else if (key.equals(HAZARD_EVENT_SHAPES)) {
                     List<Dict> shapes = eventDict
-                            .getDynamicallyTypedValue(Utilities.HAZARD_EVENT_SHAPES);
+                            .getDynamicallyTypedValue(HAZARD_EVENT_SHAPES);
                     if (shapes.size() > 1) {
                         throw new UnsupportedOperationException(
                                 "Only support shapes with one polygon");
@@ -115,9 +115,8 @@ public class HazardEventsBuilder {
                             .getDynamicallyTypedValue("points");
                     Geometry geometry = buildGeometry(points);
                     event.setGeometry(geometry);
-                } else if (key.equals(HazardConstants.RISE_ABOVE)
-                        || key.equals(HazardConstants.CREST)
-                        || key.equals(HazardConstants.FALL_BELOW)) {
+                } else if (key.equals(RISE_ABOVE) || key.equals(CREST)
+                        || key.equals(FALL_BELOW)) {
                     Number value = eventDict.getDynamicallyTypedValue(key);
                     attributes.put(key, value.longValue());
                 } else {

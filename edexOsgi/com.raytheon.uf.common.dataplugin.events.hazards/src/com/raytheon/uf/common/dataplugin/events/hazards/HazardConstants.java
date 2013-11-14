@@ -38,6 +38,7 @@ import java.util.List;
  *                                   to clean up the use of strings
  *                                   as keys in other code modules.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -202,25 +203,13 @@ public final class HazardConstants {
 
     public static final String SYMBOL_NEW_LAT_LON = "newLatLon";
 
-    public static final String STARTTIME = "startTime";
-
     public static final String PHENOMENON = "phenomenon";
 
     public static final String PHENSIG = "phensig";
 
     public static final String SIGNIFICANCE = "significance";
 
-    public static final String SUBTYPE = "subtype";
-
-    public static final String EVENTID = "eventID";
-
     public static final String UNIQUEID = "uniqueID";
-
-    public static final String STATE = "state";
-
-    public static final String ENDTIME = "endTime";
-
-    public static final String ISSUETIME = "issueTime";
 
     public static final String EXPIRATIONTIME = "expirationTime";
 
@@ -232,11 +221,149 @@ public final class HazardConstants {
 
     public static final String FALL_BELOW = "fallBelow";
 
-    public static final String TYPE = "type";
-
     public static final String CAUSE = "cause";
 
-    public static final String COLOR = "color";
+    /**
+     * Event identifier key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_IDENTIFIER = "eventID";
+
+    /**
+     * Category key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_CATEGORY = "hazardCategory";
+
+    /**
+     * Type key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_TYPE = "type";
+
+    /**
+     * Phen key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_PHEN = "phen";
+
+    /**
+     * Sig key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_SIG = "sig";
+
+    /**
+     * Sub-type key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_SUB_TYPE = "subtype";
+
+    /**
+     * Full type key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_FULL_TYPE = "fullType";
+
+    /**
+     * VTEC mode key for hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_VTEC_MODE = "VTECmode";
+
+    /**
+     * End time key in hazard event dictionary.
+     */
+    public static final String ISSUETIME = "issueTime";
+
+    /**
+     * Start time key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_START_TIME = "startTime";
+
+    /**
+     * End time key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_END_TIME = "endTime";
+
+    /**
+     * Event tracking numbers
+     */
+    public static final String ETNS = "etns";
+
+    /**
+     * Product IDs
+     */
+    public static final String PILS = "pils";
+
+    /**
+     * VTEC codes
+     */
+    public static final String VTEC_CODES = "vtecCodes";
+
+    /**
+     * Group identifier key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_GROUP_IDENTIFIER = "groupID";
+
+    /**
+     * Shapes key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPES = "shapes";
+
+    /**
+     * Shape type key in shape dictionary in shapes list in hazard event
+     * dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE = "shapeType";
+
+    /**
+     * Circle shape type value in shape dictionary in shapes list in hazard
+     * event dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_CIRCLE = "circle";
+
+    /**
+     * Point shape type value in shape dictionary in shapes list in hazard event
+     * dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_POINT = "point";
+
+    /**
+     * Line shape type value in shape dictionary in shapes list in hazard event
+     * dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_LINE = "line";
+
+    /**
+     * Polygon shape type value in shape dictionary in shapes list in hazard
+     * event dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_POLYGON = "polygon";
+
+    /**
+     * Dot shape type value in shape dictionary in shapes list in hazard event
+     * dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_DOT = "dot";
+
+    /**
+     * Star shape type value in shape dictionary in shapes list in hazard event
+     * dictionary.
+     */
+    public static final String HAZARD_EVENT_SHAPE_TYPE_STAR = "star";
+
+    /**
+     * Event-is-checked key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_CHECKED = "checked";
+
+    /**
+     * Color key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_COLOR = "color";
+
+    /**
+     * Event-is-selected key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_SELECTED = "selected";
+
+    /**
+     * State key in hazard event dictionary.
+     */
+    public static final String HAZARD_EVENT_STATE = "state";
 
     /*
      * The following are used to identify elements in the session state.
@@ -303,8 +430,6 @@ public final class HazardConstants {
     public static final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
-
-    public static final String CONTEXT_MENU_SAVE = "Save";
 
     public static final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 

@@ -47,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2012            mnash     Initial creation
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -68,7 +69,7 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
 
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.EVENTID)
+    @Column(name = HazardConstants.HAZARD_EVENT_IDENTIFIER)
     private String eventID;
 
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "PRACTICE_HAZARD_GENERATOR")
@@ -154,28 +155,37 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         PracticeHazardEventPK other = (PracticeHazardEventPK) obj;
         if (eventID == null) {
-            if (other.eventID != null)
+            if (other.eventID != null) {
                 return false;
-        } else if (!eventID.equals(other.eventID))
+            }
+        } else if (!eventID.equals(other.eventID)) {
             return false;
+        }
         if (siteID == null) {
-            if (other.siteID != null)
+            if (other.siteID != null) {
                 return false;
-        } else if (!siteID.equals(other.siteID))
+            }
+        } else if (!siteID.equals(other.siteID)) {
             return false;
+        }
         if (uniqueID == null) {
-            if (other.uniqueID != null)
+            if (other.uniqueID != null) {
                 return false;
-        } else if (!uniqueID.equals(other.uniqueID))
+            }
+        } else if (!uniqueID.equals(other.uniqueID)) {
             return false;
+        }
         return true;
     }
 }

@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -23,6 +23,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 2012                Bryon.Lawrence    Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -74,7 +75,7 @@ final public class Circle extends Shape {
     public Circle(String label, String id, String name, String isVisible,
             String isSelected, String include, String color, double point[]) {
         super(label, isVisible, isSelected, include);
-        setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_CIRCLE);
+        setShapeType(HAZARD_EVENT_SHAPE_TYPE_CIRCLE);
         this.color = color;
         this.id = id;
         this.name = name;
@@ -104,7 +105,7 @@ final public class Circle extends Shape {
     public Circle(String label, String id, String name, String isVisible,
             String isSelected, String include, String color, Coordinate point) {
         super(label, isVisible, isSelected, include);
-        setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_CIRCLE);
+        setShapeType(HAZARD_EVENT_SHAPE_TYPE_CIRCLE);
         this.color = color;
         this.id = id;
         this.name = name;

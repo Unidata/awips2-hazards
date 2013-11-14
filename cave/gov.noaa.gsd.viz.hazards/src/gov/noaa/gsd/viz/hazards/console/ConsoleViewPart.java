@@ -12,6 +12,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -19,13 +20,11 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
 
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.google.common.collect.ImmutableList;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
@@ -47,6 +46,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
  *                                           points.
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,9 +111,9 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param presenter
      *            Presenter managing this view part.
      * @param selectedTime
-     *            Selected time as epoch time in milliseconds.
+     *            Selected time
      * @param currentTime
-     *            Current time as epoch time in milliseconds.
+     *            Current time
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
@@ -129,8 +129,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      *            to be shown in the toolbar. If <code>false</code>, they are
      *            shown in the temporal display composite itself.
      */
-    public void initialize(ConsolePresenter presenter, long selectedTime,
-            long currentTime, long visibleTimeRange, String hazardEvents,
+    public void initialize(ConsolePresenter presenter, Date selectedTime,
+            Date currentTime, long visibleTimeRange, String hazardEvents,
             String jsonSettings, String jsonFilters,
             ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar) {
@@ -257,7 +257,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param currentTime
      *            JSON string holding the current time.
      */
-    public void updateCurrentTime(String currentTime) {
+    public void updateCurrentTime(Date currentTime) {
         temporalDisplay.updateCurrentTime(currentTime);
     }
 
@@ -267,7 +267,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param selectedTime
      *            JSON string holding the selected time.
      */
-    public void updateSelectedTime(String selectedTime) {
+    public void updateSelectedTime(Date selectedTime) {
         temporalDisplay.updateSelectedTime(selectedTime);
     }
 

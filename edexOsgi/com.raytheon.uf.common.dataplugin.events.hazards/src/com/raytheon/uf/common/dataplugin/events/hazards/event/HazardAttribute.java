@@ -55,6 +55,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 17, 2012            mnash     Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -65,7 +66,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 @XmlRootElement(name = "attributes")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-@RegistryObject({ HazardConstants.EVENTID, "key" })
+@RegistryObject({ HazardConstants.HAZARD_EVENT_IDENTIFIER, "key" })
 public class HazardAttribute implements IHazardAttribute, ISerializableObject,
         IValidator {
 
@@ -74,7 +75,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
 
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.EVENTID)
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_IDENTIFIER)
     private String eventID;
 
     @DynamicSerializeElement
@@ -123,6 +124,7 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
     /**
      * @return the eventId
      */
+    @Override
     public String getEventID() {
         return eventID;
     }
@@ -265,25 +267,33 @@ public class HazardAttribute implements IHazardAttribute, ISerializableObject,
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         HazardAttribute other = (HazardAttribute) obj;
         if (eventID == null) {
-            if (other.eventID != null)
+            if (other.eventID != null) {
                 return false;
-        } else if (!eventID.equals(other.eventID))
+            }
+        } else if (!eventID.equals(other.eventID)) {
             return false;
+        }
         if (key == null) {
-            if (other.key != null)
+            if (other.key != null) {
                 return false;
-        } else if (!key.equals(other.key))
+            }
+        } else if (!key.equals(other.key)) {
             return false;
-        if (!Arrays.equals(valueSerializable, other.valueSerializable))
+        }
+        if (!Arrays.equals(valueSerializable, other.valueSerializable)) {
             return false;
+        }
         return true;
     }
 }

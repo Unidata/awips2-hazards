@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.Date;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
@@ -66,8 +67,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            to be shown in the toolbar. If <code>false</code>, they are
      *            shown in the temporal display composite itself.
      */
-    public void initialize(ConsolePresenter presenter, long selectedTime,
-            long currentTime, long visibleTimeRange, String jsonHazardEvents,
+    public void initialize(ConsolePresenter presenter, Date selectedTime,
+            Date currentTime, long visibleTimeRange, String jsonHazardEvents,
             String jsonSettings, String jsonFilters,
             ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar);
@@ -92,18 +93,14 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Update the current time.
      * 
-     * @param jsonCurrentTime
-     *            JSON string holding the current time.
      */
-    public void updateCurrentTime(String jsonCurrentTime);
+    public void updateCurrentTime(Date jsonCurrentTime);
 
     /**
      * Update the selected time.
      * 
-     * @param jsonSelectedTime
-     *            JSON string holding the selected time.
      */
-    public void updateSelectedTime(String jsonSelectedTime);
+    public void updateSelectedTime(Date jsonSelectedTime);
 
     /**
      * Update the selected time range.

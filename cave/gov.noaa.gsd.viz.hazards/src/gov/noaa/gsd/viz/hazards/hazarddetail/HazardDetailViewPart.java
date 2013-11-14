@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -117,6 +118,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           references (variable names, comments, etc.)
  *                                           to "widget" with "megawidget" to avoid
  *                                           confusion.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Chris.Golden
@@ -1177,9 +1179,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         for (Map<String, Object> eventDict : primaryParamValues) {
             CTabItem tabItem = new CTabItem(eventTabFolder, SWT.NONE);
             setTabText(tabItem,
-                    (String) eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER),
-                    (String) eventDict.get(Utilities.HAZARD_EVENT_FULL_TYPE));
-            tabItem.setData(eventDict.get(Utilities.HAZARD_EVENT_IDENTIFIER));
+                    (String) eventDict.get(HAZARD_EVENT_IDENTIFIER),
+                    (String) eventDict.get(HAZARD_EVENT_FULL_TYPE));
+            tabItem.setData(eventDict.get(HAZARD_EVENT_IDENTIFIER));
         }
         tabsBeingChanged = false;
 
@@ -1242,12 +1244,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         typeCombo = new Combo(hazardSubGroup, SWT.READ_ONLY);
         if (primaryParamValues.size() > 0) {
             populateHazardTypesList((String) primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_CATEGORY));
+                    visibleHazardIndex).get(HAZARD_EVENT_CATEGORY));
             if (primaryParamValues.get(visibleHazardIndex).get(
-                    Utilities.HAZARD_EVENT_FULL_TYPE) != null) {
+                    HAZARD_EVENT_FULL_TYPE) != null) {
                 typeCombo.setText((String) primaryParamValues.get(
-                        visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE));
             } else {
                 typeCombo.setText("");
             }
@@ -1287,11 +1288,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 timeRangeMegawidget.setUncommittedState(
                         START_TIME_STATE,
                         primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_START_TIME));
+                                HAZARD_EVENT_START_TIME));
                 timeRangeMegawidget.setUncommittedState(
                         END_TIME_STATE,
                         primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_END_TIME));
+                                HAZARD_EVENT_END_TIME));
                 timeRangeMegawidget.commitStateChanges();
             }
         } catch (Exception e) {
@@ -1332,8 +1333,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             public void widgetSelected(SelectionEvent e) {
                 populateHazardTypesList(categoryCombo.getText());
                 primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
+                        HAZARD_EVENT_CATEGORY, categoryCombo.getText());
                 typeCombo.select(0);
                 typeCombo.notifyListeners(SWT.Selection, new Event());
             }
@@ -1350,7 +1350,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // panel.
         if (primaryParamValues.size() > 0) {
             showMetadataForType((String) primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_FULL_TYPE));
+                    visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE));
         }
 
         // Add a listener for hazard type changes which shows
@@ -1363,22 +1363,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // Update the records for this event of its
                 // category and type.
                 primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
+                        HAZARD_EVENT_CATEGORY, categoryCombo.getText());
                 primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_TYPE,
-                        typeCombo.getText().split(" ")[0]);
+                        HAZARD_EVENT_TYPE, typeCombo.getText().split(" ")[0]);
                 primaryParamValues.get(visibleHazardIndex).put(
-                        Utilities.HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
+                        HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
                 Dict eventInfo = new Dict();
                 eventInfo.put(
-                        Utilities.HAZARD_EVENT_IDENTIFIER,
+                        HAZARD_EVENT_IDENTIFIER,
                         primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_IDENTIFIER));
-                eventInfo.put(Utilities.HAZARD_EVENT_CATEGORY,
-                        categoryCombo.getText());
-                eventInfo.put(Utilities.HAZARD_EVENT_FULL_TYPE,
-                        typeCombo.getText());
+                                HAZARD_EVENT_IDENTIFIER));
+                eventInfo.put(HAZARD_EVENT_CATEGORY, categoryCombo.getText());
+                eventInfo.put(HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
                 String jsonText = null;
                 try {
                     jsonText = eventInfo.toJSONString();
@@ -1435,7 +1431,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             scrollOriginsForEventIDs.put(
                                     (String) primaryParamValues.get(
                                             visibleHazardIndex).get(
-                                            Utilities.HAZARD_EVENT_IDENTIFIER),
+                                            HAZARD_EVENT_IDENTIFIER),
                                     scrolledComposite.getOrigin());
                         }
                     }
@@ -1496,10 +1492,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // identifier to it. Add any extra callback info
         // as well if it exists.
         Dict eventInfo = new Dict();
-        eventInfo
-                .put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_IDENTIFIER));
+        eventInfo.put(
+                HAZARD_EVENT_IDENTIFIER,
+                primaryParamValues.get(visibleHazardIndex).get(
+                        HAZARD_EVENT_IDENTIFIER));
         if (extraCallback != null) {
             eventInfo.put("callback", extraCallback);
         }
@@ -1548,7 +1544,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         boolean isPointMegawidget = false;
         Map<String, IControl> megawidgetsForIds = pointMegawidgetsForIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds != null) {
 
             // Determine whether this is a point
@@ -1579,7 +1575,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .get(((PointsTableMegawidget) megawidgetsForIds
                             .get(POINTS_TABLE_IDENTIFIER))
                             .getSelectedRowIndex())
-                    .get(Utilities.HAZARD_EVENT_IDENTIFIER);
+                    .get(HAZARD_EVENT_IDENTIFIER);
             pointsParamValues
                     .get(visibleHazardIndex)
                     .get(((PointsTableMegawidget) megawidgetsForIds
@@ -1587,7 +1583,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             .getSelectedRowIndex()).put(identifier, state);
         } else {
             eventID = (String) primaryParamValues.get(visibleHazardIndex).get(
-                    Utilities.HAZARD_EVENT_IDENTIFIER);
+                    HAZARD_EVENT_IDENTIFIER);
             primaryParamValues.get(visibleHazardIndex).put(identifier, state);
         }
 
@@ -1595,7 +1591,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // that the appropriate key's value has changed for this
         // event, and send it off.
         Dict eventInfo = new Dict();
-        eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
+        eventInfo.put(HAZARD_EVENT_IDENTIFIER, eventID);
         eventInfo.put(identifier, state);
         String jsonText = null;
         try {
@@ -1663,7 +1659,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Print out diagnostic info.
-        // Gson gson = JSONUtilities.createPrettyGsonInterpreter();
+        // Gson gson = JSONcreatePrettyGsonInterpreter();
         // statusHandler.debug("HID: JSON output of values: "
         // + gson.toJson(eventsList));
 
@@ -1704,7 +1700,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Map<?, ?> firstEvent = (Map<?, ?>) (eventDictList.size() > 0 ? eventDictList
                     .get(0) : null);
             boolean isArealAndPoints = ((firstEvent != null) && firstEvent
-                    .containsKey(Utilities.HAZARD_EVENT_GROUP_IDENTIFIER));
+                    .containsKey(HAZARD_EVENT_GROUP_IDENTIFIER));
 
             // Clear the event tracking lists.
             primaryParamValues.clear();
@@ -1726,11 +1722,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // have a category listed, and if it does
                 // not, complain.
                 String fullType = (String) eventDict
-                        .get(Utilities.HAZARD_EVENT_FULL_TYPE);
+                        .get(HAZARD_EVENT_FULL_TYPE);
                 if ((fullType == null) || (fullType.length() == 0)) {
                     fullType = "";
                     String category = (String) eventDict
-                            .get(Utilities.HAZARD_EVENT_CATEGORY);
+                            .get(HAZARD_EVENT_CATEGORY);
                     if (category == null) {
                         statusHandler
                                 .warn("HazardDetailViewPart.setHidEventInfo(): "
@@ -1739,32 +1735,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     } else {
                         categoriesForTypes.put("", category);
                     }
-                    eventDict.put(Utilities.HAZARD_EVENT_FULL_TYPE, fullType);
+                    eventDict.put(HAZARD_EVENT_FULL_TYPE, fullType);
                 }
-                if (eventDict.get(Utilities.HAZARD_EVENT_CATEGORY) == null) {
-                    eventDict.put(Utilities.HAZARD_EVENT_CATEGORY,
+                if (eventDict.get(HAZARD_EVENT_CATEGORY) == null) {
+                    eventDict.put(HAZARD_EVENT_CATEGORY,
                             categoriesForTypes.get(fullType));
                 }
 
                 // Add this event identifier and type to the
                 // lists of these respective parameters being
                 // compiled.
-                eventIDs.add((String) eventDict
-                        .get(Utilities.HAZARD_EVENT_IDENTIFIER));
-                types.add((String) eventDict
-                        .get(Utilities.HAZARD_EVENT_FULL_TYPE));
+                eventIDs.add((String) eventDict.get(HAZARD_EVENT_IDENTIFIER));
+                types.add((String) eventDict.get(HAZARD_EVENT_FULL_TYPE));
 
                 // Ensure that the start and end times are long
                 // integer objects; they may be generic number ob-
                 // jects due to JSON parsing.
-                eventDict.put(Utilities.HAZARD_EVENT_START_TIME,
-                        ((Number) eventDict
-                                .get(Utilities.HAZARD_EVENT_START_TIME))
-                                .longValue());
-                eventDict.put(Utilities.HAZARD_EVENT_END_TIME,
-                        ((Number) eventDict
-                                .get(Utilities.HAZARD_EVENT_END_TIME))
-                                .longValue());
+                eventDict.put(HAZARD_EVENT_START_TIME, ((Number) eventDict
+                        .get(HAZARD_EVENT_START_TIME)).longValue());
+                eventDict.put(HAZARD_EVENT_END_TIME, ((Number) eventDict
+                        .get(HAZARD_EVENT_END_TIME)).longValue());
 
                 // If the passed-in event list is a single
                 // areal event and zero or more point events,
@@ -1800,16 +1790,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         Dict auxiliary = eventDictList
                                 .getDynamicallyTypedValue(k);
                         List<?> shapeList = (List<?>) auxiliary
-                                .get(Utilities.HAZARD_EVENT_SHAPES);
+                                .get(HAZARD_EVENT_SHAPES);
                         boolean listAsPoint = false;
                         if (keepPointsSeparate && (shapeList != null)) {
                             Dict shape = (Dict) shapeList.get(0);
-                            if (shape
-                                    .get(Utilities.HAZARD_EVENT_SHAPE_TYPE)
-                                    .equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_CIRCLE)
-                                    || shape.get(
-                                            Utilities.HAZARD_EVENT_SHAPE_TYPE)
-                                            .equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                            if (shape.get(HAZARD_EVENT_SHAPE_TYPE).equals(
+                                    HAZARD_EVENT_SHAPE_TYPE_CIRCLE)
+                                    || shape.get(HAZARD_EVENT_SHAPE_TYPE)
+                                            .equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
                                 listAsPoint = true;
                             }
                         }
@@ -1986,8 +1974,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         boolean enable = (primaryParamValues.size() > 0);
         if (enable) {
             for (Map<String, Object> eventDict : primaryParamValues) {
-                if (((String) eventDict.get(Utilities.HAZARD_EVENT_FULL_TYPE))
-                        .length() == 0) {
+                if (((String) eventDict.get(HAZARD_EVENT_FULL_TYPE)).length() == 0) {
                     enable = false;
                     break;
                 }
@@ -2062,13 +2049,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // current type.
         List<ISpecifier> megawidgetSpecifiers = pointMegawidgetsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        HAZARD_EVENT_FULL_TYPE));
         if (megawidgetSpecifiers == null) {
             statusHandler
                     .info("HazardDetailViewPart.configurePointsTable(): Could "
                             + "not find point megawidget specifiers for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
-                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+                                    HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2158,13 +2145,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Get the point megawidgets for the current type.
         Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
             statusHandler
                     .info("HazardDetailViewPart.populatePointsTable(): Could "
                             + "not find point megawidgets for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
-                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+                                    HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
         if (pointsParamValues.get(visibleHazardIndex) == null) {
@@ -2172,7 +2159,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .info("HazardDetailViewPart.populatePointsTable(): No "
                             + "points parameter values were found for type \""
                             + primaryParamValues.get(visibleHazardIndex).get(
-                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+                                    HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2197,8 +2184,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 if (col == 0) {
                     value = ((Map<?, ?>) ((List<?>) pointsParamValues
                             .get(visibleHazardIndex).get(line)
-                            .get(Utilities.HAZARD_EVENT_SHAPES)).get(0))
-                            .get(identifier);
+                            .get(HAZARD_EVENT_SHAPES)).get(0)).get(identifier);
                 } else {
                     value = pointsParamValues.get(visibleHazardIndex).get(line)
                             .get(identifier);
@@ -2261,13 +2247,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Get the point megawidgets for the current type.
         Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
             statusHandler
                     .info("HazardDetailViewPart.updatePointsTable(): Could "
                             + "not find point megawidgets for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
-                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+                                    HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2321,13 +2307,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Get the point megawidgets for the current type.
         Map<String, IControl> megawidgetsForIds = pointMegawidgetsForStateIdsForTypes
                 .get(primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_FULL_TYPE));
+                        HAZARD_EVENT_FULL_TYPE));
         if (megawidgetsForIds == null) {
             statusHandler
                     .info("HazardDetailViewPart.updatePointMegawidgetValues(): "
                             + "Could not find point megawidgets for type = \""
                             + primaryParamValues.get(visibleHazardIndex).get(
-                                    Utilities.HAZARD_EVENT_FULL_TYPE) + "\".");
+                                    HAZARD_EVENT_FULL_TYPE) + "\".");
             return;
         }
 
@@ -2407,7 +2393,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         categoryCombo.setText(category);
         populateHazardTypesList(category);
         String type = (String) primaryParamValues.get(visibleHazardIndex).get(
-                Utilities.HAZARD_EVENT_FULL_TYPE);
+                HAZARD_EVENT_FULL_TYPE);
         typeCombo.setText(type);
 
         // Set the start and end time in the time
@@ -2416,11 +2402,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             timeRangeMegawidget.setUncommittedState(
                     START_TIME_STATE,
                     primaryParamValues.get(visibleHazardIndex).get(
-                            Utilities.HAZARD_EVENT_START_TIME));
+                            HAZARD_EVENT_START_TIME));
             timeRangeMegawidget.setUncommittedState(
                     END_TIME_STATE,
                     primaryParamValues.get(visibleHazardIndex).get(
-                            Utilities.HAZARD_EVENT_END_TIME));
+                            HAZARD_EVENT_END_TIME));
             timeRangeMegawidget.commitStateChanges();
         } catch (Exception e) {
             statusHandler
@@ -2445,7 +2431,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Synch the main metadata megawidgets.
         String fullType = (String) primaryParamValues.get(visibleHazardIndex)
-                .get(Utilities.HAZARD_EVENT_FULL_TYPE);
+                .get(HAZARD_EVENT_FULL_TYPE);
         setMegawidgetsStates(megawidgetsForIdsForTypes.get(fullType),
                 primaryParamValues.get(visibleHazardIndex));
 
@@ -2488,10 +2474,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private String getCategoryOfCurrentEvent() {
         String category = (String) primaryParamValues.get(visibleHazardIndex)
-                .get(Utilities.HAZARD_EVENT_CATEGORY);
+                .get(HAZARD_EVENT_CATEGORY);
         if (category == null) {
             category = categoriesForTypes.get(primaryParamValues.get(
-                    visibleHazardIndex).get(Utilities.HAZARD_EVENT_FULL_TYPE));
+                    visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE));
         }
         return category;
     }
@@ -2686,7 +2672,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // looked at is made visible again. Otherwise, just make
         // the top left corner of the panel is visible.
         Point origin = scrollOriginsForEventIDs.get(primaryParamValues.get(
-                visibleHazardIndex).get(Utilities.HAZARD_EVENT_IDENTIFIER));
+                visibleHazardIndex).get(HAZARD_EVENT_IDENTIFIER));
         if (origin == null) {
             origin = new Point(0, 0);
         }
@@ -2748,13 +2734,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 return;
             }
             primaryParamValues.get(visibleHazardIndex).put(
-                    Utilities.HAZARD_EVENT_START_TIME, startTime);
+                    HAZARD_EVENT_START_TIME, startTime);
             Long endTime = (Long) timeRangeMegawidget.getState(END_TIME_STATE);
             if (endTime == null) {
                 return;
             }
             primaryParamValues.get(visibleHazardIndex).put(
-                    Utilities.HAZARD_EVENT_END_TIME, endTime);
+                    HAZARD_EVENT_END_TIME, endTime);
         } catch (Exception e) {
             statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
                     + "could not get state from time range megawidgets.", e);
@@ -2762,18 +2748,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Generate a HID action and fire it off.
         Dict eventInfo = new Dict();
-        eventInfo
-                .put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_IDENTIFIER));
-        eventInfo
-                .put(Utilities.HAZARD_EVENT_START_TIME,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                Utilities.HAZARD_EVENT_START_TIME));
         eventInfo.put(
-                Utilities.HAZARD_EVENT_END_TIME,
+                HAZARD_EVENT_IDENTIFIER,
                 primaryParamValues.get(visibleHazardIndex).get(
-                        Utilities.HAZARD_EVENT_END_TIME));
+                        HAZARD_EVENT_IDENTIFIER));
+        eventInfo.put(
+                HAZARD_EVENT_START_TIME,
+                primaryParamValues.get(visibleHazardIndex).get(
+                        HAZARD_EVENT_START_TIME));
+        eventInfo.put(
+                HAZARD_EVENT_END_TIME,
+                primaryParamValues.get(visibleHazardIndex).get(
+                        HAZARD_EVENT_END_TIME));
         String jsonText = null;
         try {
             jsonText = eventInfo.toJSONString();
@@ -3056,8 +3042,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // notification that these values changed.
             if (identifiersGivenDefaultValues.size() > 0) {
                 Dict eventInfo = new Dict();
-                eventInfo.put(Utilities.HAZARD_EVENT_IDENTIFIER,
-                        paramValues.get(Utilities.HAZARD_EVENT_IDENTIFIER));
+                eventInfo.put(HAZARD_EVENT_IDENTIFIER,
+                        paramValues.get(HAZARD_EVENT_IDENTIFIER));
                 for (String identifier : identifiersGivenDefaultValues) {
                     eventInfo.put(identifier, paramValues.get(identifier));
                 }

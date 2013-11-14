@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,7 +40,6 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 
-import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.colormap.Color;
@@ -62,7 +60,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -124,6 +121,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Oct 22, 2013 2155    blawrenc        Fixed getContextMenuEntries() to 
  *                                      receive hazard-specific menu entries
  *                                      as a List<String> instead of a String[].
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author bsteffen
@@ -161,8 +159,8 @@ public abstract class ModelAdapter {
             "gfe/userPython/vtecRecords.json",
             "gfe/userPython/vtecRecords.lock" };
 
-    public ModelAdapter() {
-        this.model = SessionManagerFactory.getSessionManager();
+    public ModelAdapter(ISessionManager sessionManager) {
+        this.model = sessionManager;
         this.model.registerForNotification(this);
         this.jsonObjectMapper
                 .configure(
@@ -176,10 +174,10 @@ public abstract class ModelAdapter {
      * Call individual setters on managers instead.
      */
     @Deprecated
-    public void initialize(String selectedTime, String currentTime,
-            String staticSettingID, String dynamicSetting_json,
-            String caveMode, String siteID, EventBus eventBus, String state) {
-        model.getTimeManager().setSelectedTime(toDate(selectedTime));
+    public void initialize(Date selectedTime, String staticSettingID,
+            String dynamicSetting_json, String caveMode, String siteID,
+            EventBus eventBus) {
+        model.getTimeManager().setSelectedTime(selectedTime);
         model.getConfigurationManager().setSiteID(siteID);
         model.getConfigurationManager().changeSettings(staticSettingID);
         if (dynamicSetting_json != null && !dynamicSetting_json.isEmpty()) {
@@ -188,66 +186,6 @@ public abstract class ModelAdapter {
             model.getConfigurationManager().getSettings()
                     .apply(dynamicSettings);
         }
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String getState(boolean saveState) {
-        State state = new State();
-        TimeRange visibleRange = model.getTimeManager().getVisibleRange();
-        state.setLatestVisibleTime(fromDate(visibleRange.getEnd()));
-        state.setEarliestVisibleTime(fromDate(visibleRange.getStart()));
-        state.setLastSelectedEventID(getLastSelectedEventID());
-        Collection<IHazardEvent> events = model.getEventManager()
-                .getSelectedEvents();
-        state.setSelectedEventIDs(toIDs(events));
-
-        Collection<IHazardEvent> pending = model.getEventManager()
-                .getEventsByState(HazardState.PENDING);
-        Collection<Event> pending2 = new ArrayList<Event>(pending.size());
-        for (IHazardEvent event : pending) {
-            pending2.add(new Event(event));
-        }
-        state.setPendingEvents(pending2.toArray(new Event[0]));
-        return toJson(state);
-    }
-
-    /*
-     * Use ISessionEventManager.getSelectedEvents()
-     */
-    @Deprecated
-    public String getSelectedEvents() {
-        return toJson(toIDs(model.getEventManager().getSelectedEvents()));
-    }
-
-    /*
-     * Use ISessionEventManager.setSelectedEvents()
-     */
-    @Deprecated
-    public String updateSelectedEvents(String eventIDs, String originator) {
-        Collection<IHazardEvent> selectedEvents = fromIDs(eventIDs);
-        ISessionEventManager eventManager = model.getEventManager();
-        ISessionTimeManager timeManager = model.getTimeManager();
-        Date selectedTime = timeManager.getSelectedTime();
-
-        eventManager.setSelectedEvents(selectedEvents);
-        if (originator.equalsIgnoreCase("Temporal")
-                && !selectedTime.equals(timeManager.getSelectedTime())) {
-            return "Single";
-        } else {
-            return "None";
-        }
-    }
-
-    /*
-     * Use Settings.setAddToSelected()
-     */
-    @Deprecated
-    public void setAddToSelected(String onOff) {
-        model.getConfigurationManager().getSettings()
-                .setAddToSelected(onOff.equalsIgnoreCase("on"));
     }
 
     /*
@@ -264,30 +202,6 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * This isn't used
-     */
-    @Deprecated
-    public String getEventValues(String eventIDs, String fieldName,
-            String returnType, String ignoreState) {
-        if (fieldName.equals("selectionCallback")) {
-            return "[]";
-        } else {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-    }
-
-    /*
-     * Use ISessionEventManager.getEventsByState()
-     */
-    @Deprecated
-    public Boolean checkForEventsWithState(String eventIDs, String searchStates) {
-        HazardState state = HazardState.valueOf(searchStates.toUpperCase());
-        Collection<IHazardEvent> events = fromIDs(eventIDs);
-        events.retainAll(model.getEventManager().getEventsByState(state));
-        return events.isEmpty();
-    }
-
-    /*
      * Use ISessionEventManager.addEvent()
      */
     @Deprecated
@@ -298,125 +212,6 @@ public abstract class ModelAdapter {
                 .getCurrentTime());
         hevent = model.getEventManager().addEvent(hevent);
         return hevent.getEventID();
-    }
-
-    /*
-     * Use IHazardEvent.set*() or IHazardEvent.addHazardAttribute()
-     */
-    @Deprecated
-    public void updateEventData(String jsonText, String source) {
-        ISessionEventManager eventManager = model.getEventManager();
-        ISessionConfigurationManager configManager = model
-                .getConfigurationManager();
-        JsonNode jnode = fromJson(jsonText, JsonNode.class);
-        IHazardEvent event = eventManager.getEventById(jnode.get("eventID")
-                .getValueAsText());
-        Iterator<String> fields = jnode.getFieldNames();
-        while (fields.hasNext()) {
-            String key = fields.next();
-            if ("eventID".equals(key)) {
-                ;
-            } else if ("fullType".equals(key)) {
-                IHazardEvent oldEvent = null;
-                if (!eventManager.canChangeType(event)) {
-                    oldEvent = event;
-                    event = new BaseHazardEvent(event);
-                    event.setEventID("");
-                    event.setState(HazardState.PENDING);
-                    event.addHazardAttribute(HazardConstants.REPLACES,
-                            configManager.getHeadline(oldEvent));
-                    // New event should not have product information
-                    event.removeHazardAttribute("expirationTime");
-                    event.removeHazardAttribute("issueTime");
-                    event.removeHazardAttribute("vtecCodes");
-                    event.removeHazardAttribute("etns");
-                    event.removeHazardAttribute("pils");
-                    Date d = new Date();
-                    event.setIssueTime(d);
-                    Collection<IHazardEvent> selection = eventManager
-                            .getSelectedEvents();
-                    event = eventManager.addEvent(event);
-                    selection.add(event);
-                    eventManager.setSelectedEvents(selection);
-                }
-                String fullType = jnode.get(key).getValueAsText();
-                if (!fullType.isEmpty()) {
-                    String[] phenSig = fullType.split(" ")[0].split("\\.");
-                    event.setPhenomenon(phenSig[0]);
-                    event.setSignificance(phenSig[1]);
-                    if (phenSig.length > 2) {
-                        event.setSubtype(phenSig[2]);
-                    } else {
-                        event.setSubtype(null);
-                    }
-                }
-                if (oldEvent != null) {
-                    oldEvent.addHazardAttribute("replacedBy",
-                            configManager.getHeadline(event));
-                    oldEvent.addHazardAttribute("previewState", "ended");
-                }
-            } else if ("startTime".equals(key)) {
-                if (!eventManager.canChangeTimeRange(event)) {
-                    event = new BaseHazardEvent(event);
-                    event.setState(HazardState.PENDING);
-                    Collection<IHazardEvent> selection = eventManager
-                            .getSelectedEvents();
-                    event = eventManager.addEvent(event);
-                    selection.add(event);
-                    eventManager.setSelectedEvents(selection);
-                }
-                event.setStartTime(new Date(jnode.get(key).getLongValue()));
-            } else if ("endTime".equals(key)) {
-                if (!eventManager.canChangeTimeRange(event)) {
-                    event = new BaseHazardEvent(event);
-                    event.setState(HazardState.PENDING);
-                    Collection<IHazardEvent> selection = eventManager
-                            .getSelectedEvents();
-                    event = eventManager.addEvent(event);
-                    selection.add(event);
-                    eventManager.setSelectedEvents(selection);
-                }
-                event.setEndTime(new Date(jnode.get(key).getLongValue()));
-            } else if (jnode.get(key).isArray()) {
-                ArrayNode arrayNode = (ArrayNode) jnode.get(key);
-                List<String> stringList = Lists.newArrayList();
-
-                for (int i = 0; i < arrayNode.size(); i++) {
-                    stringList.add(arrayNode.get(i).getValueAsText());
-                }
-
-                /*
-                 * Do no pass data as arrays. It is better to pass them as
-                 * lists. Using arrays causes problems. For instance, an event
-                 * passed to the the Product Generation Framework will have its
-                 * cta array converted to a Python list. When returned to the
-                 * HMI, this Python list is converted to a Java list. So, arrays
-                 * are not consistently handled. The type is not preserved.
-                 */
-                event.addHazardAttribute(key, (Serializable) stringList);
-            } else if (jnode.get(key).isContainerNode()) {
-                throw new UnsupportedOperationException(
-                        "Support for container node not implemented yet.");
-            } else {
-                JsonNode primitive = jnode.get(key);
-                if (primitive.isTextual()) {
-                    event.addHazardAttribute(key, primitive.getValueAsText());
-                } else if (primitive.isBoolean()) {
-                    event.addHazardAttribute(key, primitive.getBooleanValue());
-                } else if (primitive.isNumber()) {
-                    Object currentVal = event.getHazardAttribute(key);
-                    if (currentVal instanceof Integer) {
-                        event.addHazardAttribute(key, primitive.getIntValue());
-                    } else {
-                        event.addHazardAttribute(key,
-                                new Date(primitive.getLongValue()));
-                    }
-                } else {
-                    throw new UnsupportedOperationException("Not implemented");
-                }
-            }
-        }
-
     }
 
     /*
@@ -440,70 +235,6 @@ public abstract class ModelAdapter {
             event.setGeometry(jevent.getGeometry());
             event.addHazardAttribute("polyModified", new Boolean(true));
         }
-    }
-
-    /*
-     * Use ISessionEventManager.removeEvent()
-     */
-    @Deprecated
-    public void deleteEvent(String eventIDs) {
-        for (IHazardEvent event : fromIDs(eventIDs)) {
-            model.getEventManager().removeEvent(event);
-        }
-    }
-
-    /*
-     * Use ISessionEventManager.removeEvent()
-     */
-    @Deprecated
-    public void removeEvents(String field, String value) {
-        if (field.equals("state")) {
-            HazardState state = HazardState.valueOf(value.toUpperCase());
-            ISessionEventManager eventManager = model.getEventManager();
-            for (IHazardEvent event : eventManager.getEventsByState(state)) {
-                eventManager.removeEvent(event);
-            }
-        } else {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void handleAction(String action, String jsonText) {
-        if (action.equals("riseAbove:crest:fallBelow")) {
-            return;
-        } else if (action.equals("__startTime__:__endTime__")) {
-            return;
-        }
-        throw new UnsupportedOperationException("Not implemented: " + action);
-    }
-
-    /*
-     * Use IHazardEvent.setState()
-     */
-    @Deprecated
-    public void changeState(String eventID, String state) {
-        if (state.toUpperCase().equals("PREVIEWENDED")) {
-            for (IHazardEvent event : fromIDs(eventID)) {
-                event.addHazardAttribute("previewState", "ended");
-            }
-        } else {
-            HazardState hstate = HazardState.valueOf(state.toUpperCase());
-            for (IHazardEvent event : fromIDs(eventID)) {
-                event.setState(hstate);
-            }
-        }
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void putHazards() {
-        throw new UnsupportedOperationException("Not implemented");
     }
 
     /*
@@ -545,37 +276,19 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * Use ISessionEventManager.sortEvents()
-     */
-    @Deprecated
-    public void sendSelectedHazardsToFront() {
-        model.getEventManager().sortEvents(
-                ISessionEventManager.SEND_SELECTED_FRONT);
-    }
-
-    /*
-     * Use ISessionEventManager.sortEvents()
-     */
-    @Deprecated
-    public void sendSelectedHazardsToBack() {
-        model.getEventManager().sortEvents(
-                ISessionEventManager.SEND_SELECTED_BACK);
-    }
-
-    /*
      * Use ISessionTimeManager.getSelectedTime()
      */
     @Deprecated
-    public String getSelectedTime() {
-        return fromDate(model.getTimeManager().getSelectedTime());
+    public Date getSelectedTime() {
+        return model.getTimeManager().getSelectedTime();
     }
 
     /*
      * Use ISessionTimeManager.setSelectedTime()
      */
     @Deprecated
-    public void updateSelectedTime(String selectedTime_ms) {
-        model.getTimeManager().setSelectedTime(toDate(selectedTime_ms));
+    public void updateSelectedTime(Date selectedTime_ms) {
+        model.getTimeManager().setSelectedTime(selectedTime_ms);
     }
 
     /*
@@ -590,29 +303,11 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * Use ISessionTimeManager.setSelectedTimeRange()
-     */
-    @Deprecated
-    public void updateSelectedTimeRange(String startTime_ms, String endTime_ms) {
-        TimeRange selectedRange = new TimeRange(toDate(startTime_ms),
-                toDate(endTime_ms));
-        model.getTimeManager().setSelectedTimeRange(selectedRange);
-    }
-
-    /*
      * Use SimulatedTime.getSystemTime().getTime()
      */
     @Deprecated
-    public String getCurrentTime() {
-        return fromDate(model.getTimeManager().getCurrentTime());
-    }
-
-    /*
-     * This isn't necessary
-     */
-    @Deprecated
-    public void updateCurrentTime(String currentTime_ms) {
-        // I prefer to get the current time directly from simulated time.
+    public Date getCurrentTime() {
+        return model.getTimeManager().getCurrentTime();
     }
 
     /*
@@ -640,17 +335,6 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * Use ISessionTimeManager.setVisibleRange()
-     */
-    @Deprecated
-    public String setTimeLineVisibleTimes(String earliest_ms, String latest_ms) {
-        TimeRange visibleRange = new TimeRange(toDate(earliest_ms),
-                toDate(latest_ms));
-        model.getTimeManager().setVisibleRange(visibleRange);
-        return null;
-    }
-
-    /*
      * Use ISessionConfigurationManager.getSettings().getSettingsID()
      */
     @Deprecated
@@ -665,37 +349,6 @@ public abstract class ModelAdapter {
     public String getStaticSettings(String settingsID) {
         return toJson(new Settings(model.getConfigurationManager()
                 .getSettings()));
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String newStaticSettings(String settings) {
-        Settings settingsObj = fromJson(settings, Settings.class);
-        settingsObj.setSettingsID(settingsObj.getDisplayName());
-        model.getConfigurationManager().getSettings().apply(settingsObj);
-        model.getConfigurationManager().saveSettings();
-        return settingsObj.getSettingsID();
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void updateStaticSettings(String settings) {
-        Settings settingsObj = fromJson(settings, Settings.class);
-        model.getConfigurationManager().getSettings().apply(settingsObj);
-        model.getConfigurationManager().saveSettings();
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void deleteStaticSettings(String settings) {
-        // Cannot find how this gets called
-        throw new UnsupportedOperationException("Not implemented");
     }
 
     /*
@@ -739,83 +392,6 @@ public abstract class ModelAdapter {
     public String getToolList() {
         return toJson(model.getConfigurationManager().getSettings()
                 .getToolbarTools());
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String getAlertConfigValues() {
-        // Cannot get to be called
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    /*
-     * This can be determined by the presenter.
-     */
-    @Deprecated
-    public String getContextMenuEntries() {
-        List<String> entries = new ArrayList<String>();
-        EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
-        for (IHazardEvent event : model.getEventManager().getSelectedEvents()) {
-            states.add(event.getState());
-
-            /*
-             * Logic to handle hazard-specific contributions to the context
-             * menu. This is used, for example, by the "Add/Remove Shapes" entry
-             * which applies to hazard geometries created by the draw-by-area
-             * tool.
-             */
-            @SuppressWarnings("unchecked")
-            List<String> contextMenuEntries = (List<String>) event
-                    .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
-
-            if (contextMenuEntries != null) {
-                for (String contextMenuEntry : contextMenuEntries) {
-                    entries.add(contextMenuEntry);
-                }
-            }
-        }
-
-        entries.add("Hazard Information Dialog");
-        if (states.contains(HazardState.ISSUED)) {
-            entries.add("End Selected Hazards");
-        }
-        if (!states.contains(HazardState.PROPOSED) || states.size() > 1) {
-            entries.add("Propose Selected Hazards");
-        }
-        if (!states.contains(HazardState.ISSUED) || states.size() > 1) {
-            entries.add("Issue Selected Hazards");
-            entries.add("Delete Selected Hazards");
-        }
-        if (states.contains(HazardState.PROPOSED)) {
-            entries.add("Save Proposed Hazards");
-        }
-        entries.add("Send to Back");
-        entries.add("Bring to Front");
-
-        /*
-         * Check for potential events.
-         */
-        Collection<IHazardEvent> potentialEvents = model.getEventManager()
-                .getEventsByState(HazardState.POTENTIAL);
-
-        if (!potentialEvents.isEmpty()) {
-            entries.add("Remove Potential Hazards");
-        }
-
-        entries.add("Hazard Occurrence Alerts");
-        return toJson(entries.toArray(new String[0]));
-
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String getContextMenuEntryCallback(String menuItemName) {
-        // Throws JepException in python implementation.
-        throw new UnsupportedOperationException("Not implemented");
     }
 
     /*
@@ -1096,7 +672,7 @@ public abstract class ModelAdapter {
                 .getSelectedEvents();
 
         ProductGenerationResult result = generatedProducts;
-        result.setReturnType("generatedProducts");
+        result.setReturnType(HazardConstants.GENERATED_PRODUCTS);
         List<GeneratedProduct> products = new ArrayList<GeneratedProduct>();
         for (IGeneratedProduct product : generatedProductsList) {
             GeneratedProduct genProduct = new GeneratedProduct();
@@ -1322,43 +898,6 @@ public abstract class ModelAdapter {
         }
     }
 
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void putEvent(String eventDictAsJSON) {
-        // never called
-        throw new UnsupportedOperationException("Not implemented");
-
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String getSessionEvent(String eventID) {
-        // never called
-        throw new UnsupportedOperationException("Not implemented");
-
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public void setHazardEventManager(Object hazardEventManager) {
-        // I'd rather make my own?
-    }
-
-    /*
-     * This isn't used
-     */
-    @Deprecated
-    public String[] getHazardsForDynamicSettings() {
-        // never called.
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
     private <T> T fromJson(String str, Class<T> clazz) {
         try {
             return jsonObjectMapper.readValue(str, clazz);
@@ -1375,16 +914,6 @@ public abstract class ModelAdapter {
         }
     }
 
-    private Collection<IHazardEvent> fromIDs(String eventIDsAsAJsonStringList) {
-        ISessionEventManager eventManager = model.getEventManager();
-        String[] eventIds = fromJson(eventIDsAsAJsonStringList, String[].class);
-        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>();
-        for (String eventId : eventIds) {
-            events.add(eventManager.getEventById(eventId));
-        }
-        return events;
-    }
-
     private String[] toIDs(Collection<IHazardEvent> actualHazardEventObjects) {
         List<String> ids = new ArrayList<String>();
         for (IHazardEvent event : actualHazardEventObjects) {
@@ -1395,10 +924,6 @@ public abstract class ModelAdapter {
 
     private String fromDate(Date actualDateObject) {
         return Long.toString(actualDateObject.getTime());
-    }
-
-    private Date toDate(String timeInMillisAsLongAsString) {
-        return new Date(Long.valueOf(timeInMillisAsLongAsString));
     }
 
     public ISessionManager getSessionManager() {

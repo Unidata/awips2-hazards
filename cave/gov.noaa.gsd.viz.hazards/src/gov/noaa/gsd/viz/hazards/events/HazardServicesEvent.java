@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.events;
 
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-
 import java.io.Serializable;
 import java.util.Calendar;
 import java.util.List;
@@ -18,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -48,6 +47,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                             from a map. This class
  *                                             no longer extends 
  *                                             BaseHazardEvent.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -79,41 +79,44 @@ public class HazardServicesEvent {
         for (String key : keySet) {
             Serializable attribute = attributeMap.get(key);
 
-            if (key.equals(Utilities.HAZARD_EVENT_IDENTIFIER)) {
+            if (key.equals(HazardConstants.HAZARD_EVENT_IDENTIFIER)) {
                 baseEvent.setEventID((String) attribute);
-            } else if (key.equals(Utilities.HAZARD_EVENT_STATE)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_STATE)) {
                 String state = (String) attribute;
 
-                if (state
-                        .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_PENDING)) {
+                if (state.equalsIgnoreCase(HazardConstants.HazardState.PENDING
+                        .getValue())) {
                     baseEvent.setState(HazardState.PENDING);
                 } else if (state
-                        .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_PROPOSED)) {
+                        .equalsIgnoreCase(HazardConstants.HazardState.PROPOSED
+                                .getValue())) {
                     baseEvent.setState(HazardState.PROPOSED);
                 } else if (state
-                        .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_ISSUED)) {
+                        .equalsIgnoreCase(HazardConstants.HazardState.ISSUED
+                                .getValue())) {
                     baseEvent.setState(HazardState.ISSUED);
                 } else if (state
-                        .equalsIgnoreCase(Utilities.HAZARD_EVENT_STATE_ENDED)) {
+                        .equalsIgnoreCase(HazardConstants.HazardState.ENDED
+                                .getValue())) {
                     baseEvent.setState(HazardState.ENDED);
                 }
-            } else if (key.equals(Utilities.HAZARD_EVENT_PHEN)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_PHEN)) {
                 baseEvent.setPhenomenon((String) attribute);
-            } else if (key.equals(Utilities.HAZARD_EVENT_SIG)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_SIG)) {
                 baseEvent.setSignificance((String) attribute);
-            } else if (key.equals(Utilities.HAZARD_EVENT_SUB_TYPE)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_SUB_TYPE)) {
                 baseEvent.setSubtype((String) attribute);
-            } else if (key.equals(Utilities.HAZARD_EVENT_START_TIME)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_START_TIME)) {
                 long startInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(startInMillis);
                 baseEvent.setStartTime(cal.getTime());
-            } else if (key.equals(Utilities.HAZARD_EVENT_END_TIME)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_END_TIME)) {
                 long endInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(endInMillis);
                 baseEvent.setEndTime(cal.getTime());
-            } else if (key.equals(Utilities.HAZARD_EVENT_SHAPES)) {
+            } else if (key.equals(HazardConstants.HAZARD_EVENT_SHAPES)) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Serializable>> shapesList = (List<Map<String, Serializable>>) attribute;
 
@@ -121,12 +124,12 @@ public class HazardServicesEvent {
 
                 for (Map<String, Serializable> shape : shapesList) {
                     String shapeType = (String) shape
-                            .get(Utilities.HAZARD_EVENT_SHAPE_TYPE);
+                            .get(HazardConstants.HAZARD_EVENT_SHAPE_TYPE);
 
                     List<Coordinate> coordinateList = Lists.newArrayList();
 
                     if (shapeType
-                            .equalsIgnoreCase(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+                            .equalsIgnoreCase(HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
                         @SuppressWarnings("unchecked")
                         List<List<Float>> points = (List<List<Float>>) shape
                                 .get("points");

@@ -22,6 +22,7 @@ import java.util.Map;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
@@ -41,6 +42,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
  *                                           singleton.
  * Aug 16, 2013    1325    daniel.s.schaffer@noaa.gov    Alerts integration
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,8 +157,8 @@ public class ConsolePresenter extends
         // Initialize the view.
         view.initialize(
                 this,
-                Long.parseLong(getModel().getSelectedTime()),
-                Long.parseLong(getModel().getCurrentTime()),
+                getModel().getSelectedTime(),
+                getModel().getCurrentTime(),
                 Long.parseLong(getModel().getTimeLineDuration()),
                 getModel().getComponentData(
                         HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all"),
@@ -204,13 +206,11 @@ public class ConsolePresenter extends
             newEventsMap = Maps.newHashMap();
             for (int j = 0; j < newEventsList.size(); j++) {
                 Dict event = oldEventsList.get(j);
-                oldEventsMap.put(
-                        (String) event.get(Utilities.HAZARD_EVENT_IDENTIFIER),
-                        event);
+                oldEventsMap.put((String) event
+                        .get(HazardConstants.HAZARD_EVENT_IDENTIFIER), event);
                 event = newEventsList.get(j);
-                newEventsMap.put(
-                        (String) event.get(Utilities.HAZARD_EVENT_IDENTIFIER),
-                        event);
+                newEventsMap.put((String) event
+                        .get(HazardConstants.HAZARD_EVENT_IDENTIFIER), event);
             }
             if (!oldEventsMap.keySet().equals(newEventsMap.keySet())) {
                 eventsListUnchanged = false;

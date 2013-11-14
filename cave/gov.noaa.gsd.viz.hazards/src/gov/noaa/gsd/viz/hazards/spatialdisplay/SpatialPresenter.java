@@ -121,8 +121,8 @@ public class SpatialPresenter extends
      * @return
      */
     public void updateCaveSelectedTime() {
-        long selectedTime = Long.parseLong(getModel().getSelectedTime());
-        getView().manageViewFrames(new Date(selectedTime));
+        Date selectedTime = getModel().getSelectedTime();
+        getView().manageViewFrames(selectedTime);
     }
 
     /**
@@ -140,8 +140,8 @@ public class SpatialPresenter extends
      * 
      * @return Selected time.
      */
-    public long getSelectedTime() {
-        return Long.parseLong(getModel().getSelectedTime());
+    public Date getSelectedTime() {
+        return getModel().getSelectedTime();
     }
 
     // Protected Methods

@@ -12,7 +12,6 @@ import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
 import java.util.Collection;
@@ -20,6 +19,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -85,8 +85,8 @@ public class ProductStagingPresenter extends
                         .getEventManager().getSelectedEvents();
                 for (IHazardEvent eve : events) {
                     if (eventIds.contains(eve.getEventID())) {
-                        eve.addHazardAttribute(Utilities.HAZARD_EVENT_SELECTED,
-                                true);
+                        eve.addHazardAttribute(
+                                HazardConstants.HAZARD_EVENT_SELECTED, true);
                         selectedEvents.add(eve);
                     }
                 }

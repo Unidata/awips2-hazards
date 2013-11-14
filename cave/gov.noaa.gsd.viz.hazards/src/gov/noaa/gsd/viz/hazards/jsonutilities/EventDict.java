@@ -9,13 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-
 import java.util.List;
 import java.util.TreeMap;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 
 /**
  * A convenience class for creating an event dictionary and converting this to a
@@ -26,6 +25,7 @@ import com.google.gson.Gson;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 2012                Bryon.Lawrence    Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -44,7 +44,7 @@ public final class EventDict extends TreeMap<String, Object> {
      */
     public EventDict() {
         shapes = Lists.newArrayList();
-        put(Utilities.HAZARD_EVENT_SHAPES, shapes);
+        put(HazardConstants.HAZARD_EVENT_SHAPES, shapes);
     }
 
     /**
@@ -68,11 +68,11 @@ public final class EventDict extends TreeMap<String, Object> {
 
         this();
 
-        put(Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
-        put(Utilities.HAZARD_EVENT_STATE, state);
-        put(Utilities.HAZARD_EVENT_TYPE, type);
-        put(Utilities.HAZARD_EVENT_START_TIME, new Long(startTime));
-        put(Utilities.HAZARD_EVENT_END_TIME, new Long(endTime));
+        put(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventID);
+        put(HazardConstants.HAZARD_EVENT_STATE, state);
+        put(HazardConstants.HAZARD_EVENT_TYPE, type);
+        put(HazardConstants.HAZARD_EVENT_START_TIME, new Long(startTime));
+        put(HazardConstants.HAZARD_EVENT_END_TIME, new Long(endTime));
         put("creationTime", new Long(creationTime));
 
     }

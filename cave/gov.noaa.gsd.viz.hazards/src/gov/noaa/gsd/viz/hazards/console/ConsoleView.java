@@ -22,6 +22,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -601,7 +602,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      */
     @Override
     public final void initialize(final ConsolePresenter presenter,
-            final long selectedTime, final long currentTime,
+            final Date selectedTime, final Date currentTime,
             final long visibleTimeRange, final String jsonHazardEvents,
             final String jsonSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
@@ -770,16 +771,13 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
     /**
      * Update the current time.
-     * 
-     * @param jsonCurrentTime
-     *            JSON string holding the current time.
      */
     @Override
-    public final void updateCurrentTime(final String jsonCurrentTime) {
+    public final void updateCurrentTime(final Date currentTime) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateCurrentTime(jsonCurrentTime);
+                getViewPart().updateCurrentTime(currentTime);
             }
         });
     }
@@ -787,15 +785,13 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     /**
      * Update the selected time.
      * 
-     * @param jsonSelectedTime
-     *            JSON string holding the selected time.
      */
     @Override
-    public final void updateSelectedTime(final String jsonSelectedTime) {
+    public final void updateSelectedTime(final Date selectedTime) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateSelectedTime(jsonSelectedTime);
+                getViewPart().updateSelectedTime(selectedTime);
             }
         });
     }

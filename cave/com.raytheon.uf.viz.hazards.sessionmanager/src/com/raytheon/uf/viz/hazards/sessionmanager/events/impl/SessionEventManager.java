@@ -87,6 +87,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                     being added already exists.
  * Sep 12, 2013 717        jsanchez    Converted certain hazard events to grids.
  * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -203,7 +204,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         for (String state : visibleStates) {
             states.add(HazardState.valueOf(state.toUpperCase()));
         }
-        filters.put(HazardConstants.STATE, states);
+        filters.put(HazardConstants.HAZARD_EVENT_STATE, states);
         Map<String, HazardHistoryList> eventsMap = dbManager
                 .getEventsByFilter(filters);
         synchronized (events) {

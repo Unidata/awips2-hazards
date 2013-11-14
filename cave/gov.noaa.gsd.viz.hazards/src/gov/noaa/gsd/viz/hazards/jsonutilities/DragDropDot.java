@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -27,6 +27,7 @@ import com.google.gson.annotations.SerializedName;
  * ------------ ---------- -----------    --------------------------
  * Feb 2011                Bryon.Lawrence Initial creation
  * Mar 2013                Bryon.Lawrence Added documentation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -85,7 +86,7 @@ final public class DragDropDot extends Shape {
             String borderStyle, String borderColor, int radius, int pointID,
             int centerPoint[]) {
         super(label, isVisible, isSelected, include);
-        setShapeType(Utilities.HAZARD_EVENT_SHAPE_TYPE_DOT);
+        setShapeType(HAZARD_EVENT_SHAPE_TYPE_DOT);
         this.fillColor = fillColor;
         this.borderThickness = borderThickness;
         this.borderStyle = borderStyle;

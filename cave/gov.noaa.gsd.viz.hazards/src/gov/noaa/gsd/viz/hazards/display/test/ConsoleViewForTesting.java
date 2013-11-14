@@ -6,6 +6,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -14,6 +15,20 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 
+/**
+ * Description: {@link IConsoleView} used for {@link AutomatedTests}.
+ * 
+ * <pre>
+ * 
+ * SOFTWARE HISTORY
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Initial creation
+ * </pre>
+ * 
+ * @author daniel.s.schaffer@noaa.gov
+ * @version 1.0
+ */
 @SuppressWarnings("rawtypes")
 public class ConsoleViewForTesting implements IConsoleView {
 
@@ -38,8 +53,8 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void initialize(ConsolePresenter presenter, long selectedTime,
-            long currentTime, long visibleTimeRange, String jsonHazardEvents,
+    public void initialize(ConsolePresenter presenter, Date selectedTime,
+            Date currentTime, long visibleTimeRange, String jsonHazardEvents,
             String jsonSettings, String jsonFilters,
             ImmutableList activeAlerts, boolean temporalControlsInToolBar) {
 
@@ -56,12 +71,12 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void updateCurrentTime(String jsonCurrentTime) {
+    public void updateCurrentTime(Date jsonCurrentTime) {
 
     }
 
     @Override
-    public void updateSelectedTime(String jsonSelectedTime) {
+    public void updateSelectedTime(Date jsonSelectedTime) {
 
     }
 
@@ -106,12 +121,12 @@ public class ConsoleViewForTesting implements IConsoleView {
     public void updateHazardEvent(String hazardEventJSON) {
         Dict updatedEvent = Dict.getInstance(hazardEventJSON);
         String eventID = updatedEvent
-                .getDynamicallyTypedValue(HazardConstants.EVENTID);
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_IDENTIFIER);
         Dict matchedEvent = null;
         for (Object o : hazardEvents) {
             Dict event = (Dict) o;
             String eid = event
-                    .getDynamicallyTypedValue(HazardConstants.EVENTID);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_IDENTIFIER);
             if (eid.equals(eventID)) {
                 matchedEvent = event;
             }

@@ -17,7 +17,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -46,6 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166       blawrenc    Fleshed out this test.
+ * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -229,7 +229,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
                     Dict hidContent = hidContents.getDynamicallyTypedValue(0);
                     assertTrue(hidContent.getDynamicallyTypedValue(
-                            HazardConstants.EVENTID).equals(eventID));
+                            HazardConstants.HAZARD_EVENT_IDENTIFIER).equals(
+                            eventID));
 
                     /*
                      * Trigger a preview action
@@ -308,8 +309,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                  * Build the JSON simulating a hazard type selection in the HID.
                  */
                 Dict dict = new Dict();
-                dict.put(HazardConstants.EVENTID, selectedEvent.getEventID());
-                dict.put(Utilities.HAZARD_EVENT_FULL_TYPE,
+                dict.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                        selectedEvent.getEventID());
+                dict.put(HazardConstants.HAZARD_EVENT_FULL_TYPE,
                         AREAL_FLOOD_WARNING_FULLTYPE);
 
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
@@ -511,7 +513,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         Dict hazard = hazards.get(0);
         String stateAsString = hazard
-                .getDynamicallyTypedValue(HazardConstants.STATE);
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
         assertTrue(stateAsString.equals(HazardConstants.HazardState.ISSUED
                 .getValue()));
     }
@@ -536,9 +538,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         for (Dict hazard : hazards) {
 
             String hazardType = hazard
-                    .getDynamicallyTypedValue(HazardConstants.TYPE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
 
             hazardStateMap.put(hazardType, stateAsString);
 
@@ -574,9 +576,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         for (Dict hazard : hazards) {
 
             String hazardType = hazard
-                    .getDynamicallyTypedValue(HazardConstants.TYPE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
 
             hazardStateMap.put(hazardType, stateAsString);
 
@@ -612,9 +614,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         for (Dict hazard : hazards) {
 
             String hazardType = hazard
-                    .getDynamicallyTypedValue(HazardConstants.TYPE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
 
             hazardStateMap.put(hazardType, stateAsString);
 

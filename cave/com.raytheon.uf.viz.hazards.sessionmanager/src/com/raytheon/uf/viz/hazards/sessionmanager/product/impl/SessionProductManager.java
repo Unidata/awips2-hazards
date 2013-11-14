@@ -102,6 +102,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Sept 16, 2013 1298      thansen     Added popup dialog trying to preview or issue non-supported 
  *                                     hazards
  * Oct 23, 2013 2277       jsanchez    Use thrift request to check for grid conflicts.
+ * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -279,7 +280,7 @@ public class SessionProductManager implements ISessionProductManager {
                             HazardConstants.AREA_TYPE);
                 }
             }
-            event.removeHazardAttribute(HazardConstants.TYPE);
+            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
 
             /*
              * Need to re-initialize product information when issuing

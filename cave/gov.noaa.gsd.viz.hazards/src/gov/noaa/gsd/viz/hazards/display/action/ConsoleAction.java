@@ -11,6 +11,8 @@ package gov.noaa.gsd.viz.hazards.display.action;
 
 import gov.noaa.gsd.viz.mvp.IAction;
 
+import java.util.Date;
+
 /**
  * Represents an action originating from the H.S. console.
  * 
@@ -29,7 +31,7 @@ public class ConsoleAction implements IAction {
     // are chosen.
     private String action = null;
 
-    private String id = null;
+    private String selectedTimeAsString = null;
 
     private String auxString1 = null;
 
@@ -71,7 +73,7 @@ public class ConsoleAction implements IAction {
      */
     public ConsoleAction(String actionType, String idOrNewTime) {
         action = actionType;
-        this.id = idOrNewTime;
+        this.selectedTimeAsString = idOrNewTime;
     }
 
     /**
@@ -91,7 +93,7 @@ public class ConsoleAction implements IAction {
      */
     public ConsoleAction(String actionType, String id, boolean checked) {
         action = actionType;
-        this.id = id;
+        this.selectedTimeAsString = id;
         this.checked = checked;
     }
 
@@ -166,7 +168,7 @@ public class ConsoleAction implements IAction {
      * @param name
      */
     public void setId(String id) {
-        this.id = id;
+        this.selectedTimeAsString = id;
     }
 
     /**
@@ -174,7 +176,7 @@ public class ConsoleAction implements IAction {
      * 
      */
     public String getId() {
-        return id;
+        return selectedTimeAsString;
     }
 
     public void setChecked(boolean checked) {
@@ -186,11 +188,11 @@ public class ConsoleAction implements IAction {
     }
 
     public void setNewTime(String newTime) {
-        id = newTime;
+        selectedTimeAsString = newTime;
     }
 
-    public String getNewTime() {
-        return id;
+    public Date getNewTime() {
+        return new Date(Long.parseLong(selectedTimeAsString));
     }
 
     public void setStartTime(String startTime) {

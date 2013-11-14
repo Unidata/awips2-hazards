@@ -32,6 +32,7 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -47,6 +48,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -81,12 +83,13 @@ public class JSONUtilities {
 
         EventDict modifiedAreaObject = new EventDict();
 
-        modifiedAreaObject.put(Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
         modifiedAreaObject
-                .put(Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                        (modifiedShape instanceof HazardServicesLine ? Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE
-                                : (modifiedShape instanceof HazardServicesPolygon ? Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON
-                                        : Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)));
+                .put(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventID);
+        modifiedAreaObject
+                .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
+                        (modifiedShape instanceof HazardServicesLine ? HazardConstants.HAZARD_EVENT_SHAPE_TYPE_LINE
+                                : (modifiedShape instanceof HazardServicesPolygon ? HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                                        : HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POINT)));
 
         for (IHazardServicesShape shape : shapesForEvent) {
 
@@ -152,18 +155,20 @@ public class JSONUtilities {
 
         // Convert the object to JSON.
         Shape shape = null;
-        if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+        if (shapeType.equals(HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
             shape = new Polygon("", "true", "true", "true", "White", 2,
                     "SOLID", "White", coords);
-        } else if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_LINE)) {
+        } else if (shapeType
+                .equals(HazardConstants.HAZARD_EVENT_SHAPE_TYPE_LINE)) {
             shape = new Line("", "true", "true", "true", "White", 2, coords);
-        } else if (shapeType.equals(Utilities.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+        } else if (shapeType
+                .equals(HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POINT)) {
             shape = new Point("", "true", "true", "true", "White",
                     points.get(0), eventID);
         }
 
         EventDict dict = new EventDict();
-        dict.put(Utilities.HAZARD_EVENT_IDENTIFIER, "");
+        dict.put(HazardConstants.HAZARD_EVENT_IDENTIFIER, "");
 
         dict.addShape(shape);
 
@@ -218,7 +223,7 @@ public class JSONUtilities {
         EventDict dragDropDict = new EventDict();
         dragDropDictArray.add(dragDropDict);
 
-        dragDropDict.put(Utilities.HAZARD_EVENT_IDENTIFIER,
+        dragDropDict.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
                 Utilities.DRAG_DROP_DOT);
 
         DragDropDot dot = new DragDropDot(label, "true", "true", "true",

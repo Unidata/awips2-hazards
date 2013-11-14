@@ -72,6 +72,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 5, 2012            mnash     Initial creation
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -86,10 +87,10 @@ public class HazardEventManager implements IHazardEventManager {
 
     private final boolean practice;
 
-    private IHazardEventFactory factory;
+    private final IHazardEventFactory factory;
 
     // TODO, not currently used but reserved for future use.
-    private Map<String, List<String>> requiredFields = new HashMap<String, List<String>>();
+    private final Map<String, List<String>> requiredFields = new HashMap<String, List<String>>();
 
     // for clarity to declare what mode we should be sending hazards out in
     public static enum Mode {
@@ -406,7 +407,7 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public HazardHistoryList getByEventID(String eventId) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.EVENTID, eventId);
+        builder.addKey(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventId);
         HazardHistoryList list = new HazardHistoryList();
         Map<String, HazardHistoryList> events = getEventsByFilter(builder
                 .getQuery());
@@ -437,8 +438,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getByTime(Date startTime, Date endTime) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.STARTTIME, startTime);
-        builder.addKey(HazardConstants.ENDTIME, endTime);
+        builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME, startTime);
+        builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME, endTime);
         return getEventsByFilter(builder.getQuery());
     }
 

@@ -17,7 +17,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPo
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
@@ -53,6 +52,7 @@ import com.vividsolutions.jts.geom.Point;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Sep 10, 2013      782     Bryon.Lawrence   Updated getShapesForEvents to 
  *                                            consider storm track events
+ * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * </pre>
  * 
@@ -365,10 +365,11 @@ public class SelectionAction extends NonDrawingAction {
                                 .put(HazardConstants.POINTID, pointID);
 
                         modifiedAreaObject.put(
-                                Utilities.HAZARD_EVENT_IDENTIFIER, eventID);
+                                HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                                eventID);
                         modifiedAreaObject.put(
-                                Utilities.HAZARD_EVENT_SHAPE_TYPE,
-                                Utilities.HAZARD_EVENT_SHAPE_TYPE_DOT);
+                                HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
+                                HazardConstants.HAZARD_EVENT_SHAPE_TYPE_DOT);
                         double[] newLonLat = new double[2];
                         newLonLat[0] = newCoord.x;
                         newLonLat[1] = newCoord.y;

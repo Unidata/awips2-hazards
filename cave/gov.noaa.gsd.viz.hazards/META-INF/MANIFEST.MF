@@ -23,7 +23,8 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.common.style;bundle-version="1.0.0",
  gov.noaa.gsd.common.hazards.utilities;bundle-version="1.0.0",
  com.raytheon.uf.viz.productgen,
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ org.codehaus.jackson;bundle-version="1.7.3"
 Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.spatialdisplay
