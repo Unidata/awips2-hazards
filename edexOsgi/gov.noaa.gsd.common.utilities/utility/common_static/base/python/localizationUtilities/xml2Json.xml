@@ -4,7 +4,7 @@
                 outerDelimeter="," innerDelimeter="/" innerKeyIndex="1" />
     <listParser parent="configuration" tag="otherWarngenProducts"
                 outerDelimeter="," innerDelimeter="/" innerKeyIndex="1" />
-
+    <listMember parent="configuration" tag="hazardTypes"/>
     <byModifier tag="include" modifierAttribute="file" />
     <byModifier tag="pointSource" modifierAttribute="variable" />
   </xmlToJson>

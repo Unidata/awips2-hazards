@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.product;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,6 +110,14 @@ public class ProductScriptFactory extends
                 hazardServicesUtilityPathList.add(FileUtil.join(pythonPath,
                         utilityDir));
             }
+
+            /*
+             * This is so we can access CommHandler.py, Util.py, and
+             * UEConfig.py. Maybe there is a better way to do this.
+             */
+            String fxaBinPath = FileUtil.join(
+                File.separator, "awips2", "fxa", "bin", "src");
+            hazardServicesUtilityPathList.add(fxaBinPath);
 
             String includePath = PyUtil
                     .buildJepIncludePath(hazardServicesUtilityPathList

@@ -1,3 +1,16 @@
+"""
+Description: Allows access to localization files in a way that automatically
+             combines data from different localization levels in an intelligent
+             manner.
+
+SOFTWARE HISTORY
+Date         Ticket#    Engineer          Description
+------------ ---------- -----------       --------------------------
+        2012            JRamer            Original version.
+Oct 30, 2013            JRamer            Add Desk level, consolidate argument 
+                                          checking logic for various access methods.
+"""
+import xml.etree.ElementTree as ET
 import sys
 import traceback
 import subprocess
@@ -8,10 +21,11 @@ import json
 import socket
 import re
 import getpass
-from jsonCombine import *
-from xml2Json import *
+from jsonCombine import jsonCombine
+from xml2Json import xml2Json
 import HazardServicesImporter
-from UFStatusLogger import *
+from UFStatusLogger import UFStatusLogger
+from UErunner import UErunner
 
 try:
     from LocalFileInstaller import *
@@ -56,27 +70,49 @@ except :
 # and unless otherwise noted will default to "COMMON_STATIC" if blank.
 # Furthermore, this argument is interpretted case insensitive, and one can
 # leave the "_STATIC" off the end.
+#
+# Note about exception handling.
+#
+# For most of the access where each localization level is stepped through,
+# exceptions are purposely swallowed and no tracebacks given. This is because
+# it is expected that access to at least one or more of the six currently
+# supported localization levels will fail.  However, if the getLocFile()
+# method is called for one specific localization level, a traceback will be
+# be given upon a failure.
+# 
 
 caveEdexHost = None
 defEdexPort = os.getenv("DEFAULT_PORT", "9581")
 caveEdexPort = defEdexPort
 edexLocMap = { "" : "" }
+edexDeskMap = { "" : "" }
 hostnameF = None
 
 class LocalizationInterface():
 
-    #hsImporter = bridge.HazardServicesImporter.HazardServicesImporter()
+    fullLocLevelList = \
+     [ "User", "Workstation", "Desk", "Site", "Configured", "Base" ]
+    userIdx = 0
+    wsIdx = 1
+    deskIdx = 2
+    siteIdx = 3
+    conIdx = 4
+    baseIdx = 5
 
     # If the id of the localization host is an empty string, defaults to the
     # EDEX host currently being used by Cave.
     def __init__(self, edexHost="") :
         global caveEdexHost
         global caveEdexPort
+        global edexLocMap
         self.__curUser = getpass.getuser()
         self.__defLoc = None
+        self.__defDesk = None
         self.__logger = UFStatusLogger.getInstance()
         self.__repat = None
         self.__resrch = None
+        self.__reclass = None
+        self.__selectedSite = ""
         if edexHost!="" :
             self.__locServer = edexHost
             try :
@@ -91,40 +127,60 @@ class LocalizationInterface():
             except :
                 self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
             return
+
+        # Read file localization.prefs out of ~/caveData to determine the
+        # edex server cave is using.  This logic should now be completely
+        # platform independent.
         caveEdexHost = ""
-        prefspath = os.environ["HOME"] + "/caveData/.metadata/.plugins" + \
-           "/org.eclipse.core.runtime/.settings/localization.prefs"
+        caveEdexLoc = ""
+        prefspath = os.path.join( "~", "caveData", ".metadata", \
+                      ".plugins", "org.eclipse.core.runtime", ".settings", \
+                      "localization.prefs" )
+        prefspath = os.path.expanduser(prefspath)
         try :
             ffff = open(prefspath)
-            prefsData =  ffff.read()
+            prefsData =  ffff.read().split("\n")
             ffff.close()
-            while True :
-                i = prefsData.find("httpServerAddress=")
-                if i<0 :
-                    break
-                i = prefsData.find("//",i)
+            for prefsLine in prefsData :
+                if len(prefsLine)<10 :
+                    continue
+                if prefsLine[:9]=="siteName=" :
+                    caveEdexLoc = prefsLine[9:].split()[0]
+                    if caveEdexHost!="" :
+                        break
+                    continue
+                if len(prefsLine)<20 :
+                    continue
+                if prefsLine[:18]!="httpServerAddress=" :
+                    continue
+                i = prefsLine.find("//")
                 if i<0 :
                     break
                 j = i+3
-                while prefsData[j]!="\\" and prefsData[j]!=":" :
+                while prefsLine[j]!="\\" and prefsLine[j]!=":" :
                     j = j+1
-                caveEdexHost = prefsData[i+2:j]
+                caveEdexHost = prefsLine[i+2:j]
                 j = j + 1
-                if not prefsData[j].isdigit() :
+                if not prefsLine[j].isdigit() :
                     j = j + 1
-                if not prefsData[j].isdigit() :
+                if not prefsLine[j].isdigit() :
                     break
                 i = j
-                while prefsData[j].isdigit() :
+                while prefsLine[j].isdigit() :
                     j = j+1
-                caveEdexPort = prefsData[i:j]
-                break
+                caveEdexPort = prefsLine[i:j]
+                if caveEdexLoc!="" :
+                    break
         except :
             pass
+
         if caveEdexHost == "" :
             msg = "Could not determine host of current EDEX server."
             self.__logger.logMessage(msg, "Error")
+
         self.__locServer = caveEdexHost
+        if caveEdexLoc!="" :
+            edexLocMap[caveEdexHost] = caveEdexLoc
         try :
             self.__lfi = LocalFileInstaller(caveEdexHost)
         except :
@@ -151,6 +207,7 @@ class LocalizationInterface():
             self.__defLoc = self.curEdexLoc()
         else :
             self.__defLoc = newDefLoc
+        self.__selectedSite = self.__defLoc
         return self.__defLoc
 
     # Return the localization id associated with the currently connected EDEX.
@@ -158,11 +215,14 @@ class LocalizationInterface():
     # the default localization id for the EDEX one is performing localization
     # file interactions with.
     def curEdexLoc(self) :
+        global edexLocMap
         lookupLoc = edexLocMap.get(self.__locServer)
         if lookupLoc!=None :
             return lookupLoc
 
         if self.__locServer=="localhost" :
+            # If EDEX is on localhost, then this by definition is Unix,
+            # and so we can ignore platform independence considerations.
             try :
                 ffff = open('/awips2/edex/bin/setup.env', 'r')
                 try :
@@ -189,23 +249,26 @@ class LocalizationInterface():
             except :
                 pass
 
-        cmd = 'export DEFAULT_HOST='+self.__locServer+' ; '
-        cmd = cmd + '( echo from com.raytheon.uf.common.message.response '
-        cmd = cmd +        'import ResponseMessageGeneric ; '
-        cmd = cmd + 'echo from com.raytheon.uf.edex.core.props '
-        cmd = cmd +        'import PropertiesFactory ; '
-        cmd = cmd + 'echo "site = PropertiesFactory.getInstance().'
-        cmd = cmd +        "getEnvProperties().getEnvValue('SITENAME')"+'" ; '
-        cmd = cmd + 'echo "return ResponseMessageGeneric(site)" ) | '
-        cmd = cmd + '/awips2/fxa/bin/uengine -r python'
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        (stdout, stderr) = p.communicate()
-        c = stdout.find('</contents>')
-        if c>10 and stdout[c-4]=='>' :
-            siteData = stdout[c-3:c]
-            if siteData.isalpha() and siteData.isupper() :
-                edexLocMap[self.__locServer] = siteData
-                return siteData
+        # Use the uEngine to ask EDEX what its default site is.
+        cacheenv = os.environ.get("DEFAULT_HOST", "-")
+        os.environ["DEFAULT_HOST"] = self.__locServer
+        contents = None
+        try :
+            myscript = """
+from com.raytheon.uf.common.message.response import ResponseMessageGeneric
+from com.raytheon.uf.edex.core.props import PropertiesFactory
+site = PropertiesFactory.getInstance().getEnvProperties().getEnvValue('SITENAME')
+return ResponseMessageGeneric(site)
+"""
+            ue = UErunner()
+            contents = ue.returnContents(script=myscript)
+        except :
+            contents = None
+        if cacheenv != "-" :
+            os.environ["DEFAULT_HOST"] = cacheenv
+        if contents != None :
+            edexLocMap[self.__locServer] = str(contents)
+            return str(contents)
 
         msg = "Could not determine localization id for EDEX server " + \
               self.__locServer
@@ -213,19 +276,225 @@ class LocalizationInterface():
         edexLocMap[self.__locServer] = ""
         return ""
 
-
     # Get the current working localization id.
     def getDefLoc(self) :
         if self.__defLoc==None :
             self.__defLoc = self.curEdexLoc()
+        self.__selectedSite = self.__defLoc
         return self.__defLoc
 
+    # Get the current default value for Desk.
+    def getDefDesk(self) :
+        global edexDeskMap
+        if self.__defDesk!=None :
+            return self.__defDesk
+        self.__defDesk = edexDeskMap.get(self.__locServer)
+        if self.__defDesk!=None :
+            return self.__defDesk
+        cmd = "find /awips2/edex/data/utility -mindepth 3 -maxdepth 3 " + \
+              "-path '*/desk/*' -type d -exec basename '{}' \; | " + \
+              "sort -u | head -n 1"
+        self.__defDesk = self.__submitCommand(cmd)
+        edexDeskMap[self.__locServer] = self.__defDesk
+        return self.__defLoc
+
+    def processLevelArg(self, levelArg, restricted=False) :
+        '''
+        @summary: Interprets the level argument and return a list of levels
+                  or a single level to process, as appropriate.
+        @param levelArg: String that determines the level(s) to process.
+        @param restricted: If true, an operation that can only occur for one
+                           level.
+        @return: None if levelArg was inappropriate, a list of levels if
+                 restricted is False, a single level if restricted is True.
+        '''
+        locLevel = levelArg.upper()
+        if locLevel=="USER" :
+            if restricted :
+                return "User"
+            return [ "User" ]
+        elif locLevel=="WORKSTATION" :
+            if restricted :
+                return "Workstation"
+            return [ "Workstation" ]
+        elif locLevel=="SITE" :
+            if restricted :
+                return "Site"
+            return [ "Site" ]
+        elif locLevel=="DESK" :
+            if restricted :
+                return "Desk"
+            return [ "Desk" ]
+        elif restricted :
+            return None
+        elif locLevel=="CONFIGURED" :
+            return [ "Configured" ]
+        elif locLevel=="BASE" :
+            return [ "Base" ]
+        return LocalizationInterface.fullLocLevelList
+
+    def processTypeArg(self, typeArg, restricted=False) :
+        '''
+        @summary: Interprets the type argument and returns a case controlled
+                  version of it.
+        @param restricted: If true, will not default if no exact match to the 
+                           leading characters.
+        @return: None if typeArg was inappropriate, otherwise a case controlled
+                 version of typeArg.
+        '''
+        locType = typeArg.upper()
+        if typeArg[:6]=="COMMON" :
+            return "COMMON_STATIC"
+        elif typeArg[:4]=="EDEX" :
+            return "EDEX_STATIC"
+        elif typeArg[:4]=="CAVE" :
+            return "CAVE_STATIC"
+        elif not restricted :
+            return "COMMON_STATIC"
+        return None
+
+    def getDefaultNameList(self) :
+        '''
+        @summary: Returns the default name to use for each localization level.
+        '''
+        sss = self.getDefLoc()
+        return [self.__curUser, self.getThisHost(), self.getDefDesk(), \
+                sss, sss, "" ]
+
+    def processSiteUserArg(self, siteUserArg, locLevels) :
+        '''
+        @summary: Interprets the siteUser argument and returns a list of
+                  qualifier names for each level or a single qualifier name
+                  for a single level, as appropriate.
+        @param siteUserArg: String that supplies an exception to the default
+                            set of qualifier names.
+        @return: None if siteUserArg was inappropriate, otherwise either a
+                 list of qualifier names for each level or a single qualifier
+                 name for a single level, as appropriate.
+        '''
+        singleLevel = True
+        locLevel = ""
+        if not isinstance(locLevels, list) :
+            locLevel = locLevels
+        elif len(locLevels) == 1 :
+            locLevel = locLevels[0]
+        else :
+            singleLevel = False
+
+        # Simplest cases of no exception or a single level.
+        if locLevel == "Base" :
+            return ""
+        if siteUserArg=="" or siteUserArg==None :
+            if not singleLevel :
+                return self.getDefaultNameList()
+            if locLevel == "User" :
+                return self.__curUser
+            elif locLevel == "Workstation":
+                return self.getThisHost()
+            elif locLevel == "Desk":
+                return self.getDefDesk()
+            elif locLevel == "Site" or locLevel == "Configured" :
+                return self.getDefLoc()
+            return None
+        elif singleLevel :
+            if locLevel == "Site" or locLevel == "Configured" :
+                # If a client supplied value of siteUser changes the site to
+                # use, we want to record this.
+                self.__selectedSite = siteUserArg
+            return siteUserArg
+
+        # Defined exception and multiple levels, we have to apply the
+        # exception to the proper level.
+        defNameList = self.getDefaultNameList()
+        if len(siteUserArg)==3 and siteUserArg.isalpha() and \
+            siteUserArg.isupper() :
+            # If a client supplied value of siteUser changes the site to use,
+            # we want to record this.
+            self.__selectedSite = siteUserArg
+            defNameList[self.siteIdx] = siteUserArg
+            defNameList[self.conIdx] = siteUserArg
+        elif len(siteUserArg)>2 and len(siteUserArg)<=8 and \
+             siteUserArg.isalpha() and siteUserArg.islower() :
+            defNameList[site.userIdx] = siteUserArg
+        elif siteUser.find(".")>0 :
+            defNameList[self.wsIdx] = siteUserArg
+        else :
+            defNameList[self.deskIdx] = siteUserArg
+        return defNameList
+
+    def processPathArg(self, pathArg) :
+        '''
+        @summary: Interprets arguments that are paths or parts of paths to
+                  localization files.
+        @return: Path arguments with any need interpretation of meta characters.
+        '''
+        locPath0 = pathArg
+        i = locPath0.find("###")
+        while i>=0 :
+            locPath0 = locPath0[:i]+self.__selectedSite+locPath0[i+3:]
+            i = locPath0.find("###", i+3)
+        return locPath0
+        
+    # This routine reads in the xml parsing information through the 
+    # localization and supplies it to the xml2Json class.  The
+    # xml2Json class holds this information globally, so once supplied
+    # this does not need to be done again. 
+    def initializeForXml(self, locType) :
+        '''
+        @summary: This routine reads in the xml parsing information through the 
+                  localization and supplies it to the xml2Json class.
+        @param locType: The data this reads is for the common type, so this is
+                        the type to restore to our FileInstaller once we have
+                        completed the read operation.
+        '''
+        if xml2Json.haveParsingInfo() :
+            return
+        locLevels = LocalizationInterface.fullLocLevelList
+        locNames = self.getDefaultNameList()
+        pathToXml = "python/localizationUtilities/xml2Json.xml"
+        xmlRoots = []
+        self.__lfi.setType("COMMON_STATIC")
+        lll = len(locLevels)-1
+        while lll>=0 :
+            locLevel = locLevels[lll]
+            locName = locNames[lll]
+            lll -= 1
+            self.__lfi.setLevel(locLevel)
+            self.__lfi.setName(locName)
+            try :
+                result = self.__lfi.getFile(pathToXml)
+            except :
+                continue
+            if not isinstance(result, str) :
+                continue
+            try :
+                xmlRoot = ET.fromstring(result)
+                xmlRoots.append(xmlRoot)
+            except :
+                msg = locLevel+" "+locName+" of xml2Json.xml not xml."
+                self.__logger.logMessage(msg, "Error")
+        if len(xmlRoots)==0 :
+            msg = "no useable data in "+pathToXml
+            self.__logger.logMessage(msg, "Error")
+        else :
+            xml2Json.supplyParsingInfo(xmlRoots)
+        self.__lfi.setType(locType)
 
     # For now returns 1=JSON, 2=XML, 4=Python data, 8=Python class,
     # 16=Misc python, 32=other
     # This is not meant to be called by outside clients.
     def checkDataType(self, dataString, baseRoot=None) :
-        if baseRoot :
+        '''
+        @summary: This routine classifies a data structure held in a string,
+                  and is not meant to be called by outside clients.
+        @param dataString: Text of data structure.
+        @return: 1=JSON, 2=XML, 4=Python data, 8=Python class,
+                 16=Misc python, 32=other
+        '''
+        self.__repat = None
+        self.__resrch = None
+        self.__reclass = None
+        while baseRoot :
             patstr = '^'+baseRoot+r' *='
             self.__repat = re.compile(patstr, re.MULTILINE)
             self.__resrch = self.__repat.search(dataString)
@@ -235,14 +504,25 @@ class LocalizationInterface():
             self.__repat = re.compile(patstr, re.MULTILINE)
             self.__resrch = self.__repat.search(dataString)
             if self.__resrch :
+                self.__reclass = baseRoot
                 return 8
             patstr = '^ *class .*: *$'
             self.__repat = re.compile(patstr, re.MULTILINE)
             self.__resrch = self.__repat.search(dataString)
-            if self.__resrch :
+            if not self.__resrch :
+                self.__repat = None
+                break
+            class2 = self.__repat.search(dataString, self.__resrch.end())
+            if class2 :
                 return 16
-            self.__repat = None
-            self.__resrch = None
+            b = dataString.find("class ",self.__resrch.start())+6
+            while dataString[b] < 'A' :
+                b = b+1
+            e = b+1
+            while dataString[e] >= '0' :
+                e = e+1
+            self.__reclass = dataString[b:e]
+            return 8
         e = len(dataString)-1
         if e<1 :
             return 0
@@ -305,53 +585,25 @@ class LocalizationInterface():
             self.__logger.logMessage(msg, "Error")
             return False
 
-        locLevel = levelArg.upper()
-        if locLevel=="SITE" :
-            locLevel = "Site"
-        elif locLevel=="WORKSTATION" :
-            locLevel = "Workstation"
-        elif locLevel=="USER" :
-            locLevel = "User"
-        else :
+        locLevel = self.processLevelArg(levelArg, True)
+        if locLevel == None :
             msg = "Can't put localization file with level '" + levelArg + "'"
             self.__logger.logMessage(msg, "Error")
             return False
 
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
+        locType = self.processTypeArg(typeArg, True)
+        if locLevel == None :
             msg = "Can't put localization file with type '" + typeArg + "'"
             self.__logger.logMessage(msg, "Error")
             return False
 
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
+        locName = self.processSiteUserArg(siteUser, locLevel)
+        if locName == None or locName == "" :
+            msg = "Can't put localization file with name '" + siteUser + "'"
+            self.__logger.logMessage(msg, "Error")
+            return False
 
-        locName = siteUser
-        if locName=="" :
-            if locLevel == "User" :
-                locName = self.__curUser
-            elif locLevel == "Site" :
-                locName = sss
-            else :
-                locName = self.getThisHost()
-            if locName == "" :
-                return False
-
-        locPath0 = locPath
-        i = locPath0.find("###")
-        while i>=0 :
-            locPath0 = locPath0[:i]+sss+locPath0[i+3:]
-            i = locPath0.find("###", i+3)
+        locPath0 = self.processPathArg(locPath)
 
         self.__lfi.setType(locType)
         self.__lfi.setLevel(locLevel)
@@ -366,7 +618,8 @@ class LocalizationInterface():
             try :
                 pyRoot = self.getPyRootFromFileName(locPath0)
                 if pyRoot :
-                    result = HazardServicesImporter.formatAsPythonInit(fileData, pyRoot)
+                    result = HazardServicesImporter.formatAsPythonInit( \
+                                  fileData, pyRoot)
                 else :
                     result = json.dumps(fileData, indent=4)
                 return self.__lfi.putFile(locPath0, result)
@@ -401,7 +654,7 @@ class LocalizationInterface():
     # This method allows one to submit an arbitrary command through the
     # uEngine to an arbitrary host.  If the host is "postgres", will attempt
     # to verify that the command is run on the host that has postgres running.
-    def submitCommand(self, submit, host="") :
+    def __submitCommand(self, submit, host="") :
         tmpcmdfile = "tmpcmd"+str(os.getpid())+".csh"
         if host=="postgres" :
             mycmd = ""
@@ -464,16 +717,23 @@ p = subprocess.Popen(mycmd, shell=True, stdout=subprocess.PIPE)
 (stdout, stderr) = p.communicate()
 return ResponseMessageGeneric(stdout)
 """
-        mypyfile = "/tmp/"+str(os.getpid())+".py"
-        fff = open(mypyfile, "w")
-        fff.write(myscript)
-        fff.close()
-        cmd = 'export DEFAULT_HOST='+self.__locServer+' ; '
-        cmd = cmd + '/awips2/fxa/bin/uengine -r python < '+mypyfile
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        (stdout, stderr) = p.communicate()
-        os.remove(mypyfile)
-        return stdout
+
+        cacheenv = os.environ.get("DEFAULT_HOST", "-")
+        os.environ["DEFAULT_HOST"] = self.__locServer
+        contents = None
+        try :
+            ue = UErunner()
+            contents = ue.returnContents(script=myscript)
+        except :
+            contents = None
+        if cacheenv != "-" :
+            os.environ["DEFAULT_HOST"] = cacheenv
+        if contents != None :
+            return str(contents)
+
+        msg = "Error running arbitrary command in uEngine."
+        self.__logger.logMessage(msg, "Error")
+        return None
 
     # This method allows one to delete a localization file.  'locPath' is the
     # relative path to the file within the level, site or user directories.
@@ -495,53 +755,25 @@ return ResponseMessageGeneric(stdout)
             self.__logger.logMessage(msg, "Error")
             return False
 
-        locLevel = levelArg.upper()
-        if locLevel=="SITE" :
-            locLevel = "Site"
-        elif locLevel=="WORKSTATION" :
-            locLevel = "Workstation"
-        elif locLevel=="USER" :
-            locLevel = "User"
-        else :
+        locLevel = self.processLevelArg(levelArg, True)
+        if locLevel == None :
             msg = "Can't remove localization file with level '" + levelArg + "'"
             self.__logger.logMessage(msg, "Error")
             return False
 
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
+        locType = self.processTypeArg(typeArg, True)
+        if locLevel == None :
             msg = "Can't remove localization file with type '" + typeArg + "'"
             self.__logger.logMessage(msg, "Error")
             return False
 
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
+        locName = self.processSiteUserArg(siteUser, locLevel)
+        if locName == None or locName == "" :
+            msg = "Can't remove localization file with name '" + siteUser + "'"
+            self.__logger.logMessage(msg, "Error")
+            return False
 
-        locName = siteUser
-        if locName=="" :
-            if locLevel == "User" :
-                locName = self.__curUser
-            elif locLevel == "Site" :
-                locName = sss
-            else :
-                locName = self.getThisHost()
-            if locName == "" :
-                return False
-
-        locPath0 = locPath
-        i = locPath0.find("###")
-        while i>=0 :
-            locPath0 = locPath0[:i]+sss+locPath0[i+3:]
-            i = locPath0.find("###", i+3)
+        locPath0 = self.processPathArg(locPath)
 
         self.__lfi.setType(locType)
         self.__lfi.setLevel(locLevel)
@@ -571,60 +803,14 @@ return ResponseMessageGeneric(stdout)
             self.__logger.logMessage(msg, "Error")
             return None
 
-        locLevel = levelArg.upper()
-        if locLevel=="SITE" :
-            locLevels = [ "Site" ]
-        elif locLevel=="USER" :
-            locLevels = [ "User" ]
-        elif locLevel=="WORKSTATION" :
-            locLevels = [ "Workstation" ]
-        elif locLevel=="BASE" :
-            locLevels = [ "Base" ]
-        elif locLevel=="CONFIGURED" :
-            locLevels = [ "Configured" ]
-        else :
-            locLevels = [ "User", "Workstation", "Site", "Configured", "Base" ]
-        locLevel = locLevels[0]
-
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
-            locType = "COMMON_STATIC"
-
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
-
-        if len(locLevels)>1 :
-            if siteUser.find(".")>0 :
-                locNames = [self.__curUser, siteUser, sss, sss, "" ]
-            elif len(siteUser)>0 :
-                hhh = self.getThisHost()
-                locNames = [siteUser, hhh, sss, sss, "" ]
-            else :
-                hhh = self.getThisHost()
-                locNames = [self.__curUser, hhh, sss, sss, "" ]
-        elif locLevel=="User" :
-            if locName=="" :
-                locName = self.__curUser
-        elif locLevel=="Workstation" :
-            if locName=="" :
-                locName = self.getThisHost()
-        elif locLevel!="Base" :
-            locName = sss
+        locLevels = self.processLevelArg(levelArg)
+        locType = self.processTypeArg(typeArg)
+        locNames = self.processSiteUserArg(siteUser, locLevels)
 
         self.__lfi.setType(locType)
         if len(locLevels)==1 :
-            self.__lfi.setLevel(locLevel)
-            self.__lfi.setName(locName)
+            self.__lfi.setLevel(locLevels[0])
+            self.__lfi.setName(locNames)
             try :
                 result = self.__lfi.getList(dirPath)
             except :
@@ -655,16 +841,8 @@ return ResponseMessageGeneric(stdout)
         if p+s==0 :
             return result
 
-        prefix0 = prefix
-        i = prefix0.find("###")
-        while i>=0 :
-            prefix0 = prefix0[:i]+sss+prefix0[i+3:]
-            i = prefix0.find("###", i+3)
-        suffix0 = suffix
-        i = suffix0.find("###")
-        while i>=0 :
-            suffix0 = suffix0[:i]+sss+suffix0[i+3:]
-            i = suffix0.find("###", i+3)
+        prefix0 = self.processPathArg(prefix)
+        suffix0 = self.processPathArg(suffix)
 
         iii = len(result)
         while iii>0 :
@@ -695,39 +873,10 @@ return ResponseMessageGeneric(stdout)
             self.__logger.logMessage(msg, "Error")
             return None
 
-        locLevels = [ "User", "Workstation", "Site", "Configured", "Base" ]
-
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
-            locType = "COMMON_STATIC"
-
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
-
-        if locName.find(".")>0 :
-            locNames = [self.__curUser, locName, sss, sss, "" ]
-        elif len(locName)>0 :
-            hhh = self.getThisHost()
-            locNames = [locName, hhh, sss, sss, "" ]
-        else :
-            hhh = self.getThisHost()
-            locNames = [self.__curUser, hhh, sss, sss, "" ]
-
-        locPath0 = locPath
-        i = locPath0.find("###")
-        while i>=0 :
-            locPath0 = locPath0[:i]+sss+locPath0[i+3:]
-            i = locPath0.find("###", i+3)
+        locLevels = LocalizationInterface.fullLocLevelList
+        locType = self.processTypeArg(typeArg)
+        locNames = self.processSiteUserArg(siteUser, locLevels)
+        locPath0 = self.processPathArg(locPath)
 
         self.__lfi.setType(locType)
         fail = True
@@ -781,68 +930,15 @@ return ResponseMessageGeneric(stdout)
             self.__logger.logMessage(msg, "Error")
             return None
 
-        locLevel = levelArg.upper()
-        if locLevel=="SITE" :
-            locLevels = [ "Site" ]
-        elif locLevel=="USER" :
-            locLevels = [ "User" ]
-        elif locLevel=="BASE" :
-            locLevels = [ "Base" ]
-        elif locLevel=="CONFIGURED" :
-            locLevels = [ "Configured" ]
-        elif locLevel=="WORKSTATION" :
-            locLevels = [ "Workstation" ]
-        else :
-            locLevels = [ "User", "Workstation", "Site", "Configured", "Base" ]
-        locLevel = locLevels[0]
-
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
-            locType = "COMMON_STATIC"
-
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
-
-        if len(locLevels)>1 :
-            if locName.find(".")>0 :
-                locNames = [self.__curUser, locName, sss, sss, "" ]
-            elif len(locName)>0 :
-                hhh = self.getThisHost()
-                locNames = [locName, hhh, sss, sss, "" ]
-            else :
-                hhh = self.getThisHost()
-                locNames = [self.__curUser, hhh, sss, sss, "" ]
-        elif locLevel=="User" :
-            if locName=="" :
-                locName = self.__curUser
-        elif locLevel=="Workstation" :
-            if locName=="" :
-                locName = self.getThisHost()
-        elif locLevel=="Base" :
-            locName = ""
-        else :
-            locName = sss
-
-        locPath0 = locPath
-        i = locPath0.find("###")
-        while i>=0 :
-            locPath0 = locPath0[:i]+sss+locPath0[i+3:]
-            i = locPath0.find("###", i+3)
+        locLevels = self.processLevelArg(levelArg)
+        locType = self.processTypeArg(typeArg)
+        locNames = self.processSiteUserArg(siteUser, locLevels)
+        locPath0 = self.processPathArg(locPath)
 
         self.__lfi.setType(locType)
         if len(locLevels)==1 :
-            self.__lfi.setLevel(locLevel)
-            self.__lfi.setName(locName)
+            self.__lfi.setLevel(locLevels[0])
+            self.__lfi.setName(locNames)
             try :
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
@@ -862,6 +958,7 @@ return ResponseMessageGeneric(stdout)
         myJC = jsonCombine()
         myx2j = None
         classData = []
+        className = []
         classDef = []
         classLevel = []
         pyClass = ""
@@ -893,17 +990,21 @@ return ResponseMessageGeneric(stdout)
                     if myJC.accumulate(result) :
                         ttt |= t
                 elif t == 8 or t == 16 :
-                    pyClass = pyRoot
                     classDef.append(self.__resrch)
                     result = self.insertExecutionPaths( \
                                result, locPath0, locType, locLevel, locName)
                     classData.append(result)
                     classLevel.append(locLevel)
+                    if pyClass=="" :
+                        pyClass = self.__reclass
+                    elif self.__reclass != pyClass :
+                        t = 16
                     last = result
                     ttt |= t
                 elif t==2 :
                     last = result
                     if myx2j==None :
+                        self.initializeForXml(locType)
                         myx2j = xml2Json()
                     outXml = myx2j.convert(result)
                     if myJC.accumulate(outXml) :
@@ -920,7 +1021,8 @@ return ResponseMessageGeneric(stdout)
         if ttt==2 and myx2j!=None :
             return myx2j.unconvert(myJC.combine())
         if ttt==4 :
-            return HazardServicesImporter.formatAsPythonInit(myJC.combine(), pyRoot)
+            return HazardServicesImporter.formatAsPythonInit( \
+                            myJC.combine(), pyRoot)
         if ttt==1 :
             return json.dumps(myJC.combine(), indent=4)
         if len(classDef)<=1 :
@@ -1031,70 +1133,17 @@ return ResponseMessageGeneric(stdout)
             self.__logger.logMessage(msg, "Error")
             return None
 
-        locLevel = levelArg.upper()
-        if locLevel=="SITE" :
-            locLevels = [ "Site" ]
-        elif locLevel=="USER" :
-            locLevels = [ "User" ]
-        elif locLevel=="BASE" :
-            locLevels = [ "Base" ]
-        elif locLevel=="CONFIGURED" :
-            locLevels = [ "Configured" ]
-        elif locLevel=="WORKSTATION" :
-            locLevels = [ "Workstation" ]
-        else :
-            locLevels = [ "User", "Workstation", "Site", "Configured", "Base" ]
-        locLevel = locLevels[0]
-
-        locType = typeArg.upper()
-        if typeArg[:6]=="COMMON" :
-            locType = "COMMON_STATIC"
-        elif typeArg[:4]=="EDEX" :
-            locType = "EDEX_STATIC"
-        elif typeArg[:4]=="CAVE" :
-            locType = "CAVE_STATIC"
-        else :
-            locType = "COMMON_STATIC"
-
-        if len(siteUser)==3 and siteUser.isalpha() and siteUser.isupper() :
-            sss = siteUser
-            locName = ""
-        else :
-            sss = self.getDefLoc()
-            locName = siteUser
-
-        if len(locLevels)>1 :
-            if locName.find(".")>0 :
-                locNames = [self.__curUser, locName, sss, sss, "" ]
-            elif len(locName)>0 :
-                hhh = self.getThisHost()
-                locNames = [locName, hhh, sss, sss, "" ]
-            else :
-                hhh = self.getThisHost()
-                locNames = [self.__curUser, hhh, sss, sss, "" ]
-        elif locLevel=="User" :
-            if locName=="" :
-                locName = self.__curUser
-        elif locLevel=="Workstation" :
-            if locName=="" :
-                locName = self.getThisHost()
-        elif locLevel=="Base" :
-            locName = ""
-        else :
-            locName = sss
-
-        locPath0 = locPath
-        i = locPath0.find("###")
-        while i>=0 :
-            locPath0 = locPath0[:i]+sss+locPath0[i+3:]
-            i = locPath0.find("###", i+3)
+        locLevels = self.processLevelArg(levelArg)
+        locType = self.processTypeArg(typeArg)
+        locNames = self.processSiteUserArg(siteUser, locLevels)
+        locPath0 = self.processPathArg(locPath)
 
         myJC = jsonCombine()
         myx2j = None
         self.__lfi.setType(locType)
         if len(locLevels)==1 :
-            self.__lfi.setLevel(locLevel)
-            self.__lfi.setName(locName)
+            self.__lfi.setLevel(locLevels[0])
+            self.__lfi.setName(locNames)
             try :
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
@@ -1117,6 +1166,7 @@ return ResponseMessageGeneric(stdout)
                     if myJC.accumulate(result) :
                         return myJC.combine()
                 elif t==2 :
+                    self.initializeForXml(locType)
                     myx2j = xml2Json()
                     outXml = myx2j.convert(result)
                     if outXml==None :
@@ -1154,7 +1204,7 @@ return ResponseMessageGeneric(stdout)
                 pyRoot = self.getPyRootFromFileName(locPath0)
                 t = self.checkDataType(result, pyRoot)
                 last = result
-                
+
                 if t==4 :
                     #
                     # Try treating this as a Python file and retrieving
@@ -1169,13 +1219,14 @@ return ResponseMessageGeneric(stdout)
                         jsonYes = True
                 elif t==2 :
                     if myx2j==None :
+                        self.initializeForXml(locType)
                         myx2j = xml2Json()
                     outXml = myx2j.convert(result)
                     if myJC.accumulate(outXml) :
                         jsonYes = True
-
             except:
                 continue
+
             if not incrementalOverride:
                 if jsonYes :
                     return myJC.combine()
@@ -1231,6 +1282,10 @@ return ResponseMessageGeneric(stdout)
         try:
             exec pythonString
         except:
+            ffff = open("/tmp/processPythonFail.txt", "w")
+            ffff.write(pythonString+"\n")
+            ffff.close()
+            os.chmod("/tmp/processPythonFail.txt", 0666)
             traceback.print_exc()
             
         result = None

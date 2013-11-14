@@ -13,6 +13,9 @@ Mar 30, 2012            Matt Foster(CRH)  From SCP, originally named LocalFileIn
 Nov 15, 2012            JRamer            Added check() and getList() methods
 Aug 22, 2013            JRamer            Fix delete, allow direct access to
                                           source code loc files for unit tests.
+Oct 24, 2013            JRamer            Chmod created flat files to
+                                          be world writable.
+Nov 1, 2013             JRamer            All hazardServices specific logic gone
 """
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.localization.stream import LocalizationStreamPutRequest
@@ -32,6 +35,10 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.auth.resp import UserNotAut
 from dynamicserialize.dstypes.com.raytheon.uf.common.auth.resp import SuccessfulExecution
 from dynamicserialize.dstypes.com.raytheon.uf.common.plugin.nwsauth.user import User
 
+# NOTE, THE LOGIC THAT ALLOWS STANDALONE UNIT TESTS TO RETRIEVE BASE LEVEL
+# LOCALIZATION FILES OUT OF THE CODE BASE IS COMPLETELY DEPENDENT ON THIS
+# MODULE BEING PHYSICALLY LOCATED SOMEWHERE UNDER .../edexOsgi/.
+
 from ufpy import ThriftClient
 from UFStatusLogger import *
 
@@ -42,14 +49,16 @@ import os
 import time
 import subprocess
 
-codeRootAFI = None
-hazardServicesOsgiPkgs = None
-baselineOsgiPkgs = None
+myBranchAFI = None
+siblingBranchAFI = None
+myBranchOsgiPkgs = None
+siblingOsgiPkgs = None
 
 class AppFileInstaller():
     def __init__(self, host="ec", port="9581"):
         self.__tc = ThriftClient.ThriftClient(host+":"+port+"/services")
         self.__context = LocalizationContext()
+        self.__useEdex = self.__checkIfUsingEdex()
         self.__lspr = self.createPutRequest()
         self.__lspr.setContext(self.__context)
         self.__lsgr = LocalizationStreamGetRequest()
@@ -58,58 +67,64 @@ class AppFileInstaller():
         self.__luc.setContext(self.__context)
         self.__duc = self.createDeleteRequest()
         self.__duc.setContext(self.__context)
-        self.__devCodeRoot = self.devCodeRoot()
 
-    # Returns the path to a hard source code directory on the local host
-    # under which base localization files can be found.  If it is determined
-    # that access should be through EDEX, will return empty string.
-    def devCodeRoot(self) :
-        global codeRootAFI
+    # Returns a boolean that specifies whether to use EDEX to retrieve
+    # localization files.  This only works if this code actually resides
+    # somewhere under edexOsgi.
+    def __checkIfUsingEdex(self) :
+        global myBranchAFI
+        global siblingBranchAFI
 
         # The default behavior of this class is to access only base level
         # localization files from the source code directories if run within
-        # a unit test, and to get every this from EDEX otherwise.  Setting the
+        # a unit test, and to get everything from EDEX otherwise.  Setting the
         # value of the LOCALIZATION_DATA_SOURCE environment variable allows
         # one to change this behavior.
+        self.__localOverrides = False
+        self.__readConfigured = False
         ldsEnv = os.environ.get("LOCALIZATION_DATA_SOURCE")
         if ldsEnv == "EDEX" :
-            return ""   # Always go to edex.
-        elif ldsEnv == "CODE" or ldsEnv == "OVERRIDE":
-            pass        # Always go to source files.
-        else :
-            # Default behavior, go to source files only if a unit test.
+            return True   # Always go to edex.
+        elif ldsEnv == "OVERRIDE" :
+            # Read 'base' files from source, fully interoperate with locally
+            # mounted /awips2/edex/data/utility for other levels.
+            self.__localOverrides = True
+            self.__readConfigured = True
+        elif ldsEnv == "CODE+" :
+            # Read 'base' files from source, read 'configured' from locally
+            # mounted /awips2/edex/data/utility, nothing for other levels.
+            self.__readConfigured = True
+        elif ldsEnv != "CODE" :
+            # Default, go to source to get only base files if a unit test;
+            # otherwise go to edex.
             stackstr = str(traceback.format_stack())
             srchstr = """unittest.main()"""
             i = stackstr.find(srchstr)
             if (i<0) :
-                return ""
-
-        # Allow user to specify that override files can be picked up directly
-        # from a locally mounted /awips2/edex/data/utility/.
-        self.__localOverrides = ldsEnv == "OVERRIDE"
+                return True
 
         # Keep codeRoot cached in a global static.
-        if codeRootAFI!=None :
-            return codeRootAFI
-        codeRootAFI = ""
+        if myBranchAFI!=None :
+            return False
+        myBranchAFI = ""
+        siblingBranchAFI = ""
 
         # Get absolute path to this source code using current working directory
         # and contents of __file__ variable.
-        here = os.environ["PWD"]
         me = __file__
         if me[0]!="/" :
+            here = os.getcwd()
             me = here+"/"+me
 
         # Break this path into its individual directory parts and locate the
-        # "root" part.
-        rootName = "hazardServices"
+        # edexOsgi/ part.
         pathList = []
         pathParts = me.split("/")
         m = len(pathParts)-1
         basename = pathParts[m]
         pathParts = pathParts[:m]
         nparts = 0
-        rootPart = -1
+        edexOsgiPart = -1
         ok = False
         for part in pathParts :
             if part == '.' :
@@ -117,65 +132,96 @@ class AppFileInstaller():
             elif part == '..' :
                 nparts = nparts - 1
                 pathList = pathList[0:nparts]
+            elif part == "edexOsgi" :
+                edexOsgiPart = nparts
+                break
             elif len(part)>0 :
                 nparts = nparts + 1
                 pathList.append(part)
-            if part == rootName :
-                rootPart = nparts
-                break
-        if rootPart < 1 :
-            return codeRootAFI
-        for part in pathList[0:rootPart-1] :
-            codeRootAFI += "/"+part
+
+        # No edexOsgi found, force an exception throw from ctor.
+        if edexOsgiPart < 1 :
+            self.__context = None
+            return False
+
+        # Make root path to code branch this module is in.
+        myBranchAFI = "/"+"/".join(pathList)
         UFStatusLogger.getInstance().logMessage(\
           "Accessing localization files from code base.", "Info")
-        return codeRootAFI
+
+        # Attempt to locate the proper sibling branch.
+        cmd = 'find /'+"/".join(pathList[:-1])+' -mindepth 2 -maxdepth 2 '+ \
+              '-type d ! -path "*/.*" -name edexOsgi | grep -v '+myBranchAFI
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        (stdout, stderr) = p.communicate()
+        potentialSiblings = stdout.split("\n")
+        if len(potentialSiblings)>0 :
+            if potentialSiblings[-1]=="" :
+                del potentialSiblings[-1]
+        if len(potentialSiblings) == 0 :
+            return False
+        if len(potentialSiblings) == 1 :
+            siblingBranchAFI = potentialSiblings[0][:-9]
+            return False
+        for psib in potentialSiblings :
+           if psib.lower().find("baseline")>=0 :
+               siblingBranchAFI = psib[:-9]
+               return False
+           if psib.lower().find("awips2")>=0 :
+               siblingBranchAFI = psib[:-9]
+               return False
+        siblingBranchAFI = potentialSiblings[0][:-9]
+        return False
 
     # Returns the path to a hard file on the local host to access 
     # directly, if applicable, for base level localization files.
     # Otherwise just returns empty string.
-    def locateCodeFile(self, endPath) :
-        global hazardServicesOsgiPkgs
-        global baselineOsgiPkgs
-        if self.__devCodeRoot=="" :
+    def __locateCodeFile(self, endPath) :
+        global myBranchOsgiPkgs
+        global siblingOsgiPkgs
+        global myBranchAFI
+        global siblingBranchAFI
+        if self.__useEdex :
             return ""
 
-        # First see if the specified localization file can be found under
-        # hazardService code.  We create a global cache of the list of package
+        # First see if the specified localization file can be found under the
+        # primary code branch.  We create a global cache of the list of package
         # directories that carry hazardServices EDEX installable files, putting
         # the test package first on the list so unit tests prefer that.
-        if hazardServicesOsgiPkgs == None :
-            cmd = "find "+self.__devCodeRoot+"/hazardServices/edexOsgi/ "+ \
+        if myBranchOsgiPkgs == None :
+            cmd = "find "+myBranchAFI+"/edexOsgi/ "+ \
                   " -maxdepth 1 -mindepth 1 -type d"
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
-            hazardServicesOsgiPkgs = stdout.split("\n")
-            if len(hazardServicesOsgiPkgs)>0 :
-                if hazardServicesOsgiPkgs[-1]=="" :
-                    del hazardServicesOsgiPkgs[-1]
-            testPath = self.__devCodeRoot+"/hazardServices/tests"
-            hazardServicesOsgiPkgs.insert(0, testPath)
-        for pkg in hazardServicesOsgiPkgs :
+            myBranchOsgiPkgs = stdout.split("\n")
+            if len(myBranchOsgiPkgs)>0 :
+                if myBranchOsgiPkgs[-1]=="" :
+                    del myBranchOsgiPkgs[-1]
+            testPath = myBranchAFI+"/tests"
+            myBranchOsgiPkgs.insert(0, testPath)
+        for pkg in myBranchOsgiPkgs :
             baseFilePath = pkg+"/utility/common_static/base/"+endPath
             if os.path.exists(baseFilePath) :
                 return baseFilePath
 
-        # Now see if the specified localization file can be found under
-        # AWIPS2_baseline code.  We create a global cache of the list of package
-        # directories that carry AWIPS2_baseline EDEX installable files, putting
+        # Now see if the specified localization file can be found under the
+        # sibling code branch.  We create a global cache of the list of package
+        # directories that carry baseline EDEX installable files, putting
         # the test package first on the list so unit tests prefer that.
-        if baselineOsgiPkgs == None :
-            cmd = "find "+self.__devCodeRoot+"/AWIPS2_baseline/edexOsgi/ "+ \
+        if siblingBranchAFI=="" :
+            return ""
+        if siblingOsgiPkgs == None :
+            cmd = "find "+siblingBranchAFI+"/edexOsgi/ "+ \
                   " -maxdepth 1 -mindepth 1 -type d -name '*common*'"
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
-            baselineOsgiPkgs = stdout.split("\n")
-            if len(baselineOsgiPkgs)>0 :
-                if baselineOsgiPkgs[-1]=="" :
-                    del baselineOsgiPkgs[-1]
-            testPath = self.__devCodeRoot+"/AWIPS2_baseline/tests"
-            baselineOsgiPkgs.insert(0, testPath)
-        for pkg in baselineOsgiPkgs :
+            siblingOsgiPkgs = stdout.split("\n")
+            if len(siblingOsgiPkgs)>0 :
+                if siblingOsgiPkgs[-1]=="" :
+                    del siblingOsgiPkgs[-1]
+            testPath = siblingBranchAFI+"/tests"
+            siblingOsgiPkgs.insert(0, testPath)
+        for pkg in siblingOsgiPkgs :
             baseFilePath = pkg+"/utility/common_static/base/"+endPath
             if os.path.exists(baseFilePath) :
                 return baseFilePath
@@ -184,19 +230,23 @@ class AppFileInstaller():
 
     # Returns None if using EDEX.  Otherwise returns the path to a hard file
     # on a locally accessible disk to directly interact with.
-    def devCodePath(self, endPath) :
-        if self.__devCodeRoot=="" :
+    def __devCodePath(self, endPath, output=False) :
+        if self.__useEdex :
             return None
         levelStr = self.__context.getLocalizationLevel().getText().lower()
         if levelStr == "base" :
-            filePath = self.locateCodeFile(endPath)
-        elif self.__localOverrides :
-            filePath = '/awips2/edex/data/utility/' + \
+            if output :
+                return ""
+            return self.__locateCodeFile(endPath)
+        elif levelStr == "configured" :
+            if output or not self.__readConfigured :
+                return ""
+        elif not self.__localOverrides :
+            return ""
+        filePath = '/awips2/edex/data/utility/' + \
                self.__context.getLocalizationType().getText().lower()+'/' + \
                levelStr+'/'+ \
                self.__context.getContextName()+'/'+endPath
-        else :
-            filePath = ""
         return filePath
 
     def createPutRequest(self):
@@ -265,14 +315,30 @@ class AppFileInstaller():
         if lev.getText().upper() == "BASE" :
             raise AppFileInstallerException("I can GET files from BASE," + \
                       "but I won't PUT them.  It just wouldn't be right.")
-        nonEdexPath = self.devCodePath(fname)
+        nonEdexPath = self.__devCodePath(fname, True)
         if nonEdexPath!=None:
             if nonEdexPath=="" :
                 return False
+            nonEdexDir = "/".join(nonEdexPath.split("/")[:-1])
+            try:
+                os.stat(nonEdexDir)
+            except:
+                try :
+                    os.mkdir(nonEdexDir)
+                except:
+                    return False
+                try :
+                    os.chmod(nonEdexDir, 0777)
+                except:
+                    pass
             try :
                 ffff = open(nonEdexPath, "w")
                 ffff.write(data)
                 ffff.close()
+                try :
+                    os.chmod(nonEdexPath, 0666)
+                except:
+                    pass
                 return True
             except :
                 pass
@@ -306,7 +372,7 @@ class AppFileInstaller():
         if lev.getText().upper() == "BASE" :
             raise AppFileInstallerException("I can GET files from BASE," + \
                       "but I won't DELETE them.  It just wouldn't be right.")
-        nonEdexPath = self.devCodePath(fname)
+        nonEdexPath = self.__devCodePath(fname, True)
         if nonEdexPath!=None:
             if nonEdexPath=="" :
                 return False
@@ -321,7 +387,6 @@ class AppFileInstaller():
         resp = None
         try :
             urm = PrivilegedUtilityRequestMessage()
-            print "PrivilegedUtilityRequestMessage constructed"
             urm.setCommands([self.__duc])
             resp = self.__tc.sendRequest(urm)
             if resp==None :
@@ -339,7 +404,7 @@ class AppFileInstaller():
                  a failure occured.
         '''
         levText = self.__context.getLocalizationLevel().getText().upper()
-        nonEdexPath = self.devCodePath(fname)
+        nonEdexPath = self.__devCodePath(fname)
         if nonEdexPath!=None:
             if nonEdexPath=="" :
                 return None
@@ -368,7 +433,7 @@ class AppFileInstaller():
                         level/name path components.
         @return: List of files found, empty list otherwise.
         '''
-        nonEdexPath = self.devCodePath(dirname)
+        nonEdexPath = self.__devCodePath(dirname)
         if nonEdexPath!=None:
             if nonEdexPath=="" :
                 return []
@@ -405,7 +470,7 @@ class AppFileInstaller():
         @param fname: File path to file, below level/name path components.
         @return: boolean for whether file exists.
         '''
-        nonEdexPath = self.devCodePath(filname)
+        nonEdexPath = self.__devCodePath(filname)
         if nonEdexPath!=None:
             if nonEdexPath=="" :
                 return False

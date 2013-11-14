@@ -7,7 +7,7 @@ import sys
 from testCaseSupportRoutines import defaultRecommenderSetup
 from testCaseSupportRoutines import UnitTestFramework
 
-# This is a unit test of the track initializer, StormTrackTool.
+# This is a unit test of DamBreakFloodRecommender.
 class TestStormTrack(UnitTestFramework):
 
     def setUp(self) :
@@ -15,20 +15,20 @@ class TestStormTrack(UnitTestFramework):
 
     # 
     def performNextTest(self, inputTestData, expectedResult) :
-        sessionAttributes = inputTestData["sessionAttributes"]
-        dialogInputMap = {}
-        spatialInputMap = inputTestData["spatialInputMap"]
+        sessionDict = inputTestData["sessionDict"]
+        dialogDict = inputTestData["dialogDict"]
+        spatialDict = None
         if os.environ.get("LOCALIZATION_DATA_SOURCE")=="EDEX" :
             from LocalizationInterface import LocalizationInterface
             myLI = LocalizationInterface("")
             codeImport = myLI.getLocFile( \
-               "python/events/recommenders/StormTrackTool.py",
+               "python/events/recommenders/DamBreakFloodRecommender.py",
                "COMMON_STATIC")
             exec codeImport
-        from StormTrackTool import Recommender
+        from DamBreakFloodRecommender import Recommender
         recommenderObject = Recommender()
         result = recommenderObject.updateEventAttributes( \
-                 sessionAttributes, dialogInputMap, spatialInputMap)
+                 sessionDict, dialogDict, spatialDict)
 
         self.reportTestCaseOutcome(result, expectedResult)
 
