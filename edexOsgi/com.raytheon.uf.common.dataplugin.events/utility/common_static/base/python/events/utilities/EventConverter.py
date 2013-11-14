@@ -30,12 +30,13 @@
 #    01/22/13                      mnash        Initial Creation.
 #    06/25/13                      blawrenc     Changed to event.getPath()
 #                                               getFilePath() does not exist.
+#    11/14/13        2086          bkowal       LocalizationUtil has been deprecated.
 # 
 #
 
 import os
 import imp
-import LocalizationUtil
+import ModuleUtil
 
 from PathManager import PathManager
 from EventSet import EventSet
@@ -55,7 +56,7 @@ def findConverter(eventSet):
         # for each python module in the directory
         if events is not None :
             for event in events :
-                importedEvent = LocalizationUtil.loadModule(event.getPath())
+                importedEvent = ModuleUtil.loadModule(event.getPath())
                 if hasattr(importedEvent, 'canConvert'):
                     if importedEvent.canConvert(next) :
                         return importedEvent
