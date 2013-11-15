@@ -197,16 +197,10 @@ public abstract class AbstractRecommenderScriptManager extends
         String genUtilPath = FileUtil.join(pythonPath, "generalUtilities");
         String logUtilPath = FileUtil.join(pythonPath, "logUtilities");
 
-        /* This is so we can access CommHandler.py, Util.py, and
-           UEConfig.py.  Maybe there is a better way to do this. */
-        String fxaBinPath =
-            FileUtil.join(File.separator, "awips2", "fxa", "bin", "src");
-
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 recommenderConfigPath, recommenderDirPath, dataAccessPath,
                 dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
-                trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
-                fxaBinPath);
+                trackUtilPath, geoUtilPath, genUtilPath, logUtilPath);
         return includePath;
     }
 

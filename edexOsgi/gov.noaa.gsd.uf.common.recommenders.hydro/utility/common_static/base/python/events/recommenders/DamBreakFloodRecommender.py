@@ -5,10 +5,12 @@ Dam Break Flood Recommender
 @author: GSD Hazard Services Team
 """
 import datetime
+import EventFactory
+import GeometryFactory
 import RecommenderTemplate
 import numpy
-
-from GeneralConstants import *
+import JUtil
+import EventSetFactory
  
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -72,67 +74,29 @@ class Recommender(RecommenderTemplate.Recommender):
         return dialogDict
     
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
-        '''
-        @eventSet: List of objects that was converted from Java IEvent objects
-        @param dialogInputMap: A map containing user selections from the dialog
-        created by the defineDialog() routine
-        @param spatialInputMap: A map containing spatial input as created by the 
-        definedSpatialInfo() routine
-        @return: List of objects that will be later converted to Java IEvent
-        objects
-        '''
-
-        # for a unit test these will fail as we will not have JEP available, so
-        # we import them in here
-        import EventFactory
-        import GeometryFactory
-        import EventSetFactory
-
-        # updateEventAttributes does all the stuff we can safely do in a unit
-        # test, basically whatever does not require Jep
-        resultDict = self.updateEventAttributes(eventSet.getAttributes(), \
-                                      dialogInputMap, spatialInputMap)
-
-        # Peel out stuff that is piggybacking on the attributes but is really
-        # meant to go into the HazardEvent.
-        forJavaObj = resultDict["forJavaObj"]
-        del resultDict["forJavaObj"]
-
-        # Check for case where there was a failure to obtain a polygon
-        if forJavaObj["hazardPolygon"]==None :
-            return EventSetFactory.createEventSet(None)
-
-        # Start creating our HazardEvent object, which is really backed by a
-        # Java object.  str cast accounts for occasional json promotion of ascii
-        # strings to unicode strings, which makes JEP barf.
-        hazardEvent = EventFactory.createEvent()
-        hazardEvent.setEventID("")
-        hazardEvent.setSiteID(str(forJavaObj["SiteID"]))
-        hazardEvent.setHazardState("PENDING")
-
-        # New recommender framework requires some datetime objects, which must
-        # be in units of seconds.
-        hazardEvent.setIssueTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["currentTime"] / MILLIS_PER_SECOND))
-        hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["startTime"] / MILLIS_PER_SECOND))
-        hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
-          forJavaObj["endTime"] / MILLIS_PER_SECOND))
-
-        hazardEvent.setPhenomenon(forJavaObj["phenomena"])
-        hazardEvent.setSignificance(forJavaObj["significance"])
-        geometry = GeometryFactory.createPolygon(forJavaObj["hazardPolygon"])
-        hazardEvent.setGeometry(geometry)
-
-        hazardEvent.setHazardMode("O")
-        hazardEvent.setHazardAttributes(resultDict)
+        """
+        Runs this recommender returning a single potential hazard
+        event.
         
-        return EventSetFactory.createEventSet(hazardEvent)
+        @param eventSet: A java HazardEventSet containing any existing hazard events
+                         this recommender may need along with Hazard Services Session 
+                         information
+        @param  dialogInputMap: A java map of information returned the tool dialog associated with
+                                this recommender
+        @param  spatialInputMap: A java map of information gained from the user interacting with the 
+                                 Spatial Display 
+        @return: A event containing the potential flood hazard polygon. 
+        """
+        sessionAttributes = eventSet.getAttributes()
+        sessionDict = sessionAttributes
 
+        event = self.createHazardEvent(sessionDict, dialogInputMap, spatialInputMap)
+        return event
+    
     def toString(self):
         return "DamBreakFloodRecommender"
     
-    def updateEventAttributes(self, sessionDict, dialogDict, spatialDict):
+    def createHazardEvent(self, sessionDict, dialogDict, spatialDict):
         """
         Creates the hazard event, based on user dialog input and session dict information. 
         
@@ -145,7 +109,6 @@ class Recommender(RecommenderTemplate.Recommender):
         damName = dialogDict["damName"]
         urgencyLevel = dialogDict["urgencyLevel"]
         
-
         type = 'FF.A'
         phenomena = 'FF'
         significance = 'WATCH'
@@ -156,33 +119,43 @@ class Recommender(RecommenderTemplate.Recommender):
             significance = 'WARNING'
             subtype = 'NonConvective'
             
-        staticSettings = sessionDict["staticSettings"]
         currentTime = long(sessionDict["currentTime"])
-        startTime = currentTime
-        endTime = startTime + self.DEFAULT_FFW_DURATION_IN_MS
         
-        hazardDict = {"cause":"Dam Failure",
-                      "creationTime":currentTime,
-                      "damName":damName,
-                      "type":type}
-                        
         hazardPolygon = self.getFloodPolygonForDam(damName)
         
-        # Cache some stuff the logic that composes the returned Java backed
-        # HazardEvent object needs. We will make this a temporary member of the
-        # attributes, which the parent method execute() will delete. This way,
-        # the correctness of this information can be evaluated in unit tests.
-        forJavaObj = {}
-        forJavaObj["SiteID"] = staticSettings["defaultSiteID"]
-        forJavaObj["currentTime"] = currentTime
-        forJavaObj["startTime"] = startTime
-        forJavaObj["endTime"] = endTime
-        forJavaObj["phenomena"] = phenomena
-        forJavaObj["significance"] = significance
-        forJavaObj["hazardPolygon"] = hazardPolygon
-        hazardDict["forJavaObj"] = forJavaObj
+        if hazardPolygon is not None:
+            hazardEvent = EventFactory.createEvent()
+            hazardEvent.setEventID("")
+            hazardEvent.setSiteID("koax")
+            hazardEvent.setHazardState("PENDING")
+            hazardEvent.setPhenomenon(phenomena)
+            hazardEvent.setSignificance(significance)
+            hazardEvent.setSubtype(subtype)
+            geometry = GeometryFactory.createPolygon(hazardPolygon) 
+            hazardEvent.setGeometry(geometry)
+            
+            creationDateTime = datetime.datetime.fromtimestamp(currentTime/1000)
+            startDateTime = datetime.datetime.fromtimestamp(currentTime/1000)
+            endDateTime = datetime.datetime.fromtimestamp((currentTime + self.DEFAULT_FFW_DURATION_IN_MS)/1000)
+            
+            hazardEvent.setIssueTime(creationDateTime)
+            hazardEvent.setStartTime(startDateTime)
+            hazardEvent.setEndTime(endDateTime)
+            
+            #
+            # The operational mode should come from the session dict.
+            hazardEvent.setHazardMode("O")
 
-        return hazardDict
+            hazardDict = {"cause":"Dam Failure",
+                         "creationTime":currentTime,
+                         "damName":damName,
+                         "type":type}
+            
+            hazardEvent.setHazardAttributes(hazardDict)
+        else:
+            hazardEvent = None
+                        
+        return EventSetFactory.createEventSet(hazardEvent)
         
     
     def getFloodPolygonForDam(self, damName):

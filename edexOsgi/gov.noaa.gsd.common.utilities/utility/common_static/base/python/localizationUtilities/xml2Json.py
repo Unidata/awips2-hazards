@@ -6,9 +6,8 @@ import sys
 import collections
 
 initDone = False
-haveParsingInfoNow = False
 
-# This is a set of keys that are always stripped out of the structure that is
+# This is a set of keys that are always stripped out of the structure that
 # returned via the simplify method.
 stripKeys = set( [ "listParser", "outerDelimeter", "innerDelimeter",
                    "innerKeyIndex", "modifierAttribute", "listMember" ] )
@@ -88,16 +87,20 @@ overrideActions = { "remove" : "_override_remove_",
 # made more extensive when this refactoring is complete.
 #
 
-class xml2Json() :
+class xml2Json :
 
     def __init__(self) :
         global initDone
+        global modifyName
+        global modifyTrail
+        global listMember
+        global byModifier
+        global listParser
         self.outputBuffer = None
         self.lineLength = 0
         self.orderStart = 1
         self.nextStart = 1
         self.xmlnsValue = ""
-        self.discovered = False
         if initDone :
             return
         initDone = True
@@ -108,68 +111,28 @@ class xml2Json() :
             tree = ET.parse(path)
         except :
             return
-        xml2Json.supplyParsingInfo([tree])
-
-    # Learn if the xml2Json class needs to be initialized with parsing info.
-    @staticmethod            
-    def haveParsingInfo() :
-        global haveParsingInfoNow
-        return haveParsingInfoNow
-
-    # Supply parsing info in the form of a list of xml ElementTree objects
-    @staticmethod            
-    def supplyParsingInfo(xmlRoots) :
-        global initDone
-        global haveParsingInfoNow
-        global modifyName
-        global modifyTrail
-        global listMember
-        global byModifier
-        global listParser
-        if not isinstance(xmlRoots, list) :
-            sys.stderr.write("Bad input to xml2Json:supplyParsingInfo()\n")
-            return
-        for xmlRoot in xmlRoots :
-            try :
-                for onenode in xmlRoot :
-                    aaa = onenode.attrib
-                    if not "tag" in aaa :
-                        continue
-                    lukey = aaa["tag"]
-                    if len(lukey)==0 :
-                        continue
-                    if "parent" in aaa :
-                        lukey = aaa["parent"]+"___"+lukey
-                    delThis = aaa.get("override", ' ')=="remove"
-                    if onenode.tag=="listMember" :
-                        if not delThis :
-                            listMember.add(lukey)
-                            haveParsingInfoNow = True
-                        elif lukey in listMember :
-                            del listMember[lukey]
-                        continue
-                    if onenode.tag=="byModifier" :
-                        if not delThis :
-                            if "modifierAttribute" in aaa :
-                                byModifier[lukey] = aaa["modifierAttribute"]
-                                haveParsingInfoNow = True
-                        elif lukey in byModifier :
-                            del byModifier[lukey]
-                        continue
-                    if onenode.tag=="listParser" :
-                        outerDel = aaa.get("outerDelimeter", ' ')
-                        innerDel = aaa.get("innerDelimeter", '')
-                        keyIdx = int(aaa.get("innerKeyIndex", -1))
-                        if not delThis :
-                            listParser[lukey] = (outerDel, innerDel, keyIdx)
-                            haveParsingInfoNow = True
-                        elif lukey in listParser :
-                            del listParser[lukey]
-            except :
-                sys.stderr.write("Bad input to xml2Json:supplyParsingInfo()\n")
+        topnode = tree.getroot()
+        for onenode in topnode :
+            aaa = onenode.attrib
+            if not "tag" in aaa :
                 continue
-        if haveParsingInfoNow :
-            initDone = True
+            lukey = aaa["tag"]
+            if len(lukey)==0 :
+                continue
+            if "parent" in aaa :
+                lukey = aaa["parent"]+"___"+lukey
+            if onenode.tag=="listMember" :
+                listMember.add(lukey)
+                continue
+            if onenode.tag=="byModifier" :
+                if "modifierAttribute" in aaa :
+                    byModifier[lukey] = aaa["modifierAttribute"]
+                continue
+            if onenode.tag=="listParser" :
+                outerDel = aaa.get("outerDelimeter", ' ')
+                innerDel = aaa.get("innerDelimeter", '')
+                keyIdx = int(aaa.get("innerKeyIndex", -1))
+                listParser[lukey] = (outerDel, innerDel, keyIdx)
 
     def newStack(self) :
         self.orderStart = 1
@@ -220,11 +183,8 @@ class xml2Json() :
                 outerDel = aaa.get("outerDelimeter", ' ')
                 innerDel = aaa.get("innerDelimeter", '')
                 keyIdx = int(aaa.get("innerKeyIndex", -1))
-                oneParser = (outerDel, innerDel, keyIdx)
-                tagkey = parent+"___"+elem.tag
-                if listParser.get(tagkey, () ) != oneParser :
-                    listParser[tagkey] = oneParser
-                    self.discovered = True
+                oneParser = ( outerDel, innerDel, keyIdx)
+                listParser[parent+"___"+elem.tag] = oneParser
             if oneParser == None :
                 oneParser = listParser.get(parent+"___"+elem.tag)
             if oneParser == None :
@@ -276,13 +236,10 @@ class xml2Json() :
             overrideContents = aaa["override"].split()
             del aaa["override"]
         modAtt = aaa.get("modifierAttribute","")
-        tagkey = parent+"___"+elem.tag
         if modAtt in aaa:
-            if byModifier.get(tagkey, "") != aaa[modAtt] :
-                byModifier[tagkey] = aaa[modAtt]
-                self.discovered = True
+            byModifier[parent+"___"+elem.tag] = aaa[modAtt]
         else :
-            modAtt = byModifier.get(tagkey,"")
+            modAtt = byModifier.get(parent+"___"+elem.tag,"")
             if not modAtt in aaa:
                 modAtt = byModifier.get(elem.tag,"")
             if not modAtt in aaa:
@@ -299,10 +256,7 @@ class xml2Json() :
         if lll>0:
             for onekey in aaa.keys():
                 if onekey=="listMember" and aaa[onekey]=="true" :
-                    tagkey = parent+"___"+elem.tag
-                    if not tagkey in listMember :
-                        listMember.add(tagkey)
-                        self.discovered = True
+                    listMember.add(parent+"___"+elem.tag)
                     if nodemode==0 :
                         nodemode = 1
                     outdict[onekey] = aaa[onekey]
@@ -332,7 +286,6 @@ class xml2Json() :
                 xTag = outdict[onekey]
 
         # Process contents of override attribute
-        keyInProgress = 0
         overridedata = []
         if len(overrideContents)==0 :
             pass
@@ -348,15 +301,9 @@ class xml2Json() :
                     return ( mytag, nodemode, "_override_remove_")
                 elif oneentry in overrideStates :
                     overridedata.append(overrideStates[oneentry])
+                elif not oneentry in overrideActions and len(overridedata)>0:
                     if overridedata[-1]=="_override_by_key_" :
-                        keyInProgress = 1
-                elif not oneentry in overrideActions and keyInProgress>0:
-                    if keyInProgress > 1 :
-                        overridedata[-1] += " "
-                    overridedata[-1] += oneentry
-                    keyInProgress += 1
-            if keyInProgress > 0 :
-                overridedata[-1] += "_"
+                        overridedata[-1] = "_override_by_key_"+oneentry+"_"
             for oneentry in overrideContents :
                 if oneentry=="removeList" :
                     textrep.append("_override_remove_stop_")
@@ -377,15 +324,9 @@ class xml2Json() :
                     return ( mytag, nodemode, "_override_remove_")
                 elif oneentry in overrideStates :
                     overridedata.append(overrideStates[oneentry])
+                elif not oneentry in overrideActions and len(overridedata)>0:
                     if overridedata[-1]=="_override_by_key_" :
-                        keyInProgress = 1
-                elif not oneentry in overrideActions and keyInProgress>0:
-                    if keyInProgress > 1 :
-                        overridedata[-1] += " "
-                    overridedata[-1] += oneentry
-                    keyInProgress += 1
-            if keyInProgress > 0 :
-                overridedata[-1] += "_"
+                        overridedata[-1] = "_override_by_key_"+oneentry+"_"
             for oneentry in overrideContents :
                 if oneentry in overrideActions :
                     overridedata.append(overrideActions[oneentry])
@@ -430,8 +371,7 @@ class xml2Json() :
         listcheck = {}
         for child in elem:
             ctag = child.tag
-            tagkey = elem.tag+"___"+child.tag
-            if ctag in listMember or tagkey in listMember:
+            if ctag in listMember or elem.tag+"___"+child.tag in listMember:
                 listcheck[ctag] = 1
                 continue
             val = listcheck.get(ctag)
@@ -457,10 +397,8 @@ class xml2Json() :
                     outdict[ctag] = cdata
                 elif isinstance(outdict[ctag], list) :
                     outdict[ctag].extend( cdata )
-                tagkey = elem.tag+"___"+child.tag
-                if not ctag in listMember and not tagkey in listMember:
-                    listMember.add(tagkey)
-                    self.discovered = True
+                if not ctag in listMember :
+                    listMember.add(elem.tag+"___"+child.tag)
                 continue
             (impl, deep) = self.implOne(cdata)
             if not ctag in repdict :
@@ -508,11 +446,7 @@ class xml2Json() :
 
         self.orderStart = self.nextStart
         self.nextStart = 10000+self.orderStart
-        self.discovered = False
-        parsedData = self.parseOne(oneroot, "", -1, self.orderStart)
-        if self.discovered :
-            return self.parseOne(oneroot, "", -1, self.orderStart)
-        return parsedData
+        return self.parseOne(oneroot, "", -1, self.orderStart)
 
     # Add text to output buffer.
     def bText(self, str) :
@@ -1028,8 +962,6 @@ class xml2Json() :
     # supply the ctag argument.
     def simplify(self, onenode, ctag="") :
         global stripKeys
-        if os.environ.get("XML_SIMPLIFY", "")=="FALSE" :
-            return onenode
         if isinstance(onenode, list) :
             i = 0
             nn = len(onenode)
@@ -1038,7 +970,6 @@ class xml2Json() :
                     onenode[i] = self.simplify(onenode[i], ctag)
                 elif onenode[i][:10] == "_override_" :
                     del onenode[i]
-                    nn -= 1
                     continue
                 i = i+1
             return onenode
