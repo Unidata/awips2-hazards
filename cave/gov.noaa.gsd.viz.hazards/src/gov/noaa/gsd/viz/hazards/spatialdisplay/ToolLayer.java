@@ -124,6 +124,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Sep 10, 2013  752       Bryon.Lawrence Modified to use static method 
  *                                        forModifyingStormTrack in HazardServicesDrawableBuilder
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -139,8 +140,6 @@ public class ToolLayer extends
             .getHandler(ToolLayer.class);
 
     public static final String DEFAULT_NAME = "Hazard Services";
-
-    public static final String IS_SELECTED_KEY = "isSelected";
 
     public static final double VERTEX_CIRCLE_RADIUS = 2;
 

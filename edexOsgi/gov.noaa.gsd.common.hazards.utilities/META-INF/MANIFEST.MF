@@ -19,7 +19,9 @@ Export-Package: com.google.gson,
  org.joda.time.field,
  org.joda.time.format,
  org.joda.time.tz
-Require-Bundle: com.google.guava;bundle-version="1.0.0"
+Require-Bundle: com.google.guava;bundle-version="1.0.0",
+ org.codehaus.jackson;bundle-version="1.7.3",
+ org.apache.commons.lang;bundle-version="2.3.0"
 Bundle-ClassPath: gson-2.1.jar,
  .,
  joda-time-2.0.jar

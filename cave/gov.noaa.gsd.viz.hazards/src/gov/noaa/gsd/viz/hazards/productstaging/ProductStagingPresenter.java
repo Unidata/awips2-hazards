@@ -10,8 +10,8 @@ package gov.noaa.gsd.viz.hazards.productstaging;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
 import java.util.Collection;
@@ -37,6 +37,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author bryon.lawrence
@@ -62,23 +63,22 @@ public class ProductStagingPresenter extends
         @Override
         public void commandInvoked(String command) {
             try {
-                String issueFlag = (getView().isToBeIssued() ? "True" : "False");
+                String issueFlag = (getView().isToBeIssued() ? Boolean.TRUE
+                        .toString() : Boolean.FALSE.toString());
                 ProductStagingAction action = new ProductStagingAction(
-                        "Continue");
+                        HazardConstants.CONTINUE_BUTTON);
                 action.setIssueFlag(issueFlag);
-                Dict productInfo = getView().getProductInfo();
+                ProductStagingInfo productStagingInfo = getView()
+                        .getProductStagingInfo();
 
                 /*
-                 * TODO this is certainly not ideal, and will change with the
-                 * JSON refactor as we can edit the events directly instead of
-                 * perusing through to find which ones are not selected
+                 * TODO Right now there are no cases with more than one product.
+                 * This will have to be refactored when that case comes up.
                  */
-                List<?> hazardEventSets = (List<?>) productInfo
-                        .get("hazardEventSets");
-                Dict listVal = (Dict) hazardEventSets.get(0);
-                Dict stagingInfo = (Dict) listVal.get("stagingInfo");
-                Dict valueDict = (Dict) stagingInfo.get("valueDict");
-                List<?> eventIds = (List<?>) valueDict.get("eventIDs");
+                ProductStagingInfo.Product product = productStagingInfo
+                        .getProducts().get(0);
+
+                List<String> eventIds = product.getSelectedEventIDs();
                 Collection<IHazardEvent> events = getSessionManager()
                         .getEventManager().getEvents();
                 Collection<IHazardEvent> selectedEvents = getSessionManager()
@@ -93,7 +93,7 @@ public class ProductStagingPresenter extends
                 getSessionManager().getEventManager().setSelectedEvents(
                         selectedEvents);
 
-                action.setJSONText(productInfo.toJSONString());
+                action.setProductStagingInfo(productStagingInfo);
                 fireAction(action);
             } catch (Exception e1) {
                 statusHandler.error("ProductStatingPresenter.bind(): ", e1);
@@ -138,11 +138,10 @@ public class ProductStagingPresenter extends
      * 
      * @param issueFlag
      *            Whether or not this is a result of an issue action
-     * @param productList
-     *            List of products to stage.
+     * @param productStagingInfo
      */
     public final void showProductStagingDetail(boolean issueFlag,
-            Dict productStagingInfo) {
+            ProductStagingInfo productStagingInfo) {
         getView().showProductStagingDetail(issueFlag, productStagingInfo);
         bind();
     }

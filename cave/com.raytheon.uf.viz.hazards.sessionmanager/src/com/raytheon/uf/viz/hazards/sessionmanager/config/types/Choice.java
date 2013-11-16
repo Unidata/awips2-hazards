@@ -34,6 +34,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 3, 2013  1257       bsteffen    Initial creation
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -47,6 +48,15 @@ public class Choice {
     private String identifier;
 
     private List<Choice> children;
+
+    public Choice() {
+
+    }
+
+    public Choice(String displayString, String identifier) {
+        this.displayString = displayString;
+        this.identifier = identifier;
+    }
 
     public String getDisplayString() {
         return displayString;

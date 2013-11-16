@@ -23,6 +23,8 @@ import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.google.common.collect.Lists;
+
 /**
  * 
  * Defines the fields to modify in the view configuration dialog
@@ -34,6 +36,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2013 1257       bsteffen    Initial creation
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -43,7 +46,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 public class Field {
     private Integer lines;
 
-    private List<Choice> choices;
+    private List<Choice> choices = Lists.newArrayList();
 
     private String columnName;
 
@@ -55,7 +58,7 @@ public class Field {
 
     private String label;
 
-    private List<Field> fields;
+    private List<Field> fields = Lists.newArrayList();
 
     private Integer leftMargin;
 
@@ -90,6 +93,10 @@ public class Field {
 
     public void setLines(Integer lines) {
         this.lines = lines;
+    }
+
+    public boolean addChoice(Choice choice) {
+        return choices.add(choice);
     }
 
     public List<Choice> getChoices() {

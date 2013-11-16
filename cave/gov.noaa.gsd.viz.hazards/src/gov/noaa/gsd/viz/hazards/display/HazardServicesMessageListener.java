@@ -32,6 +32,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -61,6 +62,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Aug 21, 2013    1921    daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author bryon.lawrence
@@ -349,15 +351,17 @@ public class HazardServicesMessageListener {
     @Subscribe
     public void productStagingActionOccurred(
             final ProductStagingAction productStagingAction) {
-        if (productStagingAction.getAction().equals("Continue")) {
+        if (productStagingAction.getAction().equals(
+                HazardConstants.CONTINUE_BUTTON)) {
 
             // If the action equals Continue, that means we have to generate
             // product and make sure that we will issue those products or not.
             // Thus we need a return message that contains issueFlag and revised
             // productList
             messageHandler.handleProductDisplayContinueAction(
-                    productStagingAction.getIssueFlag(),
-                    productStagingAction.getJSONText());
+                    productStagingAction.getIssueFlag().equals(
+                            Boolean.TRUE.toString()),
+                    productStagingAction.getProductStagingInfo());
         }
     }
 

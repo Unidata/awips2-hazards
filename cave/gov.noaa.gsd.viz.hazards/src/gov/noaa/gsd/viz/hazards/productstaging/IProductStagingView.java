@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
@@ -26,6 +26,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -42,11 +43,11 @@ public interface IProductStagingView<C, E extends Enum<E>> extends IView<C, E> {
      * @param toBeIssued
      *            Flag indicating whether or not this is a result of an issue
      *            action.
-     * @param productList
-     *            List of products to stage.
+     * @param productStagingInfo
+     *            the product staging information.
      */
     public void showProductStagingDetail(boolean toBeIssued,
-            Dict productStagingInfo);
+            ProductStagingInfo productStagingInfo);
 
     /**
      * Get the continue command invoker to allow the presenter to bind with it
@@ -64,7 +65,7 @@ public interface IProductStagingView<C, E extends Enum<E>> extends IView<C, E> {
     public boolean isToBeIssued();
 
     /**
-     * @return a dictionary representing the product information.
+     * @return the product staging information.
      */
-    public Dict getProductInfo();
+    public ProductStagingInfo getProductStagingInfo();
 }

@@ -46,6 +46,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166       blawrenc    Fleshed out this test.
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -92,7 +93,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             this.step = Steps.CREATE_NEW_HAZARD_AREA;
             SpatialDisplayAction displayAction = new SpatialDisplayAction(
                     HazardConstants.NEW_EVENT_SHAPE);
-            Dict toolParameters = buildEventArea();
+            Dict toolParameters = autoTestUtilities.buildEventArea(-96.0, 41.0);
             displayAction.setToolParameters(toolParameters);
             eventBus.post(displayAction);
         } catch (Exception e) {
@@ -173,7 +174,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
                 assertTrue(selectedEvent.getEventID().length() > 0);
 
-                Dict dict = buildEventTypeTypeSelection(selectedEvent,
+                Dict dict = autoTestUtilities.buildEventTypeSelection(
+                        selectedEvent,
                         AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
 
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
@@ -236,7 +238,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                      * Trigger a preview action
                      */
                     this.step = Steps.PREVIEW_AREAL_FLOOD_WATCH;
-                    previewEvent(eventBus);
+                    autoTestUtilities.previewEvent();
                 } else if (step == Steps.UPGRADE_TO_AREAL_FLOOD_WARNING) {
                     /*
                      * Retrieve the selected event.
@@ -258,7 +260,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                     DictList hidContents = mockHazardDetailView.getContents();
                     assertTrue(hidContents.size() == 2);
                     step = Steps.PREVIEW_AREAL_FLOOD_WARNING;
-                    previewEvent(eventBus);
+                    autoTestUtilities.previewEvent();
 
                 }
 
@@ -288,7 +290,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             if (step.equals(Steps.PREVIEW_AREAL_FLOOD_WATCH)) {
                 checkArealFloodWatchPreview();
                 step = Steps.ISSUE_AREAL_FLOOD_WATCH;
-                issueEvent(eventBus);
+                autoTestUtilities.issueEvent();
             } else if (step.equals(Steps.ISSUE_AREAL_FLOOD_WATCH)) {
                 step = Steps.UPGRADE_TO_AREAL_FLOOD_WARNING;
 
@@ -330,7 +332,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                     numProducts = 0;
                     checkArealFloodWarningPreview();
                     step = Steps.ISSUE_AREAL_FLOOD_WARNING;
-                    issueEvent(eventBus);
+                    autoTestUtilities.issueEvent();
                 }
             } else if (step == Steps.ISSUE_AREAL_FLOOD_WARNING) {
 
@@ -338,7 +340,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                  * Fire off another preview action.
                  */
                 step = Steps.PREVIEW_FOLLOW_UP_STATEMENT;
-                previewEvent(eventBus);
+                autoTestUtilities.previewEvent();
             } else if (step == Steps.PREVIEW_FOLLOW_UP_STATEMENT) {
                 /*
                  * Need to ignore the first pass through here. For some reason
@@ -350,7 +352,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                     numProducts = 0;
                     checkFollowUpStatementPreview();
                     step = Steps.ISSUE_FOLLOW_UP_STATEMENT;
-                    issueEvent(eventBus);
+                    autoTestUtilities.issueEvent();
                 }
             } else if (step == Steps.ISSUE_FOLLOW_UP_STATEMENT) {
 
@@ -365,7 +367,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             } else if (step == Steps.PREVIEW_CANCELLATION_STATEMENT) {
                 checkCancellationStatementPreview();
                 step = Steps.ISSUE_CANCELLATION_STATEMENT;
-                issueEvent(eventBus);
+                autoTestUtilities.issueEvent();
             }
         } catch (Exception e) {
             handleException(e);

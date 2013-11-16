@@ -35,6 +35,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * ------------ ---------- ----------- --------------------------
  * May 28, 2013 1257       bsteffen    Initial creation
  * Sep 19, 2013 2046       mnash       Update for product generation.
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -165,7 +166,7 @@ public class ProductGenerationResult {
 
         private Map<String, String[]> valueDict;
 
-        private Field[] fields;
+        private DeprecatedField[] fields;
 
         public Map<String, String[]> getValueDict() {
             return valueDict;
@@ -175,11 +176,11 @@ public class ProductGenerationResult {
             this.valueDict = valueDict;
         }
 
-        public Field[] getFields() {
+        public DeprecatedField[] getFields() {
             return fields;
         }
 
-        public void setFields(Field[] fields) {
+        public void setFields(DeprecatedField[] fields) {
             this.fields = fields;
         }
 
@@ -194,10 +195,10 @@ public class ProductGenerationResult {
      * Json representation of a field in Staging info
      */
     @Deprecated
-    public static class Field {
+    public static class DeprecatedField {
         private int lines;
 
-        private Choice[] choices;
+        private DeprecatedChoice[] choices;
 
         private String fieldName;
 
@@ -213,11 +214,11 @@ public class ProductGenerationResult {
             this.lines = lines;
         }
 
-        public Choice[] getChoices() {
+        public DeprecatedChoice[] getChoices() {
             return choices;
         }
 
-        public void setChoices(Choice[] choices) {
+        public void setChoices(DeprecatedChoice[] choices) {
             this.choices = choices;
         }
 
@@ -255,7 +256,7 @@ public class ProductGenerationResult {
      * Json representation choice for a field
      */
     @Deprecated
-    public static class Choice {
+    public static class DeprecatedChoice {
         private String displayString;
 
         private String identifier;

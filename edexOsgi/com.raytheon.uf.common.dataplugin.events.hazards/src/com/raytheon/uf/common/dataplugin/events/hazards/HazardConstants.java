@@ -39,6 +39,7 @@ import java.util.List;
  *                                   as keys in other code modules.
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -224,57 +225,57 @@ public final class HazardConstants {
     public static final String CAUSE = "cause";
 
     /**
-     * Event identifier key in hazard event dictionary.
+     * Event identifier key
      */
     public static final String HAZARD_EVENT_IDENTIFIER = "eventID";
 
     /**
-     * Category key for hazard event dictionary.
+     * Category key for hazard
      */
     public static final String HAZARD_EVENT_CATEGORY = "hazardCategory";
 
     /**
-     * Type key for hazard event dictionary.
+     * Type key for hazard
      */
     public static final String HAZARD_EVENT_TYPE = "type";
 
     /**
-     * Phen key for hazard event dictionary.
+     * Phen key for hazard
      */
     public static final String HAZARD_EVENT_PHEN = "phen";
 
     /**
-     * Sig key for hazard event dictionary.
+     * Sig key for hazard
      */
     public static final String HAZARD_EVENT_SIG = "sig";
 
     /**
-     * Sub-type key for hazard event dictionary.
+     * Sub-type key for hazard
      */
     public static final String HAZARD_EVENT_SUB_TYPE = "subtype";
 
     /**
-     * Full type key for hazard event dictionary.
+     * Full type key for hazard
      */
     public static final String HAZARD_EVENT_FULL_TYPE = "fullType";
 
     /**
-     * VTEC mode key for hazard event dictionary.
+     * VTEC mode key for hazard
      */
     public static final String HAZARD_EVENT_VTEC_MODE = "VTECmode";
 
     /**
-     * End time key in hazard event dictionary.
+     * End time key in hazard
      */
     public static final String ISSUETIME = "issueTime";
 
     /**
-     * Start time key in hazard event dictionary.
+     * Start time key in hazard
      */
     public static final String HAZARD_EVENT_START_TIME = "startTime";
 
     /**
-     * End time key in hazard event dictionary.
+     * End time key in hazard
      */
     public static final String HAZARD_EVENT_END_TIME = "endTime";
 
@@ -294,74 +295,67 @@ public final class HazardConstants {
     public static final String VTEC_CODES = "vtecCodes";
 
     /**
-     * Group identifier key in hazard event dictionary.
+     * Group identifier key in hazard
      */
     public static final String HAZARD_EVENT_GROUP_IDENTIFIER = "groupID";
 
     /**
-     * Shapes key in hazard event dictionary.
+     * Shapes key in hazard
      */
     public static final String HAZARD_EVENT_SHAPES = "shapes";
 
     /**
-     * Shape type key in shape dictionary in shapes list in hazard event
-     * dictionary.
+     * Shape type key hazard
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE = "shapeType";
 
     /**
-     * Circle shape type value in shape dictionary in shapes list in hazard
-     * event dictionary.
+     * Circle shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_CIRCLE = "circle";
 
     /**
-     * Point shape type value in shape dictionary in shapes list in hazard event
-     * dictionary.
+     * Point shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_POINT = "point";
 
     /**
-     * Line shape type value in shape dictionary in shapes list in hazard event
-     * dictionary.
+     * Line shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_LINE = "line";
 
     /**
-     * Polygon shape type value in shape dictionary in shapes list in hazard
-     * event dictionary.
+     * Polygon shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_POLYGON = "polygon";
 
     /**
-     * Dot shape type value in shape dictionary in shapes list in hazard event
-     * dictionary.
+     * Dot shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_DOT = "dot";
 
     /**
-     * Star shape type value in shape dictionary in shapes list in hazard event
-     * dictionary.
+     * Star shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_STAR = "star";
 
     /**
-     * Event-is-checked key in hazard event dictionary.
+     * Event-is-checked key in hazard
      */
     public static final String HAZARD_EVENT_CHECKED = "checked";
 
     /**
-     * Color key in hazard event dictionary.
+     * Color key in hazard
      */
     public static final String HAZARD_EVENT_COLOR = "color";
 
     /**
-     * Event-is-selected key in hazard event dictionary.
+     * Event-is-selected key in hazard
      */
     public static final String HAZARD_EVENT_SELECTED = "selected";
 
     /**
-     * State key in hazard event dictionary.
+     * State key in hazard
      */
     public static final String HAZARD_EVENT_STATE = "state";
 
@@ -390,6 +384,8 @@ public final class HazardConstants {
     public static final String GENERATED_PRODUCTS = "generatedProducts";
 
     public static final String HAZARD_EVENT_SETS = "hazardEventSets";
+
+    public static final String HAZARD_EVENT_IDS = "eventIDs";
 
     /*
      * The following are related to hazard geometries and their supporting meta
@@ -475,8 +471,6 @@ public final class HazardConstants {
      */
     public static final String POINTID = "pointID";
 
-    public static final String SHAPES = "shapes";
-
     public static final String PIVOTS = "pivots";
 
     public static final String TRACK_POINTS = "trackPoints";
@@ -494,4 +488,17 @@ public final class HazardConstants {
     public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected Hazards";
 
     public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
+
+    /*
+     * TODO The following need to be organized better.
+     */
+    public static final String CONTINUE_BUTTON = "Continue";
+
+    public static final String CANCEL_BUTTON = "Cancel";
+
+    public static final String IS_SELECTED_KEY = "isSelected";
+
+    public static final String IS_VISIBLE_KEY = "isVisible";
+
+    public static final String SHAPES = "shapes";
 }

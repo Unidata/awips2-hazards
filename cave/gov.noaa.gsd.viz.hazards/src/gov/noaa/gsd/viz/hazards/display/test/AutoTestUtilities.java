@@ -10,14 +10,17 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
 import java.util.List;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -32,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * ------------ ---------- ----------- --------------------------
  * Oct 30, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -39,6 +43,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * @version 1.0
  */
 public class AutoTestUtilities {
+
+    public static Double EVENT_BUILDER_OFFSET = 0.0025;
 
     static final String OAX = "OAX";
 
@@ -115,18 +121,79 @@ public class AutoTestUtilities {
 
     static final String FORECAST_CONFIDENCE_PERCENTAGE = "forecastConfidencePercentage";
 
-    /**
-     * JSON for creating a new event area. This simulates the user drawing an
-     * event on the Spatial Display.
-     */
-    private static String newEventJSON = "{\"eventID\":\"\",\"shapes\":[{\"fill color\":\"White\",\"border thick\":2.0,\"borderStyle\":\"SOLID\",\"border color\":\"White\",\"points\":[[-96.26542325417236,41.32490969692897],[-96.42627540209477,41.336399136066284],[-96.57563811087988,40.888311009710975],[-96.12754998452456,40.876821570573654],[-96.26542325417236,41.32490969692897]],\"isSelected\":\"true\",\"isVisible\":\"true\",\"include\":\"true\",\"label\":\"\",\"shapeType\":\"polygon\"}]}";
+    private final HazardServicesAppBuilder appBuilder;
 
-    public static Dict buildEventArea() {
-        return JSONUtilities.createDictFromJSON(newEventJSON);
+    private final EventBus eventBus;
+
+    public AutoTestUtilities(HazardServicesAppBuilder appBuilder) {
+        this.appBuilder = appBuilder;
+        this.eventBus = appBuilder.getEventBus();
     }
 
-    static Dict buildEventTypeTypeSelection(IHazardEvent selectedEvent,
-            String fullType) {
+    void createEvent(Double centerX, Double centerY) {
+        SpatialDisplayAction displayAction = new SpatialDisplayAction(
+                HazardConstants.NEW_EVENT_SHAPE);
+        Dict toolParameters = buildEventArea(centerX, centerY);
+        displayAction.setToolParameters(toolParameters);
+        eventBus.post(displayAction);
+    }
+
+    void assignEventType(String eventType) {
+        IHazardEvent selectedEvent = getSelectedEvent();
+
+        Dict dict = buildEventTypeSelection(selectedEvent, eventType);
+
+        HazardDetailAction hazardDetailAction = new HazardDetailAction(
+                HazardConstants.UPDATE_EVENT_TYPE);
+        hazardDetailAction.setJSONText(dict.toJSONString());
+        appBuilder.getEventBus().post(hazardDetailAction);
+    }
+
+    IHazardEvent getSelectedEvent() {
+        IHazardEvent selectedEvent = appBuilder.getSessionManager()
+                .getEventManager().getSelectedEvents().iterator().next();
+        return selectedEvent;
+    }
+
+    Dict buildEventArea(Double centerX, Double centerY) {
+        Dict result = new Dict();
+        DictList shapes = new DictList();
+        result.put(HazardConstants.SHAPES, shapes);
+        Dict shape = new Dict();
+        shapes.add(shape);
+        shape.put(HazardConstants.IS_SELECTED_KEY, Boolean.TRUE.toString());
+        shape.put(HazardConstants.IS_VISIBLE_KEY, Boolean.TRUE.toString());
+        shape.put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
+                HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+        DictList points = new DictList();
+        shape.put(HazardConstants.POINTS, points);
+        DictList point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET);
+        points.add(point);
+        point = buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET);
+        points.add(point);
+        point = buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
+                EVENT_BUILDER_OFFSET);
+        points.add(point);
+        point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                EVENT_BUILDER_OFFSET);
+        points.add(point);
+        point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET);
+        points.add(point);
+        return result;
+    }
+
+    private DictList buildPoint(Double centerX, Double centerY, Double xOffset,
+            Double yOffset) {
+        DictList point = new DictList();
+        point.add(centerX + xOffset);
+        point.add(centerY + yOffset);
+        return point;
+    }
+
+    Dict buildEventTypeSelection(IHazardEvent selectedEvent, String fullType) {
         /*
          * Build the JSON simulating a hazard type selection in the HID.
          */
@@ -145,16 +212,16 @@ public class AutoTestUtilities {
      * @param
      * @return
      */
-    static void issueEvent(EventBus eventBus) {
+    void issueEvent() {
         eventBus.post(new HazardDetailAction(HazardAction.ISSUE.getValue()));
     }
 
-    static void previewEvent(EventBus eventBus) {
+    void previewEvent() {
         eventBus.post(new HazardDetailAction(HazardAction.PREVIEW.getValue()));
     }
 
     @SuppressWarnings("unchecked")
-    static Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
+    Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
         List<Dict> productsCollection = editorView
                 .getGeneratedProductsDictList();
         Dict productCollection = productsCollection.get(0);

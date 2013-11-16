@@ -13,14 +13,12 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -41,6 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * Aug 06, 2013     1265   bryon.lawrence         Added support for undo/redo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
@@ -311,33 +310,6 @@ public class ModelDecorator implements IHazardServicesModel {
         benchmarkStop(methodName);
     }
 
-    @Override
-    public String createProductsFromEventIDs(String issueFlag) {
-        final String methodName = "createProductsFromEventIDs";
-        logCallingMethod(methodName);
-        log(String.format("issueFlag: %s", issueFlag));
-        benchmarkStart(methodName);
-        String result = decorated.createProductsFromEventIDs(issueFlag);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
-    @Override
-    public String createProductsFromHazardEventSets(String issueFlag,
-            String hazardEventSets) {
-        final String methodName = "createProductsFromHazardEventSets";
-        logCallingMethod(methodName);
-        log(String.format("eventdIDs: %s", issueFlag));
-        log(String.format("hazardEventSets: %s", hazardEventSets));
-        benchmarkStart(methodName);
-        String result = decorated.createProductsFromHazardEventSets(issueFlag,
-                hazardEventSets);
-        benchmarkStop(methodName);
-        logResult(result);
-        return result;
-    }
-
     private void log(String message) {
         if (loggingOn) {
             try {
@@ -403,20 +375,6 @@ public class ModelDecorator implements IHazardServicesModel {
         log(String.format("toolID: %s", toolID));
         benchmarkStart(methodName);
         String result = decorated.handleRecommenderResult(toolID, eventList);
-        benchmarkStop(methodName);
-        return result;
-    }
-
-    @Override
-    public String handleProductGeneratorResult(String toolID,
-            List<IGeneratedProduct> generatedProductList) {
-        final String methodName = "handleProductGeneratorResult";
-        logCallingMethod(methodName);
-        // ToStringBuilder.reflectionToString(generatedProductList);
-        log(String.format("toolID: %s", toolID));
-        benchmarkStart(methodName);
-        String result = decorated.handleProductGeneratorResult(toolID,
-                generatedProductList);
         benchmarkStop(methodName);
         return result;
     }

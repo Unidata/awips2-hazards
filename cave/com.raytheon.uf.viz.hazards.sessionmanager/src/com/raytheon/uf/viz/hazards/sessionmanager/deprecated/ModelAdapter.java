@@ -22,16 +22,11 @@ package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.DeserializationConfig;
@@ -45,7 +40,6 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -65,17 +59,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.Choice;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.Field;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.GeneratedProduct;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.HazardEventSet;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.StagingInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
@@ -124,6 +111,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      receive hazard-specific menu entries
  *                                      as a List<String> instead of a String[].
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
@@ -139,17 +127,9 @@ public abstract class ModelAdapter {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ModelAdapter.class);
 
-    private final ISessionManager model;
+    private final ISessionManager sessionManager;
 
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
-
-    // The product editor presenter doesn't handle async multiple generations
-    // very well so this code must accumulate products.
-    private ProductGenerationResult generatedProducts = null;
-
-    private int numProducts = 0;
-
-    private boolean issue;
 
     /**
      * Files in localization to be removed when the events are reset from the
@@ -163,8 +143,8 @@ public abstract class ModelAdapter {
             "gfe/userPython/vtecRecords.lock" };
 
     public ModelAdapter(ISessionManager sessionManager) {
-        this.model = sessionManager;
-        this.model.registerForNotification(this);
+        this.sessionManager = sessionManager;
+        this.sessionManager.registerForNotification(this);
         this.jsonObjectMapper
                 .configure(
                         DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
@@ -180,13 +160,14 @@ public abstract class ModelAdapter {
     public void initialize(Date selectedTime, String staticSettingID,
             String dynamicSetting_json, String caveMode, String siteID,
             EventBus eventBus) {
-        model.getTimeManager().setSelectedTime(selectedTime);
-        model.getConfigurationManager().setSiteID(siteID);
-        model.getConfigurationManager().changeSettings(staticSettingID);
+        sessionManager.getTimeManager().setSelectedTime(selectedTime);
+        sessionManager.getConfigurationManager().setSiteID(siteID);
+        sessionManager.getConfigurationManager()
+                .changeSettings(staticSettingID);
         if (dynamicSetting_json != null && !dynamicSetting_json.isEmpty()) {
             Settings dynamicSettings = fromJson(dynamicSetting_json,
                     Settings.class);
-            model.getConfigurationManager().getSettings()
+            sessionManager.getConfigurationManager().getSettings()
                     .apply(dynamicSettings);
         }
     }
@@ -196,7 +177,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getLastSelectedEventID() {
-        IHazardEvent event = model.getEventManager()
+        IHazardEvent event = sessionManager.getEventManager()
                 .getLastModifiedSelectedEvent();
         if (event != null) {
             return event.getEventID();
@@ -211,9 +192,9 @@ public abstract class ModelAdapter {
     public String newEvent(String eventShape) {
         Event event = fromJson(eventShape, Event.class);
         IHazardEvent hevent = event.toHazardEvent();
-        hevent.addHazardAttribute("creationTime", model.getTimeManager()
-                .getCurrentTime());
-        hevent = model.getEventManager().addEvent(hevent);
+        hevent.addHazardAttribute("creationTime", sessionManager
+                .getTimeManager().getCurrentTime());
+        hevent = sessionManager.getEventManager().addEvent(hevent);
         return hevent.getEventID();
     }
 
@@ -222,7 +203,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public void modifyEventArea(String jsonText) {
-        ISessionEventManager eventManager = model.getEventManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
         Event jevent = fromJson(jsonText, Event.class);
         IHazardEvent event = eventManager.getEventById(jevent.getEventID());
         if (event != null) {
@@ -246,7 +227,7 @@ public abstract class ModelAdapter {
     @Deprecated
     public void reset() {
 
-        ISessionEventManager eventManager = model.getEventManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
         for (IHazardEvent event : eventManager.getEvents()) {
             eventManager.removeEvent(event);
         }
@@ -286,7 +267,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public Date getSelectedTime() {
-        return model.getTimeManager().getSelectedTime();
+        return sessionManager.getTimeManager().getSelectedTime();
     }
 
     /*
@@ -294,7 +275,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public void updateSelectedTime(Date selectedTime_ms) {
-        model.getTimeManager().setSelectedTime(selectedTime_ms);
+        sessionManager.getTimeManager().setSelectedTime(selectedTime_ms);
     }
 
     /*
@@ -302,7 +283,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getSelectedTimeRange() {
-        TimeRange range = model.getTimeManager().getSelectedTimeRange();
+        TimeRange range = sessionManager.getTimeManager()
+                .getSelectedTimeRange();
         return toJson(new String[] { fromDate(range.getStart()),
                 fromDate(range.getEnd()) });
 
@@ -313,7 +295,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public Date getCurrentTime() {
-        return model.getTimeManager().getCurrentTime();
+        return sessionManager.getTimeManager().getCurrentTime();
     }
 
     /*
@@ -329,7 +311,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getTimeLineEarliestVisibleTime() {
-        return fromDate(model.getTimeManager().getVisibleRange().getStart());
+        return fromDate(sessionManager.getTimeManager().getVisibleRange()
+                .getStart());
     }
 
     /*
@@ -337,7 +320,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getTimeLineLatestVisibleTime() {
-        return fromDate(model.getTimeManager().getVisibleRange().getEnd());
+        return fromDate(sessionManager.getTimeManager().getVisibleRange()
+                .getEnd());
     }
 
     /*
@@ -345,7 +329,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getCurrentSettingsID() {
-        return model.getConfigurationManager().getSettings().getSettingsID();
+        return sessionManager.getConfigurationManager().getSettings()
+                .getSettingsID();
     }
 
     /*
@@ -353,7 +338,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getStaticSettings(String settingsID) {
-        return toJson(new Settings(model.getConfigurationManager()
+        return toJson(new Settings(sessionManager.getConfigurationManager()
                 .getSettings()));
     }
 
@@ -362,7 +347,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getDynamicSettings() {
-        Settings dset = model.getConfigurationManager().getSettings();
+        Settings dset = sessionManager.getConfigurationManager().getSettings();
         return toJson(dset);
     }
 
@@ -373,8 +358,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getTimeLineDuration() {
-        return Long.toString(model.getConfigurationManager().getSettings()
-                .getDefaultTimeDisplayDuration());
+        return Long.toString(sessionManager.getConfigurationManager()
+                .getSettings().getDefaultTimeDisplayDuration());
     }
 
     /*
@@ -382,7 +367,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getSettingsList() {
-        ISessionConfigurationManager configManager = model
+        ISessionConfigurationManager configManager = sessionManager
                 .getConfigurationManager();
         Settings[] s = configManager.getSettingsList().toArray(new Settings[0]);
         SettingsList list = new SettingsList();
@@ -396,142 +381,12 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getToolList() {
-        return toJson(model.getConfigurationManager().getSettings()
+        return toJson(sessionManager.getConfigurationManager().getSettings()
                 .getToolbarTools());
-    }
-
-    /*
-     * Use ISessionProductManager.getSelectedProducts()
-     */
-    @Deprecated
-    public String createProductsFromEventIDs(String issueFlag) {
-        ISessionProductManager productManager = model.getProductManager();
-        Collection<ProductInformation> products = productManager
-                .getSelectedProducts();
-        boolean gen = true;
-        for (ProductInformation info : products) {
-            if (info.getDialogInfo() != null && !info.getDialogInfo().isEmpty()) {
-                gen = false;
-            } else if (info.getPossibleProductEvents() != null
-                    && !info.getPossibleProductEvents().isEmpty()) {
-                gen = false;
-            }
-            if (!gen) {
-                break;
-            }
-        }
-        ProductGenerationResult result = new ProductGenerationResult();
-        if (gen) {
-            generatedProducts = new ProductGenerationResult();
-            numProducts = products.size();
-            issue = issueFlag.equalsIgnoreCase(Boolean.TRUE.toString());
-            for (ProductInformation info : products) {
-                productManager.generate(info,
-                        issueFlag.equalsIgnoreCase(Boolean.TRUE.toString()));
-
-            }
-            result.setReturnType("NONE");
-        } else {
-            result.setReturnType("stagingInfo");
-            HazardEventSet[] sets = new HazardEventSet[products.size()];
-            int setIndex = 0;
-            for (ProductInformation info : products) {
-                sets[setIndex] = new HazardEventSet();
-                StagingInfo stage = new StagingInfo();
-                Field[] fields = { new Field() };
-                fields[0].setLines(info.getProductEvents().size());
-                List<IHazardEvent> echoices = new ArrayList<IHazardEvent>();
-                echoices.addAll(info.getProductEvents());
-                echoices.addAll(info.getPossibleProductEvents());
-                int choiceIndex = 0;
-                Choice[] choices = new Choice[echoices.size()];
-                for (IHazardEvent event : echoices) {
-                    choices[choiceIndex] = new Choice();
-                    StringBuilder displayString = new StringBuilder();
-                    displayString.append(event.getEventID());
-                    displayString.append(" ");
-                    displayString.append(event.getPhenomenon());
-                    displayString.append(".");
-                    displayString.append(event.getSignificance());
-                    if (event.getSubtype() != null) {
-                        displayString.append(".");
-                        displayString.append(event.getSubtype());
-                    }
-                    choices[choiceIndex].setDisplayString(displayString
-                            .toString());
-                    choices[choiceIndex].setIdentifier(event.getEventID());
-                    choiceIndex += 1;
-                }
-                fields[0].setChoices(choices);
-                fields[0].setFieldName("eventIDs");
-                fields[0].setFieldType("CheckList");
-                fields[0]
-                        .setLabel("When issuing this hazard, there are other related hazards that could be included in the legacy product:");
-                stage.setFields(fields);
-                Map<String, String[]> valueDict = new HashMap<String, String[]>();
-                valueDict.put("eventIDs", toIDs(info.getProductEvents()));
-                stage.setValueDict(valueDict);
-                sets[setIndex].setStagingInfo(stage);
-                sets[setIndex].setDialogInfo(info.getDialogInfo());
-                sets[setIndex].setProductGenerator(info.getProductName());
-                setIndex += 1;
-            }
-            result.setHazardEventSets(sets);
-        }
-        return toJson(result);
     }
 
     protected abstract IPythonJobListener<List<IGeneratedProduct>> getProductGenerationListener(
             String toolName);
-
-    /*
-     * Use ISessionProductManager.generate()
-     */
-    @Deprecated
-    public String createProductsFromHazardEventSets(String issueFlag,
-            String hazardEventSets) {
-        ISessionProductManager productManager = model.getProductManager();
-        Collection<ProductInformation> products = productManager
-                .getSelectedProducts();
-        ProductGenerationResult result = fromJson(hazardEventSets,
-                ProductGenerationResult.class);
-        generatedProducts = new ProductGenerationResult();
-        numProducts = result.getHazardEventSets().length;
-        issue = issueFlag.equalsIgnoreCase(Boolean.TRUE.toString());
-        for (HazardEventSet set : result.getHazardEventSets()) {
-            ProductInformation info = null;
-            for (ProductInformation testInfo : products) {
-                if (set.getProductGenerator().equals(testInfo.getProductName())) {
-                    info = testInfo;
-                    break;
-                }
-            }
-            Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
-            String[] events = set.getStagingInfo().getValueDict()
-                    .get("eventIDs");
-            for (String eventID : events) {
-                for (IHazardEvent event : info.getProductEvents()) {
-                    if (event.getEventID().equals(eventID)) {
-                        selectedEvents.add(event);
-                        break;
-                    }
-                }
-                for (IHazardEvent event : info.getPossibleProductEvents()) {
-                    if (event.getEventID().equals(eventID)) {
-                        selectedEvents.add(event);
-                        break;
-                    }
-                }
-            }
-            info.setProductEvents(selectedEvents);
-            productManager.generate(info,
-                    issueFlag.equalsIgnoreCase(Boolean.TRUE.toString()));
-
-        }
-        result = new ProductGenerationResult();
-        result.setReturnType("NONE");
-        return toJson(result);
-    }
 
     /*
      * Use ISessionEventManager.addEvent
@@ -544,11 +399,11 @@ public abstract class ModelAdapter {
         for (IEvent event : eventList) {
             if (event instanceof IHazardEvent) {
                 IHazardEvent hevent = (IHazardEvent) event;
-                hevent = model.getEventManager().addEvent(hevent);
+                hevent = sessionManager.getEventManager().addEvent(hevent);
                 Event jevent = new Event(hevent);
                 String type = jevent.getType();
                 if (type != null) {
-                    String headline = model.getConfigurationManager()
+                    String headline = sessionManager.getConfigurationManager()
                             .getHeadline(hevent);
                     jevent.setHeadline(headline);
                     jevent.setFullType(type + " (" + headline + ")");
@@ -557,8 +412,8 @@ public abstract class ModelAdapter {
             }
         }
         result.setResultData(events.toArray(new Event[0]));
-        result.setMetaData(model.getRecommenderEngine().getScriptMetadata(
-                toolID));
+        result.setMetaData(sessionManager.getRecommenderEngine()
+                .getScriptMetadata(toolID));
         return toJson(result);
     }
 
@@ -585,7 +440,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public void undo() {
-        Collection<IHazardEvent> events = model.getEventManager()
+        Collection<IHazardEvent> events = sessionManager.getEventManager()
                 .getSelectedEvents();
 
         if (events.size() == 1) {
@@ -605,7 +460,7 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public void redo() {
-        Collection<IHazardEvent> events = model.getEventManager()
+        Collection<IHazardEvent> events = sessionManager.getEventManager()
                 .getSelectedEvents();
 
         /*
@@ -629,8 +484,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public Boolean isUndoable() {
-        Collection<IHazardEvent> hazardEvents = model.getEventManager()
-                .getSelectedEvents();
+        Collection<IHazardEvent> hazardEvents = sessionManager
+                .getEventManager().getSelectedEvents();
 
         /*
          * Limited to single selected hazard events.
@@ -652,8 +507,8 @@ public abstract class ModelAdapter {
     @Deprecated
     public Boolean isRedoable() {
 
-        Collection<IHazardEvent> hazardEvents = model.getEventManager()
-                .getSelectedEvents();
+        Collection<IHazardEvent> hazardEvents = sessionManager
+                .getEventManager().getSelectedEvents();
 
         /*
          * Limit to single selection.
@@ -664,96 +519,6 @@ public abstract class ModelAdapter {
         }
 
         return false;
-    }
-
-    /*
-     * Use ProductGenerated Notifications
-     */
-    @Deprecated
-    public String handleProductGeneratorResult(String toolID,
-            List<IGeneratedProduct> generatedProductsList) {
-        numProducts -= 1;
-
-        Collection<IHazardEvent> selectedEvents = model.getEventManager()
-                .getSelectedEvents();
-
-        ProductGenerationResult result = generatedProducts;
-        result.setReturnType(HazardConstants.GENERATED_PRODUCTS);
-        List<GeneratedProduct> products = new ArrayList<GeneratedProduct>();
-        for (IGeneratedProduct product : generatedProductsList) {
-            GeneratedProduct genProduct = new GeneratedProduct();
-            genProduct.setProductID(product.getProductID());
-            for (String formatKey : product.getEntries().keySet()) {
-                genProduct.addProduct(formatKey, product.getEntry(formatKey)
-                        .get(0).toString());
-            }
-            products.add(genProduct);
-        }
-        if (products.isEmpty()) {
-            GeneratedProduct genProduct = new GeneratedProduct();
-            genProduct.setProductID("EMPTY");
-            genProduct
-                    .addProduct("EMPTY",
-                            " EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. ");
-            products.add(genProduct);
-        }
-        if (result.getGeneratedProducts() != null) {
-            products.addAll(Arrays.asList(result.getGeneratedProducts()));
-        }
-        result.setGeneratedProducts(products.toArray(new GeneratedProduct[0]));
-        Field field = new Field();
-        field.setLines(selectedEvents.size());
-        List<Choice> choices = new ArrayList<Choice>();
-        List<String> eventIDs = new ArrayList<String>();
-        for (IHazardEvent event : selectedEvents) {
-            Choice choice = new Choice();
-            StringBuilder eventDisplayString = new StringBuilder(
-                    event.getEventID());
-            if (event.getPhenomenon() != null) {
-                eventDisplayString.append(" ");
-                eventDisplayString.append(event.getPhenomenon());
-                if (event.getSignificance() != null) {
-                    eventDisplayString.append(".");
-                    eventDisplayString.append(event.getSignificance());
-                    if (event.getSubtype() != null) {
-                        eventDisplayString.append(".");
-                        eventDisplayString.append(event.getSubtype());
-                    }
-                }
-            }
-            choice.setDisplayString(eventDisplayString.toString());
-            choice.setIdentifier(event.getEventID());
-            choices.add(choice);
-            eventIDs.add(event.getEventID());
-        }
-        if (issue) {
-            result = new ProductGenerationResult();
-            result.setReturnType(null);
-            return toJson(result);
-        }
-        field.setChoices(choices.toArray(new Choice[0]));
-        field.setFieldName("eventIDs");
-        field.setFieldType("CheckList");
-        field.setLabel("When issuing this hazard, there are other related hazards that could be included in the legacy product:");
-        StagingInfo stagingInfo = new StagingInfo();
-        stagingInfo.setFields(new Field[] { field });
-        Map<String, String[]> valueDict = new HashMap<String, String[]>();
-        valueDict.put("eventIDs", eventIDs.toArray(new String[0]));
-        stagingInfo.setValueDict(valueDict);
-        HazardEventSet hes = new HazardEventSet();
-        hes.setStagingInfo(stagingInfo);
-        hes.setProductGenerator(toolID);
-        hes.setDialogInfo(new HashMap<String, String>());
-        List<HazardEventSet> sets = new ArrayList<HazardEventSet>();
-        sets.add(hes);
-        if (result.getHazardEventSets() != null) {
-            sets.addAll(Arrays.asList(result.getHazardEventSets()));
-        }
-        result.setHazardEventSets(sets.toArray(new HazardEventSet[0]));
-        if (numProducts > 0) {
-            return null;
-        }
-        return toJson(result);
     }
 
     /*
@@ -772,8 +537,8 @@ public abstract class ModelAdapter {
     @Deprecated
     @SuppressWarnings("unchecked")
     public String getComponentData(String component, String eventID) {
-        ISessionEventManager eventManager = model.getEventManager();
-        ISessionTimeManager timeManager = model.getTimeManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
+        ISessionTimeManager timeManager = sessionManager.getTimeManager();
 
         Collection<IHazardEvent> events = null;
         if (component.equalsIgnoreCase("Temporal")) {
@@ -798,7 +563,7 @@ public abstract class ModelAdapter {
         } else if (component.equalsIgnoreCase("HID")) {
             events = eventManager.getSelectedEvents();
         }
-        ISessionConfigurationManager configManager = model
+        ISessionConfigurationManager configManager = sessionManager
                 .getConfigurationManager();
         Date time = timeManager.getSelectedTime();
         Event[] events2 = new Event[events.size()];
@@ -888,7 +653,8 @@ public abstract class ModelAdapter {
      */
     @Deprecated
     public String getConfigItem(String item) {
-        ISessionConfigurationManager cm = model.getConfigurationManager();
+        ISessionConfigurationManager cm = sessionManager
+                .getConfigurationManager();
         if (item.equals("startUpConfig")) {
             return toJson(cm.getStartUpConfig());
         } else if (item.equals("hazardInfoConfig")) {
@@ -920,20 +686,12 @@ public abstract class ModelAdapter {
         }
     }
 
-    private String[] toIDs(Collection<IHazardEvent> actualHazardEventObjects) {
-        List<String> ids = new ArrayList<String>();
-        for (IHazardEvent event : actualHazardEventObjects) {
-            ids.add(event.getEventID());
-        }
-        return ids.toArray(new String[0]);
-    }
-
     private String fromDate(Date actualDateObject) {
         return Long.toString(actualDateObject.getTime());
     }
 
     public ISessionManager getSessionManager() {
-        return model;
+        return sessionManager;
     }
 
 }

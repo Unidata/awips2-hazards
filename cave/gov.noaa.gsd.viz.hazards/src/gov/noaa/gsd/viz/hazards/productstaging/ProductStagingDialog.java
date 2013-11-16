@@ -8,14 +8,16 @@
 package gov.noaa.gsd.viz.hazards.productstaging;
 
 import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -32,7 +34,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Shell;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -59,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                     and foreground colors in order to stay
  *                                     in synch with CAVE mode.
  * Jul 18, 2013    585     Chris G.    Changed to support loading from bundle.
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author shouming.wei
@@ -89,11 +91,6 @@ class ProductStagingDialog extends BasicDialog {
     private static final String EVENTS_SECTION_TEXT = "Events";
 
     /**
-     * Parameters section text.
-     */
-    private static final String PARAMETERS_SECTION_TEXT = "Product Generator Parameters";
-
-    /**
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
@@ -102,9 +99,9 @@ class ProductStagingDialog extends BasicDialog {
     // Private Variables
 
     /**
-     * Product staging information dictionary.
+     * Product staging information.
      */
-    private Dict productStagingInfo;
+    private ProductStagingInfo productStagingInfo;
 
     /**
      * Flag indicating whether or not the product is to be issued.
@@ -121,7 +118,7 @@ class ProductStagingDialog extends BasicDialog {
      * Megawidget manager for dialog info megawidgets.
      */
     @SuppressWarnings("unused")
-    private MegawidgetManager dialogMegawidgetManager = null;
+    private final MegawidgetManager dialogMegawidgetManager = null;
 
     /**
      * Continue command invocation handler.
@@ -148,6 +145,8 @@ class ProductStagingDialog extends BasicDialog {
 
         // Public Constructors
 
+        private final Product product;
+
         /**
          * Construct a standard instance.
          * 
@@ -165,14 +164,16 @@ class ProductStagingDialog extends BasicDialog {
          *            <code>specifiers</code> should have an entry in this
          *            dictionary, mapping the specifier's identifier to the
          *            value that the megawidget will take on.
+         * @param product
          * @throws MegawidgetException
          *             If one of the megawidget specifiers is invalid, or if an
          *             error occurs while creating or initializing one of the
          *             megawidgets.
          */
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
-                Dict state) throws MegawidgetException {
+                Dict state, Product product) throws MegawidgetException {
             super(parent, specifiers, state, 0L, 0L, 0L, 0L);
+            this.product = product;
         }
 
         // Protected Methods
@@ -186,8 +187,9 @@ class ProductStagingDialog extends BasicDialog {
 
         @Override
         protected final void stateElementChanged(String identifier, Object state) {
-
-            // No action.
+            @SuppressWarnings("unchecked")
+            List<String> selectedEventIDs = (ArrayList<String>) state;
+            product.updateSelectedEventIDs(selectedEventIDs);
         }
     }
 
@@ -214,12 +216,10 @@ class ProductStagingDialog extends BasicDialog {
      *            Flag indicating whether or not the product staging dialog is
      *            being called as the result of a product issue action.
      * @param productStagingInfo
-     *            Dictionary containing a list containing information about the
-     *            potential products for staging as well as possible megawidgets
-     *            allowing for user-defined portions of the product staging
-     *            dialog.
+     *            Potential products for staging
      */
-    public void initialize(boolean isToBeIssued, Dict productStagingInfo) {
+    public void initialize(boolean isToBeIssued,
+            ProductStagingInfo productStagingInfo) {
         this.toBeIssued = isToBeIssued;
         this.productStagingInfo = productStagingInfo;
     }
@@ -244,13 +244,7 @@ class ProductStagingDialog extends BasicDialog {
         return toBeIssued;
     }
 
-    /**
-     * Get the dictionary holding the list of products and any megawidgets that
-     * were used.
-     * 
-     * @return Dictionary holding the list of products and megawidgets.
-     */
-    public Dict getProductList() {
+    public ProductStagingInfo getProductStagingInfo() {
         return productStagingInfo;
     }
 
@@ -274,14 +268,13 @@ class ProductStagingDialog extends BasicDialog {
         CTabFolder tabFolder = new CTabFolder(top, SWT.TOP);
         tabFolder.setBorderVisible(true);
         new ModeListener(tabFolder);
-        List<Dict> hazardEventSetList = productStagingInfo
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
-        for (int i = 0; i < hazardEventSetList.size(); i++) {
-            Dict tabInfo = hazardEventSetList.get(i);
+        List<ProductStagingInfo.Product> products = productStagingInfo
+                .getProducts();
+        for (ProductStagingInfo.Product product : products) {
+
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
-            tabItem.setText(TAB_TEXT_PREFIX
-                    + tabInfo.get("productGenerator").toString());
-            Control control = createTabFolderPage(tabFolder, tabInfo);
+            tabItem.setText(TAB_TEXT_PREFIX + product.getProductGenerator());
+            Control control = createTabFolderPage(tabFolder, product);
             tabItem.setControl(control);
         }
         return top;
@@ -299,7 +292,7 @@ class ProductStagingDialog extends BasicDialog {
     protected void buttonPressed(int buttonId) {
         super.buttonPressed(buttonId);
         if ((buttonId == IDialogConstants.OK_ID) && (continueHandler != null)) {
-            continueHandler.commandInvoked("Continue");
+            continueHandler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
         }
     }
 
@@ -310,11 +303,11 @@ class ProductStagingDialog extends BasicDialog {
      * 
      * @param tabFolder
      *            The tabFolder to populate.
-     * @param tabInfo
-     *            Dictionary containing information for this tab page.
+     * @param product
+     *            Product for this tab page.
      * @return Created tab folder page.
      */
-    private Control createTabFolderPage(CTabFolder tabFolder, Dict tabInfo) {
+    private Control createTabFolderPage(CTabFolder tabFolder, Product product) {
         ScrolledComposite scrolledComposite = new ScrolledComposite(tabFolder,
                 SWT.V_SCROLL);
         Composite tabFolderPage = new Composite(scrolledComposite, SWT.NONE);
@@ -330,8 +323,7 @@ class ProductStagingDialog extends BasicDialog {
 
         // Create the user-configurable portions of the dialog.
         try {
-            createStagingInfoComposite(tabFolderPage, tabInfo);
-            createProductInfoComposite(tabFolderPage, tabInfo);
+            createStagingInfoComposite(tabFolderPage, product);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("ProductStagingDialog."
                     + "createTabFolderPage(): Megawidget creation error.", e);
@@ -352,47 +344,19 @@ class ProductStagingDialog extends BasicDialog {
      * 
      * @param tabPage
      *            Page in which to create the composite.
-     * @param tabInfo
-     *            Dictionary containing information for this tab page.
+     * @param product
+     *            Product information for this tab page.
      * @throws MegawidgetSpecificationException
      *             An exception encountered while building megawidgets.
      */
-    private void createStagingInfoComposite(Composite tabPage, Dict tabInfo)
+    private void createStagingInfoComposite(Composite tabPage, Product product)
             throws MegawidgetSpecificationException {
-        Dict stagingInfoDict = tabInfo.getDynamicallyTypedValue("stagingInfo");
-        if (stagingInfoDict != null && stagingInfoDict.size() > 0) {
-            Group fieldsGroup = new Group(tabPage, SWT.NONE);
-            fieldsGroup.setText(EVENTS_SECTION_TEXT);
-            fieldsGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-                    false));
-            stagingMegawidgetManager = buildMegawidgets(fieldsGroup,
-                    stagingInfoDict);
-        }
-    }
+        Group fieldsGroup = new Group(tabPage, SWT.NONE);
+        fieldsGroup.setText(EVENTS_SECTION_TEXT);
+        fieldsGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
+                false));
+        stagingMegawidgetManager = buildMegawidgets(fieldsGroup, product);
 
-    /**
-     * Builds megawidgets specific to the product generators. These are added to
-     * the dialog and collect any additional information required by the product
-     * generators.
-     * 
-     * @param tabPage
-     *            Page in which to create the composite.
-     * @param tabInfo
-     *            Dictionary containing information for this tab page.
-     * @throws MegawidgetSpecificationException
-     *             An exception encountered while building the megawidgets.
-     */
-    private void createProductInfoComposite(Composite tabPage, Dict tabInfo)
-            throws MegawidgetSpecificationException {
-        Dict productInfoDict = tabInfo.getDynamicallyTypedValue("dialogInfo");
-        if (productInfoDict != null && productInfoDict.size() > 0) {
-            Group productInfoGroup = new Group(tabPage, SWT.NONE);
-            productInfoGroup.setText(PARAMETERS_SECTION_TEXT);
-            productInfoGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
-                    true, false));
-            dialogMegawidgetManager = buildMegawidgets(productInfoGroup,
-                    productInfoDict);
-        }
     }
 
     /**
@@ -401,50 +365,24 @@ class ProductStagingDialog extends BasicDialog {
      * 
      * @param panel
      *            The container (parent) for the constructed megawidgets
-     * @param megawidgetDict
-     *            Dictionary containing an entry for the megawidgets (either a
-     *            dictionary defining a single megawidget, or a list of
-     *            dictionaries defining multiple megawidgets), and an entry for
-     *            the dictionary holding the values for the megawidget(s).
+     * @param product
+     *            product in the {@link ProductStagingInfo}
      * @return Megawidget manager that was created.
      */
-    private MegawidgetManager buildMegawidgets(Composite panel,
-            Dict megawidgetDict) {
-
-        // Get the dictionary or list of dictionaries defining the mega-
-        // widget(s) to be built; if only a dictionary is provided, put it
-        // in a list.
-        Object specifiersObj = megawidgetDict
-                .getDynamicallyTypedValue("fields");
-        DictList specifiers = null;
-        if (specifiersObj == null) {
-            statusHandler.debug("ProductStagingDialog.buildMegawidgets(): "
-                    + "Warning: no widgets specified for staging info.");
-            return null;
-        } else if (specifiersObj instanceof DictList) {
-            specifiers = megawidgetDict.getDynamicallyTypedValue("fields");
-        } else if (specifiersObj instanceof List) {
-            specifiers = new DictList();
-            for (Object specifier : (List<?>) specifiersObj) {
-                specifiers.add(specifier);
-            }
-        } else {
-            Dict specifier = megawidgetDict.getDynamicallyTypedValue("fields");
-            specifiers = new DictList();
-            specifiers.add(specifier);
-        }
+    private MegawidgetManager buildMegawidgets(Composite panel, Product product) {
 
         // Get the dictionary holding the values for the megawidgets.
-        Dict values = megawidgetDict.getDynamicallyTypedValue("valueDict");
+        Dict values = new Dict();
+        values.put(HazardConstants.HAZARD_EVENT_IDS,
+                product.getSelectedEventIDs());
 
         // Create the megawidget manager, which will in turn create the mega-
         // widgets and bind them to the values dictionary, and return it.
-        List<Dict> specifiersList = Lists.newArrayList();
-        for (Object specifier : specifiers) {
-            specifiersList.add((Dict) specifier);
-        }
+        List<Dict> specifiersList = product.fieldsAsDicts();
+
         try {
-            return new DialogMegawidgetManager(panel, specifiersList, values);
+            return new DialogMegawidgetManager(panel, specifiersList, values,
+                    product);
         } catch (MegawidgetException e) {
             statusHandler
                     .error("ProductStagingDialog.buildMegawidgets(): Unable to create "

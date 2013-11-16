@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                             the EventSet passed to a recommender when it
  *                                             is run.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
@@ -109,13 +110,6 @@ public final class HazardServicesMessageHandler {
     private final String PREVIEW_ENDED = "previewEnded";
 
     /**
-     * True/False string representations
-     */
-    private final String TRUE_FLAG = "True";
-
-    private final String FALSE_FLAG = "False";
-
-    /**
      * The key for a hazard's label in a hazard event dict.
      */
     private final String HAZARD_LABEL = "label";
@@ -126,8 +120,6 @@ public final class HazardServicesMessageHandler {
     private final String RETURN_TYPE = "returnType";
 
     private final String POINT_RETURN_TYPE = "Point";
-
-    private final String STAGING_INFO_RETURN_TYPE = "stagingInfo";
 
     /**
      * Indicates that a range of selected times has been updated.
@@ -170,6 +162,8 @@ public final class HazardServicesMessageHandler {
     private final ISessionConfigurationManager sessionConfigurationManager;
 
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
+
+    private final HazardServicesProductGenerationHandler productGeneratorHandler;
 
     // Public Static Methods
 
@@ -230,6 +224,8 @@ public final class HazardServicesMessageHandler {
             Date currentTime, String dynamicSettingJSON) {
         this.appBuilder = appBuilder;
         ISessionManager sessionManager = appBuilder.getSessionManager();
+        this.productGeneratorHandler = new HazardServicesProductGenerationHandler(
+                sessionManager);
         this.sessionEventManager = sessionManager.getEventManager();
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
@@ -522,8 +518,8 @@ public final class HazardServicesMessageHandler {
     public void handleProductGeneratorResult(String toolID,
             final List<IGeneratedProduct> productList) {
 
-        String resultJSON = model.handleProductGeneratorResult(toolID,
-                productList);
+        String resultJSON = productGeneratorHandler
+                .handleProductGeneratorResult(toolID, productList);
 
         if (resultJSON != null) {
 
@@ -614,32 +610,19 @@ public final class HazardServicesMessageHandler {
     /**
      * Launch the Staging Dialog if necessary OR return the Generated Products
      * 
-     * @param issueFlag
+     * @param issue
      *            Flag indicating whether or not this is the result of an issue
      *            action.
      * @return Products that were generated.
      */
-    private void generateProducts(boolean issueFlag) {
+    private void generateProducts(boolean issue) {
 
-        String issue = FALSE_FLAG;
-
-        if (issueFlag) {
-            issue = TRUE_FLAG;
-        }
-
-        /*
-         * Get StagingInfo OR GeneratedProducts
-         */
-        String returnDict_json = model.createProductsFromEventIDs(issue);
-
-        Dict returnDict = Dict.getInstance(returnDict_json);
-
-        /*
-         * If returnDict's returnType is stagingInfo, invoke the Product Staging
-         * Dialog
-         */
-        if (returnDict.get(RETURN_TYPE).equals(STAGING_INFO_RETURN_TYPE)) {
-            appBuilder.showProductStagingView(issueFlag, returnDict);
+        if (productGeneratorHandler.productGenerationRequired()) {
+            productGeneratorHandler.generateProducts(issue);
+        } else {
+            ProductStagingInfo productStagingInfo = productGeneratorHandler
+                    .buildProductStagingInfo();
+            appBuilder.showProductStagingView(issue, productStagingInfo);
         }
     }
 
@@ -1192,7 +1175,7 @@ public final class HazardServicesMessageHandler {
                 .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
             if (appBuilder.getUserAnswerToQuestion("Are you sure "
                     + "you want to issue the hazard event(s)?")) {
-                model.createProductsFromHazardEventSets(TRUE_FLAG,
+                productGeneratorHandler.createProductsFromHazardEventSets(true,
                         productDisplayJSON);
                 notifyModelEventsChanged();
             }
@@ -1205,15 +1188,16 @@ public final class HazardServicesMessageHandler {
     /**
      * Handles the product display dialog continue action.
      * 
-     * @param issueFlag
+     * @param issue
      *            Flag indicating whether or not this is the result of an issue.
-     * @param hazardEventSets
-     *            Hazard events from which to create products.
+     * @param productStagingInfo
+     * 
      */
-    public void handleProductDisplayContinueAction(String issueFlag,
-            String hazardEventSets) {
-        model.createProductsFromHazardEventSets(issueFlag, hazardEventSets);
-        if (!issueFlag.equalsIgnoreCase(TRUE_FLAG)) {
+    public void handleProductDisplayContinueAction(boolean issue,
+            ProductStagingInfo productStagingInfo) {
+        productGeneratorHandler.createProductsFromProductStagingInfo(issue,
+                productStagingInfo);
+        if (!issue) {
             // appBuilder.showProductEditorView(returnDict_json);
             notifyModelEventsChanged();
         }

@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Oct 22, 2013 2166      daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166      daniel.s.schaffer@noaa.gov      Test in working order
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -213,7 +214,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 checkConsoleSelections();
                 checkHidFloodEventAddition();
                 step = Steps.SELECTION_PREVIEW;
-                previewEvent(eventBus);
+                autoTestUtilities.previewEvent();
                 break;
 
             case REMOVING_POTENTIAL_EVENTS:
@@ -261,7 +262,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 case UPDATING_SECOND_EVENT:
                     checkReplacement();
                     step = Steps.REPLACEMENT_PREVIEW_FIRST_PRODUCT;
-                    previewEvent(eventBus);
+                    autoTestUtilities.previewEvent();
                     break;
 
                 default:
@@ -270,7 +271,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
             } else if (action.equals(UPDATE_EVENT_METADATA)) {
                 step = Steps.CONTINUED_PREVIEW_FIRST_PRODUCT;
-                previewEvent(eventBus);
+                autoTestUtilities.previewEvent();
             }
         } catch (Exception e) {
             handleException(e);
@@ -492,7 +493,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkReplacementPreview() {
-        Dict products = productsFromEditorView(mockProductEditorView);
+        Dict products = autoTestUtilities
+                .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
         assertTrue(legacy.contains("REPLACES FLASH FLOOD WATCH"));
@@ -500,7 +502,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkContinuedPreview() {
-        Dict products = productsFromEditorView(mockProductEditorView);
+        Dict products = autoTestUtilities
+                .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
         assertTrue(legacy.contains(CON_VTEC_STRING));
@@ -508,7 +511,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkEndedPreview() {
-        Dict products = productsFromEditorView(mockProductEditorView);
+        Dict products = autoTestUtilities
+                .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
         assertTrue(legacy.contains(CAN_VTEC_STRING));

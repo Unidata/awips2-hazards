@@ -9,8 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.Collections;
@@ -33,6 +33,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            Bryon.Lawrence    Initial creation.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author bryon.lawrence
@@ -83,7 +84,7 @@ public class ProductStagingView implements
 
     @Override
     public void showProductStagingDetail(boolean toBeIssued,
-            Dict productStagingInfo) {
+            ProductStagingInfo productStagingInfo) {
 
         // Close the dialog if it is already open.
         if (productStagingDialog != null) {
@@ -109,8 +110,8 @@ public class ProductStagingView implements
     }
 
     @Override
-    public Dict getProductInfo() {
-        return productStagingDialog.getProductList();
+    public ProductStagingInfo getProductStagingInfo() {
+        return productStagingDialog.getProductStagingInfo();
     }
 
     // Private Methods

@@ -110,6 +110,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Aug 29, 2013 1921       bryon.lawrence      Modified loadGeometryOverlayForSelectedEvent to
  *                                             not take a JSON list of event ids.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -752,7 +753,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            form of a dictionary.
      */
     public void showProductStagingView(boolean issueFlag,
-            Dict productStagingInfo) {
+            ProductStagingInfo productStagingInfo) {
         productStagingPresenter.showProductStagingDetail(issueFlag,
                 productStagingInfo);
     }

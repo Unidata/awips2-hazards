@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
@@ -28,7 +29,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
 public class ProductStagingAction implements IAction {
     private String action;
 
-    private String jsonText;
+    private ProductStagingInfo productStagingInfo;
 
     private String eventID;
 
@@ -54,10 +55,11 @@ public class ProductStagingAction implements IAction {
         this.action = action;
     }
 
-    public ProductStagingAction(String action, String ID, String jsonText) {
+    public ProductStagingAction(String action, String ID,
+            ProductStagingInfo productStagingInfo) {
         // TODO Auto-generated constructor stub
         this.action = action;
-        this.jsonText = jsonText;
+        this.productStagingInfo = productStagingInfo;
         this.eventID = ID;
     }
 
@@ -69,20 +71,20 @@ public class ProductStagingAction implements IAction {
         return action;
     }
 
-    public void setJSONText(String jsonText) {
-        this.jsonText = jsonText;
-    }
-
-    public String getJSONText() {
-        return jsonText;
-    }
-
     public void setEventID(String ID) {
         this.eventID = ID;
     }
 
     public String getEventID() {
         return eventID;
+    }
+
+    public ProductStagingInfo getProductStagingInfo() {
+        return productStagingInfo;
+    }
+
+    public void setProductStagingInfo(ProductStagingInfo productStagingInfo) {
+        this.productStagingInfo = productStagingInfo;
     }
 
 }

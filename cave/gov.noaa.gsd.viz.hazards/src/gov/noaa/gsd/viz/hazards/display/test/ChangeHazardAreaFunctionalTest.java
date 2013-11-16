@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -57,12 +58,8 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     protected void run() {
         try {
             super.run();
-            SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                    HazardConstants.NEW_EVENT_SHAPE);
-            Dict toolParameters = buildEventArea();
-            displayAction.setToolParameters(toolParameters);
             step = Steps.START;
-            eventBus.post(displayAction);
+            autoTestUtilities.createEvent(-96.0, 41.0);
         } catch (Exception e) {
             handleException(e);
         }
@@ -74,21 +71,13 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
             final SpatialDisplayAction spatialDisplayAction) {
 
         try {
-            String actionType = spatialDisplayAction.getActionType();
-
-            if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)) {
-                IHazardEvent selectedEvent = getEvent();
-
-                Dict dict = buildEventTypeTypeSelection(selectedEvent,
-                        AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
-
-                HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                        HazardConstants.UPDATE_EVENT_TYPE);
-                hazardDetailAction.setJSONText(dict.toJSONString());
-                eventBus.post(hazardDetailAction);
+            if (spatialDisplayAction.getActionType().equals(
+                    HazardConstants.NEW_EVENT_SHAPE)) {
+                autoTestUtilities
+                        .assignEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
             } else {
                 step = Steps.PREVIEW_MODIFIED_EVENT;
-                previewEvent(eventBus);
+                autoTestUtilities.previewEvent();
             }
         } catch (Exception e) {
             handleException(e);
@@ -101,7 +90,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         try {
             if (step == Steps.START) {
                 step = Steps.ISSUE_FLASH_FLOOD_WATCH;
-                issueEvent(eventBus);
+                autoTestUtilities.issueEvent();
             }
         } catch (Exception e) {
             handleException(e);
@@ -118,9 +107,10 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
             case ISSUE_FLASH_FLOOD_WATCH:
                 SpatialDisplayAction modifyAreaAction = new SpatialDisplayAction(
                         HazardConstants.MODIFY_EVENT_AREA);
-                IHazardEvent event = getEvent();
+                IHazardEvent event = autoTestUtilities.getSelectedEvent();
                 String eventID = event.getEventID();
-                Dict modifiedEvent = buildEventArea();
+                Dict modifiedEvent = autoTestUtilities.buildEventArea(-96.0,
+                        41.0);
                 List shapes = modifiedEvent
                         .getDynamicallyTypedValue(HazardConstants.SHAPES);
                 Dict floodEvent = (Dict) shapes.get(0);
@@ -137,7 +127,8 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
             case PREVIEW_MODIFIED_EVENT:
 
-                Dict products = productsFromEditorView(mockProductEditorView);
+                Dict products = autoTestUtilities
+                        .productsFromEditorView(mockProductEditorView);
                 String legacy = products
                         .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
                 assertTrue(legacy.contains(EXA_VTEC_STRING + "."
@@ -155,12 +146,6 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
             handleException(e);
         }
 
-    }
-
-    private IHazardEvent getEvent() {
-        IHazardEvent selectedEvent = appBuilder.getSessionManager()
-                .getEventManager().getSelectedEvents().iterator().next();
-        return selectedEvent;
     }
 
     @Override

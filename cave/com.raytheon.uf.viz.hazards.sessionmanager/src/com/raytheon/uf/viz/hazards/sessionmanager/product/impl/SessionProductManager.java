@@ -103,6 +103,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                     hazards
  * Oct 23, 2013 2277       jsanchez    Use thrift request to check for grid conflicts.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -208,7 +209,8 @@ public class SessionProductManager implements ISessionProductManager {
             String[] buttons;
             if (!result.isEmpty()) {
                 message += "\nPress Continue to generate products for the supported hazard types.";
-                buttons = new String[] { "Cancel", "Continue" };
+                buttons = new String[] { HazardConstants.CANCEL_BUTTON,
+                        HazardConstants.CONTINUE_BUTTON };
             } else {
                 buttons = new String[] { "OK" };
             }

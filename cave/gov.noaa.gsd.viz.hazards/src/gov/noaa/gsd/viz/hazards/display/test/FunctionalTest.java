@@ -50,6 +50,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166       daniel.s.schaffer@noaa.gov      Cleaned up handling of errors
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -109,9 +110,12 @@ public abstract class FunctionalTest {
 
     protected ToolLayer toolLayer;
 
+    protected AutoTestUtilities autoTestUtilities;
+
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.eventBus = appBuilder.getEventBus();
+        this.autoTestUtilities = new AutoTestUtilities(appBuilder);
         registerForEvents();
 
     }

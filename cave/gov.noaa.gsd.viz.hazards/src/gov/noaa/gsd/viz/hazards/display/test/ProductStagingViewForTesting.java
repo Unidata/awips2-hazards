@@ -9,13 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 
 /**
  * Description: Mock {@link IProductStagingView} used for testing.
@@ -26,6 +29,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013  2166      daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
  * </pre>
  * 
@@ -37,7 +41,15 @@ public class ProductStagingViewForTesting implements IProductStagingView {
 
     private boolean toBeIssued;
 
-    private Dict productStagingInfo;
+    private ProductStagingInfo productStagingInfo;
+
+    private final ICommandInvoker continueInvoker = new ICommandInvoker() {
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler handler) {
+            handler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
+        }
+    };
 
     @Override
     public void dispose() {
@@ -51,15 +63,15 @@ public class ProductStagingViewForTesting implements IProductStagingView {
 
     @Override
     public void showProductStagingDetail(boolean toBeIssued,
-            Dict productStagingInfo) {
-        this.toBeIssued = false;
+            ProductStagingInfo productStagingInfo) {
+        this.toBeIssued = toBeIssued;
         this.productStagingInfo = productStagingInfo;
 
     }
 
     @Override
     public ICommandInvoker getContinueInvoker() {
-        throw new UnsupportedOperationException();
+        return continueInvoker;
     }
 
     @Override
@@ -68,7 +80,7 @@ public class ProductStagingViewForTesting implements IProductStagingView {
     }
 
     @Override
-    public Dict getProductInfo() {
+    public ProductStagingInfo getProductStagingInfo() {
         return productStagingInfo;
     }
 

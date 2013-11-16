@@ -10,12 +10,10 @@
 package gov.noaa.gsd.viz.hazards.display;
 
 import java.util.Date;
-import java.util.List;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
@@ -34,6 +32,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * Aug 06, 2013     1265   Bryon.Lawrence      Updated to support undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
@@ -198,54 +197,10 @@ public interface IHazardServicesModel {
     public String getToolList();
 
     /**
-     * createProductsFromEventIDs -- Generate products from the set of selected
-     * events
-     * 
-     * If a staging dialog is needed, returns a specification for the staging
-     * dialog Otherwise, creates the Hazard Event Sets and calls
-     * "createProductsFromHazardEventSets"
-     * 
-     * @param issueFlag
-     *            - if True, issue the results
-     * @return If a staging dialog is needed, staging information is returned
-     *         otherwise, generated products are returned.
-     */
-    public String createProductsFromEventIDs(String issueFlag);
-
-    /**
-     * createProductsFromHazardEventSets -- Generate products from Hazard Event
-     * Sets created from the Product Staging Dialog or by the previous method,
-     * "createProductsFromEventIDs"
-     * 
-     * @param issueFlag
-     *            -- if True, issue the results
-     * @param hazardEventSets
-     *            -- each hazard event set (list of events and additional
-     *            product information) represents input for a product generator
-     * @return a list of generated products
-     */
-    public String createProductsFromHazardEventSets(String issueFlag,
-            String hazardEventSets);
-
-    /**
      * 
      */
     public String handleRecommenderResult(String toolID,
             EventSet<IEvent> eventList);
-
-    /**
-     * Handle the generated products from an asynchronous run of a product
-     * generator Collect the results for the list of product generators run When
-     * all are collected, issue or display them
-     * 
-     * @param toolID
-     *            -- name of product generator
-     * @param generatedProducts
-     *            -- list of IGeneratedProduct Java object
-     * 
-     */
-    public String handleProductGeneratorResult(String toolID,
-            List<IGeneratedProduct> generatedProductsList);
 
     // ********************
     // PRESENTER HELPER
