@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Nov 19, 2013  1463      blawrenc    Added state of automatic hazard conflict testing.
  * 
  * </pre>
  * 
@@ -116,4 +117,21 @@ public interface ISessionManager {
      * Shutdown activities such as spawned {@link Job}s
      */
     public void shutdown();
+
+    /**
+     * Turns on/off automatic hazard checking.
+     * 
+     * @param
+     * @return
+     */
+    void toggleAutoHazardChecking();
+
+    /**
+     * Returns the state of auto hazard checking.
+     * 
+     * @param
+     * @return true - Automatic hazard checking is on. false - Automatic hazard
+     *         checking is off.
+     */
+    boolean isAutoHazardCheckingOn();
 }

@@ -38,6 +38,7 @@ import gov.noaa.gsd.viz.megawidgets.StatefulMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +78,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -119,6 +121,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           to "widget" with "megawidget" to avoid
  *                                           confusion.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
+ *                                           detection.
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * 
  * </pre>
@@ -830,6 +834,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             .newArrayList();
 
     /**
+     * Map of event ids displayed in the HID and lists of conflicting events
+     */
+    private Map<String, Collection<IHazardEvent>> eventConflictMap = Maps
+            .newHashMap();
+
+    /**
      * Propose button.
      */
     private Button proposeButton = null;
@@ -878,6 +888,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Hazard detail view that is managing this part.
      */
     private HazardDetailView hazardDetailView = null;
+
+    /**
+     * Label for showing conflict message.
+     */
+    private Label conflictLabel;
 
     // Public Methods
 
@@ -1203,14 +1218,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 + mainLayout.marginBottom + mainLayout.marginTop
                 + (mainLayout.verticalSpacing * 2);
 
-        // Create the category and hazard type
-        // grouping, and a subpanel within it
-        // that will hold the category and type
-        // widgets. The latter is needed be-
-        // cause the subpanel will be enabled
-        // and disabled to give the combo boxes
-        // a read-only status without making
-        // them look disabled.
+        conflictLabel = new Label(top, SWT.None);
+        conflictLabel.setText("Hazard Conflict");
+        conflictLabel.setBackground(Display.getDefault().getSystemColor(
+                SWT.COLOR_RED));
+        conflictLabel.setVisible(false);
         Group hazardGroup = new Group(top, SWT.NONE);
         hazardGroup.setText(HAZARD_TYPE_SECTION_TEXT);
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
@@ -1676,12 +1688,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param eventDictList
      *            List of dictionaries, each providing the key-value pairs that
      *            define a hazard event to be displayed.
+     * @param eventConflictMap
+     *            Map of selected events and corresponding lists of conflicting
+     *            events.
      * @param jsonEventID
      *            JSON string specifying the identifier of the event that should
      *            be brought to the top of the tab list, or <code>null</code> if
      *            it should not be changed.
      */
-    public void setHidEventInfo(DictList eventDictList, String jsonEventID) {
+    public void setHidEventInfo(DictList eventDictList,
+            Map<String, Collection<IHazardEvent>> eventConflictMap,
+            String jsonEventID) {
 
         // If there are no event dictionaries, ensure that
         // a zero-length list of them exists at least.
@@ -1708,6 +1725,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             primaryParamValues.clear();
             pointsParamValues.clear();
             auxiliaryParamValues.clear();
+            this.eventConflictMap = eventConflictMap;
 
             // Iterate through the primary events, getting
             // the information for each in turn.
@@ -2388,6 +2406,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 issueButton.setEnabled(false);
             }
             return;
+        }
+
+        // Determine whether or not to show the conflict message.
+        String eventID = (String) primaryParamValues.get(visibleHazardIndex)
+                .get(HAZARD_EVENT_IDENTIFIER);
+
+        if (eventConflictMap.keySet().contains(eventID)) {
+            conflictLabel.setVisible(true);
+        } else {
+            conflictLabel.setVisible(false);
         }
 
         // Set the category and type combo boxes.

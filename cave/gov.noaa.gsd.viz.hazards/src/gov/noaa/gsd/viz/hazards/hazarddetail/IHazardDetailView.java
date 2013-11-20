@@ -12,6 +12,11 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.Collection;
+import java.util.Map;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
 /**
  * Interface describing the methods that must be implemented by a class that
  * functions as a hazard detail view, managed by an hazard detail presenter.
@@ -23,6 +28,8 @@ import gov.noaa.gsd.viz.mvp.IView;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
+ * Nov 14, 2013            Bryon.Lawrence    Added code to support hazard conflict 
+ *                                           detection.
  * 
  * </pre>
  * 
@@ -68,8 +75,12 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      *            Flag indicating whether or not to force the showing of the
      *            subview. This may be used as a hint by views if they are
      *            considering not showing the subview for whatever reason.
+     * @param eventConflictMap
+     *            Map of selected events and lists of corresponding conflicting
+     *            events
      */
     public void showHazardDetail(DictList eventValuesList, String topEventID,
+            Map<String, Collection<IHazardEvent>> eventConflictMap,
             boolean force);
 
     /**
@@ -83,8 +94,12 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      *            with respect to other hazard events; must be one of the
      *            identifiers in the hazard events of
      *            <code>eventValuesList</code>.
+     * @param eventConflictMap
+     *            Contains a map of event ids and associated lists of
+     *            conflicting hazards.
      */
-    public void updateHazardDetail(DictList eventValuesList, String topEventID);
+    public void updateHazardDetail(DictList eventValuesList, String topEventID,
+            Map<String, Collection<IHazardEvent>> eventConflictMap);
 
     /**
      * Hide the hazard detail subview.
@@ -105,4 +120,5 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      *            Maximum visible time to be shown in the time megawidgets.
      */
     public void setVisibleTimeRange(long minVisibleTime, long maxVisibleTime);
+
 }

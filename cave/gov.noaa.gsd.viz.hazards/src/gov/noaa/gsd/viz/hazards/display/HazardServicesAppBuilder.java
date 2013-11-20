@@ -110,6 +110,9 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Aug 29, 2013 1921       bryon.lawrence      Modified loadGeometryOverlayForSelectedEvent to
  *                                             not take a JSON list of event ids.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1463       bryon.lawrence      Added a method for opening a dialog
+ *                                             to warn the user. This is injectable
+ *                                             for testing.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * </pre>
  * 
@@ -268,24 +271,36 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         public boolean getUserAnswerToQuestion(String question);
     }
 
+    /**
+     * Interface defining a warner.
+     */
+    public interface IWarner {
+        public void warnUser(String warning);
+    }
+
     private IQuestionAnswerer questionAnswerer;
 
-    private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
+    /**
+     * The warner to use to convey warnings to the user.
+     */
+    private IWarner warner;
 
-    // Public Static Methods
+    private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
     public boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
     }
 
     /**
-     * Warn the user of a potential problem.
+     * Warn the user. This delegates to the warner either created by the app
+     * builder or injected by the client.
      * 
-     * @param problem
-     *            Question to be asked.
+     * @param warning
+     *            The warning message to convey to the user
+     * @return
      */
-    public static void warnUser(String problem) {
-        MessageDialog.openWarning(null, "Hazard Services", problem);
+    public void warnUser(String warning) {
+        warner.warnUser(warning);
     }
 
     // Private Constructors
@@ -356,6 +371,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         };
 
+        this.warner = new IWarner() {
+
+            @Override
+            public void warnUser(String warning) {
+
+                MessageDialog.openWarning(null, "Hazard Services", warning);
+            }
+
+        };
     }
 
     /**
@@ -1157,5 +1181,26 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     public IQuestionAnswerer getQuestionAnswerer() {
         return questionAnswerer;
+    }
+
+    /**
+     * Returns the warner.
+     * 
+     * @param
+     * @return The warner.
+     */
+    public IWarner getWarner() {
+        return warner;
+    }
+
+    /**
+     * Sets the warner.
+     * 
+     * @param warner
+     *            The warner
+     * @return
+     */
+    public void setWarner(IWarner warner) {
+        this.warner = warner;
     }
 }

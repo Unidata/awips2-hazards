@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
@@ -32,6 +35,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 10, 2013 1257       bsteffen    Initial creation
+ * Oct 22, 2013 1463       blawrenc    Added fields to support
+ *                                     hazard conflict checking.
  * 
  * </pre>
  * 
@@ -49,6 +54,12 @@ public class HazardTypeEntry {
     private boolean allowTimeChange;
 
     private int[] expirationTime;
+
+    private String[] hazardConflictList;
+
+    private String hazardHatchArea;
+
+    private String hazardHatchLabel;
 
     public String getHeadline() {
         return headline;
@@ -93,5 +104,49 @@ public class HazardTypeEntry {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * @return the hazardConflictList
+     */
+    public List<String> getHazardConflictList() {
+        return Arrays.asList(hazardConflictList);
+    }
+
+    /**
+     * @param hazardConflictList
+     *            the hazardConflictList to set
+     */
+    public void setHazardConflictList(List<String> hazardConflictList) {
+        this.hazardConflictList = hazardConflictList.toArray(new String[0]);
+    }
+
+    /**
+     * @return the hazardHatchArea
+     */
+    public String getHazardHatchArea() {
+        return hazardHatchArea;
+    }
+
+    /**
+     * @param hazardHatchArea
+     *            the hazardHatchArea to set
+     */
+    public void setHazardHatchArea(String hazardHatchArea) {
+        this.hazardHatchArea = hazardHatchArea;
+    }
+
+    /**
+     * @return the hazardHatchLabel
+     */
+    public String getHazardHatchLabel() {
+        return hazardHatchLabel;
+    }
+
+    /**
+     * @param hazardHatchLabel the hazardHatchLabel to set
+     */
+    public void setHazardHatchLabel(String hazardHatchLabel) {
+        this.hazardHatchLabel = hazardHatchLabel;
     }
 }

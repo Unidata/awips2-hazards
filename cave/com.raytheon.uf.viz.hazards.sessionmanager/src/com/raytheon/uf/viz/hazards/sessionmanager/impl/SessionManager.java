@@ -51,6 +51,8 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Nov 19, 2013 1463       blawrenc    Added state of automatic hazard conflict
+ *                                     testing.
  * 
  * </pre>
  * 
@@ -73,6 +75,11 @@ public class SessionManager implements ISessionManager {
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
     private final IHazardSessionAlertsManager alertsManager;
+
+    /*
+     * Flag indicating whether or not automatic hazard checking is running.
+     */
+    private boolean autoHazardChecking = false;
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager) {
@@ -163,4 +170,21 @@ public class SessionManager implements ISessionManager {
         alertsManager.shutdown();
         recommenderEngine.shutdownEngine();
     }
+
+    @Override
+    public void toggleAutoHazardChecking() {
+        autoHazardChecking = !autoHazardChecking;
+
+        /*
+         * Force a refresh of the Hazard Services views. There is probably a
+         * better way to do this.
+         */
+        eventManager.setSelectedEvents(eventManager.getSelectedEvents());
+    }
+
+    @Override
+    public boolean isAutoHazardCheckingOn() {
+        return autoHazardChecking;
+    }
+
 }

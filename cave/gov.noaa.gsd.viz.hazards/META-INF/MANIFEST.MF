@@ -27,6 +27,7 @@ Require-Bundle: com.raytheon.viz.core,
  org.codehaus.jackson;bundle-version="1.7.3"
 Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
+ gov.noaa.gsd.viz.hazards.console,
  gov.noaa.gsd.viz.hazards.spatialdisplay
 Eclipse-BuddyPolicy: ext, global
 Bundle-ActivationPolicy: lazy

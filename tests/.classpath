@@ -37,5 +37,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.colormap"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.hazards.utilities"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.gfe"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataaccess"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

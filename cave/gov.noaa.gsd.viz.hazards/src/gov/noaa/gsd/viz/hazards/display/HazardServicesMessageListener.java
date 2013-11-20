@@ -62,6 +62,11 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo
  * Aug 21, 2013    1921    daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
+ * Oct 22, 2013    1463    bryon.lawrence    Added code to listen for
+ *                                           a hazard conflict detection
+ *                                           request from the user (this
+ *                                           is a new option in the Console
+ *                                           View).
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
@@ -238,6 +243,15 @@ public class HazardServicesMessageListener {
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         if (consoleAction.getAction().equals(RESET_ACTION)) {
             messageHandler.reset(consoleAction.getId());
+        } else if (consoleAction.getAction().equals(
+                HazardConstants.CHECK_CONFLICT_ACTION)) {
+            if (consoleAction.getId().equals(HazardConstants.CHECK_CONFLICTS)) {
+                messageHandler.checkHazardConflicts();
+            } else if (consoleAction.getId().equals(
+                    HazardConstants.AUTO_CHECK_CONFLICTS)) {
+                messageHandler.toggleAutoCheckConflicts();
+            }
+
         } else if (consoleAction.getAction().equals("SelectedTimeChanged")) {
             try {
                 messageHandler.updateSelectedTime(consoleAction.getNewTime(),

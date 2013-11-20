@@ -404,6 +404,8 @@ public final class HazardConstants {
 
     public static final String POINTS = "points";
 
+    public static final String POLYGON_TYPE = "polygon";
+
     /*
      * Information related to the type of a reset action.
      */
@@ -412,6 +414,18 @@ public final class HazardConstants {
     public static final String RESET_SETTINGS = "Settings";
 
     public static final String RESET_ACTION = "Reset";
+
+    /*
+     * Information related to the type of a check hazard conflict action.
+     */
+
+    public static final String CONSOLE_ACTION = "consoleAction";
+
+    public static final String CHECK_CONFLICT_ACTION = "CheckConflictAction";
+
+    public static final String CHECK_CONFLICTS = "CheckConflicts";
+
+    public static final String AUTO_CHECK_CONFLICTS = "AutoCheckConflicts";
 
     /*
      * Context menu entries.
@@ -475,6 +489,8 @@ public final class HazardConstants {
 
     public static final String ADD_PENDING_TO_SELECTED_OFF = "off";
 
+    public static final String POLYGON_MODIFIED = "polyModified";
+
     /*
      * TODO The following need to be moved to something specific to storm track
      */
@@ -510,4 +526,45 @@ public final class HazardConstants {
     public static final String IS_VISIBLE_KEY = "isVisible";
 
     public static final String SHAPES = "shapes";
+
+    /*
+     * Constants related to Data Access Framework Requests.
+     */
+    public static final String TABLE_IDENTIFIER = "table";
+
+    public static final String GEOMETRY_FIELD_IDENTIFIER = "geomField";
+
+    public static final String IN_LOCATION_IDENTIFIER = "inLocation";
+
+    public static final String LOCATION_FIELD_IDENTIFIER = "locationField";
+
+    public static final String CWA_IDENTIFIER = "cwa";
+
+    /*
+     * Constants related to retrieving data from the maps database.
+     */
+    public static final String MAPDATA_COUNTY = "county";
+
+    public static final String MAPDATA_ZONE = "zone";
+
+    public static final String MAPDATA_CWA = "cwa";
+
+    public static final String MAPDATA_BASINS = "basins";
+
+    public static final String MAPDATA_FFMP_BASINS = "ffmp_basins";
+
+    public static final String MAPDATA_FIRE_ZONES = "firewxzones";
+
+    public static final String MAPDATA_COUNTY_LABEL = "countyname";
+
+    public static final String MAPDATA_ZONE_LABEL = "zone";
+
+    public static final String MAPDATA_CWA_LABEL = "cwa";
+
+    public static final String MAPDATA_BASINS_LABEL = "name";
+
+    public static final String MAPDATA_FFMP_BASINS_LABEL = "huc_name";
+
+    public static final String MAPDATA_FIRE_ZONES_LABEL = "name";
+
 }

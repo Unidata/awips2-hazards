@@ -16,8 +16,10 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
@@ -27,6 +29,7 @@ import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -50,6 +53,8 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           updates should fire-off
  *                                           messages.
  * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
+ * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
+ *                                           detection.
  * </pre>
  * 
  * @author Chris.Golden
@@ -376,10 +381,15 @@ public class HazardDetailView extends
      *            Flag indicating whether or not to force the showing of the
      *            subview. This may be used as a hint by views if they are
      *            considering not showing the subview for whatever reason.
+     * @param eventConflictMap
+     *            Map of selected events and lists of corresponding conflicting
+     *            events.
      */
     @Override
     public final void showHazardDetail(final DictList eventValuesList,
-            final String topEventID, final boolean force) {
+            final String topEventID,
+            final Map<String, Collection<IHazardEvent>> eventConflictMap,
+            final boolean force) {
 
         // If there are no events to be shown, do nothing.
         if ((force == false)
@@ -416,7 +426,8 @@ public class HazardDetailView extends
 
                 // Give the view part the event information.
                 if ((eventValuesList != null) && (eventValuesList.size() > 0)) {
-                    getViewPart().setHidEventInfo(eventValuesList, topEventID);
+                    getViewPart().setHidEventInfo(eventValuesList,
+                            eventConflictMap, topEventID);
                 }
                 int numEvents = getViewPart().getEventCount();
 
@@ -451,10 +462,13 @@ public class HazardDetailView extends
      *            with respect to other hazard events; must be one of the
      *            identifiers in the hazard events of
      *            <code>eventValuesList</code>.
+     * @param eventConflictMap
+     *            Map of events and corresponding lists of conflicting events.
      */
     @Override
     public final void updateHazardDetail(DictList eventValuesList,
-            String topEventID) {
+            String topEventID,
+            Map<String, Collection<IHazardEvent>> eventConflictMap) {
 
         // If the view part exists, update it; otherwise, if there
         // is at least one event to show, show the view part.
@@ -465,7 +479,8 @@ public class HazardDetailView extends
             doNotForwardActions = true;
 
             // Give the view part the event information.
-            getViewPart().setHidEventInfo(eventValuesList, topEventID);
+            getViewPart().setHidEventInfo(eventValuesList, eventConflictMap,
+                    topEventID);
 
             // Reset the ignore HID actions flag, indicating that
             // actions from the view part should no longer be ignored.
@@ -478,7 +493,8 @@ public class HazardDetailView extends
                 hideHazardDetail(false);
             }
         } else if ((eventValuesList != null) && (eventValuesList.size() > 0)) {
-            showHazardDetail(eventValuesList, topEventID, true);
+            showHazardDetail(eventValuesList, topEventID, eventConflictMap,
+                    true);
         }
     }
 

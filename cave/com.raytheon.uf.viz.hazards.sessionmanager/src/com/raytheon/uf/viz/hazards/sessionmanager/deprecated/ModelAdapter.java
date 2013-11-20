@@ -40,6 +40,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -65,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Provides backwards compatibility with old IHazardServicesModel. Does not
@@ -110,6 +112,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Oct 22, 2013 2155    blawrenc        Fixed getContextMenuEntries() to 
  *                                      receive hazard-specific menu entries
  *                                      as a List<String> instead of a String[].
+ * Oct 22, 2013 1463    blawrenc        Add methods for testing hazard conflicts
+ *                                      as a user adds and modifies events.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
@@ -206,7 +210,11 @@ public abstract class ModelAdapter {
         ISessionEventManager eventManager = sessionManager.getEventManager();
         Event jevent = fromJson(jsonText, Event.class);
         IHazardEvent event = eventManager.getEventById(jevent.getEventID());
+
         if (event != null) {
+
+            Geometry modifiedGeometry = jevent.getGeometry();
+
             if (!eventManager.canChangeGeometry(event)) {
                 event = new BaseHazardEvent(event);
                 event.setState(HazardState.PENDING);
@@ -216,9 +224,11 @@ public abstract class ModelAdapter {
                 selection.add(event);
                 eventManager.setSelectedEvents(selection);
             }
-            event.setGeometry(jevent.getGeometry());
-            event.addHazardAttribute("polyModified", new Boolean(true));
+            event.setGeometry(modifiedGeometry);
+            event.addHazardAttribute(HazardConstants.POLYGON_MODIFIED,
+                    new Boolean(true));
         }
+        // }
     }
 
     /*
