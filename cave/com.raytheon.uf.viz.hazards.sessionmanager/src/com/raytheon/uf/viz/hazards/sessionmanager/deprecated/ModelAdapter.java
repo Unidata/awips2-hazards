@@ -47,6 +47,8 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -122,6 +124,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      receive hazard-specific menu entries
  *                                      as a List<String> instead of a String[].
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
  * @author bsteffen
@@ -241,35 +244,38 @@ public abstract class ModelAdapter {
      * Use ISessionEventManager.removeEvent()
      */
     @Deprecated
-    public void reset(String name) {
-        if (name.equals("Events")) {
-            ISessionEventManager eventManager = model.getEventManager();
-            for (IHazardEvent event : eventManager.getEvents()) {
-                eventManager.removeEvent(event);
-            }
+    public void reset() {
 
-            /*
-             * Reset the VTEC information in the VTEC files. This needs to be
-             * done. Otherwise, it is difficult to test against the job sheets
-             * and functional tests when the forecaster selects Reset->Events
-             * but old VTEC information remains in the VTEC files. This solution
-             * will change once VTEC is stored in the database.
-             */
-            IPathManager pathManager = PathManagerFactory.getPathManager();
-            LocalizationContext localizationContext = pathManager.getContext(
-                    LocalizationContext.LocalizationType.CAVE_STATIC,
-                    LocalizationContext.LocalizationLevel.USER);
+        ISessionEventManager eventManager = model.getEventManager();
+        for (IHazardEvent event : eventManager.getEvents()) {
+            eventManager.removeEvent(event);
+        }
 
-            for (String fileToDelete : filesToDeleteOnReset) {
-                LocalizationFile localizationFile = pathManager
-                        .getLocalizationFile(localizationContext, fileToDelete);
+        IHazardEventManager manager = new HazardEventManager(
+                HazardEventManager.Mode.PRACTICE);
+        manager.removeAllEvents();
 
-                if (localizationFile.exists()) {
-                    try {
-                        localizationFile.delete();
-                    } catch (LocalizationOpFailedException e) {
-                        statusHandler.error("Error while reseting.", e);
-                    }
+        /*
+         * Reset the VTEC information in the VTEC files. This needs to be done.
+         * Otherwise, it is difficult to test against the job sheets and
+         * functional tests when the forecaster selects Reset->Events but old
+         * VTEC information remains in the VTEC files. This solution will change
+         * once VTEC is stored in the database.
+         */
+        IPathManager pathManager = PathManagerFactory.getPathManager();
+        LocalizationContext localizationContext = pathManager.getContext(
+                LocalizationContext.LocalizationType.CAVE_STATIC,
+                LocalizationContext.LocalizationLevel.USER);
+
+        for (String fileToDelete : filesToDeleteOnReset) {
+            LocalizationFile localizationFile = pathManager
+                    .getLocalizationFile(localizationContext, fileToDelete);
+
+            if (localizationFile.exists()) {
+                try {
+                    localizationFile.delete();
+                } catch (LocalizationOpFailedException e) {
+                    statusHandler.error("Error while reseting.", e);
                 }
             }
         }
