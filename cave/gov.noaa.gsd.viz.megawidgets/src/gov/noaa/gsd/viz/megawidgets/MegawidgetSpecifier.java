@@ -58,6 +58,11 @@ import com.google.common.collect.Maps;
  *                                           Also added helper methods for
  *                                           getting floats and doubles from
  *                                           arbitrary specifier value objects.
+ * Nov 04, 2013   2336     Chris.Golden      Placed number conversion code in
+ *                                           separate static methods to make
+ *                                           the conversion algorithms readily
+ *                                           available to subclasses.
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -110,6 +115,90 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
      * Label.
      */
     private final String label;
+
+    // Protected Static Methods
+
+    /**
+     * Get an integer value from the specified object.
+     * 
+     * @param object
+     *            Object from which to fetch the value.
+     * @return Integer value.
+     * @throws IllegalArgumentException
+     *             If the object is not of the correct type.
+     */
+    protected static final int getIntegerValueFromObject(Object object) {
+        if ((object instanceof Number) == false) {
+            throw new IllegalArgumentException("must be integer");
+        }
+        Number number = (Number) object;
+        long value = number.longValue();
+        if ((((number instanceof Double) || (number instanceof Float)) && ((value)
+                - number.doubleValue() != 0.0))
+                || (value < Integer.MIN_VALUE) || (value > Integer.MAX_VALUE)) {
+            throw new IllegalArgumentException("must be integer");
+        }
+        return (int) value;
+    }
+
+    /**
+     * Get a long integer value from the specified object.
+     * 
+     * @param object
+     *            Object from which to fetch the value.
+     * @return Long integer value.
+     * @throws IllegalArgumentException
+     *             If the object is not of the correct type.
+     */
+    protected static final long getLongValueFromObject(Object object) {
+        if ((object instanceof Number) == false) {
+            throw new IllegalArgumentException("must be long integer");
+        }
+        Number number = (Number) object;
+        long value = number.longValue();
+        if (((number instanceof Double) || (number instanceof Float))
+                && ((value) - number.doubleValue() != 0.0)) {
+            throw new IllegalArgumentException("must be long integer");
+        }
+        return value;
+    }
+
+    /**
+     * Get a float value from the specified object.
+     * 
+     * @param object
+     *            Object from which to fetch the value.
+     * @return Float value.
+     * @throws IllegalArgumentException
+     *             If the object is not of the correct type.
+     */
+    protected static final float getFloatValueFromObject(Object object) {
+        if ((object instanceof Number) == false) {
+            throw new IllegalArgumentException("must be float");
+        }
+        Number number = (Number) object;
+        double value = number.doubleValue();
+        if ((value < Float.MIN_VALUE) || (value > Float.MAX_VALUE)) {
+            throw new IllegalArgumentException("must be float");
+        }
+        return (int) value;
+    }
+
+    /**
+     * Get a double value from the specified object.
+     * 
+     * @param object
+     *            Object from which to fetch the value.
+     * @return Double value.
+     * @throws IllegalArgumentException
+     *             If the object is not of the correct type.
+     */
+    protected static final double getDoubleValueFromObject(Object object) {
+        if ((object instanceof Number) == false) {
+            throw new IllegalArgumentException("must be float");
+        }
+        return ((Number) object).doubleValue();
+    }
 
     // Public Constructors
 
@@ -813,21 +902,12 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
             } else {
                 return defValue.intValue();
             }
-        } else if (object instanceof Number) {
-            Number number = (Number) object;
-            long value = number.longValue();
-            if ((((number instanceof Double) || (number instanceof Float)) && ((value)
-                    - number.doubleValue() != 0.0))
-                    || (value < Integer.MIN_VALUE)
-                    || (value > Integer.MAX_VALUE)) {
-                throw new MegawidgetException(identifier, getType(), number,
-                        "must be integer");
-            } else {
-                return (int) value;
-            }
-        } else {
+        }
+        try {
+            return getIntegerValueFromObject(object);
+        } catch (Exception e) {
             throw new MegawidgetException(identifier, getType(), object,
-                    "must be integer");
+                    e.getMessage());
         }
     }
 
@@ -885,19 +965,12 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
             } else {
                 return defValue.longValue();
             }
-        } else if (object instanceof Number) {
-            Number number = (Number) object;
-            long value = number.longValue();
-            if (((number instanceof Double) || (number instanceof Float))
-                    && ((value) - number.doubleValue() != 0.0)) {
-                throw new MegawidgetException(identifier, getType(), number,
-                        "must be long integer");
-            } else {
-                return value;
-            }
-        } else {
+        }
+        try {
+            return getLongValueFromObject(object);
+        } catch (Exception e) {
             throw new MegawidgetException(identifier, getType(), object,
-                    "must be long integer");
+                    e.getMessage());
         }
     }
 
@@ -955,18 +1028,12 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
             } else {
                 return defValue.floatValue();
             }
-        } else if (object instanceof Number) {
-            Number number = (Number) object;
-            double value = number.doubleValue();
-            if ((value < Float.MIN_VALUE) || (value > Float.MAX_VALUE)) {
-                throw new MegawidgetException(identifier, getType(), number,
-                        "must be float");
-            } else {
-                return (int) value;
-            }
-        } else {
+        }
+        try {
+            return getFloatValueFromObject(object);
+        } catch (Exception e) {
             throw new MegawidgetException(identifier, getType(), object,
-                    "must be float");
+                    e.getMessage());
         }
     }
 
@@ -1023,11 +1090,12 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
             } else {
                 return defValue.doubleValue();
             }
-        } else if (object instanceof Number) {
-            return ((Number) object).doubleValue();
-        } else {
+        }
+        try {
+            return getDoubleValueFromObject(object);
+        } catch (Exception e) {
             throw new MegawidgetException(identifier, getType(), object,
-                    "must be double");
+                    e.getMessage());
         }
     }
 

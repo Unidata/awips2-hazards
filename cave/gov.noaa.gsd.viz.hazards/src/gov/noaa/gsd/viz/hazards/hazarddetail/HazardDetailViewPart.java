@@ -24,6 +24,7 @@ import gov.noaa.gsd.viz.megawidgets.IExplicitCommitStateful;
 import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.INotificationListener;
 import gov.noaa.gsd.viz.megawidgets.INotifier;
+import gov.noaa.gsd.viz.megawidgets.IParent;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
@@ -120,11 +121,16 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           references (variable names, comments, etc.)
  *                                           to "widget" with "megawidget" to avoid
  *                                           confusion.
- * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 04, 2013   2182     daniel.s.schaffer Started refactoring
+ * Nov 04, 2013   2336     Chris.Golden      Added implementation of new superclass-
+ *                                           specified abstract method for table mega-
+ *                                           widget specifier. Also fixed bug that caused
+ *                                           detail fields for megawidgets to be ignored
+ *                                           when getting or setting hazard event
+ *                                           parameters.
  * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
- * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
- * 
+ * Nov 16, 2013   2166     daniel.s.schaffer Some tidying
  * </pre>
  * 
  * @author Chris.Golden
@@ -662,6 +668,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // Return the created megawidget.
             return (M) new PointsTableMegawidget(this, (Composite) parent,
                     megawidgetCreationParams);
+        }
+
+        // Protected Methods
+
+        @Override
+        protected final Set<Class<?>> getClassesOfState() {
+            Set<Class<?>> classes = Sets.newHashSet();
+            classes.add(Object.class);
+            return classes;
         }
     }
 
@@ -2857,19 +2872,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 + "event type metadata megawidget creation error.",
                                 e);
             }
-            megawidgets.add(megawidget);
-            megawidgetsForIds.put(megawidgetSpecifier.getIdentifier(),
-                    megawidget);
-            if ((megawidgetsForStateIds != null)
-                    && (megawidget instanceof IStateful)) {
-                for (String identifier : ((IStatefulSpecifier) megawidgetSpecifier)
-                        .getStateIdentifiers()) {
-                    megawidgetsForStateIds.put(identifier, megawidget);
-                }
-            }
-            if (megawidget instanceof TimeScaleMegawidget) {
-                timeScaleMegawidgets.add((TimeScaleMegawidget) megawidget);
-            }
+            Set<IControl> newMegawidgets = Sets.newHashSet();
+            findAllDescendantMegawidgets(megawidget, newMegawidgets);
+            recordNewMegawidgets(newMegawidgets, megawidgets,
+                    megawidgetsForIds, megawidgetsForStateIds,
+                    timeScaleMegawidgets);
         }
 
         // Align the megawidgets visually with one
@@ -2882,6 +2889,76 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Lay out the panel.
         panel.pack();
+    }
+
+    /**
+     * Find all descendant megawidgets of the specified megawidget.
+     * 
+     * @param megawidget
+     *            Potential parent megawidget.
+     * @param descendants
+     *            Set into which all descendants of <code>megawidget</code> will
+     *            be placed, including <code>megawidget</code> itself.
+     */
+    @SuppressWarnings("unchecked")
+    private void findAllDescendantMegawidgets(IControl megawidget,
+            Set<IControl> descendants) {
+        descendants.add(megawidget);
+        if (megawidget instanceof IParent) {
+            for (IControl descendant : ((IParent<? extends IControl>) megawidget)
+                    .getChildren()) {
+                findAllDescendantMegawidgets(descendant, descendants);
+            }
+        }
+    }
+
+    /**
+     * Record the existence of the specified new megawidgets.
+     * 
+     * @param megawidgets
+     *            Set of megawidgets that were just created and need recording.
+     * @param allMegawidgets
+     *            Set of all megawidgets being created for this panel. All new
+     *            megawidgets are placed within this set in the course of the
+     *            invocation of this method.
+     * @param megawidgetsForIds
+     *            Hash table pairing megawidget identifiers with their
+     *            associated megawidgets. All new megawidgets have entries
+     *            created within this table during the course of the invocation
+     *            of this method, one per megawidget.
+     * @param megawidgetsForStateIds
+     *            Hash table pairing state identifiers with their associated
+     *            megawidgets. All new megawidgets have entries created within
+     *            this table during the course of the invocation of this method,
+     *            one per state held by a megawidget, so if a megawidget has two
+     *            states, it will have two entries in the table. If <code>
+     *            null</code>, no recording of megawidgets paired with state
+     *            identifiers occurs.
+     * @param timeScaleMegawidgets
+     *            Set of all megawidgets that are time scales. If any of the new
+     *            megawidgets are of this type, they will be added to this set
+     *            in the course of the invocation of this method.
+     */
+    private void recordNewMegawidgets(Set<IControl> megawidgets,
+            Set<IControl> allMegawidgets,
+            Map<String, IControl> megawidgetsForIds,
+            Map<String, IControl> megawidgetsForStateIds,
+            Set<TimeScaleMegawidget> timeScaleMegawidgets) {
+        for (IControl megawidget : megawidgets) {
+            allMegawidgets.add(megawidget);
+            megawidgetsForIds.put(megawidget.getSpecifier().getIdentifier(),
+                    megawidget);
+            if ((megawidgetsForStateIds != null)
+                    && (megawidget instanceof IStateful)) {
+                for (String identifier : ((IStatefulSpecifier) megawidget
+                        .getSpecifier()).getStateIdentifiers()) {
+                    megawidgetsForStateIds.put(identifier, megawidget);
+                }
+            }
+            if (megawidget instanceof TimeScaleMegawidget) {
+                timeScaleMegawidgets.add((TimeScaleMegawidget) megawidget);
+            }
+        }
     }
 
     /**

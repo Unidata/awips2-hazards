@@ -32,6 +32,7 @@ package gov.noaa.gsd.viz.megawidgets;
  *                                           and changed to extend
  *                                           IParentSpecifier and to have
  *                                           the generic C parameter.
+ * Nov 06, 2013    2336    Chris.Golden      Cleaned up comment typo.
  * </pre>
  * 
  * @author Chris.Golden
@@ -93,7 +94,7 @@ public interface IContainerSpecifier<C extends ISpecifier> extends
     /**
      * Expand to fill vertical space parameter name; a megawidget may include a
      * boolean associated with this name to indicate whether or not the
-     * container\ megawidget should expand to fill any available vertical space
+     * container megawidget should expand to fill any available vertical space
      * within its parent. If not specified, the megawidget is not expanded
      * vertically.
      */

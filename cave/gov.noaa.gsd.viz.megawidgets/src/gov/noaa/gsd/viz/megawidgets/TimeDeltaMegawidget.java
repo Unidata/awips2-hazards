@@ -16,6 +16,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -44,6 +50,10 @@ import com.google.common.collect.Sets;
  *                                           code duplication and encourage uni-
  *                                           form look, and to implement new
  *                                           IControl interface.
+ * Nov 06, 2013   2336     Chris.Golden      Changed to offer option of not noti-
+ *                                           fying listeners of state changes
+ *                                           caused by ongoing spinner button
+ *                                           presses.
  * </pre>
  * 
  * @author Chris.Golden
@@ -95,6 +105,17 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     private Unit unit = null;
 
     /**
+     * Flag indicating whether state changes that occur as a result of a spinner
+     * button press or directional key press should be forwarded or not.
+     */
+    private final boolean onlySendEndStateChanges;
+
+    /**
+     * Last state value that the state change listener knows about.
+     */
+    private long lastForwardedValue;
+
+    /**
      * Control component helper.
      */
     private final ControlComponentHelper helper;
@@ -126,6 +147,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the spinner.
+        onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
         spinner.setTextLimit(Math.max(
                 getDigitsForValue(getMinimumValue(), specifier.getUnits()
@@ -180,6 +202,40 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         // Remember the starting unit.
         this.unit = specifier.getCurrentUnit();
 
+        // If only ending state changes are to result in
+        // notifications, bind spinner focus loss to trigger
+        // a notification if the value has changed in such a
+        // way that the state change listener was not noti-
+        // fied. Do the same for key up and mouse up events,
+        // so that when the user presses and holds a direc-
+        // tional key (arrow up or down, etc.) to change the
+        // value, or presses and holds one of the spinner
+        // buttons with the mouse, the state change will
+        // result in a notification after the key or mouse
+        // is released.
+        if (onlySendEndStateChanges) {
+            spinner.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+            spinner.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    if (UiBuilder.isSpinnerValueChanger(e)) {
+                        notifyListenersOfEndingStateChange();
+                    }
+                }
+            });
+            spinner.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseUp(MouseEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+        }
+
         // Bind the spinner selection event to trigger a
         // change in the state.
         spinner.addSelectionListener(new SelectionAdapter() {
@@ -190,11 +246,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
                                 .getSelection());
                 if ((TimeDeltaMegawidget.this.state == null)
                         || (state != TimeDeltaMegawidget.this.state.longValue())) {
-                    TimeDeltaSpecifier specifier = getSpecifier();
+                    TimeDeltaMegawidget.this.spinner.update();
                     TimeDeltaMegawidget.this.state = state;
-                    notifyListener(specifier.getIdentifier(), specifier
-                            .getStateUnit().convertMillisecondsToUnit(state));
-                    notifyListener();
+                    notifyListenersOfRapidStateChange();
                 }
             }
         });
@@ -399,6 +453,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
                             + " (inclusive))");
         }
         this.state = specifier.getStateUnit().convertUnitToMilliseconds(value);
+        recordLastNotifiedState();
 
         // Synchronize the widgets to the new state.
         synchronizeWidgetsToState();
@@ -462,6 +517,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     private void unitChanged(boolean notify) {
         unit = Unit.get(combo.getItem(combo.getSelectionIndex()));
         setSpinnerParameters(unit);
+        Long oldState = state;
         if (state == null) {
             TimeDeltaSpecifier specifier = getSpecifier();
             state = Long.valueOf(specifier.getStateUnit()
@@ -470,8 +526,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         int spinnerValue = unit.convertMillisecondsToUnit(state);
         state = unit.convertUnitToMilliseconds(spinnerValue);
         spinner.setSelection(unit.convertMillisecondsToUnit(state));
-        if (notify) {
-            notifyListener();
+        if (notify && ((oldState == null) || (oldState.equals(state) == false))) {
+            recordLastNotifiedState();
+            notifyListeners();
         }
     }
 
@@ -489,5 +546,45 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         spinner.setMaximum(unit.convertMillisecondsToUnit(specifier
                 .getStateUnit().convertUnitToMilliseconds(getMaximumValue())));
         spinner.setPageIncrement(unit.getPageIncrement());
+    }
+
+    /**
+     * Record the current state as one of which the state change listener is
+     * assumed to be aware.
+     */
+    private void recordLastNotifiedState() {
+        lastForwardedValue = (state == null ? 0L : state);
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change that
+     * is part of a set of rapidly-occurring changes if necessary.
+     */
+    private void notifyListenersOfRapidStateChange() {
+        if (onlySendEndStateChanges == false) {
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change if
+     * the current state is not the same as the last state of which the state
+     * change listener is assumed to be aware.
+     */
+    private void notifyListenersOfEndingStateChange() {
+        if (lastForwardedValue != (state == null ? 0L : state.longValue())) {
+            recordLastNotifiedState();
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify listeners of a state change.
+     */
+    private void notifyListeners() {
+        notifyListener(getSpecifier().getIdentifier(),
+                ((TimeDeltaSpecifier) getSpecifier()).getStateUnit()
+                        .convertMillisecondsToUnit(state));
+        notifyListener();
     }
 }

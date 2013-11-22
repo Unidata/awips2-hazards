@@ -15,9 +15,9 @@ import java.util.Map;
 import com.google.common.collect.Maps;
 
 /**
- * Description: Base class for megawidget specifiers that include a flat list of
- * choices as part of their state, with each choice having zero or more detail
- * fields (child megawidgets) associated with it. Said choices are always
+ * Description: Base class for megawidget specifiers that include a flat closed
+ * list of choices as part of their state, with each choice having zero or more
+ * detail fields (child megawidgets) associated with it. Said choices are always
  * associated with a single state identifier, so the megawidget identifiers for
  * these specifiers must not consist of colon-separated substrings.
  * 
@@ -27,13 +27,19 @@ import com.google.common.collect.Maps;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 24, 2013   2168     Chris.Golden      Initial creation
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
-        FlatChoicesMegawidgetSpecifier implements
+        FlatBoundedChoicesMegawidgetSpecifier implements
         IParentSpecifier<IControlSpecifier>, IControlSpecifier {
 
     // Public Static Constants
@@ -133,9 +139,10 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
                 children = getChildManager().createMegawidgetSpecifiers(fields,
                         fields.size());
             } catch (MegawidgetSpecificationException e) {
-                throw (new IllegalChoicesProblem("[" + j + "]", DETAIL_FIELDS,
-                        fields, "bad child megawidget specifier", e))
-                        .toSpecificationException();
+                throw (new IllegalChoicesProblem(MEGAWIDGET_VALUE_CHOICES, "["
+                        + j + "]", DETAIL_FIELDS, fields,
+                        "bad child megawidget specifier", e))
+                        .toSpecificationException(this);
             }
 
             // Add the child megawidget specifiers for this choice
@@ -189,18 +196,19 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
     // Protected Methods
 
     @Override
-    protected IllegalChoicesProblem evaluateChoicesMapLegality(Map<?, ?> map,
-            int index) {
+    protected IllegalChoicesProblem evaluateChoicesMapLegality(
+            String parameterName, Map<?, ?> map, int index) {
 
         // If the map has something other than a list for a detail
         // fields entry, it is illegal. If nothing is there, then
         // there are no detail fields for this choice.
         Object fields = map.get(DETAIL_FIELDS);
         if ((fields == null) || (fields instanceof List)) {
-            return null;
+            return NO_ILLEGAL_CHOICES_PROBLEM;
         }
-        return new IllegalChoicesProblem("[" + index + "]", DETAIL_FIELDS,
-                fields, "must be list of detail megawidget specifiers");
+        return new IllegalChoicesProblem(MEGAWIDGET_VALUE_CHOICES, "[" + index
+                + "]", DETAIL_FIELDS, fields,
+                "must be list of detail megawidget specifiers");
     }
 
     /**

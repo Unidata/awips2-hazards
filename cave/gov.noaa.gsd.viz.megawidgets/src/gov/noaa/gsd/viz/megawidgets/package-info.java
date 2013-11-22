@@ -13,7 +13,8 @@
  * specifiers, which accept mappings of property names to values and build
  * megawidgets that conform to the specified property values. These in turn
  * are generally created and managed using the provided <code>
- * MegawidgetManager</code>.
+ * MegawidgetManager</code>. The latter are often created directly, but may
+ * also be manufactured by <code>ParametersEditorFactory</code> instances. 
  * </p>
  */
 package gov.noaa.gsd.viz.megawidgets;

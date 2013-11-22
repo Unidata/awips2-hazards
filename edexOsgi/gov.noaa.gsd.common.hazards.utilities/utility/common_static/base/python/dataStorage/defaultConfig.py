@@ -1243,7 +1243,7 @@ viewConfig = [
                                                       "fieldName": "visibleColumns",
                                                       "label": "Available:",
                                                       "selectedLabel": "Selected:",
-                                                      "fieldType": "ListBuilder",
+                                                      "fieldType": "BoundedListBuilder",
                                                       "choices": columns,
                                                       "lines": 10
                                                      }

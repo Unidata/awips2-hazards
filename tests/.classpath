@@ -8,6 +8,7 @@
 	<classpathentry kind="src" path="deploy"/>
 	<classpathentry kind="src" path="test_resources"/>
 	<classpathentry kind="src" path="unit"/>
+	<classpathentry kind="src" path="manual"/>
 	<classpathentry exported="true" kind="con" path="GROOVY_SUPPORT"/>
 	<classpathentry exported="true" kind="con" path="GROOVY_DSL_SUPPORT"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.jep"/>
@@ -37,5 +38,9 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.colormap"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.hazards.utilities"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataaccess"/>
+	<classpathentry kind="src" path="/gov.noaa.gsd.viz.megawidgets"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.viz.widgets"/>
+	<classpathentry kind="lib" path="/tests/lib/org.eclipse.jface_3.8.0.v20120912-135020.jar"/>
+	<classpathentry kind="lib" path="/tests/lib/swt_gtk_linux_x86.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

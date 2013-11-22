@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards
 
-import gov.noaa.gsd.common.hazards.utilities.Utils
+import gov.noaa.gsd.common.utilities.Utils
 import gov.noaa.gsd.viz.hazards.utilities.FileUtilities
 
 import com.raytheon.uf.common.localization.PathManagerFactoryTest
@@ -25,10 +25,10 @@ import com.raytheon.uf.common.localization.PathManagerFactoryTest
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 13, 2013            daniel.s.schaffer      Initial creation
- * 
- * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - Removed unused code.
- * 
+ * Nov 25, 2013    2336    Chris.Golden           Altered to handle new
+ *                                                location of utility
+ *                                                classes.
+ * Dec 03, 2013    2182    daniel.s.schaffer@noaa.gov Refactoring - Removed unused code.
  * </pre>
  * 
  * @author daniel.s.schaffer

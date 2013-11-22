@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.common.hazards.utilities.Utils;
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -50,8 +50,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Oct 29, 2013 2166       daniel.s.schaffer@noaa.gov      Cleaned up handling of errors
- * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Nov 15, 2013 2182       daniel.s.schaffer@noaa.gov      Refactoring JSON - ProductStagingDialog
+ * Nov 25, 2013 2336       Chris.Golden                    Altered to handle new location
+ *                                                         of utility classes.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov

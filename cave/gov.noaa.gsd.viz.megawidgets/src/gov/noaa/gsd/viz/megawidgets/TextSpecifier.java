@@ -10,6 +10,9 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Text megawidget specifier, providing the specification of a text editing
@@ -27,6 +30,13 @@ import java.util.Map;
  * Oct 23, 2013    2168    Chris.Golden      Changed to implement ISingleLineSpecifier
  *                                           and use ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
+ * Nov 04, 2013    2336    Chris.Golden      Added implementation of new superclass-
+ *                                           specified abstract method, and multi-line
+ *                                           option. Also changed to offer option of
+ *                                           not notifying listeners of state changes
+ *                                           caused by ongoing text alterations, but
+ *                                           instead to save them for when the mega-
+ *                                           widget loses focus.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,14 +44,17 @@ import java.util.Map;
  * @see TextMegawidget
  */
 public class TextSpecifier extends StatefulMegawidgetSpecifier implements
-        ISingleLineSpecifier {
+        ISingleLineSpecifier, IMultiLineSpecifier,
+        IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
 
     /**
-     * Maximum number of characters parameter name; a megawidget must include a
-     * positive integer as the value associated with this name. This specifies
-     * the maximum number of characters that may be input into the text widget.
+     * Maximum number of characters parameter name; a megawidget may include a
+     * non-negative integer as the value associated with this name. This
+     * specifies the maximum number of characters that may be input into the
+     * text widget, or if <code>0</code>, indicates that there is no practical
+     * limit. If not specified, the default is <code>0</code>.
      */
     public static final String MEGAWIDGET_MAX_CHARS = "maxChars";
 
@@ -51,7 +64,8 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * the maximum number of characters that should be visible at once, which is
      * to say that the megawidget text field will sized to show this many
      * average-sized characters. If not specified, the default is the same as
-     * the value of <code>MEGAWIDGET_MAX_CHARS</code>.
+     * the value of <code>MEGAWIDGET_MAX_CHARS</code> unless the latter is
+     * <code>0</code>, in which case this defaults to <code>20</code>.
      */
     public static final String MEGAWIDGET_VISIBLE_CHARS = "visibleChars";
 
@@ -69,6 +83,12 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     private final boolean horizontalExpander;
 
     /**
+     * Flag indicating whether or not state changes that are part of a group of
+     * rapid changes are to result in notifications to the listener.
+     */
+    private final boolean sendingEveryChange;
+
+    /**
      * Maximum character length.
      */
     private final int maxLength;
@@ -77,6 +97,12 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * Visible character length.
      */
     private final int visibleLength;
+
+    /**
+     * Number of lines that should be visible; if greater than <code>1</code>,
+     * it is a multi-line text field.
+     */
+    private final int numVisibleLines;
 
     // Public Constructors
 
@@ -96,14 +122,31 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the maximum length is present and
+        // Ensure that the rapid change notification flag, if
+        // provided, is appropriate.
+        sendingEveryChange = getSpecifierBooleanValueFromObject(
+                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+
+        // Ensure that the maximum length, if present, is
         // acceptable.
         maxLength = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_MAX_CHARS), MEGAWIDGET_MAX_CHARS,
-                null);
-        if (maxLength < 1) {
+                parameters.get(MEGAWIDGET_MAX_CHARS), MEGAWIDGET_MAX_CHARS, 0);
+        if (maxLength < 0) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_MAX_CHARS, maxLength,
+                    "must be non-negative integer");
+        }
+
+        // Ensure that the visible lines count, if present,
+        // is acceptable, and if not present is assigned a
+        // default value.
+        numVisibleLines = getSpecifierIntegerValueFromObject(
+                parameters.get(MEGAWIDGET_VISIBLE_LINES),
+                MEGAWIDGET_VISIBLE_LINES, 1);
+        if (numVisibleLines < 1) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
                     "must be positive integer");
         }
 
@@ -111,8 +154,8 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         // acceptable.
         visibleLength = getSpecifierIntegerValueFromObject(
                 parameters.get(MEGAWIDGET_VISIBLE_CHARS),
-                MEGAWIDGET_VISIBLE_CHARS, maxLength);
-        if (maxLength < 1) {
+                MEGAWIDGET_VISIBLE_CHARS, (maxLength == 0 ? 20 : maxLength));
+        if (visibleLength < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_VISIBLE_CHARS, maxLength,
                     "must be positive integer");
@@ -145,6 +188,11 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         return optionsManager.getSpacing();
     }
 
+    @Override
+    public final boolean isSendingEveryChange() {
+        return sendingEveryChange;
+    }
+
     /**
      * Get the maximum text length.
      * 
@@ -166,5 +214,19 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
+    }
+
+    @Override
+    public final int getNumVisibleLines() {
+        return numVisibleLines;
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(String.class);
+        return classes;
     }
 }

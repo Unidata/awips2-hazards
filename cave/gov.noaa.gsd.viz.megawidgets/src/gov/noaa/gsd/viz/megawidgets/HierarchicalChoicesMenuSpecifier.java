@@ -25,9 +25,15 @@ import java.util.Map;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 27, 2013            Chris.Golden Initial creation.
- * Oct 21, 2013    2168    Chris.Golden Changed to use options manager to
- *                                      avoid code duplication.
+ * Mar 27, 2013            Chris.Golden      Initial creation.
+ * Oct 21, 2013   2168     Chris.Golden      Changed to use options manager to
+ *                                           avoid code duplication.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,7 +41,7 @@ import java.util.Map;
  * @see HierarchicalChoicesMenuMegawidget
  */
 public class HierarchicalChoicesMenuSpecifier extends
-        HierarchicalChoicesMegawidgetSpecifier implements IMenuSpecifier {
+        HierarchicalBoundedChoicesMegawidgetSpecifier implements IMenuSpecifier {
 
     // Private Variables
 

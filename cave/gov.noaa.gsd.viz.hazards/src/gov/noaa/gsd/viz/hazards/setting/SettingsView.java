@@ -15,7 +15,8 @@ import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesMegawidgetSpecifier;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
@@ -55,10 +56,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
- * 
- *  
- * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
- * 
+ * Nov 04, 2013    2336    Chris.Golden      Changed to work with new megawidget
+ *                                           class names.
+ * Nov 29, 2013    2380    daniel.s.schaffer@noaa.gov Minor cleanup
  * </pre>
  * 
  * @author Chris.Golden
@@ -416,14 +416,15 @@ public class SettingsView implements
         Set<String> typesSet = Sets.newHashSet();
         for (int j = 0; j < treeState.size(); j++) {
             Map<?, ?> category = (Map<?, ?>) treeState.get(j);
-            categories.add((String) category
-                    .get(HierarchicalChoicesMegawidgetSpecifier.CHOICE_NAME));
+            categories
+                    .add((String) category
+                            .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_NAME));
             List<?> children = (List<?>) category
-                    .get(HierarchicalChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
+                    .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
             for (Object child : children) {
                 if (child instanceof Map) {
                     typesSet.add((String) ((Map<?, ?>) child)
-                            .get(HierarchicalChoicesMegawidgetSpecifier.CHOICE_IDENTIFIER));
+                            .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_IDENTIFIER));
                 } else {
                     typesSet.add((String) child);
                 }

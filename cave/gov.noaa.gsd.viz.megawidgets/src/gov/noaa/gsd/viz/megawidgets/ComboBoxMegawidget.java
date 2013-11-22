@@ -41,13 +41,19 @@ import com.google.common.collect.Sets;
  *                                           code duplication and encourage uni-
  *                                           form look. Also changed to implement
  *                                           new IControl interface.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ComboBoxSpecifier
  */
-public class ComboBoxMegawidget extends SingleChoiceMegawidget implements
+public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         IControl {
 
     // Protected Static Constants
@@ -58,7 +64,7 @@ public class ComboBoxMegawidget extends SingleChoiceMegawidget implements
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = Sets
-                .newHashSet(SingleChoiceMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+                .newHashSet(SingleBoundedChoiceMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };

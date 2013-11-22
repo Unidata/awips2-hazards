@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import gov.noaa.gsd.common.hazards.utilities.Utils;
+import gov.noaa.gsd.common.utilities.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,11 +48,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                            calls this method at the moment. It 
  *                                            will always return white.
  * Aug 09, 2013    1936    Chris.Golden       Added console countdown timers.
- * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
- *  
+ * Nov 04, 2013    2182    daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 25, 2013    2336    Chris.Golden       Altered to handle new location of
+ *                                            utility classes.
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov More consolidation to {@link HazardConstants}
- * 
  * </pre>
  * 
  * @author daniel.s.schaffer

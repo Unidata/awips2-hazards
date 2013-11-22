@@ -43,14 +43,20 @@ import com.google.common.collect.Sets;
  *                                           code duplication and encourage uni-
  *                                           form look. Also changed to implement
  *                                           new IControl interface.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckListSpecifier
  */
-public class CheckListMegawidget extends MultipleChoicesMegawidget implements
-        IControl {
+public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
+        implements IControl {
 
     // Protected Static Constants
 
@@ -60,7 +66,7 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget implements
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = Sets
-                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -162,7 +168,7 @@ public class CheckListMegawidget extends MultipleChoicesMegawidget implements
                 new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        ChoicesMegawidgetSpecifier specifier = getSpecifier();
+                        BoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
                         state.clear();
                         for (Object choice : choices) {
                             state.add(specifier.getIdentifierOfNode(choice));

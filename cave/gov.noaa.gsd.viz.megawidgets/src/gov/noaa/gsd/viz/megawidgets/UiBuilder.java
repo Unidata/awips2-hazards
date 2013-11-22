@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -37,6 +38,12 @@ import com.google.common.collect.Lists;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013    2168    Chris.Golden      Initial creation
+ * Oct 31, 2013    2336    Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,6 +118,29 @@ public class UiBuilder {
     }
 
     /**
+     * Build a label for a megawidget if one is required by the specifier.
+     * 
+     * @param parent
+     *            Parent composite.
+     * @param specifier
+     *            Specifier for the megawidget for which the label is to be
+     *            created.
+     * @param columnSpan
+     *            Number of columns that the label should span.
+     * @return New label if appropriate, otherwise <code>null</code>.
+     */
+    public static Label buildLabel(Composite parent,
+            MegawidgetSpecifier specifier, int columnSpan) {
+        if ((specifier.getLabel() != null)
+                && (specifier.getLabel().length() > 0)) {
+            Label label = buildLabel(parent, specifier.getLabel(), specifier);
+            ((GridData) label.getLayoutData()).horizontalSpan = columnSpan;
+            return label;
+        }
+        return null;
+    }
+
+    /**
      * Build an arbitrary label for a megawidget.
      * 
      * @param parent
@@ -164,7 +194,7 @@ public class UiBuilder {
     public static List<Button> buildChoiceButtons(Composite parent,
             FlatChoicesWithDetailMegawidgetSpecifier specifier,
             int buttonFlags,
-            ChoicesDetailChildrenManager detailChildrenManager,
+            BoundedChoicesDetailChildrenManager detailChildrenManager,
             SelectionListener listener) throws MegawidgetException {
 
         // For each value, add a choice button.
@@ -323,5 +353,20 @@ public class UiBuilder {
             return Lists.newArrayList(allButton, noneButton);
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * Determine whether or not the specified key event is used by a spinner
+     * widget to increment or decrement its value.
+     * 
+     * @param event
+     *            Key event to be tested.
+     * @return True if the specified key code is used by a spinner widget to
+     *         increment or decrement its value, false otherwise.
+     */
+    public static boolean isSpinnerValueChanger(KeyEvent event) {
+        return ((event.keyCode == SWT.ARROW_UP)
+                || (event.keyCode == SWT.ARROW_DOWN)
+                || (event.keyCode == SWT.PAGE_UP) || (event.keyCode == SWT.PAGE_DOWN));
     }
 }

@@ -10,11 +10,12 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
- * Spinner specifier. Note that the parameter <code>T</code> only extends
- * <code>Comparable</code> because Java's <code>Number</code> is not,
- * unfortunately, an extension of <code>Comparable</code>.
+ * Spinner specifier, for manipulating numbers.
  * 
  * <pre>
  * 
@@ -22,14 +23,26 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2013   2168     Chris.Golden      Initial creation
+ * Nov 04, 2013   2336     Chris.Golden      Added implementation of new
+ *                                           superclass-specified abstract
+ *                                           method, and changed to use
+ *                                           multiple bounds on generic
+ *                                           wildcard so that T extends
+ *                                           both Number and Comparable,
+ *                                           and changed to offer option of
+ *                                           not notifying listeners of
+ *                                           state changes caused by
+ *                                           ongoing thumb drags or spinner
+ *                                           button presses.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see SpinnerMegawidget
  */
-public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
-        BoundedValueMegawidgetSpecifier<T> implements ISingleLineSpecifier {
+public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
+        extends BoundedValueMegawidgetSpecifier<T> implements
+        ISingleLineSpecifier, IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
 
@@ -65,6 +78,12 @@ public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
     private final boolean horizontalExpander;
 
     /**
+     * Flag indicating whether or not state changes that are part of a group of
+     * rapid changes are to result in notifications to the listener.
+     */
+    private final boolean sendingEveryChange;
+
+    /**
      * Value increment.
      */
     private final T incrementDelta;
@@ -83,20 +102,16 @@ public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
-     * 
      * @param boundedValueClass
      *            Class of the bounded value; required in order to provide
      *            proper exception messages in situations where the bounding
      *            values are illegal.
-     * 
      * @param lowest
      *            If not <code>null</code>, the lowest possible value for
      *            <code>MEGAWIDGET_MIN_VALUE</code>.
-     * 
      * @param highest
      *            If not <code>null</code>, the highest possible value for
      *            <code>MEGAWIDGET_MAX_VALUE</code>.
-     * 
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
@@ -106,6 +121,12 @@ public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
         super(parameters, boundedValueClass, lowest, highest);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
+
+        // Ensure that the rapid change notification flag, if
+        // provided, is appropriate.
+        sendingEveryChange = getSpecifierBooleanValueFromObject(
+                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
         // Get the horizontal expansion flag if available.
         horizontalExpander = getSpecifierBooleanValueFromObject(
@@ -151,6 +172,11 @@ public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
     }
 
     @Override
+    public final boolean isSendingEveryChange() {
+        return sendingEveryChange;
+    }
+
+    @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
     }
@@ -175,6 +201,13 @@ public abstract class SpinnerSpecifier<T extends Comparable<T>> extends
     }
 
     // Protected Methods
+
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(Number.class);
+        return classes;
+    }
 
     /**
      * Get the specifier increment delta object from the specified object.

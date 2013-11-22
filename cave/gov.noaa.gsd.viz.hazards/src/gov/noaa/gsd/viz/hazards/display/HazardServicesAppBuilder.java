@@ -7,7 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.hazards.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;

@@ -42,14 +42,20 @@ import com.google.common.collect.Sets;
  *                                           fields next to the choice buttons,
  *                                           and changed to implement new IControl
  *                                           interface.
+ * Oct 31, 2013    2336    Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see RadioButtonsSpecifier
  */
-public class RadioButtonsMegawidget extends SingleChoiceMegawidget implements
-        IParent<IControl>, IControl {
+public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
+        implements IParent<IControl>, IControl {
 
     // Protected Static Constants
 
@@ -59,7 +65,7 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget implements
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = Sets
-                .newHashSet(MultipleChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -79,7 +85,7 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget implements
     /**
      * Detail child megawidget manager.
      */
-    private final ChoicesDetailChildrenManager childManager = null;
+    private final BoundedChoicesDetailChildrenManager childManager;
 
     /**
      * Control component helper.
@@ -131,13 +137,10 @@ public class RadioButtonsMegawidget extends SingleChoiceMegawidget implements
                 notifyListener();
             }
         };
-        this.radioButtons = UiBuilder
-                .buildChoiceButtons(
-                        panel,
-                        specifier,
-                        SWT.RADIO,
-                        (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new ChoicesDetailChildrenManager(
-                                listener, paramMap) : null), listener);
+        this.childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new BoundedChoicesDetailChildrenManager(
+                listener, paramMap) : null);
+        this.radioButtons = UiBuilder.buildChoiceButtons(panel, specifier,
+                SWT.RADIO, childManager, listener);
 
         // Make the widgets read-only if the megawidget is not editable.
         if (isEditable() == false) {

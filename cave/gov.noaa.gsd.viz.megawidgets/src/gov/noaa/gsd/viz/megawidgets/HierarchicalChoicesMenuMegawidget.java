@@ -34,6 +34,12 @@ import com.google.common.collect.Maps;
  * Mar 27, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,7 +47,7 @@ import com.google.common.collect.Maps;
  * @see HierarchicalChoicesMenuSpecifier
  */
 public class HierarchicalChoicesMenuMegawidget extends
-        HierarchicalChoicesMegawidget implements IMenu {
+        HierarchicalBoundedChoicesMegawidget implements IMenu {
 
     // Private Variables
 

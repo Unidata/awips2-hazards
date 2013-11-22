@@ -56,6 +56,9 @@ import com.google.common.collect.Sets;
  *                                           construction of the megawidget was
  *                                           complete, and changed to implement
  *                                           new IControl interface.
+ * Nov 05, 2013   2336     Chris.Golden      Added option to not notify listeners
+ *                                           of state changes caused by ongoing
+ *                                           thumb drags.
  * </pre>
  * 
  * @author Chris.Golden
@@ -182,6 +185,14 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     private final Map<String, Long> statesForIds;
 
     /**
+     * Copy of <code>statesForIds</code> made just before the first state change
+     * resulting from a thumb drag is processed. This is used only if the
+     * specifier indicates that rapidly-changing values resulting in state
+     * changes should not prompt listener notifications.
+     */
+    private Map<String, Long> lastForwardedStatesForIds;
+
+    /**
      * Main label of the megawidget, if any.
      */
     private final Label mainLabel;
@@ -200,6 +211,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      * Multi-thumbed scale component.
      */
     private final MultiValueScale scale;
+
+    /**
+     * Flag indicating whether state changes that occur as a result of a thumb
+     * drag should be forwarded or not.
+     */
+    private final boolean onlySendEndStateChanges;
 
     /**
      * Flag indicating whether or not a programmatic change to component values
@@ -242,20 +259,35 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         gridData.horizontalSpan = specifier.getWidth();
         panel.setLayoutData(gridData);
 
-        // Add an overall label if one is required.
-        if ((specifier.getLabel() != null)
-                && (specifier.getLabel().length() > 0)) {
+        // Add an overall label if one is specified and if
+        // either multiple state identifiers exist, or only
+        // one exists but it has its own label. If, however,
+        // only one state identifier exists and it has no
+        // label, use the main label in its place.
+        String labelString = specifier.getLabel();
+        List<String> stateIdentifiers = specifier.getStateIdentifiers();
+        String firstStateLabelString = specifier.getStateLabel(stateIdentifiers
+                .get(0));
+        boolean useMainLabelAsStateLabel = false;
+        if ((labelString != null) && (labelString.length() > 0)) {
+            if ((stateIdentifiers.size() == 1)
+                    && ((firstStateLabelString == null) || (firstStateLabelString
+                            .length() == 0))) {
+                useMainLabelAsStateLabel = true;
+                mainLabel = null;
+            } else {
 
-            // Create a label widget.
-            mainLabel = new Label(panel, SWT.NONE);
-            mainLabel.setText(specifier.getLabel());
-            mainLabel.setEnabled(specifier.isEnabled());
+                // Create a label widget.
+                mainLabel = new Label(panel, SWT.NONE);
+                mainLabel.setText(labelString);
+                mainLabel.setEnabled(specifier.isEnabled());
 
-            // Place the label in the grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            gridData.horizontalSpan = 2;
-            gridData.verticalIndent = specifier.getSpacing();
-            mainLabel.setLayoutData(gridData);
+                // Place the label in the grid.
+                gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+                gridData.horizontalSpan = 2;
+                gridData.verticalIndent = specifier.getSpacing();
+                mainLabel.setLayoutData(gridData);
+            }
         } else {
             mainLabel = null;
         }
@@ -266,9 +298,16 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         labels = Lists.newArrayList();
         for (String identifier : specifier.getStateIdentifiers()) {
 
-            // Create a label widget.
+            // Create a label widget. If this is the only
+            // state associated with this megawidget, and a
+            // main label was specified but no state label
+            // was, use the main label in place of the state
+            // label.
             Label label = new Label(panel, SWT.NONE);
-            if ((specifier.getStateLabel(identifier) != null)
+            if (useMainLabelAsStateLabel) {
+                useMainLabelAsStateLabel = false;
+                label.setText(labelString);
+            } else if ((specifier.getStateLabel(identifier) != null)
                     && (specifier.getStateLabel(identifier).length() > 0)) {
                 label.setText(specifier.getStateLabel(identifier));
             }
@@ -308,6 +347,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         this.statesForIds = Maps.newHashMap();
 
         // Create the multi-thumbed scale component.
+        onlySendEndStateChanges = !specifier.isSendingEveryChange();
         scale = new MultiValueScale(panel,
                 (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_TIME),
                 (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_TIME));
@@ -371,7 +411,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
 
                 // If the change source is not user-
                 // GUI interaction, do nothing
-                if (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION) {
+                if ((source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                        && (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     return;
                 }
 
@@ -380,34 +421,102 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 // a scale change to be in progress.
                 changeInProgress = true;
 
+                // If only ending state changes are
+                // to result in notifications, and
+                // this is the first of an ongoing set
+                // of state changes, then copy the
+                // state before this change is pro-
+                // cessed.
+                if (onlySendEndStateChanges
+                        && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                        && (lastForwardedStatesForIds == null)) {
+                    lastForwardedStatesForIds = Maps.newHashMap(statesForIds);
+                }
+
+                // See if notification of listeners
+                // should occur as the new values are
+                // processed. If all state changes
+                // are to result in notifications, or
+                // if this is an ending state change
+                // and no ongoing state changes
+                // occurred beforehand, notification
+                // should occur.
+                boolean notify = (!onlySendEndStateChanges || ((lastForwardedStatesForIds == null) && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)));
+
                 // Iterate through the thumbs, deter-
                 // mining which have changed their
                 // values and responding accordingly.
                 TimeScaleSpecifier specifier = getSpecifier();
                 List<String> stateIdentifiers = specifier.getStateIdentifiers();
+
                 for (int j = 0; j < values.length; j++) {
 
                     // Get the new value and see if
                     // it has changed, and if so,
                     // make a note of the new value
                     // and forward the change to any
-                    // listeners.
+                    // listeners if this is some-
+                    // thing that should be sent on.
                     String identifier = stateIdentifiers.get(j);
                     if ((statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
                         statesForIds.put(identifier, values[j]);
                         TimeScaleMegawidget.this.textsForIds.get(identifier)
                                 .setText(formatAsDate(values[j], true));
-                        notifyListener(identifier, values[j]);
+                        if (notify) {
+                            notifyListener(identifier, values[j]);
+                        }
                     }
+                }
+
+                // If only ending state changes are
+                // to result in notifications, this
+                // is such a state change, and at
+                // least one ongoing state change
+                // occurred right before it, see if
+                // the state is now different from
+                // what it was before the preceding
+                // set of ongoing state changes
+                // occurred.
+                if ((lastForwardedStatesForIds != null)
+                        && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
+
+                    // Compare the current state
+                    // values with the ones from
+                    // before the ongoing state
+                    // change set occurred; for
+                    // each of these pairs that is
+                    // different, send a notifica-
+                    // tion that the corresponding
+                    // state identifier's value has
+                    // changed.
+                    for (String identifier : stateIdentifiers) {
+                        if (statesForIds.get(identifier).equals(
+                                lastForwardedStatesForIds.get(identifier)) == false) {
+                            notifyListener(identifier,
+                                    statesForIds.get(identifier));
+                        }
+                    }
+
+                    // Forget about the last forwarded
+                    // states, as they are not needed
+                    // unless another set of ongoing
+                    // state changes occurs, in which
+                    // case they will be recreated at
+                    // that time.
+                    lastForwardedStatesForIds = null;
+                    notify = true;
                 }
 
                 // Reset the in-progress flag.
                 changeInProgress = false;
 
                 // Notify listeners that invocation
-                // occurred.
-                notifyListener();
+                // occurred if this is something that
+                // should be sent on.
+                if (notify) {
+                    notifyListener();
+                }
             }
 
             @Override
@@ -647,7 +756,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         changeInProgress = true;
 
         // Record the change in the state records.
-        statesForIds.put(identifier, value);
+        recordStateChange(identifier, value);
 
         // Tell the scale and the text widgets about the
         // change.
@@ -695,7 +804,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         for (String identifier : newStatesForIds.keySet()) {
             Long value = getStateLongObjectFromObject(
                     newStatesForIds.get(identifier), identifier, null);
-            statesForIds.put(identifier, value);
+            recordStateChange(identifier, value);
             textsForIds.get(identifier).setText(formatAsDate(value, true));
         }
 
@@ -753,7 +862,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      *            longer string, or one that is abbreviated.
      * @return Formatted date-time string.
      */
-    protected final String formatAsDate(long time, boolean full) {
+    private String formatAsDate(long time, boolean full) {
         return (full ? LONG_DATE_FORMATTER : SHORT_DATE_FORMATTER).format(time);
     }
 
@@ -766,7 +875,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      * @return Time in milliseconds since the epoch if the string could be
      *         parsed; otherwise, <code>-1</code>.
      */
-    protected final long parseDateTime(String dateTime) {
+    private long parseDateTime(String dateTime) {
         ParsePosition parsePosition = new ParsePosition(0);
         Date date = LONG_DATE_FORMATTER.parse(dateTime, parsePosition);
         if ((date == null) || (date.getTime() < 0L)) {
@@ -783,7 +892,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      * @param text
      *            Text widget whose contents are to be validated.
      */
-    protected final void validateText(Text text) {
+    private void validateText(Text text) {
 
         // If a change that is in progress
         // inspired this event, do nothing.
@@ -807,7 +916,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
 
             // Remember this value for this
             // identifier.
-            statesForIds.put(identifier, value);
+            recordStateChange(identifier, value);
 
             // Set the text in this text
             // widget to this date/time.
@@ -827,7 +936,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     /**
      * Update the text entry fields to match the current values.
      */
-    protected final void updateTextEntryFieldsToMatchScaleValues() {
+    private void updateTextEntryFieldsToMatchScaleValues() {
 
         // Set the flag indicating that the
         // scale value should not be validated.
@@ -845,5 +954,20 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
 
         // Reset the in-progress flag.
         changeInProgress = false;
+    }
+
+    /**
+     * Record the specified state change.
+     * 
+     * @param identifier
+     *            State identifier to be changed.
+     * @param value
+     *            New value of the state associated with <code>identifier</code>
+     */
+    private void recordStateChange(String identifier, Long value) {
+        statesForIds.put(identifier, value);
+        if (lastForwardedStatesForIds != null) {
+            lastForwardedStatesForIds.put(identifier, value);
+        }
     }
 }

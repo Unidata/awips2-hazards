@@ -10,6 +10,9 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Combo box megawidget specifier.
@@ -24,14 +27,20 @@ import java.util.Map;
  * Oct 21, 2013   2168     Chris.Golden      Changed to implement ISingleLineSpecifier
  *                                           and use ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ComboBoxMegawidget
  */
-public class ComboBoxSpecifier extends FlatChoicesMegawidgetSpecifier implements
-        ISingleLineSpecifier {
+public class ComboBoxSpecifier extends FlatBoundedChoicesMegawidgetSpecifier
+        implements ISingleLineSpecifier {
 
     // Private Variables
 
@@ -94,5 +103,14 @@ public class ComboBoxSpecifier extends FlatChoicesMegawidgetSpecifier implements
     @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(String.class);
+        return classes;
     }
 }

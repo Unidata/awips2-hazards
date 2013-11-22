@@ -76,6 +76,10 @@ import com.google.common.collect.Sets;
  *                                           IContainer, and made compatible with
  *                                           new version of MegawidgetSpecifier and
  *                                           MegawidgetSpecifierFactory.
+ * Nov 19, 2013    2336    Chris.Golden      Added to setMutableProperties() Java-
+ *                                           doc a note clarifying what it does,
+ *                                           and added method to retrieve the
+ *                                           parent SWT widget of the megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,6 +93,11 @@ import com.google.common.collect.Sets;
 public abstract class MegawidgetManager {
 
     // Private Variables
+
+    /**
+     * Parent widget of the megawidgets being managed.
+     */
+    private Widget parent;
 
     /**
      * Map of megawidget specifier identifiers from <code>specifiers
@@ -372,6 +381,16 @@ public abstract class MegawidgetManager {
     // Public Methods
 
     /**
+     * Get the parent widget of the megawidgets being managed.
+     * 
+     * @return Parent widget.
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Widget> P getParent() {
+        return (P) parent;
+    }
+
+    /**
      * Determine whether or not the manager and its megawidgets are currently
      * enabled not.
      * 
@@ -417,6 +436,11 @@ public abstract class MegawidgetManager {
     /**
      * Set the specified mutable properties of the specified megawidgets to the
      * given values.
+     * <p>
+     * Note that <code>convertStateElementToMegawidgetState()</code> is not used
+     * by this method to preprocess any state values that are being changed
+     * within the mutable properties map. It is assumed that state values being
+     * changed via a call to this method do not require conversion.
      * 
      * @param mutableProperties
      *            Map of the identifiers of all megawidgets for which mutable
@@ -491,7 +515,7 @@ public abstract class MegawidgetManager {
      *            Identifier of the state element for which the value is to be
      *            retrieved.
      * @return State value, or <code>null</code> if no such value is found.
-     * @throws MegawidgetStateExceptionsideEffectMutablePropertyChangeErrorOccurred
+     * @throws MegawidgetStateExceptio
      *             If a non-map object is found when a nested map is expected
      *             while fetching a state element that is nested.
      */
@@ -631,9 +655,9 @@ public abstract class MegawidgetManager {
      * does no conversion, merely returning the original value. Subclasses may
      * override this method if, for example, a state element is an integer but
      * the megawidget used to view and change the value requires a string. If
-     * this is overridden, the method <code>
-     * convertMegawidgetStateToStateElement()</code> should be overridden as
-     * well to perform the inverse of the conversion done here.
+     * this is overridden, the method
+     * <code>convertMegawidgetStateToStateElement()</code> should be overridden
+     * as well to perform the inverse of the conversion done here.
      * 
      * @param identifier
      *            State identifier.
@@ -653,9 +677,9 @@ public abstract class MegawidgetManager {
      * conversion, merely returning the original value. Subclasses may override
      * this method if, for example, a state element is an integer but the
      * megawidget used to view and change the value requires a string. If this
-     * is overridden, the method <code>
-     * convertStateElementToMegawidgetState()</code> should be overridden as
-     * well to perform the inverse of the conversion done here.
+     * is overridden, the method <code>convertStateElementToMegawidgetState()
+     * </code> should be overridden as well to perform the inverse of the
+     * conversion done here.
      * 
      * @param identifier
      *            State identifier.
@@ -725,7 +749,8 @@ public abstract class MegawidgetManager {
             long minVisibleTime, long maxVisibleTime)
             throws MegawidgetException {
 
-        // Remember the state values.
+        // Remember the parent and state values.
+        this.parent = parent;
         this.state = state;
 
         // Fill in the megawidget creation parameters map, used to provide para-

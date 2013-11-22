@@ -41,12 +41,14 @@ CAP_Fields = [
             'values': '',
             'maxChars': 90,
             'visibleChars': 6,
+            "lines": 3,
             'expandHorizontally': True
             },                   
             {
             'fieldName': 'WEA_Label',
             'fieldType':'Label',
             'label':'Note: In WEA text, "%s" is replaced with end time/day.',
+            "italic": True,
             'wrap': True
             }                   
 ]

@@ -41,6 +41,11 @@ import com.google.common.collect.Sets;
  * Oct 21, 2013   2168     Chris.Golden      Changed to implement ISingleLineSpecifier
  *                                           and use ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
+ * Nov 04, 2013   2336     Chris.Golden      Added implementation of new superclass-
+ *                                           specified abstract method. Also changed
+ *                                           to offer option of not notifying
+ *                                           listeners of state changes caused by
+ *                                           ongoing spinner button presses.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,7 +53,7 @@ import com.google.common.collect.Sets;
  * @see TimeDeltaMegawidget
  */
 public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
-        implements ISingleLineSpecifier {
+        implements ISingleLineSpecifier, IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
 
@@ -263,6 +268,12 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
     private final boolean horizontalExpander;
 
     /**
+     * Flag indicating whether or not state changes that are part of a group of
+     * rapid changes are to result in notifications to the listener.
+     */
+    private final boolean sendingEveryChange;
+
+    /**
      * List of units to be used, in the order they are to be displayed in the
      * list of units available.
      */
@@ -295,6 +306,12 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
         super(parameters, Long.class, 0L, null);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
+
+        // Ensure that the rapid change notification flag, if
+        // provided, is appropriate.
+        sendingEveryChange = getSpecifierBooleanValueFromObject(
+                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
         // Get the horizontal expansion flag if available.
         horizontalExpander = getSpecifierBooleanValueFromObject(
@@ -414,6 +431,11 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
     }
 
     @Override
+    public final boolean isSendingEveryChange() {
+        return sendingEveryChange;
+    }
+
+    @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
     }
@@ -444,5 +466,14 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      */
     public final Unit getStateUnit() {
         return stateUnit;
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(Number.class);
+        return classes;
     }
 }

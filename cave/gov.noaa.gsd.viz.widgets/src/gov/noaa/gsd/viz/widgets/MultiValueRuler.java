@@ -64,7 +64,8 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Nov 05, 2013    2336    Chris.Golden      Modified to work wtih new base
+ *                                           class's ChangeSource.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1206,10 +1207,10 @@ public class MultiValueRuler extends MultiValueLinearControl {
             if (specifier.type == ValueType.CONSTRAINED) {
                 setConstrainedThumbValue(specifier.index,
                         mapPixelToValue(e.x, true),
-                        ChangeSource.USER_GUI_INTERACTION);
+                        ChangeSource.USER_GUI_INTERACTION_COMPLETE);
             } else {
                 setFreeThumbValue(specifier.index, mapPixelToValue(e.x, true),
-                        ChangeSource.USER_GUI_INTERACTION);
+                        ChangeSource.USER_GUI_INTERACTION_COMPLETE);
             }
 
         }
@@ -1304,7 +1305,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
                                 (e.count > 0), 1);
                 if (newVisibleValueRange > 0L) {
                     zoomVisibleValueRange(newVisibleValueRange,
-                            ChangeSource.USER_GUI_INTERACTION);
+                            ChangeSource.USER_GUI_INTERACTION_COMPLETE);
                 }
             }
         });

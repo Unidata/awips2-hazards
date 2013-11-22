@@ -9,7 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Checkboxes megawidget specifier. Each checkbox may have zero or more detail
@@ -24,6 +28,8 @@ import java.util.Map;
  * Apr 30, 2013    1277    Chris.Golden      Added support for mutable properties.
  * Sep 25, 2013    2168    Chris.Golden      Added support for optional detail
  *                                           fields next to the choice buttons.
+ * Nov 04, 2013    2336    Chris.Golden      Implemented newly required method
+ *                                           specified in abstract superclass.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,5 +54,13 @@ public class CheckBoxesSpecifier extends
     public CheckBoxesSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+    }
+
+    // Protected Methods
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        return Sets.newHashSet(List.class, String.class);
     }
 }

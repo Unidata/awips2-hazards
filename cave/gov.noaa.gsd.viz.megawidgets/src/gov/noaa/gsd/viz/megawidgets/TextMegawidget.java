@@ -13,8 +13,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
@@ -39,6 +43,15 @@ import com.google.common.collect.Sets;
  *                                           code duplication and encourage uni-
  *                                           form look, and changed to implement
  *                                           new IControl interface.
+ * Nov 04, 2013   2336     Chris.Golden      Added multi-line option. Also added
+ *                                           option of not notifying listeners of
+ *                                           state changes caused by ongoing text
+ *                                           alerations, instead saving notifi-
+ *                                           cations for when the megawidget
+ *                                           loses focus. Also changed to use main
+ *                                           label as state label if there is only
+ *                                           one state identifier and it has no
+ *                                           associated state label.
  * </pre>
  * 
  * @author Chris.Golden
@@ -78,9 +91,21 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     private String state = null;
 
     /**
+     * Flag indicating whether state changes that occur as a result of a text
+     * entry change without a focus loss or text validation invocation should be
+     * forwarded or not.
+     */
+    private final boolean onlySendEndStateChanges;
+
+    /**
      * Control component helper.
      */
     private final ControlComponentHelper helper;
+
+    /**
+     * Last text value that the state change listener knows about.
+     */
+    private String lastForwardedValue;
 
     // Protected Constructors
 
@@ -102,27 +127,66 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
         // Create the composite holding the components, and
         // the label if appropriate.
-        Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
-                UiBuilder.CompositeType.SINGLE_ROW, specifier);
+        boolean multiLine = (specifier.getNumVisibleLines() > 1);
+        Composite panel = UiBuilder
+                .buildComposite(
+                        parent,
+                        (multiLine ? 1 : 2),
+                        SWT.NONE,
+                        (multiLine ? UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING
+                                : UiBuilder.CompositeType.SINGLE_ROW),
+                        specifier);
         label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the text component.
-        text = new Text(panel, SWT.BORDER);
-        text.setTextLimit(specifier.getMaxTextLength());
+        onlySendEndStateChanges = !specifier.isSendingEveryChange();
+        text = new Text(panel, SWT.BORDER
+                + (multiLine ? SWT.MULTI : SWT.SINGLE)
+                + (multiLine ? SWT.WRAP + SWT.V_SCROLL : SWT.NONE));
+        int limit = specifier.getMaxTextLength();
+        if (limit > 0) {
+            text.setTextLimit(limit);
+        }
         text.setEnabled(specifier.isEnabled());
 
         // Place the text component in the grid.
-        GridData gridData = new GridData(
-                (specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
-                SWT.CENTER, true, false);
-        gridData.horizontalSpan = (label == null ? 2 : 1);
+        GridData gridData = new GridData((multiLine
+                || specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
+                (multiLine ? SWT.FILL : SWT.CENTER), true, multiLine);
+        gridData.horizontalSpan = ((multiLine == false) && (label == null) ? 2
+                : 1);
         GC gc = new GC(text);
         FontMetrics fontMetrics = gc.getFontMetrics();
         gridData.widthHint = text.computeSize(
                 (specifier.getVisibleTextLength() + 1)
                         * fontMetrics.getAverageCharWidth(), SWT.DEFAULT).x;
+        if (multiLine) {
+            gridData.heightHint = text.computeSize(SWT.DEFAULT,
+                    specifier.getNumVisibleLines() * fontMetrics.getHeight()).y;
+        }
         gc.dispose();
         text.setLayoutData(gridData);
+
+        // If only ending state changes are to result
+        // in notifications, bind entry field focus
+        // loss and default selection (Enter key) to
+        // trigger a notification if the value has
+        // changed in such a way that the state change
+        // listener was not notified.
+        if (onlySendEndStateChanges) {
+            text.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+            text.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetDefaultSelected(SelectionEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+        }
 
         // Bind the text's change event to trigger a
         // change in the record of the state for the
@@ -133,8 +197,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             public void modifyText(ModifyEvent e) {
                 String value = text.getText();
                 state = value;
-                notifyListener(getSpecifier().getIdentifier(), state);
-                notifyListener();
+                notifyListenersOfRapidStateChange();
             }
         });
 
@@ -184,12 +247,13 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     public int getLeftDecorationWidth() {
-        return (label == null ? 0 : helper.getWidestWidgetWidth(label));
+        return (((text.getStyle() & SWT.MULTI) != 0) || (label == null) ? 0
+                : helper.getWidestWidgetWidth(label));
     }
 
     @Override
     public void setLeftDecorationWidth(int width) {
-        if (label != null) {
+        if (((text.getStyle() & SWT.MULTI) == 0) && (label != null)) {
             helper.setWidgetsWidth(width, label);
         }
     }
@@ -235,6 +299,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         }
         this.state = value;
         text.setText(value.toString());
+        recordLastNotifiedState();
     }
 
     @Override
@@ -256,5 +321,44 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     private void doSetEditable(boolean editable) {
         text.getParent().setEnabled(editable);
         text.setBackground(helper.getBackgroundColor(editable, text, label));
+    }
+
+    /**
+     * Record the current state as one of which the state change listener is
+     * assumed to be aware.
+     */
+    private void recordLastNotifiedState() {
+        lastForwardedValue = state;
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change that
+     * is part of a set of rapidly-occurring changes if necessary.
+     */
+    private void notifyListenersOfRapidStateChange() {
+        if (onlySendEndStateChanges == false) {
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change if
+     * the current state is not the same as the last state of which the state
+     * change listener is assumed to be aware.
+     */
+    private void notifyListenersOfEndingStateChange() {
+        if (((lastForwardedValue != null) && (lastForwardedValue.equals(state) == false))
+                || ((lastForwardedValue == null) && (lastForwardedValue != state))) {
+            recordLastNotifiedState();
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify listeners of a state change.
+     */
+    private void notifyListeners() {
+        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener();
     }
 }

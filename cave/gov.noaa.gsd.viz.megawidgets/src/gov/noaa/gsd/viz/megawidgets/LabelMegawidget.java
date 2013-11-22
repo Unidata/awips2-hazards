@@ -13,6 +13,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -32,6 +36,7 @@ import com.google.common.collect.Sets;
  * Sep 26, 2013    2168    Chris.Golden      Added ability to handle new wrap
  *                                           flag, and to implement new
  *                                           IControl interface.
+ * Nov 04, 2013    2336    Chris.Golden      Added bold and italic options.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,6 +69,11 @@ public class LabelMegawidget extends Megawidget implements IControl {
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * Font, if a custom font was created.
+     */
+    private final Font font;
+
     // Protected Constructors
 
     /**
@@ -82,9 +92,28 @@ public class LabelMegawidget extends Megawidget implements IControl {
         super(specifier);
         helper = new ControlComponentHelper(specifier);
 
-        // Create a label widget.
+        // Create a label widget, setting its font to a bold
+        // and/or italic one if those options are specified.
+        // If a font is created, set up a listener to dispose
+        // of said font when the label is disposed of.
         label = new Label(parent, (specifier.isToWrap() ? SWT.WRAP : SWT.NONE));
         label.setText(specifier.getLabel());
+        if (specifier.isBold() || specifier.isItalic()) {
+            FontData fontData = label.getFont().getFontData()[0];
+            font = new Font(label.getDisplay(), new FontData(
+                    fontData.getName(), fontData.getHeight(),
+                    (specifier.isBold() ? SWT.BOLD : SWT.NORMAL)
+                            + (specifier.isItalic() ? SWT.ITALIC : SWT.NORMAL)));
+            label.setFont(font);
+            label.addDisposeListener(new DisposeListener() {
+                @Override
+                public void widgetDisposed(DisposeEvent e) {
+                    font.dispose();
+                }
+            });
+        } else {
+            font = null;
+        }
         label.setEnabled(specifier.isEnabled());
 
         // Place the widget in the grid. If the widget may end

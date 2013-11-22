@@ -10,6 +10,9 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Radio buttons megawidget specifier. Each radio button may have zero or more
@@ -49,5 +52,14 @@ public class RadioButtonsSpecifier extends
     public RadioButtonsSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
+    }
+
+    // Protected Methods
+
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(String.class);
+        return classes;
     }
 }

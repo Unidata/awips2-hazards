@@ -1,8 +1,8 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static gov.noaa.gsd.common.hazards.utilities.Utils.*;
+import static gov.noaa.gsd.common.utilities.Utils.*;
 import static org.junit.Assert.*;
-import gov.noaa.gsd.common.hazards.utilities.Utils;
+import gov.noaa.gsd.common.utilities.Utils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -19,7 +19,9 @@ import org.junit.Test;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 10, 2013            daniel.s.schaffer      Initial creation
- * 
+ * Nov 25, 2013    2336    Chris.Golden           Altered to handle new
+ *                                                location of utility
+ *                                                classes.
  * </pre>
  * 
  * @author daniel.s.schaffer

@@ -47,6 +47,12 @@ import com.google.common.collect.Sets;
  *                                           code duplication and encourage uni-
  *                                           form look, and changed to implement
  *                                           new IControl interface.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,7 +60,7 @@ import com.google.common.collect.Sets;
  * @see HierarchicalChoicesTreeSpecifier
  */
 public class HierarchicalChoicesTreeMegawidget extends
-        HierarchicalChoicesMegawidget implements IControl {
+        HierarchicalBoundedChoicesMegawidget implements IControl {
 
     // Protected Static Constants
 
@@ -64,7 +70,7 @@ public class HierarchicalChoicesTreeMegawidget extends
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = Sets
-                .newHashSet(HierarchicalChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
+                .newHashSet(HierarchicalBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };

@@ -19,6 +19,7 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013    2168    Chris.Golden      Initial creation
+ * Nov 06, 2013    2336    Chris.Golden      Corrected error in comment.
  * </pre>
  * 
  * @author Chris.Golden
@@ -32,7 +33,8 @@ public interface IMultiLineSpecifier extends IControlSpecifier {
      * Megawidget number of visible lines parameter name; a megawidget may
      * include a positive integer associated with this name to indicate that it
      * wishes to have this number of rows visible at once. If not specified, the
-     * number of visible lines is assumed to be 6.
+     * number of visible lines is generally assumed to be 6, though some
+     * implementations may use other values.
      */
     public static final String MEGAWIDGET_VISIBLE_LINES = "lines";
 

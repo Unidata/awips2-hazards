@@ -31,6 +31,12 @@ import java.util.Map;
  *                                           and also to implement new interfaces
  *                                           IMultiSelectableSpecifier and
  *                                           IMultiLineSpecifier.
+ * Oct 31, 2013    2336    Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,8 +44,8 @@ import java.util.Map;
  * @see HierarchicalChoicesTreeMegawidget
  */
 public class HierarchicalChoicesTreeSpecifier extends
-        HierarchicalChoicesMegawidgetSpecifier implements IControlSpecifier,
-        IMultiSelectableSpecifier, IMultiLineSpecifier {
+        HierarchicalBoundedChoicesMegawidgetSpecifier implements
+        IControlSpecifier, IMultiSelectableSpecifier, IMultiLineSpecifier {
 
     // Private Variables
 

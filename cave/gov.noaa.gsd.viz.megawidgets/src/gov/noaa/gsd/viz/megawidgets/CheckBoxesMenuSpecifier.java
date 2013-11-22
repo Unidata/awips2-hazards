@@ -9,7 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Checkboxes menu megawidget specifier.
@@ -23,14 +27,20 @@ import java.util.Map;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 21, 2013   2168     Chris.Golden      Changed to use options manager to
  *                                           avoid code duplication.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckBoxesMenuMegawidget
  */
-public class CheckBoxesMenuSpecifier extends FlatChoicesMegawidgetSpecifier
-        implements IMenuSpecifier {
+public class CheckBoxesMenuSpecifier extends
+        FlatBoundedChoicesMegawidgetSpecifier implements IMenuSpecifier {
 
     // Private Variables
 
@@ -67,5 +77,13 @@ public class CheckBoxesMenuSpecifier extends FlatChoicesMegawidgetSpecifier
     @Override
     public final boolean shouldShowSeparator() {
         return optionsManager.shouldShowSeparator();
+    }
+
+    // Protected Methods
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        return Sets.newHashSet(List.class, String.class);
     }
 }

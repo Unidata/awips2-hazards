@@ -9,7 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
 
 /**
  * Checklist megawidget specifier.
@@ -27,13 +31,19 @@ import java.util.Map;
  *                                           changed to implement new interfaces
  *                                           IMultiSelectableSpecifier and
  *                                           IMultiLineSpecifier.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckListMegawidget
  */
-public class CheckListSpecifier extends FlatChoicesMegawidgetSpecifier
+public class CheckListSpecifier extends FlatBoundedChoicesMegawidgetSpecifier
         implements IControlSpecifier, IMultiSelectableSpecifier,
         IMultiLineSpecifier {
 
@@ -122,5 +132,13 @@ public class CheckListSpecifier extends FlatChoicesMegawidgetSpecifier
     @Override
     public final boolean shouldShowAllNoneButtons() {
         return showAllNoneButtons;
+    }
+
+    // Protected Methods
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected final Set<Class<?>> getClassesOfState() {
+        return Sets.newHashSet(List.class, String.class);
     }
 }

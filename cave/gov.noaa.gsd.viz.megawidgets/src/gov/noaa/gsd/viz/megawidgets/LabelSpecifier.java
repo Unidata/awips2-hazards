@@ -27,6 +27,7 @@ import java.util.Map;
  *                                           IControlSpecifier and use
  *                                           ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
+ * Nov 04, 2013    2336    Chris.Golden      Added bold and italic options.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,12 +48,38 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public static final String LABEL_WRAP = "wrap";
 
+    /**
+     * Bold flag parameter name; a megawidget may include a boolean value
+     * associated with this name to indicate whether or not the label text will
+     * be rendered using a bold font. If this parameter is not specified, the
+     * default value is <code>false</code>.
+     */
+    public static final String LABEL_BOLD = "bold";
+
+    /**
+     * Italic flag parameter name; a megawidget may include a boolean value
+     * associated with this name to indicate whether or not the label text will
+     * be rendered using an italic font. If this parameter is not specified, the
+     * default value is <code>false</code>.
+     */
+    public static final String LABEL_ITALIC = "italic";
+
     // Private Variables
 
     /**
      * Flag indicating whether or not wrapping should occur.
      */
     private final boolean wrap;
+
+    /**
+     * Flag indicating whether or not a bold font is to be used.
+     */
+    private final boolean bold;
+
+    /**
+     * Flag indicating whether or not an italic font is to be used.
+     */
+    private final boolean italic;
 
     /**
      * Control options manager.
@@ -80,6 +107,12 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
         // Ensure that the wrap flag, if present, is acceptable.
         wrap = getSpecifierBooleanValueFromObject(parameters.get(LABEL_WRAP),
                 LABEL_WRAP, false);
+
+        // Ensure that the bold and italic flags, if present, are acceptable.
+        bold = getSpecifierBooleanValueFromObject(parameters.get(LABEL_BOLD),
+                LABEL_BOLD, false);
+        italic = getSpecifierBooleanValueFromObject(
+                parameters.get(LABEL_ITALIC), LABEL_ITALIC, false);
     }
 
     // Public Methods
@@ -92,6 +125,24 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      */
     public boolean isToWrap() {
         return wrap;
+    }
+
+    /**
+     * Determine whether or not the text should be rendered in a bold font.
+     * 
+     * @return Flag indicating whether or not the text should be bold.
+     */
+    public boolean isBold() {
+        return bold;
+    }
+
+    /**
+     * Determine whether or not the text should be rendered in an italic font.
+     * 
+     * @return Flag indicating whether or not the text should be italic.
+     */
+    public boolean isItalic() {
+        return italic;
     }
 
     @Override

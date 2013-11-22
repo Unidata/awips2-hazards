@@ -8,7 +8,7 @@
 package gov.noaa.gsd.viz.hazards;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import gov.noaa.gsd.common.hazards.utilities.DateTimes;
+import gov.noaa.gsd.common.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.Serializable;

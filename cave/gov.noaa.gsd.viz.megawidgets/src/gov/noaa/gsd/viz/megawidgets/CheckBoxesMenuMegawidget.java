@@ -33,13 +33,19 @@ import com.google.common.collect.Lists;
  * Mar 28, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Changed to implement new IMenu interface.
+ * Oct 31, 2013   2336     Chris.Golden      Changed to accommodate alteration
+ *                                           of framework to include notion
+ *                                           of bounded (closed set) choices
+ *                                           versus unbounded (sets to which
+ *                                           arbitrary user-specified choices
+ *                                           can be added) choice megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see CheckBoxesMenuSpecifier
  */
-public class CheckBoxesMenuMegawidget extends MultipleChoicesMegawidget
+public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
         implements IMenu {
 
     // Private Variables

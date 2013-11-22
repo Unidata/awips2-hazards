@@ -1,7 +1,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
-import gov.noaa.gsd.common.hazards.utilities.Utils
+import gov.noaa.gsd.common.utilities.Utils;
 
 import org.joda.time.DateTime
 
@@ -39,8 +39,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 12, 2013  1325     daniel.s.schaffer@noaa.gov    Initial creation
- * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
- *
+ * Nov 20, 2013  2159     daniel.s.schaffer@noaa.gov    Now interoperable with DRT
+ * Nov 25, 2013  2336      Chris.Golden                 Altered to handle new
+ *                                                      location of utility
+ *                                                      classes.
  * </pre>
  *
  * @author daniel.s.schaffer@noaa.gov

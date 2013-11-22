@@ -10,8 +10,8 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import gov.noaa.gsd.common.hazards.utilities.DateStringComparator;
-import gov.noaa.gsd.common.hazards.utilities.LongStringComparator;
+import gov.noaa.gsd.common.utilities.DateStringComparator;
+import gov.noaa.gsd.common.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
@@ -131,10 +131,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  *                                           it as it should.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Aug 09, 2013    1936    Chris.Golden      Added console countdown timers.
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
- * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
- * 
+ * Nov 04, 2013    2182    daniel.s.schaffer Started refactoring
+ * Nov 05, 2013    2336    Chris.Golden      Changed to work with new multi-thumbed
+ *                                           slider and ruler listener parameters.
+ *                                           Also altered to handle new location of
+ *                                           utility classes.
+ * Nov 29, 2013    2380    daniel.s.schaffer@noaa.gov Minor cleanup
  * </pre>
  * 
  * @author Chris.Golden
@@ -763,7 +765,8 @@ class TemporalDisplay {
         public void constrainedThumbValuesChanged(
                 MultiValueLinearControl widget, long[] values,
                 ChangeSource source) {
-            if (source == MultiValueScale.ChangeSource.USER_GUI_INTERACTION) {
+            if ((source == MultiValueScale.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                    || (source == MultiValueScale.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
 
                 // Get the table item that goes with this scale
                 // widget, and from it, get the event identifier
@@ -3240,7 +3243,8 @@ class TemporalDisplay {
                     ((MultiValueScale) tableEditor.getEditor())
                             .setConstrainedMarkedValues(values);
                 }
-                if (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION) {
+                if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                        || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     fireConsoleActionOccurred(new ConsoleAction(
                             "SelectedTimeRangeChanged", Long
                                     .toString(timeRangeStart), Long
@@ -3260,7 +3264,8 @@ class TemporalDisplay {
                     ((MultiValueScale) tableEditor.getEditor())
                             .setFreeMarkedValue(1, selectedTime);
                 }
-                if (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION) {
+                if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
+                        || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     fireConsoleActionOccurred(new ConsoleAction(
                             "SelectedTimeChanged", Long.toString(selectedTime)));
                 }

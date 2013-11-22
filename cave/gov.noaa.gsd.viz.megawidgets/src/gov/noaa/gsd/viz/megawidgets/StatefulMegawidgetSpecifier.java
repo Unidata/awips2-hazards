@@ -9,14 +9,18 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.Utils;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Stateful megawidget specifier base class, from which specific types of
@@ -39,6 +43,9 @@ import com.google.common.collect.Maps;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Changed to work with new version of
  *                                           superclass.
+ * Nov 04, 2013   2336     Chris.Golden      Added check of starting state value
+ *                                           to ensure objects are of correct
+ *                                           class for subclasses.
  * </pre>
  * 
  * @author Chris.Golden
@@ -74,8 +81,8 @@ public abstract class StatefulMegawidgetSpecifier extends
     // Protected Static Constants
 
     /**
-     * Integer value converter, used to convert objects supplied as parameters
-     * to integers.
+     * Positive integer value converter, used to convert objects supplied as
+     * parameters to integers.
      */
     protected static final IValueConverter<Integer> POSITIVE_INTEGER_VALUE_CONVERTER = new IValueConverter<Integer>() {
         @Override
@@ -83,11 +90,11 @@ public abstract class StatefulMegawidgetSpecifier extends
                 throws IllegalArgumentException {
             int value;
             try {
-                value = ((Number) object).intValue();
-                if (value < 1) {
-                    throw new Exception();
-                }
+                value = getIntegerValueFromObject(object);
             } catch (Exception e) {
+                value = -1;
+            }
+            if (value < 1) {
                 throw new IllegalArgumentException("must be positive integer");
             }
             return value;
@@ -182,26 +189,32 @@ public abstract class StatefulMegawidgetSpecifier extends
 
         // Ensure that the state labels, if present, are
         // acceptable.
+        Set<Class<?>> classes = Sets.newHashSet();
+        classes.add(String.class);
         labelsForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_LABELS, "string", "", null, null);
+                parameters, MEGAWIDGET_STATE_LABELS, "string", classes, "",
+                null, null);
 
         // Ensure that the short state labels, if present,
         // are acceptable.
         shortLabelsForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_SHORT_LABELS, "string", "",
-                labelsForStateIdentifiers, null);
+                parameters, MEGAWIDGET_STATE_SHORT_LABELS, "string", classes,
+                "", labelsForStateIdentifiers, null);
 
         // Ensure that the relative state weights, if pre-
         // sent, are acceptable.
+        classes.clear();
+        classes.add(Number.class);
         relativeWeightsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_RELATIVE_WEIGHTS,
-                "positive integer", 1, null, POSITIVE_INTEGER_VALUE_CONVERTER);
+                "positive integer", classes, new Integer(1), null,
+                POSITIVE_INTEGER_VALUE_CONVERTER);
 
         // Ensure that the starting state values, if present, are
         // acceptable.
         valuesForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_VALUES, "state value", null, null,
-                null);
+                parameters, MEGAWIDGET_STATE_VALUES, "state value",
+                getClassesOfState(), null, null, null);
     }
 
     // Public Methods
@@ -244,6 +257,14 @@ public abstract class StatefulMegawidgetSpecifier extends
     // Protected Methods
 
     /**
+     * Get the set of classes, one of which must be implemented by any state
+     * value.
+     * 
+     * @return Set of classes for any state value.
+     */
+    protected abstract Set<Class<?>> getClassesOfState();
+
+    /**
      * Get the maximum number of state identifiers that may be associated with
      * this megawidget specifier. This implementation simply returns 1, meaning
      * that only subclasses that allow or require multiple state identifiers per
@@ -274,6 +295,8 @@ public abstract class StatefulMegawidgetSpecifier extends
      * @param description
      *            Description of the type of value expected for each state
      *            mapped parameter within <code>parameters</code>.
+     * @param valueClass
+     *            Class of which each value must be an instance.
      * @param defaultValue
      *            Default parameter value to be used if no mapping is given.
      * @param defaultMap
@@ -293,8 +316,8 @@ public abstract class StatefulMegawidgetSpecifier extends
      */
     protected final <T> Map<String, T> getStateMappedParametersFromObject(
             Map<String, Object> parameters, String key, String description,
-            T defaultValue, Map<String, T> defaultMap,
-            IValueConverter<T> valueConverter)
+            Set<Class<?>> valueClasses, T defaultValue,
+            Map<String, T> defaultMap, IValueConverter<T> valueConverter)
             throws MegawidgetSpecificationException {
 
         // If no object is given to provide the mapping,
@@ -332,12 +355,21 @@ public abstract class StatefulMegawidgetSpecifier extends
             // Create the mapping based on the list's
             // values, associating each value with the
             // state identifier at the corresponding
-            // index.
+            // index, ensuring that each value is of the
+            // correct type.
             map = Maps.newHashMap();
             for (String identifier : stateIdentifiers) {
+                Object providedValue = providedMap.get(identifier);
+                if (Utils.isValueIsInstanceOfAtLeastOneClass(providedValue,
+                        valueClasses) == false) {
+                    throw new MegawidgetSpecificationException(getIdentifier(),
+                            getType(), key, providedMap,
+                            "map value for state identifier \"" + identifier
+                                    + "is of incorrect type");
+                }
                 map.put(identifier,
-                        convertValue(identifier, providedMap.get(identifier),
-                                valueConverter, key, description));
+                        convertValue(identifier, providedValue, valueConverter,
+                                key, description));
             }
         } else {
 
@@ -348,6 +380,16 @@ public abstract class StatefulMegawidgetSpecifier extends
                         getType(), key, object,
                         "map must contain same number of parameters "
                                 + "as megawidget has state identifiers");
+            }
+
+            // If the object is of the incorrect type,
+            // throw an error.
+            if (Utils.isValueIsInstanceOfAtLeastOneClass(object, valueClasses) == false) {
+                throw new MegawidgetSpecificationException(getIdentifier(),
+                        getType(), key, object,
+                        "map value for state identifier \""
+                                + stateIdentifiers.get(0)
+                                + "\" is of incorrect type");
             }
 
             // Create the mapping of the single state

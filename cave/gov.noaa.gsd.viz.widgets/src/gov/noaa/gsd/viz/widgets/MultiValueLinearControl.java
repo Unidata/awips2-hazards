@@ -88,6 +88,11 @@ import org.eclipse.swt.widgets.ToolTip;
  *                                           converted values fell outside
  *                                           the range representable by
  *                                           integers.
+ * Nov 05, 2013    2336    Chris.Golden      Added new ChangeSource that
+ *                                           indicates ongoing GUI changes
+ *                                           (caused by ongoing drags) as
+ *                                           opposed to the end of a GUI
+ *                                           change (end of a drag).
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,9 +139,14 @@ public abstract class MultiValueLinearControl extends Canvas {
         METHOD_INVOCATION,
 
         /**
-         * User-GUI interaction.
+         * User-GUI interaction ongoing.
          */
-        USER_GUI_INTERACTION
+        USER_GUI_INTERACTION_ONGOING,
+
+        /**
+         * User-GUI interaction complete.
+         */
+        USER_GUI_INTERACTION_COMPLETE
     }
 
     /**
@@ -2122,7 +2132,7 @@ public abstract class MultiValueLinearControl extends Canvas {
                 if (draggingThumb != null) {
                     thumbDragged(e);
                 } else if (mayBeDraggingViewport) {
-                    viewportDragged(e.x);
+                    viewportDragged(e.x, false);
                 } else if (isEnabled()) {
                     mouseOverWidget(e);
                 }
@@ -2240,7 +2250,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            Mouse event that occurred.
      */
     private void thumbDragged(MouseEvent e) {
-        dragThumbToPoint(draggingThumb, e);
+        dragThumbToPoint(draggingThumb, e, false);
         if (isDisposed() == false) {
             redraw();
             showTooltipForThumb(draggingThumb);
@@ -2256,7 +2266,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void thumbDragEnded(MouseEvent e) {
         ThumbSpecifier thumb = draggingThumb;
         draggingThumb = null;
-        dragThumbToPoint(thumb, e);
+        dragThumbToPoint(thumb, e, true);
         if (isDisposed() == false) {
             activeThumb = getThumbForMouseEvent(e);
             redraw();
@@ -2268,8 +2278,10 @@ public abstract class MultiValueLinearControl extends Canvas {
      * 
      * @param x
      *            New X coordinate to which mouse cursor was dragged.
+     * @param dragEnded
+     *            Flag indicating whether or not the drag has ended.
      */
-    private void viewportDragged(int x) {
+    private void viewportDragged(int x, boolean dragEnded) {
         if ((tooltip != null) && tooltip.isVisible()) {
             tooltip.setVisible(false);
         }
@@ -2281,12 +2293,14 @@ public abstract class MultiValueLinearControl extends Canvas {
             delta = maximumValue - upperVisibleValue;
         }
         lastViewportDragX = x;
-        if (delta == 0L) {
+        if ((delta == 0L) && (dragEnded == false)) {
             return;
         }
         viewportWasActuallyDragged = true;
         visibleValueRangeChanged(lowerVisibleValue + delta, upperVisibleValue
-                + delta, ChangeSource.USER_GUI_INTERACTION);
+                + delta,
+                (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
+                        : ChangeSource.USER_GUI_INTERACTION_ONGOING));
     }
 
     /**
@@ -2297,7 +2311,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private void viewportDragEnded(MouseEvent e) {
         mayBeDraggingViewport = false;
-        viewportDragged(e.x);
+        viewportDragged(e.x, true);
     }
 
     /**
@@ -2520,19 +2534,23 @@ public abstract class MultiValueLinearControl extends Canvas {
      *            Specifier of the thumb to be dragged.
      * @param e
      *            Mouse event that prompted this drag.
+     * @param dragEnded
+     *            Flag indicating whether or not the drag has ended.
      */
-    private void dragThumbToPoint(ThumbSpecifier thumb, MouseEvent e) {
+    private void dragThumbToPoint(ThumbSpecifier thumb, MouseEvent e,
+            boolean dragEnded) {
         if (thumb.type == ValueType.CONSTRAINED) {
 
             // Determine the value at which the thumb would be posi-
             // tioned if it could move freely as far as it wanted; if
             // this is the same value that the thumb has now, do noth-
-            // ing more.
+            // ing more unless the drag has ended.
             long targetValue = snapValueCalculator.getSnapThumbValue(
                     mapPixelToValue(e.x, true),
                     minConstrainedThumbValues.get(thumb.index),
                     maxConstrainedThumbValues.get(thumb.index));
-            if (targetValue == constrainedThumbValues.get(thumb.index)) {
+            if ((targetValue == constrainedThumbValues.get(thumb.index))
+                    && (dragEnded == false)) {
                 return;
             }
 
@@ -2564,17 +2582,19 @@ public abstract class MultiValueLinearControl extends Canvas {
 
             // Set the values to those calculated.
             setConstrainedThumbValues(newValues,
-                    ChangeSource.USER_GUI_INTERACTION);
+                    (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
+                            : ChangeSource.USER_GUI_INTERACTION_ONGOING));
         } else {
 
             // Determine the value at which the thumb would be posi-
             // tioned if it could move freely as far as it wanted; if
             // this is the same value that the thumb has now, do noth-
-            // ing more.
+            // ing more unless the drag has ended.
             long targetValue = snapValueCalculator.getSnapThumbValue(
                     mapPixelToValue(e.x, true), getMinimumAllowableValue(),
                     getMaximumAllowableValue());
-            if (targetValue == freeThumbValues.get(thumb.index)) {
+            if ((targetValue == freeThumbValues.get(thumb.index))
+                    && (dragEnded == false)) {
                 return;
             }
 
@@ -2584,7 +2604,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             newValues[thumb.index] = targetValue;
 
             // Set the values to those calculated.
-            setFreeThumbValues(newValues, ChangeSource.USER_GUI_INTERACTION);
+            setFreeThumbValues(newValues,
+                    (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
+                            : ChangeSource.USER_GUI_INTERACTION_ONGOING));
         }
     }
 
@@ -2719,7 +2741,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void setConstrainedThumbValues(long[] newValues, ChangeSource source) {
 
         // If the values have had to be adjusted, set the new values.
-        boolean changed = false;
+        boolean changed = (source == ChangeSource.USER_GUI_INTERACTION_COMPLETE);
         for (int j = 0; j < constrainedThumbValues.size(); j++) {
             if (constrainedThumbValues.get(j) != newValues[j]) {
                 changed = true;
@@ -2742,7 +2764,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void setFreeThumbValues(long[] newValues, ChangeSource source) {
 
         // If the values have had to be adjusted, set the new values.
-        boolean changed = false;
+        boolean changed = (source == ChangeSource.USER_GUI_INTERACTION_COMPLETE);
         for (int j = 0; j < freeThumbValues.size(); j++) {
             if (freeThumbValues.get(j) != newValues[j]) {
                 changed = true;

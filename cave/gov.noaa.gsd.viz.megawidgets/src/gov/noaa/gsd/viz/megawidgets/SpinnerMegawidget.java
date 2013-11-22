@@ -13,6 +13,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -25,8 +31,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 /**
- * Spinner megawidget, allowing the manipulation a bounded value that has
- * discrete steps.
+ * Spinner megawidget, allowing the manipulation of numbers.
  * 
  * <pre>
  * 
@@ -34,14 +39,21 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2013   2168     Chris.Golden      Initial creation
+ * Nov 04, 2013   2336     Chris.Golden      Changed to use multiple bounds on
+ *                                           generic wildcard so that T extends
+ *                                           both Number and Comparable. Also
+ *                                           changed to offer option of not
+ *                                           notifying listeners of state
+ *                                           changes caused by ongoing thumb
+ *                                           drags and spinner button presses.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see SpinnerSpecifier
  */
-public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
-        BoundedValueMegawidget<T> implements IControl {
+public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
+        extends BoundedValueMegawidget<T> implements IControl {
 
     // Protected Static Constants
 
@@ -75,15 +87,27 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
     private final Scale scale;
 
     /**
+     * Flag indicating whether state changes that occur as a result of a spinner
+     * button press or directional key press, or ongoing scale drag or
+     * directional key press, should be forwarded or not.
+     */
+    private final boolean onlySendEndStateChanges;
+
+    /**
+     * Increment delta.
+     */
+    private T incrementDelta;
+
+    /**
      * Flag indicating whether or not a programmatic change to component values
      * is currently in process.
      */
     private boolean changeInProgress = false;
 
     /**
-     * Increment delta.
+     * Last spinner value that the state change listener knows about.
      */
-    private T incrementDelta;
+    private int lastForwardedValue;
 
     /**
      * Control component helper.
@@ -118,6 +142,7 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
         label = UiBuilder.buildLabel(panel, specifier);
 
         // Create the spinner.
+        onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
         spinner.setTextLimit(Math.max(
                 getDigitsForValue(specifier.getMinimumValue()),
@@ -153,6 +178,41 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
             scale = null;
         }
 
+        // If only ending state changes are to result
+        // in notifications, bind spinner focus loss
+        // to trigger a notification if the value has
+        // changed in such a way that the state change
+        // listener was not notified. Do the same for
+        // key up and mouse up events, so that when
+        // the user presses and holds a directional
+        // key (arrow up or down, etc.) to change the
+        // value, or presses and holds one of the
+        // spinner buttons with the mouse, the state
+        // change will result in a notification after
+        // the key or mouse is released.
+        if (onlySendEndStateChanges) {
+            spinner.addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusLost(FocusEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+            spinner.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    if (UiBuilder.isSpinnerValueChanger(e)) {
+                        notifyListenersOfEndingStateChange();
+                    }
+                }
+            });
+            spinner.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseUp(MouseEvent e) {
+                    notifyListenersOfEndingStateChange();
+                }
+            });
+        }
+
         // Bind the spinner selection event to trigger
         // a change in the state, and to alter the
         // scale's value if one is present.
@@ -180,9 +240,7 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
                         SpinnerMegawidget.this.scale.setSelection(state);
                     }
                     SpinnerMegawidget.this.spinner.update();
-                    notifyListener(getSpecifier().getIdentifier(),
-                            SpinnerMegawidget.this.state);
-                    notifyListener();
+                    notifyListenersOfRapidStateChange();
                 }
 
                 // Reset the in-progress flag.
@@ -190,10 +248,44 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
             }
         });
 
-        // If a scale is supplied, bind its selection
-        // event to trigger a change in the state, and
-        // to alter the spinner's value as well.
+        // If a scale is supplied, add listeners to it.
         if (scale != null) {
+
+            // If only ending state changes are to result
+            // in notifications, bind scale focus loss
+            // to trigger a notification if the value has
+            // changed in such a way that the state change
+            // listener was not notified. Do the same for
+            // key up and mouse up events, so that when
+            // the user presses and holds a key to change
+            // the value, or drags the thumb with the
+            // mouse, the state change will result in a
+            // notification after the key or mouse is
+            // released.
+            if (onlySendEndStateChanges) {
+                scale.addFocusListener(new FocusAdapter() {
+                    @Override
+                    public void focusLost(FocusEvent e) {
+                        notifyListenersOfEndingStateChange();
+                    }
+                });
+                scale.addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyReleased(KeyEvent e) {
+                        notifyListenersOfEndingStateChange();
+                    }
+                });
+                scale.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseUp(MouseEvent e) {
+                        notifyListenersOfEndingStateChange();
+                    }
+                });
+            }
+
+            // Bind the scale selection event to trigger
+            // a change in the state, and to alter the
+            // spinner's value as well.
             scale.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
@@ -216,9 +308,7 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
                             || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
                         SpinnerMegawidget.this.state = convertSpinnerToValue(state);
                         SpinnerMegawidget.this.spinner.setSelection(state);
-                        notifyListener(getSpecifier().getIdentifier(),
-                                SpinnerMegawidget.this.state);
-                        notifyListener();
+                        notifyListenersOfRapidStateChange();
                     }
 
                     // Reset the in-progress flag.
@@ -360,6 +450,13 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
         }
     }
 
+    @Override
+    protected void doSetState(String identifier, Object state)
+            throws MegawidgetStateException {
+        super.doSetState(identifier, state);
+        recordLastNotifiedState();
+    }
+
     /**
      * Get the precision for the spinner, that is, the number of decimal places
      * that should come after a decimal point.
@@ -428,5 +525,44 @@ public abstract class SpinnerMegawidget<T extends Comparable<T>> extends
         spinner.getParent().setEnabled(editable);
         spinner.setBackground(helper.getBackgroundColor(editable, spinner,
                 label));
+    }
+
+    /**
+     * Record the current state as one of which the state change listener is
+     * assumed to be aware.
+     */
+    private void recordLastNotifiedState() {
+        lastForwardedValue = spinner.getSelection();
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change that
+     * is part of a set of rapidly-occurring changes if necessary.
+     */
+    private void notifyListenersOfRapidStateChange() {
+        if (onlySendEndStateChanges == false) {
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify the state change and notification listeners of a state change if
+     * the current state is not the same as the last state of which the state
+     * change listener is assumed to be aware.
+     */
+    private void notifyListenersOfEndingStateChange() {
+        if (lastForwardedValue != spinner.getSelection()) {
+            recordLastNotifiedState();
+            notifyListeners();
+        }
+    }
+
+    /**
+     * Notify listeners of a state change.
+     */
+    private void notifyListeners() {
+        notifyListener(getSpecifier().getIdentifier(),
+                SpinnerMegawidget.this.state);
+        notifyListener();
     }
 }
