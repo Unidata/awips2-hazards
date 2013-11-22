@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                             the EventSet passed to a recommender when it
  *                                             is run.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
  * @author bryon.lawrence
@@ -673,7 +674,7 @@ public final class HazardServicesMessageHandler {
      *            Type of entities to reset. *
      */
     public void reset(String type) {
-        model.reset(type);
+        model.reset();
 
         /*
          * Switch back to the default settings only if resetting the settings.

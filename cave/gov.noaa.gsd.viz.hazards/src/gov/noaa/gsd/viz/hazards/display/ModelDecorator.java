@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * Aug 06, 2013     1265   bryon.lawrence         Added support for undo/redo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -101,12 +102,11 @@ public class ModelDecorator implements IHazardServicesModel {
     }
 
     @Override
-    public void reset(String name) {
+    public void reset() {
         final String methodName = "reset";
         logCallingMethod(methodName);
-        log(String.format("name: %s", name));
         benchmarkStart(methodName);
-        decorated.reset(name);
+        decorated.reset();
         benchmarkStop(methodName);
     }
 
