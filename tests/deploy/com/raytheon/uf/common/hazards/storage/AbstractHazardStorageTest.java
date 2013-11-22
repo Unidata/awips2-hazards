@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.time.DateUtils;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -59,11 +58,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 30, 2013            mnash     Initial creation
- * Oct 30, 2013 1472       bkowal    Added a test for retrieving a large number of
+ * <<<<<<< HEAD
+ * Oct 30, 2013 #1472      bkowal    Added a test for retrieving a large number of
  *                                   hazards by phensig.
+ * =======
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 20, 2013 1472       bkowal    Test hazards will now be purged after every
- * 									 test.
+ * >>>>>>> Issue #2182.
  * 
  * </pre>
  * 
@@ -95,12 +95,9 @@ public abstract class AbstractHazardStorageTest {
 
     public IHazardEventManager manager = new HazardEventManager(getMode());
 
-    private List<IHazardEvent> createdHazardEvents;
-
     @Before
     public void setUp() {
         DeployTestProperties.getInstance();
-        this.createdHazardEvents = new ArrayList<IHazardEvent>();
     }
 
     public IHazardEvent createNewEvent() {
@@ -124,18 +121,9 @@ public abstract class AbstractHazardStorageTest {
 
     private IHazardEvent storeEvent() {
         IHazardEvent createdEvent = createNewEvent();
-        return this.storeEvent(createdEvent);
-    }
-
-    private IHazardEvent storeEvent(IHazardEvent hazardEvent) {
-        boolean stored = manager.storeEvent(hazardEvent);
+        boolean stored = manager.storeEvent(createdEvent);
         assertTrue("Not able to store event", stored);
-        this.createdHazardEvents.add(hazardEvent);
-        return hazardEvent;
-    }
-
-    private boolean removeEvent(IHazardEvent hazardEvent) {
-        return manager.removeEvent(hazardEvent);
+        return createdEvent;
     }
 
     /**
@@ -226,9 +214,7 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testRemove() {
         IHazardEvent createdEvent = storeEvent();
-        boolean tf = this.removeEvent(createdEvent);
-        // special case - remove event from the list of created events
-        this.createdHazardEvents.remove(createdEvent);
+        boolean tf = manager.removeEvent(createdEvent);
         assertTrue(tf);
         HazardHistoryList list = manager
                 .getByEventID(createdEvent.getEventID());
@@ -327,17 +313,17 @@ public abstract class AbstractHazardStorageTest {
         event = createNewEvent();
         event.setPhenomenon("ZW");
         event.setSubtype("Convective");
-        this.storeEvent(event);
+        manager.storeEvent(event);
 
         event = createNewEvent();
         event.setPhenomenon("ZW");
         event.setSignificance("D");
-        this.storeEvent(event);
+        manager.storeEvent(event);
 
         event = createNewEvent();
         event.setPhenomenon("TL");
         event.setSignificance("D");
-        this.storeEvent(event);
+        manager.storeEvent(event);
 
         phensigs.add("TL.D");
         phensigs.add("ZW.P.Convective");
@@ -345,6 +331,11 @@ public abstract class AbstractHazardStorageTest {
                 .getByMultiplePhensigs(phensigs);
         // should get 2 back
         assertThat(list.keySet(), hasSize(2));
+        for (String eid : list.keySet()) {
+            for (IHazardEvent ev : list.get(eid)) {
+                manager.removeEvent(ev);
+            }
+        }
     }
 
     @Test
@@ -357,21 +348,21 @@ public abstract class AbstractHazardStorageTest {
             event = createNewEvent();
             event.setPhenomenon("FA");
             event.setSubtype("Convective");
-            this.storeEvent(event);
+            manager.storeEvent(event);
         }
 
         for (int i = 0; i < 50; i++) {
             event = createNewEvent();
             event.setPhenomenon("TO");
             event.setSignificance("D");
-            this.storeEvent(event);
+            manager.storeEvent(event);
         }
 
         for (int i = 0; i < 50; i++) {
             event = createNewEvent();
             event.setPhenomenon("FF");
             event.setSignificance("D");
-            this.storeEvent(event);
+            manager.storeEvent(event);
         }
 
         phensigs.add("FF.D");
@@ -386,14 +377,11 @@ public abstract class AbstractHazardStorageTest {
         assertThat(totalTime, lessThanOrEqualTo(DateUtils.MILLIS_PER_SECOND));
         // verify that we have received the expected number of records
         assertThat(list.keySet(), hasSize(100));
-    }
-
-    @After
-    public void purgeTestHazardEvents() {
-        for (IHazardEvent hazardEvent : this.createdHazardEvents) {
-            this.removeEvent(hazardEvent);
+        for (String eid : list.keySet()) {
+            for (IHazardEvent ev : list.get(eid)) {
+                manager.removeEvent(ev);
+            }
         }
-        this.createdHazardEvents.clear();
     }
 
     abstract Mode getMode();
