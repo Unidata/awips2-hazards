@@ -119,6 +119,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           to "widget" with "megawidget" to avoid
  *                                           confusion.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -2768,7 +2770,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     "HazardDetailViewPart.timeRangeChanged(): conversion "
                             + "of event info to JSON string failed.", e);
         }
-        fireHIDAction(new HazardDetailAction("updateTimeRange", jsonText));
+        fireHIDAction(new HazardDetailAction(HazardConstants.UPDATE_TIME_RANGE,
+                jsonText));
     }
 
     /**

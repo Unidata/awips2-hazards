@@ -13,6 +13,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
@@ -36,7 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Oct 30, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Added some utilities
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -99,6 +100,8 @@ public class AutoTestUtilities {
 
     static final String EXA_VTEC_STRING = "EXA.K" + OAX;
 
+    static final String EXT_VTEC_STRING = "EXT.K" + OAX;
+
     static final String HYDROLOGY = "Hydrology";
 
     static final String SEV2 = "sev2";
@@ -138,9 +141,12 @@ public class AutoTestUtilities {
         eventBus.post(displayAction);
     }
 
-    void assignEventType(String eventType) {
+    void assignSelectedEventType(String eventType) {
         IHazardEvent selectedEvent = getSelectedEvent();
+        assignEventType(eventType, selectedEvent);
+    }
 
+    void assignEventType(String eventType, IHazardEvent selectedEvent) {
         Dict dict = buildEventTypeSelection(selectedEvent, eventType);
 
         HazardDetailAction hazardDetailAction = new HazardDetailAction(
@@ -228,6 +234,21 @@ public class AutoTestUtilities {
         Dict products = productCollection
                 .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
         return products;
+    }
+
+    void runDamBreakRecommender() {
+        Dict damBreakInfo = new Dict();
+        damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
+        damBreakInfo.put(URGENCY_LEVEL, LOW_CONFIDENCE_URGENCY_LEVEL);
+        eventBus.post(new ToolAction(
+                ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
+                FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
+    }
+
+    void setAddToPendingMode(String mode) {
+        SpatialDisplayAction action = new SpatialDisplayAction(
+                HazardConstants.ADD_PENDING_TO_SELECTED, mode);
+        eventBus.post(action);
     }
 
 }

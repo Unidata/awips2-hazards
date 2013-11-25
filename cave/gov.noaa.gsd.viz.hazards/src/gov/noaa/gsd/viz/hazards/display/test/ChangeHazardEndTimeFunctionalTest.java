@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -16,33 +17,31 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
-import java.util.List;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
- * Description: {@link FunctionalTest} of changing the area of an event.
+ * Description: {@link FunctionalTest} of changing the end time of an event.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
- * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Initial creation
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
+public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
 
     private enum Steps {
         START, ISSUE_FLASH_FLOOD_WATCH, PREVIEW_MODIFIED_EVENT
@@ -50,7 +49,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
     private Steps step;
 
-    public ChangeHazardAreaFunctionalTest(HazardServicesAppBuilder appBuilder) {
+    public ChangeHazardEndTimeFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
     }
 
@@ -75,9 +74,6 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                     HazardConstants.NEW_EVENT_SHAPE)) {
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
-            } else {
-                step = Steps.PREVIEW_MODIFIED_EVENT;
-                autoTestUtilities.previewEvent();
             }
         } catch (Exception e) {
             handleException(e);
@@ -88,41 +84,44 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
+            if (hazardDetailAction.getAction().equals(
+                    HazardAction.ISSUE.getValue())
+                    || hazardDetailAction.getAction().equals(
+                            HazardAction.PREVIEW.getValue())) {
+                return;
+            }
             if (step == Steps.START) {
                 step = Steps.ISSUE_FLASH_FLOOD_WATCH;
                 autoTestUtilities.issueEvent();
+            } else if (step == Steps.ISSUE_FLASH_FLOOD_WATCH) {
+                step = Steps.PREVIEW_MODIFIED_EVENT;
+                autoTestUtilities.previewEvent();
             }
+
         } catch (Exception e) {
             handleException(e);
         }
 
     }
 
-    @SuppressWarnings({ "rawtypes" })
     @Subscribe
     public void handleProductGeneratorResult(ProductGenerated generated) {
         try {
             switch (step) {
 
             case ISSUE_FLASH_FLOOD_WATCH:
-                SpatialDisplayAction modifyAreaAction = new SpatialDisplayAction(
-                        HazardConstants.MODIFY_EVENT_AREA);
                 IHazardEvent event = autoTestUtilities.getSelectedEvent();
                 String eventID = event.getEventID();
-                Dict modifiedEvent = autoTestUtilities.buildEventArea(-96.0,
-                        41.0);
-                List shapes = modifiedEvent
-                        .getDynamicallyTypedValue(HazardConstants.SHAPES);
-                Dict floodEvent = (Dict) shapes.get(0);
-                List<List<Double>> points = floodEvent
-                        .getDynamicallyTypedValue(HazardConstants.POINTS);
-                List<Double> onePoint = points.get(3);
-                onePoint.set(1, 39.0);
-                modifiedEvent.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                        eventID);
-                modifyAreaAction.setModifyEventJSON(modifiedEvent
-                        .toJSONString());
-                eventBus.post(modifyAreaAction);
+                Long endTimeInMillis = event.getEndTime().getTime();
+                endTimeInMillis += 30 * TimeUtil.MILLIS_PER_HOUR;
+                Dict updatedMetadata = new Dict();
+                updatedMetadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
+                updatedMetadata.put(HAZARD_EVENT_START_TIME, event
+                        .getStartTime().getTime());
+                updatedMetadata.put(HAZARD_EVENT_END_TIME, endTimeInMillis);
+                HazardDetailAction action = new HazardDetailAction(
+                        UPDATE_TIME_RANGE, updatedMetadata.toJSONString());
+                eventBus.post(action);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:
@@ -131,10 +130,12 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                         .productsFromEditorView(mockProductEditorView);
                 String legacy = products
                         .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-                assertTrue(legacy.contains(EXA_VTEC_STRING + "."
-                        + FLASH_FLOOD_WATCH_PHEN_SIG));
-                assertTrue(legacy.contains(CON_VTEC_STRING + "."
-                        + FLASH_FLOOD_WATCH_PHEN_SIG));
+                assertTrue(legacy.contains(EXT_VTEC_STRING));
+
+                /*
+                 * TODO Uncomment this when Issue #2447 is resolved.
+                 */
+                // assertTrue(legacy.contains(CAN_VTEC_STRING));
                 testSuccess();
 
                 break;

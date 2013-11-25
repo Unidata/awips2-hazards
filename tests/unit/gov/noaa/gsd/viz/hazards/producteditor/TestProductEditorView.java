@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 
 /**
  * Description: Test implementation of the product editor view.
@@ -29,6 +30,7 @@ import com.google.common.collect.Lists;
  * ------------ ---------- ----------- --------------------------
  * Mar 01, 2013            Bryon.Lawrence      Initial creation
  * Jul 15, 2013     585    Chris.Golden        Changed to use new version of IView.
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -130,7 +132,7 @@ public class TestProductEditorView implements
      * @return
      */
     public void issueButtonPressed() {
-        issueHandler.commandInvoked("Issue");
+        issueHandler.commandInvoked(HazardAction.ISSUE.getValue());
     }
 
     /**

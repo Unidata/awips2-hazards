@@ -19,6 +19,7 @@ import java.util.List;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 
 /**
  * Description: Product Editor presenter, used to mediate between the model and
@@ -35,6 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Sep 19, 2013 2046    mnash           Update for product generation.
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -120,7 +122,7 @@ public class ProductEditorPresenter extends
                     @Override
                     public void commandInvoked(String command) {
                         ProductEditorAction action = new ProductEditorAction(
-                                "Issue");
+                                HazardAction.ISSUE.getValue());
 
                         List<Dict> hazardEventSetsList = getView()
                                 .getHazardEventSetsList();

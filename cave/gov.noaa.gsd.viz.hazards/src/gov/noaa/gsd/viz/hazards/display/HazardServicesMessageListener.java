@@ -33,6 +33,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -63,6 +64,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Aug 22, 2013     787    bryon.lawrence    Added a constant for RESET_ACTION.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * </pre>
  * 
  * @author bryon.lawrence
@@ -152,7 +154,7 @@ public class HazardServicesMessageListener {
                         + "spatialDisplayActionOccurred(): "
                         + "Unable to modify event area.", e);
             }
-        } else if (actionType.equals("addToSelected")) {
+        } else if (actionType.equals(HazardConstants.ADD_PENDING_TO_SELECTED)) {
             messageHandler.setAddToSelected(spatialDisplayAction
                     .getActionIdentifier());
         } else if (actionType.equals("Drawing")) {
@@ -307,14 +309,16 @@ public class HazardServicesMessageListener {
             final HazardDetailAction hazardDetailAction) {
         if (hazardDetailAction.getAction().equalsIgnoreCase("Preview")) {
             messageHandler.preview();
-        } else if (hazardDetailAction.getAction().equalsIgnoreCase("Propose")) {
+        } else if (hazardDetailAction.getAction().equalsIgnoreCase(
+                HazardAction.PROPOSE.getValue())) {
             messageHandler.setProposedState();
-        } else if (hazardDetailAction.getAction().equalsIgnoreCase("Issue")) {
+        } else if (hazardDetailAction.getAction().equalsIgnoreCase(
+                HazardAction.ISSUE.getValue())) {
             messageHandler.setIssuedState();
         } else if (hazardDetailAction.getAction().equalsIgnoreCase("Dismiss")) {
             messageHandler.setDismissedState();
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
-                "updateTimeRange")) {
+                HazardConstants.UPDATE_TIME_RANGE)) {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
                     HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(

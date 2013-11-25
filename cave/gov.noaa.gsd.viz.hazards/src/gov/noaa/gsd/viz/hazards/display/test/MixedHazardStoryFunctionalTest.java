@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Oct 29, 2013 2166      daniel.s.schaffer@noaa.gov      Test in working order
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
  * 
  * </pre>
  * 
@@ -106,13 +107,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 switch (step) {
                 case RUN_DAM_BREAK:
 
-                    Dict damBreakInfo = new Dict();
-                    damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
-                    damBreakInfo.put(URGENCY_LEVEL,
-                            LOW_CONFIDENCE_URGENCY_LEVEL);
-                    eventBus.post(new ToolAction(
-                            ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                            DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
+                    autoTestUtilities.runDamBreakRecommender();
                     break;
                 case RUN_FLOOD:
 

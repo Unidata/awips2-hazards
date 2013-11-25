@@ -94,6 +94,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Tidying
  * </pre>
  * 
  * @author bryon.lawrence
@@ -764,7 +765,7 @@ public final class HazardServicesMessageHandler {
      */
     public void setAddToSelected(String state) {
         sessionConfigurationManager.getSettings().setAddToSelected(
-                state.equalsIgnoreCase("on"));
+                state.equalsIgnoreCase(ADD_PENDING_TO_SELECTED_ON));
     }
 
     /**

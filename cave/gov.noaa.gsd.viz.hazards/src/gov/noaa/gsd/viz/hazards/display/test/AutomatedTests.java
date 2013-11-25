@@ -30,6 +30,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013  2182      daniel.s.schaffer@noaa.gov Initial creation.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Added auto-tests
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -70,11 +71,21 @@ public class AutomatedTests {
 
         else if (testCompleted.getTestClass().equals(
                 SimpleHazardStoryFunctionalTest.class)) {
+            new AddNewPendingToSelectedTest(appBuilder).run();
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                AddNewPendingToSelectedTest.class)) {
             new ChangeHazardAreaFunctionalTest(appBuilder).run();
         }
 
         else if (testCompleted.getTestClass().equals(
                 ChangeHazardAreaFunctionalTest.class)) {
+            new ChangeHazardEndTimeFunctionalTest(appBuilder).run();
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                ChangeHazardEndTimeFunctionalTest.class)) {
             new ProductStagingDialogTest(appBuilder).run();
         }
 

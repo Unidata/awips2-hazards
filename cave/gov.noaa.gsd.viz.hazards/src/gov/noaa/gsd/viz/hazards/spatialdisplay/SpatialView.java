@@ -43,9 +43,9 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -90,6 +90,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Aug 29, 2013   1921     bryon.lawrence    Updated loadGeometryOverlayForSelectedEvent
  *                                           to use Java event objects instead of
  *                                           JSON.
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -730,7 +732,8 @@ public class SpatialView implements
             redoCommandAction.setEnabled(false);
             addToSelectedToggleAction = new BasicSpatialAction("",
                     "addToSelected.png", Action.AS_CHECK_BOX,
-                    "Add New Pending to Selected", "addToSelected", null);
+                    "Add New Pending to Selected",
+                    HazardConstants.ADD_PENDING_TO_SELECTED, null);
             moveAndSelectChoiceAction = new BasicSpatialAction("",
                     "moveAndSelect.png", Action.AS_RADIO_BUTTON,
                     "Select Event", "Drawing", "SelectEvent");

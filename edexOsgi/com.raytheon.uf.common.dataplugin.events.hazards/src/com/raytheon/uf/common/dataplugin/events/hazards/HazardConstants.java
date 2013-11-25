@@ -40,6 +40,7 @@ import java.util.List;
  * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    More constants to help tidy the code
  * 
  * </pre>
  * 
@@ -465,6 +466,14 @@ public final class HazardConstants {
     public static final String SELECTED_EVENTS_CHANGED = "SelectedEventsChanged";
 
     public static final String MODIFY_EVENT_AREA = "ModifyEventArea";
+
+    public static final String UPDATE_TIME_RANGE = "updateTimeRange";
+
+    public static final String ADD_PENDING_TO_SELECTED = "addToSelected";
+
+    public static final String ADD_PENDING_TO_SELECTED_ON = "on";
+
+    public static final String ADD_PENDING_TO_SELECTED_OFF = "off";
 
     /*
      * TODO The following need to be moved to something specific to storm track

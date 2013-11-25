@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.viz.ui.dialogs.ModeListener;
@@ -60,6 +61,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * 06/04/2013              C. Golden   Added support for changing background and foreground
  *                                     colors in order to stay in synch with CAVE mode.
  * Jul 19, 2013      585   C. Golden   Replaced string literals in code with constants.
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * 
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -313,7 +316,7 @@ class ProductEditorDialog extends BasicDialog {
     protected void buttonPressed(int buttonId) {
         // super.buttonPressed(buttonId);
         if ((buttonId == ISSUE_ID) && (issueHandler != null)) {
-            issueHandler.commandInvoked("Issue");
+            issueHandler.commandInvoked(HazardAction.ISSUE.getValue());
         } else if ((buttonId == DISMISS_ID) && (dismissHandler != null)) {
             dismissHandler.commandInvoked("Dismiss");
         } else {

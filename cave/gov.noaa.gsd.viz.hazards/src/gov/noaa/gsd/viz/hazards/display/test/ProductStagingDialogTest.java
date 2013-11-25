@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013    2182       daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using renamed utility
  * 
  * </pre>
  * 
@@ -81,13 +82,13 @@ public class ProductStagingDialogTest extends FunctionalTest {
             switch (step) {
             case START:
                 autoTestUtilities
-                        .assignEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+                        .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
 
                 break;
 
             case EVENT0:
                 autoTestUtilities
-                        .assignEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+                        .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
                 break;
 
             default:
