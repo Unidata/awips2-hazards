@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -38,6 +39,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * </pre>
  * 
  * @author bryon.lawrence
@@ -81,8 +83,7 @@ public class ProductStagingPresenter extends
                 List<String> eventIds = product.getSelectedEventIDs();
                 Collection<IHazardEvent> events = getSessionManager()
                         .getEventManager().getEvents();
-                Collection<IHazardEvent> selectedEvents = getSessionManager()
-                        .getEventManager().getSelectedEvents();
+                Collection<IHazardEvent> selectedEvents = Lists.newArrayList();
                 for (IHazardEvent eve : events) {
                     if (eventIds.contains(eve.getEventID())) {
                         eve.addHazardAttribute(
