@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013    2182    daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 21, 2013  2446      daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * 
  * </pre>
  * 
@@ -124,48 +125,50 @@ class HazardServicesProductGenerationHandler {
         for (ProductInformation info : products) {
             ProductStagingInfo.Product product = new ProductStagingInfo.Product(
                     info.getProductName());
-            result.addProducts(product);
-            List<Field> fields = Lists.newArrayList();
-            Field field = new Field();
-            fields.add(field);
-            product.addFields(field);
-            for (IHazardEvent event : info.getProductEvents()) {
-                product.addSelectedEventIDs(event.getEventID());
-            }
-
-            field.setFieldName(HazardConstants.HAZARD_EVENT_IDS);
-            field.setFieldType(CHECK_LIST_FIELD_TYPE);
-            field.setLabel(COMBINE_MESSAGE);
-
-            /*
-             * Make the sub-window containing the selectable events fall within
-             * a reasonable size range.
-             */
-            field.setLines(Math.min(10,
-                    Math.max(info.getProductEvents().size(), 5)));
-
-            List<IHazardEvent> eventChoices = new ArrayList<IHazardEvent>();
-            eventChoices.addAll(info.getProductEvents());
-            eventChoices.addAll(info.getPossibleProductEvents());
-
-            for (IHazardEvent event : eventChoices) {
-
-                StringBuilder displayString = new StringBuilder();
-                displayString.append(event.getEventID());
-                displayString.append(" ");
-                displayString.append(event.getPhenomenon());
-                displayString.append(".");
-                displayString.append(event.getSignificance());
-                if (event.getSubtype() != null) {
-                    displayString.append(".");
-                    displayString.append(event.getSubtype());
+            if (info.getPossibleProductEvents().size() > 0) {
+                result.addProducts(product);
+                List<Field> fields = Lists.newArrayList();
+                Field field = new Field();
+                fields.add(field);
+                product.addFields(field);
+                for (IHazardEvent event : info.getProductEvents()) {
+                    product.addSelectedEventIDs(event.getEventID());
                 }
 
-                Choice choice = new Choice();
-                field.addChoice(choice);
-                choice.setDisplayString(displayString.toString());
-                choice.setIdentifier(event.getEventID());
+                field.setFieldName(HazardConstants.HAZARD_EVENT_IDS);
+                field.setFieldType(CHECK_LIST_FIELD_TYPE);
+                field.setLabel(COMBINE_MESSAGE);
 
+                /*
+                 * Make the sub-window containing the selectable events fall
+                 * within a reasonable size range.
+                 */
+                field.setLines(Math.min(10,
+                        Math.max(info.getProductEvents().size(), 5)));
+
+                List<IHazardEvent> eventChoices = new ArrayList<IHazardEvent>();
+                eventChoices.addAll(info.getProductEvents());
+                eventChoices.addAll(info.getPossibleProductEvents());
+
+                for (IHazardEvent event : eventChoices) {
+
+                    StringBuilder displayString = new StringBuilder();
+                    displayString.append(event.getEventID());
+                    displayString.append(" ");
+                    displayString.append(event.getPhenomenon());
+                    displayString.append(".");
+                    displayString.append(event.getSignificance());
+                    if (event.getSubtype() != null) {
+                        displayString.append(".");
+                        displayString.append(event.getSubtype());
+                    }
+
+                    Choice choice = new Choice();
+                    field.addChoice(choice);
+                    choice.setDisplayString(displayString.toString());
+                    choice.setIdentifier(event.getEventID());
+
+                }
             }
 
         }

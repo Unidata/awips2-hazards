@@ -53,6 +53,8 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -104,7 +106,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Oct 23, 2013 2277       jsanchez    Use thrift request to check for grid conflicts.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * </pre>
  * 
  * @author bsteffen
@@ -163,7 +165,8 @@ public class SessionProductManager implements ISessionProductManager {
                                 .equals(true)) {
                             productEvents.add(e);
                         } else if (e.getState() != HazardState.POTENTIAL
-                                && e.getState() != HazardState.ENDED) {
+                                && e.getState() != HazardState.ENDED
+                                && isCombinable(e)) {
                             possibleProductEvents.add(e);
                         }
                     }
@@ -227,6 +230,14 @@ public class SessionProductManager implements ISessionProductManager {
         // TODO remove the reverse. Currently removing the reverse breaks
         // the Replace Watch with Warning Story.
         Collections.reverse(result);
+        return result;
+    }
+
+    private boolean isCombinable(IHazardEvent e) {
+        String type = HazardEventUtilities.getPhenSigSubType(e);
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+        HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
+        boolean result = hazardTypeEntry.isCombinableSegments();
         return result;
     }
 
