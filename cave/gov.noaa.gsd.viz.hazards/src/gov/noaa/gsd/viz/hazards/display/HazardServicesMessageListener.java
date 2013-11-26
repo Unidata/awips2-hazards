@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * Nov 23, 2013    2474    bryon.lawrence    Replaced "updatedEventData" literal.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -217,7 +218,7 @@ public class HazardServicesMessageListener {
             messageHandler.newEventShape(spatialDisplayAction
                     .getToolParameters().toJSONString(), spatialDisplayAction
                     .getEventID(), "Spatial");
-        } else if (actionType.equals("updateEventData")) {
+        } else if (actionType.equals(HazardConstants.UPDATE_EVENT_METADATA)) {
             /**
              * TODO Change updateEventData to take in a POJO
              */

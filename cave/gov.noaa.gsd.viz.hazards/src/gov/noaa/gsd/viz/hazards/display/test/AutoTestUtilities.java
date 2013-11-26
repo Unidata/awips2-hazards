@@ -251,4 +251,14 @@ public class AutoTestUtilities {
         eventBus.post(action);
     }
 
+    void updateSelectedEventAttributes(Dict updatedEventAttributes) {
+        IHazardEvent selectedEvent = getSelectedEvent();
+        updatedEventAttributes.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                selectedEvent.getEventID());
+        SpatialDisplayAction displayAction = new SpatialDisplayAction(
+                HazardConstants.UPDATE_EVENT_METADATA);
+        displayAction.setToolParameters(updatedEventAttributes);
+        eventBus.post(displayAction);
+    }
+
 }

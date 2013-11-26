@@ -125,6 +125,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                        forModifyingStormTrack in HazardServicesDrawableBuilder
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov  23, 2013 2474     Bryon.Lawrence  Made fix to prevent NPE when using right
+ *                                        click context menu.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1381,7 +1383,8 @@ public class ToolLayer extends
              * which applies to hazard geometries created by the draw-by-area
              * tool.
              */
-            String[] contextMenuEntries = (String[]) event
+            @SuppressWarnings("unchecked")
+            List<String> contextMenuEntries = (List<String>) event
                     .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
 
             if (contextMenuEntries != null) {

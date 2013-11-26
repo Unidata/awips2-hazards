@@ -49,6 +49,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                            is not translated by the model adapter's
  *                                            updateEventData method.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov  23, 2013 2474     bryon.lawrence      Replaced string literal with
+ *                                            a constant.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -320,7 +322,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         geoReferenceDict.put(
                                 HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
                                 contextMenuList);
-                        action = new SpatialDisplayAction("updateEventData");
+                        action = new SpatialDisplayAction(
+                                HazardConstants.UPDATE_EVENT_METADATA);
                         action.setToolParameters(geoReferenceDict);
                         getSpatialPresenter().fireAction(action);
                     } else {
