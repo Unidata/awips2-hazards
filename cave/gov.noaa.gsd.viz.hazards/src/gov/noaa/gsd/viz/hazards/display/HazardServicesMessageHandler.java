@@ -41,6 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -91,6 +92,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Aug 30, 2013 1921       bryon.lawrence      Added code to pass hazard events as a part of
  *                                             the EventSet passed to a recommender when it
  *                                             is run.
+ * Oct 22, 2013 1463       bryon.lawrence      Added methods for hazard 
+ *                                             conflict detection.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
@@ -155,6 +158,8 @@ public final class HazardServicesMessageHandler {
      * An instance of the Hazard Services app builder.
      */
     private HazardServicesAppBuilder appBuilder = null;
+
+    private final ISessionManager sessionManager;
 
     private final ISessionEventManager sessionEventManager;
 
@@ -224,7 +229,8 @@ public final class HazardServicesMessageHandler {
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
             Date currentTime, String dynamicSettingJSON) {
         this.appBuilder = appBuilder;
-        ISessionManager sessionManager = appBuilder.getSessionManager();
+        this.sessionManager = appBuilder.getSessionManager();
+
         this.productGeneratorHandler = new HazardServicesProductGenerationHandler(
                 sessionManager);
         this.sessionEventManager = sessionManager.getEventManager();
@@ -232,7 +238,7 @@ public final class HazardServicesMessageHandler {
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
 
-        ModelAdapter adapter = new ModelAdapter(sessionManager);
+        ModelAdapter adapter = new ModelAdapter(this.sessionManager);
         adapter.getSessionManager().registerForNotification(this);
 
         model = new ModelDecorator(adapter);
@@ -603,8 +609,10 @@ public final class HazardServicesMessageHandler {
     private void issueEvents() {
         if (appBuilder.getUserAnswerToQuestion("Are you sure "
                 + "you want to issue the hazard event(s)?")) {
-            generateProducts(true);
-            notifyModelEventsChanged();
+            if (continueIfThereAreHazardConflicts()) {
+                generateProducts(true);
+                notifyModelEventsChanged();
+            }
         }
     }
 
@@ -1176,9 +1184,12 @@ public final class HazardServicesMessageHandler {
                 .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
             if (appBuilder.getUserAnswerToQuestion("Are you sure "
                     + "you want to issue the hazard event(s)?")) {
-                productGeneratorHandler.createProductsFromHazardEventSets(true,
-                        productDisplayJSON);
-                notifyModelEventsChanged();
+                if (continueIfThereAreHazardConflicts()) {
+
+                    productGeneratorHandler.createProductsFromHazardEventSets(
+                            true, productDisplayJSON);
+                    notifyModelEventsChanged();
+                }
             }
         }
 
@@ -1273,6 +1284,58 @@ public final class HazardServicesMessageHandler {
         return model.getBenchmarkingStats();
     }
 
+    /**
+     * Examines all hazards looking for potential conflicts.
+     * 
+     * @param
+     * @return
+     */
+    public void checkHazardConflicts() {
+
+        ISessionEventManager sessionEventManager = model.getSessionManager()
+                .getEventManager();
+
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
+                .getAllConflictingEvents();
+
+        if (!conflictMap.isEmpty()) {
+            launchConflictingHazardsDialog(conflictMap, false);
+        }
+
+    }
+
+    /**
+     * Toggles on/off automatic conflict checking.
+     */
+    public void toggleAutoCheckConflicts() {
+        sessionManager.toggleAutoHazardChecking();
+    }
+
+    /**
+     * Examines all hazards looking for potential conflicts. Returns the user's
+     * decision as to whether or not to continue with the conflicts.
+     * 
+     * @param
+     * @return The user's decision to continue (true) or not (false) if there
+     *         are existing
+     */
+    private Boolean continueIfThereAreHazardConflicts() {
+
+        Boolean userResponse = true;
+
+        ISessionEventManager sessionEventManager = model.getSessionManager()
+                .getEventManager();
+
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
+                .getAllConflictingEvents();
+
+        if (!conflictMap.isEmpty()) {
+            userResponse = launchConflictingHazardsDialog(conflictMap, true);
+        }
+
+        return userResponse;
+    }
+
     @Subscribe
     public void sessionEventsModified(SessionEventsModified notification) {
         VizApp.runAsync(new Runnable() {
@@ -1333,4 +1396,75 @@ public final class HazardServicesMessageHandler {
         return settingsList.get(0).getSettingsID();
     }
 
+    /**
+     * Launches a dialog displaying conflicting hazards. It is up to the user as
+     * to whether or not to fix them.
+     * 
+     * @param conflictingHazardMap
+     *            A map of hazards and hazards which conflict with them.
+     * @param requiresConfirmation
+     *            Indicates whether or not this dialog should require user
+     *            confirmation (Yes or No).
+     * @return The return value from the dialog based on the user's selection.
+     */
+    private Boolean launchConflictingHazardsDialog(
+            final Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap,
+            final Boolean requiresConfirmation) {
+
+        Boolean userSelection = true;
+
+        if (!conflictingHazardMap.isEmpty()) {
+            StringBuffer message = new StringBuffer(
+                    "Conflicting Hazards: The following hazard conflicts exist: ");
+
+            if (requiresConfirmation) {
+                message.append("Continue?\n");
+            } else {
+                message.append("\n");
+            }
+
+            for (IHazardEvent hazardEvent : conflictingHazardMap.keySet()) {
+
+                String phenSig = HazardEventUtilities
+                        .getPhenSigSubType(hazardEvent);
+                message.append("Event ID:" + hazardEvent.getEventID() + "("
+                        + phenSig + ") Conflicts With: ");
+
+                Map<IHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
+                        .get(hazardEvent);
+
+                for (IHazardEvent conflictingHazard : conflictingHazards
+                        .keySet()) {
+                    String conflictingPhenSig = HazardEventUtilities
+                            .getPhenSigSubType(conflictingHazard);
+                    message.append("Event ID:" + conflictingHazard.getEventID()
+                            + "(" + conflictingPhenSig + ") ");
+
+                    Collection<String> conflictingAreas = conflictingHazards
+                            .get(conflictingHazard);
+
+                    if (!conflictingAreas.isEmpty()) {
+                        message.append("\n\tAreas:");
+
+                        for (String area : conflictingAreas) {
+                            message.append(" " + area);
+                        }
+                    }
+
+                }
+
+                message.append("\n");
+            }
+
+            if (requiresConfirmation) {
+                userSelection = appBuilder.getUserAnswerToQuestion(message
+                        .toString());
+
+            } else {
+                appBuilder.warnUser(message.toString());
+            }
+        }
+
+        return userSelection;
+    }
 }

@@ -9,13 +9,19 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.eclipse.jface.action.Action;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 /**
  * Description: Mock {@link IHazardDetailView} used for testing.
@@ -25,25 +31,24 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 22, 2013  2166      daniel.s.schaffer@noaa.gov      Initial creation
+ * Oct 22, 2013  2166      daniel.s.schaffer@noaa.gov  Initial creation
+ * Nov 14, 2013  1463      bryon.lawrence Updated to support hazard conflict
+ *                                        detection.
  * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-@SuppressWarnings("rawtypes")
-public class HazardDetailViewForTesting implements IHazardDetailView {
+public class HazardDetailViewForTesting implements
+        IHazardDetailView<Action, RCPMainUserInterfaceElement> {
 
     private DictList eventValuesList;
 
-    @Override
-    public void dispose() {
-    }
+    private Map<String, Collection<IHazardEvent>> eventConflictMap;
 
     @Override
-    public List contributeToMainUI(Enum type) {
-        return null;
+    public void dispose() {
     }
 
     @Override
@@ -55,14 +60,18 @@ public class HazardDetailViewForTesting implements IHazardDetailView {
 
     @Override
     public void showHazardDetail(DictList eventValuesList, String topEventID,
+            Map<String, Collection<IHazardEvent>> eventConflictMap,
             boolean force) {
         this.eventValuesList = eventValuesList;
+        this.eventConflictMap = eventConflictMap;
 
     }
 
     @Override
-    public void updateHazardDetail(DictList eventValuesList, String topEventID) {
+    public void updateHazardDetail(DictList eventValuesList, String topEventID,
+            Map<String, Collection<IHazardEvent>> eventConflictMap) {
         this.eventValuesList = eventValuesList;
+        this.eventConflictMap = eventConflictMap;
     }
 
     @Override
@@ -79,9 +88,19 @@ public class HazardDetailViewForTesting implements IHazardDetailView {
         return eventValuesList;
     }
 
+    public Map<String, Collection<IHazardEvent>> getConflictMap() {
+        return eventConflictMap;
+    }
+
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public List<? extends Action> contributeToMainUI(
+            RCPMainUserInterfaceElement type) {
+        throw new UnsupportedOperationException();
     }
 
 }

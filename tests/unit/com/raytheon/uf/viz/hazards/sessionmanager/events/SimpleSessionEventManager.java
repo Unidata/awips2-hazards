@@ -23,10 +23,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Simplified event manager that just stores all events.
@@ -38,6 +41,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEve
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013 1257       bsteffen    Initial creation
+ * Nov 14, 2013 1463       blawrenc    Added stubbed out methods
+ *                                     for handling conflict
+ *                                     detection.
  * 
  * </pre>
  * 
@@ -116,6 +122,23 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         /**
          * Nothing to do right now.
          */
+    }
+
+    @Override
+    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<IHazardEvent, Collection<String>> getConflictingEvents(
+            IHazardEvent event, Date startTime, Date endTime,
+            Geometry geometry, String phenSigSubtype) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+        throw new UnsupportedOperationException();
     }
 
 }

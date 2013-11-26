@@ -22,9 +22,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
+import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Manages all events in a session.
@@ -36,6 +39,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
+ * Oct 22, 2013 1463       blawrence   Added methods for hazard conflict
+ *                                     detection.
  * 
  * </pre>
  * 
@@ -216,5 +221,48 @@ public interface ISessionEventManager {
      * Execute any shutdown needed.
      */
     public void shutdown();
+
+    /**
+     * Checks all events for conflicts.
+     * 
+     * @param
+     * @return A map of events with a map of any conflicting events and lists of
+     *         corresponding conflicting geometries.
+     */
+    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents();
+
+    /**
+     * Tests if a specific event conflicts spatially with an existing event or
+     * event(s).
+     * 
+     * @param event
+     *            Event to test for conflicts
+     * @param startTime
+     *            - modified start time of hazard event
+     * @param endTime
+     *            - modified end time of hazard event
+     * @param geometry
+     *            - modified geometry of hazard event.
+     * @param phenSigSubtype
+     *            Contains phenomena, significance and an optional sub-type.
+     * 
+     * @return A map of events which conflict spatially with an existing event
+     *         or events. Each event in the map will have a list of area names
+     *         where the conflict is occurring. This map will be empty if there
+     *         are no conflicting hazards.
+     */
+    public Map<IHazardEvent, Collection<String>> getConflictingEvents(
+            IHazardEvent event, Date startTime, Date endTime,
+            Geometry geometry, String phenSigSubtype);
+
+    /**
+     * Tests the currently selected hazards for conflicts with other hazards.
+     * 
+     * @param
+     * @return A map of selected event ids and corresponding collections of
+     *         events which conflict spatially with them. This list will be
+     *         empty if the are no conflicting hazards.
+     */
+    Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
 
 }

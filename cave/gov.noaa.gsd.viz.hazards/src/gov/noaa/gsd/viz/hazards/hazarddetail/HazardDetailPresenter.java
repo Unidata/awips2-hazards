@@ -16,9 +16,13 @@ import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.Map;
 
+import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
@@ -38,6 +42,8 @@ import com.google.common.eventbus.EventBus;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * Nov 14, 2013    1463    Bryon.Lawrence    Added code to support hazard conflict
+ *                                           detection.
  * </pre>
  * 
  * @author Chris.Golden
@@ -91,10 +97,12 @@ public class HazardDetailPresenter extends
         }
         if (changed.contains(Element.EVENTS) && (eventChange == false)) {
             eventChange = true;
+
             getView().updateHazardDetail(
                     DictList.getInstance(getModel().getComponentData(
                             HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                            "all")), getModel().getLastSelectedEventID());
+                            "all")), getModel().getLastSelectedEventID(),
+                    getConflictingEventsForSelectedEvents());
             eventChange = false;
         }
     }
@@ -121,7 +129,8 @@ public class HazardDetailPresenter extends
         String topEventID = getModel().getLastSelectedEventID();
 
         // Have the view open the alert detail subview.
-        getView().showHazardDetail(eventsList, topEventID, force);
+        getView().showHazardDetail(eventsList, topEventID,
+                getConflictingEventsForSelectedEvents(), force);
     }
 
     /**
@@ -159,6 +168,29 @@ public class HazardDetailPresenter extends
                                 .getComponentData(
                                         HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
                                         "all")),
-                        getModel().getLastSelectedEventID());
+                        getModel().getLastSelectedEventID(),
+                        getConflictingEventsForSelectedEvents());
     }
+
+    /**
+     * Returns a map of conflicting events for the currently selected event ids
+     * if auto hazard checking is 'on'.
+     * 
+     * @param
+     * @return
+     */
+    private Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+        Map<String, Collection<IHazardEvent>> eventConflictList;
+
+        if (getSessionManager().isAutoHazardCheckingOn()) {
+            eventConflictList = getSessionManager().getEventManager()
+                    .getConflictingEventsForSelectedEvents();
+
+        } else {
+            eventConflictList = Maps.newHashMap();
+        }
+
+        return eventConflictList;
+    }
+
 }

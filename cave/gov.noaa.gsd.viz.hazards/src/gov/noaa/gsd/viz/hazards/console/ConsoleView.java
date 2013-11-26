@@ -69,6 +69,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  *                                           RESET_EVENTS, RESET_SETTINGS, and 
  *                                           RESET_ACTION
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
+ * Oct 22, 2013    1463    Bryon.Lawrence    Added menu options for hazard 
+ *                                           conflict detection.
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,6 +92,16 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * Reset settings command menu item text.
      */
     public static final String RESET_SETTINGS_COMMAND_MENU_TEXT = "Reset Settings";
+
+    /**
+     * Check hazard conflicts command menu item text.
+     */
+    public static final String CHECK_HAZARD_CONFLICTS_MENU_TEXT = "Check Hazard Conflicts";
+
+    /**
+     * Auto check hazard conflicts command menu item text.
+     */
+    public static final String AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT = "Auto Check Hazard Conflicts";
 
     /**
      * Suffix for the preferences key used to determine whether or not to detach
@@ -420,6 +433,16 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     private Action resetSettingsCommandAction;
 
     /**
+     * Check hazard conflicts command action.
+     */
+    private Action checkHazardConflictsAction;
+
+    /**
+     * Auto check hazard conflicts command action.
+     */
+    private Action autoCheckHazardConflictsAction;
+
+    /**
      * Flag indicating whether or not the temporal controls should be in the
      * toolbar.
      */
@@ -749,9 +772,23 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                     Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
                     HazardConstants.RESET_SETTINGS);
             SeparatorAction sep = new SeparatorAction();
+            checkHazardConflictsAction = new BasicConsoleAction(
+                    CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
+                    Action.AS_PUSH_BUTTON, null,
+                    HazardConstants.CHECK_CONFLICT_ACTION,
+                    HazardConstants.CHECK_CONFLICTS);
+            autoCheckHazardConflictsAction = new BasicConsoleAction(
+                    AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
+                    Action.AS_CHECK_BOX, null,
+                    HazardConstants.CHECK_CONFLICT_ACTION,
+                    HazardConstants.AUTO_CHECK_CONFLICTS);
+
             Action changeSiteAction = new ChangeSiteAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
-                    resetSettingsCommandAction, sep, changeSiteAction);
+                    resetSettingsCommandAction, sep,
+                    checkHazardConflictsAction, autoCheckHazardConflictsAction,
+                    sep, changeSiteAction);
+
             return actions;
         }
     }

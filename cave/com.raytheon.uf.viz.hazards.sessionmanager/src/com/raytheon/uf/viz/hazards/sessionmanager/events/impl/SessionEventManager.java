@@ -41,22 +41,32 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
@@ -72,6 +82,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModifi
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Implementation of ISessionEventManager
@@ -87,8 +98,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Sep 10, 2013  752       blawrenc    Modified addEvent to check if the event
  *                                     being added already exists.
  * Sep 12, 2013 717        jsanchez    Converted certain hazard events to grids.
+ * Oct 21, 2013 2177       blawrenc    Added logic to check for event conflicts.
  * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
  * 
  * </pre>
  * 
@@ -600,7 +613,256 @@ public class SessionEventManager extends AbstractSessionEventManager {
             throw new RuntimeException(
                     "Unable to make request for hazard event id", e);
         }
+
         return value;
+    }
+
+    @Override
+    public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+
+        Map<String, Collection<IHazardEvent>> conflictingHazardMap = Maps
+                .newHashMap();
+
+        Collection<IHazardEvent> selectedEvents = getSelectedEvents();
+
+        for (IHazardEvent eventToCheck : selectedEvents) {
+
+            Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
+                    eventToCheck, eventToCheck.getStartTime(),
+                    eventToCheck.getEndTime(), eventToCheck.getGeometry(),
+                    HazardEventUtilities.getPhenSigSubType(eventToCheck));
+
+            if (!conflictingHazards.isEmpty()) {
+                conflictingHazardMap.put(eventToCheck.getEventID(),
+                        conflictingHazards.keySet());
+            }
+
+        }
+
+        return conflictingHazardMap;
+
+    }
+
+    @Override
+    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents() {
+
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap = Maps
+                .newHashMap();
+        /*
+         * Find the union of the session events and those retrieved from the
+         * hazard event manager. Ignore "Ended" events.
+         */
+        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(new HazardQueryBuilder());
+
+        for (IHazardEvent eventToCheck : eventsToCheck) {
+
+            Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
+                    eventToCheck, eventToCheck.getStartTime(),
+                    eventToCheck.getEndTime(), eventToCheck.getGeometry(),
+                    HazardEventUtilities.getPhenSigSubType(eventToCheck));
+
+            if (!conflictingHazards.isEmpty()) {
+                conflictingHazardMap.put(eventToCheck, conflictingHazards);
+            }
+
+        }
+
+        return conflictingHazardMap;
+    }
+
+    @Override
+    public Map<IHazardEvent, Collection<String>> getConflictingEvents(
+            final IHazardEvent eventToCompare, final Date startTime,
+            final Date endTime, final Geometry geometry, String phenSigSubtype) {
+
+        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = Maps
+                .newHashMap();
+
+        /*
+         * A hazard type may not always be assigned to an event yet.
+         */
+        if (phenSigSubtype != null) {
+
+            /*
+             * Retrieve the list of conflicting hazards associated with this
+             * type.
+             */
+            HazardTypes hazardTypes = configManager.getHazardTypes();
+            HazardTypeEntry hazardTypeEntry = hazardTypes.get(phenSigSubtype);
+
+            if (hazardTypeEntry != null) {
+
+                List<String> hazardConflictList = hazardTypeEntry
+                        .getHazardConflictList();
+
+                if (!hazardConflictList.isEmpty()) {
+
+                    String cwa = LocalizationManager
+                            .getContextName(LocalizationLevel.SITE);
+
+                    String hazardHatchArea = hazardTypeEntry
+                            .getHazardHatchArea();
+
+                    String hazardHatchAreaLabel = hazardTypeEntry
+                            .getHazardHatchLabel();
+
+                    String hazardHatchLabel = hazardTypeEntry
+                            .getHazardHatchLabel();
+
+                    Set<IGeometryData> warnedAreasForEvent = HazardEventUtilities
+                            .buildWarnedAreaForEvent(hazardHatchArea,
+                                    hazardHatchLabel, cwa, eventToCompare);
+
+                    /*
+                     * Retrieve matching events from the Hazard Event Manager
+                     * Also, include those from the session state.
+                     */
+                    HazardQueryBuilder hazardQueryBuilder = new HazardQueryBuilder();
+
+                    hazardQueryBuilder.addKey(
+                            HazardConstants.HAZARD_EVENT_START_TIME,
+                            eventToCompare.getStartTime());
+                    hazardQueryBuilder.addKey(
+                            HazardConstants.HAZARD_EVENT_END_TIME,
+                            eventToCompare.getEndTime());
+                    for (String conflictPhenSig : hazardConflictList) {
+                        hazardQueryBuilder.addKey(HazardConstants.PHENSIG,
+                                conflictPhenSig);
+                    }
+
+                    hazardQueryBuilder.addKey(
+                            HazardConstants.HAZARD_EVENT_STATE,
+                            HazardState.ISSUED);
+
+                    hazardQueryBuilder.addKey(
+                            HazardConstants.HAZARD_EVENT_STATE,
+                            HazardState.PROPOSED);
+
+                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(hazardQueryBuilder);
+
+                    /*
+                     * Loop over the existing events.
+                     */
+                    TimeRange modifiedEventTimeRange = new TimeRange(
+                            eventToCompare.getStartTime(),
+                            eventToCompare.getEndTime());
+
+                    for (IHazardEvent eventToCheck : eventsToCheck) {
+
+                        /*
+                         * Test the events for overlap in time. If they do not
+                         * overlap in time, then there is no need to test for
+                         * overlap in area.
+                         */
+                        TimeRange eventToCheckTimeRange = new TimeRange(
+                                eventToCheck.getStartTime(),
+                                eventToCheck.getEndTime());
+
+                        if (modifiedEventTimeRange
+                                .overlaps(eventToCheckTimeRange)) {
+                            if (!eventToCheck.getEventID().equals(
+                                    eventToCompare.getEventID())) {
+
+                                String otherEventPhenSigSubtype = HazardEventUtilities
+                                        .getPhenSigSubType(eventToCheck);
+
+                                if (hazardConflictList
+                                        .contains(otherEventPhenSigSubtype)) {
+
+                                    hazardTypeEntry = hazardTypes
+                                            .get(otherEventPhenSigSubtype);
+
+                                    if (hazardTypeEntry != null) {
+                                        String hazardHatchAreaToCheck = hazardTypeEntry
+                                                .getHazardHatchArea();
+                                        String hazardHatchToCheckLabel = hazardTypeEntry
+                                                .getHazardHatchLabel();
+
+                                        Set<IGeometryData> warnedAreasEventToCheck = HazardEventUtilities
+                                                .buildWarnedAreaForEvent(
+                                                        hazardHatchAreaToCheck,
+                                                        hazardHatchToCheckLabel,
+                                                        cwa, eventToCheck);
+
+                                        conflictingHazardsMap
+                                                .putAll(buildConflictMap(
+                                                        eventToCompare,
+                                                        eventToCheck,
+                                                        warnedAreasForEvent,
+                                                        warnedAreasEventToCheck,
+                                                        hazardHatchArea,
+                                                        hazardHatchAreaLabel,
+                                                        hazardHatchAreaToCheck,
+                                                        hazardHatchToCheckLabel));
+                                    } else {
+                                        statusHandler
+                                                .warn("No entry defined in HazardTypes.py for hazard type "
+                                                        + phenSigSubtype);
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                statusHandler
+                        .warn("No entry defined in HazardTypes.py for hazard type "
+                                + phenSigSubtype);
+            }
+
+        }
+
+        return conflictingHazardsMap;
+    }
+
+    /**
+     * Retrieves events for conflict testing.
+     * 
+     * These events will include those from the current session and those
+     * retrieved from the hazard event manager.
+     * 
+     * Other sources of hazard event information could be added to this as need.
+     * 
+     * @param hazardQueryBuilder
+     *            Used to filter the the hazards retrieved from the
+     *            HazardEventManager
+     * @return
+     */
+    private List<IHazardEvent> getEventsToCheckForConflicts(
+            final HazardQueryBuilder hazardQueryBuilder) {
+
+        /*
+         * Retrieve matching events from the Hazard Event Manager Also, include
+         * those from the session state.
+         */
+        /*
+         * TODO: How do we get the actual Mode in here?
+         */
+        HazardEventManager hazardEventManager = new HazardEventManager(
+                Mode.PRACTICE);
+        Map<String, HazardHistoryList> eventMap = hazardEventManager
+                .getEventsByFilter(hazardQueryBuilder.getQuery());
+        List<IHazardEvent> eventsToCheck = Lists.newArrayList(getEvents());
+        Map<String, IHazardEvent> sessionEventMap = Maps.newHashMap();
+
+        for (IHazardEvent sessionEvent : eventsToCheck) {
+            sessionEventMap.put(sessionEvent.getEventID(), sessionEvent);
+        }
+
+        for (String eventID : eventMap.keySet()) {
+            HazardHistoryList historyList = eventMap.get(eventID);
+            IHazardEvent eventFromManager = historyList.get(0);
+
+            if (!sessionEventMap.containsKey(eventID)) {
+                if (eventFromManager.getState() != HazardState.ENDED) {
+                    eventsToCheck.add(eventFromManager);
+                }
+            }
+
+        }
+
+        return eventsToCheck;
     }
 
     @Override
@@ -610,4 +872,104 @@ public class SessionEventManager extends AbstractSessionEventManager {
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 timeListener);
     }
+
+    /**
+     * Based on the warned areas associated with two hazard events, build a map
+     * of conflicting areas (zones, counties, etc). Polygons are a special case
+     * in which the polygon is the warned area.
+     * 
+     * @param firstEvent
+     *            The first of the two events to compare for conflicts
+     * @param secondEvent
+     *            The second of the two events to compare for conflicts
+     * @param warnedAreasFirstEvent
+     *            The warned areas associated with the first event
+     * @param warnedAreasSecondEvent
+     *            The warned areas associated with the second event
+     * @param firstEventHatchArea
+     *            The hatch area definition of the first event.
+     * @param secondEventHatchArea
+     *            The hatch area definition of the second event.
+     * @return A map containing conflicting hazard events and associated areas
+     *         (counties, zones, etc.) where they conflict (if available).
+     * 
+     */
+    private Map<IHazardEvent, Collection<String>> buildConflictMap(
+            IHazardEvent firstEvent, IHazardEvent secondEvent,
+            Set<IGeometryData> warnedAreasFirstEvent,
+            Set<IGeometryData> warnedAreasSecondEvent,
+            String firstEventHatchArea, String firstEventLabelParameter,
+            String secondEventHatchArea, String secondEventLabelParameter) {
+
+        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = Maps
+                .newHashMap();
+
+        List<String> geometryNames = Lists.newArrayList();
+
+        if (!firstEventHatchArea.equalsIgnoreCase(HazardConstants.POLYGON_TYPE)
+                && !secondEventHatchArea
+                        .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
+
+            Set<IGeometryData> commonWarnedAreas = Sets.newHashSet();
+            commonWarnedAreas.addAll(warnedAreasFirstEvent);
+            commonWarnedAreas.retainAll(warnedAreasSecondEvent);
+
+            if (!commonWarnedAreas.isEmpty()) {
+
+                for (IGeometryData warnedArea : commonWarnedAreas) {
+
+                    geometryNames.add(warnedArea
+                            .getString(firstEventLabelParameter));
+                }
+
+                conflictingHazardsMap.put(secondEvent, geometryNames);
+            }
+        } else {
+
+            String labelFieldName = null;
+            Set<IGeometryData> geoWithLabelInfo = null;
+
+            if (!firstEventHatchArea
+                    .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
+                labelFieldName = firstEventLabelParameter;
+                geoWithLabelInfo = warnedAreasFirstEvent;
+            } else if (!secondEventHatchArea
+                    .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
+                labelFieldName = secondEventLabelParameter;
+                geoWithLabelInfo = warnedAreasSecondEvent;
+            }
+
+            boolean conflictFound = false;
+
+            for (IGeometryData warnedArea : warnedAreasFirstEvent) {
+                for (IGeometryData warnedAreaToCheck : warnedAreasSecondEvent) {
+
+                    if (warnedArea.getGeometry().intersects(
+                            warnedAreaToCheck.getGeometry())) {
+
+                        conflictFound = true;
+
+                        if (labelFieldName != null) {
+
+                            if (geoWithLabelInfo == warnedAreasFirstEvent) {
+                                geometryNames.add(warnedArea
+                                        .getString(labelFieldName));
+                            } else {
+                                geometryNames.add(warnedAreaToCheck
+                                        .getString(labelFieldName));
+                            }
+
+                        }
+                    }
+                }
+            }
+
+            if (conflictFound) {
+                conflictingHazardsMap.put(secondEvent, geometryNames);
+            }
+
+        }
+
+        return conflictingHazardsMap;
+    };
 }
