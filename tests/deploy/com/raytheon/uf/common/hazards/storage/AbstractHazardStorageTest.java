@@ -305,6 +305,7 @@ public abstract class AbstractHazardStorageTest {
         }
     }
 
+    @Ignore
     @Test
     public void testByMultiplePhensig() {
         List<String> phensigs = new ArrayList<String>();
@@ -338,6 +339,7 @@ public abstract class AbstractHazardStorageTest {
         }
     }
 
+    @Ignore
     @Test
     public void testByMultiplePhensigLargeRetrieval() {
         List<String> phensigs = new ArrayList<String>();
