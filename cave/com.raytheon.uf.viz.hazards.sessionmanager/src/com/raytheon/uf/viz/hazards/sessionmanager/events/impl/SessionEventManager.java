@@ -477,7 +477,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
-                        event.setState(HazardState.ENDED, true, false);
+                        event.setState(HazardState.ENDED, true, true);
                         expirationTasks.remove(eventId);
                     }
                 };

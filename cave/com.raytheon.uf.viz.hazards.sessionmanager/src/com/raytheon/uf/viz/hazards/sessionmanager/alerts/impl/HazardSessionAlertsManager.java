@@ -19,6 +19,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.notification.INotificationObserver;
 import com.raytheon.uf.viz.core.notification.NotificationException;
 import com.raytheon.uf.viz.core.notification.NotificationMessage;
@@ -27,6 +29,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
  * Description: Manages alerting in hazard services. In order to decouple the
@@ -40,7 +43,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * via the {@link ISessionNotificationSender}. It is assumed the presenters then
  * ask this class for the list of currently active alerts, compares that list to
  * the presenter's own list of what's rendered and tells the view to put up or
- * take down any alerts appropriately.
+ * take down any alerts appropriately. This class also deals with the
+ * possibility that the CAVE clock can be frozen, unfrozen or its time changed.
  * 
  * <pre>
  * 
@@ -48,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 08, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  * 
  * </pre>
  * 
@@ -95,36 +100,82 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
      */
     private IHazardAlertJobFactory alertJobFactory;
 
+    private final ISessionTimeManager sessionTimeManager;
+
     private static Object sharedLock = new Object();
 
+    private ISimulatedTimeChangeListener simulatedTimeChangeListener;
+
+    private final SimulatedTime simulatedTime;
+
     public HazardSessionAlertsManager(
-            ISessionNotificationSender notificationSender) {
+            ISessionNotificationSender notificationSender,
+            ISessionTimeManager sessionTimeManager) {
 
         this.notificationSender = notificationSender;
+        this.sessionTimeManager = sessionTimeManager;
         this.alertStrategies = Maps.newHashMap();
         this.notificationHandler = new NotificationHandler(this);
         this.activeAlerts = Lists.newArrayList();
         this.scheduledAlertJobs = Lists.newArrayList();
         this.alertJobFactory = new HazardAlertJobFactory();
+        this.simulatedTime = SimulatedTime.getSystemTime();
+        buildClockChangedHandler();
+
+    }
+
+    private void buildClockChangedHandler() {
+        simulatedTimeChangeListener = new ISimulatedTimeChangeListener() {
+
+            @Override
+            public void timechanged() {
+                synchronized (sharedLock) {
+                    deleteAnyExistingAlerts();
+                    if (simulatedTime.isFrozen()) {
+                        notificationHandler.stop();
+                    } else {
+                        start();
+                    }
+                }
+            }
+
+        };
+        simulatedTime
+                .addSimulatedTimeChangeListener(simulatedTimeChangeListener);
 
     }
 
     @Override
     public void start() {
-        notificationHandler.start();
+        if (!simulatedTime.isFrozen()) {
+            notificationHandler.start();
+            initializeAlerts();
+        }
+    }
+
+    private void initializeAlerts() {
         for (IHazardAlertStrategy alertStrategy : alertStrategies.values()) {
             alertStrategy.initializeAlerts();
         }
     }
 
     @Override
-    public void scheduleAlert(IHazardAlert hazardAlert, long delayInMillis) {
+    public void scheduleAlert(IHazardAlert hazardAlert) {
         IHazardAlertJob alertJob = alertJobFactory.createJob(this, hazardAlert);
         synchronized (sharedLock) {
 
             scheduledAlertJobs.add(alertJob);
+            scheduleJob(alertJob);
+
         }
-        alertJob.schedule(delayInMillis);
+
+    }
+
+    private void scheduleJob(IHazardAlertJob alertJob) {
+        IHazardAlert hazardAlert = alertJob.getHazardAlert();
+        Long delay = Math.max(0, hazardAlert.getActivationTime().getTime()
+                - sessionTimeManager.getCurrentTime().getTime());
+        alertJob.schedule(delay);
 
     }
 
@@ -170,6 +221,19 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
 
     }
 
+    private void deleteAnyExistingAlerts() {
+        cancelJobs();
+        activeAlerts.clear();
+        postAlertsModifiedNotification();
+    }
+
+    private void cancelJobs() {
+        for (IHazardAlertJob alertJob : scheduledAlertJobs) {
+            alertJob.cancel();
+        }
+        scheduledAlertJobs.clear();
+    }
+
     @Override
     public void addAlertGenerationStrategy(Class<?> notificationClass,
             IHazardAlertStrategy strategy) {
@@ -178,10 +242,10 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
 
     @Override
     public void shutdown() {
+        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
+                simulatedTimeChangeListener);
         notificationHandler.stop();
-        for (IHazardAlertJob job : scheduledAlertJobs) {
-            job.cancel();
-        }
+        cancelJobs();
     }
 
     @Override

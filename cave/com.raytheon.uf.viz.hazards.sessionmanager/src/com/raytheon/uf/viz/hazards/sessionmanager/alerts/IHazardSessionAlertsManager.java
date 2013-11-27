@@ -29,6 +29,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.IHazardAlertStrate
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 08, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  * 
  * </pre>
  * 
@@ -47,9 +48,9 @@ public interface IHazardSessionAlertsManager {
             IHazardAlertStrategy strategy);
 
     /**
-     * Schedule the given {@link IHazardAlert} with the given delay
+     * Schedule the given {@link IHazardAlert}
      */
-    void scheduleAlert(IHazardAlert hazardAlert, long delayInMillis);
+    void scheduleAlert(IHazardAlert hazardAlert);
 
     /**
      * Activate the {@link IHazardAlert} contained in this

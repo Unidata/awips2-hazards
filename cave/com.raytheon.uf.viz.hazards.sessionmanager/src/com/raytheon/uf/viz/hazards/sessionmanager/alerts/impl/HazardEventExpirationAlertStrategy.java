@@ -52,6 +52,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ----------- --------------------------
  * July 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
+ *                                                    Also, fix to issue 2448
  * 
  * </pre>
  * 
@@ -61,8 +63,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy {
 
     private final IHazardSessionAlertsManager alertsManager;
-
-    private final ISessionTimeManager sessionTimeManager;
 
     private final IHazardEventManager hazardEventManager;
 
@@ -77,6 +77,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
      */
     private final Map<String, IHazardEvent> alertedEvents;
 
+    private final ISessionTimeManager sessionTimeManager;
+
     public HazardEventExpirationAlertStrategy(
             IHazardSessionAlertsManager alertsManager,
             ISessionTimeManager sessionTimeManager,
@@ -84,9 +86,9 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
             IHazardEventManager hazardEventManager,
             IHazardFilterStrategy hazardFilterStrategy) {
         this.alertsManager = alertsManager;
-        this.sessionTimeManager = sessionTimeManager;
         this.alertConfiguration = loadAlertConfiguration(sessionConfigurationManager);
         this.hazardEventManager = hazardEventManager;
+        this.sessionTimeManager = sessionTimeManager;
         this.hazardFilterStrategy = hazardFilterStrategy;
         this.alertFactory = new HazardEventExpirationAlertFactory(
                 sessionTimeManager);
@@ -160,6 +162,13 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                 }
             } else if (hazardEvent.getState().equals(HazardState.ENDED)) {
                 updatesAlertsForDeletedHazard(hazardNotification.getEvent());
+            }
+
+            else if (hazardEvent.getState().equals(HazardState.PROPOSED)) {
+                /*
+                 * Nothing to do here
+                 */
+
             } else {
                 throw new IllegalArgumentException("Unexpected state "
                         + hazardEvent.getState());
@@ -190,12 +199,33 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
         }
         alertFactory.addImmediateAlertsAsNecessary(hazardEvent, alerts);
+        removeSupercededAlerts(alerts);
         for (IHazardEventAlert alert : alerts) {
-
-            Long delay = Math.max(0, alert.getActivationTime().getTime()
-                    - sessionTimeManager.getCurrentTime().getTime());
-            alertsManager.scheduleAlert(alert, delay);
+            alertsManager.scheduleAlert(alert);
         }
+    }
+
+    private void removeSupercededAlerts(List<IHazardEventAlert> alerts) {
+        List<IHazardEventAlert> alertsToRemove = Lists.newArrayList();
+        for (IHazardEventAlert thisAlert : alerts) {
+            if (isReadyToActivate(thisAlert)) {
+                for (IHazardEventAlert thatAlert : alerts) {
+                    if (!thisAlert.equals(thatAlert)
+                            && thisAlert.getActivationTime().getTime() < thatAlert
+                                    .getActivationTime().getTime()
+                            && thisAlert.getClass() == thatAlert.getClass()
+                            && isReadyToActivate(thatAlert)) {
+                        alertsToRemove.add(thisAlert);
+                    }
+                }
+            }
+        }
+        alerts.removeAll(alertsToRemove);
+    }
+
+    private boolean isReadyToActivate(IHazardEventAlert alert) {
+        return alert.getActivationTime().getTime() < sessionTimeManager
+                .getCurrentTime().getTime();
     }
 
     private void updatesAlertsForDeletedHazard(IHazardEvent hazardEvent) {

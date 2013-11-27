@@ -51,8 +51,14 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+<<<<<<< Updated upstream
  * Nov 19, 2013 1463       blawrenc    Added state of automatic hazard conflict
  *                                     testing.
+=======
+ *
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
+ *
+>>>>>>> Stashed changes
  * 
  * </pre>
  * 
@@ -94,7 +100,7 @@ public class SessionManager implements ISessionManager {
                 hazardEventManager, sender);
         productManager = new SessionProductManager(timeManager, configManager,
                 eventManager, sender);
-        alertsManager = new HazardSessionAlertsManager(sender);
+        alertsManager = new HazardSessionAlertsManager(sender, timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,
                         timeManager, configManager, hazardEventManager,

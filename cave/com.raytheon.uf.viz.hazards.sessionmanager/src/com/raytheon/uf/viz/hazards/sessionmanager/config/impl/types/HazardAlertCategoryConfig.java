@@ -21,7 +21,6 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
 
 /**
@@ -34,6 +33,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  * 
  * </pre>
  * 
@@ -41,7 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
  * @version 1.0
  */
 @XmlAccessorType(XmlAccessType.NONE)
-public class HazardAlertCategoryConfig implements ISerializableObject {
+public class HazardAlertCategoryConfig {
 
     /**
      * For example, "Conv Long Term"
@@ -113,7 +113,8 @@ public class HazardAlertCategoryConfig implements ISerializableObject {
      * @param configuration
      *            the configuration to set
      */
-    void setConfiguration(List<HazardEventExpirationAlertConfigCriterion> criteria) {
+    void setConfiguration(
+            List<HazardEventExpirationAlertConfigCriterion> criteria) {
         this.criteria = criteria;
     }
 

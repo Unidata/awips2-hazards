@@ -25,7 +25,6 @@ import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -45,6 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
  * 
  * </pre>
  * 
@@ -483,8 +483,6 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         }
         assertEquals(numIssued, 2);
 
-        ImmutableList<?> alerts = mockConsoleView.getActiveAlerts();
-        assertEquals(alerts.size(), 2);
     }
 
     private void checkReplacementPreview() {

@@ -60,6 +60,17 @@
                 <isItalic>false</isItalic>
                 <fontSize>12</fontSize>
             </criteria>
+            <criteria>
+                <name>30 minutes</name>
+                <expirationTime>30</expirationTime>
+                <units>minutes</units>
+                <manifestations>Console</manifestations>
+                <color r="1.0" g="0.0" b="0.0" a="1.0"/>
+                <isBold>true</isBold>
+                <isBlinking>true</isBlinking>
+                <isItalic>false</isItalic>
+                <fontSize>12</fontSize>
+            </criteria>
         </configuration>
         <configuration>
             <category>Area Flood Warning</category>

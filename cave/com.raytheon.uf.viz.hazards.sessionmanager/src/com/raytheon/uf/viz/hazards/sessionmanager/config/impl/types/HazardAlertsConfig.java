@@ -18,8 +18,6 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.serialization.ISerializableObject;
-
 /**
  * Description: Configuration for Hazard Services alerts.
  * 
@@ -29,6 +27,7 @@ import com.raytheon.uf.common.serialization.ISerializableObject;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 19, 2013   1325    daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  * 
  * </pre>
  * 
@@ -37,7 +36,7 @@ import com.raytheon.uf.common.serialization.ISerializableObject;
  */
 @XmlRootElement(name = "hazardAlerts")
 @XmlAccessorType(XmlAccessType.NONE)
-public class HazardAlertsConfig implements ISerializableObject {
+public class HazardAlertsConfig {
 
     @XmlElement
     private HazardEventExpirationAlertsConfig eventExpiration;

@@ -1337,7 +1337,7 @@ public final class HazardServicesMessageHandler {
     }
 
     @Subscribe
-    public void sessionEventsModified(SessionEventsModified notification) {
+    public void sessionEventsModified(final SessionEventsModified notification) {
         VizApp.runAsync(new Runnable() {
 
             @Override
