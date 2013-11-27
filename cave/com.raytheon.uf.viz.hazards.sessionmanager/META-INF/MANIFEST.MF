@@ -40,8 +40,6 @@ Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.events,
  com.raytheon.uf.viz.hazards.sessionmanager.product,
  com.raytheon.uf.viz.hazards.sessionmanager.time
-Import-Package: gov.noaa.gsd.viz.hazards.console,
- gov.noaa.gsd.viz.hazards.display,
- org.eclipse.jface.dialogs,
+Import-Package: org.eclipse.jface.dialogs,
  org.eclipse.swt.widgets,
  org.eclipse.ui

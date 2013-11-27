@@ -12,13 +12,12 @@
  * accepts different {@link com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.IHazardAlertStrategy}s
  * for constructing {@link com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert}s.  
  * 
- * Presenters such as 
- * {@link gov.noaa.gsd.viz.hazards.console.ConsolePresenter} use the 
+ * Presenters use the 
  * {@link com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert}s to create the
  * alert manifestations.
  * 
  * This package contains classes that are required outside of the session manager
- * (ie by {@link gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter}s)
+ * (ie by Presenters)
  *  
  * <pre>
  *
