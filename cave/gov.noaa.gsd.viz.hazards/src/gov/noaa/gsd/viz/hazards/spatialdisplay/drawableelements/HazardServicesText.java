@@ -29,6 +29,7 @@ import com.vividsolutions.jts.geom.Point;
  * April 2011              Bryon.Lawrence      Initial creation
  * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
  *                                             points.
+ * Nov 23, 2013   1462     Bryon.Lawrence      Set text to bold.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -76,6 +77,8 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
         TextPositioner textPositioner = drawingAttributes.getTextPosition();
         Coordinate labelCoord = textPositioner.getLabelPosition(textCoord);
         setLocation(labelCoord);
+
+        setStyle(FontStyle.BOLD);
 
     }
 

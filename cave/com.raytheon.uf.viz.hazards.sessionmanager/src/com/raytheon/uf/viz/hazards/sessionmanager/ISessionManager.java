@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Nov 19, 2013  1463      blawrenc    Added state of automatic hazard conflict testing.
+ * Nov 23, 2013  1462      blawrenc    Added state of hatched area drawing
  * 
  * </pre>
  * 
@@ -134,4 +135,21 @@ public interface ISessionManager {
      *         checking is off.
      */
     boolean isAutoHazardCheckingOn();
+
+    /**
+     * Turns on/off the display of the hatched areas associated with hazards.
+     * 
+     * @param
+     * @return
+     */
+    public void toggleHatchedAreaDisplay();
+
+    /**
+     * Returns the state of the display of hatched areas.
+     * 
+     * @param
+     * @return true - hatched areas are displayed. false - hatched areas are not
+     *         displayed.
+     */
+    public boolean areHatchedAreasDisplayed();
 }

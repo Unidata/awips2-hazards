@@ -51,14 +51,12 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
-<<<<<<< Updated upstream
  * Nov 19, 2013 1463       blawrenc    Added state of automatic hazard conflict
  *                                     testing.
-=======
- *
+ * 
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
- *
->>>>>>> Stashed changes
+ * 
+ * Nov 23, 2013 1462       blawrenc    Added state of hatch area drawing.
  * 
  * </pre>
  * 
@@ -86,6 +84,11 @@ public class SessionManager implements ISessionManager {
      * Flag indicating whether or not automatic hazard checking is running.
      */
     private boolean autoHazardChecking = false;
+
+    /*
+     * Flag indicating whether or not hazard hatch areas are displayed.
+     */
+    private boolean hatchAreaDisplay = false;
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager) {
@@ -191,6 +194,25 @@ public class SessionManager implements ISessionManager {
     @Override
     public boolean isAutoHazardCheckingOn() {
         return autoHazardChecking;
+    }
+
+    @Override
+    public void toggleHatchedAreaDisplay() {
+        hatchAreaDisplay = !hatchAreaDisplay;
+
+        ISessionEventManager eventManager = getEventManager();
+
+        /*
+         * Force a refresh of the Hazard Services views. There is probably a
+         * better way to do this.
+         */
+        eventManager.setSelectedEvents(eventManager.getSelectedEvents());
+
+    }
+
+    @Override
+    public boolean areHatchedAreasDisplayed() {
+        return hatchAreaDisplay;
     }
 
 }

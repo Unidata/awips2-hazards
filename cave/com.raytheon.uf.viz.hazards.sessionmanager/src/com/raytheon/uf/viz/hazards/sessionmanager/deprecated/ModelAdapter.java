@@ -112,8 +112,6 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 22, 2013 2155    blawrenc        Fixed getContextMenuEntries() to 
  *                                      receive hazard-specific menu entries
  *                                      as a List<String> instead of a String[].
- * Oct 22, 2013 1463    blawrenc        Add methods for testing hazard conflicts
- *                                      as a user adds and modifies events.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
@@ -707,5 +705,4 @@ public abstract class ModelAdapter {
     public ISessionManager getSessionManager() {
         return sessionManager;
     }
-
 }

@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Nov 23, 2013  1462      blawrenc    Changed default polygon border width from 1 to 3.
  * 
  *  
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
@@ -472,9 +473,9 @@ public class SessionConfigurationManager implements
     public int getBorderWidth(IHazardEvent event) {
         if (Boolean.TRUE.equals(event
                 .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
-            return 4;
+            return 5;
         } else {
-            return 1;
+            return 3;
         }
     }
 

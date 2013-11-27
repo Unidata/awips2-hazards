@@ -71,6 +71,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * Oct 22, 2013    1463    Bryon.Lawrence    Added menu options for hazard 
  *                                           conflict detection.
+ * Oct 22, 2013    1462    Bryon.Lawrence    Added menu options for hatched
+ *                                           area display options.
  * 
  * </pre>
  * 
@@ -102,6 +104,11 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * Auto check hazard conflicts command menu item text.
      */
     public static final String AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT = "Auto Check Hazard Conflicts";
+
+    /**
+     * Show hazard area command menu item text.
+     */
+    public static final String SHOW_HATCHED_AREAS_MENU_TEXT = "Show Hatched Areas";
 
     /**
      * Suffix for the preferences key used to determine whether or not to detach
@@ -443,6 +450,11 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     private Action autoCheckHazardConflictsAction;
 
     /**
+     * Show hazard area command action.
+     */
+    private Action showHatchedAreaAction;
+
+    /**
      * Flag indicating whether or not the temporal controls should be in the
      * toolbar.
      */
@@ -777,17 +789,23 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                     Action.AS_PUSH_BUTTON, null,
                     HazardConstants.CHECK_CONFLICT_ACTION,
                     HazardConstants.CHECK_CONFLICTS);
+
             autoCheckHazardConflictsAction = new BasicConsoleAction(
                     AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
                     Action.AS_CHECK_BOX, null,
                     HazardConstants.CHECK_CONFLICT_ACTION,
                     HazardConstants.AUTO_CHECK_CONFLICTS);
 
+            showHatchedAreaAction = new BasicConsoleAction(
+                    SHOW_HATCHED_AREAS_MENU_TEXT, null, Action.AS_CHECK_BOX,
+                    null, HazardConstants.CHECK_CONFLICT_ACTION,
+                    HazardConstants.SHOW_HATCHED_AREA);
+
             Action changeSiteAction = new ChangeSiteAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     resetSettingsCommandAction, sep,
                     checkHazardConflictsAction, autoCheckHazardConflictsAction,
-                    sep, changeSiteAction);
+                    showHatchedAreaAction, sep, changeSiteAction);
 
             return actions;
         }

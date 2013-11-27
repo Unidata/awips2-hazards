@@ -64,7 +64,8 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void drawEvents() {
+    public void drawEvents(boolean toogleAutoHazardChecking,
+            boolean areHatchedAreasDisplayed) {
 
     }
 

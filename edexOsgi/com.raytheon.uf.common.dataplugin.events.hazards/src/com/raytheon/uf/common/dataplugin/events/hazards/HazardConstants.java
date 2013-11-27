@@ -363,6 +363,12 @@ public final class HazardConstants {
      */
     public static final String HAZARD_EVENT_STATE = "state";
 
+    /**
+     * WarnGen-like annotation to indicate which counties have at least a
+     * portion covered by a short-fused hazard polygon.
+     */
+    public static final String COUNTY_INCLUDED_IN_HAZARD_ANNOTATION = "W";
+
     /*
      * The following are used to identify elements in the session state.
      */
@@ -429,6 +435,8 @@ public final class HazardConstants {
     public static final String CHECK_CONFLICTS = "CheckConflicts";
 
     public static final String AUTO_CHECK_CONFLICTS = "AutoCheckConflicts";
+
+    public static final String SHOW_HATCHED_AREA = "ShowHazardHatchedArea";
 
     /*
      * Context menu entries.

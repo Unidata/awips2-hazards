@@ -91,6 +91,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           to use Java event objects instead of
  *                                           JSON.
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * Nov 27, 2013  1462      bryon.lawrence    Updated to support 
+ *                                           display of hazard hatched areas.
  * 
  * </pre>
  * 
@@ -790,8 +792,10 @@ public class SpatialView implements
     }
 
     @Override
-    public void drawEvents() {
-        spatialDisplay.drawEventAreas(true);
+    public void drawEvents(boolean toggleAutoHazardChecking,
+            boolean areHatchedAreasDisplayed) {
+        spatialDisplay.drawEventAreas(true, toggleAutoHazardChecking,
+                areHatchedAreasDisplayed);
     }
 
     @Override

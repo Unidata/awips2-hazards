@@ -56,6 +56,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 18, 2013     1264   Chris.Golden        Added support for drawing lines and
  *                                             points.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov  23, 2013    1462   Bryon.Lawrence      Changed polygons to be drawn without
+ *                                             fill by default.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -101,7 +103,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                 HazardServicesDrawingAttributes drawingAttributes = (shapeType
                         .equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? new PolygonDrawingAttributes(
                         PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                                .getShell(), sessionManager)
+                                .getShell(), false, sessionManager)
                         : (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_LINE) ? new LineDrawingAttributes(
                                 PlatformUI.getWorkbench()
                                         .getActiveWorkbenchWindow().getShell(),

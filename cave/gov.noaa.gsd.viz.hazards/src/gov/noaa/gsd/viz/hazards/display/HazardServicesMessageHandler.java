@@ -98,6 +98,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Tidying
+ * Nov 27, 2013  1462      bryon.lawrence      Added methods to support display
+ *                                             of hazard hatch areas.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1309,6 +1311,16 @@ public final class HazardServicesMessageHandler {
      */
     public void toggleAutoCheckConflicts() {
         sessionManager.toggleAutoHazardChecking();
+    }
+
+    /**
+     * Toggle on/off the display of hazard hatch areas.
+     * 
+     * @param
+     * @return
+     */
+    public void toggleHatchedAreaDisplay() {
+        sessionManager.toggleHatchedAreaDisplay();
     }
 
     /**

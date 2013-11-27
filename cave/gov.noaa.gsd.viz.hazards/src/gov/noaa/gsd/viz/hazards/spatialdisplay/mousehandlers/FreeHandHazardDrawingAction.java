@@ -51,6 +51,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Jul 15, 2013      585   Chris.Golden       Changed to no longer be a singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 23, 2013     1462   bryon.lawrence     Changed polygons to be drawn without fill by default.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -72,7 +73,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
          */
         try {
             attrDlg = new PolygonDrawingAttributes(PlatformUI.getWorkbench()
-                    .getActiveWorkbenchWindow().getShell(), sessionManager);
+                    .getActiveWorkbenchWindow().getShell(), false,
+                    sessionManager);
         } catch (VizException e) {
             statusHandler.error("FreeHandHazardDrawingAction.<init>: Creation "
                     + "of polygon drawing attributes failed.", e);

@@ -125,6 +125,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                        forModifyingStormTrack in HazardServicesDrawableBuilder
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov  18, 2013 1462     Bryon.Lawrence  Added hazard area hatching.
  * Nov  23, 2013 2474     Bryon.Lawrence  Made fix to prevent NPE when using right
  *                                        click context menu.
  * </pre>
@@ -419,7 +420,10 @@ public class ToolLayer extends
      *            Clear all displayed events before rendering the new events.
      * @return
      */
-    public void drawEventAreas(boolean clearAllEvents) {
+    public void drawEventAreas(boolean clearAllEvents,
+            boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
+
+        List<AbstractDrawableComponent> hatchedAreas = Lists.newArrayList();
 
         /**
          * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
@@ -483,16 +487,25 @@ public class ToolLayer extends
 
             List<AbstractDrawableComponent> drawables = drawableBuilder
                     .buildDrawableComponents(this, hazardEvent,
-                            getActiveLayer());
+                            getActiveLayer(), areHatchedAreasDisplayed);
+
+            if (areHatchedAreasDisplayed && isSelected) {
+                hatchedAreas.addAll(drawableBuilder.buildhazardAreas(this,
+                        hazardEvent, getActiveLayer(), isSelected
+                                && areHatchedAreasDisplayed));
+            }
+
             Boolean isPersistent = (Boolean) hazardEvent
                     .getHazardAttribute(Utilities.PERSISTENT_SHAPE);
             trackPersistentShapes(isPersistent, hazardEvent.getEventID(),
                     drawables);
         }
 
-        setObjects(dataManager.getActiveLayer().getDrawables());
+        List<AbstractDrawableComponent> drawables = dataManager
+                .getActiveLayer().getDrawables();
+        hatchedAreas.addAll(drawables);
+        setObjects(hatchedAreas);
         issueRefresh();
-
     }
 
     public void drawStormTrackDot() {

@@ -27,6 +27,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Nov 18, 2013 1462       Bryon.Lawrence      Added a constructor which allows
+ *                                             the fill state of a polygon
+ *                                             to be specified.
  * 
  * </pre>
  * 
@@ -38,13 +41,19 @@ public class PolygonDrawingAttributes extends HazardServicesDrawingAttributes {
 
     public static double SIZE_SCALE = 7.5;
 
-    private final boolean filled = true;
+    private boolean filled = true;
 
     private LineStyle lineStyle = LINE_SOLID;
 
     public PolygonDrawingAttributes(Shell parShell,
             ISessionManager sessionManager) throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
+    }
+
+    public PolygonDrawingAttributes(Shell parShell, boolean drawFilled,
+            ISessionManager sessionManager) throws VizException {
+        super(parShell, sessionManager.getConfigurationManager());
+        this.filled = drawFilled;
     }
 
     @Override

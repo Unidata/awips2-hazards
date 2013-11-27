@@ -35,6 +35,8 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           singleton.
  * Aug 6, 2013     1265    Bryon.Lawrence    Added support for undo/redo.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Nov 23, 2013    1462    bryon.lawrence    Added support for drawing hazard
+ *                                           hatched areas.
  * </pre>
  * 
  * @author Chris.Golden
@@ -110,7 +112,9 @@ public class SpatialPresenter extends
 
         getView().setUndoEnabled(model.isUndoable());
         getView().setRedoEnabled(model.isRedoable());
-        getView().drawEvents();
+        getView().drawEvents(
+                model.getSessionManager().isAutoHazardCheckingOn(),
+                model.getSessionManager().areHatchedAreasDisplayed());
     }
 
     /**

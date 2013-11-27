@@ -34,9 +34,11 @@ Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.alerts,
  com.raytheon.uf.viz.hazards.sessionmanager.config,
+ com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types,
  com.raytheon.uf.viz.hazards.sessionmanager.config.types,
  com.raytheon.uf.viz.hazards.sessionmanager.deprecated,
  com.raytheon.uf.viz.hazards.sessionmanager.events,
+ com.raytheon.uf.viz.hazards.sessionmanager.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.product,
  com.raytheon.uf.viz.hazards.sessionmanager.time
 Import-Package: org.eclipse.jface.dialogs,

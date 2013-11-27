@@ -27,24 +27,30 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiPolygon;
@@ -69,6 +75,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                             points.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Sep  6, 2013    752     bryon.lawrence      Refactored storm track display logic.
+ * Nov 18, 2013 1462       bryon.lawrence      Added hazard area hatching.
+ * Nov 23, 2013 1462       bryon.lawrence      Changed polygons to be drawn with no fill by default.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -208,13 +216,13 @@ public class HazardServicesDrawableBuilder {
      * Builds a PGEN drawable representing a polygon
      */
     public AbstractDrawableComponent buildPolygon(IHazardEvent hazardEvent,
-            int shapeNum, Layer activeLayer) {
+            int shapeNum, boolean drawFilled, Layer activeLayer) {
         AbstractDrawableComponent drawableComponent = null;
 
         try {
             drawingAttributes = new PolygonDrawingAttributes(PlatformUI
                     .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    sessionManager);
+                    drawFilled, sessionManager);
 
             List<Coordinate> points = drawingAttributes.buildCoordinates(
                     shapeNum, hazardEvent);
@@ -223,6 +231,40 @@ public class HazardServicesDrawableBuilder {
             drawableComponent = new HazardServicesPolygon(drawingAttributes,
                     LINE, drawingAttributes.getLineStyle().toString(), points,
                     activeLayer, hazardEvent.getEventID());
+
+        } catch (VizException e) {
+            statusHandler.error(
+                    "HazardServicesDrawableBuilder.buildPolygon(): build "
+                            + "of shape failed.", e);
+        }
+
+        return drawableComponent;
+    }
+
+    /**
+     * Builds a PGEN drawable representing a polygon
+     */
+    public AbstractDrawableComponent buildPolygon(IHazardEvent hazardEvent,
+            Geometry hazardHatchArea, Layer activeLayer) {
+        AbstractDrawableComponent drawableComponent = null;
+
+        try {
+            drawingAttributes = new PolygonDrawingAttributes(PlatformUI
+                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
+                    sessionManager);
+
+            List<Coordinate> points = Lists.newArrayList(hazardHatchArea
+                    .getCoordinates());
+            drawingAttributes.setLineWidth(1);
+            drawingAttributes.setColors(drawingAttributes
+                    .buildHazardEventColors(hazardEvent,
+                            sessionManager.getConfigurationManager()));
+
+            drawingAttributes.setSelected(false);
+
+            drawableComponent = new HazardServicesPolygon(drawingAttributes,
+                    LINE, "LINE_DASHED_2", points, activeLayer,
+                    hazardEvent.getEventID());
 
         } catch (VizException e) {
             statusHandler.error(
@@ -285,7 +327,8 @@ public class HazardServicesDrawableBuilder {
     }
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
-            ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer) {
+            ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer,
+            boolean drawHazardHatchArea) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
@@ -293,16 +336,32 @@ public class HazardServicesDrawableBuilder {
             addComponentsForStormTrackModification(hazardEvent, result,
                     toolLayer, activeLayer);
         } else {
+
             for (int shapeNum = 0; shapeNum < hazardEvent.getGeometry()
                     .getNumGeometries(); shapeNum++) {
 
                 AbstractDrawableComponent drawableComponent = addShapeComponent(
-                        toolLayer, hazardEvent, activeLayer, result, shapeNum);
+                        toolLayer, hazardEvent, activeLayer, result,
+                        drawHazardHatchArea, shapeNum);
 
                 addTextComponent(toolLayer, hazardEvent.getEventID(), result,
                         drawableComponent);
             }
+
         }
+        return result;
+    }
+
+    public List<AbstractDrawableComponent> buildhazardAreas(
+            ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer,
+            boolean drawHazardHatchArea) {
+
+        List<AbstractDrawableComponent> result = Lists.newArrayList();
+
+        if (drawHazardHatchArea) {
+            addHazardHatchArea(toolLayer, hazardEvent, activeLayer, result);
+        }
+
         return result;
     }
 
@@ -330,7 +389,7 @@ public class HazardServicesDrawableBuilder {
          * points.
          */
         AbstractDrawableComponent polygonDrawable = addShapeComponent(
-                toolLayer, hazardEvent, activeLayer, result, 0);
+                toolLayer, hazardEvent, activeLayer, result, false, 0);
 
         addTextComponent(toolLayer, hazardEvent.getEventID(), result,
                 polygonDrawable);
@@ -352,7 +411,8 @@ public class HazardServicesDrawableBuilder {
             List<Map<String, Serializable>> shapes = (List<Map<String, Serializable>>) hazardEvent
                     .getHazardAttribute(HazardConstants.TRACK_POINTS);
 
-            DataTime currentFrame = HazardServicesEditorUtilities.currentFrame();
+            DataTime currentFrame = HazardServicesEditorUtilities
+                    .currentFrame();
 
             for (int timeIndex = 0; timeIndex < trackLineString.getNumPoints(); timeIndex++) {
                 Coordinate centerPoint = trackLineString
@@ -466,26 +526,21 @@ public class HazardServicesDrawableBuilder {
 
     private AbstractDrawableComponent addShapeComponent(ToolLayer toolLayer,
             IHazardEvent hazardEvent, Layer activeLayer,
-            List<AbstractDrawableComponent> drawableComponents, int shapeNum) {
+            List<AbstractDrawableComponent> drawableComponents,
+            boolean drawHazardArea, int shapeNum) {
         AbstractDrawableComponent drawableComponent;
 
-        Geometry geometry = hazardEvent.getGeometry();
-        if (geometry.getClass() == GeometryCollection.class) {
-            GeometryCollection gc = (GeometryCollection) hazardEvent
-                    .getGeometry();
-            drawableComponent = addComponentForGeometry(hazardEvent,
-                    activeLayer, shapeNum, gc.getGeometryN(shapeNum));
-        } else {
-            drawableComponent = addComponentForGeometry(hazardEvent,
-                    activeLayer, shapeNum, geometry);
-        }
+        Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
 
+        drawableComponent = addComponentForGeometry(hazardEvent, activeLayer,
+                shapeNum, drawHazardArea, geometry);
         /**
          * TODO Figure out how to get rid of this kludge. The kludge works
          * around a failure somewhere else to properly identify whether or not
          * an event is selected. As a result, you cannot modify the polygons.
          */
-        if (drawingAttributes.getLineWidth() == 4.0) {
+        if ((Boolean) hazardEvent
+                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED)) {
             toolLayer.setSelectedHazardIHISLayer(drawableComponent);
         }
 
@@ -494,9 +549,76 @@ public class HazardServicesDrawableBuilder {
         return drawableComponent;
     }
 
+    /**
+     * Builds a hazard area drawable for the provided hazard event.
+     * 
+     * @param toolLayer
+     * @param hazardEvent
+     * @param activeLayer
+     * @param drawableComponents
+     * @return
+     */
+    private void addHazardHatchArea(ToolLayer toolLayer, IHazardEvent hazardEvent,
+            Layer activeLayer,
+            List<AbstractDrawableComponent> drawableComponents) {
+        AbstractDrawableComponent drawableComponent;
+
+        String hazardType = HazardEventUtilities.getPhenSigSubType(hazardEvent);
+
+        if (hazardType != null) {
+            ISessionConfigurationManager configManager = sessionManager
+                    .getConfigurationManager();
+            String mapDBtableName = configManager.getHazardTypes()
+                    .get(hazardType).getHazardHatchArea();
+
+            String mapLabelParameter = configManager.getHazardTypes()
+                    .get(hazardType).getHazardHatchLabel();
+
+            String cwa = LocalizationManager
+                    .getContextName(LocalizationLevel.SITE);
+
+            Set<IGeometryData> hazardArea = HazardEventUtilities
+                    .buildHatchedAreaForEvent(mapDBtableName, mapLabelParameter,
+                            cwa, hazardEvent);
+
+            for (IGeometryData geometry : hazardArea) {
+
+                drawableComponent = buildPolygon(hazardEvent,
+                        geometry.getGeometry(), activeLayer);
+                drawableComponents.add(drawableComponent);
+            }
+
+            /*
+             * TODO: We will need to refine the "W" annotation used by WarnGEN
+             * to indicate which counties are covered by a portion of the hazard
+             * polgyon.
+             */
+            if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
+
+                hazardArea = HazardEventUtilities.buildHatchedAreaForEvent(
+                        HazardConstants.MAPDATA_COUNTY, mapLabelParameter, cwa,
+                        hazardEvent);
+
+                for (IGeometryData geometryData : hazardArea) {
+                    Point centroid = geometryData.getGeometry().getCentroid();
+
+                    AbstractDrawableComponent textComponent = new HazardServicesText(
+                            drawingAttributes,
+                            HazardConstants.COUNTY_INCLUDED_IN_HAZARD_ANNOTATION,
+                            TEXT,
+                            centroid,
+                            activeLayer,
+                            HazardConstants.COUNTY_INCLUDED_IN_HAZARD_ANNOTATION);
+                    drawableComponents.add(textComponent);
+                }
+            }
+
+        }
+    }
+
     private AbstractDrawableComponent addComponentForGeometry(
             IHazardEvent hazardEvent, Layer activeLayer, int shapeNum,
-            Geometry geometry) {
+            boolean drawHazardHatchArea, Geometry geometry) {
         AbstractDrawableComponent result;
         Class<?> geometryClass = geometry.getClass();
         if (geometryClass.equals(Point.class)) {
@@ -506,7 +628,7 @@ public class HazardServicesDrawableBuilder {
             result = buildLine(hazardEvent, shapeNum, activeLayer);
         } else if (geometryClass.equals(Polygon.class)
                 || geometryClass.equals(MultiPolygon.class)) {
-            result = buildPolygon(hazardEvent, shapeNum, activeLayer);
+            result = buildPolygon(hazardEvent, shapeNum, false, activeLayer);
         }
 
         /**

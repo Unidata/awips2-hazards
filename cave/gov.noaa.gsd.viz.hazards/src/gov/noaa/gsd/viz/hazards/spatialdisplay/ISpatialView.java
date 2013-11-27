@@ -33,6 +33,8 @@ import com.raytheon.uf.viz.core.map.MapDescriptor;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 29, 2013   1921     bryon.lawrence    Removed JSON parameter from
  *                                           loadGeometryOverlayForSelectedEvent().
+ * Nov 27, 2013   1462     bryon.lawrence    Updated drawEvents to support display
+ *                                           of hazard hatched areas.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,7 +67,8 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Draw events on the view.
      */
-    public void drawEvents();
+    public void drawEvents(boolean toggleAutoHazardChecking,
+            boolean areHatchedAreasDisplayed);
 
     /**
      * Retrieve the descriptor associated with this view.

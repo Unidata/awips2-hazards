@@ -695,8 +695,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     String hazardHatchLabel = hazardTypeEntry
                             .getHazardHatchLabel();
 
-                    Set<IGeometryData> warnedAreasForEvent = HazardEventUtilities
-                            .buildWarnedAreaForEvent(hazardHatchArea,
+                    Set<IGeometryData> hatchedAreasForEvent = HazardEventUtilities
+                            .buildHatchedAreaForEvent(hazardHatchArea,
                                     hazardHatchLabel, cwa, eventToCompare);
 
                     /*
@@ -764,8 +764,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                         String hazardHatchToCheckLabel = hazardTypeEntry
                                                 .getHazardHatchLabel();
 
-                                        Set<IGeometryData> warnedAreasEventToCheck = HazardEventUtilities
-                                                .buildWarnedAreaForEvent(
+                                        Set<IGeometryData> hatchedAreasEventToCheck = HazardEventUtilities
+                                                .buildHatchedAreaForEvent(
                                                         hazardHatchAreaToCheck,
                                                         hazardHatchToCheckLabel,
                                                         cwa, eventToCheck);
@@ -774,8 +774,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                                 .putAll(buildConflictMap(
                                                         eventToCompare,
                                                         eventToCheck,
-                                                        warnedAreasForEvent,
-                                                        warnedAreasEventToCheck,
+                                                        hatchedAreasForEvent,
+                                                        hatchedAreasEventToCheck,
                                                         hazardHatchArea,
                                                         hazardHatchAreaLabel,
                                                         hazardHatchAreaToCheck,
@@ -860,30 +860,36 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     /**
-     * Based on the warned areas associated with two hazard events, build a map
+     * Based on the hatched areas associated with two hazard events, build a map
      * of conflicting areas (zones, counties, etc). Polygons are a special case
-     * in which the polygon is the warned area.
+     * in which the polygon is the hatched area.
      * 
      * @param firstEvent
      *            The first of the two events to compare for conflicts
      * @param secondEvent
      *            The second of the two events to compare for conflicts
-     * @param warnedAreasFirstEvent
-     *            The warned areas associated with the first event
-     * @param warnedAreasSecondEvent
-     *            The warned areas associated with the second event
+     * @param hatchedAreasFirstEvent
+     *            The hatcheded areas associated with the first event
+     * @param hatchedAreasSecondEvent
+     *            The hatched areas associated with the second event
      * @param firstEventHatchArea
      *            The hatch area definition of the first event.
+     * @param firstEventLabelParameter
+     *            The label (if any) associated with the first event hazard
+     *            area.
      * @param secondEventHatchArea
      *            The hatch area definition of the second event.
+     * @param secondEventLabelParameter
+     *            The label (if any) associated with the second event hazard
+     *            area.
      * @return A map containing conflicting hazard events and associated areas
      *         (counties, zones, etc.) where they conflict (if available).
      * 
      */
     private Map<IHazardEvent, Collection<String>> buildConflictMap(
             IHazardEvent firstEvent, IHazardEvent secondEvent,
-            Set<IGeometryData> warnedAreasFirstEvent,
-            Set<IGeometryData> warnedAreasSecondEvent,
+            Set<IGeometryData> hatchedAreasFirstEvent,
+            Set<IGeometryData> hatchedAreasSecondEvent,
             String firstEventHatchArea, String firstEventLabelParameter,
             String secondEventHatchArea, String secondEventLabelParameter) {
 
@@ -896,15 +902,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 && !secondEventHatchArea
                         .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
 
-            Set<IGeometryData> commonWarnedAreas = Sets.newHashSet();
-            commonWarnedAreas.addAll(warnedAreasFirstEvent);
-            commonWarnedAreas.retainAll(warnedAreasSecondEvent);
+            Set<IGeometryData> commonHatchedAreas = Sets.newHashSet();
+            commonHatchedAreas.addAll(hatchedAreasFirstEvent);
+            commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
 
-            if (!commonWarnedAreas.isEmpty()) {
+            if (!commonHatchedAreas.isEmpty()) {
 
-                for (IGeometryData warnedArea : commonWarnedAreas) {
+                for (IGeometryData hatchedArea : commonHatchedAreas) {
 
-                    geometryNames.add(warnedArea
+                    geometryNames.add(hatchedArea
                             .getString(firstEventLabelParameter));
                 }
 
@@ -918,30 +924,30 @@ public class SessionEventManager extends AbstractSessionEventManager {
             if (!firstEventHatchArea
                     .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
                 labelFieldName = firstEventLabelParameter;
-                geoWithLabelInfo = warnedAreasFirstEvent;
+                geoWithLabelInfo = hatchedAreasFirstEvent;
             } else if (!secondEventHatchArea
                     .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
                 labelFieldName = secondEventLabelParameter;
-                geoWithLabelInfo = warnedAreasSecondEvent;
+                geoWithLabelInfo = hatchedAreasSecondEvent;
             }
 
             boolean conflictFound = false;
 
-            for (IGeometryData warnedArea : warnedAreasFirstEvent) {
-                for (IGeometryData warnedAreaToCheck : warnedAreasSecondEvent) {
+            for (IGeometryData hatchedArea : hatchedAreasFirstEvent) {
+                for (IGeometryData hatchedAreaToCheck : hatchedAreasSecondEvent) {
 
-                    if (warnedArea.getGeometry().intersects(
-                            warnedAreaToCheck.getGeometry())) {
+                    if (hatchedArea.getGeometry().intersects(
+                            hatchedAreaToCheck.getGeometry())) {
 
                         conflictFound = true;
 
                         if (labelFieldName != null) {
 
-                            if (geoWithLabelInfo == warnedAreasFirstEvent) {
-                                geometryNames.add(warnedArea
+                            if (geoWithLabelInfo == hatchedAreasFirstEvent) {
+                                geometryNames.add(hatchedArea
                                         .getString(labelFieldName));
                             } else {
-                                geometryNames.add(warnedAreaToCheck
+                                geometryNames.add(hatchedAreaToCheck
                                         .getString(labelFieldName));
                             }
 

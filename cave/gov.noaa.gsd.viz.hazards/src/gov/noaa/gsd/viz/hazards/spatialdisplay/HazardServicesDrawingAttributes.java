@@ -47,6 +47,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 23, 203     1462    bryon.lawrence      Set hazard border color to hazard fill color.
  * 
  * </pre>
  * 
@@ -223,19 +224,13 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
      * @param
      * @return
      */
-    protected Color[] buildHazardEventColors(IHazardEvent hazardEvent,
+    public Color[] buildHazardEventColors(IHazardEvent hazardEvent,
             ISessionConfigurationManager configManager) {
         com.raytheon.uf.common.colormap.Color color = configManager
                 .getColor(hazardEvent);
-        String fillcolor = (int) (color.getRed() * 255) + " "
-                + (int) (color.getGreen() * 255) + " "
-                + (int) (color.getBlue() * 255);
-        String borderColor = "255 255 255";
-
-        Color[] colors = new Color[] {
-
-        ToolLayer.convertRGBStringToColor(borderColor),
-                ToolLayer.convertRGBStringToColor(fillcolor) };
+        Color fillColor = new Color((int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255), (int) (color.getBlue() * 255));
+        Color[] colors = new Color[] { fillColor, fillColor };
         return colors;
     }
 

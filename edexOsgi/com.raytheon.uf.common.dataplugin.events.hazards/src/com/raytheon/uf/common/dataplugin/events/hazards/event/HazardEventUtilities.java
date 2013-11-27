@@ -57,6 +57,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Oct 22, 2013 1463       blawrenc   Added methods to retrieve
  *                                    map geometries which 
  *                                    intersect hazard geometries.
+ * Nov 23, 2013 1462       blawrenc   Added method to build 
+ *                                    hazard hatch area for event.
  * 
  * 
  * 
@@ -167,20 +169,18 @@ public class HazardEventUtilities {
         List<IGeometryData> geometryDataList = getMapGeometries(mapDBtableName,
                 labelParameter, cwa);
 
-        for (IGeometryData geoData : geometryDataList) {
+        outer: for (IGeometryData geoData : geometryDataList) {
 
             Geometry mapGeometry = geoData.getGeometry();
-            Boolean intersectsAllGeometries = true;
 
             for (Geometry geometry : geometryList) {
-                if (!geometry.intersects(mapGeometry)) {
-                    intersectsAllGeometries = false;
-                    break;
-                }
-            }
 
-            if (intersectsAllGeometries) {
-                intersectingGeometries.add(geoData);
+                for (int i = 0; i < geometry.getNumGeometries(); ++i) {
+                    if (geometry.getGeometryN(i).intersects(mapGeometry)) {
+                        intersectingGeometries.add(geoData);
+                        continue outer;
+                    }
+                }
             }
         }
 
@@ -232,13 +232,8 @@ public class HazardEventUtilities {
         mapDataRequest.addIdentifier(HazardConstants.CWA_IDENTIFIER, cwa);
 
         /*
-         * TODO: Talk to Raytheon about how to avoid supplying a parameter. Gid
-         * seems to be common across the mapdata tables.
-         */
-        /*
-         * This is clunky, but I need some way of retrieving names for zones,
-         * counties, etc. which can be used to create a more meaningful error
-         * message for the forecaster when conflicts are found.
+         * TODO: Talk to Raytheon about how to avoid supplying a parameter. A
+         * Null Pointer Exception results if no parameters are supplied.
          */
         mapDataRequest.setParameters("gid");
 
@@ -268,7 +263,7 @@ public class HazardEventUtilities {
 
     /**
      * Given the geometry associated with a hazard event, builds a set of
-     * geometries representing the actual warned area.
+     * geometries representing the actual hazard area.
      * 
      * @param mapDBtableName
      *            The name of the map db geo table
@@ -278,22 +273,22 @@ public class HazardEventUtilities {
      * @param cwa
      *            The county warning area
      * @param hazardEvent
-     *            The hazard event to build the warned area for.
+     *            The hazard event to build the hazard area for.
      * 
-     * @return A set of IGeometryData objects describing the actual warned area
+     * @return A set of IGeometryData objects describing the actual hazard area
      *         associated with this event.
      */
-    static public Set<IGeometryData> buildWarnedAreaForEvent(
+    static public Set<IGeometryData> buildHatchedAreaForEvent(
             String mapDBtableName, String labelParameter, String cwa,
             IHazardEvent hazardEvent) {
 
-        Set<IGeometryData> warnedArea = Sets.newHashSet();
+        Set<IGeometryData> hatchedArea = Sets.newHashSet();
 
         if (mapDBtableName.equalsIgnoreCase(HazardConstants.POLYGON_TYPE)
                 || mapDBtableName.length() == 0) {
             /*
-             * The hazard geometry represents the warned area. Use the CWA
-             * boundary as the basis of the warned area. Hazard Types without a
+             * The hazard geometry represents the hazard area. Use the CWA
+             * boundary as the basis of the hazard area. Hazard Types without a
              * hatch area defined are treated like polygons.
              * 
              * TODO: May need to consider using HSA as well.
@@ -302,29 +297,29 @@ public class HazardEventUtilities {
                     .getClippedMapGeometries(HazardConstants.CWA_IDENTIFIER,
                             labelParameter, cwa, hazardEvent);
 
-            warnedArea.addAll(clippedGeometries);
+            hatchedArea.addAll(clippedGeometries);
         } else if (hazardEvent.getHazardAttributes().containsKey(
                 HazardConstants.GEOMETRY_MAP_NAME_KEY)) {
             /*
-             * Draw-by-area geometry. The polygon itself represents the warned
+             * Draw-by-area geometry. The polygon itself represents the hazard
              * area.
              */
             Set<IGeometryData> containedGeometries = HazardEventUtilities
                     .getContainedMapGeometries(mapDBtableName, labelParameter,
                             cwa, hazardEvent);
 
-            warnedArea.addAll(containedGeometries);
+            hatchedArea.addAll(containedGeometries);
 
         } else {
             Set<IGeometryData> intersectingGeometries = HazardEventUtilities
                     .getIntersectingMapGeometries(mapDBtableName,
                             labelParameter, cwa, hazardEvent);
 
-            warnedArea.addAll(intersectingGeometries);
+            hatchedArea.addAll(intersectingGeometries);
 
         }
 
-        return warnedArea;
+        return hatchedArea;
     }
 
     /**
@@ -384,15 +379,20 @@ public class HazardEventUtilities {
         List<IGeometryData> geometryDataList = getMapGeometries(mapDBtableName,
                 labelParameter, cwa);
 
-        for (Geometry geometry : geometryList) {
+        outer: for (IGeometryData geoData : geometryDataList) {
+            Geometry mapGeometry = geoData.getGeometry();
 
-            for (IGeometryData geoData : geometryDataList) {
-                Geometry mapGeometry = geoData.getGeometry();
+            for (Geometry geometry : geometryList) {
+                for (int i = 0; i < geometry.getNumGeometries(); ++i) {
 
-                if (geometry.contains(mapGeometry)) {
-                    containedGeometries.add(geoData);
+                    if (geometry.getGeometryN(i).contains(mapGeometry)) {
+                        containedGeometries.add(geoData);
+                        continue outer;
+                    }
                 }
+
             }
+
         }
 
         return containedGeometries;
@@ -443,7 +443,7 @@ public class HazardEventUtilities {
      *            A list of one or more geometries
      * 
      * @return A set of geometries. This set will be empty if there are no
-     *         contained geometries.
+     *         clipped geometries.
      */
     public static Set<IGeometryData> getClippedMapGeometries(
             String mapDBtableName, String labelParameter, String cwa,
@@ -458,19 +458,22 @@ public class HazardEventUtilities {
 
         for (Geometry geometry : geometryList) {
 
-            Geometry clippedGeometry = geoFactory.createPolygon(null, null);
+            for (int i = 0; i < geometry.getNumGeometries(); ++i) {
+                for (IGeometryData geoData : geometryDataList) {
 
-            for (IGeometryData geoData : geometryDataList) {
-                Geometry mapGeometry = geoData.getGeometry();
+                    Geometry clippedGeometry = geoFactory.createPolygon(null,
+                            null);
 
-                if (mapGeometry.intersects(geometry)) {
-                    Geometry intersectionGeometry = mapGeometry
-                            .intersection(geometry);
-                    clippedGeometry = clippedGeometry
-                            .union(intersectionGeometry);
-                    DefaultGeometryData clippedGeoData = new DefaultGeometryData();
-                    clippedGeoData.setGeometry(clippedGeometry);
-                    clippedGeometries.add(clippedGeoData);
+                    if (geoData.getGeometry().intersects(
+                            geometry.getGeometryN(i))) {
+                        Geometry intersectionGeometry = geoData.getGeometry()
+                                .intersection(geometry);
+                        clippedGeometry = clippedGeometry
+                                .union(intersectionGeometry);
+                        DefaultGeometryData clippedGeoData = new DefaultGeometryData();
+                        clippedGeoData.setGeometry(clippedGeometry);
+                        clippedGeometries.add(clippedGeoData);
+                    }
                 }
             }
         }

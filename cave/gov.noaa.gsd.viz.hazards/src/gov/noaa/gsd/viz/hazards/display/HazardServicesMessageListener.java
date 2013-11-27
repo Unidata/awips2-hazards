@@ -69,11 +69,11 @@ import com.raytheon.uf.viz.core.exception.VizException;
  *                                           View).
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
- * 
- *  
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.   Some tidying
+ * Nov 23, 2013    2474    bryon.lawrence    Replaced "updatedEventData" literal.
+ * Nov 27, 2013    1462    bryon.lawrence    Added code to support display
+ *                                           of hazard hatch areas.
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
- * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -254,6 +254,9 @@ public class HazardServicesMessageListener {
             } else if (consoleAction.getId().equals(
                     HazardConstants.AUTO_CHECK_CONFLICTS)) {
                 messageHandler.toggleAutoCheckConflicts();
+            } else if (consoleAction.getId().equals(
+                    HazardConstants.SHOW_HATCHED_AREA)) {
+                messageHandler.toggleHatchedAreaDisplay();
             }
 
         } else if (consoleAction.getAction().equals("SelectedTimeChanged")) {
