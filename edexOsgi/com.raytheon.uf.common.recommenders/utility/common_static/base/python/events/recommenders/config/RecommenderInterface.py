@@ -36,6 +36,10 @@ import os
 
 import RollbackMasterInterface
 import JUtil
+from GeometryHandler import shapelyToJTS, jtsToShapely
+JUtil.registerPythonToJava(shapelyToJTS)
+JUtil.registerJavaToPython(jtsToShapely)
+
 import EventConverter
 from EventSet import EventSet
 
@@ -54,10 +58,10 @@ class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
     def execute(self, moduleName, className, **kwargs):
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
-            kwargs['dialogInputMap'] = JUtil.javaMapToPyDict(javaDialogInput)
+            kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)
         javaSpatialInput = kwargs['spatialInputMap']
         if javaSpatialInput is not None :
-            kwargs['spatialInputMap'] = JUtil.javaMapToPyDict(javaSpatialInput)
+            kwargs['spatialInputMap'] = JUtil.javaObjToPyVal(javaSpatialInput)
 
         kwargs['eventSet'] = EventSet(kwargs['eventSet'])
         

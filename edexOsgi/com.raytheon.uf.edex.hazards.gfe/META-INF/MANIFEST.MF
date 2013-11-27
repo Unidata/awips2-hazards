@@ -20,5 +20,9 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.edex.common;bundle-version="1.12.1174",
- com.raytheon.uf.common.hazards.gfe;bundle-version="1.0.0"
+ com.raytheon.uf.common.python.concurrent;bundle-version="1.0.0",
+ com.raytheon.uf.common.recommenders;bundle-version="1.0.0",
+ com.raytheon.uf.edex.recommenders;bundle-version="1.0.0",
+ com.raytheon.uf.common.actionregistry;bundle-version="1.0.0",
+ com.raytheon.uf.common.dataplugin.warning;bundle-version="1.12.1174"
 Export-Package: com.raytheon.uf.edex.hazards.gfe

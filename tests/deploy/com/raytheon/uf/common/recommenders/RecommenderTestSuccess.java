@@ -29,6 +29,7 @@ import static org.junit.Assert.fail;
 import java.io.Serializable;
 import java.util.Map;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -59,6 +60,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
+    @Ignore
     public void run() {
         IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override
@@ -83,6 +85,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
     }
 
     @Test
+    @Ignore
     public void runGetDialogInfo() {
         Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);
@@ -90,6 +93,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
     }
 
     @Test
+    @Ignore
     public void runGetSpatialInfo() {
         Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);

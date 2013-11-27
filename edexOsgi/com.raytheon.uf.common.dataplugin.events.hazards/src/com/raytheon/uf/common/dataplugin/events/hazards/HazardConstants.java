@@ -540,6 +540,7 @@ public final class HazardConstants {
 
     public static final String CWA_IDENTIFIER = "cwa";
 
+
     /*
      * Constants related to retrieving data from the maps database.
      */
@@ -566,5 +567,17 @@ public final class HazardConstants {
     public static final String MAPDATA_FFMP_BASINS_LABEL = "huc_name";
 
     public static final String MAPDATA_FIRE_ZONES_LABEL = "name";
+    
+    public static final String NEW_ACTION = "NEW";
+
+    public static final String EXTEND_IN_TIME_ACTION = "EXT";
+
+    public static final String CONTINUE_ACTION = "CON";
+
+    public static final String EXPIRE_ACTION = "EXP";
+
+    public static final String ROUTINE_ACTION = "ROU";
+
+    public static final String CANCEL_ACTION = "CAN";
 
 }

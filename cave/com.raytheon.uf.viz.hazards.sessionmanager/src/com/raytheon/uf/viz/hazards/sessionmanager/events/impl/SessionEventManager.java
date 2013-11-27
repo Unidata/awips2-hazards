@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.time.DateUtils;
 
@@ -273,7 +272,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
          */
         String eventID = oevent.getEventID();
 
-        if (eventID.length() > 0) {
+        if (eventID != null && eventID.length() > 0) {
             IHazardEvent existingEvent = getEventById(eventID);
 
             if (existingEvent != null) {
@@ -501,10 +500,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
                         Calendar.MINUTE);
                 long scheduleTimeMillis = Math.max(0, scheduledTime.getTime()
                         - SimulatedTime.getSystemTime().getTime().getTime());
-                System.out.println(eventId);
-                System.out.println("ms : " + scheduleTimeMillis);
-                System.out.println(TimeUnit.SECONDS.convert(scheduleTimeMillis,
-                        TimeUnit.MILLISECONDS));
                 if (SimulatedTime.getSystemTime().isFrozen() == false
                         || (SimulatedTime.getSystemTime().isFrozen() && scheduleTimeMillis == 0)) {
                     eventExpirationTimer.schedule(task, scheduleTimeMillis);

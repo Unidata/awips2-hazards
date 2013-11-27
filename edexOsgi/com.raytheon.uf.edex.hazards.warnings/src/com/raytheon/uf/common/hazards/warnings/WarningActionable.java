@@ -21,9 +21,7 @@ package com.raytheon.uf.common.hazards.warnings;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.actionregistry.IActionable;
@@ -32,11 +30,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
-import com.raytheon.uf.common.serialization.comm.RequestRouter;
 
 /**
  * {@link IActionable} to convert {@link AbstractWarningRecord} objects to
@@ -90,17 +86,9 @@ public class WarningActionable implements IActionable {
                 }
                 IHazardEvent event = manager.createEvent();
 
-                // make a request for the hazard event id from the cluster task
-                // table
-                HazardEventIdRequest request = new HazardEventIdRequest();
-                request.setSiteId(record.getXxxid());
-                String value = "";
-                try {
-                    value = RequestRouter.route(request).toString();
-                } catch (Exception e) {
-                    throw new RuntimeException(
-                            "Unable to make request for hazard event id", e);
-                }
+                String value = HazardEventUtilities.determineEtn(
+                        record.getXxxid(), record.getAct(), record.getEtn(),
+                        manager);
                 event.setEventID(value);
                 event.setEndTime(record.getEndTime().getTime());
                 event.setStartTime(record.getStartTime().getTime());
@@ -109,9 +97,13 @@ public class WarningActionable implements IActionable {
                 event.setPhenomenon(record.getPhen());
                 event.setSignificance(record.getSig());
                 event.setSiteID(record.getXxxid());
+                event.addHazardAttribute(HazardConstants.EXPIRATIONTIME, record
+                        .getPurgeTime().getTime().getTime());
+                event.addHazardAttribute("etns", "[" + record.getEtn() + "]");
                 event.setHazardMode(HazardConstants
                         .productClassFromAbbreviation(record.getProductClass()));
-                event.setState(stateBasedOnAction(record.getAct()));
+                event.setState(HazardEventUtilities.stateBasedOnAction(record
+                        .getAct()));
 
                 // these don't apply to everything so the may be blank, but we
                 // want to make sure we fill everything out of the warnings into
@@ -159,39 +151,7 @@ public class WarningActionable implements IActionable {
                             immediateCause);
                 }
 
-                HazardQueryBuilder builder = new HazardQueryBuilder();
-                builder.addKey(HazardConstants.SITEID, event.getSiteID());
-                builder.addKey(HazardConstants.GEOMETRY, event.getGeometry());
-                builder.addKey(HazardConstants.PHENOMENON,
-                        event.getPhenomenon());
-                builder.addKey(HazardConstants.SIGNIFICANCE,
-                        event.getSignificance());
-                builder.addKey(HazardConstants.HAZARD_EVENT_STATE,
-                        event.getState());
-                if (event.getSubtype() != null
-                        && event.getSubtype().isEmpty() == false) {
-                    builder.addKey(HazardConstants.HAZARD_EVENT_SUB_TYPE,
-                            event.getSubtype());
-                }
-                Map<String, HazardHistoryList> hazards = manager
-                        .getEventsByFilter(builder.getQuery());
-                boolean toStore = true;
-                for (HazardHistoryList list : hazards.values()) {
-                    Iterator<IHazardEvent> iter = list.iterator();
-                    while (iter.hasNext()) {
-                        IHazardEvent ev = iter.next();
-                        toStore = compareEvents(ev, event);
-                        if (toStore == false) {
-                            break;
-                        }
-                    }
-                    if (toStore == false) {
-                        break;
-                    }
-                }
-
-                // TODO, maybe need to fill in more?
-                if (toStore) {
+                if (HazardEventUtilities.isDuplicate(manager, event)) {
                     events.add(event);
                 }
             }
@@ -201,59 +161,6 @@ public class WarningActionable implements IActionable {
                 throw new RuntimeException(
                         "Unable to store converted events to the database");
             }
-        }
-    }
-
-    private boolean compareEvents(IHazardEvent event1, IHazardEvent event2) {
-        long issueTimeEvent1 = TimeUnit.MILLISECONDS.toMinutes(event1
-                .getIssueTime().getTime());
-        long issueTimeEvent2 = TimeUnit.MILLISECONDS.toMinutes(event2
-                .getIssueTime().getTime());
-        long startTimeEvent1 = TimeUnit.MILLISECONDS.toMinutes(event1
-                .getStartTime().getTime());
-        long startTimeEvent2 = TimeUnit.MILLISECONDS.toMinutes(event2
-                .getStartTime().getTime());
-        long endTimeEvent1 = TimeUnit.MILLISECONDS.toMinutes(event1
-                .getEndTime().getTime());
-        long endTimeEvent2 = TimeUnit.MILLISECONDS.toMinutes(event2
-                .getEndTime().getTime());
-
-        if (event1.getSiteID().equals(event2.getSiteID()) == false) {
-            return true;
-        }
-        if (issueTimeEvent1 != issueTimeEvent2) {
-            return true;
-        }
-        if (startTimeEvent1 != startTimeEvent2) {
-            return true;
-        }
-        if (endTimeEvent1 != endTimeEvent2) {
-            return true;
-        }
-        if (event1.getPhenomenon().equals(event2.getPhenomenon()) == false) {
-            return true;
-        }
-        if (event1.getSignificance().equals(event2.getSignificance()) == false) {
-            return true;
-        }
-        if (event1.getState() != event2.getState()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Any state for hazard events will be "ISSUED" unless it gets the following
-     * VTEC states
-     * 
-     * @param action
-     * @return
-     */
-    private HazardState stateBasedOnAction(String action) {
-        if ("CAN".equals(action) || "EXP".equals(action)) {
-            return HazardState.ENDED;
-        } else {
-            return HazardState.ISSUED;
         }
     }
 }

@@ -35,6 +35,9 @@
 #
 import RollbackMasterInterface
 import JUtil, importlib
+
+from GeometryHandler import shapelyToJTS
+JUtil.registerPythonToJava(shapelyToJTS)
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct

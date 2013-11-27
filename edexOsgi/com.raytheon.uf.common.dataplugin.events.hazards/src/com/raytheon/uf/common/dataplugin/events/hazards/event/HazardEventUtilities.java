@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.google.common.collect.Lists;
@@ -32,6 +35,12 @@ import com.raytheon.uf.common.dataaccess.IDataRequest;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataaccess.impl.DefaultGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -470,4 +479,169 @@ public class HazardEventUtilities {
 
     }
 
+    /**
+     * Returns a {@link HazardState} based on the VTEC action code.
+     * 
+     * @param action
+     * @return
+     */
+    public static HazardState stateBasedOnAction(String action) {
+        if ("CAN".equals(action) || "EXP".equals(action)) {
+            return HazardState.ENDED;
+        } else {
+            return HazardState.ISSUED;
+        }
+    }
+
+    public static List<String> parseEtns(String etns) {
+        List<String> parsed = new ArrayList<String>();
+        if (etns.contains("[")) {
+            etns = etns.replaceAll("\\[|\\]", "");
+            String[] split = etns.split(",");
+            parsed = Arrays.asList(split);
+        } else if (etns.isEmpty() == false) {
+            parsed.add(etns);
+        }
+        return parsed;
+    }
+
+    public static boolean isDuplicate(IHazardEventManager manager,
+            IHazardEvent event) {
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.SITEID, event.getSiteID());
+        builder.addKey(HazardConstants.PHENOMENON, event.getPhenomenon());
+        builder.addKey(HazardConstants.SIGNIFICANCE, event.getSignificance());
+        Map<String, HazardHistoryList> hazards = manager
+                .getEventsByFilter(builder.getQuery());
+        boolean toStore = true;
+        for (HazardHistoryList list : hazards.values()) {
+            Iterator<IHazardEvent> iter = list.iterator();
+            while (iter.hasNext()) {
+                IHazardEvent ev = iter.next();
+                toStore = HazardEventUtilities.checkDifferentEvents(ev, event);
+                if (toStore == false) {
+                    break;
+                }
+            }
+            if (toStore == false) {
+                break;
+            }
+        }
+        return toStore;
+    }
+
+    public static String determineEtn(String site, String action, String etn,
+            IHazardEventManager manager) {
+        // make a request for the hazard event id from the cluster task
+        // table
+        HazardEventIdRequest request = new HazardEventIdRequest();
+        request.setSiteId(site);
+        String value = "";
+        boolean createNew = false;
+        if (HazardConstants.NEW_ACTION.equals(action) == false) {
+            Map<String, HazardHistoryList> map = manager.getBySiteID(site);
+            for (Entry<String, HazardHistoryList> entry : map.entrySet()) {
+                HazardHistoryList list = entry.getValue();
+                for (IHazardEvent ev : list) {
+                    List<String> hazEtns = HazardEventUtilities
+                            .parseEtns(String.valueOf(ev
+                                    .getHazardAttribute(HazardConstants.ETNS)));
+                    List<String> recEtn = HazardEventUtilities.parseEtns(etn);
+                    if (compareEtns(hazEtns, recEtn)) {
+                        value = ev.getEventID();
+                        break;
+                    }
+                }
+            }
+            if ("".equals(value)) {
+                createNew = true;
+            }
+        }
+        if ("NEW".equals(action) || createNew) {
+            try {
+                value = RequestRouter.route(request).toString();
+            } catch (Exception e) {
+                throw new RuntimeException(
+                        "Unable to make request for hazard event id", e);
+            }
+        }
+        return value;
+    }
+
+    /**
+     * Determines if events are the same or are different.
+     * 
+     * @param event1
+     * @param event2
+     * @return
+     */
+    public static boolean checkDifferentEvents(IHazardEvent event1,
+            IHazardEvent event2) {
+        if (event1.getSiteID().equals(event2.getSiteID()) == false) {
+            return true;
+        }
+        if (event1.getPhenomenon().equals(event2.getPhenomenon()) == false) {
+            return true;
+        }
+        if (event1.getSignificance().equals(event2.getSignificance()) == false) {
+            return true;
+        }
+        // TODO, this is necessary when we use the mode to issue products later
+        // on
+        // if (event1.getHazardMode().equals(event2.getHazardMode()) == false) {
+        // return true;
+        // }
+
+        Object obj1 = event1.getHazardAttribute(HazardConstants.ETNS);
+        List<String> etns1 = null;
+        List<String> etns2 = null;
+        // this will become OBE by refactor work, right now we have cases where
+        // it is a string and some where it is a list
+        if (obj1 instanceof String) {
+            etns1 = HazardEventUtilities.parseEtns((String) event1
+                    .getHazardAttribute(HazardConstants.ETNS));
+        } else {
+            etns1 = new ArrayList<String>();
+            List<Integer> list = (List<Integer>) obj1;
+            for (Integer in : list) {
+                etns1.add(String.valueOf(in));
+            }
+        }
+
+        Object obj2 = event2.getHazardAttribute(HazardConstants.ETNS);
+        if (obj2 instanceof String) {
+            etns2 = HazardEventUtilities.parseEtns((String) event2
+                    .getHazardAttribute(HazardConstants.ETNS));
+        } else {
+            etns2 = new ArrayList<String>();
+            List<Integer> list = (List<Integer>) obj2;
+            for (Integer in : list) {
+                etns2.add(String.valueOf(in));
+            }
+        }
+        if (compareEtns(etns1, etns2) == false) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Comparing if any of the ETNs of the first list match any of the second
+     * list. The lists can be different lengths depending on the code that hits
+     * this.
+     * 
+     * @param etns1
+     * @param etns2
+     * @return
+     */
+    private static boolean compareEtns(List<String> etns1, List<String> etns2) {
+        for (String etn1 : etns1) {
+            for (String etn2 : etns2) {
+                if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }

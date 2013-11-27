@@ -29,6 +29,7 @@ import jep.JepException;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -56,7 +57,7 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderScriptManager;
  * @author mnash
  * @version 1.0
  */
-
+@Ignore
 public abstract class AbstractRecommenderTest {
 
     protected volatile boolean proceed = false;

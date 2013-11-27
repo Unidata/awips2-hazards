@@ -41,7 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.gfe.HasConfictsRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
@@ -398,7 +398,7 @@ public class SessionProductManager implements ISessionProductManager {
         try {
             // checks if selected events conflicting with existing grids
             // based on time and phensigs
-            HasConfictsRequest request = new HasConfictsRequest();
+            HasConflictsRequest request = new HasConflictsRequest();
             request.setPhenSig(hazardEvent.getPhenomenon() + "."
                     + hazardEvent.getSignificance());
             request.setSiteID(hazardEvent.getSiteID());

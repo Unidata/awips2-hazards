@@ -17,21 +17,49 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
+package com.raytheon.uf.common.dataplugin.events.hazards;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+
+import java.util.List;
+
+import org.junit.Test;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+
 /**
- * Actions for interoperability with GFE and Hazard Services
+ * TODO Add Description
  * 
  * <pre>
- *
+ * 
  * SOFTWARE HISTORY
- *
+ * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 22, 2013            mnash     Initial creation
- *
+ * Nov 27, 2013            mnash     Initial creation
+ * 
  * </pre>
- *
+ * 
  * @author mnash
- * @version 1.0	
+ * @version 1.0
  */
 
-package com.raytheon.uf.common.hazards.gfe;
+public class HazardEventUtilitiesTest {
+
+    private String etns1 = "[1,2]";
+
+    private String etns2 = "[1]";
+
+    @Test
+    public void parseEtnString() {
+        List<String> values1 = HazardEventUtilities.parseEtns(etns1);
+        assertThat(values1, hasSize(2));
+        assertEquals(values1.get(0), "1");
+        assertEquals(values1.get(1), "2");
+        List<String> values2 = HazardEventUtilities.parseEtns(etns2);
+        assertThat(values2, hasSize(1));
+        assertEquals(values1.get(0), "1");
+    }
+}

@@ -199,7 +199,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * @param recommenderName
      * @return
      */
-    private PythonJobCoordinator<P> getCoordinator(String recommenderName) {
+    protected PythonJobCoordinator<P> getCoordinator(String recommenderName) {
         if (recommenderToCoordinator.isEmpty()
                 || recommenderToCoordinator.containsKey(recommenderName) == false) {
             buildMap();

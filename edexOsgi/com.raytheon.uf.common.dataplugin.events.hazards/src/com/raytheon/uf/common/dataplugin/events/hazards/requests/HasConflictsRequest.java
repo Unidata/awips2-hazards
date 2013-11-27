@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.gfe;
+package com.raytheon.uf.common.dataplugin.events.hazards.requests;
 
 import java.util.Date;
 
@@ -43,7 +43,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * @version 1.0
  */
 @DynamicSerialize
-public class HasConfictsRequest implements IServerRequest {
+public class HasConflictsRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private String phenSig;

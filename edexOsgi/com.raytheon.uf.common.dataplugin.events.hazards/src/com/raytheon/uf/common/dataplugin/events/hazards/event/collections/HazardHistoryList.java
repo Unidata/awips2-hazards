@@ -136,11 +136,13 @@ public class HazardHistoryList implements List<IHazardEvent> {
         // they are stored correctly
         for (int i = 0; i < size(); i++) {
             IHazardEvent event = get(i);
-            if (event.getIssueTime().before(e.getIssueTime())) {
-                continue;
-            } else {
-                events.add(i, e);
-                return true;
+            if (event.getIssueTime() != null && e.getIssueTime() != null) {
+                if (event.getIssueTime().before(e.getIssueTime())) {
+                    continue;
+                } else {
+                    events.add(i, e);
+                    return true;
+                }
             }
         }
         return events.add(e);
