@@ -107,6 +107,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
+ * Nov 29, 2013  2378       blarenc    Simplified state changes when products are issued.
  * </pre>
  * 
  * @author bsteffen
@@ -299,11 +300,11 @@ public class SessionProductManager implements ISessionProductManager {
              * Need to re-initialize product information when issuing
              */
             if (issue) {
-                event.removeHazardAttribute("expirationTime");
-                event.removeHazardAttribute("issueTime");
-                event.removeHazardAttribute("vtecCodes");
-                event.removeHazardAttribute("etns");
-                event.removeHazardAttribute("pils");
+                event.removeHazardAttribute(HazardConstants.EXPIRATIONTIME);
+                event.removeHazardAttribute(HazardConstants.ISSUETIME);
+                event.removeHazardAttribute(HazardConstants.VTEC_CODES);
+                event.removeHazardAttribute(HazardConstants.ETNS);
+                event.removeHazardAttribute(HazardConstants.PILS);
             }
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
@@ -357,16 +358,11 @@ public class SessionProductManager implements ISessionProductManager {
                             .removeHazardAttribute(HazardConstants.REPLACES);
 
                     if (updatedEvent.getState().equals(HazardState.ENDED)) {
-                        sessionEvent.setState(HazardState.ENDED);
-                        sessionEvent.addHazardAttribute(
-                                ISessionEventManager.ATTR_SELECTED, false);
+                        eventManager.endEvent(sessionEvent);
                     } else {
-                        sessionEvent.setState(HazardState.ISSUED);
+                        eventManager.issueEvent(sessionEvent);
                     }
-                    /*
-                     * Clear the undo/redo events.
-                     */
-                    ((IUndoRedoable) sessionEvent).clearUndoRedo();
+
                     break;
                 }
 

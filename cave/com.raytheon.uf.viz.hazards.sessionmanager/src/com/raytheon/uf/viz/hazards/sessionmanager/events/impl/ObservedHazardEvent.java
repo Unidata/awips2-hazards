@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeMo
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -58,13 +59,19 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 06, 2013 1265       blawrenc    Updated to support undo/redo
  * Aug 22, 2013 1921       blawrenc    Added a deep array equality test to the
  *                                     changed (Object, Object) method.
+ * Nov 29, 2013 2378       blawrenc    Added a mechanism for 
+ *                                     keeping track of when an hazard
+ *                                     event is modified. This is in place
+ *                                     of resetting the state to PENDING when
+ *                                     a modification occurs.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
+public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
+        IModifiable {
 
     /**
      * Logging mechanism.
@@ -95,6 +102,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
      * Flag indicating whether or not a redo operation is in progress.
      */
     private volatile Boolean redoInProgress = false;
+
+    /*
+     * Flag for indicating whether or not an event has been modified. In this
+     * case, this indicates whether or not the event has been modified since it
+     * was last persisted.
+     */
+    private volatile Boolean modified = false;
 
     @Override
     public Date getStartTime() {
@@ -211,7 +225,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     @Override
     public void setState(HazardState state) {
-        setState(state, true, true);
+        if (changed(getState(), state)) {
+            setState(state, true, true);
+        }
     }
 
     @Override
@@ -290,14 +306,12 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     protected void setState(HazardState state, boolean notify, boolean persist) {
-        if (changed(getState(), state)) {
-            delegate.setState(state);
 
-            if (notify) {
-                eventManager.hazardEventStateModified(
-                        new SessionEventStateModified(eventManager, this),
-                        persist);
-            }
+        delegate.setState(state);
+
+        if (notify) {
+            eventManager.hazardEventStateModified(
+                    new SessionEventStateModified(eventManager, this), persist);
         }
     }
 
@@ -536,6 +550,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     public void clearUndoRedo() {
         undoStack.clear();
         redoStack.clear();
+    }
+
+    @Override
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
     }
 
 }

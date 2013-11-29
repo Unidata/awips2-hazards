@@ -389,6 +389,8 @@ public final class HazardConstants {
 
     public static final String PREVIEW_STATE = "previewState";
 
+    public static final String PREVIEW_STATE_ENDED = "ended";
+
     public static final String REPLACES = "replaces";
 
     public static final String GENERATED_PRODUCTS = "generatedProducts";
@@ -668,7 +670,6 @@ public final class HazardConstants {
 
     public static final String CWA_IDENTIFIER = "cwa";
 
-
     /*
      * Constants related to retrieving data from the maps database.
      */
@@ -695,7 +696,7 @@ public final class HazardConstants {
     public static final String MAPDATA_FFMP_BASINS_LABEL = "huc_name";
 
     public static final String MAPDATA_FIRE_ZONES_LABEL = "name";
-    
+
     public static final String NEW_ACTION = "NEW";
 
     public static final String EXTEND_IN_TIME_ACTION = "EXT";

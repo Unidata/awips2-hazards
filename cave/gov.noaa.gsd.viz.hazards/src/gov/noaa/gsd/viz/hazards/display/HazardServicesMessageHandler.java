@@ -100,6 +100,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Tidying
  * Nov 27, 2013  1462      bryon.lawrence      Added methods to support display
  *                                             of hazard hatch areas.
+ * nov 29, 2013  2378      bryon.lawrence     Cleaned up methods which support proposing and issuing hazards.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -108,12 +109,6 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 public final class HazardServicesMessageHandler {
 
     // Private Constants
-
-    /**
-     * Key indicating that an event has ended and that the cancellation or
-     * expiration product needs to be previewed.
-     */
-    private final String PREVIEW_ENDED = "previewEnded";
 
     /**
      * The key for a hazard's label in a hazard event dict.
@@ -578,30 +573,28 @@ public final class HazardServicesMessageHandler {
     /**
      * Changes the state of the selected events to the state given by the state
      * parameter
-     * 
-     * @param state
-     *            New state of the selected events.
      */
-    private void changeState(String state) {
-        _changeState(state);
+    public void changeSelectedEventsToProposedState() {
 
-        notifyModelEventsChanged();
-        appBuilder.hideHazardDetail();
-    }
-
-    private void _changeState(String state) {
         Collection<IHazardEvent> events = sessionEventManager
                 .getSelectedEvents();
 
-        if (state.toUpperCase().equals("PREVIEWENDED")) {
-            for (IHazardEvent event : events) {
-                event.addHazardAttribute("previewState", "ended");
-            }
-        } else {
-            HazardState hstate = HazardState.valueOf(state.toUpperCase());
-            for (IHazardEvent event : events) {
-                event.setState(hstate);
-            }
+        for (IHazardEvent event : events) {
+            model.getSessionManager().getEventManager().proposeEvent(event);
+        }
+
+        notifyModelEventsChanged();
+        appBuilder.hideHazardDetail();
+        appBuilder.closeProductEditorView();
+    }
+
+    private void updateToPreviewEnded() {
+        Collection<IHazardEvent> events = sessionEventManager
+                .getSelectedEvents();
+
+        for (IHazardEvent event : events) {
+            event.addHazardAttribute(HazardConstants.PREVIEW_STATE,
+                    HazardConstants.PREVIEW_STATE_ENDED);
         }
     }
 
@@ -1089,11 +1082,11 @@ public final class HazardServicesMessageHandler {
      */
     public void handleContextMenuSelection(String label) {
         if (label.contains(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeState(HazardConstants.HazardState.PROPOSED.getValue());
+            changeSelectedEventsToProposedState();
         } else if (label.contains(HazardConstants.CONTEXT_MENU_ISSUE)) {
             issueEvents();
         } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
-            _changeState(PREVIEW_ENDED);
+            updateToPreviewEnded();
             preview();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_NODE)) {
             appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_NODE);
@@ -1141,15 +1134,6 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Changes the state of an event to "Proposed".
-     */
-    public void setProposedState() {
-        changeState(HazardConstants.HazardState.PROPOSED.getValue());
-        appBuilder.hideHazardDetail();
-        appBuilder.closeProductEditorView();
-    }
-
-    /**
      * Changes the state of an event to "Issued".
      */
     public void setIssuedState() {
@@ -1181,7 +1165,7 @@ public final class HazardServicesMessageHandler {
         String productDisplayJSON = action.getJSONText();
 
         if (productDisplayAction.equals(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeState(HazardConstants.HazardState.PROPOSED.getValue());
+            changeSelectedEventsToProposedState();
         } else if (productDisplayAction
                 .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
             if (appBuilder.getUserAnswerToQuestion("Are you sure "

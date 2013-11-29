@@ -149,4 +149,19 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void endEvent(IHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void issueEvent(IHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void proposeEvent(IHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
 }

@@ -43,6 +43,13 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                     detection.
  *  
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * Nov 29, 2013 2378       blawrenc    Added methods for proposing,
+ *                                     issuing and ending hazard 
+ *                                     events. This keeps the 
+ *                                     knowledge of what to do
+ *                                     in these cases better
+ *                                     encapsulated in the
+ *                                     event manager.
  * 
  * </pre>
  * 
@@ -268,5 +275,35 @@ public interface ISessionEventManager {
     Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
 
     public Collection<IHazardEvent> getEventsForCurrentSettings();
+
+    /**
+     * Sets the state of the event to ENDED, persists it to the database and
+     * notifies all listeners of this state change.
+     * 
+     * @param The
+     *            event to end.
+     * @return
+     */
+    public void endEvent(IHazardEvent event);
+
+    /**
+     * Sets the state of the event to ISSUED, persists it to the database and
+     * notifies all listeners of this.
+     * 
+     * @param The
+     *            event to issue.
+     * @return
+     */
+    public void issueEvent(IHazardEvent event);
+
+    /**
+     * Sets the state of the event to PROPOSED, persists it to the database and
+     * notifies all listeners of this.
+     * 
+     * @param The
+     *            event to propose
+     * @return
+     */
+    public void proposeEvent(IHazardEvent event);
 
 }

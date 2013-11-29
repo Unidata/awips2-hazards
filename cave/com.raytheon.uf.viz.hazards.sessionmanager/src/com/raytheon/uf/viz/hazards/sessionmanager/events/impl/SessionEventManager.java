@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
@@ -78,6 +79,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -98,6 +100,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 21, 2013 2177       blawrenc    Added logic to check for event conflicts.
  * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 29, 2013 2378       blawrenc    Changed to not set modified
+ *                                     events back to PENDING.
  * 
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * 
@@ -385,19 +389,21 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     protected void hazardEventModified(SessionEventModified notification) {
-        notification.getEvent().setState(HazardState.PENDING);
-        addModification(notification.getEvent().getEventID());
+        IHazardEvent event = notification.getEvent();
+        addModification(event.getEventID());
+        if (event instanceof ObservedHazardEvent) {
+            ((ObservedHazardEvent) event).setModified(true);
+        }
         notificationSender.postNotification(notification);
     }
 
     protected void hazardEventAttributeModified(
             SessionEventAttributeModified notification) {
-        if (!notification.isAttrbute(ATTR_SELECTED)
-                && !notification.isAttrbute(ATTR_CHECKED)
-                && !notification.isAttrbute(ATTR_ISSUED)) {
-            notification.getEvent().setState(HazardState.PENDING);
+        IHazardEvent event = notification.getEvent();
+        addModification(event.getEventID());
+        if (event instanceof ObservedHazardEvent) {
+            ((ObservedHazardEvent) event).setModified(true);
         }
-        addModification(notification.getEvent().getEventID());
         notificationSender.postNotification(notification);
     }
 
@@ -964,4 +970,48 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         return conflictingHazardsMap;
     };
+
+    @Override
+    public void endEvent(IHazardEvent event) {
+        if (event.getClass().equals(ObservedHazardEvent.class)) {
+            ObservedHazardEvent observedEvent = (ObservedHazardEvent) event;
+            observedEvent.addHazardAttribute(
+                    ISessionEventManager.ATTR_SELECTED, false);
+            observedEvent.setState(HazardState.ENDED, true, true);
+            clearUndoRedo(observedEvent);
+            observedEvent.setModified(false);
+        }
+    }
+
+    @Override
+    public void issueEvent(IHazardEvent event) {
+        if (event.getClass().equals(ObservedHazardEvent.class)) {
+            ObservedHazardEvent observedEvent = (ObservedHazardEvent) event;
+            observedEvent.setState(HazardState.ISSUED, true, true);
+            clearUndoRedo(observedEvent);
+            observedEvent.setModified(false);
+        }
+
+    }
+
+    @Override
+    public void proposeEvent(IHazardEvent event) {
+        if (event.getClass().equals(ObservedHazardEvent.class)) {
+            ObservedHazardEvent observedEvent = (ObservedHazardEvent) event;
+            observedEvent.setState(HazardState.PROPOSED, true, true);
+            clearUndoRedo(observedEvent);
+            observedEvent.setModified(false);
+        }
+    }
+
+    /**
+     * Clears the undo/redo stack for the hazard event.
+     * 
+     * @param event
+     *            Event for which to clear the undo/redo stack
+     * @return
+     */
+    private void clearUndoRedo(IHazardEvent event) {
+        ((IUndoRedoable) event).clearUndoRedo();
+    }
 }

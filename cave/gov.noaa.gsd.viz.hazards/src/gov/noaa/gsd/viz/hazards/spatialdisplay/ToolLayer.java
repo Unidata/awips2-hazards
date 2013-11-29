@@ -80,6 +80,7 @@ import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -128,6 +129,9 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Nov  18, 2013 1462     Bryon.Lawrence  Added hazard area hatching.
  * Nov  23, 2013 2474     Bryon.Lawrence  Made fix to prevent NPE when using right
  *                                        click context menu.
+ * Nov 29, 2013  2378     Bryon.Lawrence  Changed to use hazard event modified flag instead of
+ *                                        test for PENDING when testing whether or not to show
+ *                                        End Selected Hazard context menu item.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1387,8 +1391,14 @@ public class ToolLayer extends
                 .getEventManager();
         List<String> entries = new ArrayList<String>();
         EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
+        boolean isModified = false;
         for (IHazardEvent event : eventManager.getSelectedEvents()) {
             states.add(event.getState());
+
+            if (event instanceof IModifiable
+                    && ((IModifiable) event).isModified()) {
+                isModified = true;
+            }
 
             /*
              * Logic to handle hazard-specific contributions to the context
@@ -1408,7 +1418,7 @@ public class ToolLayer extends
         }
 
         entries.add(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
-        if (states.contains(HazardState.ISSUED)) {
+        if (!isModified && states.contains(HazardState.ISSUED)) {
             entries.add(HazardConstants.END_SELECTED_HAZARDS);
         }
         if (!states.contains(HazardState.PROPOSED) || states.size() > 1) {

@@ -74,6 +74,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Nov 27, 2013    1462    bryon.lawrence    Added code to support display
  *                                           of hazard hatch areas.
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * Nov 29, 2013    2378    bryon.lawrence    Cleaned up code which handles proposing hazards..
  * </pre>
  * 
  * @author bryon.lawrence
@@ -332,7 +333,7 @@ public class HazardServicesMessageListener {
             messageHandler.preview();
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 HazardAction.PROPOSE.getValue())) {
-            messageHandler.setProposedState();
+            messageHandler.changeSelectedEventsToProposedState();
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 HazardAction.ISSUE.getValue())) {
             messageHandler.setIssuedState();
