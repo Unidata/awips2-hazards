@@ -19,8 +19,18 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
+import java.io.Serializable;
+import java.util.Map;
+
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.common.recommenders.executors.RecommenderExecutor;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * Engine used by EDEX to create a new {@link EDEXRecommenderScriptManager}.
@@ -42,6 +52,9 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 public class EDEXRecommenderEngine extends
         AbstractRecommenderEngine<EDEXRecommenderScriptManager> {
 
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(EDEXRecommenderEngine.class);
+
     /**
      * Default constructor
      */
@@ -60,5 +73,21 @@ public class EDEXRecommenderEngine extends
     protected PythonJobCoordinator<EDEXRecommenderScriptManager> getCoordinator() {
         factory = new EDEXRecommenderPythonFactory();
         return PythonJobCoordinator.newInstance(factory);
+    }
+
+    public EventSet<IEvent> runRecommender(String recommenderName,
+            EventSet<IEvent> eventSet, Map<String, Serializable> spatialInfo,
+            Map<String, Serializable> dialogInfo) {
+        IPythonExecutor<EDEXRecommenderScriptManager, EventSet<IEvent>> executor = new RecommenderExecutor<EDEXRecommenderScriptManager>(
+                recommenderName, eventSet, spatialInfo, dialogInfo);
+        try {
+            return getCoordinator(recommenderName).submitSyncJob(executor);
+        } catch (Exception e) {
+            statusHandler
+                    .handle(Priority.PROBLEM,
+                            "Unable to submit job to run execute method of recommender",
+                            e);
+        }
+        return null;
     }
 }

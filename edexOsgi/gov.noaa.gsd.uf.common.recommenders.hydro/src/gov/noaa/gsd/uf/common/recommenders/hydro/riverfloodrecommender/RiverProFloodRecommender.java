@@ -13,6 +13,7 @@ import java.util.Map;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -288,7 +289,8 @@ public class RiverProFloodRecommender {
                  */
                 if (forecastPoint.getMaximumObservedForecastCategory() == RiverForecastPoint.HydroFloodCategories.NO_FLOOD_CATEGORY
                         .getRank()) {
-                    hydroEvent.setRecommendedAction(HydroEvent.CANCEL_ACTION);
+                    hydroEvent
+                            .setRecommendedAction(HazardConstants.CANCEL_ACTION);
 
                     /*
                      * In general, if the proposed begin or endtime is not the
@@ -307,14 +309,14 @@ public class RiverProFloodRecommender {
                                     .getTime() > floodDAO.getSystemTime()
                                     .getTime())) {
                         hydroEvent
-                                .setRecommendedAction(HydroEvent.EXTEND_IN_TIME_ACTION);
+                                .setRecommendedAction(HazardConstants.EXTEND_IN_TIME_ACTION);
                     } else if (endTime != hydroEvent.getPreviousFLW()
                             .getVtecInfo().getEndtime()) {
                         hydroEvent
-                                .setRecommendedAction(HydroEvent.EXTEND_IN_TIME_ACTION);
+                                .setRecommendedAction(HazardConstants.EXTEND_IN_TIME_ACTION);
                     } else {
                         hydroEvent
-                                .setRecommendedAction(HydroEvent.CONTINUE_ACTION);
+                                .setRecommendedAction(HazardConstants.CONTINUE_ACTION);
                     }
                 }
 
@@ -361,7 +363,7 @@ public class RiverProFloodRecommender {
                     hydroEvent
                             .setRecommendationReason(HydroEventReason.FLW_NEW_FLOODING);
                     hydroEvent.setRecommendationIndex(HydroEvent.FLW);
-                    hydroEvent.setRecommendedAction(HydroEvent.NEW_ACTION);
+                    hydroEvent.setRecommendedAction(HazardConstants.NEW_ACTION);
                 }
 
                 /*
@@ -385,7 +387,7 @@ public class RiverProFloodRecommender {
                                 .setRecommendationReason(HydroEventReason.FLS_EXPIRED_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.FLS);
                         hydroEvent
-                                .setRecommendedAction(HydroEvent.EXPIRE_ACTION);
+                                .setRecommendedAction(HazardConstants.EXPIRE_ACTION);
                     } else {
                         hydroEvent
                                 .setRecommendationReason(HydroEventReason.RVS_NO_FLOODING);
@@ -473,7 +475,7 @@ public class RiverProFloodRecommender {
                             hydroEvent
                                     .setRecommendationIndex(most_severe_product);
                             hydroEvent
-                                    .setRecommendedAction(HydroEvent.ROUTINE_ACTION);
+                                    .setRecommendedAction(HazardConstants.ROUTINE_ACTION);
                         }
                     }
                 }

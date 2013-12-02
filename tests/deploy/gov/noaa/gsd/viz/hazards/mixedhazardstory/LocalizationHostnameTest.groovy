@@ -25,6 +25,7 @@ import spock.lang.*
  * @author bryon.lawrence
  * @version 1.0
  */
+@Ignore
 class LocalizationHostnameTest extends spock.lang.Specification {
     jep.Jep jepInstance
     String  localhostname

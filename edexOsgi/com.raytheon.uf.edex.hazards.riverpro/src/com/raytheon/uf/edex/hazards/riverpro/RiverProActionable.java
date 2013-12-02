@@ -97,8 +97,15 @@ class RiverProActionable implements IActionable {
         if (arguments.length > 0) {
             boolean practice = arguments[0] instanceof PracticeWarningRecord ? true
                     : false;
-            // find the gage locations from the table
-            Map<String, Point> gageLocations = calculateGageLocations();
+            // find the gauge locations from the table
+            Map<String, Point> gaugeLocations = null;
+            try {
+                gaugeLocations = calculateGaugeLocations();
+            } catch (Throwable t) {
+                statusHandler
+                        .error("Unable to query for gauge data, events will not be interoperable with RiverPro");
+                return;
+            }
             // retrieve the available phenomenons for RiverPro
             Map<String, String> phens = retrieveAvailable("phenom",
                     "vtecphenom");
@@ -115,9 +122,9 @@ class RiverProActionable implements IActionable {
                 // are are we doing a correct phen and sig, if not, continue on
                 if (phens.containsKey(warning.getPhen())
                         && sigs.containsKey(warning.getSig())) {
-                    // loop over all gage locations
-                    for (Entry<String, Point> pt : gageLocations.entrySet()) {
-                        // only create a record, if the gage is in the area
+                    // loop over all gauge locations
+                    for (Entry<String, Point> pt : gaugeLocations.entrySet()) {
+                        // only create a record, if the gauge is in the area
                         if (warning.getGeometry().contains(pt.getValue())) {
 
                             // query the afos_to_awips table to get the product
@@ -213,13 +220,13 @@ class RiverProActionable implements IActionable {
     }
 
     /**
-     * Queries the location table to get all the gage locations so we can write
+     * Queries the location table to get all the gauge locations so we can write
      * a new row for each location
      * 
      * @return
      */
-    private Map<String, Point> calculateGageLocations() {
-        Map<String, Point> gageLocations = new HashMap<String, Point>();
+    private Map<String, Point> calculateGaugeLocations() {
+        Map<String, Point> gaugeLocations = new HashMap<String, Point>();
         List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(
                 QUERY_MODE.MODE_SQLQUERY, "select lid,lat,lon from location;",
                 IHFS_DB, "location");
@@ -231,11 +238,11 @@ class RiverProActionable implements IActionable {
             String id = (String) obj[0];
             double lat = (Double) obj[1];
             double lon = (Double) obj[2] * -1.0;
-            // create a point for each gage coordinate
+            // create a point for each gauge coordinate
             Point point = factory.createPoint(new Coordinate(lon, lat));
-            gageLocations.put(id, point);
+            gaugeLocations.put(id, point);
         }
-        return gageLocations;
+        return gaugeLocations;
     }
 
     /**

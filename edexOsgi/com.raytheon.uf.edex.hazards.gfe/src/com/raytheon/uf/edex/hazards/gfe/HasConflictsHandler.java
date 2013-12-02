@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.gfe;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.TimeConstraints;
-import com.raytheon.uf.common.hazards.gfe.HasConfictsRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -43,10 +43,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * @version 1.0
  */
 
-public class HasConflictsHandler implements IRequestHandler<HasConfictsRequest> {
+public class HasConflictsHandler implements
+        IRequestHandler<HasConflictsRequest> {
 
     @Override
-    public Object handleRequest(HasConfictsRequest request) throws Exception {
+    public Object handleRequest(HasConflictsRequest request) throws Exception {
         TimeRange timeRange = GFERecordUtil.createGridTimeRange(request
                 .getStartTime(), request.getEndTime(), new TimeConstraints(
                 TimeUtil.SECONDS_PER_HOUR, TimeUtil.SECONDS_PER_HOUR, 0));

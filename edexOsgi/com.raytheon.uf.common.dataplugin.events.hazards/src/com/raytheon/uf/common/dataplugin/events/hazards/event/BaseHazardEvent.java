@@ -23,7 +23,6 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -88,7 +87,6 @@ public class BaseHazardEvent implements IHazardEvent {
      * 
      */
     public BaseHazardEvent() {
-        eventId = UUID.randomUUID().toString();
         attributes = new HashMap<String, Serializable>();
     }
 

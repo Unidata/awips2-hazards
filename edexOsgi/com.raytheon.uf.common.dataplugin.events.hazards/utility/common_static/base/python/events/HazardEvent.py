@@ -133,10 +133,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
                 self.jobj.setHazardMode(ProductClass.TEST)        
         
     def getHazardAttributes(self):
-        return JUtil.javaMapToPyDict(self.jobj.getHazardAttributes())
+        return JUtil.javaObjToPyVal(self.jobj.getHazardAttributes())
     
     def setHazardAttributes(self, hazardAttributes):
-        self.jobj.setHazardAttributes(JUtil.pyDictToJavaMap(hazardAttributes))
+        self.jobj.setHazardAttributes(JUtil.pyValToJavaObj(hazardAttributes))
     
     def _getMillis(self, date):
         epoch = datetime.datetime.utcfromtimestamp(0)
@@ -175,7 +175,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setGeometry(shapely.wkt.loads(javaClass.getGeometry().toText()))
         else :
             self.setGeometry(None)
-        self.setHazardAttributes(JUtil.javaMapToPyDict(javaClass.getHazardAttributes()))
+        self.setHazardAttributes(JUtil.javaObjToPyVal(javaClass.getHazardAttributes()))
     
     def __getitem__(self, key):
         lowerKey = key.lower()

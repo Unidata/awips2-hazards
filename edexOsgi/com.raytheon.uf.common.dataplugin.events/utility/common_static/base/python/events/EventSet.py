@@ -52,7 +52,7 @@ class EventSet(JUtil.JavaWrapperClass):
                 self.events = EventConverter.convert(wrappedObject, converter)
             else :
                 self.events = set()
-            self.attributes = JUtil.javaMapToPyDict(wrappedObject.getAttributes())
+            self.attributes = JUtil.javaObjToPyVal(wrappedObject.getAttributes())
         else :
             self.jobj = JavaEventSet()
             self.attributes = {}
@@ -94,5 +94,5 @@ class EventSet(JUtil.JavaWrapperClass):
     
     def toJavaObj(self):
         self.jobj.addAll(JUtil.pyValToJavaObj(list(self.events)))
-        self.jobj.setAttributes(JUtil.pyDictToJavaMap(self.attributes))
+        self.jobj.setAttributes(JUtil.pyValToJavaObj(self.attributes))
         return self.jobj

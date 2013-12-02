@@ -41,18 +41,6 @@ public class HydroEvent {
 
     public static final String NO_ACTION = "N/A";
 
-    public static final String NEW_ACTION = "NEW";
-
-    public static final String EXTEND_IN_TIME_ACTION = "EXT";
-
-    public static final String CONTINUE_ACTION = "CON";
-
-    public static final String EXPIRE_ACTION = "EXP";
-
-    public static final String ROUTINE_ACTION = "ROU";
-
-    public static final String CANCEL_ACTION = "CAN";
-
     /**
      * Define the product ids; their consecutive order is important
      */

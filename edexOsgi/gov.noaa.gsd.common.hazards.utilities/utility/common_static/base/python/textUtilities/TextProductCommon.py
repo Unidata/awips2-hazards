@@ -68,7 +68,7 @@ class TextProductCommon(object):
                 if key in ['saveEventID']: continue
                 value = eventDict.get(key)
                 if   key == 'eventID': 
-                    hazardEvent.setEventID(JUtil.pyValToJavaObj(value))
+                    hazardEvent.setEventID(value)
                 elif key == 'siteID':
                     if eventDict.get('saveSiteID'):
                         hazardEvent.setSiteID(eventDict.get('saveSiteID'))
