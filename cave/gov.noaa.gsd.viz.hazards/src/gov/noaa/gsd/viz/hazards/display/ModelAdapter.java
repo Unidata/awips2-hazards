@@ -42,6 +42,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - modified to a singleton
+ *                                                            Only short term solution.
+ *                                                            This class is going away.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -49,13 +54,23 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  */
 @Deprecated
 public class ModelAdapter extends
-        com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ModelAdapter
-        implements IHazardServicesModel {
+        com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ModelAdapter {
+
+    private static ModelAdapter instance;
 
     private EventBus eventBus;
 
-    public ModelAdapter(ISessionManager sessionManager) {
+    private ModelAdapter(ISessionManager sessionManager, EventBus eventBus) {
         super(sessionManager);
+        this.eventBus = eventBus;
+    }
+
+    public static ModelAdapter getInstance(ISessionManager sessionManager,
+            EventBus eventBus) {
+        if (instance == null) {
+            instance = new ModelAdapter(sessionManager, eventBus);
+        }
+        return instance;
     }
 
     @Deprecated

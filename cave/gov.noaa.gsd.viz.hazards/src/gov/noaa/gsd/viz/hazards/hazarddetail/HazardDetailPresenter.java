@@ -11,8 +11,6 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
@@ -22,7 +20,10 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
@@ -44,6 +45,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  *                                           singleton.
  * Nov 14, 2013    1463    Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,7 +76,7 @@ public class HazardDetailPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardDetailPresenter(IHazardServicesModel model,
+    public HazardDetailPresenter(ISessionManager model,
             IHazardDetailView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
@@ -86,22 +90,20 @@ public class HazardDetailPresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
-        if (changed.contains(Element.VISIBLE_TIME_RANGE)) {
-            getView()
-                    .setVisibleTimeRange(
-                            Long.parseLong(getModel()
-                                    .getTimeLineEarliestVisibleTime()),
-                            Long.parseLong(getModel()
-                                    .getTimeLineLatestVisibleTime()));
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
+            TimeRange timeRange = timeManager.getVisibleRange();
+            getView().setVisibleTimeRange(timeRange.getStart().getTime(),
+                    timeRange.getEnd().getTime());
         }
-        if (changed.contains(Element.EVENTS) && (eventChange == false)) {
+        if (changed.contains(HazardConstants.Element.EVENTS)
+                && (eventChange == false)) {
             eventChange = true;
 
             getView().updateHazardDetail(
-                    DictList.getInstance(getModel().getComponentData(
+                    DictList.getInstance(modelAdapter.getComponentData(
                             HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                            "all")), getModel().getLastSelectedEventID(),
+                            "all")), modelAdapter.getLastSelectedEventID(),
                     getConflictingEventsForSelectedEvents());
             eventChange = false;
         }
@@ -119,14 +121,14 @@ public class HazardDetailPresenter extends
 
         // Get the hazard events to be displayed in detail, and
         // determine which event should be foregrounded.
-        String jsonEventsList = getModel().getComponentData(
+        String jsonEventsList = modelAdapter.getComponentData(
                 HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, "all");
         DictList eventsList = DictList.getInstance(jsonEventsList);
         if ((force == false)
                 && ((eventsList == null) || (eventsList.size() == 0))) {
             return;
         }
-        String topEventID = getModel().getLastSelectedEventID();
+        String topEventID = modelAdapter.getLastSelectedEventID();
 
         // Have the view open the alert detail subview.
         getView().showHazardDetail(eventsList, topEventID,
@@ -152,23 +154,23 @@ public class HazardDetailPresenter extends
     public void initialize(IHazardDetailView<?, ?> view) {
 
         // Get the basic initialization info for the subview.
-        String basicInfo = getModel().getConfigItem(
-                Utilities.HAZARD_INFO_GENERAL_CONFIG);
-        String metadataMegawidgets = getModel().getConfigItem(
-                Utilities.HAZARD_INFO_METADATA_CONFIG);
+        String basicInfo = modelAdapter
+                .getConfigItem(Utilities.HAZARD_INFO_GENERAL_CONFIG);
+        String metadataMegawidgets = modelAdapter
+                .getConfigItem(Utilities.HAZARD_INFO_METADATA_CONFIG);
+        TimeRange timeRange = timeManager.getVisibleRange();
         getView().initialize(this, basicInfo, metadataMegawidgets,
-                Long.parseLong(getModel().getTimeLineEarliestVisibleTime()),
-                Long.parseLong(getModel().getTimeLineLatestVisibleTime()));
+                timeRange.getStart().getTime(), timeRange.getEnd().getTime());
 
         // Update the view with the currently selected hazard events,
         // if any.
         getView()
                 .updateHazardDetail(
-                        DictList.getInstance(getModel()
+                        DictList.getInstance(modelAdapter
                                 .getComponentData(
                                         HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
                                         "all")),
-                        getModel().getLastSelectedEventID(),
+                        modelAdapter.getLastSelectedEventID(),
                         getConflictingEventsForSelectedEvents());
     }
 

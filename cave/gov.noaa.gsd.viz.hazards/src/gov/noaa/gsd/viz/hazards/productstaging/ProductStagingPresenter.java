@@ -8,8 +8,6 @@
 package gov.noaa.gsd.viz.hazards.productstaging;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
@@ -24,6 +22,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -40,6 +39,9 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           singleton.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -114,7 +116,7 @@ public class ProductStagingPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductStagingPresenter(IHazardServicesModel model,
+    public ProductStagingPresenter(ISessionManager model,
             IProductStagingView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
@@ -129,7 +131,7 @@ public class ProductStagingPresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
 
         // No action.
     }

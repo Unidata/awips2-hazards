@@ -10,8 +10,6 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
@@ -19,8 +17,11 @@ import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import java.util.EnumSet;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -37,6 +38,9 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,8 +74,8 @@ public class SettingsPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SettingsPresenter(IHazardServicesModel model,
-            ISettingsView<?, ?> view, EventBus eventBus) {
+    public SettingsPresenter(ISessionManager model, ISettingsView<?, ?> view,
+            EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -84,12 +88,13 @@ public class SettingsPresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
-        if (changed.contains(IHazardServicesModel.Element.SETTINGS)) {
-            getView().setSettings(getModel().getSettingsList());
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        if (changed.contains(HazardConstants.Element.SETTINGS)) {
+            getView().setSettings(modelAdapter.getSettingsList());
         }
-        if (changed.contains(IHazardServicesModel.Element.DYNAMIC_SETTING)) {
-            getView().setDynamicSetting(getModel().getDynamicSettings());
+        if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)) {
+            Settings settings = configurationManager.getSettings();
+            getView().setDynamicSetting(jsonConverter.toJson(settings));
         }
     }
 
@@ -99,9 +104,10 @@ public class SettingsPresenter extends
     public final void showSettingDetail() {
 
         // Get the parameters for the settings view.
-        DictList fields = DictList.getInstance(getModel().getConfigItem(
-                Utilities.SETTING_CONFIG));
-        Dict values = Dict.getInstance(getModel().getDynamicSettings());
+        DictList fields = DictList.getInstance(modelAdapter
+                .getConfigItem(Utilities.SETTING_CONFIG));
+        Settings settings = configurationManager.getSettings();
+        Dict values = Dict.getInstance(jsonConverter.toJson(settings));
 
         // Update the setting's zoom parameters with the current
         // values.
@@ -126,8 +132,10 @@ public class SettingsPresenter extends
      */
     @Override
     public void initialize(ISettingsView<?, ?> view) {
-        view.initialize(this, getModel().getSettingsList(), getModel()
-                .getConfigItem("filterConfig"), getModel().getDynamicSettings());
+        Settings settings = configurationManager.getSettings();
+        view.initialize(this, modelAdapter.getSettingsList(),
+                modelAdapter.getConfigItem("filterConfig"),
+                jsonConverter.toJson(settings));
     }
 
     // Private Methods

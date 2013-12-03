@@ -45,6 +45,8 @@ import java.util.List;
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author mnash
@@ -149,6 +151,13 @@ public final class HazardConstants {
         public String getValue() {
             return value;
         }
+    }
+
+    /**
+     * Enumeration of all types of changes that may occur within the model.
+     */
+    public static enum Element {
+        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, DYNAMIC_SETTING, TOOLS, SITE;
     }
 
     public static Significance significanceFromAbbreviation(String value) {

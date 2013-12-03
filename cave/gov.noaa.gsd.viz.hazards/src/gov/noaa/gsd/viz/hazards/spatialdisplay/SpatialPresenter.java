@@ -8,8 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
 
@@ -17,8 +15,11 @@ import java.util.Date;
 import java.util.EnumSet;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -37,6 +38,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov 23, 2013    1462    bryon.lawrence    Added support for drawing hazard
  *                                           hatched areas.
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -76,8 +80,8 @@ public class SpatialPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SpatialPresenter(IHazardServicesModel model,
-            ISpatialView<?, ?> view, EventBus eventBus) {
+    public SpatialPresenter(ISessionManager model, ISpatialView<?, ?> view,
+            EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -90,14 +94,14 @@ public class SpatialPresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
-        if (changed.contains(IHazardServicesModel.Element.SETTINGS)) {
-            String settingID = getModel().getCurrentSettingsID();
-            useSettingZoomParameters(settingID);
-        } else if (changed
-                .contains(IHazardServicesModel.Element.DYNAMIC_SETTING)) {
-            getView().setSetting(getModel().getDynamicSettings());
-        } else if (changed.contains(IHazardServicesModel.Element.CAVE_TIME)) {
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        if (changed.contains(HazardConstants.Element.SETTINGS)) {
+            useSettingZoomParameters();
+        } else if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)) {
+            Settings dset = configurationManager.getSettings();
+            String settingsAsJSON = jsonConverter.toJson(dset);
+            getView().setSetting(settingsAsJSON);
+        } else if (changed.contains(HazardConstants.Element.CAVE_TIME)) {
             updateCaveSelectedTime();
         }
 
@@ -108,13 +112,10 @@ public class SpatialPresenter extends
      * Update the event areas drawn in the spatial view.
      */
     public void updateSpatialDisplay() {
-        IHazardServicesModel model = getModel();
-
-        getView().setUndoEnabled(model.isUndoable());
-        getView().setRedoEnabled(model.isRedoable());
-        getView().drawEvents(
-                model.getSessionManager().isAutoHazardCheckingOn(),
-                model.getSessionManager().areHatchedAreasDisplayed());
+        getView().setUndoEnabled(modelAdapter.isUndoable());
+        getView().setRedoEnabled(modelAdapter.isRedoable());
+        getView().drawEvents(getModel().isAutoHazardCheckingOn(),
+                getModel().areHatchedAreasDisplayed());
     }
 
     /**
@@ -125,7 +126,7 @@ public class SpatialPresenter extends
      * @return
      */
     public void updateCaveSelectedTime() {
-        Date selectedTime = getModel().getSelectedTime();
+        Date selectedTime = timeManager.getSelectedTime();
         getView().manageViewFrames(selectedTime);
     }
 
@@ -136,7 +137,7 @@ public class SpatialPresenter extends
      * @return
      */
     public String getNewEventAreaId(String eventAreaJSON) {
-        return getModel().newEvent(eventAreaJSON);
+        return modelAdapter.newEvent(eventAreaJSON);
     }
 
     /**
@@ -145,7 +146,7 @@ public class SpatialPresenter extends
      * @return Selected time.
      */
     public Date getSelectedTime() {
-        return getModel().getSelectedTime();
+        return timeManager.getSelectedTime();
     }
 
     // Protected Methods
@@ -176,7 +177,7 @@ public class SpatialPresenter extends
      *         the events.
      */
     String getEvents(String eventId) {
-        return getModel().getComponentData("Spatial", eventId);
+        return modelAdapter.getComponentData("Spatial", eventId);
     }
 
     // Private Methods
@@ -184,19 +185,16 @@ public class SpatialPresenter extends
     /**
      * Use the specified setting's zoom parameters.
      * 
-     * @param settingID
-     *            Identifier of setting that is to supply the setting
-     *            parameters.
      */
-    private void useSettingZoomParameters(String settingID) {
+    private void useSettingZoomParameters() {
 
         // Get the new setting parameters, and from them, get the
         // zoom parameters.
         double[] zoomParams = new double[ZOOM_PARAM_NAMES.length];
         boolean zoomExtracted = true;
+        Settings settings = configurationManager.getSettings();
         try {
-            Dict settingDict = Dict.getInstance(getModel().getStaticSettings(
-                    settingID));
+            Dict settingDict = Dict.getInstance(jsonConverter.toJson(settings));
             Dict zoomDict = settingDict
                     .getDynamicallyTypedValue(ZOOM_PARAMETERS);
             for (int j = 0; j < zoomParams.length; j++) {
@@ -206,7 +204,8 @@ public class SpatialPresenter extends
         } catch (Exception e) {
             statusHandler.error("SpatialPresenter.useSettingZoomParameters(): "
                     + "Error: could not parse zoom parameter values "
-                    + "for setting ID " + settingID + " from JSON.", e);
+                    + "for setting ID " + settings.getSettingsID()
+                    + " from JSON.", e);
             zoomExtracted = false;
         }
 

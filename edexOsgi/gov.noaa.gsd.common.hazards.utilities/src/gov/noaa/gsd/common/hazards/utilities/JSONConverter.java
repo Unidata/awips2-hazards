@@ -10,6 +10,7 @@
 package gov.noaa.gsd.common.hazards.utilities;
 
 import java.io.IOException;
+import java.util.Date;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.map.DeserializationConfig;
@@ -24,6 +25,9 @@ import org.codehaus.jackson.map.ObjectMapper;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013            daniel.s.schaffer@noaa.gov      Initial creation
+ * 
+ * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - added fromDate to support refactoring
+ * 
  * 
  * </pre>
  * 
@@ -52,6 +56,10 @@ public class JSONConverter extends ObjectMapper {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String fromDate(Date actualDateObject) {
+        return Long.toString(actualDateObject.getTime());
     }
 
     @Override

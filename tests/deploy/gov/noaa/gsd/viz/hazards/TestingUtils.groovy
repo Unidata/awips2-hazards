@@ -9,18 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards
 
-import java.io.File;
-import java.util.List;
-
-import gov.noaa.gsd.common.hazards.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel
-import gov.noaa.gsd.viz.hazards.display.ModelDecorator;
+import gov.noaa.gsd.common.hazards.utilities.Utils
 import gov.noaa.gsd.viz.hazards.utilities.FileUtilities
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
-import com.raytheon.uf.common.localization.PathManagerFactoryTest;
+import com.raytheon.uf.common.localization.PathManagerFactoryTest
 
 
 
@@ -33,6 +25,9 @@ import com.raytheon.uf.common.localization.PathManagerFactoryTest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 13, 2013            daniel.s.schaffer      Initial creation
+ * 
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - Removed unused code.
  * 
  * </pre>
  * 
@@ -72,60 +67,9 @@ class TestingUtils {
     static PENDING = "pending"
     static SELECTED = "selected"
 
-    ModelDecorator buildModel() {
-        IHazardServicesModel result;
-        File currentDir = new File(System.getProperty("user.dir")).getParentFile();
-        String basePath = currentDir.getPath();
-        List<String> sourcePaths = Utilities.buildPythonSourcePaths(basePath);
-        List<String> pythonUtilityPaths = Utilities.buildPythonPath();
-        sourcePaths.addAll(pythonUtilityPaths);
-
-        result = TestingUtils.getSessionManager(sourcePaths);
-
-
-        IHazardEventManager hazardEventManager = new InMemoryHazardEventManager()
-        String eventsAsJson = Utilities.getCannedEventsAsJSON()
-        HazardEventsBuilder hazardEventBuilder = new HazardEventsBuilder(eventsAsJson)
-
-        hazardEventManager.storeEvents(hazardEventBuilder.getEvents())
-        result.setHazardEventManager(hazardEventManager)
-
-
-        result.initialize("1297137637240", "1297137637240", "Flood", "{}", "Operational", "OAX","{}")
-        result.reset(EVENTS)
-        result.reset(SETTINGS)
-        result = new ModelDecorator((IHazardServicesModel) result);
-        return result
-    }
-
-    private static  IHazardServicesModel getSessionManager(List<String> sourcePaths) {
-
-        try {
-            ClassLoader loader = ClassLoader.systemClassLoader
-            String jepIncludePath = Utilities.buildJepIncludePath(sourcePaths);
-            jep.Jep jep = new jep.Jep(false, jepIncludePath, loader);
-            for (String sourcePath : sourcePaths) {
-                if (sourcePath.contains("session")) {
-                    jep.eval("import JavaImporter");
-                    jep.runScript(sourcePath + "/sessionManager/SessionManager.py");
-
-                    IHazardServicesModel result = (IHazardServicesModel) jep.invoke("getProxy");
-                    return result;
-                }
-            }
-        }
-        catch (jep.JepException e) {
-            throw new RuntimeException("Unable to start JEP", e);
-        }
-    }
 
     String testFileAsString(String fileName) {
         String filePath = getClass().getResource(fileName).getPath()
         return Utils.textFileAsString(filePath)
-    }
-
-    static String benchmarkResults(String className, ModelDecorator model) {
-        return String.format("%s\n%s\n", className,
-        model.getBenchmarkingStats())
     }
 }

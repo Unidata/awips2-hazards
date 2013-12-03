@@ -11,7 +11,6 @@ package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
@@ -25,6 +24,8 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 
 /**
@@ -43,6 +44,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
  * Aug 16, 2013    1325    daniel.s.schaffer@noaa.gov    Alerts integration
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,8 +76,8 @@ public class ConsolePresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ConsolePresenter(IHazardServicesModel model,
-            IConsoleView<?, ?> view, EventBus eventBus) {
+    public ConsolePresenter(ISessionManager model, IConsoleView<?, ?> view,
+            EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -86,41 +90,49 @@ public class ConsolePresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public final void modelChanged(EnumSet<IHazardServicesModel.Element> changed) {
-        if (changed.contains(IHazardServicesModel.Element.CURRENT_TIME)) {
-            getView().updateCurrentTime(getModel().getCurrentTime());
+    public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        if (changed.contains(HazardConstants.Element.CURRENT_TIME)) {
+            getView().updateCurrentTime(timeManager.getCurrentTime());
         }
-        if (changed.contains(IHazardServicesModel.Element.SELECTED_TIME)) {
-            getView().updateSelectedTime(getModel().getSelectedTime());
+        if (changed.contains(HazardConstants.Element.SELECTED_TIME)) {
+            getView().updateSelectedTime(timeManager.getSelectedTime());
         }
-        if (changed.contains(IHazardServicesModel.Element.SELECTED_TIME_RANGE)) {
-            getView()
-                    .updateSelectedTimeRange(getModel().getSelectedTimeRange());
+        if (changed.contains(HazardConstants.Element.SELECTED_TIME_RANGE)) {
+            TimeRange range = getModel().getTimeManager()
+                    .getSelectedTimeRange();
+            String updateTimeRange = jsonConverter.toJson(new String[] {
+                    jsonConverter.fromDate(range.getStart()),
+                    jsonConverter.fromDate(range.getEnd()) });
+            getView().updateSelectedTimeRange(updateTimeRange);
         }
-        if (changed.contains(IHazardServicesModel.Element.VISIBLE_TIME_DELTA)) {
-            getView().updateVisibleTimeDelta(getModel().getTimeLineDuration());
+        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_DELTA)) {
+            String timeDelta = Long.toString(getModel()
+                    .getConfigurationManager().getSettings()
+                    .getDefaultTimeDisplayDuration());
+            getView().updateVisibleTimeDelta(timeDelta);
         }
-        if (changed.contains(IHazardServicesModel.Element.VISIBLE_TIME_RANGE)) {
-            getView().updateVisibleTimeRange(
-                    getModel().getTimeLineEarliestVisibleTime(),
-                    getModel().getTimeLineLatestVisibleTime());
+        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
+            String earliestTime = jsonConverter.fromDate(timeManager
+                    .getVisibleRange().getStart());
+            String latestTime = jsonConverter.fromDate(timeManager
+                    .getVisibleRange().getEnd());
+            getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
-        if (changed.contains(IHazardServicesModel.Element.SETTINGS)) {
-            getView().setSettings(getModel().getSettingsList());
+        if (changed.contains(HazardConstants.Element.SETTINGS)) {
+            getView().setSettings(modelAdapter.getSettingsList());
         }
-        if (changed.contains(IHazardServicesModel.Element.DYNAMIC_SETTING)
-                || changed.contains(IHazardServicesModel.Element.EVENTS)) {
+        if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)
+                || changed.contains(HazardConstants.Element.EVENTS)) {
             updateHazardEvents();
         }
-        if (changed.contains(IHazardServicesModel.Element.SITE)) {
-            view.updateTitle(getModel().getSessionManager()
-                    .getConfigurationManager().getSiteID());
+        if (changed.contains(HazardConstants.Element.SITE)) {
+            view.updateTitle(configurationManager.getSiteID());
         }
     }
 
     @Override
     public void dispose() {
-        getModel().getSessionManager().unregisterForNotification(this);
+        getModel().unregisterForNotification(this);
     }
 
     // Protected Methods
@@ -133,13 +145,13 @@ public class ConsolePresenter extends
      */
     @Override
     public final void initialize(IConsoleView<?, ?> view) {
-        getModel().getSessionManager().registerForNotification(this);
+        getModel().registerForNotification(this);
 
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.
         boolean temporalControlsInToolBar = true;
-        String jsonStartUpConfig = getModel().getConfigItem(
-                Utilities.START_UP_CONFIG);
+        String jsonStartUpConfig = modelAdapter
+                .getConfigItem(Utilities.START_UP_CONFIG);
         if (jsonStartUpConfig != null) {
             Dict startUpConfig = Dict.getInstance(jsonStartUpConfig);
             Dict consoleConfig = startUpConfig
@@ -155,17 +167,13 @@ public class ConsolePresenter extends
         }
 
         // Initialize the view.
-        view.initialize(
-                this,
-                getModel().getSelectedTime(),
-                getModel().getCurrentTime(),
-                Long.parseLong(getModel().getTimeLineDuration()),
-                getModel().getComponentData(
-                        HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all"),
-                getModel().getSettingsList(),
-                getModel().getConfigItem(Utilities.FILTER_CONFIG), getModel()
-                        .getSessionManager().getAlertsManager()
-                        .getActiveAlerts(), temporalControlsInToolBar);
+        view.initialize(this, timeManager.getSelectedTime(), timeManager
+                .getCurrentTime(), configurationManager.getSettings()
+                .getDefaultTimeDisplayDuration(), modelAdapter
+                .getComponentData(HazardServicesAppBuilder.TEMPORAL_ORIGINATOR,
+                        "all"), modelAdapter.getSettingsList(), modelAdapter
+                .getConfigItem(Utilities.FILTER_CONFIG), alertsManager
+                .getActiveAlerts(), temporalControlsInToolBar);
     }
 
     // Private Methods
@@ -179,7 +187,7 @@ public class ConsolePresenter extends
         // one in the model. If they are not the same, then a complete
         // refresh is in order as if the events have changed.
         Dict oldSetting = getView().getDynamicSetting();
-        String componentDataJSON = getModel().getComponentData(
+        String componentDataJSON = modelAdapter.getComponentData(
                 HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all");
         Dict componentData = Dict.getInstance(componentDataJSON);
         Dict newSetting = componentData

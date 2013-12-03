@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.common.hazards.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
@@ -73,6 +74,7 @@ import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -114,6 +116,9 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             to warn the user. This is injectable
  *                                             for testing.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -540,8 +545,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createConsole(boolean loadedFromBundle) {
         ConsoleView consoleView = new ConsoleView(loadedFromBundle);
         if (consolePresenter == null) {
-            consolePresenter = new ConsolePresenter(
-                    messageHandler.getModelProxy(), consoleView, eventBus);
+            consolePresenter = new ConsolePresenter(sessionManager,
+                    consoleView, eventBus);
             presenters.add(consolePresenter);
         } else {
             consolePresenter.setView(consoleView);
@@ -570,8 +575,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (alertsConfigPresenter == null) {
 
             AlertsConfigView alertsConfigView = new AlertsConfigView();
-            alertsConfigPresenter = new AlertsConfigPresenter(
-                    messageHandler.getModelProxy(), alertsConfigView, eventBus);
+            alertsConfigPresenter = new AlertsConfigPresenter(sessionManager,
+                    alertsConfigView, eventBus);
             alertsConfigPresenter.initialize(alertsConfigView);
             presenters.add(alertsConfigPresenter);
         }
@@ -598,8 +603,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 }
 
             };
-            alertVizPresenter = new AlertVizPresenter(
-                    messageHandler.getModelProxy(), alertVizView, eventBus);
+            alertVizPresenter = new AlertVizPresenter(sessionManager,
+                    alertVizView, eventBus);
             alertVizPresenter.initialize(alertVizView);
         }
     }
@@ -615,8 +620,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         HazardDetailView hazardDetailView = new HazardDetailView(
                 loadedFromBundle);
         if (hazardDetailPresenter == null) {
-            hazardDetailPresenter = new HazardDetailPresenter(
-                    messageHandler.getModelProxy(), hazardDetailView, eventBus);
+            hazardDetailPresenter = new HazardDetailPresenter(sessionManager,
+                    hazardDetailView, eventBus);
             presenters.add(hazardDetailPresenter);
         } else {
 
@@ -635,8 +640,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (settingsPresenter == null) {
 
             SettingsView settingsView = new SettingsView();
-            settingsPresenter = new SettingsPresenter(
-                    messageHandler.getModelProxy(), settingsView, eventBus);
+            settingsPresenter = new SettingsPresenter(sessionManager,
+                    settingsView, eventBus);
             settingsPresenter.initialize(settingsView);
             presenters.add(settingsPresenter);
         }
@@ -648,8 +653,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createToolsDisplay() {
         if (toolsPresenter == null) {
             ToolsView toolsView = new ToolsView();
-            toolsPresenter = new ToolsPresenter(messageHandler.getModelProxy(),
-                    toolsView, eventBus);
+            toolsPresenter = new ToolsPresenter(sessionManager, toolsView,
+                    eventBus);
             toolsPresenter.initialize(toolsView);
             presenters.add(toolsPresenter);
         }
@@ -663,8 +668,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createSpatialDisplay(ToolLayer toolLayer) {
         SpatialView spatialView = new SpatialView(toolLayer);
         if (spatialPresenter == null) {
-            spatialPresenter = new SpatialPresenter(
-                    messageHandler.getModelProxy(), spatialView, eventBus);
+            spatialPresenter = new SpatialPresenter(sessionManager,
+                    spatialView, eventBus);
             presenters.add(spatialPresenter);
         } else {
             spatialPresenter.getView().dispose();
@@ -680,8 +685,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         ProductStagingView productStagingView = new ProductStagingView();
         if (productStagingPresenter == null) {
             productStagingPresenter = new ProductStagingPresenter(
-                    messageHandler.getModelProxy(), productStagingView,
-                    eventBus);
+                    sessionManager, productStagingView, eventBus);
             presenters.add(productStagingPresenter);
         } else {
             productStagingPresenter.getView().dispose();
@@ -697,8 +701,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createProductEditorDisplay() {
         ProductEditorView productEditorView = new ProductEditorView();
         if (productEditorPresenter == null) {
-            productEditorPresenter = new ProductEditorPresenter(
-                    messageHandler.getModelProxy(), productEditorView, eventBus);
+            productEditorPresenter = new ProductEditorPresenter(sessionManager,
+                    productEditorView, eventBus);
             presenters.add(productEditorPresenter);
         } else {
             productEditorPresenter.getView().dispose();
@@ -740,7 +744,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *         the setting.
      */
     public String getSetting() {
-        return messageHandler.getModelProxy().getDynamicSettings();
+        Settings settings = sessionManager.getConfigurationManager()
+                .getSettings();
+        JSONConverter jsonConverter = new JSONConverter();
+        return jsonConverter.toJson(settings);
+
     }
 
     /**
@@ -760,7 +768,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param changed
      *            Set of model elements that have changed.
      */
-    public void notifyModelChanged(EnumSet<IHazardServicesModel.Element> changed) {
+    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed) {
         for (HazardServicesPresenter<?> presenter : presenters) {
             presenter.modelChanged(changed);
         }
@@ -1126,8 +1134,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         SimulatedTime.getSystemTime().setRealTime();
         SimulatedTime.getSystemTime().setFrozen(false);
 
-        statusHandler.debug(messageHandler.getBenchmarkingStats());
-
         // Close the Jep connection.
         messageHandler.prepareForShutdown();
 
@@ -1161,10 +1167,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     public ToolLayer getToolLayer() {
         return toolLayer;
-    }
-
-    public IHazardServicesModel getModel() {
-        return messageHandler.getModelProxy();
     }
 
     public HazardDetailPresenter getHazardDetailPresenter() {

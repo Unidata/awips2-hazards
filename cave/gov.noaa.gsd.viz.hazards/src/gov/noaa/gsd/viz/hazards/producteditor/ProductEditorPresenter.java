@@ -8,8 +8,6 @@
 package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
@@ -20,6 +18,7 @@ import java.util.List;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Description: Product Editor presenter, used to mediate between the model and
@@ -37,6 +36,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAc
  *                                           singleton.
  * Sep 19, 2013 2046    mnash           Update for product generation.
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -57,7 +59,7 @@ public class ProductEditorPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductEditorPresenter(IHazardServicesModel model,
+    public ProductEditorPresenter(ISessionManager model,
             IProductEditorView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
@@ -72,7 +74,7 @@ public class ProductEditorPresenter extends
      *            Set of elements within the model that have changed.
      */
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
 
         // No action.
     }

@@ -9,11 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.common.hazards.utilities.JSONConverter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
  * Superclass from which to derive presenters for specific types of views for
@@ -30,13 +35,26 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
-        Presenter<IHazardServicesModel, IHazardServicesModel.Element, V> {
+        Presenter<ISessionManager, HazardConstants.Element, V> {
+
+    protected JSONConverter jsonConverter = new JSONConverter();
+
+    protected ModelAdapter modelAdapter;
+
+    protected final ISessionTimeManager timeManager;
+
+    protected final ISessionConfigurationManager configurationManager;
+
+    protected final IHazardSessionAlertsManager alertsManager;
 
     // Public Constructors
 
@@ -50,9 +68,14 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardServicesPresenter(IHazardServicesModel model, V view,
+    public HazardServicesPresenter(ISessionManager model, V view,
             EventBus eventBus) {
         super(model, view, eventBus);
+        this.timeManager = model.getTimeManager();
+        this.configurationManager = model.getConfigurationManager();
+        this.alertsManager = model.getAlertsManager();
+        this.modelAdapter = ModelAdapter.getInstance(model, eventBus);
+
     }
 
     // Public Methods
@@ -74,6 +97,6 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
      * @return Session manager.
      */
     public ISessionManager getSessionManager() {
-        return getModel().getSessionManager();
+        return getModel();
     }
 }

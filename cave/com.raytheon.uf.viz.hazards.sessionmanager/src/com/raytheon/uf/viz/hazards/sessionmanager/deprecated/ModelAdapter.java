@@ -118,6 +118,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ *                                                                removed methods no longer needed
  * 
  * </pre>
  * 
@@ -275,106 +277,6 @@ public abstract class ModelAdapter {
     }
 
     /*
-     * Use ISessionTimeManager.getSelectedTime()
-     */
-    @Deprecated
-    public Date getSelectedTime() {
-        return sessionManager.getTimeManager().getSelectedTime();
-    }
-
-    /*
-     * Use ISessionTimeManager.setSelectedTime()
-     */
-    @Deprecated
-    public void updateSelectedTime(Date selectedTime_ms) {
-        sessionManager.getTimeManager().setSelectedTime(selectedTime_ms);
-    }
-
-    /*
-     * Use ISessionTimeManager.getSelectedTimeRange()
-     */
-    @Deprecated
-    public String getSelectedTimeRange() {
-        TimeRange range = sessionManager.getTimeManager()
-                .getSelectedTimeRange();
-        return toJson(new String[] { fromDate(range.getStart()),
-                fromDate(range.getEnd()) });
-
-    }
-
-    /*
-     * Use SimulatedTime.getSystemTime().getTime()
-     */
-    @Deprecated
-    public Date getCurrentTime() {
-        return sessionManager.getTimeManager().getCurrentTime();
-    }
-
-    /*
-     * This isn't necessary
-     */
-    @Deprecated
-    public void updateFrameInfo(String framesJSON) {
-        // Nothing internally uses this.
-    }
-
-    /*
-     * Use ISessionTimeManager.getVisibleRange().getStart()
-     */
-    @Deprecated
-    public String getTimeLineEarliestVisibleTime() {
-        return fromDate(sessionManager.getTimeManager().getVisibleRange()
-                .getStart());
-    }
-
-    /*
-     * Use ISessionTimeManager.getVisibleRange().getEnd()
-     */
-    @Deprecated
-    public String getTimeLineLatestVisibleTime() {
-        return fromDate(sessionManager.getTimeManager().getVisibleRange()
-                .getEnd());
-    }
-
-    /*
-     * Use ISessionConfigurationManager.getSettings().getSettingsID()
-     */
-    @Deprecated
-    public String getCurrentSettingsID() {
-        return sessionManager.getConfigurationManager().getSettings()
-                .getSettingsID();
-    }
-
-    /*
-     * Use ISessionConfigurationManager.getSettings()
-     */
-    @Deprecated
-    public String getStaticSettings(String settingsID) {
-        return toJson(new Settings(sessionManager.getConfigurationManager()
-                .getSettings()));
-    }
-
-    /*
-     * Use ISessionConfigurationManager.getSettings()
-     */
-    @Deprecated
-    public String getDynamicSettings() {
-        Settings dset = sessionManager.getConfigurationManager().getSettings();
-        return toJson(dset);
-    }
-
-    /*
-     * Use
-     * ISessionConfigurationManager.getSettings().getDefaultTimeDisplayDuration
-     * ()
-     */
-    @Deprecated
-    public String getTimeLineDuration() {
-        return Long.toString(sessionManager.getConfigurationManager()
-                .getSettings().getDefaultTimeDisplayDuration());
-    }
-
-    /*
      * Use ISessionConfigurationManager.getSettingsList()
      */
     @Deprecated
@@ -386,15 +288,6 @@ public abstract class ModelAdapter {
         list.setSettingsList(s);
         list.setCurrentSettingsID(configManager.getSettings().getSettingsID());
         return toJson(list);
-    }
-
-    /*
-     * Use ISessionConfigurationManager.getSettings().getToolbarTools()
-     */
-    @Deprecated
-    public String getToolList() {
-        return toJson(sessionManager.getConfigurationManager().getSettings()
-                .getToolbarTools());
     }
 
     protected abstract IPythonJobListener<List<IGeneratedProduct>> getProductGenerationListener(
@@ -698,11 +591,4 @@ public abstract class ModelAdapter {
         }
     }
 
-    private String fromDate(Date actualDateObject) {
-        return Long.toString(actualDateObject.getTime());
-    }
-
-    public ISessionManager getSessionManager() {
-        return sessionManager;
-    }
 }

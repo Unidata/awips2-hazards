@@ -10,12 +10,12 @@
 package gov.noaa.gsd.viz.hazards.alerts;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 
 import java.util.EnumSet;
 
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
  * Alerts presenter, used to mediate between the model and the alerts view.
@@ -31,12 +31,16 @@ import com.google.common.eventbus.EventBus;
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsConfigPresenter extends HazardServicesPresenter<IAlertsConfigView<?, ?>> {
+public class AlertsConfigPresenter extends
+        HazardServicesPresenter<IAlertsConfigView<?, ?>> {
 
     // Public Constructors
 
@@ -50,8 +54,8 @@ public class AlertsConfigPresenter extends HazardServicesPresenter<IAlertsConfig
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public AlertsConfigPresenter(IHazardServicesModel model, IAlertsConfigView<?, ?> view,
-            EventBus eventBus) {
+    public AlertsConfigPresenter(ISessionManager model,
+            IAlertsConfigView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -64,7 +68,7 @@ public class AlertsConfigPresenter extends HazardServicesPresenter<IAlertsConfig
      *            Set of elements within the model that have changed.
      */
     @Override
-    public final void modelChanged(EnumSet<Element> changed) {
+    public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
 
         // No action.
     }

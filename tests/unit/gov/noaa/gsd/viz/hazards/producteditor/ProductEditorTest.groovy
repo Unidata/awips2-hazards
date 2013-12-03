@@ -10,11 +10,14 @@
 package gov.noaa.gsd.viz.hazards.producteditor;
 
 import static org.junit.Assert.*
+import static org.mockito.Mockito.*
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction
 import spock.lang.*
 
 import com.google.common.eventbus.EventBus
 import com.google.common.eventbus.Subscribe
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
 
 /**
  * Description: Tests the product display dialog. Simulates 
@@ -28,6 +31,11 @@ import com.google.common.eventbus.Subscribe
  * ------------ ---------- ----------- --------------------------
  * Mar 06, 2012            bryon.lawrence      Initial creation
  * Jul 15, 2013     585    Chris.Golden        Changed to use non-singleton event bus.
+ * 
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - elimination of IHazardsIF now requires a non-null 
+ *                                                            sessionManager sent to presenter constructor
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -39,6 +47,7 @@ class ProductEditorTest extends spock.lang.Specification {
     @Shared TestProductEditorView testView;
     @Shared EventBus eventBus;
     @Shared ProductEditorAction action;
+    @Shared ISessionManager sessionManager;
 
     /**
      * Set up the test...
@@ -50,6 +59,8 @@ class ProductEditorTest extends spock.lang.Specification {
         testView = new TestProductEditorView();
         eventBus = new EventBus();
         eventBus.register(this);
+        sessionManager = mock(ISessionManager.class)
+        when(sessionManager.getTimeManager()).thenReturn(mock(ISessionTimeManager.class))
     }
 
     /**
@@ -61,7 +72,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Issue Button Pressed"() {
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
+        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user presses the issue button"
@@ -86,7 +97,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Dismiss Button Pressed" (){
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
+        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user presses the dismiss button"
@@ -109,7 +120,7 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Shell Closed" (){
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(null, testView, createEventBus());
+        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
         presenter.showProductEditorDetail(testProductJSONString);
 
         when:"The user closes the shell"

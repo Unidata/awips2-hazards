@@ -10,8 +10,6 @@
 package gov.noaa.gsd.viz.hazards.alerts;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel;
-import gov.noaa.gsd.viz.hazards.display.IHazardServicesModel.Element;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
@@ -22,8 +20,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -38,6 +38,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * ------------ ---------- ----------- --------------------------
  * Sep 09, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
  * 
+ * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -49,7 +52,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
 
     private IUFStatusHandler statusHandler;
 
-    public AlertVizPresenter(IHazardServicesModel model, IView<?, ?> view,
+    public AlertVizPresenter(ISessionManager model, IView<?, ?> view,
             EventBus eventBus) {
         super(model, view, eventBus);
 
@@ -76,7 +79,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     }
 
     @Override
-    public void modelChanged(EnumSet<Element> changed) {
+    public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         /*
          * Nothing to do here.
          */
@@ -86,8 +89,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     public void initialize(IView<?, ?> view) {
         renderedAlerts = Lists.newArrayList();
         statusHandler = UFStatus.getHandler(getClass());
-        getModel().getSessionManager().registerForNotification(this);
-        alertAsNeeded(getModel().getSessionManager().getAlertsManager()
-                .getActiveAlerts());
+        getModel().registerForNotification(this);
+        alertAsNeeded(getModel().getAlertsManager().getActiveAlerts());
     }
 }

@@ -101,6 +101,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Nov 27, 2013  1462      bryon.lawrence      Added methods to support display
  *                                             of hazard hatch areas.
  * nov 29, 2013  2378      bryon.lawrence     Cleaned up methods which support proposing and issuing hazards.
+ * 
+ * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -145,7 +148,7 @@ public final class HazardServicesMessageHandler {
     /**
      * Interface to SessionManager (via proxy).
      */
-    private ModelDecorator model = null;
+    private ModelAdapter modelAdapter;
 
     private final String caveMode;
 
@@ -169,15 +172,6 @@ public final class HazardServicesMessageHandler {
     private final HazardServicesProductGenerationHandler productGeneratorHandler;
 
     // Public Static Methods
-
-    /**
-     * Get the model proxy.
-     * 
-     * @return Model proxy.
-     */
-    public IHazardServicesModel getModelProxy() {
-        return model;
-    }
 
     /**
      * This method converts an array of String event ids to a string with the a
@@ -235,18 +229,17 @@ public final class HazardServicesMessageHandler {
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
 
-        ModelAdapter adapter = new ModelAdapter(this.sessionManager);
-        adapter.getSessionManager().registerForNotification(this);
-
-        model = new ModelDecorator(adapter);
+        modelAdapter = ModelAdapter.getInstance(this.sessionManager,
+                appBuilder.getEventBus());
+        sessionManager.registerForNotification(this);
 
         caveMode = (CAVEMode.getMode()).toString();
         siteID = LocalizationManager.getInstance().getCurrentSite();
 
         String staticSettingID = getSettingForCurrentPerspective();
 
-        model.initialize(currentTime, staticSettingID, dynamicSettingJSON,
-                caveMode, siteID, appBuilder.getEventBus());
+        modelAdapter.initialize(currentTime, staticSettingID,
+                dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus());
     }
 
     // Methods
@@ -271,12 +264,12 @@ public final class HazardServicesMessageHandler {
 
         if (updateTime.contains(SINGLE_SELECTED_TIME)) {
             appBuilder.notifyModelChanged(EnumSet
-                    .of(IHazardServicesModel.Element.SELECTED_TIME));
+                    .of(HazardConstants.Element.SELECTED_TIME));
             updateCaveSelectedTime();
         }
         if (updateTime.contains(RANGE_OF_SELECTED_TIMES)) {
             appBuilder.notifyModelChanged(EnumSet
-                    .of(IHazardServicesModel.Element.SELECTED_TIME_RANGE));
+                    .of(HazardConstants.Element.SELECTED_TIME_RANGE));
         }
 
         notifyModelEventsChanged();
@@ -352,7 +345,7 @@ public final class HazardServicesMessageHandler {
      */
     void updateCaveSelectedTime() {
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.CAVE_TIME));
+                .of(HazardConstants.Element.CAVE_TIME));
     }
 
     /**
@@ -361,7 +354,7 @@ public final class HazardServicesMessageHandler {
      */
     void notifyModelEventsChanged() {
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.EVENTS));
+                .of(HazardConstants.Element.EVENTS));
     }
 
     /**
@@ -513,7 +506,7 @@ public final class HazardServicesMessageHandler {
     void handleRecommenderResults(String recommenderID,
             final EventSet<IEvent> eventList) {
 
-        model.handleRecommenderResult(recommenderID, eventList);
+        modelAdapter.handleRecommenderResult(recommenderID, eventList);
 
         notifyModelEventsChanged();
 
@@ -580,7 +573,7 @@ public final class HazardServicesMessageHandler {
                 .getSelectedEvents();
 
         for (IHazardEvent event : events) {
-            model.getSessionManager().getEventManager().proposeEvent(event);
+            sessionEventManager.proposeEvent(event);
         }
 
         notifyModelEventsChanged();
@@ -647,10 +640,10 @@ public final class HazardServicesMessageHandler {
         if (asDict.get(HazardConstants.SYMBOL_NEW_LAT_LON) != null) {
             runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL, asDict, null);
         } else {
-            model.modifyEventArea(json);
+            modelAdapter.modifyEventArea(json);
         }
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.EVENTS));
+                .of(HazardConstants.Element.EVENTS));
     }
 
     /**
@@ -661,7 +654,7 @@ public final class HazardServicesMessageHandler {
      *            Type of entities to reset. *
      */
     public void reset(String type) {
-        model.reset();
+        modelAdapter.reset();
 
         /*
          * Switch back to the default settings only if resetting the settings.
@@ -685,19 +678,19 @@ public final class HazardServicesMessageHandler {
     public void changeSetting(String settingID, boolean saveEvents,
             boolean eventsChanged) {
 
-        model.initialize(model.getSelectedTime(), settingID, "", caveMode,
-                siteID, appBuilder.getEventBus());
+        modelAdapter.initialize(sessionTimeManager.getSelectedTime(),
+                settingID, "", caveMode, siteID, appBuilder.getEventBus());
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
-                IHazardServicesModel.Element.EVENTS,
-                IHazardServicesModel.Element.SETTINGS,
-                IHazardServicesModel.Element.TOOLS,
-                IHazardServicesModel.Element.VISIBLE_TIME_DELTA,
-                IHazardServicesModel.Element.DYNAMIC_SETTING) : EnumSet.of(
-                IHazardServicesModel.Element.SETTINGS,
-                IHazardServicesModel.Element.TOOLS,
-                IHazardServicesModel.Element.VISIBLE_TIME_DELTA,
-                IHazardServicesModel.Element.DYNAMIC_SETTING));
+                HazardConstants.Element.EVENTS,
+                HazardConstants.Element.SETTINGS,
+                HazardConstants.Element.TOOLS,
+                HazardConstants.Element.VISIBLE_TIME_DELTA,
+                HazardConstants.Element.DYNAMIC_SETTING) : EnumSet.of(
+                HazardConstants.Element.SETTINGS,
+                HazardConstants.Element.TOOLS,
+                HazardConstants.Element.VISIBLE_TIME_DELTA,
+                HazardConstants.Element.DYNAMIC_SETTING));
     }
 
     /**
@@ -712,11 +705,11 @@ public final class HazardServicesMessageHandler {
      */
     public void updateSelectedTime(Date selectedTime, String originator)
             throws VizException {
-        model.updateSelectedTime(selectedTime);
+        sessionTimeManager.setSelectedTime(selectedTime);
 
         if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
             appBuilder.notifyModelChanged(EnumSet
-                    .of(IHazardServicesModel.Element.SELECTED_TIME));
+                    .of(HazardConstants.Element.SELECTED_TIME));
         }
 
         if (originator.equals(HazardServicesAppBuilder.TEMPORAL_ORIGINATOR)) {
@@ -740,7 +733,7 @@ public final class HazardServicesMessageHandler {
                 toDate(selectedTimeEnd_ms));
         sessionTimeManager.setSelectedTimeRange(selectedRange);
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.SELECTED_TIME_RANGE));
+                .of(HazardConstants.Element.SELECTED_TIME_RANGE));
     }
 
     private Date toDate(String timeInMillisAsLongAsString) {
@@ -757,7 +750,7 @@ public final class HazardServicesMessageHandler {
                 toDate(jsonEndTime));
         sessionTimeManager.setVisibleRange(visibleRange);
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.VISIBLE_TIME_RANGE));
+                .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
     }
 
     /**
@@ -786,7 +779,7 @@ public final class HazardServicesMessageHandler {
     public void updateEventData(String jsonText, String originator) {
         _updateEventData(jsonText, originator);
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.EVENTS));
+                .of(HazardConstants.Element.EVENTS));
     }
 
     /**
@@ -964,12 +957,12 @@ public final class HazardServicesMessageHandler {
      *            setting.
      */
     public void dynamicSettingChanged(String jsonDynamicSetting) {
-        IHazardServicesModel sessionManager = model;
-        sessionManager.initialize(sessionManager.getSelectedTime(),
-                sessionManager.getCurrentSettingsID(), jsonDynamicSetting,
-                caveMode, siteID, appBuilder.getEventBus());
+        modelAdapter.initialize(sessionManager.getTimeManager()
+                .getSelectedTime(), sessionConfigurationManager.getSettings()
+                .getSettingsID(), jsonDynamicSetting, caveMode, siteID,
+                appBuilder.getEventBus());
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.DYNAMIC_SETTING));
+                .of(HazardConstants.Element.DYNAMIC_SETTING));
     }
 
     /**
@@ -990,7 +983,7 @@ public final class HazardServicesMessageHandler {
     public String newEventShape(String eventShape, String eventID,
             String originator) {
         if (eventID == null) {
-            eventID = model.newEvent(eventShape);
+            eventID = modelAdapter.newEvent(eventShape);
         }
         notifyModelEventsChanged();
 
@@ -1011,13 +1004,12 @@ public final class HazardServicesMessageHandler {
 
         if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
             appBuilder.notifyModelChanged(EnumSet
-                    .of(IHazardServicesModel.Element.CURRENT_TIME));
+                    .of(HazardConstants.Element.CURRENT_TIME));
         }
     }
 
     public void updateSite(String site) {
-        appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.SITE));
+        appBuilder.notifyModelChanged(EnumSet.of(HazardConstants.Element.SITE));
     }
 
     /**
@@ -1049,8 +1041,6 @@ public final class HazardServicesMessageHandler {
 
         @Override
         public void run() {
-            model.updateFrameInfo(frameDict.toJSONString());
-
             /*
              * Make sure the HazardServices selected time is in-sync with the
              * frame being viewed.
@@ -1130,7 +1120,7 @@ public final class HazardServicesMessageHandler {
      * Prepare for shutdown by removing references to the model.
      */
     public void prepareForShutdown() {
-        model = null;
+        modelAdapter = null;
     }
 
     /**
@@ -1227,7 +1217,7 @@ public final class HazardServicesMessageHandler {
      * @return
      */
     public void handleUndoAction() {
-        this.model.undo();
+        this.modelAdapter.undo();
     }
 
     /**
@@ -1237,7 +1227,7 @@ public final class HazardServicesMessageHandler {
      * @return
      */
     public void handleRedoAction() {
-        this.model.redo();
+        this.modelAdapter.redo();
     }
 
     /**
@@ -1245,7 +1235,7 @@ public final class HazardServicesMessageHandler {
      */
     public void updateConsoleVisibleTimeDelta() {
         appBuilder.notifyModelChanged(EnumSet
-                .of(IHazardServicesModel.Element.VISIBLE_TIME_DELTA));
+                .of(HazardConstants.Element.VISIBLE_TIME_DELTA));
     }
 
     /**
@@ -1262,15 +1252,6 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Get benchmarking stats for display.
-     * 
-     * @return Benchmarking stats suitable for display.
-     */
-    public String getBenchmarkingStats() {
-        return model.getBenchmarkingStats();
-    }
-
-    /**
      * Examines all hazards looking for potential conflicts.
      * 
      * @param
@@ -1278,7 +1259,7 @@ public final class HazardServicesMessageHandler {
      */
     public void checkHazardConflicts() {
 
-        ISessionEventManager sessionEventManager = model.getSessionManager()
+        ISessionEventManager sessionEventManager = sessionManager
                 .getEventManager();
 
         Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
@@ -1319,7 +1300,7 @@ public final class HazardServicesMessageHandler {
 
         Boolean userResponse = true;
 
-        ISessionEventManager sessionEventManager = model.getSessionManager()
+        ISessionEventManager sessionEventManager = sessionManager
                 .getEventManager();
 
         Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
@@ -1350,13 +1331,13 @@ public final class HazardServicesMessageHandler {
             @Override
             public void run() {
                 appBuilder.notifyModelChanged(EnumSet
-                        .of(IHazardServicesModel.Element.SELECTED_TIME));
+                        .of(HazardConstants.Element.SELECTED_TIME));
             }
         });
     }
 
     public ISessionManager getSessionManager() {
-        return model.getSessionManager();
+        return sessionManager;
     }
 
     /**
@@ -1371,8 +1352,8 @@ public final class HazardServicesMessageHandler {
 
         String perspectiveID = VizPerspectiveListener
                 .getCurrentPerspectiveManager().getPerspectiveId();
-        List<Settings> settingsList = model.getSessionManager()
-                .getConfigurationManager().getSettingsList();
+        List<Settings> settingsList = sessionManager.getConfigurationManager()
+                .getSettingsList();
 
         for (Settings settings : settingsList) {
             Set<String> settingPerspectiveList = settings.getPerspectiveIDs();
