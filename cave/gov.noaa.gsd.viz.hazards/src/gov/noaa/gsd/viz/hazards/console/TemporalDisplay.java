@@ -132,6 +132,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Aug 09, 2013    1936    Chris.Golden      Added console countdown timers.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -2089,7 +2092,7 @@ class TemporalDisplay {
                     .getDynamicallyTypedValue(columnName);
             if (columnDefinition != null) {
                 Number width = columnDefinition
-                        .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_WIDTH);
+                        .getDynamicallyTypedValue(SETTING_COLUMN_WIDTH);
                 if (width != null) {
                     table.getColumn(j).setWidth(width.intValue());
                 }
@@ -2285,9 +2288,9 @@ class TemporalDisplay {
         dynamicSetting = hazardEventData
                 .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_DYNAMIC_SETTING);
         columnDefinitionsForNames = dynamicSetting
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMNS);
+                .getDynamicallyTypedValue(SETTING_COLUMNS);
         visibleColumnNames = dynamicSetting
-                .getDynamicallyTypedValue(Utilities.SETTING_VISIBLE_COLUMNS);
+                .getDynamicallyTypedValue(SETTING_VISIBLE_COLUMNS);
         hintTextIdentifiersForVisibleColumnNames.clear();
         dateIdentifiersForVisibleColumnNames.clear();
         for (String columnName : visibleColumnNames) {
@@ -2305,7 +2308,7 @@ class TemporalDisplay {
         for (String name : columnDefinitionsForNames.keySet()) {
             columnNamesForIdentifiers.put(
                     (String) ((Dict) columnDefinitionsForNames.get(name))
-                            .get(Utilities.SETTING_COLUMN_IDENTIFIER), name);
+                            .get(SETTING_COLUMN_IDENTIFIER), name);
         }
 
         // Add each hazard event to the list of event dictio-
@@ -2990,9 +2993,8 @@ class TemporalDisplay {
         column.setImage(spacerImage);
         column.setMoveable(true);
         column.setResizable(true);
-        if (columnDefinition.getDynamicallyTypedValue(
-                Utilities.SETTING_COLUMN_TYPE).equals(
-                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+        if (columnDefinition.getDynamicallyTypedValue(SETTING_COLUMN_TYPE)
+                .equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
             countdownTimerColumnIndex = index;
             countdownTimerColumnName = name;
             updateCountdownTimers();
@@ -3009,7 +3011,7 @@ class TemporalDisplay {
         // the definition.
         column.pack();
         Number width = columnDefinition
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_WIDTH);
+                .getDynamicallyTypedValue(SETTING_COLUMN_WIDTH);
         if (width != null) {
             column.setWidth(width.intValue());
         }
@@ -3018,15 +3020,15 @@ class TemporalDisplay {
         // contents of the cells in this column, and associate it with
         // the column.
         String type = columnDefinition
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_TYPE);
+                .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
         Comparator<?> comparator = null;
-        if (type.equals(Utilities.SETTING_COLUMN_TYPE_STRING)) {
+        if (type.equals(SETTING_COLUMN_TYPE_STRING)) {
             comparator = Collator.getInstance(Locale.getDefault());
-        } else if (type.equals(Utilities.SETTING_COLUMN_TYPE_DATE)) {
+        } else if (type.equals(SETTING_COLUMN_TYPE_DATE)) {
             comparator = new DateStringComparator(dateTimeFormatter);
-        } else if (type.equals(Utilities.SETTING_COLUMN_TYPE_NUMBER)) {
+        } else if (type.equals(SETTING_COLUMN_TYPE_NUMBER)) {
             comparator = new LongStringComparator();
-        } else if (type.equals(Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+        } else if (type.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
 
             // No comparator is needed, so keep it as null.
         } else {
@@ -3551,8 +3553,8 @@ class TemporalDisplay {
         // If the cell is in the countdown column, update the display
         // properties for any countdown timer associated with this
         // row's event.
-        if (columnDefinition.get(Utilities.SETTING_COLUMN_TYPE).equals(
-                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)
+        if (columnDefinition.get(SETTING_COLUMN_TYPE).equals(
+                SETTING_COLUMN_TYPE_COUNTDOWN)
                 && (countdownTimersDisplayManager != null)) {
             countdownTimersDisplayManager.updateDisplayPropertiesForEvent(
                     (String) item.getData(), item.getFont());
@@ -4044,8 +4046,8 @@ class TemporalDisplay {
                     + "no column definition provided");
             return null;
         }
-        if (columnDefinition.get(Utilities.SETTING_COLUMN_TYPE).equals(
-                Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+        if (columnDefinition.get(SETTING_COLUMN_TYPE).equals(
+                SETTING_COLUMN_TYPE_COUNTDOWN)) {
             if (countdownTimersDisplayManager == null) {
                 return null;
             }
@@ -4054,8 +4056,7 @@ class TemporalDisplay {
         }
         return (convertToCellValue(
                 dictsForEventIdentifiers.get(eventIdentifiers.get(row)).get(
-                        columnDefinition
-                                .get(Utilities.SETTING_COLUMN_IDENTIFIER)),
+                        columnDefinition.get(SETTING_COLUMN_IDENTIFIER)),
                 columnDefinition));
     }
 
@@ -4074,9 +4075,8 @@ class TemporalDisplay {
                     + "Problem: no column definition provided");
             return null;
         }
-        if (columnDefinition.getDynamicallyTypedValue(
-                Utilities.SETTING_COLUMN_TYPE).equals(
-                Utilities.SETTING_COLUMN_TYPE_DATE)) {
+        if (columnDefinition.getDynamicallyTypedValue(SETTING_COLUMN_TYPE)
+                .equals(SETTING_COLUMN_TYPE_DATE)) {
             Number number = (Number) value;
             if (number != null) {
                 return getDateTimeString(number.longValue());
@@ -4094,7 +4094,7 @@ class TemporalDisplay {
      * orders, etc.).
      */
     private void notifyListenersOfSettingDefinitionChange() {
-        SettingsAction action = new SettingsAction("DynamicSettingChanged",
+        SettingsAction action = new SettingsAction(DYNAMIC_SETTING_CHANGED,
                 dynamicSetting.toJSONString());
         presenter.fireAction(action);
     }
@@ -4155,17 +4155,16 @@ class TemporalDisplay {
             return;
         }
         String hintTextIdentifier = columnDefinition
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_HINT_TEXT_IDENTIFIER);
+                .getDynamicallyTypedValue(SETTING_COLUMN_HINT_TEXT_IDENTIFIER);
         if (hintTextIdentifier != null) {
             hintTextIdentifiersForVisibleColumnNames.put(columnName,
                     hintTextIdentifier);
         }
         String columnType = columnDefinition
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_TYPE);
-        if (columnType.equals(Utilities.SETTING_COLUMN_TYPE_DATE)) {
+                .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
+        if (columnType.equals(SETTING_COLUMN_TYPE_DATE)) {
             dateIdentifiersForVisibleColumnNames.put(columnName,
-                    (String) columnDefinition
-                            .get(Utilities.SETTING_COLUMN_IDENTIFIER));
+                    (String) columnDefinition.get(SETTING_COLUMN_IDENTIFIER));
         }
     }
 
@@ -4182,17 +4181,15 @@ class TemporalDisplay {
             Dict columnDefinition = (Dict) columnDefinitionsForNames.get(name);
             if (name.equals(sortName)) {
                 if (table.getSortDirection() == SWT.UP) {
-                    columnDefinition.put(
-                            Utilities.SETTING_COLUMN_SORT_DIRECTION,
-                            Utilities.SETTING_COLUMN_SORT_DIRECTION_ASCENDING);
+                    columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
+                            SETTING_COLUMN_SORT_DIRECTION_ASCENDING);
                 } else {
-                    columnDefinition.put(
-                            Utilities.SETTING_COLUMN_SORT_DIRECTION,
-                            Utilities.SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
+                    columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
+                            SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
                 }
             } else {
-                columnDefinition.put(Utilities.SETTING_COLUMN_SORT_DIRECTION,
-                        Utilities.SETTING_COLUMN_SORT_DIRECTION_NONE);
+                columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
+                        SETTING_COLUMN_SORT_DIRECTION_NONE);
             }
         }
 
@@ -4214,8 +4211,7 @@ class TemporalDisplay {
         Dict columnDefinition = (Dict) columnDefinitionsForNames.get(column
                 .getText());
         if (columnDefinition != null) {
-            columnDefinition.put(Utilities.SETTING_COLUMN_WIDTH,
-                    column.getWidth());
+            columnDefinition.put(SETTING_COLUMN_WIDTH, column.getWidth());
         }
 
         // Notify listeners of the setting change.
@@ -4234,8 +4230,7 @@ class TemporalDisplay {
             Dict columnDefinition = (Dict) columnDefinitionsForNames.get(column
                     .getText());
             if (columnDefinition != null) {
-                columnDefinition.put(Utilities.SETTING_COLUMN_WIDTH,
-                        column.getWidth());
+                columnDefinition.put(SETTING_COLUMN_WIDTH, column.getWidth());
             }
         }
 
@@ -4283,14 +4278,13 @@ class TemporalDisplay {
     private void setSortInfoIfSortColumn(Dict columnDefinition,
             TableColumn tableColumn) {
         String sortDirection = columnDefinition
-                .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_SORT_DIRECTION);
+                .getDynamicallyTypedValue(SETTING_COLUMN_SORT_DIRECTION);
         if (sortDirection != null) {
-            if (sortDirection
-                    .equals(Utilities.SETTING_COLUMN_SORT_DIRECTION_ASCENDING)) {
+            if (sortDirection.equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING)) {
                 table.setSortColumn(tableColumn);
                 table.setSortDirection(SWT.UP);
             } else if (sortDirection
-                    .equals(Utilities.SETTING_COLUMN_SORT_DIRECTION_DESCENDING)) {
+                    .equals(SETTING_COLUMN_SORT_DIRECTION_DESCENDING)) {
                 table.setSortColumn(tableColumn);
                 table.setSortDirection(SWT.DOWN);
             }
@@ -4321,19 +4315,18 @@ class TemporalDisplay {
                 return;
             }
             String sortByIdentifier = columnDefinition
-                    .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_IDENTIFIER);
+                    .getDynamicallyTypedValue(SETTING_COLUMN_IDENTIFIER);
             String sortByType = columnDefinition
-                    .getDynamicallyTypedValue(Utilities.SETTING_COLUMN_TYPE);
+                    .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
 
             // Determine which is the appropriate comparator.
             Comparator<? super String> comparator = null;
-            if (sortByType.equals(Utilities.SETTING_COLUMN_TYPE_STRING)) {
+            if (sortByType.equals(SETTING_COLUMN_TYPE_STRING)) {
                 comparator = Collator.getInstance(Locale.getDefault());
-            } else if (sortByType.equals(Utilities.SETTING_COLUMN_TYPE_DATE)
-                    || sortByType.equals(Utilities.SETTING_COLUMN_TYPE_NUMBER)) {
+            } else if (sortByType.equals(SETTING_COLUMN_TYPE_DATE)
+                    || sortByType.equals(SETTING_COLUMN_TYPE_NUMBER)) {
                 comparator = new LongStringComparator();
-            } else if (sortByType
-                    .equals(Utilities.SETTING_COLUMN_TYPE_COUNTDOWN)) {
+            } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
 
                 // No action; comparator should be null.
             } else {

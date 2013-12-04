@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -38,6 +39,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Added some utilities
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added code for test of settings-based filtering
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -161,6 +165,24 @@ public class AutoTestUtilities {
         return selectedEvent;
     }
 
+    Dict buildEventFilterCriteria(List<String> visibleTypes,
+            List<String> visibleStates, List<String> visibleSites) {
+        Dict result = new Dict();
+        DictList visibleTypesContainer = new DictList();
+        result.put(SETTING_HAZARD_TYPES, visibleTypesContainer);
+        visibleTypesContainer.addAll(visibleTypes);
+
+        DictList visibleStatesContainer = new DictList();
+        result.put(SETTING_HAZARD_STATES, visibleStatesContainer);
+        visibleStatesContainer.addAll(visibleStates);
+
+        DictList visibleSitesContainer = new DictList();
+        result.put(SETTING_HAZARD_SITES, visibleSitesContainer);
+        visibleSitesContainer.addAll(visibleSites);
+
+        return result;
+    }
+
     Dict buildEventArea(Double centerX, Double centerY) {
         Dict result = new Dict();
         DictList shapes = new DictList();
@@ -248,6 +270,17 @@ public class AutoTestUtilities {
     void setAddToPendingMode(String mode) {
         SpatialDisplayAction action = new SpatialDisplayAction(
                 HazardConstants.ADD_PENDING_TO_SELECTED, mode);
+        eventBus.post(action);
+    }
+
+    void changeStaticSettings(String settingsID) {
+        SettingsAction action = new SettingsAction(SETTING_CHOSEN, settingsID);
+        eventBus.post(action);
+    }
+
+    void changeDynamicSettings(Dict settings) {
+        SettingsAction action = new SettingsAction(DYNAMIC_SETTING_CHANGED,
+                settings.toJSONString());
         eventBus.post(action);
     }
 

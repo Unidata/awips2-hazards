@@ -41,11 +41,10 @@
  * DEBUG 2013-10-22 17:31:46,577 [main] CaveLogger: SampleFunctionalTest Successful
  * DEBUG 2013-10-22 17:31:46,874 [main] CaveLogger: All tests passed!!!!
  * 
- * To add a test, make a copy of {@link gov.noaa.gsd.viz.hazards.display.test.SampleFunctionalTest} with your chosen name.  
+ * To add a test, make a copy of an existing test with your chosen name.  
  * Then fill in the details of the test.  Finally, add an else if clause 
  * to {@link gov.noaa.gsd.viz.hazards.display.test.AutomatedTests#testCompleted} that looks
  * like the other clauses.
  */
 package gov.noaa.gsd.viz.hazards.display.test;
-
 

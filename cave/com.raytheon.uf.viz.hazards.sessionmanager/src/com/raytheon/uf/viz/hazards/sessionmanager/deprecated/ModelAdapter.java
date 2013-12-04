@@ -117,6 +117,10 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 20, 2013 2460    daniel.s.schaffer@noaa.gov  Reset now removing all events from practice table
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -552,7 +556,7 @@ public abstract class ModelAdapter {
 
         Collection<IHazardEvent> events = null;
         if (component.equalsIgnoreCase("Temporal")) {
-            events = eventManager.getEvents();
+            events = eventManager.getEventsForCurrentSettings();
         } else if (component.equalsIgnoreCase("Spatial")) {
             events = eventManager.getCheckedEvents();
             TimeRange selectedRange = timeManager.getSelectedTimeRange();

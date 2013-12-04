@@ -45,6 +45,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                     for handling conflict
  *                                     detection.
  * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -138,6 +141,11 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Collection<IHazardEvent> getEventsForCurrentSettings() {
         throw new UnsupportedOperationException();
     }
 

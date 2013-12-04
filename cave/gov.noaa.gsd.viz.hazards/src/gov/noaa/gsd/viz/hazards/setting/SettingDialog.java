@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -47,6 +48,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden    Initial induction into repo
  * Jul 18, 2013    585     Chris Golden    Changed to support loading from bundle.
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -317,7 +322,7 @@ class SettingDialog extends BasicDialog {
                 @Override
                 protected void stateElementChanged(String identifier,
                         Object state) {
-                    fireAction(new SettingsAction("DynamicSettingChanged",
+                    fireAction(new SettingsAction(DYNAMIC_SETTING_CHANGED,
                             SettingDialog.this.getState()));
                 }
             };

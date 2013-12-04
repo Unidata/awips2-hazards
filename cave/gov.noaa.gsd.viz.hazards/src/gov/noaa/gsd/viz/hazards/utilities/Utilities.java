@@ -15,6 +15,7 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -48,6 +49,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                            will always return white.
  * Aug 09, 2013    1936    Chris.Golden       Added console countdown timers.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov More consolidation to {@link HazardConstants}
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -92,115 +97,6 @@ public class Utilities {
      * point in storm track, for example.
      */
     public static final String POINT_TIME = "pointTime";
-
-    /**
-     * Column identifier key in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_IDENTIFIER = "fieldName";
-
-    /**
-     * Column hint text identifier key in column definition dictionary in
-     * setting dictionary.
-     */
-    public static final String SETTING_COLUMN_HINT_TEXT_IDENTIFIER = "hintTextFieldName";
-
-    /**
-     * Column width key in column definition dictionary in setting dictionary.
-     */
-    public static final String SETTING_COLUMN_WIDTH = "width";
-
-    /**
-     * Column type key in column definition dictionary in setting dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE = "type";
-
-    /**
-     * String column type value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE_STRING = "string";
-
-    /**
-     * Date column type value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE_DATE = "date";
-
-    /**
-     * Number column type value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE_NUMBER = "number";
-
-    /**
-     * Countdown column type value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE_COUNTDOWN = "countdown";
-
-    /**
-     * Visible columns key in setting dictionary.
-     */
-    public static final String SETTING_VISIBLE_COLUMNS = "visibleColumns";
-
-    /**
-     * Sort direction key in setting dictionary.
-     */
-    public static final String SETTING_COLUMN_SORT_DIRECTION = "sortDir";
-
-    /**
-     * Ascending sort direction value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_SORT_DIRECTION_ASCENDING = "ascending";
-
-    /**
-     * Descending sort direction value in column definition dictionary in
-     * setting dictionary.
-     */
-    public static final String SETTING_COLUMN_SORT_DIRECTION_DESCENDING = "descending";
-
-    /**
-     * No sort direction value in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_SORT_DIRECTION_NONE = "none";
-
-    /**
-     * Columns key in setting dictionary.
-     */
-    public static final String SETTING_COLUMNS = "columns";
-
-    /**
-     * Hazard categories and types key in setting dictionary.
-     */
-    public static final String SETTING_HAZARD_CATEGORIES_AND_TYPES = "hazardCategoriesAndTypes";
-
-    /**
-     * Hazard categories key setting dictionary.
-     */
-    public static final String SETTING_HAZARD_CATEGORIES = "hidHazardCategories";
-
-    /**
-     * Hazard types key in setting dictionary.
-     */
-    public static final String SETTING_HAZARD_TYPES = "visibleTypes";
-
-    /**
-     * Settings list in settings dictionary.
-     */
-    public static final String SETTINGS_LIST = "settingsList";
-
-    /**
-     * Setting identifier in setting definition in settings list.
-     */
-    public static final String SETTINGS_LIST_IDENTIFIER = "settingsID";
-
-    /**
-     * Current setting identifier in settings dictionary.
-     */
-    public static final String SETTINGS_CURRENT_IDENTIFIER = "currentSettingsID";
 
     /**
      * Hazard events list key in temporal display component data dictionary.

@@ -42,6 +42,9 @@ import java.util.List;
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    More constants to help tidy the code
  * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * 
  * </pre>
  * 
  * @author mnash
@@ -469,6 +472,123 @@ public final class HazardConstants {
      * Constants relating to settings
      */
     public static final String HYDROLOGY_SETTING = "Hydrology";
+
+    public static final String DYNAMIC_SETTING_CHANGED = "DynamicSettingChanged";
+
+    public static final String SETTING_CHOSEN = "SettingChosen";
+
+    /**
+     * Column identifier key in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_IDENTIFIER = "fieldName";
+
+    /**
+     * Column hint text identifier key in column definition dictionary in
+     * setting dictionary.
+     */
+    public static final String SETTING_COLUMN_HINT_TEXT_IDENTIFIER = "hintTextFieldName";
+
+    /**
+     * Column width key in column definition dictionary in setting dictionary.
+     */
+    public static final String SETTING_COLUMN_WIDTH = "width";
+
+    /**
+     * Column type key in column definition dictionary in setting dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE = "type";
+
+    /**
+     * String column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_STRING = "string";
+
+    /**
+     * Date column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_DATE = "date";
+
+    /**
+     * Number column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_NUMBER = "number";
+
+    /**
+     * Countdown column type value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_TYPE_COUNTDOWN = "countdown";
+
+    /**
+     * Visible columns key in setting dictionary.
+     */
+    public static final String SETTING_VISIBLE_COLUMNS = "visibleColumns";
+
+    /**
+     * Sort direction key in setting dictionary.
+     */
+    public static final String SETTING_COLUMN_SORT_DIRECTION = "sortDir";
+
+    /**
+     * Ascending sort direction value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_SORT_DIRECTION_ASCENDING = "ascending";
+
+    /**
+     * Descending sort direction value in column definition dictionary in
+     * setting dictionary.
+     */
+    public static final String SETTING_COLUMN_SORT_DIRECTION_DESCENDING = "descending";
+
+    /**
+     * No sort direction value in column definition dictionary in setting
+     * dictionary.
+     */
+    public static final String SETTING_COLUMN_SORT_DIRECTION_NONE = "none";
+
+    /**
+     * Columns key in setting dictionary.
+     */
+    public static final String SETTING_COLUMNS = "columns";
+
+    /**
+     * Hazard categories and types key in setting dictionary.
+     */
+    public static final String SETTING_HAZARD_CATEGORIES_AND_TYPES = "hazardCategoriesAndTypes";
+
+    /**
+     * Hazard categories key setting dictionary.
+     */
+    public static final String SETTING_HAZARD_CATEGORIES = "hidHazardCategories";
+
+    /**
+     * Settings list in settings dictionary.
+     */
+    public static final String SETTINGS_LIST = "settingsList";
+
+    /**
+     * Setting identifier in setting definition in settings list.
+     */
+    public static final String SETTINGS_LIST_IDENTIFIER = "settingsID";
+
+    /**
+     * Current setting identifier in settings dictionary.
+     */
+    public static final String SETTINGS_CURRENT_IDENTIFIER = "currentSettingsID";
+
+    /*
+     * Hazard types key in settings.
+     */
+    public static final String SETTING_HAZARD_TYPES = "visibleTypes";
+
+    public static final String SETTING_HAZARD_STATES = "visibleStates";
+
+    public static final String SETTING_HAZARD_SITES = "visibleSites";
 
     /*
      * Constants relating to hazard actions

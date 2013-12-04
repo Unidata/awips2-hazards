@@ -33,7 +33,6 @@ import org.eclipse.core.runtime.Assert;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategoryAndTypes;
@@ -53,6 +52,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 13, 2013 1257       bsteffen    Initial creation
+ *  
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * 
  * 
  * </pre>
  * 
@@ -175,7 +177,6 @@ public class ObservedSettings extends Settings {
     public void setVisibleTypes(Set<String> visibleTypes) {
         if (changed(visibleTypes, getVisibleTypes())) {
             super.setVisibleTypes(visibleTypes);
-            settingsChanged(new SettingsFiltersModified(configManager));
         }
     }
 
@@ -183,7 +184,6 @@ public class ObservedSettings extends Settings {
     public void setVisibleStates(Set<String> visibleStates) {
         if (changed(visibleStates, getVisibleStates())) {
             super.setVisibleStates(visibleStates);
-            settingsChanged(new SettingsFiltersModified(configManager));
         }
     }
 
@@ -223,7 +223,6 @@ public class ObservedSettings extends Settings {
     public void setVisibleSites(Set<String> visibleSites) {
         if (changed(visibleSites, getVisibleSites())) {
             super.setVisibleSites(visibleSites);
-            settingsChanged(new SettingsFiltersModified(configManager));
         }
     }
 

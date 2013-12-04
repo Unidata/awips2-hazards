@@ -33,9 +33,12 @@ import com.raytheon.uf.common.status.UFStatus;
  * Nov 14, 2013 1463       bryon.lawrence                  Added test for hazard conflict 
  *                                                         detection.
  * Nov 15, 2013  2182      daniel.s.schaffer@noaa.gov Initial creation.
- * Nov 15, 2013  2182      daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * Nov 16, 2013  2166      daniel.s.schaffer@noaa.gov    Added auto-tests
- * Nov 23, 2013  2474      bryon.lawrence                  Added ContextMenuFunctionalTest
+ * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Added auto-tests
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added call of {@link FilteringFunctionalTest}
+ * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -96,16 +99,20 @@ public class AutomatedTests {
 
         else if (testCompleted.getTestClass().equals(
                 ProductStagingDialogTest.class)) {
-            new SampleFunctionalTest(appBuilder).run();
+            new FilteringFunctionalTest(appBuilder).run();
         }
 
-        else if (testCompleted.getTestClass()
-                .equals(SampleFunctionalTest.class)) {
-            new HazardConflictFunctionalTest(appBuilder).run();
-        } else if (testCompleted.getTestClass().equals(
-                HazardConflictFunctionalTest.class)) {
+        else if (testCompleted.getTestClass().equals(
+                FilteringFunctionalTest.class)) {
             new ContextMenuFunctionalTest(appBuilder).run();
-        } else {
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                ContextMenuFunctionalTest.class)) {
+            new HazardConflictFunctionalTest(appBuilder).run();
+        }
+
+        else {
             statusHandler.debug("All tests completed");
             appBuilder.getEventBus().post(
                     new ConsoleAction(HazardConstants.RESET_ACTION,

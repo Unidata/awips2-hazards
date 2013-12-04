@@ -7,10 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.Date;
 import java.util.List;
@@ -47,6 +47,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           points.
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * 
+ * Nov 29, 2013 2380     daniel.s.schaffer@noaa.gov Continued consolidation of constants
  * </pre>
  * 
  * @author Chris.Golden
@@ -352,19 +354,19 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         // from that.
         Dict settingDict = Dict.getInstance(jsonSettings);
         List<Dict> settings = settingDict
-                .getDynamicallyTypedValue(Utilities.SETTINGS_LIST);
+                .getDynamicallyTypedValue(SETTINGS_LIST);
         if ((settings == null) || (settings.size() < 1)) {
             return;
         }
 
         // Get the identifier of the currently selected setting.
         String currentIdentifier = settingDict
-                .getDynamicallyTypedValue(Utilities.SETTINGS_CURRENT_IDENTIFIER);
+                .getDynamicallyTypedValue(SETTINGS_CURRENT_IDENTIFIER);
 
         // Get the names and identifiers of the settings.
         for (int j = 0; j < settings.size(); j++) {
             if (currentIdentifier.equals(settings.get(j).get(
-                    Utilities.SETTINGS_LIST_IDENTIFIER))) {
+                    SETTINGS_LIST_IDENTIFIER))) {
                 selectedSettingName = settings.get(j).getDynamicallyTypedValue(
                         DISPLAY_NAME);
                 break;

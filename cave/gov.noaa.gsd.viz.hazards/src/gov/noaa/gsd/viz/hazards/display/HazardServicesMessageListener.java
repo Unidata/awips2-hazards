@@ -70,7 +70,10 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
- * Nov 23, 2013    2474    bryon.lawrence    Replaced "updatedEventData" literal.
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * 
  * </pre>
  * 
  * @author bryon.lawrence
@@ -218,7 +221,7 @@ public class HazardServicesMessageListener {
             messageHandler.newEventShape(spatialDisplayAction
                     .getToolParameters().toJSONString(), spatialDisplayAction
                     .getEventID(), "Spatial");
-        } else if (actionType.equals(HazardConstants.UPDATE_EVENT_METADATA)) {
+        } else if (actionType.equals(UPDATE_EVENT_METADATA)) {
             /**
              * TODO Change updateEventData to take in a POJO
              */
@@ -393,9 +396,9 @@ public class HazardServicesMessageListener {
      */
     @Subscribe
     public void settingsActionOccurred(final SettingsAction settingsAction) {
-        if (settingsAction.getAction().equals("DynamicSettingChanged")) {
+        if (settingsAction.getAction().equals(DYNAMIC_SETTING_CHANGED)) {
             messageHandler.dynamicSettingChanged(settingsAction.getDetail());
-        } else if (settingsAction.getAction().equals("SettingChosen")) {
+        } else if (settingsAction.getAction().equals(SETTING_CHOSEN)) {
             messageHandler
                     .changeSetting(settingsAction.getDetail(), true, true);
         } else if (settingsAction.getAction().equals("Save")) {

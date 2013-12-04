@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
@@ -55,6 +55,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * 
+ *  
+ * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * 
  * </pre>
  * 
  * @author Chris.Golden
@@ -127,7 +131,7 @@ public class SettingsView implements
 
                     // Remember the newly selected setting name and fire off
                     // the action.
-                    fireAction("SettingChosen", (String) event.widget.getData());
+                    fireAction(SETTING_CHOSEN, (String) event.widget.getData());
                 } else {
                     fireAction("UnsupportedOperation", "");
                 }
@@ -303,7 +307,7 @@ public class SettingsView implements
                             // presenter.
                             try {
                                 presenter.fireAction(new SettingsAction(
-                                        "DynamicSettingChanged", dynamicSetting
+                                        DYNAMIC_SETTING_CHANGED, dynamicSetting
                                                 .toJSONString()));
                             } catch (Exception e) {
                                 statusHandler
@@ -407,7 +411,7 @@ public class SettingsView implements
      */
     public static void translateHazardCategoriesAndTypesToOldLists(Dict map) {
         List<Object> treeState = map
-                .getDynamicallyTypedValue(Utilities.SETTING_HAZARD_CATEGORIES_AND_TYPES);
+                .getDynamicallyTypedValue(SETTING_HAZARD_CATEGORIES_AND_TYPES);
         List<String> categories = Lists.newArrayList();
         Set<String> typesSet = Sets.newHashSet();
         for (int j = 0; j < treeState.size(); j++) {
@@ -429,8 +433,8 @@ public class SettingsView implements
         for (String type : typesSet) {
             types.add(type);
         }
-        map.put(Utilities.SETTING_HAZARD_CATEGORIES, categories);
-        map.put(Utilities.SETTING_HAZARD_TYPES, types);
+        map.put(SETTING_HAZARD_CATEGORIES, categories);
+        map.put(SETTING_HAZARD_TYPES, types);
     }
 
     // Public Constructors
@@ -535,7 +539,7 @@ public class SettingsView implements
         // from that.
         Dict settingDict = Dict.getInstance(jsonSettings);
         List<Dict> settings = settingDict
-                .getDynamicallyTypedValue(Utilities.SETTINGS_LIST);
+                .getDynamicallyTypedValue(SETTINGS_LIST);
         if ((settings == null) || (settings.size() < 1)) {
             return;
         }
@@ -548,7 +552,7 @@ public class SettingsView implements
             String name = setting.getDynamicallyTypedValue(DISPLAY_NAME);
             settingNames.add(name);
             String identifier = setting
-                    .getDynamicallyTypedValue(Utilities.SETTINGS_LIST_IDENTIFIER);
+                    .getDynamicallyTypedValue(SETTINGS_LIST_IDENTIFIER);
             settingIdentifiersForNames.put(name, identifier);
         }
 

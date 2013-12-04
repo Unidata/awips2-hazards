@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -79,6 +81,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * 
+ *  
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
  * 
  * </pre>
  * 
@@ -414,11 +419,11 @@ public class SessionConfigurationManager implements
                     config[0] = new Field(field);
                     config[0].setFieldType("HierarchicalChoicesMenu");
                     config[0].setLabel("Hazard &Types");
-                } else if (field.getFieldName().equals("visibleSites")) {
+                } else if (field.getFieldName().equals(SETTING_HAZARD_SITES)) {
                     config[1] = new Field(field);
                     config[1].setFieldType("CheckBoxesMenu");
                     config[1].setLabel("Site &IDs");
-                } else if (field.getFieldName().equals("visibleStates")) {
+                } else if (field.getFieldName().equals(SETTING_HAZARD_STATES)) {
                     config[2] = new Field(field);
                     config[2].setFieldType("CheckBoxesMenu");
                     config[2].setLabel("&States");

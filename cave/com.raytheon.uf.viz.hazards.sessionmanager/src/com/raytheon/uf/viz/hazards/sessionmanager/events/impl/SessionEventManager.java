@@ -67,8 +67,6 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsFiltersModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsIDModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
@@ -101,6 +99,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * 
  * </pre>
  * 
@@ -153,26 +152,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
         loadEventsForSettings(notification.getSettings());
     }
 
-    @Subscribe
-    public void settingsIDChanged(SettingsIDModified notification) {
-        for (IHazardEvent event : getEvents()) {
-            removeEvent(event, false);
-        }
+    @Override
+    public Collection<IHazardEvent> getEventsForCurrentSettings() {
+        Collection<IHazardEvent> result = getEvents();
+        filterEventsForConfig(result);
+        return result;
     }
 
-    @Subscribe
-    public void settingsFiltersChanged(SettingsFiltersModified notification) {
-        Collection<IHazardEvent> eventsToKepp = getEvents();
-        filterEventsForConfig(eventsToKepp);
-        Collection<IHazardEvent> eventsToRemove = getEvents();
-        eventsToRemove.removeAll(eventsToKepp);
-        for (IHazardEvent event : eventsToRemove) {
-            removeEvent(event, false);
-        }
-        loadEventsForSettings(notification.getSettings());
-    }
-
-    protected void filterEventsForConfig(Collection<IHazardEvent> events) {
+    private void filterEventsForConfig(Collection<IHazardEvent> events) {
         Settings settings = configManager.getSettings();
         Set<String> siteIDs = settings.getVisibleSites();
         Set<String> phenSigs = settings.getVisibleTypes();
@@ -189,7 +176,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 it.remove();
             } else {
                 String key = HazardEventUtilities.getPhenSigSubType(event);
-                if (!phenSigs.contains(key)) {
+                /*
+                 * Check for null key ensures we don't filter out events for
+                 * which a type has not yet been defined.
+                 */
+                if (key != null && !phenSigs.contains(key)) {
                     it.remove();
                 }
             }

@@ -41,6 +41,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * May 21, 2013 1257       bsteffen    Initial creation
  * Oct 22, 2013 1463       blawrence   Added methods for hazard conflict
  *                                     detection.
+ *  
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * 
  * </pre>
  * 
@@ -264,5 +266,7 @@ public interface ISessionEventManager {
      *         empty if the are no conflicting hazards.
      */
     Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
+
+    public Collection<IHazardEvent> getEventsForCurrentSettings();
 
 }

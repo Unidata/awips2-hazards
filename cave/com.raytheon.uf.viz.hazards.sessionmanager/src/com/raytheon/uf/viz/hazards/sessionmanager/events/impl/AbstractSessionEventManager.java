@@ -41,6 +41,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  *                                     This is in keeping with the
  *                                     Mixed Hazard Story.
  * 
+ *  
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -75,7 +78,7 @@ public abstract class AbstractSessionEventManager implements
 
     @Override
     public Collection<IHazardEvent> getSelectedEvents() {
-        Collection<IHazardEvent> allEvents = getEvents();
+        Collection<IHazardEvent> allEvents = getEventsForCurrentSettings();
         Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
                 allEvents.size());
         for (IHazardEvent event : allEvents) {
@@ -109,7 +112,7 @@ public abstract class AbstractSessionEventManager implements
 
     @Override
     public Collection<IHazardEvent> getCheckedEvents() {
-        Collection<IHazardEvent> allEvents = getEvents();
+        Collection<IHazardEvent> allEvents = getEventsForCurrentSettings();
         Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
                 allEvents.size());
         for (IHazardEvent event : allEvents) {
