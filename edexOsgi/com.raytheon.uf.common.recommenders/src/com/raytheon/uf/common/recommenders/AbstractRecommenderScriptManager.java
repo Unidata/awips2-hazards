@@ -65,6 +65,8 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     Strings.
  * Aug 15, 2013  750       jramer      Added some paths needed by storm
  *                                     tracking tools
+ * Dec 4, 2013  2461       bkowal      Recommenders at other localization
+ *                                     levels can now override the base recommender.
  * 
  * </pre>
  * 
@@ -79,6 +81,12 @@ public abstract class AbstractRecommenderScriptManager extends
             .getHandler(AbstractRecommenderScriptManager.class);
 
     private static final String GET_SCRIPT_METADATA = "getScriptMetadata";
+
+    private static final String RECOMMENDERS_LOCALIZATION_DIR = "python"
+            + File.separator + "events" + File.separator + "recommenders";
+
+    private static final String RECOMMENDERS_CONFIG_LOCALIZATION_DIR = RECOMMENDERS_LOCALIZATION_DIR
+            + File.separator + "config";
 
     /*
      * A cached list of the current recommenders, for use by anything that wants
@@ -135,24 +143,44 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     protected static String buildRecommenderPath() {
+        recommenderDir = getLocalizationFile(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
+        String userPath = constructUserLocalizationRecommenderPath();
+        String sitePath = constructSiteLocalizationRecommenderPath();
+        String basePath = constructBaseLocalizationRecommenderPath();
+        return PyUtil.buildJepIncludePath(basePath, sitePath, userPath);
+    }
+
+    private static String constructBaseLocalizationRecommenderPath() {
+        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
+    }
+
+    private static String constructSiteLocalizationRecommenderPath() {
+        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.SITE, RECOMMENDERS_LOCALIZATION_DIR);
+    }
+
+    private static String constructUserLocalizationRecommenderPath() {
+        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.USER, RECOMMENDERS_LOCALIZATION_DIR);
+    }
+
+    private static LocalizationFile getLocalizationFile(
+            LocalizationType localizationType,
+            LocalizationLevel localizationLevel, String fileLocation) {
         IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext userContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
-        LocalizationContext siteContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.SITE);
-        LocalizationContext baseContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        LocalizationContext localizationContext = pathMgr.getContext(
+                localizationType, localizationLevel);
 
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + "recommenders";
+        return pathMgr.getLocalizationFile(localizationContext, fileLocation);
+    }
 
-        recommenderDir = pathMgr.getLocalizationFile(baseContext, fileLoc);
-        String userPath = pathMgr.getLocalizationFile(userContext, fileLoc)
-                .getFile().getPath();
-        String sitePath = pathMgr.getLocalizationFile(siteContext, fileLoc)
-                .getFile().getPath();
-        String basePath = recommenderDir.getFile().getPath();
-        return PyUtil.buildJepIncludePath(userPath, sitePath, basePath);
+    private static String constructLocalizationPath(
+            LocalizationType localizationType,
+            LocalizationLevel localizationLevel, String fileLocation) {
+        return getLocalizationFile(localizationType, localizationLevel,
+                fileLocation).getFile().getPath();
     }
 
     /**
@@ -161,14 +189,8 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     protected static String buildScriptPath() {
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext baseContext = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + "recommenders" + File.separator + "config";
-
-        recommenderDir = pathMgr.getLocalizationFile(baseContext, fileLoc);
+        recommenderDir = getLocalizationFile(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.BASE, RECOMMENDERS_CONFIG_LOCALIZATION_DIR);
         String recommenderScriptPath = FileUtil.join(recommenderDir.getFile()
                 .getPath(), "RecommenderInterface.py");
         return PyUtil.buildJepIncludePath(recommenderScriptPath);
@@ -186,8 +208,9 @@ public abstract class AbstractRecommenderScriptManager extends
         String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
         String dataTimePath = FileUtil.join(pythonPath, "time");
         String recommenderConfigPath = recommenderDir.getFile().getPath();
-        String recommenderDirPath = recommenderDir.getFile().getParentFile()
-                .getPath();
+        String recommenderDirPath = constructBaseLocalizationRecommenderPath();
+        String recommenderSitePath = constructSiteLocalizationRecommenderPath();
+        String recommenderUserPath = constructUserLocalizationRecommenderPath();
         String eventsPath = FileUtil.join(pythonPath, "events");
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
@@ -203,7 +226,8 @@ public abstract class AbstractRecommenderScriptManager extends
             FileUtil.join(File.separator, "awips2", "fxa", "bin", "src");
 
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                recommenderConfigPath, recommenderDirPath, dataAccessPath,
+                recommenderConfigPath, recommenderUserPath,
+                recommenderSitePath, recommenderDirPath, dataAccessPath,
                 dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
                 trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
                 fxaBinPath);
