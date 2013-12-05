@@ -30,11 +30,11 @@
 #    03/04/13                      jsanchez       Initial Creation.
 #    08/20/13        1360          hansen         Added code to create empty event
 #                                                 set when wrapped object is null.
+#    12/05/13        2527          bkowal         Use JUtil to convert Hazards
 #
 
 import JUtil
 import datetime
-import EventConverter
 
 from HazardEvent import HazardEvent
 
@@ -47,16 +47,22 @@ class EventSet(JUtil.JavaWrapperClass):
     def __init__(self, wrappedObject):
         self.jobj = wrappedObject
         if wrappedObject is not None :
-            converter = EventConverter.findConverter(wrappedObject)
-            if converter is not None :
-                self.events = EventConverter.convert(wrappedObject, converter)
-            else :
-                self.events = set()
+            self.events = self._convertEvents(wrappedObject)
             self.attributes = JUtil.javaObjToPyVal(wrappedObject.getAttributes())
         else :
             self.jobj = JavaEventSet()
             self.attributes = {}
             self.events = set()
+            
+    def _convertEvents(self, eventSet):
+        pyEvents = set()
+        iter = eventSet.iterator()
+        while iter.hasNext():
+            next = iter.next()
+            event = JUtil.javaObjToPyVal(next)
+            pyEvents.add(event)
+    
+        return pyEvents
 
     def add(self, event):
         self.events.add(event)

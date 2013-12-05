@@ -30,6 +30,8 @@
 #    02/20/13                      jsanchez        Initial Creation.
 #    08/20/13        1360          blawrenc       Added code to store an event
 #                                                 set in the generated product
+#    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
+#                                                 Hazard Event conversion capabilities with JUtil.
 #    
 # 
 #
@@ -38,12 +40,14 @@ import JUtil, importlib
 
 from GeometryHandler import shapelyToJTS
 JUtil.registerPythonToJava(shapelyToJTS)
+from HazardEventHandler import pyHazardEventToJavaHazardEvent, javaHazardEventToPyHazardEvent
+JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)
+JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct
 import traceback, sys, os
 import logging, UFStatusHandler
-import EventConverter
 from com.raytheon.uf.common.dataplugin.events import EventSet
 
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):

@@ -27,8 +27,8 @@
 #
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash        Initial Creation.
-#
+#    01/22/13                      mnash          Initial Creation.
+#    12/05/13        2257          bkowal         Remove unused EventConverter import
 #
 #
 
@@ -36,7 +36,6 @@ import os
 
 import RollbackMasterInterface
 import JUtil
-import EventConverter
 from EventSet import EventSet
 
 class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):

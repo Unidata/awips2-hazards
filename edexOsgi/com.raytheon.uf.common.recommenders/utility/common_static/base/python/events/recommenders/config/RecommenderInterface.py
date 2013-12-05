@@ -27,8 +27,9 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash        Initial Creation.
-#    
+#    01/22/13                      mnash          Initial Creation.
+#    12/05/13        2527          bkowal         Remove unused EventConverter import. Register
+#                                                 Hazard Event conversion capabilities with JUtil. 
 # 
 #
 
@@ -39,8 +40,10 @@ import JUtil
 from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
 JUtil.registerJavaToPython(jtsToShapely)
+from HazardEventHandler import pyHazardEventToJavaHazardEvent, javaHazardEventToPyHazardEvent
+JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)
+JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 
-import EventConverter
 from EventSet import EventSet
 
 class RecommenderInterface(RollbackMasterInterface.RollbackMasterInterface):
