@@ -27,8 +27,9 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
-#    08/20/13        1360          blawrenc    Changed toStr() to __str__() for debugging
+#    01/22/13                      mnash          Initial Creation.
+#    08/20/13        1360          blawrenc       Changed toStr() to __str__() for debugging
+#    12/05/13        2527          bkowal         Removed obsolete conversion methods
 # 
 #
 
@@ -244,14 +245,3 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def toJavaObj(self):
         return self.jobj
-    
-def canConvert(javaClass):
-    # the possible classes that can be converted to this class
-    hazardEventClasses = ['com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent', 'com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent', 'com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent']
-    if javaClass.jclassname in hazardEventClasses:
-        return True
-    return False
-    
-def convert(javaClass):
-    event = HazardEvent(javaClass)
-    return event

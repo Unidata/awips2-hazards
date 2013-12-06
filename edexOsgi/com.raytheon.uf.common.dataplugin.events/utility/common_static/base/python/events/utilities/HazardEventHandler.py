@@ -20,24 +20,34 @@
 
 
 #
-# Retrieve hazard events based on eventId
+# Handler for Hazard Events to Java and back.
 #  
 #    
 #     SOFTWARE HISTORY
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    09/26/13                      mnash          Initial Creation.
-#    12/05/13        2527          bkowal         Use JUtil to convert Hazards
-#    
-# 
+#    12/02/13        2527          bkowal         Initial Creation.
 #
 
-import JUtil
-from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardEventManager
-from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardEventManager_Mode as Mode
+from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import IHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import PracticeHazardEvent
+from com.raytheon.uf.common.python import PyJavaUtil
 
-def getHazardEvents(eventId, mode):        
-    manager = HazardEventManager(Mode.valueOf(mode))
-    historyList = manager.getByEventID(eventId)
-    return JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1))
+from HazardEvent import HazardEvent
+from Event import Event
+
+def pyHazardEventToJavaHazardEvent(val):
+    if isinstance(val, Event) == False:
+        return False, val
+    return True, val.toJavaObj()
+
+def javaHazardEventToPyHazardEvent(obj, customConverter=None):
+    if _isJavaConvertible(obj) == False:
+        return False, obj
+    event = HazardEvent(obj)
+    return True, event
+
+def _isJavaConvertible(obj):
+    return PyJavaUtil.isSubclass(obj, IHazardEvent)
