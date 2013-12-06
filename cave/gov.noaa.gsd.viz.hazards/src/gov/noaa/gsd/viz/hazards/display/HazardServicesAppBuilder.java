@@ -253,12 +253,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private boolean disposing = false;
 
     /**
-     * Flag indicating whether or not the app builder is undergoing forced
-     * shutdown.
-     */
-    private boolean forcedShutdown = false;
-
-    /**
      * Current time
      */
     private Date currentTime;
@@ -960,11 +954,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         statusHandler
                 .debug("HazardServicesAppBuilder.preShutdown(): Workbench = "
                         + workbench + " may shut down, forced = " + forced);
-
-        // Remember whether or not this is a forced shutdown.
-        if (forced) {
-            forcedShutdown = true;
-        }
         return true;
     }
 
@@ -1076,16 +1065,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         eventBus.post(new HazardServicesCloseAction());
         sessionManager.shutdown();
-
-        boolean showMessageBox = ((message != null) || (forcedShutdown == false));
-        boolean saveSessionData = (forcedShutdown || (showMessageBox && MessageDialog
-                .openQuestion(null, "Hazard Services", (message == null ? ""
-                        : message + " ")
-                        + "Do you want to save session data before closing?")));
-
-        if (saveSessionData) {
-            // save session data.
-        }
 
         VizGlobalsManager.removeListener(VizConstants.FRAMES_ID, this);
         VizGlobalsManager.removeListener(VizConstants.LOOPING_ID, this);
