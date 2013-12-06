@@ -42,10 +42,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  */
 public class FilteringFunctionalTest extends FunctionalTest {
 
-    private static final String CANNED_TORNADO_SETTING = "TOR";
-
-    private static final String CANNED_FLOOD_SETTING = "Flood";
-
     private final List<String> visibleTypes = Lists
             .newArrayList(AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG);
 

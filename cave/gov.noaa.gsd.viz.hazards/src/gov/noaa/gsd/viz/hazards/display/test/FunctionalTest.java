@@ -32,6 +32,7 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: Base class for automated testing. The approach is to create mock
@@ -63,6 +64,10 @@ public abstract class FunctionalTest {
     protected static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
 
     protected static final String RIVER_FLOOD_RECOMMENDER = "RiverFloodRecommender";
+
+    protected static final String CANNED_TORNADO_SETTING = "TOR";
+
+    protected static final String CANNED_FLOOD_SETTING = "Flood";
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
@@ -129,7 +134,17 @@ public abstract class FunctionalTest {
     protected void run() {
         resetEvents();
         mockViews();
+        checkForFloodSettings();
 
+    }
+
+    private void checkForFloodSettings() {
+        Settings currentSettings = appBuilder.getSessionManager()
+                .getConfigurationManager().getSettings();
+        String settingsID = currentSettings.getSettingsID();
+        if (!settingsID.equals(CANNED_FLOOD_SETTING)) {
+            fail("Must run tests from Canned Flood settings");
+        }
     }
 
     private void resetEvents() {
