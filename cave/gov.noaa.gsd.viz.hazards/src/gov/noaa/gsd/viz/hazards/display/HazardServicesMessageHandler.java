@@ -109,6 +109,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            indicate immediately reflects
  *                                            user changes to CAVE clock.
  * 
+ * Dec 08, 2013 2155       bryon.lawrence     Removed logic in runTool which
+ *                                            which seemed to be leading
+ *                                            to an occasional race condition.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -414,11 +417,6 @@ public final class HazardServicesMessageHandler implements
 
         ISessionManager sessionManager = appBuilder.getSessionManager();
         appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
-
-        while (Display.getCurrent().readAndDispatch()) {
-
-            // No action.
-        }
         Display.getCurrent().update();
 
         EventSet<IEvent> eventSet = new EventSet<IEvent>();
