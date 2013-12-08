@@ -48,6 +48,8 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -103,13 +105,17 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * nov 29, 2013  2378      bryon.lawrence     Cleaned up methods which support proposing and issuing hazards.
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Dec 08, 2013 2539       bryon.lawrence     Updated to ensure current time 
+ *                                            indicate immediately reflects
+ *                                            user changes to CAVE clock.
  * 
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public final class HazardServicesMessageHandler {
+public final class HazardServicesMessageHandler implements
+        ISimulatedTimeChangeListener {
 
     // Private Constants
 
@@ -240,6 +246,8 @@ public final class HazardServicesMessageHandler {
 
         modelAdapter.initialize(currentTime, staticSettingID,
                 dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus());
+
+        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(this);
     }
 
     // Methods
@@ -1121,6 +1129,7 @@ public final class HazardServicesMessageHandler {
      */
     public void prepareForShutdown() {
         modelAdapter = null;
+        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(this);
     }
 
     /**
@@ -1443,5 +1452,15 @@ public final class HazardServicesMessageHandler {
         }
 
         return userSelection;
+    }
+
+    @Override
+    public void timechanged() {
+        try {
+            updateCurrentTime(HazardServicesAppBuilder.CAVE_ORIGINATOR);
+        } catch (VizException e) {
+            statusHandler.error("Error updating Hazard Services current time",
+                    e);
+        }
     }
 }
