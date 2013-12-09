@@ -18,6 +18,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
@@ -48,11 +49,11 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
 
     protected JSONConverter jsonConverter = new JSONConverter();
 
-    protected ModelAdapter modelAdapter;
-
     protected final ISessionTimeManager timeManager;
 
     protected final ISessionConfigurationManager configurationManager;
+
+    protected final ISessionEventManager eventManager;
 
     protected final IHazardSessionAlertsManager alertsManager;
 
@@ -73,8 +74,8 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
         super(model, view, eventBus);
         this.timeManager = model.getTimeManager();
         this.configurationManager = model.getConfigurationManager();
+        this.eventManager = model.getEventManager();
         this.alertsManager = model.getAlertsManager();
-        this.modelAdapter = ModelAdapter.getInstance(model, eventBus);
 
     }
 

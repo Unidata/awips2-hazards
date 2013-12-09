@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import gov.noaa.gsd.common.utilities.JSONConverter;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -52,6 +54,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
 public abstract class AbstractSessionEventManager implements
         ISessionEventManager {
+
+    /**
+     * TODO This will go away with JSON refactor.
+     */
+    protected final JSONConverter jsonConverter = new JSONConverter();
 
     @Override
     public IHazardEvent getEventById(String eventId) {
@@ -121,6 +128,19 @@ public abstract class AbstractSessionEventManager implements
             }
         }
         return events;
+    }
+
+    /*
+     * HazardDetailPresenter will need to move to front on selection.
+     */
+    @Deprecated
+    @Override
+    public String getLastSelectedEventID() {
+        IHazardEvent event = getLastModifiedSelectedEvent();
+        if (event != null) {
+            return event.getEventID();
+        }
+        return "";
     }
 
 }

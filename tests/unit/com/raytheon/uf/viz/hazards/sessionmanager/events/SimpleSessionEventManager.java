@@ -161,6 +161,9 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void proposeEvent(IHazardEvent event) {
+    }
+
+    public void modifyEventArea(String jsonText) {
         throw new UnsupportedOperationException();
     }
 

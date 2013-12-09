@@ -154,11 +154,6 @@ public final class HazardServicesMessageHandler implements
 
     // Private Variables
 
-    /**
-     * Interface to SessionManager (via proxy).
-     */
-    private ModelAdapter modelAdapter;
-
     private final String caveMode;
 
     private final String siteID;
@@ -232,14 +227,12 @@ public final class HazardServicesMessageHandler implements
         this.sessionManager = appBuilder.getSessionManager();
 
         this.productGeneratorHandler = new HazardServicesProductGenerationHandler(
-                sessionManager);
+                sessionManager, appBuilder.getEventBus());
         this.sessionEventManager = sessionManager.getEventManager();
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
 
-        modelAdapter = ModelAdapter.getInstance(this.sessionManager,
-                appBuilder.getEventBus());
         sessionManager.registerForNotification(this);
 
         caveMode = (CAVEMode.getMode()).toString();
@@ -247,9 +240,8 @@ public final class HazardServicesMessageHandler implements
 
         String staticSettingID = getSettingForCurrentPerspective();
 
-        modelAdapter.initialize(currentTime, staticSettingID,
-                dynamicSettingJSON, caveMode, siteID, appBuilder.getEventBus());
-
+        sessionManager.initialize(currentTime, staticSettingID,
+                dynamicSettingJSON, caveMode, siteID);
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(this);
     }
 
@@ -512,7 +504,7 @@ public final class HazardServicesMessageHandler implements
     void handleRecommenderResults(String recommenderID,
             final EventSet<IEvent> eventList) {
 
-        modelAdapter.handleRecommenderResult(recommenderID, eventList);
+        sessionManager.handleRecommenderResult(recommenderID, eventList);
 
         notifyModelEventsChanged();
 
@@ -646,7 +638,7 @@ public final class HazardServicesMessageHandler implements
         if (asDict.get(HazardConstants.SYMBOL_NEW_LAT_LON) != null) {
             runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL, asDict, null);
         } else {
-            modelAdapter.modifyEventArea(json);
+            sessionManager.getEventManager().modifyEventArea(json);
         }
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
@@ -660,7 +652,7 @@ public final class HazardServicesMessageHandler implements
      *            Type of entities to reset. *
      */
     public void reset(String type) {
-        modelAdapter.reset();
+        sessionManager.reset();
 
         /*
          * Switch back to the default settings only if resetting the settings.
@@ -684,8 +676,8 @@ public final class HazardServicesMessageHandler implements
     public void changeSetting(String settingID, boolean saveEvents,
             boolean eventsChanged) {
 
-        modelAdapter.initialize(sessionTimeManager.getSelectedTime(),
-                settingID, "", caveMode, siteID, appBuilder.getEventBus());
+        sessionManager.initialize(sessionTimeManager.getSelectedTime(),
+                settingID, "", caveMode, siteID);
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
                 HazardConstants.Element.EVENTS,
@@ -963,10 +955,9 @@ public final class HazardServicesMessageHandler implements
      *            setting.
      */
     public void dynamicSettingChanged(String jsonDynamicSetting) {
-        modelAdapter.initialize(sessionManager.getTimeManager()
+        sessionManager.initialize(sessionManager.getTimeManager()
                 .getSelectedTime(), sessionConfigurationManager.getSettings()
-                .getSettingsID(), jsonDynamicSetting, caveMode, siteID,
-                appBuilder.getEventBus());
+                .getSettingsID(), jsonDynamicSetting, caveMode, siteID);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.DYNAMIC_SETTING));
     }
@@ -989,7 +980,7 @@ public final class HazardServicesMessageHandler implements
     public String newEventShape(String eventShape, String eventID,
             String originator) {
         if (eventID == null) {
-            eventID = modelAdapter.newEvent(eventShape);
+            eventID = sessionManager.newEvent(eventShape);
         }
         notifyModelEventsChanged();
 
@@ -1126,7 +1117,6 @@ public final class HazardServicesMessageHandler implements
      * Prepare for shutdown by removing references to the model.
      */
     public void prepareForShutdown() {
-        modelAdapter = null;
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(this);
     }
 
@@ -1224,7 +1214,7 @@ public final class HazardServicesMessageHandler implements
      * @return
      */
     public void handleUndoAction() {
-        this.modelAdapter.undo();
+        this.sessionManager.undo();
     }
 
     /**
@@ -1234,7 +1224,7 @@ public final class HazardServicesMessageHandler implements
      * @return
      */
     public void handleRedoAction() {
-        this.modelAdapter.redo();
+        this.sessionManager.redo();
     }
 
     /**

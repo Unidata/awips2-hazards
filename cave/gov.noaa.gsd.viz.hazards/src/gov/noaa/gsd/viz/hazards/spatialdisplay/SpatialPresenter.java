@@ -112,8 +112,8 @@ public class SpatialPresenter extends
      * Update the event areas drawn in the spatial view.
      */
     public void updateSpatialDisplay() {
-        getView().setUndoEnabled(modelAdapter.isUndoable());
-        getView().setRedoEnabled(modelAdapter.isRedoable());
+        getView().setUndoEnabled(getModel().isUndoable());
+        getView().setRedoEnabled(getModel().isRedoable());
         getView().drawEvents(getModel().isAutoHazardCheckingOn(),
                 getModel().areHatchedAreasDisplayed());
     }
@@ -137,7 +137,7 @@ public class SpatialPresenter extends
      * @return
      */
     public String getNewEventAreaId(String eventAreaJSON) {
-        return modelAdapter.newEvent(eventAreaJSON);
+        return getModel().newEvent(eventAreaJSON);
     }
 
     /**
@@ -177,7 +177,7 @@ public class SpatialPresenter extends
      *         the events.
      */
     String getEvents(String eventId) {
-        return modelAdapter.getComponentData("Spatial", eventId);
+        return getModel().getComponentData("Spatial", eventId);
     }
 
     // Private Methods

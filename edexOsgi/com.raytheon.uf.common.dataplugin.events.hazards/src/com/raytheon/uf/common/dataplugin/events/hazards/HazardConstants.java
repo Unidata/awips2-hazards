@@ -601,6 +601,31 @@ public final class HazardConstants {
      */
     public static final String SETTINGS_CURRENT_IDENTIFIER = "currentSettingsID";
 
+    /**
+     * Start up configuration item key.
+     */
+    public static final String START_UP_CONFIG = "startUpConfig";
+
+    /**
+     * General hazard information configuration item key.
+     */
+    public static final String HAZARD_INFO_GENERAL_CONFIG = "hazardInfoConfig";
+
+    /**
+     * Filter configuration item key.
+     */
+    public static final String FILTER_CONFIG = "filterConfig";
+
+    /**
+     * Metadata hazard information configuration item key.
+     */
+    public static final String HAZARD_INFO_METADATA_CONFIG = "hazardInfoOptions";
+
+    /**
+     * Setting configuration item key.
+     */
+    public static final String SETTING_CONFIG = "viewConfig";
+
     /*
      * Hazard types key in settings.
      */

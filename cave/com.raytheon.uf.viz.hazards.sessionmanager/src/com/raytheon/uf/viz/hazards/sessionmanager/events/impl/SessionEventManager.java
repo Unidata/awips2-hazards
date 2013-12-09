@@ -53,6 +53,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -72,6 +73,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEn
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.Event;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
@@ -806,6 +808,30 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
 
         return conflictingHazardsMap;
+    }
+
+    @Deprecated
+    @Override
+    public void modifyEventArea(String jsonText) {
+        Event jevent = jsonConverter.fromJson(jsonText, Event.class);
+        IHazardEvent event = getEventById(jevent.getEventID());
+
+        if (event != null) {
+
+            Geometry modifiedGeometry = jevent.getGeometry();
+
+            if (!canChangeGeometry(event)) {
+                event = new BaseHazardEvent(event);
+                event.setState(HazardState.PENDING);
+                Collection<IHazardEvent> selection = getSelectedEvents();
+                event = addEvent(event);
+                selection.add(event);
+                setSelectedEvents(selection);
+            }
+            event.setGeometry(modifiedGeometry);
+            event.addHazardAttribute(HazardConstants.POLYGON_MODIFIED,
+                    new Boolean(true));
+        }
     }
 
     /**

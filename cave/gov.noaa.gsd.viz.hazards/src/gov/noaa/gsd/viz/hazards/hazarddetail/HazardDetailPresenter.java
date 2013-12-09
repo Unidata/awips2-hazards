@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -101,9 +100,9 @@ public class HazardDetailPresenter extends
             eventChange = true;
 
             getView().updateHazardDetail(
-                    DictList.getInstance(modelAdapter.getComponentData(
+                    DictList.getInstance(getModel().getComponentData(
                             HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                            "all")), modelAdapter.getLastSelectedEventID(),
+                            "all")), eventManager.getLastSelectedEventID(),
                     getConflictingEventsForSelectedEvents());
             eventChange = false;
         }
@@ -121,14 +120,14 @@ public class HazardDetailPresenter extends
 
         // Get the hazard events to be displayed in detail, and
         // determine which event should be foregrounded.
-        String jsonEventsList = modelAdapter.getComponentData(
+        String jsonEventsList = getModel().getComponentData(
                 HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, "all");
         DictList eventsList = DictList.getInstance(jsonEventsList);
         if ((force == false)
                 && ((eventsList == null) || (eventsList.size() == 0))) {
             return;
         }
-        String topEventID = modelAdapter.getLastSelectedEventID();
+        String topEventID = eventManager.getLastSelectedEventID();
 
         // Have the view open the alert detail subview.
         getView().showHazardDetail(eventsList, topEventID,
@@ -154,10 +153,10 @@ public class HazardDetailPresenter extends
     public void initialize(IHazardDetailView<?, ?> view) {
 
         // Get the basic initialization info for the subview.
-        String basicInfo = modelAdapter
-                .getConfigItem(Utilities.HAZARD_INFO_GENERAL_CONFIG);
-        String metadataMegawidgets = modelAdapter
-                .getConfigItem(Utilities.HAZARD_INFO_METADATA_CONFIG);
+        String basicInfo = configurationManager
+                .getConfigItem(HazardConstants.HAZARD_INFO_GENERAL_CONFIG);
+        String metadataMegawidgets = configurationManager
+                .getConfigItem(HazardConstants.HAZARD_INFO_METADATA_CONFIG);
         TimeRange timeRange = timeManager.getVisibleRange();
         getView().initialize(this, basicInfo, metadataMegawidgets,
                 timeRange.getStart().getTime(), timeRange.getEnd().getTime());
@@ -166,11 +165,11 @@ public class HazardDetailPresenter extends
         // if any.
         getView()
                 .updateHazardDetail(
-                        DictList.getInstance(modelAdapter
+                        DictList.getInstance(getModel()
                                 .getComponentData(
                                         HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
                                         "all")),
-                        modelAdapter.getLastSelectedEventID(),
+                        eventManager.getLastSelectedEventID(),
                         getConflictingEventsForSelectedEvents());
     }
 

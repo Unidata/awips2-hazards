@@ -108,19 +108,9 @@ public class Utilities {
     public static final String TEMPORAL_DISPLAY_DYNAMIC_SETTING = "dynamicSettings";
 
     /**
-     * General hazard information configuration item key.
-     */
-    public static final String HAZARD_INFO_GENERAL_CONFIG = "hazardInfoConfig";
-
-    /**
      * General megawidgets key in hazard information dialog dictionary.
      */
     public static final String HAZARD_INFO_GENERAL_CONFIG_WIDGETS = "hazardCategories";
-
-    /**
-     * Metadata hazard information configuration item key.
-     */
-    public static final String HAZARD_INFO_METADATA_CONFIG = "hazardInfoOptions";
 
     /**
      * Types of hazard events key in hazard metadata megawidgets definitions
@@ -141,11 +131,6 @@ public class Utilities {
     public static final String HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST = "pointOptions";
 
     /**
-     * Start up configuration item key.
-     */
-    public static final String START_UP_CONFIG = "startUpConfig";
-
-    /**
      * Console key in start up configuration item.
      */
     public static final String START_UP_CONFIG_CONSOLE = "Console";
@@ -161,16 +146,6 @@ public class Utilities {
      * item.
      */
     public static final String START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW = "belowTimeLine";
-
-    /**
-     * Filter configuration item key.
-     */
-    public static final String FILTER_CONFIG = "filterConfig";
-
-    /**
-     * Setting configuration item key.
-     */
-    public static final String SETTING_CONFIG = "viewConfig";
 
     /**
      * Persistent shape key.

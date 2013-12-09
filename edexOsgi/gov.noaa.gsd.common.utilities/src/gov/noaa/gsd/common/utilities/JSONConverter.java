@@ -15,6 +15,7 @@ import java.util.Date;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 /**
  * Description: Helper class for serializing/deserializing JSON.
@@ -38,6 +39,8 @@ public class JSONConverter extends ObjectMapper {
         super();
         this.configure(
                 DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        getSerializationConfig().setSerializationInclusion(Inclusion.NON_NULL);
+
     }
 
     public String toJson(Object obj) {

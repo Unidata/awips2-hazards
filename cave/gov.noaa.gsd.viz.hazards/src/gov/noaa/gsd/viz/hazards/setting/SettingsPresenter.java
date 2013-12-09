@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.setting;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.EnumSet;
 
@@ -90,7 +89,7 @@ public class SettingsPresenter extends
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(modelAdapter.getSettingsList());
+            getView().setSettings(configurationManager.getSettingsListAsJSON());
         }
         if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)) {
             Settings settings = configurationManager.getSettings();
@@ -104,8 +103,8 @@ public class SettingsPresenter extends
     public final void showSettingDetail() {
 
         // Get the parameters for the settings view.
-        DictList fields = DictList.getInstance(modelAdapter
-                .getConfigItem(Utilities.SETTING_CONFIG));
+        DictList fields = DictList.getInstance(configurationManager
+                .getConfigItem(HazardConstants.SETTING_CONFIG));
         Settings settings = configurationManager.getSettings();
         Dict values = Dict.getInstance(jsonConverter.toJson(settings));
 
@@ -133,8 +132,8 @@ public class SettingsPresenter extends
     @Override
     public void initialize(ISettingsView<?, ?> view) {
         Settings settings = configurationManager.getSettings();
-        view.initialize(this, modelAdapter.getSettingsList(),
-                modelAdapter.getConfigItem("filterConfig"),
+        view.initialize(this, configurationManager.getSettingsListAsJSON(),
+                configurationManager.getConfigItem("filterConfig"),
                 jsonConverter.toJson(settings));
     }
 

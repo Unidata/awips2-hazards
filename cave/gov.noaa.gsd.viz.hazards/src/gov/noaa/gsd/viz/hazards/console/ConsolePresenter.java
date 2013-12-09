@@ -119,7 +119,7 @@ public class ConsolePresenter extends
             getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(modelAdapter.getSettingsList());
+            getView().setSettings(configurationManager.getSettingsListAsJSON());
         }
         if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)
                 || changed.contains(HazardConstants.Element.EVENTS)) {
@@ -150,8 +150,8 @@ public class ConsolePresenter extends
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.
         boolean temporalControlsInToolBar = true;
-        String jsonStartUpConfig = modelAdapter
-                .getConfigItem(Utilities.START_UP_CONFIG);
+        String jsonStartUpConfig = configurationManager
+                .getConfigItem(HazardConstants.START_UP_CONFIG);
         if (jsonStartUpConfig != null) {
             Dict startUpConfig = Dict.getInstance(jsonStartUpConfig);
             Dict consoleConfig = startUpConfig
@@ -167,13 +167,17 @@ public class ConsolePresenter extends
         }
 
         // Initialize the view.
-        view.initialize(this, timeManager.getSelectedTime(), timeManager
-                .getCurrentTime(), configurationManager.getSettings()
-                .getDefaultTimeDisplayDuration(), modelAdapter
-                .getComponentData(HazardServicesAppBuilder.TEMPORAL_ORIGINATOR,
-                        "all"), modelAdapter.getSettingsList(), modelAdapter
-                .getConfigItem(Utilities.FILTER_CONFIG), alertsManager
-                .getActiveAlerts(), temporalControlsInToolBar);
+        view.initialize(
+                this,
+                timeManager.getSelectedTime(),
+                timeManager.getCurrentTime(),
+                configurationManager.getSettings()
+                        .getDefaultTimeDisplayDuration(),
+                getModel().getComponentData(
+                        HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all"),
+                configurationManager.getSettingsListAsJSON(),
+                configurationManager.getConfigItem(HazardConstants.FILTER_CONFIG),
+                alertsManager.getActiveAlerts(), temporalControlsInToolBar);
     }
 
     // Private Methods
@@ -187,7 +191,7 @@ public class ConsolePresenter extends
         // one in the model. If they are not the same, then a complete
         // refresh is in order as if the events have changed.
         Dict oldSetting = getView().getDynamicSetting();
-        String componentDataJSON = modelAdapter.getComponentData(
+        String componentDataJSON = getModel().getComponentData(
                 HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all");
         Dict componentData = Dict.getInstance(componentDataJSON);
         Dict newSetting = componentData

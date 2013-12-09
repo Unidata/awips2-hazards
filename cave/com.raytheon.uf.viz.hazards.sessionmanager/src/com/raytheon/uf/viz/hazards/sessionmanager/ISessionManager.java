@@ -19,14 +19,20 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
+import java.util.Date;
+
 import org.eclipse.core.runtime.jobs.Job;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
 /**
  * Primary interface for maintaining the state of everything during a session of
@@ -49,7 +55,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * @version 1.0
  */
 
-public interface ISessionManager {
+public interface ISessionManager extends IUndoRedoable {
 
     /**
      * Get a manager for interacting with the events
@@ -137,10 +143,12 @@ public interface ISessionManager {
     boolean isAutoHazardCheckingOn();
 
     /**
+     * Resets any practice events and VTEC information
+     */
+    void reset();
+
+    /**
      * Turns on/off the display of the hatched areas associated with hazards.
-     * 
-     * @param
-     * @return
      */
     public void toggleHatchedAreaDisplay();
 
@@ -152,4 +160,24 @@ public interface ISessionManager {
      *         displayed.
      */
     public boolean areHatchedAreasDisplayed();
+
+    /**
+     * Initialize the session manager.
+     */
+    @Deprecated
+    void initialize(Date selectedTime, String staticSettingID,
+            String dynamicSetting_json, String caveMode, String siteID);
+
+    /**
+     * Create a new {@link IHazardEvent} from an event shape
+     */
+    @Deprecated
+    String newEvent(String eventShape);
+
+    @Deprecated
+    String handleRecommenderResult(String toolID, EventSet<IEvent> eventList);
+
+    @Deprecated
+    String getComponentData(String component, String eventID);
+
 }

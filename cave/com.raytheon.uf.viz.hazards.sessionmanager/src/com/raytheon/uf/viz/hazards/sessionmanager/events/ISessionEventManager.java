@@ -306,4 +306,17 @@ public interface ISessionEventManager {
      */
     public void proposeEvent(IHazardEvent event);
 
+     /**
+     * @return id of the most recently selected event
+     */
+    @Deprecated
+    String getLastSelectedEventID();
+
+    /**
+     * Modify the area of a {@link IHazardEvent} based on the information
+     * provided. TODO Replace the JSON representation with Java objects
+     */
+    @Deprecated
+    void modifyEventArea(String jsonText);
+
 }

@@ -198,4 +198,10 @@ public interface ISessionConfigurationManager {
      */
     public void shutdown();
 
+    @Deprecated
+    String getSettingsListAsJSON();
+
+    @Deprecated
+    String getConfigItem(String item);
+
 }

@@ -1134,9 +1134,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         SimulatedTime.getSystemTime().setRealTime();
         SimulatedTime.getSystemTime().setFrozen(false);
 
-        // Close the Jep connection.
-        messageHandler.prepareForShutdown();
-
         // Prepare the Python side effects applier for shutdown.
         PythonSideEffectsApplier.prepareForShutDown();
     }
