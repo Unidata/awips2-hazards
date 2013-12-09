@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+    <feAreaTable>
+        <ne>NORTHEAST</ne>
+        <nc>NORTH CENTRAL</nc>
+        <nw>NORTHWEST</nw>
+        <wc>WEST CENTRAL</wc>
+        <cc>CENTRAL</cc>
+        <ec>EAST CENTRAL</ec>
+        <se>SOUTHEAST</se>
+        <sc>SOUTH CENTRAL</sc>
+        <sw>SOUTHWEST</sw>
+        <pa>THE PANHANDLE OF</pa>
+        <ee>EASTERN</ee>
+        <ww>WESTERN</ww>
+        <nn>NORTHERN</nn>
+        <ss>SOUTHERN</ss>
+        <er>EAST CENTRAL UPPER</er>
+        <eu>EASTERN UPPER</eu>
+        <wu>WESTERN UPPER</wu>
+        <nr>NORTH CENTRAL UPPER</nr>
+        <sr>SOUTH CENTRAL UPPER</sr>
+        <bb>BIG BEND</bb>
+        <pd>THE PIEDMONT OF</pd>
+        <up>UPSTATE</up>
+        <ea>EAST</ea>
+        <mi>MIDDLE</mi>
+        <so>SOUTH</so>
+        <ds>DEEP SOUTH</ds>
+    </feAreaTable>

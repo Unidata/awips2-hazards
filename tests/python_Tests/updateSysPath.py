@@ -136,7 +136,7 @@ def updateSysPath(fromRoot=None, fromHere=None,
 
     # If we could not find our root designator, there are a couple of fallbacks
     while byAutoRoot :
-        rootDir = "/awips2/edex/data/utility"
+        rootDir = "/awips2/edex/data/utility/common_static/base/python"
         if os.path.isdir(rootDir) :
             break
         rootDir = os.environ.get("HOME", "xxx")+"/caveData/common/base/python"
@@ -176,24 +176,28 @@ def updateSysPath(fromRoot=None, fromHere=None,
 
     # Initialize with current contents of sys.path, and add all the
     # requested paths.
-    nPreset = len(sys.path)
     pyPathParts = sys.path
+    nPreset = len(pyPathParts)
     pyPathParts.extend(constructPaths(rootDir, fromRoot, "*"))
     if fromHere!=None :
         pyPathParts.extend(constructPaths(meDir, fromHere))
+    lastVerify = len(pyPathParts)
     if siblingDir!="" :
         pyPathParts.extend(constructPaths(siblingDir, fromSibling))
+        if not byAutoRoot :
+            lastVerify = len(pyPathParts)
     pyPathParts.append(meDir)
 
     # Eliminate redundancies and paths to EDEX localization file directories.
     newPyPath = []
     for part in pyPathParts :
         nPreset = nPreset-1
+        lastVerify = lastVerify-1
         if not byAutoRoot and part.find("edex/data/utility")>=0 :
             continue
         if part in newPyPath :
             continue
-        if nPreset<0 and not os.path.isdir(part) :
+        if nPreset<0 and lastVerify>=0 and not os.path.isdir(part) :
             sys.stderr.write("path entry does not exist:\n")
             sys.stderr.write(part+"\n")
             continue

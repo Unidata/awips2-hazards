@@ -40,7 +40,10 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.plugin.nwsauth.user import 
 # MODULE BEING PHYSICALLY LOCATED SOMEWHERE UNDER .../edexOsgi/.
 
 from ufpy import ThriftClient
-from UFStatusLogger import *
+try:
+    from UFStatusLogger import UFStatusLogger
+except :
+    pass
 
 import numpy
 import sys
@@ -146,8 +149,11 @@ class AppFileInstaller():
 
         # Make root path to code branch this module is in.
         myBranchAFI = "/"+"/".join(pathList)
-        UFStatusLogger.getInstance().logMessage(\
-          "Accessing localization files from code base.", "Info")
+        try :
+            UFStatusLogger.getInstance().logMessage(\
+              "Accessing localization files from code base.", "Info")
+        except :
+            pass
 
         # Attempt to locate the proper sibling branch.
         cmd = 'find /'+"/".join(pathList[:-1])+' -mindepth 2 -maxdepth 2 '+ \

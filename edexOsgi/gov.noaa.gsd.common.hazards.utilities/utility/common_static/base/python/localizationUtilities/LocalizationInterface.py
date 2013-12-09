@@ -1,7 +1,7 @@
 """
 Description: Allows access to localization files in a way that automatically
              combines data from different localization levels in an intelligent
-             manner.
+             manner. 
 
 SOFTWARE HISTORY
 Date         Ticket#    Engineer          Description
@@ -82,7 +82,7 @@ except :
 # 
 
 caveEdexHost = None
-defEdexPort = os.getenv("DEFAULT_PORT", "9581")
+defEdexPort = os.environ.get("DEFAULT_PORT", "9581")
 caveEdexPort = defEdexPort
 edexLocMap = { "" : "" }
 edexDeskMap = { "" : "" }
@@ -173,6 +173,9 @@ class LocalizationInterface():
                     break
         except :
             pass
+
+        if caveEdexHost == "" :
+            caveEdexHost = os.environ.get("DEFAULT_HOST","")
 
         if caveEdexHost == "" :
             msg = "Could not determine host of current EDEX server."
@@ -459,13 +462,13 @@ return ResponseMessageGeneric(site)
             locLevel = locLevels[lll]
             locName = locNames[lll]
             lll -= 1
-            
+
             if locLevel!="Base" and locName=="" :
                 continue
-            
+
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            
+
             try :
                 result = self.__lfi.getFile(pathToXml)
             except :
@@ -825,12 +828,12 @@ return ResponseMessageGeneric(stdout)
             lll = 0
             fileset = {}
             while lll<len(locLevels):
-                
+
                 locLevel = locLevels[lll]
                 locName = locNames[lll]
-                
+
                 lll = lll + 1
-                
+
                 if locLevel != "Base" and locName == "" :
                     continue
 
@@ -903,7 +906,7 @@ return ResponseMessageGeneric(stdout)
 
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            
+
             try:
                 if self.__lfi.check(locPath0) :
                     goodList.append(locLevel)
@@ -986,13 +989,13 @@ return ResponseMessageGeneric(stdout)
             locLevel = locLevels[lll]
             locName = locNames[lll]
             lll = lll - 1
-            
+
             if locLevel != "Base" and locName == "" :
                 continue
-                        
+
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            
+
             try:
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
@@ -1218,13 +1221,12 @@ return ResponseMessageGeneric(stdout)
             locLevel = locLevels[lll]
             locName = locNames[lll]
             lll = lll + d
-            
+
             if locLevel != "Base" and locName == "" :
                 continue
-            
+
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            
             try:
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)

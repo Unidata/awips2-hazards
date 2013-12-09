@@ -495,6 +495,26 @@ class UnitTestFramework(unittest.TestCase):
     def onBehalfOfFilePaths(self):
         self.useFilePaths = True
 
+    # Call this if a local EDEX must be accessible even if primary test data
+    # is coming out of code base.
+    def mustHaveLocalEDEX(self, msg=None):
+        global frameworkTestCount
+        if frameworkTestCount!=0 :
+            return
+        if os.environ.get("LOCALIZATION_DATA_SOURCE", "")=="EDEX":
+            return
+        cmd = "ps -U awips -f | grep edex | wc -l"
+        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        (stdout, stderr) = p.communicate()
+        n = int(stdout.split("\n")[0])
+        if n>=3 :
+            return
+        if isinstance(msg, str) :
+            sys.stdout.write("\n"+msg+"\n")
+        else :
+            sys.stdout.write("\nThis test cannot run without a local EDEX.\n")
+        frameworkTestCount = sys.maxint
+
     # Logic that gets the next test needs to be a member method in order to use
     # the skipTest method.
     def nextTest(self) :

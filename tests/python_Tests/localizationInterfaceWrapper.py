@@ -6,6 +6,7 @@
 import json
 import os
 import sys
+import subprocess
 
 if len(sys.argv)==1 :
     print """\
@@ -15,7 +16,7 @@ from a shell for testing purposes.
 Usage:
 
 localizationInterfaceWrapper.py {+edex_host} \\
-     {-r|-d|-D|-p|-x|-l|-v} {localization_id} {user_name} {host_name} \\
+     {-r|-d|-D|-p|-x|-l|-v|-Z} {localization_id} {user_name} {host_name} \\
      {COMMON_STATIC|EDEX_STATIC|CAVE_STATIC} {CODE|OVERRIDE} \\
      {Base|Configured|Site|Desk|Workstation|User} \\
      localization_file_path {data_file_path} {'prefix*suffix'}
@@ -27,7 +28,9 @@ operation type is -r, which returns the text of a localization file.  The other
 operation types are as follows: -d returns a data structure for a localization
 file (-D applies incremental override to imports), -p writes out a localization
 file, -x deletes a localization file, -l lists localization files, and -v shows
-the localization levels available for a given localization file.  If no
+the localization levels available for a given localization file. -Z modifies
+the other operations such that the code will directly call AppFileInstaller;
+this does not fully support all options and fewer things can default. If no
 localizaton level {Base, etc} is given, incremental override will be applied
 to what is returned.  If multiple levels are given, LocalizationInterface will
 be called for each level independently, if this makes sense for the chosen
@@ -46,13 +49,13 @@ but as flat files from under /awips2/edex/data/utility/.
 """
     exit()
 
-from testCaseSupportRoutines import updateSysPath
+from updateSysPath import updateSysPath
 
 baselinePaths = [ "edexOsgi/com.raytheon.uf.tools.cli/impl/src", \
                   "pythonPackages/ufpy" ]
 updateSysPath(fromSibling=baselinePaths)
 
-from LocalizationInterface import *
+byAppFileInstaller = False
 
 # Alternate edex host must be leading argument, indicated by leading +.
 edexhost = ""
@@ -66,6 +69,7 @@ levelArg = ""
 siteArg = ""
 userArg = ""
 hostArg = ""
+nameArg = ""
 pathArg = ""
 inputArg = ""
 prefix = ""
@@ -83,7 +87,10 @@ while argIdx < len(sys.argv) :
 
     # Check for operation type
     if len(onearg)==2 and onearg[0]=="-" :
-        opArg = onearg
+        if onearg[1]=="Z" :
+            byAppFileInstaller = True
+        else :
+            opArg = onearg
         continue
 
     # Try for a file path
@@ -112,6 +119,7 @@ while argIdx < len(sys.argv) :
         (stdout, stderr) = p.communicate()
         if len(stdout)>0 :
             hostArg = stdout
+            nameArg = hostArg
             continue
 
     # Try again for a file path
@@ -167,6 +175,7 @@ while argIdx < len(sys.argv) :
     # Now if all the same case, assume a site or user
     if uparg==onearg and onearg.isalpha() and len(onearg)==3 :
         siteArg = onearg
+        nameArg = onearg
         continue
     if loarg==onearg and onearg.isalpha() and len(onearg)<9 :
         cmd = "test -d ~"+onearg+" && echo yes"
@@ -174,6 +183,7 @@ while argIdx < len(sys.argv) :
         (stdout, stderr) = p.communicate()
         if stdout[:3]=="yes" :
             userArg = onearg
+            nameArg = onearg
             continue
 
     # Try again for a file path
@@ -182,7 +192,24 @@ while argIdx < len(sys.argv) :
     else :
         inputArg = onearg
 
-myLI = LocalizationInterface(edexhost)
+myLI = None
+myAFI = None
+if byAppFileInstaller :
+    if len(levelList) == 0 :
+        sys.stderr.write( \
+          "Can't go direct to AppFileInstaller with no level specified.\n")
+        exit()
+    if edexhost=="" :
+        sys.stderr.write("AppFileInstaller can't default edex host.\n")
+        exit()
+    from AppFileInstaller import AppFileInstaller
+    myAFI = AppFileInstaller(edexhost)
+    myAFI.setType(typeArg)
+    myAFI.setLevel(levelArg)
+    myAFI.setName(nameArg)
+else :
+    from LocalizationInterface import LocalizationInterface
+    myLI = LocalizationInterface(edexhost)
 
 # Depending on the name modifier(s) supplied, put the one most applicable
 # into the siteUser variable.
@@ -213,16 +240,35 @@ if opArg == "-p" :
     if inputArg=="" :
         inputArg = sys.stdin.read()
         inputDiag = "Data from stdin"
-    output = myLI.putLocFile(inputArg, pathArg, typeArg, levelArg, siteUser)
+    elif myAFI :
+        try :
+            ffff = open(inputArg, "r")
+            indata = ffff.read()
+            ffff.close()
+            inputArg = indata
+        except:
+            pass
+    if myLI :
+        output = myLI.putLocFile(inputArg, pathArg, typeArg,
+                                 levelArg, siteUser)
+    else :
+        myAFI.setMyContextName(os.environ["USER"])
+        output = myAFI.putFile(pathArg, inputArg)
     if output :
         sys.stdout.write("Success\n")
-    else :
+    elif myLI:
         sys.stderr.write("FAILED:\nputLocFile('"+inputDiag+"', '"+ \
           pathArg+"', '"+typeArg+"', '"+ levelArg+"', '"+siteUser+"')\n")
+    else :
+        sys.stderr.write("FAILED:\nputFile('"+pathArg+"', '"+ \
+                          inputDiag+"')\n")
     exit()
 
 # List levels for a file
 if opArg == "-v" :
+    if myLI == None :
+        sys.stderr.write("AppFileInstaller can't implement option -v.\n")
+        exit()
     result = myLI.locFileLevels(pathArg, typeArg, siteUser)
     if result==None :
         sys.stderr.write("FAILED:\locFileLevels('"+pathArg+"', '"+\
@@ -232,6 +278,9 @@ if opArg == "-v" :
     exit()
 
 if opArg == "-a" :
+    if myLI == None :
+        sys.stderr.write( "AppFileInstaller can't unit test Accumulator.\n")
+        exit()
     output = myLI.getLocFile(pathArg, typeArg, levelArg, siteUser)
     if output==None :
         sys.stderr.write("FAILED:\ngetLocFile('"+pathArg+"', '"+\
@@ -270,18 +319,31 @@ for oneLevel in levelList :
         if levelArg=="" or levelArg=="Workstation" :
             siteUser = userArg
 
+    if byAppFileInstaller :
+        myAFI.setType(typeArg)
+        myAFI.setLevel(levelArg)
+        myAFI.setName(siteUser)
+
     # Read file contents
     if opArg == "-r" :
-        output = myLI.getLocFile(pathArg, typeArg, levelArg, siteUser)
-        if output==None :
+        if myLI :
+            output = myLI.getLocFile(pathArg, typeArg, levelArg, siteUser)
+        else :
+            output = myAFI.getFile(pathArg)
+        if output!=None :
+            sys.stdout.write(output+"\n")
+        elif myLI:
             sys.stderr.write("FAILED:\ngetLocFile('"+pathArg+"', '"+\
                              typeArg+"', '"+ levelArg+"', '"+siteUser+"')\n")
         else :
-            sys.stdout.write(output+"\n")
+            sys.stderr.write("FAILED:\ngetFile('"+pathArg+"')\n")
         continue
 
     # Read file data
     if opArg == "-d" or opArg == "-D":
+        if myLI == None :
+            sys.stderr.write("AppFileInstaller can't implement option -d.\n")
+            exit()
         overrideImp = opArg == "-D"
         result = myLI.getLocData(pathArg, typeArg, levelArg, siteUser, \
                                  True, overrideImp)
@@ -296,23 +358,39 @@ for oneLevel in levelList :
 
     # List files
     if opArg == "-l" :
-        result = myLI.listLocFiles(pathArg, typeArg, levelArg, siteUser, \
-                                   prefix, suffix)
-        if result==None :
+        if myLI :
+            result = myLI.listLocFiles(pathArg, typeArg, levelArg, siteUser, \
+                                       prefix, suffix)
+        else :
+            if prefix!="" or suffix!="" :
+                sys.stderr.write( \
+                  "AppFileInstaller can't implement name filtering\n")
+            result = myAFI.getList(pathArg)
+        if isinstance(result, list) :
+            print json.dumps(result, indent=4)+"\n"
+        elif result!=None :
+            pass
+        elif myLI :
             sys.stderr.write("FAILED:\nlistLocFiles('"+pathArg+"', '"+\
                              typeArg+"', '"+ levelArg+"', '"+siteUser+"')\n")
-        elif isinstance(result, list) :
-            print json.dumps(result, indent=4)+"\n"
+        else :
+            sys.stderr.write("FAILED:\ngetList('"+pathArg+"')\n")
         continue
 
     # Delete file
     if opArg == "-x" :
-        output = myLI.rmLocFile(pathArg, typeArg, levelArg, siteUser)
+        if myLI :
+            output = myLI.rmLocFile(pathArg, typeArg, levelArg, siteUser)
+        else :
+            myAFI.setMyContextName(os.environ["USER"])
+            output = myAFI.rmFile(pathArg)
         if output :
             sys.stdout.write("Success\n")
-        else :
+        elif myLI:
             sys.stderr.write("FAILED:\nrmLocFile('"+ \
                 pathArg+"', '"+typeArg+"', '"+ levelArg+"', '"+siteUser+"')\n")
+        else :
+            sys.stderr.write("FAILED:\nrmFile('"+pathArg+"'')\n")
         continue
 
     sys.stderr.write("Unknown operation type '"+opArg+"'\n")

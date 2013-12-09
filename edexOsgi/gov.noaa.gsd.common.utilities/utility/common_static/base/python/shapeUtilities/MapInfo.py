@@ -1,7 +1,7 @@
 """
 Description: Map Information class - has routines to read from
  AWIPS II Maps Geo Database and convert into lookup values and
- provide polygons.
+ provide polygons. 
 
 SOFTWARE HISTORY
 Date         Ticket#    Engineer    Description
@@ -9,6 +9,8 @@ Date         Ticket#    Engineer    Description
 Mar 05, 2013            Tracy.L.Hansen      Initial creation
 Apr 19, 2013            blawrenc            Removed unused methods for
                                             code review prep.
+Oct 22, 2013            J Ramer             Added getPartOfStateFromGeom
+                                            method.
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -19,6 +21,9 @@ import MapAttributes as MapAttributes
 from LatLonCoord import *
 from ufpy.dataaccess import DataAccessLayer
 from shapely.geometry import Polygon 
+
+from LocalizationInterface import *
+feAreaTableInMapInfo = None
 
 class MapInfo:
 
@@ -85,7 +90,7 @@ class MapInfo:
         if mapType == "publicZones":
             mapAtts = ['state', 'zone','shortname']
         elif mapType == "counties":
-            mapAtts = ['state', 'fips','countyname']
+            mapAtts = ['state', 'fips','countyname', 'fe_area']
         ugcList = []
         for geometry in geometries:
             atts = {}
@@ -118,16 +123,16 @@ class MapInfo:
         req.addIdentifier("geomField","the_geom") # the geometry field in the table to return
         req.addIdentifier("inLocation", "true") # adds another filter based on location
         req.addIdentifier("locationField","cwa") # for extra querying based on location, search the cwa field for the cwas below
-        req.setLocationNames(siteID, "BOU", "DMX") # adds this to the filter
+        req.setLocationNames(siteID) # adds this to the filter
         req.addIdentifier("cwa",siteID) # returns all geometries in this cwa        
         if mapType == "publicZones":
             mapAtts = ['state', 'zone', 'shortname']
-            req.setParameters("shortname","state", 'zone') # other parameters that you want besides the geometry
+            req.setParameters("shortname","state", "zone") # other parameters that you want besides the geometry
         elif mapType == "counties":
-            mapAtts = ['state', 'fips', 'countyname']
-            req.setParameters("countyname", "state","fips") 
+            mapAtts = ['state', 'fips', 'countyname', 'fe_area']
+            req.setParameters("countyname", "state", "fips", "fe_area") 
         geometries = DataAccessLayer.getGeometryData(req)
-
+        
         # Make Shapely Polygons and BBoxes
         polygons = []
         bboxes = []
@@ -139,7 +144,7 @@ class MapInfo:
         # Filter on Bounding Box
         # get the bounding boxes (required for final record and for bbox
         # filtering.
-        bboxGeometries = []   
+        bboxGeometries = []
         for geometry in geometries:
             geomBBox = geometry.getGeometry().envelope
             for bbox in bboxes:
@@ -154,11 +159,11 @@ class MapInfo:
         for geometry in bboxGeometries: 
             atts = {}
             for att in mapAtts:
-                atts[att]= geometry.getString(att)
+                atts[att] = geometry.getString(att)
             if filtFunc is not None and not filtFunc(atts, compareToken):
                 continue #doesn't meet filter criteria
             attGeometries.append(geometry)   #cache it
-        
+
         # Filter on polygons
         # Get the polygons, we only need to do the records that made it
         # through the attribute filter.
@@ -168,7 +173,43 @@ class MapInfo:
                 if poly.intersects(geometry.getGeometry()):
                     polyGeometries.append(geometry)        
         return polyGeometries
-            
+
+    def getPartOfStateFromGeom(self, geometry) :
+        """
+        @summary: For a geometry that has an fe_area attribute, report plain
+                  language part of the state it is in.
+        @param geometry: one shapely geometry
+        @return: plain language for part of the state geometry is in.
+        """
+        global feAreaTableInMapInfo
+
+        # if the geometry parameter is a boolean True instead of a geometry,
+        # dump our globally held parts of state table to it can be read back
+        # in later.  This will help with testing.
+        if isinstance(geometry, bool) :
+            if geometry :
+                feAreaTableInMapInfo = None
+            return ""
+
+        if feAreaTableInMapInfo == None :
+            locIntObject = LocalizationInterface()
+            feAreaData = locIntObject.getLocData( \
+                 "hazardServices/productGeneratorTable/feAreaTable.xml", \
+                     "COMMON_STATIC")
+            if isinstance(feAreaData, dict) and "feAreaTable" in feAreaData:
+                feAreaTableInMapInfo = feAreaData["feAreaTable"]
+            else :
+                sys.stderr.write(\
+                   "Could not get feAreaTable from feAreaTable.xml\n")
+                feAreaTableInMapInfo = {}
+
+        fipsLookup = "ugc"+geometry.getString('fips')
+        feValue = geometry.getString('fe_area')
+        if fipsLookup in feAreaTableInMapInfo :
+            partOfState = feAreaTableInMapInfo[fipsLookup]
+        else :
+            partOfState = feAreaTableInMapInfo.get(feValue, "")
+        return partOfState
 
     # ---------------------------------------------------------------------
     # Common Routines

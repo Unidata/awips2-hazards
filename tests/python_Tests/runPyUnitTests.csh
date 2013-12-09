@@ -1,5 +1,9 @@
 #!/bin/csh -f
 #
+#  Just in case there is no ~/caveData
+#
+setenv DEFAULT_HOST localhost
+#
 #  Unabiguously determine the directory of this script.
 #
 cd `dirname $0`
