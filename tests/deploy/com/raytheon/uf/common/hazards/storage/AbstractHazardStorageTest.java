@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.time.DateUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -57,13 +57,14 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 30, 2013            mnash     Initial creation
- * <<<<<<< HEAD
- * Oct 30, 2013 #1472      bkowal    Added a test for retrieving a large number of
- *                                   hazards by phensig.
- * =======
+ * Jan 30, 2013            mnash       Initial creation
+ * Oct 30, 2013 #1472      bkowal      Added a test for retrieving a large number of
+ *                                     hazards by phensig.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * >>>>>>> Issue #2182.
+ * Nov 14, 2013 #1472      bkowal      Removed test for retrieving a large number of
+ *                                     hazards. Updates for compatibility with the 
+ *                                     Serialization changes. Test hazards will be
+ *                                     purged after every test.
  * 
  * </pre>
  * 
@@ -71,7 +72,6 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * @version 1.0
  */
 
-@Ignore
 public abstract class AbstractHazardStorageTest {
 
     private final String site = "kxxx";
@@ -93,11 +93,20 @@ public abstract class AbstractHazardStorageTest {
 
     private final Coordinate coordinate = new Coordinate(10, 10);
 
+    private static final String THRIFT_STREAM_MAXSIZE = "200";
+
+    private static final String EDEX_HOME = "/awips2/edex";
+
     public IHazardEventManager manager = new HazardEventManager(getMode());
+
+    private List<IHazardEvent> createdHazardEvents;
 
     @Before
     public void setUp() {
         DeployTestProperties.getInstance();
+        System.setProperty("thrift.stream.maxsize", THRIFT_STREAM_MAXSIZE);
+        System.setProperty("edex.home", EDEX_HOME);
+        this.createdHazardEvents = new ArrayList<IHazardEvent>();
     }
 
     public IHazardEvent createNewEvent() {
@@ -111,7 +120,7 @@ public abstract class AbstractHazardStorageTest {
         createdEvent.setSiteID(site);
         createdEvent.setState(state);
         createdEvent.setStartTime(date);
-        createdEvent.setSubtype("Biohazard");
+        createdEvent.setSubType("Biohazard");
 
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
@@ -121,9 +130,18 @@ public abstract class AbstractHazardStorageTest {
 
     private IHazardEvent storeEvent() {
         IHazardEvent createdEvent = createNewEvent();
-        boolean stored = manager.storeEvent(createdEvent);
+        return this.storeEvent(createdEvent);
+    }
+
+    private IHazardEvent storeEvent(IHazardEvent hazardEvent) {
+        boolean stored = manager.storeEvent(hazardEvent);
         assertTrue("Not able to store event", stored);
-        return createdEvent;
+        this.createdHazardEvents.add(hazardEvent);
+        return hazardEvent;
+    }
+
+    private boolean removeEvent(IHazardEvent hazardEvent) {
+        return manager.removeEvent(hazardEvent);
     }
 
     /**
@@ -215,6 +233,8 @@ public abstract class AbstractHazardStorageTest {
     public void testRemove() {
         IHazardEvent createdEvent = storeEvent();
         boolean tf = manager.removeEvent(createdEvent);
+        // special case - remove event from the list of created events
+        this.createdHazardEvents.remove(createdEvent);
         assertTrue(tf);
         HazardHistoryList list = manager
                 .getByEventID(createdEvent.getEventID());
@@ -313,18 +333,18 @@ public abstract class AbstractHazardStorageTest {
 
         event = createNewEvent();
         event.setPhenomenon("ZW");
-        event.setSubtype("Convective");
-        manager.storeEvent(event);
+        event.setSubType("Convective");
+        this.storeEvent(event);
 
         event = createNewEvent();
         event.setPhenomenon("ZW");
         event.setSignificance("D");
-        manager.storeEvent(event);
+        this.storeEvent(event);
 
         event = createNewEvent();
         event.setPhenomenon("TL");
         event.setSignificance("D");
-        manager.storeEvent(event);
+        this.storeEvent(event);
 
         phensigs.add("TL.D");
         phensigs.add("ZW.P.Convective");
@@ -332,58 +352,14 @@ public abstract class AbstractHazardStorageTest {
                 .getByMultiplePhensigs(phensigs);
         // should get 2 back
         assertThat(list.keySet(), hasSize(2));
-        for (String eid : list.keySet()) {
-            for (IHazardEvent ev : list.get(eid)) {
-                manager.removeEvent(ev);
-            }
-        }
     }
 
-    @Ignore
-    @Test
-    public void testByMultiplePhensigLargeRetrieval() {
-        List<String> phensigs = new ArrayList<String>();
-        IHazardEvent event = storeEvent();
-
-        // create 50 of each type of event.
-        for (int i = 0; i < 50; i++) {
-            event = createNewEvent();
-            event.setPhenomenon("FA");
-            event.setSubtype("Convective");
-            manager.storeEvent(event);
+    @After
+    public void purgeTestHazardEvents() {
+        for (IHazardEvent hazardEvent : this.createdHazardEvents) {
+            this.removeEvent(hazardEvent);
         }
-
-        for (int i = 0; i < 50; i++) {
-            event = createNewEvent();
-            event.setPhenomenon("TO");
-            event.setSignificance("D");
-            manager.storeEvent(event);
-        }
-
-        for (int i = 0; i < 50; i++) {
-            event = createNewEvent();
-            event.setPhenomenon("FF");
-            event.setSignificance("D");
-            manager.storeEvent(event);
-        }
-
-        phensigs.add("FF.D");
-        phensigs.add("FA.P.Convective");
-        final long startTime = System.currentTimeMillis();
-        Map<String, HazardHistoryList> list = manager
-                .getByMultiplePhensigs(phensigs);
-        final long endTime = System.currentTimeMillis();
-        final long totalTime = endTime - startTime;
-
-        // ensure that the total time is < 1 second = 0 seconds
-        assertThat(totalTime, lessThanOrEqualTo(DateUtils.MILLIS_PER_SECOND));
-        // verify that we have received the expected number of records
-        assertThat(list.keySet(), hasSize(100));
-        for (String eid : list.keySet()) {
-            for (IHazardEvent ev : list.get(eid)) {
-                manager.removeEvent(ev);
-            }
-        }
+        this.createdHazardEvents.clear();
     }
 
     abstract Mode getMode();

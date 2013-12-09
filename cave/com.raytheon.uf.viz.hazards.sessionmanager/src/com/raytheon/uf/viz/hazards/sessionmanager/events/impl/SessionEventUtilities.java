@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  * Aug 29, 2013  1921      blawrenc    Re-added logic to properly set the state of 
  *                                     the old event. Moved logic to remove 
  *                                     "replaces" information from event.
+ * Nov 14, 2013  1472      bkowal      Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -55,7 +56,7 @@ public class SessionEventUtilities {
         oldEvent.setGeometry(newEvent.getGeometry());
         oldEvent.setPhenomenon(newEvent.getPhenomenon());
         oldEvent.setSignificance(newEvent.getSignificance());
-        oldEvent.setSubtype(newEvent.getSubtype());
+        oldEvent.setSubType(newEvent.getSubType());
         oldEvent.setHazardMode(newEvent.getHazardMode());
         Map<String, Serializable> newAttr = newEvent.getHazardAttributes();
         Map<String, Serializable> oldAttr = oldEvent.getHazardAttributes();

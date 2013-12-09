@@ -1,7 +1,7 @@
 {
     "11": {
         "eventID": "11", 
-	"phen": "FF", "sig":"W", "subtype":"Convective",
+	"phen": "FF", "sig":"W", "subType":"Convective",
         "include": [
             "Also Snow Melt"
         ], 
@@ -44,7 +44,7 @@
     }, 
     "10": {
         "eventID": "10", 
-	"phen": "FA", "sig":"Y", "subtype":"",
+	"phen": "FA", "sig":"Y", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -87,7 +87,7 @@
     }, 
     "12": {
         "eventID": "12", 
-	"phen": "FL", "sig":"W", "subtype":"",
+	"phen": "FL", "sig":"W", "subType":"",
         "fallBelow": 0, 
         "crest": 0, 
         "VTECmode": "operational", 
@@ -133,7 +133,7 @@
     }, 
     "15": {
         "eventID": "15", 
-	"phen": "SV", "sig":"W", "subtype":"",
+	"phen": "SV", "sig":"W", "subType":"",
         "VTECmode": "operational", 
         "creationTime": 1297137600000, 
         "shapes": [
@@ -172,7 +172,7 @@
     }, 
     "16": {
         "eventID": "16", 
-	"phen": "SV", "sig":"W", "subtype":"",
+	"phen": "SV", "sig":"W", "subType":"",
         "VTECmode": "operational", 
         "creationTime": 1297137600000, 
         "shapes": [
@@ -207,7 +207,7 @@
     }, 
     "13": {
         "eventID": "13", 
-	"phen": "FA", "sig":"W", "subtype":"",
+	"phen": "FA", "sig":"W", "subType":"",
         "VTECmode": "operational", 
         "creationTime": 1297137600000, 
         "shapes": [
@@ -251,7 +251,7 @@
     }, 
     "14": {
         "eventID": "14", 
-	"phen": "FA", "sig":"W", "subtype":"",
+	"phen": "FA", "sig":"W", "subType":"",
         "floodSeverity": "3", 
         "VTECmode": "operational", 
         "creationTime": 1297137600000, 
@@ -293,7 +293,7 @@
     }, 
     "1": {
         "eventID": "1", 
-	"phen": "TO", "sig":"W", "subtype":"",
+	"phen": "TO", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -336,7 +336,7 @@
     }, 
     "3": {
         "eventID": "3", 
-	"phen": "TO", "sig":"W", "subtype":"",
+	"phen": "TO", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -379,7 +379,7 @@
     }, 
     "2": {
         "eventID": "2", 
-	"phen": "TO", "sig":"W", "subtype":"",
+	"phen": "TO", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -422,7 +422,7 @@
     }, 
     "5": {
         "eventID": "5", 
-	"phen": "WS", "sig":"W", "subtype":"",
+	"phen": "WS", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -465,7 +465,7 @@
     }, 
     "4": {
         "eventID": "4", 
-	"phen": "TO", "sig":"W", "subtype":"",
+	"phen": "TO", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -516,7 +516,7 @@
     }, 
     "7": {
         "eventID": "7", 
-	"phen": "WS", "sig":"W", "subtype":"",
+	"phen": "WS", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -559,7 +559,7 @@
     }, 
     "6": {
         "eventID": "6", 
-	"phen": "WS", "sig":"W", "subtype":"",
+	"phen": "WS", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [
@@ -602,7 +602,7 @@
     }, 
     "9": {
         "eventID": "9", 
-	"phen": "FA", "sig":"W", "subtype":"",
+	"phen": "FA", "sig":"W", "subType":"",
         "include": "Urban areas and small streams", 
         "primaryCause": "Snow melt", 
         "shapes": [
@@ -643,7 +643,7 @@
     }, 
     "8": {
         "eventID": "8", 
-	"phen": "WS", "sig":"W", "subtype":"",
+	"phen": "WS", "sig":"W", "subType":"",
         "nonGenericAdvisory": "Urban and small stream", 
         "VTECmode": "operational", 
         "shapes": [

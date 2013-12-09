@@ -45,8 +45,9 @@ import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 22, 2013            mnash     Initial creation
+ * May 22, 2013            mnash       Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -134,9 +135,9 @@ public class WarningActionable implements IActionable {
                     if (event.getPhenomenon().equals("FF")
                             && event.getSignificance().equals("W")) {
                         if (floodSeverity.equals("0")) {
-                            event.setSubtype("Convective");
+                            event.setSubType("Convective");
                         } else {
-                            event.setSubtype("NonConvective");
+                            event.setSubType("NonConvective");
                         }
                     }
                 }

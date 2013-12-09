@@ -43,7 +43,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 import com.google.common.base.Strings;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -60,7 +59,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 9, 2012            mnash     Initial creation
+ * Oct 9, 2012             mnash       Initial creation
+ * Nov 14, 2013 1472       bkowal      Remove ISerializableObject
  * 
  * </pre>
  * 
@@ -74,7 +74,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 @Table(name = "practice_hazard_attributes")
 @SequenceGenerator(name = "ATTRIBUTE_SEQ", sequenceName = "attribute_sequence", allocationSize = 1)
 public class PracticeHazardAttribute extends PersistableDataObject implements
-        IHazardAttribute, ISerializableObject {
+        IHazardAttribute {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PracticeHazardAttribute.class);
 

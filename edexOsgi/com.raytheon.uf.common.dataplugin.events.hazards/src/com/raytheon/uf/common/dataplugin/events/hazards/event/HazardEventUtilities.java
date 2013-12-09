@@ -54,6 +54,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2013 1257       bsteffen    Initial creation
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Oct 22, 2013 1463       blawrenc   Added methods to retrieve
  *                                    map geometries which 
  *                                    intersect hazard geometries.
@@ -78,7 +79,7 @@ public class HazardEventUtilities {
 
     public static String getPhenSigSubType(IHazardEvent event) {
         return getPhenSigSubType(event.getPhenomenon(),
-                event.getSignificance(), event.getSubtype());
+                event.getSignificance(), event.getSubType());
     }
 
     public static String getPhenSigSubType(String phen, String sig,
@@ -104,7 +105,7 @@ public class HazardEventUtilities {
         int endSig = phenSigSubtype.indexOf('.', endPhen + 1);
         if (endSig > 0) {
             event.setSignificance(phenSigSubtype.substring(endPhen + 1, endSig));
-            event.setSubtype(phenSigSubtype.substring(endSig + 1));
+            event.setSubType(phenSigSubtype.substring(endSig + 1));
         } else {
             event.setSignificance(phenSigSubtype.substring(endPhen + 1));
         }

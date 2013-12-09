@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
  * Nov 25, 2013  2336      Chris.Golden                 Altered to handle new
  *                                                      location of utility
  *                                                      classes.
+ * Dec 02, 2013  1472      bkowal      Fix junit test
  * </pre>
  *
  * @author daniel.s.schaffer@noaa.gov
@@ -107,7 +108,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
         hazardEvent.setPhenomenon("SV")
-        hazardEvent.setSubtype(null)
+        hazardEvent.setSubType(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
@@ -199,7 +200,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
         hazardEvent.setPhenomenon("SV")
-        hazardEvent.setSubtype(null)
+        hazardEvent.setSubType(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
@@ -226,7 +227,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 1, 0, 0))
         hazardEvent.setPhenomenon("FL")
-        hazardEvent.setSubtype(null)
+        hazardEvent.setSubType(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
@@ -246,7 +247,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 1, 0, 0))
         hazardEvent.setPhenomenon("FA")
-        hazardEvent.setSubtype(null)
+        hazardEvent.setSubType(null)
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
         alertsManager.handleNotification(hazardNotification)
@@ -378,7 +379,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setEventID(eventID)
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance("W")
-        hazardEvent.setSubtype("NonConvective")
+        hazardEvent.setSubType("NonConvective")
         hazardEvent.setState(HazardState.ISSUED)
         hazardEvent.addHazardAttribute(HazardConstants.EXPIRATIONTIME, dateTime.getMillis())
         return hazardEvent

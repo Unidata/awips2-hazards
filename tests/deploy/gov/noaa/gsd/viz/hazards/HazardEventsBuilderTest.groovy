@@ -21,6 +21,7 @@ import com.vividsolutions.jts.geom.Polygon
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 13, 2013            daniel.s.schaffer      Initial creation
+ * Dec 3, 2013  1472       bkowal      subtype is now subType
  *
  * </pre>
  *
@@ -62,7 +63,7 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
         anEvent.getState() == HazardState.ISSUED
         anEvent.getPhenomenon() == "FF"
         anEvent.getSignificance() == "W"
-        anEvent.getSubtype() == "Convective"
+        anEvent.getSubType() == "Convective"
         anEvent.getStartTime() == startTime
         anEvent.getEndTime() == endTime
         anEvent.getIssueTime() == issueTime

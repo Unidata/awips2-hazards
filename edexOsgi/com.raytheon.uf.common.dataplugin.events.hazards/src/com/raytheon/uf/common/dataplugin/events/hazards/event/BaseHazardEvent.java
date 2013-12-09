@@ -46,7 +46,8 @@ import com.vividsolutions.jts.io.WKTReader;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 24, 2013            mnash     Initial creation
+ * Jan 24, 2013            mnash       Initial creation
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
  * 
  * </pre>
@@ -100,7 +101,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
-        setSubtype(event.getSubtype());
+        setSubType(event.getSubType());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -190,12 +191,12 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public String getSubtype() {
+    public String getSubType() {
         return subtype;
     }
 
     @Override
-    public void setSubtype(String subtype) {
+    public void setSubType(String subtype) {
         this.subtype = subtype;
     }
 

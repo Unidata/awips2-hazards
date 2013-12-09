@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ----------- --------------------------
  * July 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov  14, 2013   1472     bkowal     Renamed hazard subtype to subType
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  *                                                    Also, fix to issue 2448
  * 
@@ -190,7 +191,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     private void generateAlertsForIssuedHazardEvent(IHazardEvent hazardEvent) {
         List<HazardEventExpirationAlertConfigCriterion> alertCriteria = alertConfiguration
                 .getCriteria(new HazardType(hazardEvent.getPhenomenon(),
-                        hazardEvent.getSignificance(), hazardEvent.getSubtype()));
+                        hazardEvent.getSignificance(), hazardEvent.getSubType()));
         List<IHazardEventAlert> alerts = Lists.newArrayList();
         for (HazardEventExpirationAlertConfigCriterion alertCriterion : alertCriteria) {
             alertedEvents.put(hazardEvent.getEventID(), hazardEvent);

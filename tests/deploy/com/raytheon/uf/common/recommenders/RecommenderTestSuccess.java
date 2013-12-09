@@ -50,6 +50,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * Jul 19, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
+ * Dec 3, 2013  1472       bkowal      Ignore entire class.
  * 
  * </pre>
  * 
@@ -57,10 +58,10 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
+@Ignore
 public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test
-    @Ignore
     public void run() {
         IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override
@@ -85,7 +86,6 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
     }
 
     @Test
-    @Ignore
     public void runGetDialogInfo() {
         Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);
@@ -93,7 +93,6 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
     }
 
     @Test
-    @Ignore
     public void runGetSpatialInfo() {
         Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
         assertNotNull(vals);

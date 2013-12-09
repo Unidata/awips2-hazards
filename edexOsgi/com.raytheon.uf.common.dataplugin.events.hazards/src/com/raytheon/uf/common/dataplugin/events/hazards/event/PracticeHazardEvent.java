@@ -53,7 +53,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.adapters.GeometryAdapter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -73,7 +72,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 1, 2012            mnash     Initial creation
+ * Oct 1, 2012             mnash       Initial creation
+ * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
  * 
  * </pre>
  * 
@@ -86,7 +86,7 @@ import com.vividsolutions.jts.geom.Geometry;
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 public class PracticeHazardEvent extends PersistableDataObject implements
-        IHazardEvent, ISerializableObject, IValidator {
+        IHazardEvent, IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PracticeHazardEvent.class);
@@ -130,7 +130,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     @Column
     @DynamicSerializeElement
     @XmlElement
-    private String subtype;
+    private String subType;
 
     @DynamicSerializeElement
     @XmlElement
@@ -189,7 +189,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
-        setSubtype(event.getSubtype());
+        setSubType(event.getSubType());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -301,8 +301,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      * @return the subtype
      */
     @Override
-    public String getSubtype() {
-        return subtype;
+    public String getSubType() {
+        return subType;
     }
 
     /**
@@ -310,8 +310,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
      *            the subtype to set
      */
     @Override
-    public void setSubtype(String subtype) {
-        this.subtype = subtype;
+    public void setSubType(String subType) {
+        this.subType = subType;
     }
 
     /**
@@ -589,7 +589,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
-        result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         return result;
     }
 
@@ -673,11 +673,11 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         if (state != other.state) {
             return false;
         }
-        if (subtype == null) {
-            if (other.subtype != null) {
+        if (subType == null) {
+            if (other.subType != null) {
                 return false;
             }
-        } else if (!subtype.equals(other.subtype)) {
+        } else if (!subType.equals(other.subType)) {
             return false;
         }
         return true;

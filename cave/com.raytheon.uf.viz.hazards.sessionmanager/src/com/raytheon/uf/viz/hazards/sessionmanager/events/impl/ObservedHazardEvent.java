@@ -59,6 +59,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 06, 2013 1265       blawrenc    Updated to support undo/redo
  * Aug 22, 2013 1921       blawrenc    Added a deep array equality test to the
  *                                     changed (Object, Object) method.
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Nov 29, 2013 2378       blawrenc    Added a mechanism for 
  *                                     keeping track of when an hazard
  *                                     event is modified. This is in place
@@ -151,8 +152,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public String getSubtype() {
-        return delegate.getSubtype();
+    public String getSubType() {
+        return delegate.getSubType();
     }
 
     @Override
@@ -241,7 +242,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void setSubtype(String subtype) {
+    public void setSubType(String subtype) {
         setSubtype(subtype, true);
     }
 
@@ -344,9 +345,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     protected void setSubtype(String subtype, boolean notify) {
-        if (changed(getSubtype(), subtype)) {
+        if (changed(getSubType(), subtype)) {
             if (eventManager.canChangeType(this)) {
-                delegate.setSubtype(subtype);
+                delegate.setSubType(subtype);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
                             eventManager, this));

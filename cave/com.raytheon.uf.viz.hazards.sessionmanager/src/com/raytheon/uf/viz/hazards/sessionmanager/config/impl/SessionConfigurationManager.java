@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Nov 23, 2013  1462      blawrenc    Changed default polygon border width from 1 to 3.
  * 
  *  
@@ -496,7 +497,7 @@ public class SessionConfigurationManager implements
     @Override
     public String getHeadline(IHazardEvent event) {
         return getHeadline(event.getPhenomenon(), event.getSignificance(),
-                event.getSubtype());
+                event.getSubType());
     }
 
     @Override
@@ -515,9 +516,9 @@ public class SessionConfigurationManager implements
                         continue;
                     }
                     if (str.length >= 3) {
-                        if (event.getSubtype() == null) {
+                        if (event.getSubType() == null) {
                             continue;
-                        } else if (!event.getSubtype().equals(str[2])) {
+                        } else if (!event.getSubType().equals(str[2])) {
                             continue;
                         }
                     }

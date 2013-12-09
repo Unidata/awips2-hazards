@@ -103,7 +103,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Nov 27, 2013  1462      bryon.lawrence      Added methods to support display
  *                                             of hazard hatch areas.
  * nov 29, 2013  2378      bryon.lawrence     Cleaned up methods which support proposing and issuing hazards.
- * 
+ * Dec 3, 2013   1472      bkowal              subtype field is now subType
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Dec 08, 2013 2539       bryon.lawrence     Updated to ensure current time 
  *                                            indicate immediately reflects
@@ -839,9 +839,9 @@ public final class HazardServicesMessageHandler implements
                     event.setPhenomenon(phenSig[0]);
                     event.setSignificance(phenSig[1]);
                     if (phenSig.length > 2) {
-                        event.setSubtype(phenSig[2]);
+                        event.setSubType(phenSig[2]);
                     } else {
-                        event.setSubtype(null);
+                        event.setSubType(null);
                     }
                 }
                 if (oldEvent != null) {

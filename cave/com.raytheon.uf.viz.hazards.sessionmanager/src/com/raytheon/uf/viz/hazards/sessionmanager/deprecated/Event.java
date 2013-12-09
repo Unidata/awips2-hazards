@@ -67,6 +67,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Aug 25, 2013 1264       Chris.Golden Added support for drawing lines and points.
  * Sep 05, 2013 1264       blawrenc    Added support geometries of any
  *                                     different type (Lineal, Puntal, Polygonal).
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * </pre>
  * 
  * @author bsteffen
@@ -166,7 +167,7 @@ public class Event {
         phen = event.getPhenomenon();
         sig = event.getSignificance();
 
-        subType = event.getSubtype();
+        subType = event.getSubType();
         if (subType == null) {
             subType = "";
         }
@@ -538,7 +539,7 @@ public class Event {
         event.setPhenomenon(phen);
         event.setSignificance(sig);
 
-        event.setSubtype(subType);
+        event.setSubType(subType);
 
         if (state != null) {
             event.setState(HazardState.valueOf(state.toUpperCase()));

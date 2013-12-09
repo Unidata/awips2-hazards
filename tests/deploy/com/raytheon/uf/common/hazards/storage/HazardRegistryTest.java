@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.hazards.storage;
 
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
@@ -35,13 +34,13 @@ import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 30, 2013            mnash     Initial creation
+ * Dec 3, 2013  1472       bkowal    Re-enable the test.
  * 
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-@Ignore
 public class HazardRegistryTest extends AbstractHazardStorageTest {
 
     @BeforeClass

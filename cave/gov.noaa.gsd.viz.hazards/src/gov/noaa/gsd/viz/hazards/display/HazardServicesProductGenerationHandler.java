@@ -50,6 +50,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013    2182    daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 21, 2013  2446      daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
+ * Dec 3, 2013   1472      bkowal      subtype field is now subType
  * 
  * </pre>
  * 
@@ -158,9 +159,9 @@ class HazardServicesProductGenerationHandler {
                     displayString.append(event.getPhenomenon());
                     displayString.append(".");
                     displayString.append(event.getSignificance());
-                    if (event.getSubtype() != null) {
+                    if (event.getSubType() != null) {
                         displayString.append(".");
-                        displayString.append(event.getSubtype());
+                        displayString.append(event.getSubType());
                     }
 
                     Choice choice = new Choice();
@@ -321,9 +322,9 @@ class HazardServicesProductGenerationHandler {
                 if (event.getSignificance() != null) {
                     eventDisplayString.append(".");
                     eventDisplayString.append(event.getSignificance());
-                    if (event.getSubtype() != null) {
+                    if (event.getSubType() != null) {
                         eventDisplayString.append(".");
-                        eventDisplayString.append(event.getSubtype());
+                        eventDisplayString.append(event.getSubType());
                     }
                 }
             }

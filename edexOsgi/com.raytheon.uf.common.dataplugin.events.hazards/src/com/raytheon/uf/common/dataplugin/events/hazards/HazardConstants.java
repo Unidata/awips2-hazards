@@ -41,6 +41,7 @@ import java.util.List;
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    More constants to help tidy the code
+ * Dec 2, 2013  1472      bkowal     subtype is now subType
  * 
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
@@ -265,7 +266,7 @@ public final class HazardConstants {
     /**
      * Sub-type key for hazard
      */
-    public static final String HAZARD_EVENT_SUB_TYPE = "subtype";
+    public static final String HAZARD_EVENT_SUB_TYPE = "subType";
 
     /**
      * Full type key for hazard

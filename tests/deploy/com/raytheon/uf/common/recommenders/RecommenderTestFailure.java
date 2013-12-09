@@ -42,6 +42,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 27, 2013            mnash     Initial creation
+ * Dec 3, 2013  1472       bkowal    Ignore entire class.
  * 
  * </pre>
  * 
@@ -49,10 +50,10 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
+@Ignore
 public class RecommenderTestFailure extends AbstractRecommenderTest {
 
     @Test
-    @Ignore
     public void run() {
         IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override

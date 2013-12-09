@@ -82,10 +82,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setSignificance(significance)
         
     def getSubtype(self):
-        return self.jobj.getSubtype()
+        return self.jobj.getSubType()
     
     def setSubtype(self, subtype):
-        self.jobj.setSubtype(subtype)
+        self.jobj.setSubType(subtype)
         
     def getIssueTime(self):
         return datetime.datetime.fromtimestamp(self.jobj.getIssueTime().getTime() / 1000.0)
@@ -155,7 +155,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setHazardState(HazardState.PENDING)
         self.setPhenomenon(javaClass.getPhenomenon())
         self.setSignificance(javaClass.getSignificance())
-        self.setSubtype(javaClass.getSubtype())
+        self.setSubtype(javaClass.getSubType())
         if javaClass.getIssueTime() is not None:
             self.setIssueTime(datetime.datetime.fromtimestamp(javaClass.getIssueTime().getTime() / 1000.0))
         else :

@@ -3,9 +3,9 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd   
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
   
-	<bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean" depends-on="RegistryReplicationManager">
+	<bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean" depends-on="RegistryFederationManager">
 		<property name="staticMethod"
-			value="com.raytheon.uf.edex.datadelivery.registry.replication.RegistryReplicationManager.addObjectTypesToSubscribeTo" />
+			value="com.raytheon.uf.edex.datadelivery.registry.federation.RegistryFederationManager.addObjectTypesToSubscribeTo" />
 		<property name="arguments">
 			<list>
 				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent</value>

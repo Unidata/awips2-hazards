@@ -28,7 +28,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/22/13                      mnash       Initial Creation.
-#    
+#    12/3/13         1472          bkowal      subtype is now subType in the Java
+#                                              representation of Hazard Event
 # 
 #
 
@@ -192,7 +193,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setState(self.hazardState)
         self.jobj.setPhenomenon(self.phenomenon)
         self.jobj.setSignificance(self.significance)
-        self.jobj.setSubtype(self.subtype)
+        self.jobj.setSubType(self.subtype)
         self.jobj.setIssueTime(self.issueTime)
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)

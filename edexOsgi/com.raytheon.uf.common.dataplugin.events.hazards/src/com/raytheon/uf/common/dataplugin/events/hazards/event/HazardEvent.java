@@ -50,7 +50,6 @@ import com.raytheon.uf.common.registry.annotations.SlotAttribute;
 import com.raytheon.uf.common.registry.annotations.SlotAttributeConverter;
 import com.raytheon.uf.common.registry.ebxml.slots.DateSlotConverter;
 import com.raytheon.uf.common.registry.ebxml.slots.GeometrySlotConverter;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.adapters.GeometryAdapter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -69,8 +68,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 16, 2012            mnash     Initial creation
+ * Aug 16, 2012            mnash       Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
  * 
  * </pre>
  * 
@@ -83,13 +83,10 @@ import com.vividsolutions.jts.geom.Geometry;
 @DynamicSerialize
 @RegistryObject({ HazardConstants.SITEID,
         HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUEID })
-public class HazardEvent implements IHazardEvent, ISerializableObject,
-        IValidator {
+public class HazardEvent implements IHazardEvent, IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardEvent.class);
-
-    private static final long serialVersionUID = 1L;
 
     @DynamicSerializeElement
     @XmlAttribute
@@ -136,7 +133,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
     @DynamicSerializeElement
     @XmlAttribute
     @SlotAttribute(HazardConstants.HAZARD_EVENT_SUB_TYPE)
-    private String subtype;
+    private String subType;
 
     @DynamicSerializeElement
     @XmlElement
@@ -196,7 +193,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
-        setSubtype(event.getSubtype());
+        setSubType(event.getSubType());
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
@@ -308,16 +305,16 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
      * @return subtype
      */
     @Override
-    public String getSubtype() {
-        return subtype;
+    public String getSubType() {
+        return subType;
     }
 
     /**
      * @param subtype
      */
     @Override
-    public void setSubtype(String subtype) {
-        this.subtype = subtype;
+    public void setSubType(String subType) {
+        this.subType = subType;
     }
 
     /**
@@ -588,7 +585,7 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
-        result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         result = prime * result
                 + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         return result;
@@ -681,11 +678,11 @@ public class HazardEvent implements IHazardEvent, ISerializableObject,
         if (state != other.state) {
             return false;
         }
-        if (subtype == null) {
-            if (other.subtype != null) {
+        if (subType == null) {
+            if (other.subType != null) {
                 return false;
             }
-        } else if (!subtype.equals(other.subtype)) {
+        } else if (!subType.equals(other.subType)) {
             return false;
         }
         if (uniqueID == null) {

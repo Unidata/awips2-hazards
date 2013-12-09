@@ -31,6 +31,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 26, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -248,12 +249,12 @@ public class HazardEventForAlertsTesting implements IHazardEvent {
     }
 
     @Override
-    public String getSubtype() {
+    public String getSubType() {
         return subtype;
     }
 
     @Override
-    public void setSubtype(String subtype) {
+    public void setSubType(String subtype) {
         this.subtype = subtype;
     }
 

@@ -38,7 +38,6 @@ import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.registry.annotations.SlotAttribute;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -54,8 +53,9 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 17, 2012            mnash     Initial creation
+ * Sep 17, 2012            mnash       Initial creation
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1472       bkowal      Remove ISerializableObject
  * 
  * </pre>
  * 
@@ -67,7 +67,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 @RegistryObject({ HazardConstants.HAZARD_EVENT_IDENTIFIER, "key" })
-public class HazardAttribute implements IHazardAttribute, ISerializableObject,
+public class HazardAttribute implements IHazardAttribute,
         IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus

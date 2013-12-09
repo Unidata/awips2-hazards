@@ -39,7 +39,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 1, 2012            mnash     Initial creation
+ * Oct 1, 2012             mnash       Initial creation
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -75,9 +76,9 @@ public interface IHazardEvent extends IEvent {
 
     public void setSignificance(String significance);
 
-    public String getSubtype();
+    public String getSubType();
 
-    public void setSubtype(String subtype);
+    public void setSubType(String subtype);
 
     public Date getIssueTime();
 

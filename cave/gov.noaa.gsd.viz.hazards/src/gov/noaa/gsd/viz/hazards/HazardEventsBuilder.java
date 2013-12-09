@@ -41,6 +41,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            daniel.s.schaffer      Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -102,7 +103,7 @@ public class HazardEventsBuilder {
                     event.setSignificance(value);
                 } else if (key.equals(HAZARD_EVENT_SUB_TYPE)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
-                    event.setSubtype(value);
+                    event.setSubType(value);
                 } else if (key.equals(HAZARD_EVENT_SHAPES)) {
                     List<Dict> shapes = eventDict
                             .getDynamicallyTypedValue(HAZARD_EVENT_SHAPES);

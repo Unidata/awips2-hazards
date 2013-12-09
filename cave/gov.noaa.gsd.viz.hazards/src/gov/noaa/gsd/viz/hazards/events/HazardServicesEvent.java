@@ -48,6 +48,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                             no longer extends 
  *                                             BaseHazardEvent.
  * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov 14, 2013 1472       bkowal              Renamed hazard subtype to subType
  * 
  * </pre>
  * 
@@ -105,7 +106,7 @@ public class HazardServicesEvent {
             } else if (key.equals(HazardConstants.HAZARD_EVENT_SIG)) {
                 baseEvent.setSignificance((String) attribute);
             } else if (key.equals(HazardConstants.HAZARD_EVENT_SUB_TYPE)) {
-                baseEvent.setSubtype((String) attribute);
+                baseEvent.setSubType((String) attribute);
             } else if (key.equals(HazardConstants.HAZARD_EVENT_START_TIME)) {
                 long startInMillis = ((Number) attribute).longValue();
                 Calendar cal = Calendar.getInstance();

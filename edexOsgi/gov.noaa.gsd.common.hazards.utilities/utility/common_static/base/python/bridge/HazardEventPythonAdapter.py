@@ -30,6 +30,8 @@ DEFAULT_POLYGON_BUFFER = 0.05
 #    Aug     2013           blawrenc                         Removed new_storeEvents and
 #                                                            eventDictsToHazardEvents. These
 #                                                            are not used.
+#    Dec 3, 2013      1472  bkowal                           subtype is now subType in the Java
+#                                                            hazard event.
 
 
 
@@ -50,12 +52,12 @@ def hazardHistoryConverter(obj):
         event[END_TIME] = toDate(javaEvent.getEndTime())
         event[PHENOMENON] = javaEvent.getPhenomenon()
         event[SIGNIFICANCE] = javaEvent.getSignificance()
-        event[SUBTYPE] = javaEvent.getSubtype()
+        event[SUBTYPE] = javaEvent.getSubType()
         
         #
         # The subtype is not guaranteed to always be present.
         if event[SUBTYPE] is not None and len(event[SUBTYPE]) > 0:
-            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubType()
         else:
             event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
             
@@ -86,11 +88,11 @@ def eventConverter(javaEvent):
         event[END_TIME] = toDate(javaEvent.getEndTime())
         event[PHENOMENON] = javaEvent.getPhenomenon()
         event[SIGNIFICANCE] = javaEvent.getSignificance()
-        event[SUBTYPE] = javaEvent.getSubtype()        
+        event[SUBTYPE] = javaEvent.getSubType()        
         #
         # The subType is not guaranteed to always be present.
         if event[SUBTYPE] is not None and len(event[SUBTYPE]) > 0:
-            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubtype()
+            event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance() + "." + javaEvent.getSubType()
         else:
             event[HAZARD_TYPE] = javaEvent.getPhenomenon() + "." + javaEvent.getSignificance()
             
