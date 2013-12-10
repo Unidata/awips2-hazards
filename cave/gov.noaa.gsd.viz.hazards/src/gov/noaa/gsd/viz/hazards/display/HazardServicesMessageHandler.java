@@ -443,6 +443,8 @@ public final class HazardServicesMessageHandler implements
 
         HashMap<String, Serializable> staticSettings = buildStaticSettings();
         eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
+        eventSet.addAttribute(HazardConstants.SITEID, sessionManager
+                .getConfigurationManager().getSiteID());
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
                 eventSet, asMap(spatialInfo), asMap(dialogInfo),

@@ -21,15 +21,9 @@ package com.raytheon.uf.edex.recommenders.handler;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.requests.ExecuteRecommenderRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.recommenders.EDEXRecommenderEngine;
-import com.raytheon.uf.edex.recommenders.EDEXRecommenderScriptManager;
 
 /**
  * Handles requests made to EDEX to run recommenders
@@ -51,13 +45,6 @@ import com.raytheon.uf.edex.recommenders.EDEXRecommenderScriptManager;
 public class RecommenderHandler implements
         IRequestHandler<ExecuteRecommenderRequest> {
 
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(RecommenderHandler.class);
-
-    private EventSet<IEvent> events;
-
-    private volatile boolean running;
-
     /*
      * (non-Javadoc)
      * 
@@ -68,32 +55,11 @@ public class RecommenderHandler implements
     @Override
     public Object handleRequest(final ExecuteRecommenderRequest request)
             throws Exception {
-        AbstractRecommenderEngine<EDEXRecommenderScriptManager> engine = new EDEXRecommenderEngine();
-        IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
-
-            @Override
-            public void jobFinished(EventSet<IEvent> result) {
-                events = result;
-                running = false;
-            }
-
-            @Override
-            public void jobFailed(Throwable e) {
-                statusHandler.handle(Priority.ERROR,
-                        "Recommender " + request.getRecommenderName()
-                                + " failed to successfully run.");
-                running = false;
-            }
-        };
+        EDEXRecommenderEngine engine = new EDEXRecommenderEngine();
         EventSet<IEvent> eventSet = new EventSet<IEvent>();
-        eventSet.addAttribute("site", request.getSite());
+        eventSet.addAttribute("siteID", request.getSite());
         eventSet.addAttribute("timeRange", request.getTimeRange());
-        // TODO, we need to return good values here.
-        engine.runExecuteRecommender(request.getRecommenderName(), eventSet,
-                null, null, listener);
-        while (running) {
-            // wait
-        }
-        return events;
+        return engine.runRecommender(request.getRecommenderName(), eventSet,
+                null, null);
     }
 }
