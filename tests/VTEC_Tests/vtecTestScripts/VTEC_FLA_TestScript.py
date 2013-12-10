@@ -33,7 +33,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0000Z.130117T0000Z.130117T1200Z.NO/"
                      ],
     },
-
+ 
     {
     "commentary": "Update prior to event starting, adjustments in crest time",
     "name": "FLA_1b",
@@ -51,7 +51,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.NO/"
                      ],
     },
-
+ 
     {
     "commentary": "Update after event starting",
     "name": "FLA_1c",
@@ -69,7 +69,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.NO/"
                      ],
     },
-
+ 
     {
     "commentary": "Adjusting time of FL.A",
     "name": "FLA_1d",
@@ -87,7 +87,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.UU/"
                      ],
     },
-
+ 
     {
     "commentary": "Cancelling FL.A",
     "name": "FLA_1e",
@@ -106,7 +106,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.UU/"
                      ],
     },
-
+ 
     {
     "commentary": "Expiring FL.A prior to event end",
     "name": "FLA_1f",
@@ -125,7 +125,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.UU/"
                      ],
     },
-
+ 
     {
     "commentary": "Expiring FL.A after event end",
     "name": "FLA_1g",
@@ -143,7 +143,7 @@ scripts = [
                      "/DTXA6.0.ER.130117T0100Z.130117T0200Z.130117T1200Z.UU/"
                      ],
     },
-
+ 
     {
     "commentary": "Issue 2 FL.A",
     "name": "FLA_2a",
@@ -169,7 +169,7 @@ scripts = [
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
     },
-
+ 
     {
     "commentary": "Both CON, before event starts",
     "name": "FLA_2b",
@@ -195,7 +195,7 @@ scripts = [
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
     },
-
+ 
     {
     "commentary": "Both CON, when 1st event starts",
     "name": "FLA_2c",
@@ -220,9 +220,9 @@ scripts = [
                      "/O.CON.KTBW.FL.A.0003.130120T0000Z-130121T0000Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
+ 
     {
     "commentary": "Adjust times of both events, while only 1 is active",
     "name": "FLA_2d",
@@ -247,10 +247,10 @@ scripts = [
                      "/O.EXT.KTBW.FL.A.0003.130120T0000Z-130121T0600Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Adjust times of both events, while both are active",
     "name": "FLA_2e",
@@ -275,9 +275,9 @@ scripts = [
                      "/O.EXT.KTBW.FL.A.0002.000000T0000Z-130120T2100Z/",
                      "/DXCT3.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
+ 
     {
     "commentary": "Adjust time of just one event, while active",
     "name": "FLA_2f",
@@ -302,10 +302,10 @@ scripts = [
                      "/O.CON.KTBW.FL.A.0002.000000T0000Z-130120T2100Z/",
                      "/DXCT3.0.ER.130120T0600Z.130120T1900Z.130120T2200Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Cancel one event, while still active. Ignore the other.",
     "name": "FLA_2g",
@@ -323,10 +323,10 @@ scripts = [
                      "/O.CAN.KTBW.FL.A.0002.000000T0000Z-130120T2100Z/",
                      "/DXCT3.0.ER.130120T0600Z.130120T1900Z.130120T2200Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Update the remaining event",
     "name": "FLA_2h",
@@ -344,10 +344,10 @@ scripts = [
                      "/O.CON.KTBW.FL.A.0003.000000T0000Z-130121T1200Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Allow to expire, just before event end",
     "name": "FLA_2i",
@@ -366,10 +366,10 @@ scripts = [
                      "/O.EXP.KTBW.FL.A.0003.000000T0000Z-130121T1200Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Allow to expire, at event end",
     "name": "FLA_2j",
@@ -388,10 +388,10 @@ scripts = [
                      "/O.EXP.KTBW.FL.A.0003.000000T0000Z-130121T1200Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
-
-
+ 
+ 
     {
     "commentary": "Allow to expire, after event end",
     "name": "FLA_2j",
@@ -409,7 +409,7 @@ scripts = [
                      "/O.EXP.KTBW.FL.A.0003.000000T0000Z-130121T1200Z/",
                      "/SAVT1.0.ER.130120T0600Z.130120T1800Z.130120T2300Z.NO/",
                      ],
-
+ 
     },
 
     {
@@ -423,7 +423,7 @@ scripts = [
    ]
 
        
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     defaults = {
         "decodeVTEC": 1,

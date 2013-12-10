@@ -285,7 +285,7 @@ public class ObservedSettings extends Settings {
         Map<String, HazardCategoryAndTypes> typeMap = new HashMap<String, HazardCategoryAndTypes>();
         for (String type : getVisibleTypes()) {
             IHazardEvent event = new BaseHazardEvent();
-            HazardEventUtilities.populateEventForPhenSigSubtype(event, type);
+            HazardEventUtilities.populateEventForHazardType(event, type);
             String cat = configManager.getHazardCategory(event);
             HazardCategoryAndTypes hcat = typeMap.get(cat);
             if (hcat == null) {

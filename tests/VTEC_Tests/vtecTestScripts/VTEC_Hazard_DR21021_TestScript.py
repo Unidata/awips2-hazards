@@ -18,7 +18,7 @@ scripts = [
          ],
     "clearHazardsTable": 1,
     },
-
+ 
     {    
     "name":"TAE_DR21021_2", 
     "productType": "HLS",
@@ -33,7 +33,7 @@ scripts = [
       (0, 24, "TR.W", ["GMZ830"]),
          ],
     },
-
+ 
     {    
     "name":"TAE_DR21021_3", 
     "productType": "HLS",
@@ -46,7 +46,7 @@ scripts = [
     "createGrids": [
       ],
     },
-
+ 
     {    
     "name":"TAE_DR21021_4", 
     "productType": "HLS",
@@ -63,7 +63,7 @@ scripts = [
       "GMZ830-850-853-856-",
       "/O.NEW.KTBW.TR.W.0002.100401T0000Z-000000T0000Z/",
       ],
-
+ 
     "createGrids": [
       (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ856"]),
       (0, 24, "HU.W", ["GMZ873","GMZ870"]),
@@ -71,7 +71,7 @@ scripts = [
       (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1011}),
       ],
     },
-
+ 
     {    
     "name":"TAE_DR21021_5", 
     "productType": "HLS",
@@ -95,7 +95,7 @@ scripts = [
       (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1011}),
       ],
     },
-
+ 
     {    
     "name":"TAE_DR21021_6", 
     "productType": "HLS",
@@ -119,7 +119,7 @@ scripts = [
       (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ873","GMZ856","GMZ870"]),
       ],
     },
-
+ 
     {    
     "name":"TAE_DR21021_7, MOB_DR21021_1", 
     "productType": None,
@@ -144,24 +144,24 @@ scripts = [
       ],
     },
 
-    {    
-    "name":"MOB_DR21021_3", 
-    "productType": "HLS",
-    "drtTime": "20101108_2349",
-    "gridsStartTime": "20101108_2200",
-    "commentary": "MOB test - adding marine HU.A",
-    "checkStrings": [
-      "GMZ850-853-870-876-",
-      "/O.NEW.KTBW.HU.A.0001.101108T2349Z-000000T0000Z/",
-      "FLZ039-042-043-048>050-",
-      "/O.CON.KTBW.HU.A.1011.000000T0000Z-000000T0000Z/",
-      ],
-
-    "createGrids": [
-      (0, 24, "HU.A", ["FLZ048","FLZ049", "FLZ039", "FLZ042", "FLZ043","FLZ050"], {'forceEtn': 1011}),
-      (24, 48, "HU.A", ["GMZ850", "GMZ853","GMZ870","GMZ876"]),
-      ],
-    },
+#     {    
+#     "name":"MOB_DR21021_3", 
+#     "productType": "HLS",
+#     "drtTime": "20101108_2349",
+#     "gridsStartTime": "20101108_2200",
+#     "commentary": "MOB test - adding marine HU.A",
+#     "checkStrings": [
+#       "GMZ850-853-870-876-",
+#       "/O.NEW.KTBW.HU.A.0001.101108T2349Z-000000T0000Z/",
+#       "FLZ039-042-043-048>050-",
+#       "/O.CON.KTBW.HU.A.1011.000000T0000Z-000000T0000Z/",
+#       ],
+#  
+#     "createGrids": [
+#       (0, 24, "HU.A", ["FLZ048","FLZ049", "FLZ039", "FLZ042", "FLZ043","FLZ050"], {'forceEtn': 1011}),
+#       (24, 48, "HU.A", ["GMZ850", "GMZ853","GMZ870","GMZ876"]),
+#       ],
+#     },
 
     {    
     "name":"MOB_DR21021_4", 
@@ -173,7 +173,7 @@ scripts = [
     },
     ]
 
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     gridsStartTime = "20100601_0400"
     drtTime = "20100601_0800"

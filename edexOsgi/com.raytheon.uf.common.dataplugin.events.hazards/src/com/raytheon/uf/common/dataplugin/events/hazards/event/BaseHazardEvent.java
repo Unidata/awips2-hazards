@@ -48,7 +48,7 @@ import com.vividsolutions.jts.io.WKTReader;
  * ------------ ---------- ----------- --------------------------
  * Jan 24, 2013            mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
- * 
+ * Dec    2013  2368       thansen   Added getHazardType
  * 
  * </pre>
  * 
@@ -198,6 +198,11 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public void setSubType(String subtype) {
         this.subtype = subtype;
+    }
+
+    @Override
+    public String getHazardType() {
+        return HazardEventUtilities.getHazardType(this);
     }
 
     @Override

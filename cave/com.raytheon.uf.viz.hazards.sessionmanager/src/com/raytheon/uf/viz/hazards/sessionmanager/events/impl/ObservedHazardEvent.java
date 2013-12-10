@@ -32,6 +32,7 @@ import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -154,6 +155,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public String getSubType() {
         return delegate.getSubType();
+    }
+
+    @Override
+    public String getHazardType() {
+        return HazardEventUtilities.getHazardType(this);
     }
 
     @Override

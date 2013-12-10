@@ -1,11 +1,17 @@
-"""
-Python wrapper for the Java version of the river flood recommender.
+'''
+Description: Python wrapper for the Java version of the river flood recommender.
 Enables the flood recommender to be run from the python
 recommender framework
 
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
+    
 @since: November 2012
 @author: GSD Hazard Services Team
-"""
+'''
 import datetime
 import EventFactory
 import GeometryFactory
@@ -138,18 +144,18 @@ def applySideEffects(triggerIdentifier, mutableProperties):
     def toString(self):
         return "RiverFloodRecommender"
     
-    def getFloodPolygonForRiverPointHazard(self, eventDict):
+    def getFloodPolygonForRiverPointHazard(self, hazardEvent):
         """
         Returns a user-defined flood hazard polygon for 
         a river forecast point flood hazard. The base version
         of this tool does nothing. It is up to the implementer
         to override this method.
         
-        @param  eventDict: An event dict corresponding to 
+        @param  hazardEvent: A hazard event corresponding to 
                            a river forecast point flood 
                            hazard
         """
-        attributesDict = eventDict.getHazardAttributes()
+        attributesDict = hazardEvent.getHazardAttributes()
         id = attributesDict.get(POINT_ID)
 
         #
@@ -170,13 +176,14 @@ def applySideEffects(triggerIdentifier, mutableProperties):
             geometryList.append(geometry)      
             
         multiPolygon = GeometryFactory.createMultiPolygon(geometryList, 'polygons')
-        eventDict.setGeometry(multiPolygon)
+        hazardEvent.setGeometry(multiPolygon)
             
-    def addFloodPolygons(self, eventDicts):
+    def addFloodPolygons(self, hazardEvents):
         """
         Inserts flood polygons for each river forecast point
         flood hazard, if they are available.
         """
-        if eventDicts is not None:
-            for eventDict in eventDicts:
-                self.getFloodPolygonForRiverPointHazard(eventDict)
+        if hazardEvents is not None:
+            for hazardEvent in hazardEvents:
+                self.getFloodPolygonForRiverPointHazard(hazardEvent)
+        

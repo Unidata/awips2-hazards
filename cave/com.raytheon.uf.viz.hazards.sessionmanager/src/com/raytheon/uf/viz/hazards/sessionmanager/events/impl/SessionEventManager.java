@@ -179,7 +179,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             } else if (!siteIDs.contains(event.getSiteID())) {
                 it.remove();
             } else {
-                String key = HazardEventUtilities.getPhenSigSubType(event);
+                String key = HazardEventUtilities.getHazardType(event);
                 /*
                  * Check for null key ensures we don't filter out events for
                  * which a type has not yet been defined.
@@ -558,7 +558,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (hasEverBeenIssued(event)) {
             HazardTypes hts = configManager.getHazardTypes();
             HazardTypeEntry ht = hts.get(HazardEventUtilities
-                    .getPhenSigSubType(event));
+                    .getHazardType(event));
             if (ht != null) {
                 if (!ht.isAllowAreaChange()) {
                     return false;
@@ -573,7 +573,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (hasEverBeenIssued(event)) {
             HazardTypes hts = configManager.getHazardTypes();
             HazardTypeEntry ht = hts.get(HazardEventUtilities
-                    .getPhenSigSubType(event));
+                    .getHazardType(event));
             if (ht != null) {
                 if (!ht.isAllowTimeChange()) {
                     return false;
@@ -622,7 +622,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
                     eventToCheck.getEndTime(), eventToCheck.getGeometry(),
-                    HazardEventUtilities.getPhenSigSubType(eventToCheck));
+                    HazardEventUtilities.getHazardType(eventToCheck));
 
             if (!conflictingHazards.isEmpty()) {
                 conflictingHazardMap.put(eventToCheck.getEventID(),
@@ -651,7 +651,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
                     eventToCheck.getEndTime(), eventToCheck.getGeometry(),
-                    HazardEventUtilities.getPhenSigSubType(eventToCheck));
+                    HazardEventUtilities.getHazardType(eventToCheck));
 
             if (!conflictingHazards.isEmpty()) {
                 conflictingHazardMap.put(eventToCheck, conflictingHazards);
@@ -756,7 +756,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                     eventToCompare.getEventID())) {
 
                                 String otherEventPhenSigSubtype = HazardEventUtilities
-                                        .getPhenSigSubType(eventToCheck);
+                                        .getHazardType(eventToCheck);
 
                                 if (hazardConflictList
                                         .contains(otherEventPhenSigSubtype)) {

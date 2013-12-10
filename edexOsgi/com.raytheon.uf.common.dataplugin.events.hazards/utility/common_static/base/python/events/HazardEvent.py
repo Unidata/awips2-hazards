@@ -60,6 +60,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setEventID(self, eventId):
         self.jobj.setEventID(eventId)
     
+    def getState(self):
+        return self.getHazardState()
+    
+    def setState(self, hazardState):
+        self.setHazardState(hazardState)
+
     def getHazardState(self):
         return self.jobj.getState().name()
     
@@ -69,7 +75,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         else :
             self.jobj.setState(HazardState.PENDING)
             
-    def getPhenomemon(self):
+    def getPhenomenon(self):
         return self.jobj.getPhenomenon()
     
     def setPhenomenon(self, phenomenon):
@@ -86,6 +92,9 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setSubtype(self, subtype):
         self.jobj.setSubType(subtype)
+        
+    def getHazardType(self):
+        return self.jobj.getHazardType()
         
     def getIssueTime(self):
         return datetime.datetime.fromtimestamp(self.jobj.getIssueTime().getTime() / 1000.0)
@@ -138,7 +147,33 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setHazardAttributes(self, hazardAttributes):
         self.jobj.setHazardAttributes(JUtil.pyValToJavaObj(hazardAttributes))
+
+    def get(self, key, default=None):
+        '''
+         Get the value of the hazard attribute with given key.
+         '''
+        value = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
+        if not value:
+            value = default
+        return value
     
+    def set(self, key, value):
+        '''
+        Set the hazard attribute with given key to given value.
+        '''
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(value))
+
+    def addToList(self, key, value):
+        '''
+        The equivalent of hazardAttributes.setdefault(key, []).append(value)
+        '''
+        currentVal = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
+        if currentVal:
+            newVal = currentVal.append(value)
+        else:
+            newVal = [value]
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(newVal))
+               
     def _getMillis(self, date):
         epoch = datetime.datetime.utcfromtimestamp(0)
         delta = date - epoch

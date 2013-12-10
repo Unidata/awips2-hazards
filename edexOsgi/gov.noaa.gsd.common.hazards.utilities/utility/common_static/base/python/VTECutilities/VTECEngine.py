@@ -1,3 +1,5 @@
+'''
+    Description: 
 #------------------------------------------------------------------
 #  VTEC Engine
 #------------------------------------------------------------------
@@ -5,6 +7,15 @@
 # the currently active events, and calculates the proper VTEC to
 # determine the segments, VTEC codes, HVTEC codes, and vtecRecords.
 #------------------------------------------------------------------
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
+    
+    @author Mark Mathewson / Tracy.L.Hansen@noaa.gov
+    @version 1.0
+'''
 import cPickle, os, types, string, copy
 import sys, gzip, time
 import collections
@@ -23,7 +34,7 @@ ZCSort = collections.namedtuple('ZCSort', 'vtecRecords zoneCombo')
 
 class VTECEngine(VTECTableUtil):
 
-    def __init__(self, productCategory, siteID4, eventDicts,
+    def __init__(self, productCategory, siteID4, hazardEvents,
       rawVtecRecords, vtecDefinitions, allowedHazards,
       vtecMode, creationTime=None, limitGeoZones=None):
 
@@ -37,7 +48,7 @@ class VTECEngine(VTECTableUtil):
         productCategory -- identifier for the product, which must match a 
           key in the ProductGeneratorTable.
         siteID4 -- identifier for the site, such as KBOU
-        eventDicts -- list of event dictionaries containing the hazard records.
+        hazardEvents -- list of hazard events.
           All times within the records are in units of milliseconds since epoch
           of Jan 1 1970 at 0000Z.  This is changed on input to seconds.
         rawVtecRecords -- current active vtec records from the database.
@@ -65,23 +76,14 @@ class VTECEngine(VTECTableUtil):
         self._vtecMode = vtecMode
         self._etnCache = {}
         
-        # Change the times in the eventDicts from milliseconds to seconds
-        newEventDicts = copy.deepcopy(eventDicts)
-        for eventDict in newEventDicts:
-            for key in ['startTime', 'endTime', 'riseAbove', 'crest', 'fallBelow']:
-                value = eventDict.get(key)
-                if value:
-                    eventDict[key] = value/1000
-        eventDicts = newEventDicts
-
         # determine appropriate VTEC lifecycle, based on event dicts,
         # and the hazards table.  All hazard records provided must equate
         # to the same segmentation technique.
-        combinableSegments = self._determineSegmentationBehavior(eventDicts)
+        combinableSegments = self._determineSegmentationBehavior(hazardEvents)
 
         # determine the type of data (geoType).  All hazard records provided
         # must equate to using the same geoType ('area', 'line', or 'point')
-        self._geoType = self._determineGeoType(eventDicts)
+        self._geoType = self._determineGeoType(hazardEvents)
 
         # filter the allowedHazards down to just those appropriate, based on
         # the phen.sig combinableSegments.  This will let us eliminate those
@@ -133,7 +135,7 @@ class VTECEngine(VTECTableUtil):
 
         # sample, and merge vtec codes
         proposed, zonesP, limitEventIDs, endedEventIDs = \
-          self._getProposedTable(eventDicts, limitGeoZones,
+          self._getProposedTable(hazardEvents, limitGeoZones,
           combinableSegments)
 
         self._allGEOVtecRecords, self._activeVtecRecords, zonesA = \
@@ -260,21 +262,21 @@ class VTECEngine(VTECTableUtil):
         '''
         return self._vtecDef.hazards[hazardType]['allowTimeChange']
 
-    def _determineSegmentationBehavior(self, eventDicts):
+    def _determineSegmentationBehavior(self, hazardEvents):
         '''Determine appropriate VTEC segmentation behavior, based on
-        event dicts and the hazards table.  Ensures that all records in the
-        eventDicts use the same segmentation behavior or an exception is
+        hazardEvents and the hazards table.  Ensures that all records in the
+        hazardEvents use the same segmentation behavior or an exception is
         thrown.
 
         Keyword Arguments:
-        eventDicts -- list of hazard event dictionaries. 
+        hazardEvents -- list of hazard event dictionaries. 
 
         Returns True if the segments/hazards are combinable.
         '''
         try:
-            hazardTypes = set([e['type'] for e in eventDicts])
+            hazardTypes = set([e.getHazardType() for e in hazardEvents])
         except KeyError:
-            raise Exception("'type' field missing in eventDict")
+            raise Exception("Hazard Type field missing in hazardEvent")
 
         try:
             combinableSegments = set([self._vtecDef.hazards[ht]['combinableSegments']
@@ -297,27 +299,27 @@ class VTECEngine(VTECTableUtil):
             combinableSegments = list(combinableSegments)[0]
         return combinableSegments
 
-    def _determineGeoType(self, eventDicts):
+    def _determineGeoType(self, hazardEvents):
         '''Determines the geoType for the VTECEngine run.
 
         Keyword Arguments:
-        eventDicts - list of event hazard dictionaries.
+        hazardEvents - list of event hazard dictionaries.
 
         Returns the geoType for this engine run.  Throws exception if not
         determined.
         '''
 
         try:
-            geoTypes = set([e['geoType'] for e in eventDicts])
+            geoTypes = set([e.get('geoType') for e in hazardEvents])
         except KeyError:
-            raise Exception("'geoType' missing from eventDict record")
+            raise Exception("'geoType' missing from hazardEvent record")
 
         # extract the 1st one out, otherwise choose a default.
         # Verify that multiple geoTypes are not present.
         if len(geoTypes) == 1:
             return list(geoTypes)[0]
         elif len(geoTypes) == 0:
-            return 'area'  # if no eventDicts, then assume 'area'
+            return 'area'  # if no hazardEvents, then assume 'area'
         else:
             raise Exception('Multiple geoTypes detected {}'.format(geoTypes))
 
@@ -503,7 +505,7 @@ class VTECEngine(VTECTableUtil):
         return 0
 
     def _vtecRecordsGroupSort(self, a, b):
-        ''' Comparison routine for two eventDict records.
+        ''' Comparison routine for two hazardEvent records.
 
         Keyword Arguments:
         a -- object A for compare
@@ -1013,11 +1015,11 @@ class VTECEngine(VTECTableUtil):
         out = [(frozenset(zones), frozenset(eids)) for zones, eids in outCombo]
         return out
 
-    def _getProposedTable(self, eventDicts, limitGeoZones, combinableSegments):
+    def _getProposedTable(self, hazardEvents, limitGeoZones, combinableSegments):
         '''Calculates and returns the proposed vtec tables.
 
         Keyword Arguments:
-        eventDicts -- list of dictionaries representing the proposed events.
+        hazardEvents -- list of objects representing the proposed events.
         limitGeoZones -- None for no limits, otherwise a list of geographical
           descriptors which limit the hazards to be processed to just those
           zones.
@@ -1031,8 +1033,8 @@ class VTECEngine(VTECTableUtil):
         '''
         
         # Convert events to VTEC Records
-        LogStream.logDebug('EventDicts: ', eventDicts)
-        atable = self._convertEventsToVTECrecords(eventDicts)
+        LogStream.logDebug('HazardEvents: ', hazardEvents)
+        atable = self._convertEventsToVTECrecords(hazardEvents)
         
         LogStream.logDebug('Proposed Table length: ', len(atable), atable)
         LogStream.logDebug('Sampled Proposed Table:\n', 
@@ -1073,10 +1075,10 @@ class VTECEngine(VTECTableUtil):
         # make a list of those events that have been marked as 'ended'
        ## or has an ending time now or earlier than now
         endedEventIDs = set([a['eventID'] for a in atable
-          if a.get('state') == 'ended'])
+          if a.get('state') == 'ENDED'])
 
         # strip out all ended events from proposed
-        atable = [a for a in atable if a.get('state') != 'ended']
+        atable = [a for a in atable if a.get('state') != 'ENDED']
 
         # clear the h-vtec and p-vtec strings
         for a in atable:
@@ -1160,29 +1162,29 @@ class VTECEngine(VTECTableUtil):
         return allGEOVtecRecords, actTable, zones
 
     #--------------------------------------------------------------
-    # The following methods sample EventDicts, obtain the active
+    # The following methods sample HazardEvents, obtain the active
     # table,  and create the analyzed table (including injecting 
     # the vtec strings into the table.  
     #--------------------------------------------------------------
 
-    def _convertEventsToVTECrecords(self, eventDicts):
-        '''Create proposed table from eventDicts.
+    def _convertEventsToVTECrecords(self, hazardEvents):
+        '''Create proposed table from hazardEvents.
 
         Keyword Arguments:
-        @eventDicts -- list of eventDict dictionaries.
+        @hazardEvents -- list of hazardEvent dictionaries.
 
         Returns list of vtec records representing the hazard events that are
         proposed.
         '''
 
         rval = []
-        for phd in eventDicts:
+        for hazardEvent in hazardEvents:
 
-            if phd.get('siteID') != self._siteID4:
+            if hazardEvent.get('siteID4') != self._siteID4:
                 continue   #not for this site
 
             # hazard type
-            key = phd['type']    #form XX.Y where XX is phen
+            key = hazardEvent.getHazardType()    #form XX.Y where XX is phen
             keyParts = key.split('.')
             phen = keyParts[0]
             sig = keyParts[1]   #form XX.Y where Y is sig
@@ -1191,25 +1193,25 @@ class VTECEngine(VTECTableUtil):
             except IndexError:
                 subtype = ''
 
-            geoType = phd.get('geoType')
+            geoType = hazardEvent.get('geoType')
             if geoType in ['area', 'line']:
-                areas = phd['ugcs']
+                areas = hazardEvent.get('ugcs')
             elif geoType == 'point':
-                areas = [phd['pointID']]
+                areas = [hazardEvent.get('pointID')]
             else:
                 raise Exception("Unknown geoType 'type'".format(geoType))
 
-            eventID = phd['eventID']
+            eventID = hazardEvent.getEventID()
 
-            # capture any h-vtec from the EventDicts
+            # capture any h-vtec from the HazardEvents
             hvtec = {}
             for p in ['floodSeverity', 'immediateCause', 'floodRecord',
               'riseAbove', 'crest', 'fallBelow', 'pointID']:
-                hvtec[p] = phd.get(p) 
+                hvtec[p] = hazardEvent.get(p) 
             if set(hvtec.values()) == set([None]):
                 hvtec = None   # no vtec entries defined.
 
-            #create the proposed dictionary for this EventDict.
+            #create the proposed dictionary for this HazardEvent.
             for areaID in areas:
                 d = {}
                 d['eventID'] = eventID
@@ -1217,26 +1219,26 @@ class VTECEngine(VTECTableUtil):
                 d['officeid'] = self._siteID4
                 d['key'] = key   #such as TO.W
 
-                if phd.get('state'):
-                    d['state'] = phd['state']
+                if hazardEvent.getState():
+                    d['state'] = hazardEvent.getState()
 
                 d['hvtec'] = hvtec
 
-                d['startTime'] = float(phd['startTime'])
+                d['startTime'] = float(time.mktime(hazardEvent.getStartTime().timetuple()))
 
-                d['endTime'] = float(phd['endTime'])
+                d['endTime'] = float(time.mktime(hazardEvent.getEndTime().timetuple()))
 
                 d['act'] = '???'   #Determined after merges
-                d['etn'] = phd.get('forceEtn', '???')
-                d['seg'] = phd.get('forceSeg', 0)
+                d['etn'] = hazardEvent.get('forceEtn', '???')
+                d['seg'] = hazardEvent.get('forceSeg', 0)
                 d['phen'] = phen    #form XX.Y where XX is phen
                 d['sig'] = sig   #form XX.Y where Y is sig
                 d['phensig'] = phen+'.'+sig
                 d['subtype'] = subtype
                 d['hdln'] = self._vtecDef.hazards[key]['headline']
-                d['ufn'] = phd.get('ufn', 0)
+                d['ufn'] = hazardEvent.get('ufn', 0)
                 if geoType == 'point':
-                    d['pointID'] = phd.get('pointID')
+                    d['pointID'] = hazardEvent.get('pointID')
 
                 rval.append(d)
                 
@@ -1250,7 +1252,7 @@ class VTECEngine(VTECTableUtil):
                 proposed['ufn'] = 1  #until further notice
 
             # these events are forced to be until further notice. Leave
-            # starting time as specified in the eventDict.
+            # starting time as specified in the hazardEvent.
             elif proposed['ufn'] == 1:
                 proposed['endTime'] = float(2**31-1) #*1000  #forever
                 proposed['ufn'] = 1  #until further notice

@@ -1,16 +1,23 @@
 #!/usr/bin/env python
 
-#---------------------------------------------------------------
-# TEST HARNESS FOR VTECEngine and VTECIngester
-#---------------------------------------------------------------
-
-# This code will have to be modified to work in the Hazard Services environment
-# as it doesn't use the bridge.
+'''
+    Description: 
+#------------------------------------------------------------------
+#  TEST HARNESS FOR VTECEngine and VTECIngester
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    Dec      2013  2368      Tracy.L.Hansen      Removing use of Bridge
+    
+    @author Mark Mathewson / Tracy.L.Hansen@noaa.gov
+    @version 1.0
+'''
 
 from VTECEngineWrapper import VTECEngineWrapper
 from VTECTableIO import VTECTableIO
 import Logger as LS
-from Bridge import Bridge
+from HazardEvent import HazardEvent
 
 import copy
 import calendar
@@ -21,6 +28,7 @@ import re
 import argparse
 import TestScript
 import collections
+import datetime
 
 # IMPORTANT TO HAVE ROUTINES RUNNING IN GMT0 TIME or the VTECEngine will fail.
 os.environ["TZ"] = "GMT0"
@@ -34,10 +42,18 @@ HVTECre = r'/[0-9A-Z]{5}\.[0-3NU]\.[A-Z]{2}\.' + \
           r'[0-9]{6}T[0-9]{4}Z\.' + \
           r'[0-9]{6}T[0-9]{4}Z\.[0-9]{6}T[0-9]{4}Z\.[A-Z][A-Z]/'
 
-
 # THIS CODE USES THE vtec records directly through the use of the VTECTableIO
 # class. The location is defined in the test version of the VTECEngineWrapper.
-       
+user = os.environ['USER']
+try:
+    os.makedirs("/tmp/"+user)
+except:
+    pass
+DBPATH="/tmp/"+user+"/vtecRecords.db"
+#DBPATH="/tmp/vtecRecords.db"
+#os.system("touch "+DBPATH)
+#os.chmod(DBPATH, 0666)
+        
 class VTECTestHarness(object):
 
     def __init__(self, scriptName, scripts):
@@ -50,8 +66,7 @@ class VTECTestHarness(object):
         '''
         self._scriptName = scriptName
         self._scripts = scripts
-        #self._io = VTECTableIO(DBPATH)        
-        self.bridge = Bridge()
+        self._io = VTECTableIO(DBPATH)        
 
     def runTest(self):
         '''Runs the VTEC test.  Returns True/False depending upon success'''
@@ -59,10 +74,8 @@ class VTECTestHarness(object):
         LS.logVerbose("TEST STARTED:  {script}".format(script=self._scriptName))
 
         # we clear the hazards table initially
-        #self._io.writeVtecRecords([])
-        self.bridge.putData('{"dataType":"testVtecRecords", "vtecDicts": []}')
+        self._io.writeVtecRecords([])
         
-
         for script in self._scripts:
             calculated = self._runEachIndividualTest(script)
             if calculated:
@@ -76,16 +89,16 @@ class VTECTestHarness(object):
         LS.logVerbose("TEST FINISHED: {script}".format(script=self._scriptName))
         return True
 
-    def _createEventDicts(self, script):
-        '''creates EventDict records from the test script.
+    def _createHazardEvents(self, script):
+        '''creates pure Python HazardEvents from the test script.
 
         Keyword Arguments:
         script -- list of dictionaries defining the test case.
 
-        Returns a list of EventDicts (dictionaries)
+        Returns a list of HazardEvents
         '''
 
-        eventDicts = []
+        hazardEvents = []
 
         # calculate the grids start time and drt time
         gridsStartTime = self._getIntTime(script["gridsStartTime"])
@@ -93,8 +106,7 @@ class VTECTestHarness(object):
         geoType = script.get('geoType', 'area')
 
         # set the default
-        base = {'siteID': 'KTBW', 'eventID': 0, 'state': 'issued',
-          'geoType': geoType}
+        base = {'siteID4': 'KTBW', 'geoType': geoType}
         grids = script.get('createGrids', [])
         for gentry in grids:
             try:
@@ -103,19 +115,27 @@ class VTECTestHarness(object):
                 t1, t2, value, zones = gentry
                 other = None
 
-            # populate the basic eventDict, add the geoIDs
-            event = copy.deepcopy(base)
+            # populate the basic HazardEvent, add the geoIDs
+            event = HazardEvent()
+            event.setHazardAttributes({})
+            event.setEventID('0')
+            event.setState("ISSUED")
+            attributes = copy.deepcopy(base)
             if geoType == 'area':
-                event['ugcs'] = zones
+                attributes['ugcs'] = zones
             elif geoType == 'point':
-                event['pointID'] = zones[0]
+                attributes['pointID'] = zones[0]
 
             # hazard type
-            event['type'] = value
+            parts = value.split(".")
+            event.setPhenomenon(parts[0])
+            event.setSignificance(parts[1])
+            if len(parts) > 2:
+                event.setSubtype(parts[2])
 
             # calculate the starting and ending times
-            event['startTime'] = (gridsStartTime + t1 * 3600) * 1000  #Millisec
-            event['endTime'] = (gridsStartTime + t2 * 3600) * 1000  #Millisec
+            event.setStartTime(datetime.datetime.fromtimestamp(gridsStartTime + t1 * 3600))  # sec
+            event.setEndTime(datetime.datetime.fromtimestamp(gridsStartTime + t2 * 3600))  # sec
 
             # if an optional dictionary is declared in the test case, then
             # extract those values and make them keys in the EventDict.
@@ -124,17 +144,23 @@ class VTECTestHarness(object):
                 for k, v in other.items():
                     # translate hydro times into actual times
                     if k in ['riseAbove', 'crest', 'fallBelow']:
-                        v = (gridsStartTime + v * 3600) * 1000 #milliseconds
-                    # store the key/value into the EventDict
-                    event[k] = v
-            eventDicts.append(event)
+                        v = (gridsStartTime + v * 3600) #* 1000 #milliseconds
+                    # store the key/value into the HazardEvent
+                    if k == "eventID":
+                        event.setEventID(str(v))
+                    elif k== 'state':
+                        event.setState(v.upper())
+                    else:
+                        attributes[k] = v
+            event.addHazardAttributes(attributes)
+            hazardEvents.append(event)
             
-        s = 'EventDicts:\n'
-        for evD in eventDicts:
-            s += '{d}\n'.format(d=evD)
+        s = 'HazardEvents:\n'
+        for he in hazardEvents:
+            s += '{d}\n'.format(d=he)
         LS.logDebug(s)
             
-        return eventDicts
+        return hazardEvents
        
     def _runEachIndividualTest(self, script):
         '''Runs each individual test.
@@ -152,15 +178,15 @@ class VTECTestHarness(object):
 
         clear = script.get('clearHazardsTable', 0)
         if clear:
-            #self._io.writeVtecRecords([])
-            self.bridge.putData('{"dataType":"testVtecRecords", "vtecDicts": []}')
+            self._io.writeVtecRecords([])
                      
         productType = script.get("productType")
         if not productType:
             return None  # no more to do without a product type
 
-        # create the EventDicts for this test case.
-        eventDicts = self._createEventDicts(script)
+        # create the HazardEvents for this test case.
+        hazardEvents = self._createHazardEvents(script)
+        #print "Harness\n", hazardEvents
 
         # get the time that this is being run
         drtTimeS = script.get('drtTime')
@@ -169,11 +195,11 @@ class VTECTestHarness(object):
         drtTime = self._getIntTime(drtTimeS)
 
         # run the calculations
-        engine = VTECEngineWrapper(None, productType, 'KTBW', eventDicts,
-          creationTime=drtTime * 1000, vtecMode=script['vtecMode'], testHarnessMode=1)
+        wrapper = VTECEngineWrapper(None, productType, 'KTBW', hazardEvents,
+          creationTime=drtTime, vtecMode=script['vtecMode'], testHarnessMode=1)
 
         # get the ordered segments
-        segments = engine.engine().getSegments()
+        segments = wrapper.engine().getSegments()
         segst = "Segments:\n"
         for geoID, eventID in segments:
             segst += "  GeoID: {gid}  EventID: {eid}\n".format(gid=list(geoID),
@@ -188,7 +214,7 @@ class VTECTestHarness(object):
             ugc = self._makeUGCString(seg) + "-"
             results.append(ugc)
 
-            vstrCalculated = engine.engine().getVTECString(seg)
+            vstrCalculated = wrapper.engine().getVTECString(seg)
 
             slog = ("CALCULATED VTEC for segment GeoID: {gid}  "
               "EventID: {eid}\n{ugc}").format(gid=list(seg[0]),
@@ -207,7 +233,7 @@ class VTECTestHarness(object):
         # update the vtec records with the calculated records
         issueFlag = 'True' if script['decodeVTEC'] else None
         if issueFlag:
-            engine.mergeResults()
+            wrapper.mergeResults()
 
         return results
 

@@ -80,6 +80,8 @@ public interface IHazardEvent extends IEvent {
 
     public void setSubType(String subtype);
 
+    public String getHazardType();
+
     public Date getIssueTime();
 
     public void setIssueTime(Date date);

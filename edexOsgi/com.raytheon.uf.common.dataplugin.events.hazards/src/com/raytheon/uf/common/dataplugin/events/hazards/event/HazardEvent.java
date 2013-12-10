@@ -71,7 +71,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 16, 2012            mnash       Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
- * 
+ * Dec     2013 2368       thansen   Added getHazardType
  * </pre>
  * 
  * @author mnash
@@ -315,6 +315,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public void setSubType(String subType) {
         this.subType = subType;
+    }
+
+    /**
+     * @return hazardType e.g. FA.A or FF.W.Convective
+     */
+    @Override
+    public String getHazardType() {
+        return HazardEventUtilities.getHazardType(this);
     }
 
     /**

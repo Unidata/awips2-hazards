@@ -5,6 +5,8 @@
 14    Date         Ticket#    Engineer    Description
 15    ------------ ---------- ----------- --------------------------
 16    April 5, 2013            Tracy.L.Hansen      Initial creation
+    Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
+                                                 dictionary
 17    
 18    @author Tracy.L.Hansen@noaa.gov
 19    @version 1.0
@@ -50,18 +52,20 @@ class Product(ProductTemplate.Product):
     def execute(self, eventSet):          
         '''
         Inputs:
-        @param eventSet: a list of hazard events (eventDicts) plus
+        @param eventSet: a list of hazard events (hazardEvents) plus
                                a map of additional variables
-        @return productDicts: Each execution of a generator can produce 1 or more 
+        @return productDicts, hazardEvents: 
+             Each execution of a generator can produce 1 or more 
              products from the set of hazard events
              For each product, a productID and one dictionary is returned as input for 
              the desired formatters.
+             Also, returned is a set of hazard events, updated with product information.
         '''
         self.logger.info("Start ProductGeneratorTemplate:execute FLW_FLS")
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._eventDicts:
+        if not self._hazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
         #  each product generated: 
@@ -71,11 +75,11 @@ class Product(ProductTemplate.Product):
         #     "productDict": xmlDict,
         #     }
         #   ]
-        productDicts = self._makeProducts_FromHazardEvents(self._eventDicts) 
-        return productDicts        
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._hazardEvents) 
+        return productDicts, hazardEvents        
     
-    def _getSegments(self, eventDicts):
-        return self._getSegments_ForPointsAndAreas(eventDicts)
+    def _getSegments(self, hazardEvents):
+        return self._getSegments_ForPointsAndAreas(hazardEvents)
 
     def _groupSegments(self, segments):
         '''
@@ -89,8 +93,8 @@ class Product(ProductTemplate.Product):
         '''
         productSegmentGroups = []
         for segment in segments:
-            segmentEventDict = self.getSegmentEventDicts(self._eventDicts, [segment])[0]
-            geoType = segmentEventDict.get("geoType")
+            segmentHazardEvent = self.getSegmentHazardEvents(self._hazardEvents, [segment])[0]
+            geoType = segmentHazardEvent.get("geoType")
             vtecRecords = self.getVtecRecords(segment)
             for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord to process
                 pil = vtecRecord.get("pil")
@@ -133,7 +137,7 @@ class Product(ProductTemplate.Product):
         return productSegmentGroups
 
 
-    def getBasisPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69):
+    def getBasisPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):
         #  Time is off of last frame of data
         try :
             eventTime = self._sessionDict["framesInfo"]["frameTimeList"][-1]
@@ -142,20 +146,20 @@ class Product(ProductTemplate.Product):
         eventTime = self._tpc.getFormattedTime(eventTime/1000, "%I%M %p %Z ", 
                                                shiftToLocal=1, stripLeading=1).upper()
         para = "* at "+eventTime
-        basis = self.getMetadataItemForEvent(eventDict, metaData,  "basis")
+        basis = self.getMetadataItemForEvent(hazardEvent, metaData,  "basis")
         if basis is None :
             basis = " Flooding was reported"
-        para += basis + " " + self.descWxLocForEvent(eventDict)
-        motion = self.descMotionForEvent(eventDict)
+        para += basis + " " + self.descWxLocForEvent(hazardEvent)
+        motion = self.descMotionForEvent(hazardEvent)
         if motion == None :
             para += "."
         else :
-            para += self.descWxLocForEvent(eventDict, ". THIS RAIN WAS ", \
+            para += self.descWxLocForEvent(hazardEvent, ". THIS RAIN WAS ", \
                ". THIS STORM WAS ", ". THESE STORMS WERE ", "-")
             para += motion+"."
         return "\n"+para
     
-    def getImpactsPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69 ):
+    def getImpactsPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69 ):
         '''
         #* LOCATIONS IN THE WARNING INCLUDE BUT ARE NOT LIMITED TO CASTLE
         #  PINES...THE PINERY...SURREY RIDGE...SEDALIA...LOUVIERS...HIGHLANDS

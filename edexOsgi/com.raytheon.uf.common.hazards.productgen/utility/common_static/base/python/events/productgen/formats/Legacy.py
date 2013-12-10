@@ -132,7 +132,7 @@ class Format(FormatTemplate.Formatter):
         sentTimeZ = self._tpc.getVal(self.data, 'sentTimeZ_datetime')
         timeZones = self._tpc.getVal(self.data, 'timeZones')
         for timeZone in timeZones:
-            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %b %Y', timeZone) + '\n'
+            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %e %b %Y', timeZone) + '\n'
         return text + '\n'
         
     def processSegments(self, segments, segmentParts):

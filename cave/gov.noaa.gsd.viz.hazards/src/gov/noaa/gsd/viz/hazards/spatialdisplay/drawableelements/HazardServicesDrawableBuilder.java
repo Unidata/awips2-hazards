@@ -558,12 +558,12 @@ public class HazardServicesDrawableBuilder {
      * @param drawableComponents
      * @return
      */
-    private void addHazardHatchArea(ToolLayer toolLayer, IHazardEvent hazardEvent,
-            Layer activeLayer,
+    private void addHazardHatchArea(ToolLayer toolLayer,
+            IHazardEvent hazardEvent, Layer activeLayer,
             List<AbstractDrawableComponent> drawableComponents) {
         AbstractDrawableComponent drawableComponent;
 
-        String hazardType = HazardEventUtilities.getPhenSigSubType(hazardEvent);
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
         if (hazardType != null) {
             ISessionConfigurationManager configManager = sessionManager
@@ -578,8 +578,8 @@ public class HazardServicesDrawableBuilder {
                     .getContextName(LocalizationLevel.SITE);
 
             Set<IGeometryData> hazardArea = HazardEventUtilities
-                    .buildHatchedAreaForEvent(mapDBtableName, mapLabelParameter,
-                            cwa, hazardEvent);
+                    .buildHatchedAreaForEvent(mapDBtableName,
+                            mapLabelParameter, cwa, hazardEvent);
 
             for (IGeometryData geometry : hazardArea) {
 

@@ -14,8 +14,9 @@
     Sept 9,  2013  1298       Tracy.L.Hansen     Setting hazard event to ended, setting product information
                                                  on ended hazard events, correctly reporting currentStage, 
                                                  floodStage
+    Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
+    
     @author Tracy.L.Hansen@noaa.gov
-    @version 1.0
 '''
 
 try:
@@ -35,7 +36,7 @@ import logging, UFStatusHandler
 from MapInfo import MapInfo
 from VTECEngineWrapper import VTECEngineWrapper
 
-import collections, datetime
+import collections, datetime, time
 from pytz import timezone
 import os, types, copy, sys, json
 from QueryAfosToAwips import QueryAfosToAwips
@@ -45,6 +46,8 @@ try:
 except:
     pass
 
+from HazardEvent import HazardEvent
+from shapely import geometry
 
 class Product(object):
  
@@ -64,6 +67,9 @@ class Product(object):
         
         self._vtecEngine = None
         self._productCategory = ''
+
+        self._hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
+        #self._hazardTypes = HazardServicesConfig("hazardTypes").getConfigFileData("HazardTypes") or {}
         
         criteria = {'dataType' : 'AreaDictionary'}
         self._areaDictionary = json.loads(self.bridge.getData(json.dumps(criteria)))
@@ -166,27 +172,25 @@ class Product(object):
 
     def _unpackEventSet(self, eventSet):  
         '''
-        Must convert Java object eventSet to Python eventDicts
-        NOTE: The Framework will be fixed to send a Python Hazard Event Set
-        and then we will unpack the eventDicts and meta information
+        Must convert Java object eventSet to HazardEvents
+        NOTE: ProductInterface.py will be fixed to do this
+
         '''
-        # Translate Hazard Event Set from Java to Python                
+        # Translate Hazard Event Set from Java to Python HazardEvents and metaDict
         iterator = eventSet.iterator()
-        eventList = ArrayList()
+        hazardEvents = []
         while iterator.hasNext():
             event = iterator.next()
-            eventList.add(event)    
-        eventDicts = self.bridge.handleRecommenderResult('ProductGenerator', eventList, enclosed=False)                             
+            hazardEvents.append(HazardEvent(event))                             
         attributes = eventSet.getAttributes()
-        metaDict = JUtil.javaMapToPyDict(attributes)
-        
-        return eventDicts, metaDict
-              
+        metaDict = JUtil.javaMapToPyDict(attributes)            
+        return hazardEvents, metaDict                
+                          
     def _getVariables(self, eventSet): 
         '''
          Set up class variables
-        '''  
-        self._eventDicts, metaDict = self._unpackEventSet(eventSet) 
+        ''' 
+        self._hazardEvents, metaDict = self._unpackEventSet(eventSet) 
                 
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on
@@ -237,11 +241,11 @@ class Product(object):
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
                 
-    def _makeProducts_FromHazardEvents(self, eventDicts): 
+    def _makeProducts_FromHazardEvents(self, hazardEvents): 
         '''
         
         Make the products
-        @param eventDicts: hazard events
+        @param hazardEvents: hazard events
         
         @return productDicts -- one dictionary for each product generated
             As input, Product Generators take a set of hazard events and produce 1 
@@ -264,7 +268,7 @@ class Product(object):
                     
         '''        
         # Determine the list of segments given the hazard events        
-        segments = self._getSegments(eventDicts)
+        segments = self._getSegments(hazardEvents)
         self.logger.info('Product Generator Template --  len(segments)=' + str(len(segments)))
          
         # Determine the list of products and associated segments given the segments
@@ -301,11 +305,11 @@ class Product(object):
             productDicts.append(productDict)
                         
         # If issuing, save the VTEC records for legacy products       
-        self._saveVTEC(eventDicts) 
-        print "PGT Output EventDicts", eventDicts
-        self.flush()
-        hazardEvents = self._tpc.createHazardEvents(eventDicts, self._siteID)
-        # hazardEvents = self.bridge.eventDictsToHazardEvents(eventDicts)
+        self._saveVTEC(hazardEvents) 
+#         print "PGT Output dictionaries"
+#         for productDict in productDicts:
+#             print  productDict.get("productID"), productDict
+#         self.flush()
         return productDicts, hazardEvents
                                               
     def _getProductInfo(self, siteID, productID): 
@@ -331,18 +335,18 @@ class Product(object):
         # Product ID for storing to AWIPS text database, e.g. TOPSVRTOP  
         self._textdbPil = a2a.getTextDBpil() 
                     
-    def _getSegments(self, eventDicts):
+    def _getSegments(self, hazardEvents):
         '''
         Determine the segments for the product
-        @param eventDicts: list of Hazard Events
+        @param hazardEvents: list of Hazard Events
         @return a list of segments for the hazard events
         '''
-        self._eventDicts = self.computeUGCsForEventDicts(eventDicts)
-        self.getVtecEngine(self._eventDicts)        
+        self._hazardEvents = self.computeUGCsForHazardEvents(hazardEvents)
+        self.getVtecEngine(self._hazardEvents)        
         segments = self._vtecEngine.getSegments()
         return segments
 
-    def _getSegments_ForPointsAndAreas(self, eventDicts): 
+    def _getSegments_ForPointsAndAreas(self, hazardEvents): 
         '''
         Gets the segments for point hazards and areal hazards separately
         
@@ -350,7 +354,7 @@ class Product(object):
             self._pointEvents, self._pointSegments
             self._areaEvents,  self._areaSegments
             
-        @param eventDicts: list of Hazard Events
+        @param hazardEvents: list of Hazard Events
         @return a list of segments for the hazard events
                 
         Separate the point events from the area event and create a separate VTEC engine for each.  
@@ -373,16 +377,16 @@ class Product(object):
         self._areaEvents = []
         self._pointSegments = []
         self._areaSegments = []
-        for eventDict in eventDicts:
-            if eventDict.get('geoType') == 'point':
-                self._pointEvents.append(eventDict)
+        for hazardEvent in hazardEvents:
+            if hazardEvent.get('geoType') == 'point':
+                self._pointEvents.append(hazardEvent)
             else:
-                self._areaEvents.append(eventDict)
+                self._areaEvents.append(hazardEvent)
         for geoType in ('point', 'area'):
             if geoType == 'point' :     events = self._pointEvents
             else:                     events = self._areaEvents
             if not events: continue
-            events = self.computeUGCsForEventDicts(events)
+            events = self.computeUGCsForHazardEvents(events)
             self.getVtecEngine(events)
             segments = self._vtecEngine.getSegments()
             if geoType == 'point':  
@@ -530,19 +534,20 @@ class Product(object):
         '''                     
         self._metaDataList = self.getHazardMetaData(segment)
         self._segmentVtecRecords = self.getVtecRecords(segment)
-        self._segmentEventDicts = [eDict for metaData, eDict in self._metaDataList]
+        self._segmentHazardEvents = [hazardEvent for metaData, hazardEvent in self._metaDataList]
         
-        # There may be multiple (metaData, eventDict) pairs in a segment 
+        # There may be multiple (metaData, hazardEvent) pairs in a segment 
         #   An example would be for a NPW product which had a Frost Advisory and a Wind Advisory in one segment
-        # There will be a section for each         
+        # There will be a section for each 
+        # "segment" is (frozenset([list of ugcs]), frozenset([list of eventIDs])        
             
         # UGCs and Expire Time
         #
-        # We use the first segmentEventDict for calculating the ugc header information
-        #  since the ugcs will be the same for all hazard events in the segment
-        print "PGT createSegment vtecRecords, segment ", self._segmentVtecRecords, segment
-        self.flush()
-        self._ugcs = self._segmentEventDicts[0].get('ugcs', [])    
+        hazardEvent = self._segmentHazardEvents[0]
+        if hazardEvent.get('geoType') == 'area':
+            self._ugcs = list(segment[0])
+        else:
+            self._ugcs = hazardEvent.get("ugcs", [])    
         self._ugcs.sort()  
         self._timeZones = self._tpc.hazardTimeZones(self._ugcs)
         for tz in self._timeZones:
@@ -550,7 +555,7 @@ class Product(object):
                 self._productTimeZones.append(tz)
         self._expireTime = self._tpc.getExpireTime(
                     self._creationTime, self._purgeHours,
-                    self._segmentVtecRecords)        
+                    self._segmentVtecRecords) 
         self._ugcHeader = self._tpc.formatUGCs(self._ugcs, self._expireTime)
         
         # Area String, City String        
@@ -564,7 +569,7 @@ class Product(object):
                 
         # Summary Headlines for the segment  -- this orders them  -- Used by Legacy after ugc header...
         #   Create and order the sections for the segment:
-        #       (vtecRecord, sectionMetaData, sectionEventDict)      
+        #       (vtecRecord, sectionMetaData, sectionHazardEvent)      
         self._summaryHeadlines, self._headlines, sections = self._tpc.getHeadlinesAndSections(
                         self._segmentVtecRecords, self._metaDataList, self._productID, self._creationTime_secs)    
         
@@ -572,7 +577,7 @@ class Product(object):
         segmentEntry['ugcCodes'] = self._formatUGC_entries(segment)
         segmentEntry['ugcHeader'] = self._ugcHeader
         segmentEntry['areaString'] = self._areaString
-        self._setEditedField(segmentEntry, 'cityString', self._productID, segment, self._segmentEventDicts[0], self._cityString)
+        self._setEditedField(segmentEntry, 'cityString', self._productID, segment, self._segmentHazardEvents[0], self._cityString)
         segmentEntry['areaType'] = self._geoType
         segmentEntry['expireTime'] = self._convertToISO(self._expireTime)
         segmentEntry['expireTime_datetime'] = self._convertToDatetime(self._expireTime)        
@@ -610,7 +615,7 @@ class Product(object):
         self._callsToAction = []
         self._polygonText = ''
         if not sections:
-            self._setProductInformation(self._segmentVtecRecords[0], self._segmentEventDicts[0])
+            self._setProductInformation(self._segmentVtecRecords[0], self._segmentHazardEvents[0])
         else:
             for section in sections:
                 sectionEntries.append(self._createSection(section, segment, canVtecRecord, areaPhrase, areaPhraseShort))
@@ -648,8 +653,8 @@ class Product(object):
         * |* (OPTIONAL) POTENTIAL IMPACTS OF FLOODING *|
 
         ''' 
-        vtecRecord, metaData, sectionEventDict = section 
-        self._setProductInformation(vtecRecord, sectionEventDict)
+        vtecRecord, metaData, sectionHazardEvent = section 
+        self._setProductInformation(vtecRecord, sectionHazardEvent)
                                                                   
         # Process each part of the section
         testMode = self._sessionDict.get('testMode', 0)
@@ -661,7 +666,7 @@ class Product(object):
 #             canVtecRecord = None
 #         else:
 #             aPhrase = areaPhrase
-#         phrase = self.makeSection(vtecRecord, canVtecRecord, areaPhrase, self._geoType, sectionEventDict, self._metaDataList,
+#         phrase = self.makeSection(vtecRecord, canVtecRecord, areaPhrase, self._geoType, sectionHazardEvent, self._metaDataList,
 #                                         self._creationTime_secs, testMode, self._wfoCity)
 
         sectionEntry = collections.OrderedDict()
@@ -672,11 +677,11 @@ class Product(object):
          
         if firstBullet:
             timePhrase = self.getHazardTimePhrases(vtecRecord, self._creationTime)
-            if sectionEventDict.get('geoType') == 'point':
-                pointPhrase = self.getPointPhrase(sectionEventDict, metaData)
+            if sectionHazardEvent.get('geoType') == 'point':
+                pointPhrase = self.getPointPhrase(sectionHazardEvent, metaData)
             else:
                 pointPhrase = ''              
-            basisPhrase, impactsPhrase, ctas = self.getMetaDataPhrases(vtecRecord, canVtecRecord, sectionEventDict, metaData)            
+            basisPhrase, impactsPhrase, ctas = self.getMetaDataPhrases(vtecRecord, canVtecRecord, sectionHazardEvent, metaData)            
         else:
             # No bullets if EXP or CAN alone
             pointPhrase = ''
@@ -685,54 +690,54 @@ class Product(object):
             impactsPhrase = ''
             ctas = []
          
-        self._setEditedField(sectionEntry, 'firstBullet', self._productID, segment, sectionEventDict, firstBullet)
-        self._setEditedField(sectionEntry, 'pointPhrase', self._productID, segment, sectionEventDict, pointPhrase)
-        self._setEditedField(sectionEntry, 'timePhrase', self._productID, segment, sectionEventDict, timePhrase)
-        self._setEditedField(sectionEntry, 'basis', self._productID, segment, sectionEventDict, basisPhrase)
-        self._setEditedField(sectionEntry, 'impacts', self._productID, segment, sectionEventDict, impactsPhrase)
+        self._setEditedField(sectionEntry, 'firstBullet', self._productID, segment, sectionHazardEvent, firstBullet)
+        self._setEditedField(sectionEntry, 'pointPhrase', self._productID, segment, sectionHazardEvent, pointPhrase)
+        self._setEditedField(sectionEntry, 'timePhrase', self._productID, segment, sectionHazardEvent, timePhrase)
+        self._setEditedField(sectionEntry, 'basis', self._productID, segment, sectionHazardEvent, basisPhrase)
+        self._setEditedField(sectionEntry, 'impacts', self._productID, segment, sectionHazardEvent, impactsPhrase)
         sectionEntry['description'] = attribution + '\n' + firstBullet + pointPhrase + timePhrase + basisPhrase + impactsPhrase
        
         if ctas:
             self._callsToAction += ctas
 
         if self._formatPolygon:
-            self._polygonText += self.formatPolygonForEvent(sectionEventDict) + '\n'
-            timeMotionLocationStr = self.formatTimeMotionLocationForEvent(sectionEventDict)
+            self._polygonText += self.formatPolygonForEvent(sectionHazardEvent) + '\n'
+            timeMotionLocationStr = self.formatTimeMotionLocationForEvent(sectionHazardEvent)
                                                     
         # CAP Specific Fields        
         infoDict = collections.OrderedDict()
         sectionEntry['info'] = [infoDict]
         infoDict['category'] = 'Met'
-        infoDict['responseType'] = sectionEventDict.get('responseType', '')  # 'Avoid'
-        infoDict['urgency'] = sectionEventDict.get('urgency', '')  # 'Immediate'
-        infoDict['severity'] = sectionEventDict.get('severity', '')  # 'Severe' 
-        infoDict['certainty'] = sectionEventDict.get('certainty', '')  # 'Observed'
-        infoDict['onset_datetime'] = self._convertToDatetime(sectionEventDict.get('startTime', '')) 
-        infoDict['WEA_text'] = sectionEventDict.get('WEA_Text', '')  # 'Observed'
+        infoDict['responseType'] = sectionHazardEvent.get('responseType', '')  # 'Avoid'
+        infoDict['urgency'] = sectionHazardEvent.get('urgency', '')  # 'Immediate'
+        infoDict['severity'] = sectionHazardEvent.get('severity', '')  # 'Severe' 
+        infoDict['certainty'] = sectionHazardEvent.get('certainty', '')  # 'Observed'
+        infoDict['onset_datetime'] = sectionHazardEvent.getStartTime() 
+        infoDict['WEA_text'] = sectionHazardEvent.get('WEA_Text', '')  # 'Observed'
         infoDict['pil'] = self._pil
         infoDict['sentBy'] = self._wfoCity
-        infoDict['event'] = sectionEventDict.get('headline')
-        endTime = sectionEventDict.get('endTime') 
+        infoDict['event'] = self._hazardTypes[sectionHazardEvent.getHazardType()]['headline']
+        endTime = sectionHazardEvent.getEndTime() 
         if endTime: 
-            infoDict['eventEndingTime_datetime'] = self._convertToDatetime(endTime)  
+            infoDict['eventEndingTime_datetime'] = endTime  
         self._addToSectionEntry(section, sectionEntry)      
         return sectionEntry
-       
-    def _setProductInformation(self, vtecRecord, sectionEventDict):
+                                       
+    def _setProductInformation(self, vtecRecord, sectionHazardEvent):
         if self._issueFlag:
-            # Update sectionEventDict
-            expTime = sectionEventDict.get('expirationTime')
+            # Update sectionHazardEvent
+            expTime = sectionHazardEvent.get('expirationTime')
             # Take the earliest expiration time
             if (expTime and expTime > self._expireTime) or not expTime:
-                sectionEventDict['expirationTime'] = self._expireTime
-            sectionEventDict['issueTime'] = self._creationTime
-            sectionEventDict.setdefault('etns', []).append(vtecRecord['etn'])
-            sectionEventDict.setdefault('vtecCodes', []).append(vtecRecord['act'])
-            sectionEventDict.setdefault('pils', []).append(vtecRecord['pil'])
+                sectionHazardEvent.set('expirationTime', self._expireTime)
+            sectionHazardEvent.set('issueTime', self._creationTime)
+            sectionHazardEvent.addToList('etns', vtecRecord['etn'])
+            sectionHazardEvent.addToList('vtecCodes', vtecRecord['act'])
+            sectionHazardEvent.addToList('pils', vtecRecord['pil'])
         else:
             # Reset state if previewing ended
-            if sectionEventDict.get('previewState') == 'ended':
-                sectionEventDict['state'] = 'issued'
+            if sectionHazardEvent.get('previewState') == 'ended':
+                sectionHazardEvent.setState('ISSUED')
 
     def _addToProductDict(self, productDict):
         '''
@@ -752,7 +757,7 @@ class Product(object):
         '''
         pass
     
-    def _setEditedField(self, prodDict, key, productID, segment, eventDict, default):
+    def _setEditedField(self, prodDict, key, productID, segment, hazardEvent, default):
         '''
         Stub to retrieve edited text using the given identifying information:
                 key, self._productCategory, productID, segment, eventID 
@@ -760,8 +765,8 @@ class Product(object):
         The solution may also need to add identifying information to the prodDict key 
            
         '''
-        # Check the Edited Text Database for the entry using the
-        #   --key, self._productCategory, productID, segment, eventID (from eventDict)
+        # TODO: Check the Edited Text Database for the entry using the
+        #   --key, self._productCategory, productID, segment, eventID (from hazardEvent)
         # If not there, use default:
         prodDict[key + ":editable"] = default
     
@@ -873,8 +878,8 @@ class Product(object):
                 
     def _createPolygonEntries(self):
         polygonEntries = []
-        for eventDict in self._segmentEventDicts:
-            polygons = self._extractPointsFromShapes(eventDict)
+        for hazardEvent in self._segmentHazardEvents:
+            polygons = self._extractPolygons(hazardEvent)
             for polygon in polygons:
                 polyDict = collections.OrderedDict()
                 pointList = []
@@ -889,20 +894,17 @@ class Product(object):
         polyDict = collections.OrderedDict()
         polyDict['polygon'] = polygonEntries
         return polyDict
-    
-    def _extractPointsFromShapes(self, eventDict):
-        '''
-        Return the lat/lon points from the eventDict
-        There could be multiple shapes
-        '''
-        shapesPoints = []
-        shapes = eventDict.get('shapes', [])
-        for shape in shapes:
-            if shape.get('shapeType') in ['polygon', 'line', 'point']:
-                points = shape.get('points', [])
-                shapesPoints.append(points)
-        return shapesPoints
-    
+
+    def _extractPolygons(self, hazardEvent):
+        polygons = hazardEvent.getGeometry()
+        polygonPointLists = []            
+        if type(polygons) == geometry.polygon.Polygon:
+            polygonPointLists.append(list(polygons.exterior.coords))
+        else:
+            for polygon in polygons:
+                polygonPointLists.append(list(polygon.exterior.coords))
+        return polygonPointLists
+        
     def _createTimeMotionLocationEntry(self):
         '''
         To be implemented in PV2
@@ -918,7 +920,6 @@ class Product(object):
         # In the case of point hazards, the segment 'ugcs' field is really the pointID e.g. DCTN1
         #  rather than the UGC that corresponds to that point.
         # The UGC is set for the segment (see preProcessSegment) in self._ugcs
-        # ugcs, ids = segment
         locations = []
         for state, portion, areas in  self._areas:
             for area in areas:
@@ -937,18 +938,18 @@ class Product(object):
         return impactedLocations
         
     #### Utility methods
-    def getVtecEngine(self, eventDicts) :
+    def getVtecEngine(self, hazardEvents) :
         '''
-        Instantiates a VTEC Engine for the given eventDicts
+        Instantiates a VTEC Engine for the given hazardEvents
         Note that more than one VTEC Engine may be instantiated for
-        a product generator. For example, point and area eventDicts
+        a product generator. For example, point and area hazardEvents
         must have separate VTEC Engines.
-        @param eventDicts -- list of hazard events
+        @param hazardEvents -- list of hazard events
         '''
         testMode = self._sessionDict.get('testMode', 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
-               eventDicts, vtecMode='O', creationTime=self._creationTime_secs,
+               hazardEvents, vtecMode='O', creationTime=self._creationTime_secs,
                testHarnessMode=testMode, vtecProduct=self._vtecProduct)
         try :
             pass
@@ -964,7 +965,7 @@ class Product(object):
         vtecRecords = copy.deepcopy(vtecEngine.getVtecRecords(segment))
         # Change times to milliseconds from seconds
         for vtecRecord in vtecRecords:
-            for key in ['startTime', 'endTime', 'riseAbove', 'crest', 'fallBelow', 'issueTime']:
+            for key in ['startTime', 'endTime', 'issueTime', 'riseAbove', 'crest', 'fallBelow']:
                 value = vtecRecord.get(key)
                 if value:
                     vtecRecord[key] = value * 1000
@@ -999,27 +1000,23 @@ class Product(object):
         else:
             return cityList            
 
-    def computeUGCsForEventDicts(self, eventDicts):
+    def computeUGCsForHazardEvents(self, hazardEvents):
         '''
         For each hazard event, determine the set of ugcs
         For area events, the polygon will be used to map to ugcs
         For point events, the lat/lon of the point will be used
-        @param eventDicts -- list of hazard events
-        @return newEventDicts -- list of augmented hazard events with 
+        @param hazardEvents -- list of hazard events
+        @return newHazardEvents -- list of augmented hazard events with 
             entries added for the ugcs
-            NOTE that these augmentations are local to the product 
-            generator and do not propagate back to Hazard Services
         '''
-        newEventDicts = []
-        for eDict in eventDicts:
+        newHazardEvents = []
+        for hazardEvent in hazardEvents:
             # VTEC processing expects siteID4 e.g. KOAX instead of OAX
-            # We must save off the siteID to replace it later (in _tpc.createHazardEvent)
-            eDict['saveSiteID'] = self._siteID
-            eDict['siteID'] = self._fullStationID
+            hazardEvent.set('siteID4', str(self._fullStationID))
 
-            # eDict['geoType'] = 'area', 'line', or 'point'
-            if eDict.get('geoType') == 'area':
-                polygons = self._extractPointsFromShapes(eDict)
+            # hazardEvent.get('geoType') = 'area', 'line', or 'point'
+            if hazardEvent.get('geoType') == 'area':
+                polygons = self._extractPolygons(hazardEvent)
                 ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType,
                                 polygons, siteID=self._siteID)
                 newUgcs = []
@@ -1027,13 +1024,13 @@ class Product(object):
                     if ugc in newUgcs: continue
                     newUgcs.append(ugc)
                     
-                eDict['ugcs'] = newUgcs
-                eDict['shapeType'] = 'polygon'
-            elif eDict.get('geoType') == 'line':
+                hazardEvent.set('ugcs', newUgcs)
+                hazardEvent.set('shapeType', 'polygon')
+            elif hazardEvent.get('geoType') == 'line':
                 # For now, we treat line points as polygon points, and
                 # match UGCs from those. But really it should treat them
                 # as actual lines when matching UGCs. 
-                lines = self._extractPointsFromShapes(eDict)
+                lines = hazardEvent.getGeometry()  
                 ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType,
                                 lines, siteID=self._siteID)
                 newUgcs = []
@@ -1041,38 +1038,32 @@ class Product(object):
                     if ugc in newUgcs: continue
                     newUgcs.append(ugc)
                     
-                eDict['ugcs'] = newUgcs
-                eDict['shapeType'] = 'line'
+                hazardEvent.set('ugcs', newUgcs)
+                hazardEvent.set('shapeType', 'line')
             else:
                 ugcs = []
                 #  For points, convert a lat/lon to a UGC
                 #  forecastPoint': {'id': 'DCTN1', 'name': 'Decatur', 
                 #   'point': ['-96.2413888888889', '42.0072222222222']}
-                forecastPoint = eDict.get('forecastPoint')
-                if forecastPoint is None:
-                    shapes = eDict.get('shapes', [])
-                    for shape in shapes:
-                        if shape.get('shapeType') == 'point':
-                            points = shape.get('points', [])
-                            lon, lat = points[0] 
-                            break
-                else:
+                forecastPoint = hazardEvent.get('forecastPoint')
+                ugcs = None
+                if forecastPoint is not None:
+                    hazardEvent.set('shapeType', 'point')
                     lon, lat = forecastPoint.get('point')
-                ugcs = self._mapInfo.getUGCsMatchPolygons(self._pointUgcType,
+                    ugcs = self._mapInfo.getUGCsMatchPolygons(self._pointUgcType,
                             [[(float(lon), float(lat))]], siteID=self._siteID)
                 if not ugcs:
                     # TODO Preventing a crash, but need to handle better 
                     ugcs = ['COC003']
-                eDict['ugcs'] = ugcs           
-        
+                hazardEvent.set('ugcs',  ugcs)        
             #  Handle 'previewState' 
-            #  IF we are previewing an 'ended' state, set the state as 'ended'
+            #  IF we are previewing an 'ended' state, temporarily set the state as 'ended'
             #   so that the VTEC processing will be done correctly
-            if eDict.get('previewState') == 'ended':
-                eDict['state'] = 'ended'
-            newEventDicts.append(eDict)
+            if hazardEvent.get('previewState') == 'ended':
+                hazardEvent.setState('ENDED')
+            newHazardEvents.append(hazardEvent)
    
-        return newEventDicts
+        return newHazardEvents
     
     def _useEAS(self, vtecRecord):
         '''
@@ -1091,22 +1082,22 @@ class Product(object):
         @param: eventInfo
         ''' 
         # Get meta data for this segment
-        #  May need to get multiple eventDicts and meta data
+        #  May need to get multiple hazardEvents and meta data
         metaDataList = []
-        self._segmentEventDicts = self.getSegmentEventDicts(self._eventDicts, [segment])
-        for eventDict in self._segmentEventDicts:
-            phen = eventDict.get('phen', '')   
-            sig = eventDict.get('sig', '')   
-            subType = eventDict.get('subType', '')   
+        self._segmentHazardEvents = self.getSegmentHazardEvents(self._hazardEvents, [segment])
+        for hazardEvent in self._segmentHazardEvents:
+            phen = hazardEvent.getPhenomenon()   
+            sig = hazardEvent.getSignificance()  
+            subType = hazardEvent.getSubtype()  
             criteria = {'dataType':'hazardMetaData_filter',
                     'filter':{'phen':phen, 'sig':sig, 'subType':subType}
                     }
             metaData = self.bridge.getData(json.dumps(criteria))
-            metaDataList.append((metaData, eventDict))
+            metaDataList.append((metaData, hazardEvent))
 
         return metaDataList
         
-    def _saveVTEC(self, eventDicts):
+    def _saveVTEC(self, hazardEvents):
         '''
         if issuing: 
             For each VTEC Engine generated in the product, save the vtec records 
@@ -1120,10 +1111,10 @@ class Product(object):
             # Note that for some long-fused hazards e.g. FA.A, one eventID could be
             # associated with both a CAN and a NEW and we do not want to change the 
             # state to "ended".
-            for eventDict in eventDicts:
-                vtecCodes = eventDict.get('vtecCodes', [])
+            for hazardEvent in hazardEvents:
+                vtecCodes = hazardEvent.get('vtecCodes', [])
                 if ('CAN' in vtecCodes or 'EXP' in vtecCodes) and not ['NEW', 'CON', 'EXA', 'EXT', 'EXB', 'UPG', 'ROU'] in vtecCodes:
-                    eventDict['state'] = 'ended'
+                    hazardEvent.setState('ENDED')
                     
     def checkTestMode(self, sessionDict, str):
         # testMode is set, then we are in product test mode.
@@ -1135,37 +1126,37 @@ class Product(object):
         else:
             return str               
                             
-    def getSegmentEventDicts(self, inputEventDicts, segments):
-        # Return the eventDicts for the segments -
-        #  Each segment lists eventIDs, so collect those and they use
-        #  getEventDicts to get the eventDicts.
+    def getSegmentHazardEvents(self, inputHazardEvents, segments):
+        # Return the hazardEvents for the segments -
+        #  Each segment lists eventIDs, so collect those and then use
+        #  getHazardEvents to get the hazardEvents.
         eventIDs = []
         for segment in segments:
             ugcs, ids = segment
             eventIDs += ids
-        return self.getEventDicts(inputEventDicts, eventIDs)
+        return self.getHazardEvents(inputHazardEvents, eventIDs)
     
-    def getEventDicts(self, inputEventDicts, eventIDs):
+    def getHazardEvents(self, inputHazardEvents, eventIDs):
         '''
-        @param inputEventDicts: Set of eventDicts 
-        @param eventIDs: The ids of the eventDicts to retrieve from the input set
-        @return: Return a list of eventDicts
+        @param inputHazardEvents: Set of hazardEvents 
+        @param eventIDs: The ids of the hazardEvents to retrieve from the input set
+        @return: Return a list of hazardEvents
         '''
-        eventDicts = []
-        for eventDict in inputEventDicts:
-            if eventDict.get('eventID') in eventIDs:
-                eventDicts.append(eventDict)
-        return eventDicts
+        hazardEvents = []
+        for hazardEvent in inputHazardEvents:
+            if hazardEvent.getEventID() in eventIDs:
+                hazardEvents.append(hazardEvent)
+        return hazardEvents
 
-    def getMetadataItemForEvent(self, eventDict, metaData, fieldName):
+    def getMetadataItemForEvent(self, hazardEvent, metaData, fieldName):
         '''
         Translates the entries from the Hazard Information Dialog into product strings.
-        @param eventDict: hazard event with user choices
+        @param hazardEvent: hazard event with user choices
         @param metaData:  dictionary specifying information to be entered through the Hazard Information Dialog
         @param fieldName: key field in the dictionaries, e.g. 'cta'
 
         @return the associated productString.  If a productString is not given, return the displayString.
-            If no value is specified in the eventDict, return empty string.
+            If no value is specified in the hazardEvent, return empty string.
         
         For example, In the Hazard Information Dialog, there is a field for specifying the Flood Severity.  
         This is specified in the Meta Data for certain flood type hazards.  The key field would be 
@@ -1173,7 +1164,7 @@ class Product(object):
         returned would then be 'ER'.
         '''   
         
-        value = eventDict.get(fieldName) 
+        value = hazardEvent.get(fieldName) 
         if not value:
             return '' 
         if type(value) is types.ListType:
@@ -1194,7 +1185,7 @@ class Product(object):
         @param value: chosen value for the key field
 
         @return the associated productString.  If a productString is not given, return the displayString.
-            If no value is specified in the eventDict, return empty string.
+            If no value is specified in the hazardEvent, return empty string.
         '''     
         for widget in metaData:
             if widget.get('fieldName') == fieldName:
@@ -1282,7 +1273,7 @@ class Product(object):
         endTimePhrase = self._tpc.substituteBulletedText(endTimePhrase, 'TIME IS MISSING', 'DefaultOnly', lineLength)
         return endTimePhrase
     
-    def getPointPhrase(self, eventDict, metaData, lineLength=69):
+    def getPointPhrase(self, hazardEvent, metaData, lineLength=69):
         # Add in the point information                
         '''
         * AT 4:00 AM TUESDAY THE STAGE WAS 32.2 FEET
@@ -1290,16 +1281,16 @@ class Product(object):
         * FLOOD STAGE IS 35.0FEET 
         * FORECAST...FLOOD STAGE MAY BE REACHED BY TUESDAY AM
         '''                
-        stageTime = eventDict.get('startTime')  # Use start time for now -- '8:45 AM Monday'
-        timeOfStage = self._tpc.getFormattedTime(stageTime / 1000, '%I:%M %p %A', shiftToLocal=1, stripLeading=1).upper() 
-        currentStage = eventDict.get('currentStage')
+        stageTime = hazardEvent.getStartTime()  # Use start time for now -- '8:45 AM Monday'
+        timeOfStage = self._tpc.getFormattedTime(time.mktime(stageTime.timetuple()), '%I:%M %p %A', shiftToLocal=1, stripLeading=1).upper() 
+        currentStage = hazardEvent.get('currentStage')
         if currentStage is not None:
             stageHeight = `int(float(currentStage))` + ' feet'
             stagePhrase = '* At ' + timeOfStage + ' the stage was ' + stageHeight + '\n'
         else:
             stagePhrase = ''
                 
-        severity = self.getMetadataItemForEvent(eventDict, metaData, 'floodSeverity')
+        severity = self.getMetadataItemForEvent(hazardEvent, metaData, 'floodSeverity')
         if severity is not None:
             if severity != '':
                 severity = severity + ' '
@@ -1307,14 +1298,14 @@ class Product(object):
         else:
             severityPhrase = ''
                     
-        floodStage = eventDict.get('floodStage')
+        floodStage = hazardEvent.get('floodStage')
         if floodStage is not None:
             floodStage = `int(float(floodStage))`
             floodStagePhrase = '* Flood stage is ' + floodStage + ' feet \n'
         else:
             floodStagePhrase = ''
                 
-        crest = eventDict.get('crest')
+        crest = hazardEvent.get('crest')
         if crest is not None:
             try:
                 crestTime = self._tpc.getFormattedTime(int(crest) / 1000, '%A %p', shiftToLocal=1, stripLeading=1).upper()  # 'Monday Morning'
@@ -1326,19 +1317,19 @@ class Product(object):
         pointPhrase = stagePhrase + severityPhrase + floodStagePhrase + crestPhrase + '\n'
         return pointPhrase
     
-    def getMetaDataPhrases(self, vtecRecord, canVtecRecord, eventDict, metaData):
+    def getMetaDataPhrases(self, vtecRecord, canVtecRecord, hazardEvent, metaData):
         
-        basisPhrase = self.getBasisPhrase(vtecRecord, canVtecRecord, eventDict, metaData)
+        basisPhrase = self.getBasisPhrase(vtecRecord, canVtecRecord, hazardEvent, metaData)
         if vtecRecord['act'] not in ['CAN', 'EXP']:
-            impactsPhrase = self.getImpactsPhrase(vtecRecord, canVtecRecord, eventDict, metaData)
-            ctas = self.getCTAsPhrase(vtecRecord, canVtecRecord, eventDict, metaData)
+            impactsPhrase = self.getImpactsPhrase(vtecRecord, canVtecRecord, hazardEvent, metaData)
+            ctas = self.getCTAsPhrase(vtecRecord, canVtecRecord, hazardEvent, metaData)
         else:
             impacts = ''
             ctas = ''
         
         return basisPhrase, impactsPhrase, ctas
         
-    def getBasisPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69):
+    def getBasisPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):
         # Basis bullet
         
         # Logic that will contribute to user edited text retrieval
@@ -1354,29 +1345,29 @@ class Product(object):
             'EXA': ('BASIS FOR EXPANSION OF THE WATCH', 'DefaultOnly'),
             'CAN': ('BASIS FOR CANCELLATION OF THE WATCH', 'DefaultOnly'),
             }
-        basis = self.getMetadataItemForEvent(eventDict, metaData, 'basis')
-        basisLocation = self.getMetadataItemForEvent(eventDict, metaData, 'basisLocation')
+        basis = self.getMetadataItemForEvent(hazardEvent, metaData, 'basis')
+        basisLocation = self.getMetadataItemForEvent(hazardEvent, metaData, 'basisLocation')
         basis = basis.replace("!** LOCATION **!", basisLocation)
         default, framing = defaultBasis[vtecRecord['act']]        
         basisPhrase = self._tpc.substituteBulletedText(basis, default, framing, lineLength)            
         return basisPhrase
     
-    def getImpactsPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69):       
+    def getImpactsPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):       
         # Impacts bullet
         if (vtecRecord['act'] == 'NEW' and canVtecRecord):  # or multRecords:
             framing = 'Always'
         else:
             framing = 'DefaultOnly'
-        impacts = self.getMetadataItemForEvent(eventDict, metaData, 'impacts')
+        impacts = self.getMetadataItemForEvent(hazardEvent, metaData, 'impacts')
         impactsPhrase = self._tpc.substituteBulletedText(impacts,
             '(OPTIONAL) POTENTIAL IMPACTS OF FLOODING', framing, lineLength)        
         return impactsPhrase
     
-    def getCTAsPhrase(self, vtecRecord, canVtecRecord, eventDict, metaData, lineLength=69):
-        ctas = self.getMetadataItemForEvent(eventDict, metaData, 'cta')                
+    def getCTAsPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):
+        ctas = self.getMetadataItemForEvent(hazardEvent, metaData, 'cta')                
         return ctas
  
-    def getCountyInfoForEvent(self, eventDict) :
+    def getCountyInfoForEvent(self, hazardEvent) :
         ''' 
         Returns list of tuples:        
         From AreaDictionary:
@@ -1433,72 +1424,16 @@ class Product(object):
     #  These methods will be re-written in PV2
      #############################################################################
    
-    def formatPolygonForEvent(self, eventDict):
-        for shape in eventDict.get('shapes'):
-            if shape.get('shapeType') == 'polygon':
-                polyStr = 'LAT...LON'
-                points = shape.get('points')
-                # 3 points per line
-                pointsOnLine = 0
-                for point in points:              
-                    if pointsOnLine == 3:
-                        polyStr += '\n         '
-                    lon, lat = point
-                    # For end of Aleutians
-                    if lat > 50 and lon > 0 : 
-                        lon = 360 - lon
-                    elif lon < 0 :
-                        lon = -lon
-                    lon = (int)(100 * lon + 0.5)
-                    if lat < 0 :
-                        lat = -lat
-                    lat = (int)(100 * lat + 0.5)
-                    polyStr += ' ' + str(lat) + ' ' + str(lon)
-                    pointsOnLine += 1
-                return polyStr + '\n'
-        return ''
-    
-    def formatTimeMotionLocationForEvent(self, eventDict) :
-        modNam = 'ProductGeneratorTemplate:formatTimeMotionLocationForEvent'
-        # Time Motion Location
-        clientid = eventDict.get('clientid')
-        if clientid == None :
-            return None
-        # Need to get the storm motion for PV2
-        # Stubbed for PV1
-        return None
-    
-        try :
-            tmpEventTime = 0
-            for shape1 in eventDict['shapes'] :
-                et1 = self.processTime(shape1.get('pointID'))
-                if et1 != None :
-                    if et1 > tmpEventTime :
-                        tmpEventTime = et1
-            if tmpEventTime == 0 :
-                tmpEventTime = self.processTime(eventDict['startTime'])
-            inJson = "{ 'action' : 'state', ' + \
-                       ''times' : ['+str(tmpEventTime)+'], ' + \
-                       ''id' : ''+clientid+'/latest' }"
-            outData = json.loads(myJT.transaction(inJson))
-            frame = outData['frameList'][0]
-            speed = frame['speed']
-            bearing = frame['bearing']
-            shape = frame['shape']
-            timeMotionLocationStr = 'TIME...MOT...LOC '
-            timeMotionLocationStr += self._tpc.getFormattedTime(\
-               self.processTimeForGetFormattedTime(tmpEventTime), \
-                   '%H%MZ ', shiftToLocal=0, stripLeading=0).upper()
-            timeMotionLocationStr += str(int(bearing + 0.5)) + 'DEG ' + str(int(speed + 0.5)) + 'KT'
-            a = 2
-            for onept in shape :
-                a = a - 1
-                if a < 0 :
-                    a = 3
-                    timeMotionLocationStr += '\n           '
-                lat = onept[1]
-                lon = onept[0]
-                if lat > 50 and lon > 0 :  # For end of Aleutians
+    def formatPolygonForEvent(self, hazardEvent):
+        for polygon in self._extractPolygons(hazardEvent):
+            polyStr = 'LAT...LON'
+            # 3 points per line
+            pointsOnLine = 0
+            for lon,lat in polygon:              
+                if pointsOnLine == 3:
+                    polyStr += '\n         '
+                # For end of Aleutians
+                if lat > 50 and lon > 0 : 
                     lon = 360 - lon
                 elif lon < 0 :
                     lon = -lon
@@ -1506,86 +1441,162 @@ class Product(object):
                 if lat < 0 :
                     lat = -lat
                 lat = (int)(100 * lat + 0.5)
-                timeMotionLocationStr += ' ' + str(lat) + ' ' + str(lon)
-            return timeMotionLocationStr
-        except :
+                polyStr += ' ' + str(lat) + ' ' + str(lon)
+                pointsOnLine += 1
+            return polyStr + '\n' 
+        return ''
+#         for shape in hazardEvent.get('shapes'):
+#             if shape.get('shapeType') == 'polygon':
+#                 polyStr = 'LAT...LON'
+#                 points = shape.get('points')
+#                 # 3 points per line
+#                 pointsOnLine = 0
+#                 for point in points:              
+#                     if pointsOnLine == 3:
+#                         polyStr += '\n         '
+#                     lon, lat = point
+#                     # For end of Aleutians
+#                     if lat > 50 and lon > 0 : 
+#                         lon = 360 - lon
+#                     elif lon < 0 :
+#                         lon = -lon
+#                     lon = (int)(100 * lon + 0.5)
+#                     if lat < 0 :
+#                         lat = -lat
+#                     lat = (int)(100 * lat + 0.5)
+#                     polyStr += ' ' + str(lat) + ' ' + str(lon)
+#                     pointsOnLine += 1
+#                 return polyStr + '\n'
+#         return ''
+    
+    def formatTimeMotionLocationForEvent(self, hazardEvent) :
+        modNam = 'ProductGeneratorTemplate:formatTimeMotionLocationForEvent'
+        # Time Motion Location
+        clientid = hazardEvent.get('clientid')
+        if clientid == None :
             return None
+        # Need to get the storm motion for PV3
+        # Stubbed for PV2
         return None
+    
+#         try :
+#             tmpEventTime = 0
+#             for shape1 in hazardEvent['shapes'] :
+#                 et1 = self.processTime(shape1.get('pointID'))
+#                 if et1 != None :
+#                     if et1 > tmpEventTime :
+#                         tmpEventTime = et1
+#             if tmpEventTime == 0 :
+#                 tmpEventTime = self.processTime(hazardEvent['startTime'])
+#             inJson = "{ 'action' : 'state', ' + \
+#                        ''times' : ['+str(tmpEventTime)+'], ' + \
+#                        ''id' : ''+clientid+'/latest' }"
+#             outData = json.loads(myJT.transaction(inJson))
+#             frame = outData['frameList'][0]
+#             speed = frame['speed']
+#             bearing = frame['bearing']
+#             shape = frame['shape']
+#             timeMotionLocationStr = 'TIME...MOT...LOC '
+#             timeMotionLocationStr += self._tpc.getFormattedTime(\
+#                self.processTimeForGetFormattedTime(tmpEventTime), \
+#                    '%H%MZ ', shiftToLocal=0, stripLeading=0).upper()
+#             timeMotionLocationStr += str(int(bearing + 0.5)) + 'DEG ' + str(int(speed + 0.5)) + 'KT'
+#             a = 2
+#             for onept in shape :
+#                 a = a - 1
+#                 if a < 0 :
+#                     a = 3
+#                     timeMotionLocationStr += '\n           '
+#                 lat = onept[1]
+#                 lon = onept[0]
+#                 if lat > 50 and lon > 0 :  # For end of Aleutians
+#                     lon = 360 - lon
+#                 elif lon < 0 :
+#                     lon = -lon
+#                 lon = (int)(100 * lon + 0.5)
+#                 if lat < 0 :
+#                     lat = -lat
+#                 lat = (int)(100 * lat + 0.5)
+#                 timeMotionLocationStr += ' ' + str(lat) + ' ' + str(lon)
+#             return timeMotionLocationStr
+#         except :
+#             return None
+#         return None
 
-    def descMotionForEvent(self, eventDict, useMph=True, \
+    def descMotionForEvent(self, hazardEvent, useMph=True, \
                            still='STATIONARY', slow='NEARLY STATIONARY',
                            lead='MOVING', trail='',
                            minSpd=2.5, round=5.0) :
         modNam = 'ProductGeneratorTemplate:descMotionForEvent'
-        clientid = eventDict.get('clientid')
+        clientid = hazardEvent.get('clientid')
         if clientid == None :
             return None
         return None
-        # Need to get the storm motion for PV2
-        # Stubbed for PV1
-        try :
-            tmpEventTime = 0
-            for shape1 in eventDict['shapes'] :
-                et1 = self.processTime(shape1.get('pointID'))
-                if et1 != None :
-                    if et1 > tmpEventTime :
-                        tmpEventTime = et1
-            if tmpEventTime == 0 :
-                tmpEventTime = self.processTime(eventDict['startTime'])
-            inJson = "{ 'action' : 'state', ' + \
-                       ''times' : ['+str(tmpEventTime)+'], ' + \
-                       ''id' : ''+clientid+'/latest' }"
-            outData = json.loads(myJT.transaction(inJson))
-            frame = outData['frameList'][0]
-            speed = frame['speed']
-            if speed < 0 :
-                return None
-            if speed == 0 :
-                return still
-            if useMph :
-                speed *= 1.16
-            if speed < minSpd :
-                return slow
-            bearing = 45 * (int)((frame['bearing'] + 22.5) / 45)
-            if bearing == 45 :
-                bearing = 'SOUTHWEST '
-            elif bearing == 90 :
-                bearing = 'WEST '
-            elif bearing == 135 :
-                bearing = 'NORTHWEST '
-            elif bearing == 180 :
-                bearing = 'NORTH '
-            elif bearing == 225 :
-                bearing = 'NORTHEAST '
-            elif bearing == 270 :
-                bearing = 'EAST '
-            elif bearing == 315 :
-                bearing = 'SOUTHEAST '
-            else :
-                bearing = 'SOUTH '
-            speed = round * int((speed + round / 2) / round)
-            movStr = bearing + 'AT ' + str(int(speed))
-            if useMph :
-                movStr += ' MPH'
-            else :
-                movStr += ' KNOTS'
-            if len(lead) > 0 :
-                movStr = lead + ' ' + movStr
-            if len(trail) > 0 :
-                movStr += ' ' + trail
-            return movStr
-        except :
-            return None
-        return None
-
-    def descWxLocForEvent(self, eventDict,
+        # Need to get the storm motion for PV3
+        # Stubbed for PV2
+#         try :
+#             tmpEventTime = 0
+#             for shape1 in hazardEvent['shapes'] :
+#                 et1 = self.processTime(shape1.get('pointID'))
+#                 if et1 != None :
+#                     if et1 > tmpEventTime :
+#                         tmpEventTime = et1
+#             if tmpEventTime == 0 :
+#                 tmpEventTime = self.processTime(hazardEvent['startTime'])
+#             inJson = "{ 'action' : 'state', ' + \
+#                        ''times' : ['+str(tmpEventTime)+'], ' + \
+#                        ''id' : ''+clientid+'/latest' }"
+#             outData = json.loads(myJT.transaction(inJson))
+#             frame = outData['frameList'][0]
+#             speed = frame['speed']
+#             if speed < 0 :
+#                 return None
+#             if speed == 0 :
+#                 return still
+#             if useMph :
+#                 speed *= 1.16
+#             if speed < minSpd :
+#                 return slow
+#             bearing = 45 * (int)((frame['bearing'] + 22.5) / 45)
+#             if bearing == 45 :
+#                 bearing = 'SOUTHWEST '
+#             elif bearing == 90 :
+#                 bearing = 'WEST '
+#             elif bearing == 135 :
+#                 bearing = 'NORTHWEST '
+#             elif bearing == 180 :
+#                 bearing = 'NORTH '
+#             elif bearing == 225 :
+#                 bearing = 'NORTHEAST '
+#             elif bearing == 270 :
+#                 bearing = 'EAST '
+#             elif bearing == 315 :
+#                 bearing = 'SOUTHEAST '
+#             else :
+#                 bearing = 'SOUTH '
+#             speed = round * int((speed + round / 2) / round)
+#             movStr = bearing + 'AT ' + str(int(speed))
+#             if useMph :
+#                 movStr += ' MPH'
+#             else :
+#                 movStr += ' KNOTS'
+#             if len(lead) > 0 :
+#                 movStr = lead + ' ' + movStr
+#             if len(trail) > 0 :
+#                 movStr += ' ' + trail
+#             return movStr
+#         except :
+#             return None
+#         return None
+ 
+    def descWxLocForEvent(self, hazardEvent,
              noevent='FROM HEAVY RAIN. THIS RAIN WAS LOCATED', \
              point='FROM A THUNDERSTORM. THIS STORM WAS LOCATED', \
              line='FROM A LINE OF THUNDERSTORMS. THESE STORMS WERE LOCATED', \
              lead='', \
              trail='over the warned area') :
         modNam = 'ProductGeneratorTemplate:descWxLocForEvent'
-        clientid = eventDict.get('clientid')
+        clientid = hazardEvent.get('clientid')
         if clientid == None :
             if lead == '-' :
                 return noevent
@@ -1596,48 +1607,48 @@ class Product(object):
             if len(trail) > 0 :
                 wxLoc += ' ' + trail
             return wxLoc
-        # Need to get the storm motion for PV2
-        # Stubbed for PV1
+        # Need to get the storm motion for PV3
+        # Stubbed for PV2
         return None
-        try :
-            tmpEventTime = 0
-            for shape1 in eventDict['shapes'] :
-                et1 = self.processTime(shape1.get('pointID'))
-                if et1 != None :
-                    if et1 > tmpEventTime :
-                        tmpEventTime = et1
-            if tmpEventTime == 0 :
-                tmpEventTime = self.processTime(eventDict['startTime'])
-            inJson = "{ 'action' : 'state', ' + \
-                       ''times' : ['+str(tmpEventTime)+'], ' + \
-                       ''id' : ''+clientid+'/latest' }"
-            outData = json.loads(myJT.transaction(inJson))
-            frame = outData['frameList'][0]
-            shape = frame['shape']
-            if lead == '-' :
-                if len(shape) <= 1 :
-                    return point
-                else :
-                    return line
-            wxLoc = ''
-            if len(lead) > 0 :
-                wxLoc = lead + ' '
-            if len(shape) <= 1 :
-                wxLoc += point
-            else :
-                wxLoc += line
-            if len(trail) > 0 :
-                wxLoc += ' ' + trail
-            return wxLoc
-        except :
-            pass
-        wxLoc = ''
-        if len(lead) > 0 :
-            wxLoc = lead + ' '
-        wxLoc += noevent
-        if len(trail) > 0 :
-            wxLoc += ' ' + trail
-        return wxLoc
+#         try :
+#             tmpEventTime = 0
+#             for shape1 in hazardEvent['shapes'] :
+#                 et1 = self.processTime(shape1.get('pointID'))
+#                 if et1 != None :
+#                     if et1 > tmpEventTime :
+#                         tmpEventTime = et1
+#             if tmpEventTime == 0 :
+#                 tmpEventTime = self.processTime(hazardEvent['startTime'])
+#             inJson = "{ 'action' : 'state', ' + \
+#                        ''times' : ['+str(tmpEventTime)+'], ' + \
+#                        ''id' : ''+clientid+'/latest' }"
+#             outData = json.loads(myJT.transaction(inJson))
+#             frame = outData['frameList'][0]
+#             shape = frame['shape']
+#             if lead == '-' :
+#                 if len(shape) <= 1 :
+#                     return point
+#                 else :
+#                     return line
+#             wxLoc = ''
+#             if len(lead) > 0 :
+#                 wxLoc = lead + ' '
+#             if len(shape) <= 1 :
+#                 wxLoc += point
+#             else :
+#                 wxLoc += line
+#             if len(trail) > 0 :
+#                 wxLoc += ' ' + trail
+#             return wxLoc
+#         except :
+#             pass
+#         wxLoc = ''
+#         if len(lead) > 0 :
+#             wxLoc = lead + ' '
+#         wxLoc += noevent
+#         if len(trail) > 0 :
+#             wxLoc += ' ' + trail
+#         return wxLoc
 
     def flush(self):
         ''' Flush the print buffer '''

@@ -38,8 +38,9 @@
 import RollbackMasterInterface
 import JUtil, importlib
 
-from GeometryHandler import shapelyToJTS
+from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
+JUtil.registerJavaToPython(jtsToShapely)
 from HazardEventHandler import pyHazardEventToJavaHazardEvent, javaHazardEventToPyHazardEvent
 JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)
 JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
@@ -48,6 +49,7 @@ from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct
 import traceback, sys, os
 import logging, UFStatusHandler
+
 from com.raytheon.uf.common.dataplugin.events import EventSet
 
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
@@ -61,8 +63,9 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         self.logger.setLevel(logging.INFO)         
     
     def execute(self, moduleName, className, eventSet, formats):
-        # TODO Convert eventSet to a python eventSet
-        kwargs = { 'eventSet' : eventSet }
+        # TODO Convert eventSet to Python eventSet
+        kwargs = {'eventSet':eventSet}
+             
         dataList, hazardEvents = self.runMethod(moduleName, className, 'execute', **kwargs)
         if not isinstance(dataList, list):
             raise Exception('Expecting a list from ' + moduleName + '.execute()')

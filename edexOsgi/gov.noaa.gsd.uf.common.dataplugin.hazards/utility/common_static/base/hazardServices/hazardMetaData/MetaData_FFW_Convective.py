@@ -122,7 +122,7 @@ MetaData_FFW_Convective = [
                      {"identifier":"radInd", "displayString": "Doppler Radar indicated...", 
                       "productString": "Doppler Radar indicated",},
                      {"identifier":"radGagInd", "displayString": "Doppler Radar and automated gauges", 
-                      "productString": "Doppler Radar and automated rain guages indicated",},
+                      "productString": "Doppler Radar and automated rain gauges indicated",},
                       {"identifier":"wxSpot", "displayString": "Trained weather spotters reported...", 
                       "productString": "Trained weather spotters reported",},
                      {"identifier":"public", "displayString": "Public reported...",
@@ -402,3 +402,8 @@ MetaData_FFW_Convective = [
                ]
            },
         ] + CAP_Fields
+        
+ 
+ 
+ 
+        

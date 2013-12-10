@@ -240,7 +240,7 @@ scripts = [
     ]
 
        
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     defaults = {
         "database": "<site>_GRID__Official_00000000_0000",

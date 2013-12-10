@@ -30,7 +30,6 @@
                                       This is not used.
 """
 
-import logging, UFStatusHandler
 
 import ast, types, time, traceback
 import DatabaseStorage
@@ -48,6 +47,7 @@ try:
     from ScriptAdapter import ScriptAdapter
     import JUtil 
     from jep import *  
+    import logging, UFStatusHandler
 except:
     tbData = traceback.format_exc()
     print tbData
@@ -106,8 +106,8 @@ class Bridge:
             pythonJobListener = self.recommenderScriptAdapter.buildRecommenderJobListener(self.eventBus, toolID)
             self.recommenderScriptAdapter.executeRecommenderScript(toolID, pythonJobListener, runData)
             
-        return None   
-    
+        return None 
+                
     def handleRecommenderResult(self, toolID, eventList, enclosed=True):
         Adapter.setEnclosed(enclosed)
         return JUtil.javaObjToPyVal(eventList, Adapter.eventConverter)   

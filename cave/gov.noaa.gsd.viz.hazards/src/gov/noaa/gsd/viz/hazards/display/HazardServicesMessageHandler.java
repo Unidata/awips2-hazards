@@ -1410,7 +1410,7 @@ public final class HazardServicesMessageHandler implements
             for (IHazardEvent hazardEvent : conflictingHazardMap.keySet()) {
 
                 String phenSig = HazardEventUtilities
-                        .getPhenSigSubType(hazardEvent);
+                        .getHazardType(hazardEvent);
                 message.append("Event ID:" + hazardEvent.getEventID() + "("
                         + phenSig + ") Conflicts With: ");
 
@@ -1420,7 +1420,7 @@ public final class HazardServicesMessageHandler implements
                 for (IHazardEvent conflictingHazard : conflictingHazards
                         .keySet()) {
                     String conflictingPhenSig = HazardEventUtilities
-                            .getPhenSigSubType(conflictingHazard);
+                            .getHazardType(conflictingHazard);
                     message.append("Event ID:" + conflictingHazard.getEventID()
                             + "(" + conflictingPhenSig + ") ");
 

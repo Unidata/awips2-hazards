@@ -54,7 +54,7 @@ scripts = [
     ]
 
        
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     gridsStartTime = "20100101_0000"
     drtTime = "20100101_0400"

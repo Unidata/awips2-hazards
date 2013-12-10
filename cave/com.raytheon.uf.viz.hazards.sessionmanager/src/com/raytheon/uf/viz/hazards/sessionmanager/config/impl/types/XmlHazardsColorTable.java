@@ -66,7 +66,7 @@ public class XmlHazardsColorTable implements IHazardsColorTable {
 
     @Override
     public Color getColor(IHazardEvent event) {
-        String key = HazardEventUtilities.getPhenSigSubType(event);
+        String key = HazardEventUtilities.getHazardType(event);
         if (key == null) {
             return null;
         }

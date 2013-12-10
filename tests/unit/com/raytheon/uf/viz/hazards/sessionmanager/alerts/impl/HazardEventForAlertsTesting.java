@@ -18,6 +18,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -33,6 +34,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * July 26, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * 
+ * Dec 2013      2368       thansen    Added getHazardType
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -276,6 +278,11 @@ public class HazardEventForAlertsTesting implements IHazardEvent {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public String getHazardType() {
+        return HazardEventUtilities.getHazardType(this);
     }
 
 }

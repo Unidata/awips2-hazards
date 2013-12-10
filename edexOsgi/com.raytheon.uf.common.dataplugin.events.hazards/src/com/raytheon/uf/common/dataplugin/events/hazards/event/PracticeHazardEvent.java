@@ -75,6 +75,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 1, 2012             mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
  * 
+ * Oct 1, 2012            mnash     Initial creation
+ * Dec 2013      2368    thansen    Added getHazardType
  * </pre>
  * 
  * @author mnash
@@ -312,6 +314,11 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     @Override
     public void setSubType(String subType) {
         this.subType = subType;
+    }
+
+    @Override
+    public String getHazardType() {
+        return HazardEventUtilities.getHazardType(this);
     }
 
     /**

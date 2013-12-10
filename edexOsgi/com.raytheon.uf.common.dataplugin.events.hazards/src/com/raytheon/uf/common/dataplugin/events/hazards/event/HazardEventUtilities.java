@@ -58,10 +58,6 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Oct 22, 2013 1463       blawrenc   Added methods to retrieve
  *                                    map geometries which 
  *                                    intersect hazard geometries.
- * Nov 23, 2013 1462       blawrenc   Added method to build 
- *                                    hazard hatch area for event.
- * 
- * 
  * 
  * </pre>
  * 
@@ -77,13 +73,12 @@ public class HazardEventUtilities {
     private static Map<String, Map<String, List<IGeometryData>>> mapGeometryCache = Maps
             .newHashMap();
 
-    public static String getPhenSigSubType(IHazardEvent event) {
-        return getPhenSigSubType(event.getPhenomenon(),
-                event.getSignificance(), event.getSubType());
+    public static String getHazardType(IHazardEvent event) {
+        return getHazardType(event.getPhenomenon(), event.getSignificance(),
+                event.getSubType());
     }
 
-    public static String getPhenSigSubType(String phen, String sig,
-            String subType) {
+    public static String getHazardType(String phen, String sig, String subType) {
         if (phen == null || sig == null) {
             return null;
         }
@@ -98,16 +93,16 @@ public class HazardEventUtilities {
         return str.toString();
     }
 
-    public static void populateEventForPhenSigSubtype(IHazardEvent event,
-            String phenSigSubtype) {
-        int endPhen = phenSigSubtype.indexOf('.');
-        event.setPhenomenon(phenSigSubtype.substring(0, endPhen));
-        int endSig = phenSigSubtype.indexOf('.', endPhen + 1);
+    public static void populateEventForHazardType(IHazardEvent event,
+            String hazardType) {
+        int endPhen = hazardType.indexOf('.');
+        event.setPhenomenon(hazardType.substring(0, endPhen));
+        int endSig = hazardType.indexOf('.', endPhen + 1);
         if (endSig > 0) {
-            event.setSignificance(phenSigSubtype.substring(endPhen + 1, endSig));
-            event.setSubType(phenSigSubtype.substring(endSig + 1));
+            event.setSignificance(hazardType.substring(endPhen + 1, endSig));
+            event.setSubType(hazardType.substring(endSig + 1));
         } else {
-            event.setSignificance(phenSigSubtype.substring(endPhen + 1));
+            event.setSignificance(hazardType.substring(endPhen + 1));
         }
     }
 

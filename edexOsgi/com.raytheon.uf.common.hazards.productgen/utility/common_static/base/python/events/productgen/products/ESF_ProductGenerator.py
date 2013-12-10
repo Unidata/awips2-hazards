@@ -15,6 +15,8 @@
     Date         Ticket#    Engineer            Description
     ------------ ---------- ----------- --------------------------
     July 3, 2013  1290      Tracy.L.Hansen      Initial creation
+    Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
+                                                 dictionary
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -57,18 +59,21 @@ class Product(ProductTemplate.Product):
     def execute(self, eventSet):          
         '''
         Inputs:
-        @param eventSet: a list of hazard events (eventDicts) plus
+        @param eventSet: a list of hazard events (hazardEvents) plus
                                a map of additional variables
-        @return productDicts: Each execution of a generator can produce 1 or more 
+        @return productDicts, hazardEvents: 
+             Each execution of a generator can produce 1 or more 
              products from the set of hazard events
              For each product, a productID and one dictionary is returned as input for 
              the desired formatters.
+             Also, returned is a set of hazard events, updated with product information.
+
         '''
         self.logger.info("Start ProductGeneratorTemplate:execute ESF")
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._eventDicts:
+        if not self._hazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
         #  each product generated: 
@@ -78,8 +83,8 @@ class Product(ProductTemplate.Product):
         #     "productDict": productDict,
         #     }
         #   ]
-        productDicts = self._makeProducts_FromHazardEvents(self._eventDicts) 
-        return productDicts        
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._hazardEvents) 
+        return productDicts, hazardEvents        
     
     
     def _productParts(self, productID):

@@ -52,7 +52,7 @@ public class JsonHazardsColorTable extends HashMap<String, String> implements
 
     @Override
     public Color getColor(IHazardEvent event) {
-        String key = HazardEventUtilities.getPhenSigSubType(event);
+        String key = HazardEventUtilities.getHazardType(event);
         String color = get(key);
         if (color != null) {
             return SessionConfigurationManager.getColor(color);

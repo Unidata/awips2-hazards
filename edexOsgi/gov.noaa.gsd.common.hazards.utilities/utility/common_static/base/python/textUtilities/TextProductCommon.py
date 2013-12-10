@@ -3,12 +3,12 @@
 11     manipulating projections.
 12    
 13    SOFTWARE HISTORY
-14    Date         Ticket#    Engineer    Description
+14    Date         Ticket#      Engineer             Description
 15    ------------ ---------- ----------- --------------------------
 16    April 5, 2013            Tracy.L.Hansen      Initial creation
+      Dec 2013      2368       Tracy.L.Hansen      Changing from eventDicts to hazardEvents
 17    
 18    @author Tracy.L.Hansen@noaa.gov
-19    @version 1.0
 20    '''
 
 import cPickle, os, types, string, copy
@@ -51,74 +51,13 @@ class TextProductCommon(object):
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
         self.logger.setLevel(logging.INFO)  
 
-    def createHazardEvents(self, eventDicts, siteID):
-        """
-        Creates the Java hazard events, based on the eventDicts. 
-        
-        @param eventDicts: Python dictionaries representing hazard events        
-        @return: A list of hazard events (HazardEvent.py)
-        """
-        hazardEvents = []
-        
-        for eventDict in eventDicts:
-            hazardEvent = EventFactory.createEvent()
-            hazardDict = {}
-            geometryList = []
-            for key in eventDict: 
-                if key in ['saveEventID']: continue
-                value = eventDict.get(key)
-                if   key == 'eventID': 
-                    hazardEvent.setEventID(value)
-                elif key == 'siteID':
-                    if eventDict.get('saveSiteID'):
-                        hazardEvent.setSiteID(eventDict.get('saveSiteID'))
-                    else:
-                        hazardEvent.setSiteID(siteID)
-                    hazardDict['siteID'] = siteID
-                elif key == 'state': hazardEvent.setHazardState(value)
-                elif key in ['phenomenon', 'phen']: hazardEvent.setPhenomenon(value)
-                elif key in ['significance', 'sig']: hazardEvent.setSignificance(value)
-                elif key == 'subType': hazardEvent.setSubtype(value)
-                elif key == 'issueTime': 
-                    if value:
-                        hazardEvent.setIssueTime(datetime.fromtimestamp(value / 1000))
-                        hazardDict['saveIssueTime'] = value
-                        hazardDict['issueTime'] = value
-                elif key == 'startTime': hazardEvent.setStartTime(datetime.fromtimestamp(value / 1000))
-                elif key == 'endTime': hazardEvent.setEndTime(datetime.fromtimestamp(value / 1000))
-                elif key == 'mode': hazardEvent.setHazardMode(value)
-                elif key == 'shapes':
-                    for shape in value:
-                        if shape.get('shapeType') == 'polygon':
-                            polygon = shape.get('points')
-                            geometryList.append(GeometryFactory.createPolygon(polygon, holes=None))
-                        if shape.get('shapeType') == 'line':
-                            line = shape.get('points')
-                            geometryList.append(GeometryFactory.createLineString(line))
-                        if shape.get('shapeType') == 'point':
-                            point = shape.get('points')[0]
-                            pointGeometry = GeometryFactory.createPoint(point)
-                            geometryList.append(pointGeometry)
-                    #hazardDict[key] = value 
-                else:
-                    hazardDict[key] = value
-                                                 
-            hazardEvent.setHazardAttributes(hazardDict)
-            if len(geometryList) == 1:         
-                hazardEvent.setGeometry(geometryList[0])
-            else:
-                multiPolygon = GeometryFactory.createMultiPolygon(geometryList, 'polygons')
-                hazardEvent.setGeometry(multiPolygon)
-                
-            hazardEvents.append(hazardEvent)                        
-        return hazardEvents
                 
     def formatDatetime(self, dt, format='ISO', timeZone=None):
         '''
         @param dt: datetime object
-        @param format: format string e.g. '%H%M %p %Z %a %b %Y'
+        @param format: format string e.g. '%H%M %p %Z %a %e %b %Y'
         @param zone: time zone e.g.'CST7CDT'.   If None use UTC 
-        @return datetime formatted with time zone e.g. '1400 PM CST Mon Feb 2011'
+        @return datetime formatted with time zone e.g. '1400 PM CST Mon 12 Feb 2011'
         '''
         from_zone = tz.tzutc()
         new_time = dt.replace(tzinfo=from_zone)
@@ -160,19 +99,19 @@ class TextProductCommon(object):
         reverse.append((lon, lat))
         return reverse
  
-    def getFormattedTime(self, ctime, format='%I%M %p %Z %a %b %d %Y',
+    def getFormattedTime(self, time_secs, format='%I%M %p %Z %a %b %d %Y',
                         shiftToLocal=1, upperCase=0, stripLeading=1):
         '''
-         Return a text string of the current time in the given format
+         Return a text string of the given time in seconds in the given format
          This method is used for product headers.
         '''
-        if ctime == 0:
-            ctime = time.time()
+        if time_secs == 0:
+            time_secs = time.time()
         if shiftToLocal == 1:
-            curTime = time.localtime(ctime)
+            curTime = time.localtime(time_secs)
         else:
-            curTime = time.gmtime(ctime)
-            localTime = time.localtime(ctime)
+            curTime = time.gmtime(time_secs)
+            localTime = time.localtime(time_secs)
             zoneName = time.strftime('%Z',localTime)
         timeStr = time.strftime(format, curTime)
         if shiftToLocal == 0:
@@ -859,7 +798,7 @@ class TextProductCommon(object):
         Order vtec records and create the sections for the segment
         
         @param vtecRecords:  vtecRecords for a segment
-        @param metaDataList: list of (metaData, eventDict) for the segment
+        @param metaDataList: list of (metaData, hazardEvent) for the segment
         @param productID: product ID e.g. FFA, CWF, etc.
         @param creationTime: in seconds so that it compares to the vtec records
         '''
@@ -914,14 +853,14 @@ class TextProductCommon(object):
                 headlineStr = headlineStr + '...' + hazStr + localStr + '...\n'
             
             # Add to section
-            for metaData, eventDict in metaDataList:
-                if eventDict.get('eventID') == vtecRecord['eventID']:
-                    sections.append((vtecRecord, metaData, eventDict))
+            for metaData, hazardEvent in metaDataList:
+                if hazardEvent.getEventID() == vtecRecord['eventID']:
+                    sections.append((vtecRecord, metaData, hazardEvent))
                     break 
 
             # Add replaceStr
-            replacedBy = eventDict.get('replacedBy')
-            replaces = eventDict.get('replaces')
+            replacedBy = hazardEvent.get('replacedBy')
+            replaces = hazardEvent.get('replaces')
             if replacedBy:
                 replaceStr =  '...REPLACED BY ' + replacedBy + '...\n'
             elif replaces:

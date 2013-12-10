@@ -62,7 +62,7 @@ MetaData_FFW_NonConvective = [
            {
             # SEVERITY 
              "fieldType":"RadioButtons",
-             "fieldName": "include",
+             "fieldName": "severity",
              "label": "Severity",
              "choices": [
                 { "identifier": "sev1", "productString": "1",

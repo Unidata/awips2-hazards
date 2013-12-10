@@ -331,7 +331,7 @@ public class HazardGeometryFactory extends AbstractDataFactory {
                     // special case for phensig
                     if (hazardAttribute.equals(HAZARD_TYPE)) {
                         attrs.put(hazardAttribute,
-                                HazardEventUtilities.getPhenSigSubType(event));
+                                HazardEventUtilities.getHazardType(event));
                         continue;
                     }
 

@@ -172,7 +172,7 @@ scripts = [
     ]
        
 
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     defaults = {
         "gridsStartTime": "20100101_0000",

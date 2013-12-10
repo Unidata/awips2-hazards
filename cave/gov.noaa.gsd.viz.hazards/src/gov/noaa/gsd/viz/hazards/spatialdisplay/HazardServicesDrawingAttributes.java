@@ -178,7 +178,7 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
     }
 
     protected void setLabel(IHazardEvent hazardEvent) {
-        String hazardType = HazardEventUtilities.getPhenSigSubType(hazardEvent);
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
         StringBuilder sb = new StringBuilder();
         sb.append(hazardEvent.getEventID());

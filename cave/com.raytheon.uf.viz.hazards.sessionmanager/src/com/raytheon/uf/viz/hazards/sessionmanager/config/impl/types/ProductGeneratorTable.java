@@ -48,7 +48,7 @@ public class ProductGeneratorTable extends
     private static final long serialVersionUID = -6842654894871115837L;
 
     public String getProduct(IHazardEvent event){
-        String key = HazardEventUtilities.getPhenSigSubType(event);
+        String key = HazardEventUtilities.getHazardType(event);
         for(Entry<String, ProductGeneratorEntry> entry : entrySet()){
             for (String[] pair : entry.getValue().getAllowedHazards()) {
                 if (pair[0].equals(key)) {

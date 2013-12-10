@@ -11,27 +11,27 @@ import os,sys
 import HazardUpgradeDowngrade as UpDown
 
 import json
-# These next two imports were added for direct access to the HazardTypes and
-# VTECTable i/o and are for testing only.  The bridge may be used to get this
-# information; these lines should be replace accordingly.
-#from DTFCommonLibrary.VTECutilities.VTECTableIO import VTECTableIO
-
-# This was for testing, since we obtained the vtec database directly from
-# a file on disk.
-#DBPATH="/tmp/vtecRecords.db"
+# These next two imports are for unit testing direct access to flat file vtecRecords
+from VTECTableIO import VTECTableIO
+user = os.environ['USER']
+try:
+    os.makedirs("/tmp/"+user)
+except:
+    pass
+DBPATH="/tmp/"+user+"/vtecRecords.db"
 
 # NOTE: VERY IMPORTANT.  The VTEC code must be run with the time zone of GMT0
 # to ensure all calculations are not done in local time.  This is accomplished
 # outside of this routine by setting the environment variable for TZ to GMT0.
 
-# EventDict rules:
-# 1) All eventDicts sent to the engine must use the same "combinable segments"
+# HazardEvent rules:
+# 1) All hazardEvents sent to the engine must use the same "combinable segments"
 # type for their hazards, as defined by the HazardTypes dictionary.
 #
-# 2) All eventDicts sent to the engine must use the same "geoType" for their
-# hazards, as defined within the EventDicts.
+# 2) All hazardEvents sent to the engine must use the same "geoType" for their
+# hazards, as defined within the HazardEvents.
 #
-# 3) All eventDicts sent to the engine should have the state of 'issued' or
+# 3) All hazardEvents sent to the engine should have the state of 'issued' or
 # 'ended'.  If other states are passed then it is very important not to call
 # the VTECIngester through the interface (by using mergeResults).
 #
@@ -53,7 +53,7 @@ import json
 # if it occurs before the ending time of the event.
 
 # 7) If user tries to change the area or time for a hazard which does not allow
-# such an operation, then a new EventDict / eventID will be generated.  
+# such an operation, then a new HazardEvent / eventID will be generated.  
 
 #------------------------------------------------------------------
 #  VTEC Engine Wrapper
@@ -63,7 +63,7 @@ import json
 # provide all i/o needed.
 #------------------------------------------------------------------
 class VTECEngineWrapper(object):
-    def __init__(self, bridge, productCategory, siteID4, eventDicts = [],
+    def __init__(self, bridge, productCategory, siteID4, hazardEvents = [],
       vtecMode = 'O', creationTime=None, limitGeoZones=None, testHarnessMode=0,
       vtecProduct=True):
         '''Constructor for VTEC Engine Wrapper
@@ -75,7 +75,7 @@ class VTECEngineWrapper(object):
         productCategory -- identifier for the product, which must match a 
          key in the ProductGeneratorTable.
         siteID4 -- identifier for the site, such as KBOU
-        eventDicts -- list of event dictionaries containing the hazard records.
+        hazardEvents -- list of hazard events
         vtecMode -- 'O' for operational product, 'T' for test product,
           'E' for experimental product, 'X' for Experimental VTEC in an
           operational product.
@@ -94,24 +94,30 @@ class VTECEngineWrapper(object):
         self.vtecProduct = vtecProduct
             
         # Access to VTEC Table and VTEC records
-        if bridge is None:
-            from bridge.Bridge import Bridge
-            bridge = Bridge()
         self.bridge = bridge
-        if self.vtecProduct:
-            vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
-        else:
-            vtecRecords = []
-                
-        # Hazard Types
-        self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
-        # ProductGeneratorTable
-        ProductGeneratorTable = json.loads(self.bridge.getData('{"dataType":"productGeneratorTable"}'))
+        if self.bridge is not None:
+            if self.vtecProduct:
+                vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
+            else:
+                vtecRecords = []                
+            # Hazard Types
+            self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
+            # ProductGeneratorTable
+            ProductGeneratorTable = json.loads(self.bridge.getData('{"dataType":"productGeneratorTable"}'))
+        else: # Testing
+            self._io = VTECTableIO(DBPATH)    # access the routines to read/write
+            vtecRecords = self._io.readVtecRecords()  # read the current records
+            from LocalizationInterface import LocalizationInterface
+            localizationInterface = LocalizationInterface("")      
+            execString = localizationInterface.getLocFile(
+                    "hazardServices/hazardTypes/HazardTypes.py", "COMMON_STATIC", "Base")
+            exec execString
+            self.hazardTypes = HazardTypes            
+            ProductGeneratorTable = localizationInterface.getLocFile(
+                    "hazardServices/productGeneratorTable/ProductGeneratorTable.py",  
+                    "COMMON_STATIC", "Base")
+            exec ProductGeneratorTable
 
-#TESTING CODE begin for standalone (no bridge)
-        #self._io = VTECTableIO(DBPATH)    # access the routines to read/write
-        #vtecRecords = self._io.readVtecRecords()  # read the current records
-#END TESTING CODE
         self._creationTime = creationTime
 
         # Get the list of allowedHazards from the ProductGeneratorTable
@@ -130,7 +136,7 @@ class VTECEngineWrapper(object):
           downgradeDef=UpDown.downgradeHazardsDict)
         
         # instantiate the actual vtec engine
-        self._engine = VTECEngine(productCategory, siteID4, eventDicts,
+        self._engine = VTECEngine(productCategory, siteID4, hazardEvents,
           vtecRecords, vtecDefinitions, allowedHazards, vtecMode,
           creationTime, limitGeoZones)
 
@@ -140,42 +146,39 @@ class VTECEngineWrapper(object):
 
     def mergeResults(self):
         '''Merges the VTECEngine results with the existing vtec records'''
+        # TODO: This method needs to be an atomic transaction
         if not self.vtecProduct: 
-            return
-        
+            return        
         vtecDicts = self._engine.analyzedTable()
 
-#TESTING CODE BEGIN for standalone (no bridge)
-# Note that we read the vtec records again.  This may or may not be necessary
-# but if there was any actions that occurred between the first read when the
-# VTECEngineWrapper was instantiated, until the time mergeResults() took
-# place, then by reusing the records previously read may result in 
-# missing any changes to the vtec records that has occurred.
-        #vtecRecords = self._io.readVtecRecords()  # read the records again
-#END TESTING CODE
-        
-        # This needs to be an atomic transaction
-        criteria = {"dataType":self.vtecRecordType,
+        # Note that we read the vtec records again.  This may or may not be necessary
+        # but if there was any actions that occurred between the first read when the
+        # VTECEngineWrapper was instantiated, until the time mergeResults() took
+        # place, then by reusing the records previously read may result in 
+        # missing any changes to the vtec records that has occurred.
+                
+        if self.bridge is not None:        
+            criteria = {"dataType":self.vtecRecordType,
                     "lock": "True",
                     }
-        vtecRecords = json.loads(self.bridge.getData(json.dumps(criteria)))
+            vtecRecords = json.loads(self.bridge.getData(json.dumps(criteria)))
+        else:
+            vtecRecords = self._io.readVtecRecords()  
        
         # Instantiate the ingester, to merge the calculated with vtec database
         ingester = VTECIngester()
         ingester.ingestVTEC(vtecDicts, vtecRecords, self._creationTime)
         mergedRecords = ingester.mergedVtecRecords()
 
-#TESTING CODE BEGIN for standalone (no bridge)
-# Write out final results to database.  Replace with bridge code.
-        #self._io.writeVtecRecords(mergedRecords)
-#END TESTING CODE
-
-        criteria = {
+        if self.bridge is not None:
+            criteria = {
                     "dataType": self.vtecRecordType,
                     "vtecDicts": mergedRecords,
                     "lock": "False",
                     }
-        self.bridge.putData(json.dumps(criteria))
+            self.bridge.putData(json.dumps(criteria))
+        else:
+            self._io.writeVtecRecords(mergedRecords)
 
     def flush(self):
         """ Flush the print buffer """

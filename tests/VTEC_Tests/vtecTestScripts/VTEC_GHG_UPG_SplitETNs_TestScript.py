@@ -712,7 +712,7 @@ scripts = [
     ]
 
        
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     defaults = {
         "decodeVTEC": 1,

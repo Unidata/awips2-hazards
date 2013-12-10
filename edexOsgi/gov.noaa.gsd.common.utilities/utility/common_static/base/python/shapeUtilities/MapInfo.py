@@ -127,17 +127,6 @@ class MapInfo:
             mapAtts = ['state', 'fips', 'countyname']
             req.setParameters("countyname", "state","fips") 
         geometries = DataAccessLayer.getGeometryData(req)
-        
-        # Make a shapely polygon from userPolygon
-        #  Ugly!! There's got to be a better way :)
-#        size = len(userPolygon)
-#        i = 0
-#        points = []
-#        while i < size:
-#            lon = userPolygon[i]
-#            lat = userPolygon[i+1]
-#            points.append((lon, lat))
-#            i+=2
 
         # Make Shapely Polygons and BBoxes
         polygons = []

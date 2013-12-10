@@ -157,7 +157,7 @@ public class SessionProductManager implements ISessionProductManager {
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
-                String key = HazardEventUtilities.getPhenSigSubType(e);
+                String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
                         supportedHazards.add(key);
@@ -191,7 +191,7 @@ public class SessionProductManager implements ISessionProductManager {
          * requested hazard types
          */
         for (IHazardEvent e : eventManager.getEvents()) {
-            String key = HazardEventUtilities.getPhenSigSubType(e);
+            String key = HazardEventUtilities.getHazardType(e);
             boolean found = false;
             for (String supported : supportedHazards) {
                 if (supported.equals(key)) {
@@ -235,7 +235,7 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private boolean isCombinable(IHazardEvent e) {
-        String type = HazardEventUtilities.getPhenSigSubType(e);
+        String type = HazardEventUtilities.getHazardType(e);
         HazardTypes hazardTypes = configManager.getHazardTypes();
         HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
         boolean result = hazardTypeEntry.isCombinableSegments();

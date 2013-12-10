@@ -47,7 +47,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "Single FA.W cancel",
     "name": "FLW_FLS_1c",
@@ -103,7 +103,7 @@ scripts = [
     "checkStrings": [],
     "clearHazardsTable": 1,
     },
-
+ 
     {
     "commentary": "Single FA.W issuance",
     "name": "FLW_FLS_2a",
@@ -119,7 +119,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "A second FA.W issuance, only mentioning the second",
     "name": "FLW_FLS_2b",
@@ -135,7 +135,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "Updating just the 1st FA.W",
     "name": "FLW_FLS_2c",
@@ -152,7 +152,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "Updating both FA.Ws",
     "name": "FLW_FLS_2d",
@@ -173,7 +173,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "Issue a new one, cancel one, ignore the 2nd one",
     "name": "FLW_FLS_2e",
@@ -194,8 +194,8 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
-
+ 
+ 
     {
     "commentary": "Do an expire on the 2nd FA.W, ignore the others",
     "name": "FLW_FLS_2f",
@@ -211,8 +211,8 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
-
+ 
+ 
     {
     "commentary": "do a time change on the 3rd",
     "name": "FLW_FLS_2g",
@@ -228,8 +228,8 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
-
+ 
+ 
     {
     "commentary": "do a followup on the 3rd after it expires",
     "name": "FLW_FLS_2h",
@@ -245,7 +245,7 @@ scripts = [
                      "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/"
                      ],
     },
-
+ 
     {
     "commentary": "nothing left",
     "name": "FLW_FLS_2i",
@@ -259,7 +259,7 @@ scripts = [
     ]
 
        
-import test.VTEC_Tests.TestScript as TestScript
+import TestScript as TestScript
 def testScript():
     defaults = {
         "decodeVTEC": 1,
