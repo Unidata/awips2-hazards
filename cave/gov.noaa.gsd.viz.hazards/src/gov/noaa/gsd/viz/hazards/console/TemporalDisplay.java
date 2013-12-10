@@ -136,7 +136,23 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
  *                                           slider and ruler listener parameters.
  *                                           Also altered to handle new location of
  *                                           utility classes.
- * Nov 29, 2013    2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * Nov 29, 2013    2380    daniel.s.schaffer Minor cleanup
+ * Dec 04, 2013    2377    Chris.Golden      Fixed bug that caused time-remaining
+ *                                           column's cells to not be formatted,
+ *                                           right-adjusted, etc. appropriately if
+ *                                           Hazard Services was started with a
+ *                                           setting that filtered out an existing
+ *                                           event, and that event was then shown
+ *                                           by having the filter removed. Also
+ *                                           fixed bug causing exception when
+ *                                           switching back to a single selected
+ *                                           time in the timeline. Finally, fixed
+ *                                           bug causing exceptions when right-
+ *                                           clicking on the table column headers
+ *                                           in certain cases if the table's
+ *                                           horizontal scrollbar was showing and
+ *                                           scrolled over at least partway to the
+ *                                           right.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1532,10 +1548,13 @@ class TemporalDisplay {
      */
     public void updateSelectedTimeRange(String range) {
         DictList rangeList = DictList.getInstance(range);
-        String startTime = rangeList.getDynamicallyTypedValue(0);
-        String endTime = rangeList.getDynamicallyTypedValue(1);
-        ruler.setConstrainedThumbValues(Long.parseLong(startTime),
-                Long.parseLong(endTime));
+        String startTimeStr = rangeList.getDynamicallyTypedValue(0);
+        long startTime = Long.parseLong(startTimeStr);
+        String endTimeStr = rangeList.getDynamicallyTypedValue(1);
+        long endTime = Long.parseLong(endTimeStr);
+        if ((startTime != -1L) && (endTime != -1L)) {
+            ruler.setConstrainedThumbValues(startTime, endTime);
+        }
     }
 
     /**
@@ -3378,6 +3397,12 @@ class TemporalDisplay {
             // Create the table item for this row.
             TableItem item = new TableItem(table, SWT.NONE);
 
+            // Set the row's identifier to equal that of the hazard event.
+            Dict eventDict = dictsForEventIdentifiers.get(eventIdentifiers
+                    .get(j));
+            item.setData(eventDict.get(HAZARD_EVENT_IDENTIFIER));
+            item.setChecked((Boolean) eventDict.get(HAZARD_EVENT_CHECKED));
+
             // For each column in the row, insert the text appropriate
             // to the column.
             for (String name : visibleColumnNames) {
@@ -3386,8 +3411,6 @@ class TemporalDisplay {
             }
 
             // Determine whether or not the row is to be selected.
-            Dict eventDict = dictsForEventIdentifiers.get(eventIdentifiers
-                    .get(j));
             Object selectedObject = eventDict.get(HAZARD_EVENT_SELECTED);
             boolean selected = ((selectedObject != null) && ((Boolean) selectedObject)
                     .booleanValue());
@@ -3403,10 +3426,6 @@ class TemporalDisplay {
                     ((Number) eventDict.get(HAZARD_EVENT_START_TIME))
                             .longValue(),
                     ((Number) eventDict.get(HAZARD_EVENT_END_TIME)).longValue());
-
-            // Set the row's identifier to equal that of the hazard event
-            item.setData(eventDict.get(HAZARD_EVENT_IDENTIFIER));
-            item.setChecked((Boolean) eventDict.get(HAZARD_EVENT_CHECKED));
 
             // Create the table editor for this time scale.
             createTableEditorForTimeScale(scale, item);
@@ -3433,17 +3452,12 @@ class TemporalDisplay {
     private TableColumn getTableColumnAtPoint(Point point) {
         point = Display.getCurrent().map(null, table, point);
         Rectangle clientArea = table.getClientArea();
-        ScrollBar horizontalScrollBar = table.getHorizontalBar();
-        int offset = (horizontalScrollBar != null ? horizontalScrollBar
-                .getSelection() : 0);
-        int xStart = clientArea.x + offset;
-        int xPoint = point.x + offset;
-        if (xPoint >= xStart) {
+        if (point.x >= clientArea.x) {
             int xCurrent = 0;
             for (int columnIndex : table.getColumnOrder()) {
                 TableColumn column = table.getColumn(columnIndex);
                 int xNext = xCurrent + column.getWidth();
-                if ((xPoint >= xCurrent) && (xPoint < xNext)) {
+                if ((point.x >= xCurrent) && (point.x < xNext)) {
                     return column;
                 }
                 xCurrent = xNext;
