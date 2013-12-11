@@ -18,7 +18,7 @@
  * further licensing information.
  **/
 
-package gov.noaa.gsd.viz.hazards.style;
+package com.raytheon.uf.viz.hazards.sessionmanager.styles;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;

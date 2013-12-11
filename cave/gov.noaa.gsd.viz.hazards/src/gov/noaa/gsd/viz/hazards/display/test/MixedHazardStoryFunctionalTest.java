@@ -173,7 +173,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                             FLOOD_WATCH_PHEN_SIG);
                     assertEquals(event.get(HAZARD_EVENT_STATE),
                             HazardState.POTENTIAL.getValue());
-                    assertEquals(event.get(HAZARD_EVENT_COLOR), "191 221 217");
+                    assertEquals(event.get(HAZARD_EVENT_COLOR), "191 221 216");
 
                     String e0 = hazards.get(0).getDynamicallyTypedValue(
                             HAZARD_EVENT_IDENTIFIER);
@@ -580,7 +580,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
                 1.2971484E12));
-        assertEquals(event.get(HAZARD_EVENT_COLOR), "144 224 209");
+        assertEquals(event.get(HAZARD_EVENT_COLOR), "142 224 209");
     }
 
     private void checkHidFloodEventAddition() {

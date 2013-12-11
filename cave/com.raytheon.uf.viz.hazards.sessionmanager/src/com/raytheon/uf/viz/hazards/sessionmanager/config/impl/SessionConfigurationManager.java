@@ -29,7 +29,9 @@ import java.util.Map.Entry;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.ILocalizationFileObserver;
@@ -42,6 +44,11 @@ import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.style.MatchCriteria;
+import com.raytheon.uf.common.style.ParamLevelMatchCriteria;
+import com.raytheon.uf.common.style.StyleException;
+import com.raytheon.uf.common.style.StyleManager;
+import com.raytheon.uf.common.style.StyleRule;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
@@ -70,6 +77,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.SettingsList;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 
 /**
  * Implementation of ISessionConfigurationManager with asynchronous config file
@@ -85,9 +93,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Nov 23, 2013  1462      blawrenc    Changed default polygon border width from 1 to 3.
- * 
- *  
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
+ * Nov 30, 2013            blawrenc    Added hazard color retrieval from style rules.
  * 
  * </pre>
  * 
@@ -468,13 +475,39 @@ public class SessionConfigurationManager implements
 
     @Override
     public Color getColor(IHazardEvent event) {
-        for (ConfigLoader<? extends IHazardsColorTable> colorTable : colorTables) {
-            Color color = colorTable.getConfig().getColor(event);
-            if (color != null) {
-                return color;
-            }
+
+        StyleRule styleRule = null;
+
+        try {
+            styleRule = StyleManager.getInstance().getStyleRule(
+                    StyleManager.StyleType.GEOMETRY, getMatchCriteria(event));
+        } catch (StyleException e) {
+            statusHandler.error("Error retrieving hazard style rules: ", e);
         }
+
+        if (styleRule != null) {
+            HazardStyle hazardStyle = (HazardStyle) styleRule.getPreferences();
+            Color hazardColor = hazardStyle.getColor();
+            return hazardColor;
+        }
+
         return WHITE;
+    }
+
+    /**
+     * Builds the Style Rule matching criteria for retrieving hazard colors.
+     * 
+     * @param event
+     *            The event for which to retrieve color information.
+     * 
+     * @return The criteria to use in searching the Hazard Services Style Rules.
+     */
+    private MatchCriteria getMatchCriteria(IHazardEvent event) {
+        ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
+        List<String> paramList = Lists.newArrayList(HazardEventUtilities
+                .getHazardType(event));
+        match.setParameterName(paramList);
+        return match;
     }
 
     @Override
