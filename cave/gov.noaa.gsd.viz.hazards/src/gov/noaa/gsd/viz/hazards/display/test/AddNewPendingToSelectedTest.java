@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
+import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 
 import java.util.Iterator;
 
@@ -148,7 +149,8 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
                 break;
 
             case EVENT1:
-                autoTestUtilities.runDamBreakRecommender();
+                autoTestUtilities
+                        .runDamBreakRecommender(DamBreakUrgencyLevels.LOW_CONFIDENCE_URGENCY_LEVEL);
                 break;
 
             case PREVIEW:

@@ -6,6 +6,7 @@ import sys
 
 from testCaseSupportRoutines import defaultRecommenderSetup
 from testCaseSupportRoutines import UnitTestFramework
+from MockHazardEvent import HazardEvent
 
 # This is a unit test of DamBreakFloodRecommender.
 class TestStormTrack(UnitTestFramework):
@@ -27,10 +28,15 @@ class TestStormTrack(UnitTestFramework):
             exec codeImport
         from DamBreakFloodRecommender import Recommender
         recommenderObject = Recommender()
+        hazardEvent = HazardEvent()
+        
+        #
+        # Injecting a non java-backed test hazard event here.
         result = recommenderObject.updateEventAttributes( \
-                 sessionDict, dialogDict, spatialDict)
+                 hazardEvent, sessionDict, dialogDict, spatialDict)
 
-        self.reportTestCaseOutcome(result, expectedResult)
+        resultDict = result.__dict__
+        self.reportTestCaseOutcome(resultDict, expectedResult)
 
 if __name__ == '__main__':
     unittest.main()

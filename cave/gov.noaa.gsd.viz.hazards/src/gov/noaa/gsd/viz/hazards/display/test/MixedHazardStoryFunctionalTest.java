@@ -16,6 +16,7 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
@@ -107,8 +108,10 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 switch (step) {
                 case RUN_DAM_BREAK:
 
-                    autoTestUtilities.runDamBreakRecommender();
+                    autoTestUtilities
+                            .runDamBreakRecommender(DamBreakUrgencyLevels.LOW_CONFIDENCE_URGENCY_LEVEL);
                     break;
+
                 case RUN_FLOOD:
 
                     Dict riverFloodInfo = new Dict();

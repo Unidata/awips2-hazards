@@ -110,9 +110,10 @@ public class AutomatedTests {
         else if (testCompleted.getTestClass().equals(
                 ContextMenuFunctionalTest.class)) {
             new HazardConflictFunctionalTest(appBuilder).run();
-        }
-
-        else {
+        } else if (testCompleted.getTestClass().equals(
+                HazardConflictFunctionalTest.class)) {
+            new DamBreakFunctionalTest(appBuilder).run();
+        } else {
             statusHandler.debug("All tests completed");
             appBuilder.getEventBus().post(
                     new ConsoleAction(HazardConstants.RESET_ACTION,

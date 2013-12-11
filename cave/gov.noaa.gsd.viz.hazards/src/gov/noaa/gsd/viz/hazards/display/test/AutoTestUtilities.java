@@ -114,6 +114,30 @@ public class AutoTestUtilities {
 
     static final String LOW_CONFIDENCE_URGENCY_LEVEL = "Low Confidence (Potential Structure Failure)";
 
+    static final String HIGH_CONFIDENCE_URGENCY_LEVEL = "High Confidence (Structure Failure Imminent)";
+
+    static final String DAM_HAS_FAILED_URGENCY_LEVEL = "Structure has Failed!!";
+
+    static public enum DamBreakUrgencyLevels {
+
+        LOW_CONFIDENCE_URGENCY_LEVEL(
+                "Low Confidence (Potential Structure Failure)"), HIGH_CONFIDENCE_URGENCY_LEVEL(
+                "High Confidence (Structure Failure Imminent)"), DAM_FAILED_URGENCY_LEVEL(
+                "Structure has Failed!!");
+
+        private DamBreakUrgencyLevels(final String text) {
+            this.text = text;
+        }
+
+        private final String text;
+
+        @Override
+        public String toString() {
+            return text;
+        }
+
+    }
+
     static final String URGENCY_LEVEL = "urgencyLevel";
 
     static final String BRANCH_OAK_DAM = "Branch Oak Dam";
@@ -258,10 +282,10 @@ public class AutoTestUtilities {
         return products;
     }
 
-    void runDamBreakRecommender() {
+    void runDamBreakRecommender(DamBreakUrgencyLevels urgencyLevel) {
         Dict damBreakInfo = new Dict();
         damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
-        damBreakInfo.put(URGENCY_LEVEL, LOW_CONFIDENCE_URGENCY_LEVEL);
+        damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
         eventBus.post(new ToolAction(
                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                 FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
