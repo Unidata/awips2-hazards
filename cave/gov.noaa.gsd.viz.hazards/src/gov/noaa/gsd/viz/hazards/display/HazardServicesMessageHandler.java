@@ -112,6 +112,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Dec 08, 2013 2155       bryon.lawrence     Removed logic in runTool which
  *                                            which seemed to be leading
  *                                            to an occasional race condition.
+ * Dec 08, 2013 2375       bryon.lawrence     Added code to add updated hazard type to
+ *                                            dynamic settings.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -804,6 +806,7 @@ public final class HazardServicesMessageHandler implements
                 ;
             } else if (HAZARD_EVENT_FULL_TYPE.equals(key)) {
                 IHazardEvent oldEvent = null;
+
                 if (!sessionEventManager.canChangeType(event)) {
                     oldEvent = event;
                     event = new BaseHazardEvent(event);
@@ -835,6 +838,16 @@ public final class HazardServicesMessageHandler implements
                     } else {
                         event.setSubType(null);
                     }
+
+                    /*
+                     * Make sure the updated hazard type is a part of the
+                     * visible types in the current setting. If not, add it.
+                     */
+                    Set<String> visibleTypes = sessionConfigurationManager
+                            .getSettings().getVisibleTypes();
+                    visibleTypes.add(HazardEventUtilities.getHazardType(event));
+                    appBuilder.notifyModelChanged(EnumSet
+                            .of(HazardConstants.Element.DYNAMIC_SETTING));
                 }
                 if (oldEvent != null) {
                     oldEvent.addHazardAttribute("replacedBy",
