@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.ModifyEvent;
@@ -24,7 +25,6 @@ import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Text;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -52,6 +52,10 @@ import com.google.common.collect.Sets;
  *                                           label as state label if there is only
  *                                           one state identifier and it has no
  *                                           associated state label.
+ * Dec 13, 2013   2545     Chris.Golden      Replaced Text widget with StyledText
+ *                                           to provide a component that only
+ *                                           shows a vertical scrollbar when
+ *                                           needed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,7 +87,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     /**
      * Text component associated with this megawidget.
      */
-    private final Text text;
+    private final StyledText text;
 
     /**
      * Current value.
@@ -140,9 +144,10 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
 
         // Create the text component.
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        text = new Text(panel, SWT.BORDER
-                + (multiLine ? SWT.MULTI : SWT.SINGLE)
-                + (multiLine ? SWT.WRAP + SWT.V_SCROLL : SWT.NONE));
+        text = new StyledText(panel, SWT.BORDER
+                | (multiLine ? SWT.MULTI : SWT.SINGLE)
+                | (multiLine ? SWT.WRAP | SWT.V_SCROLL : SWT.NONE));
+        text.setAlwaysShowScrollBars(false);
         int limit = specifier.getMaxTextLength();
         if (limit > 0) {
             text.setTextLimit(limit);

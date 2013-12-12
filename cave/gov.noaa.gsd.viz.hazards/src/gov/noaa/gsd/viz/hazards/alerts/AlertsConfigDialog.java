@@ -12,6 +12,7 @@ import gov.noaa.gsd.viz.hazards.display.action.AlertsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
+import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 
@@ -33,6 +34,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 
 /**
  * Alert dialog, allowing the user to create or modify alerts.
@@ -44,6 +46,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            daniel.s.schaffer      Initial induction into repo
  * Jul 18, 2013    585     Chris.Golden           Changed to support loading from bundle.
+ * Dec 16, 2013   2545     Chris.Golden           Added current time provider for megawidget
+ *                                                use.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -138,6 +142,16 @@ class AlertsConfigDialog extends BasicDialog {
      * Values dictionary, used to hold the dialog's widgets' values.
      */
     private final Dict values;
+
+    /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
 
     /**
      * Megawidget manager.
@@ -266,7 +280,7 @@ class AlertsConfigDialog extends BasicDialog {
         }
         try {
             megawidgetManager = new MegawidgetManager(parent, fieldsList,
-                    values, 0L, 0L, 0L, 0L) {
+                    values, 0L, 0L, 0L, 0L, currentTimeProvider) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {

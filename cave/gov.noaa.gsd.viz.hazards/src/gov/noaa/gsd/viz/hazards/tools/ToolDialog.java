@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
@@ -32,6 +33,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -88,7 +90,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           tool dialog.
  * Jul 18, 2013    585     Chris Golden      Changed to support loading
  *                                           from bundle.
- * Aug 21, 2013 1921       daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 21, 2013   1921     daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Dec 16, 2013   2545     Chris.Golden      Added current time provider
+ *                                           for megawidget use.
  * </pre>
  * 
  * @author Chris.Golden
@@ -129,6 +133,16 @@ class ToolDialog extends BasicDialog {
      * Values dictionary, used to hold the dialog's megawidgets' values.
      */
     private Dict valuesDict = null;
+
+    /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
 
     /**
      * Megawidget manager.
@@ -356,7 +370,8 @@ class ToolDialog extends BasicDialog {
                     : new PythonSideEffectsApplier(pythonSideEffectsScript));
             megawidgetManager = new MegawidgetManager(top,
                     megawidgetSpecifiersList, valuesDict, minTime, maxTime,
-                    minVisibleTime, maxVisibleTime, sideEffectsApplier) {
+                    minVisibleTime, maxVisibleTime, currentTimeProvider,
+                    sideEffectsApplier) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {

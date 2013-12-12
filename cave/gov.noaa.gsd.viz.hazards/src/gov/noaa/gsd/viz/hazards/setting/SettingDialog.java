@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
@@ -37,6 +38,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 
 /**
  * Setting dialog, a dialog allowing the user to create or modify settings.
@@ -48,9 +50,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden    Initial induction into repo
  * Jul 18, 2013    585     Chris Golden    Changed to support loading from bundle.
- * 
- *  
- * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * Nov 29, 2013   2380     daniel.s.schaffer@noaa.gov Minor cleanup
+ * Dec 16, 2013   2545     Chris.Golden    Added current time provider for megawidget
+ *                                         use.
  * 
  * </pre>
  * 
@@ -164,6 +166,16 @@ class SettingDialog extends BasicDialog {
      * Values dictionary, used to hold the dialog's widgets' values.
      */
     private Dict values;
+
+    /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
 
     /**
      * Megawidget manager.
@@ -311,7 +323,7 @@ class SettingDialog extends BasicDialog {
         }
         try {
             megawidgetManager = new MegawidgetManager(top, fieldsList, values,
-                    0L, 0L, 0L, 0L) {
+                    0L, 0L, 0L, 0L, currentTimeProvider) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {

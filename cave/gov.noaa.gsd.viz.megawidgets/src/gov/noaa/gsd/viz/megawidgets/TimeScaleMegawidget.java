@@ -14,30 +14,21 @@ import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
-import java.text.ParsePosition;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.FocusAdapter;
-import org.eclipse.swt.events.FocusEvent;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Text;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Range;
+import com.google.common.collect.Ranges;
 import com.google.common.collect.Sets;
 
 /**
@@ -59,6 +50,10 @@ import com.google.common.collect.Sets;
  * Nov 05, 2013   2336     Chris.Golden      Added option to not notify listeners
  *                                           of state changes caused by ongoing
  *                                           thumb drags.
+ * Dec 16, 2013   2545     Chris.Golden      Changed to use new DateTimeComponent
+ *                                           objects instead of text fields for
+ *                                           viewing/manipulating each state
+ *                                           value above the scale widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -151,32 +146,17 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         }
     };
 
-    /**
-     * String that will generate the longest length in pixels when displayed in
-     * a date text entry widget, used to calculate the required width for said
-     * widgets.
-     */
-    private static final String SAMPLE_LONG_DATE_STRING = "00:00 Wed 00-May-0000";
-
-    /**
-     * Date formatter for shorter strings.
-     */
-    private static final SimpleDateFormat SHORT_DATE_FORMATTER = new SimpleDateFormat(
-            "HH:mm dd-MM-yy");
-
-    /**
-     * Date formatter for longer strings.
-     */
-    private static final SimpleDateFormat LONG_DATE_FORMATTER = new SimpleDateFormat(
-            "HH:mm EEE dd-MMM-yyyy");
-
-    // Configure the date formatter.
-    static {
-        SHORT_DATE_FORMATTER.setTimeZone(TimeZone.getTimeZone("GMT"));
-        LONG_DATE_FORMATTER.setTimeZone(TimeZone.getTimeZone("GMT"));
-    }
-
     // Private Variables
+
+    /**
+     * Range of state that are allowed, from minimum to maximum.
+     */
+    private final Range<Long> bounds;
+
+    /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider;
 
     /**
      * Map pairing state identifier keys with their current values in
@@ -198,14 +178,75 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     private final Label mainLabel;
 
     /**
-     * Labels associated with this megawidget, if any.
+     * List of labels created for the date-time components.
      */
     private final List<Label> labels;
 
     /**
-     * Map pairing state identifier keys with text components as values.
+     * Mapping of state identifier keys to date-time components as values.
      */
-    private final Map<String, Text> textsForIds;
+    private final Map<String, DateTimeComponent> dateTimesForIds;
+
+    /**
+     * Manager of the date-time components.
+     */
+    private final IDateTimeComponentHolder dateTimeManager = new IDateTimeComponentHolder() {
+        @Override
+        public long getCurrentTime() {
+            return currentTimeProvider.getCurrentTime();
+        }
+
+        @Override
+        public Range<Long> getAllowableRange(String identifier) {
+            return bounds;
+        }
+
+        @Override
+        public boolean isValueChangeAcceptable(String identifier, long value) {
+
+            // Ensure that the new value is not too close to
+            // or beyond a neighboring thumb's value.
+            int index = ((TimeScaleSpecifier) getSpecifier())
+                    .getIndicesForStateIdentifiers().get(identifier);
+            if ((index < scale.getConstrainedThumbValueCount() - 1)
+                    && (value > scale.getConstrainedThumbValue(index + 1)
+                            - scale.getMinimumDeltaBetweenConstrainedThumbs())) {
+                return false;
+            } else if ((index > 0)
+                    && (value < scale.getConstrainedThumbValue(index - 1)
+                            + scale.getMinimumDeltaBetweenConstrainedThumbs())) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public void valueChanged(String identifier, long value,
+                boolean rapidChange) {
+
+            // If the value has changed and is accep-
+            // table to the scale widget, use it as the
+            // new value; otherwise, set the value of
+            // the date-time component back to what the
+            // scale had for this identifier.
+            int index = ((TimeScaleSpecifier) getSpecifier())
+                    .getIndicesForStateIdentifiers().get(identifier);
+            long oldValue = scale.getConstrainedThumbValue(index);
+            if (oldValue != value) {
+                if (scale.setConstrainedThumbValue(index, value)) {
+                    recordStateChange(identifier, value);
+                } else {
+                    dateTimesForIds.get(identifier).setState(oldValue);
+                }
+            }
+
+            // Notify listeners if appropriate.
+            if ((onlySendEndStateChanges == false) || (rapidChange == false)) {
+                notifyListener(identifier, value);
+                notifyListener();
+            }
+        }
+    };
 
     /**
      * Multi-thumbed scale component.
@@ -217,12 +258,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      * drag should be forwarded or not.
      */
     private final boolean onlySendEndStateChanges;
-
-    /**
-     * Flag indicating whether or not a programmatic change to component values
-     * is currently in process.
-     */
-    private boolean changeInProgress = false;
 
     /**
      * Control component helper.
@@ -247,17 +282,10 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets. This
-        // is needed in order to group the widgets properly into
-        // a single megawidget.
-        Composite panel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout(2, false);
-        gridLayout.marginWidth = gridLayout.marginHeight = 0;
-        gridLayout.horizontalSpacing = 10;
-        panel.setLayout(gridLayout);
-        GridData gridData = new GridData(SWT.FILL, SWT.TOP, true, false);
-        gridData.horizontalSpan = specifier.getWidth();
-        panel.setLayoutData(gridData);
+        // Create a panel in which to place the widgets.
+        Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
+                UiBuilder.CompositeType.SINGLE_ROW, specifier);
+        ((GridData) panel.getLayoutData()).verticalAlignment = SWT.TOP;
 
         // Add an overall label if one is specified and if
         // either multiple state identifiers exist, or only
@@ -276,81 +304,69 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 useMainLabelAsStateLabel = true;
                 mainLabel = null;
             } else {
-
-                // Create a label widget.
-                mainLabel = new Label(panel, SWT.NONE);
-                mainLabel.setText(labelString);
-                mainLabel.setEnabled(specifier.isEnabled());
-
-                // Place the label in the grid.
-                gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-                gridData.horizontalSpan = 2;
-                gridData.verticalIndent = specifier.getSpacing();
-                mainLabel.setLayoutData(gridData);
+                mainLabel = UiBuilder.buildLabel(panel, specifier);
             }
         } else {
             mainLabel = null;
         }
 
+        // Get the range of values allowed and the current
+        // time provider.
+        bounds = Ranges.closed(
+                (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_TIME),
+                (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_TIME));
+        ICurrentTimeProvider provider = (ICurrentTimeProvider) paramMap
+                .get(TimeScaleSpecifier.CURRENT_TIME_PROVIDER);
+        if (provider == null) {
+            provider = TimeMegawidgetSpecifier.DEFAULT_CURRENT_TIME_PROVIDER;
+        }
+        currentTimeProvider = provider;
+
+        // Compute the starting value(s) for the different
+        // state identifiers, and create and populate the
+        // state map with them.
+        statesForIds = Maps.newHashMap();
+        long[] startingValues = new long[specifier.getStateIdentifiers().size()];
+        for (int j = 0; j < startingValues.length; j++) {
+            startingValues[j] = (startingValues.length == 1 ? ((bounds
+                    .upperEndpoint() - bounds.lowerEndpoint()) / 2L)
+                    + bounds.lowerEndpoint() : bounds.lowerEndpoint()
+                    + (MINUTE_INTERVAL * j));
+            statesForIds.put(specifier.getStateIdentifiers().get(j),
+                    startingValues[j]);
+        }
+
         // Iterate through the state identifiers, creating
-        // components for each.
-        textsForIds = Maps.newHashMap();
+        // date-time components for each.
+        onlySendEndStateChanges = !specifier.isSendingEveryChange();
+        dateTimesForIds = Maps.newHashMap();
         labels = Lists.newArrayList();
         for (String identifier : specifier.getStateIdentifiers()) {
 
-            // Create a label widget. If this is the only
-            // state associated with this megawidget, and a
-            // main label was specified but no state label
-            // was, use the main label in place of the state
-            // label.
-            Label label = new Label(panel, SWT.NONE);
+            // Determine what text label, if any, to use
+            // for this state identifier.
+            String text;
             if (useMainLabelAsStateLabel) {
                 useMainLabelAsStateLabel = false;
-                label.setText(labelString);
-            } else if ((specifier.getStateLabel(identifier) != null)
-                    && (specifier.getStateLabel(identifier).length() > 0)) {
-                label.setText(specifier.getStateLabel(identifier));
+                text = labelString;
+            } else {
+                text = specifier.getStateLabel(identifier);
             }
-            label.setEnabled(specifier.isEnabled());
 
-            // Place the label in the grid.
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            gridData.verticalIndent = specifier.getSpacing();
-            label.setLayoutData(gridData);
+            // Create the date-time component for this state
+            // identifier.
+            DateTimeComponent dateTime = new DateTimeComponent(identifier,
+                    panel, text, specifier, statesForIds.get(identifier),
+                    false, onlySendEndStateChanges, dateTimeManager);
+            labels.add(dateTime.getLabel());
 
-            // Add the label to the list.
-            labels.add(label);
-
-            // Create a panel in which to place the state text
-            // component. This is done so that said text compo-
-            // nent may be rendered read-only by disabling the
-            // panel, which in SWT has the effect of disabling
-            // mouse and keyboard input for the child widgets
-            // without making them look disabled.
-            Composite subpanel = new Composite(panel, SWT.NONE);
-            subpanel.setLayout(new FillLayout());
-            gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-            gridData.verticalIndent = specifier.getSpacing();
-            subpanel.setLayoutData(gridData);
-
-            // Create the text entry component.
-            Text text = new Text(subpanel, SWT.BORDER);
-            text.setEnabled(specifier.isEnabled());
-            text.setText(SAMPLE_LONG_DATE_STRING);
-            gridData.widthHint = text.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
-
-            // Add the text entry component to the map.
-            textsForIds.put(identifier, text);
+            // Add the date-time component to the map.
+            dateTimesForIds.put(identifier, dateTime);
         }
 
-        // Create the state map.
-        this.statesForIds = Maps.newHashMap();
-
         // Create the multi-thumbed scale component.
-        onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        scale = new MultiValueScale(panel,
-                (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_TIME),
-                (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_TIME));
+        scale = new MultiValueScale(panel, bounds.lowerEndpoint(),
+                bounds.upperEndpoint());
         scale.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
         scale.setInsets(SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_TOP,
                 SCALE_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING_BOTTOM);
@@ -360,42 +376,22 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME),
                 (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME));
         scale.setMinimumDeltaBetweenConstrainedThumbs(MINUTE_INTERVAL);
-        long[] startingValues = new long[specifier.getStateIdentifiers().size()];
-        for (int j = 0; j < startingValues.length; j++) {
-            startingValues[j] = (startingValues.length == 1 ? (scale
-                    .getMinimumAllowableValue() + scale
-                    .getMaximumAllowableValue()) / 2L : scale
-                    .getMinimumAllowableValue() + (MINUTE_INTERVAL * j));
-            this.statesForIds.put(specifier.getStateIdentifiers().get(j),
-                    startingValues[j]);
-        }
         scale.setConstrainedThumbValues(startingValues);
         for (int j = 1; j < startingValues.length; j++) {
             scale.setConstrainedThumbRangeColor(j, Display.getCurrent()
                     .getSystemColor(SWT.COLOR_LIST_SELECTION));
         }
         scale.setEnabled(specifier.isEnabled());
-        gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = 2;
         gridData.verticalIndent = specifier.getSpacing();
         scale.setLayoutData(gridData);
-
-        // Associate the state identifiers with the
-        // components that go with them.
-        for (String key : textsForIds.keySet()) {
-            textsForIds.get(key).setData(key);
-        }
-
-        // Update the text fields to match the starting
-        // values.
-        this.updateTextEntryFieldsToMatchScaleValues();
 
         // Binding the scale component's value change
         // events to trigger a change in the record
         // of the state for the widget, and a change
         // in the corresponding text component.
         scale.addMultiValueLinearControlListener(new IMultiValueLinearControlListener() {
-
             @Override
             public void visibleValueRangeChanged(
                     MultiValueLinearControl widget, long lowerValue,
@@ -415,11 +411,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                         && (source != MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     return;
                 }
-
-                // Set the flag indicating that a
-                // user-GUI interactions has caused
-                // a scale change to be in progress.
-                changeInProgress = true;
 
                 // If only ending state changes are
                 // to result in notifications, and
@@ -448,7 +439,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 // values and responding accordingly.
                 TimeScaleSpecifier specifier = getSpecifier();
                 List<String> stateIdentifiers = specifier.getStateIdentifiers();
-
                 for (int j = 0; j < values.length; j++) {
 
                     // Get the new value and see if
@@ -461,8 +451,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                     if ((statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
                         statesForIds.put(identifier, values[j]);
-                        TimeScaleMegawidget.this.textsForIds.get(identifier)
-                                .setText(formatAsDate(values[j], true));
+                        TimeScaleMegawidget.this.dateTimesForIds
+                                .get(identifier).setState(values[j]);
                         if (notify) {
                             notifyListener(identifier, values[j]);
                         }
@@ -508,9 +498,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                     notify = true;
                 }
 
-                // Reset the in-progress flag.
-                changeInProgress = false;
-
                 // Notify listeners that invocation
                 // occurred if this is something that
                 // should be sent on.
@@ -526,30 +513,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 // No action.
             }
         });
-
-        // Iterate through the state identifiers,
-        // setting up text bindings for each of them.
-        for (String identifier : (specifier).getStateIdentifiers()) {
-
-            // Bind loss of focus and Enter keystrokes
-            // for the text widget to verify that the
-            // text comprises a valid date-time string
-            // and, if it has changed, letting the
-            // change percolate through the megawidget.
-            textsForIds.get(identifier).addFocusListener(new FocusAdapter() {
-                @Override
-                public void focusLost(FocusEvent e) {
-                    validateText((Text) e.widget);
-                }
-            });
-            textsForIds.get(identifier).addSelectionListener(
-                    new SelectionAdapter() {
-                        @Override
-                        public void widgetDefaultSelected(SelectionEvent e) {
-                            validateText((Text) e.widget);
-                        }
-                    });
-        }
 
         // Render the widget uneditable if necessary.
         if (isEditable() == false) {
@@ -720,13 +683,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         if (mainLabel != null) {
             mainLabel.setEnabled(enable);
         }
-        if (labels != null) {
-            for (Label label : labels) {
-                label.setEnabled(enable);
-            }
-        }
-        for (Text text : textsForIds.values()) {
-            text.setEnabled(enable);
+        for (DateTimeComponent dateTime : dateTimesForIds.values()) {
+            dateTime.setEnabled(enable);
         }
         scale.setEnabled(enable);
     }
@@ -740,63 +698,37 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Ensure the value is appropriate.
-        TimeScaleSpecifier specifier = getSpecifier();
-        long minimum = scale.getMinimumAllowableValue();
-        long value = getStateLongValueFromObject(state, identifier, minimum);
-        if ((value < minimum) || (value > scale.getMaximumAllowableValue())) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    state, "value out of bounds (minimum = " + minimum
-                            + ", maximum = " + scale.getMaximumAllowableValue()
-                            + " (inclusive))");
-        }
-
-        // Set the flag indicating programmatic change
-        // is in progress.
-        changeInProgress = true;
+        // Get the value and ensure that it is appro-
+        // priate.
+        long value = getStateValue(identifier, state);
 
         // Record the change in the state records.
         recordStateChange(identifier, value);
 
-        // Tell the scale and the text widgets about the
-        // change.
-        scale.setConstrainedThumbValue(specifier
+        // Tell the scale widget and the date-time com-
+        // ponent about the change.
+        scale.setConstrainedThumbValue(((TimeScaleSpecifier) getSpecifier())
                 .getIndicesForStateIdentifiers().get(identifier), value);
-        textsForIds.get(identifier).setText(formatAsDate(value, true));
-
-        // Reset the change in progress flag.
-        changeInProgress = false;
+        dateTimesForIds.get(identifier).setState(value);
     }
 
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
-        return (state == null ? null : formatAsDate(
-                getStateLongValueFromObject(state, identifier, null), false));
+        return (state == null ? null : DateTimeComponent
+                .getStateDescription(getStateLongValueFromObject(state,
+                        identifier, null)));
     }
 
     @Override
     protected void ensureStateIsValid(String identifier, Object state)
             throws MegawidgetStateException {
-
-        // Ensure that the value is a long integer, and
-        // that it falls within the allowable range.
-        long minimum = scale.getMinimumAllowableValue();
-        long value = getStateLongValueFromObject(state, identifier, minimum);
-        if ((value < minimum) || (value > scale.getMaximumAllowableValue())) {
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), value, "out of bounds (minimum = " + minimum
-                    + ", maximum = " + scale.getMaximumAllowableValue());
-        }
+        getStateValue(identifier, state);
     }
 
     @Override
     protected void doCommitStateChanges(Map<String, Object> newStatesForIds)
             throws MegawidgetStateException {
-
-        // Indicate that programmatic change is in pro-
-        // gress.
-        changeInProgress = true;
 
         // Commit the values to the state records, and
         // change the text widgets to match.
@@ -805,7 +737,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             Long value = getStateLongObjectFromObject(
                     newStatesForIds.get(identifier), identifier, null);
             recordStateChange(identifier, value);
-            textsForIds.get(identifier).setText(formatAsDate(value, true));
+            dateTimesForIds.get(identifier).setState(value);
         }
 
         // Compile a list of values, one per thumb, us-
@@ -826,9 +758,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             throw new MegawidgetStateException(specifier.getIdentifier(),
                     specifier.getType(), values, e.getMessage());
         }
-
-        // Reset the change in progress flag.
-        changeInProgress = false;
     }
 
     // Private Methods
@@ -842,118 +771,37 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        for (Text text : textsForIds.values()) {
-            text.getParent().setEnabled(editable);
-            text.setBackground(helper
-                    .getBackgroundColor(editable, text, ((labels == null)
-                            || (labels.size() == 0) ? (mainLabel == null ? null
-                            : mainLabel) : labels.get(0))));
+        for (DateTimeComponent dateTime : dateTimesForIds.values()) {
+            dateTime.setEditable(editable, helper);
         }
         scale.setEditable(editable);
     }
 
     /**
-     * Format the specified epoch time in milliseconds as a date-time string.
+     * Get a state value from the specified object.
      * 
-     * @param time
-     *            Time in milliseconds since the epoch.
-     * @param full
-     *            Flag indicating whether or not the formatting should produce a
-     *            longer string, or one that is abbreviated.
-     * @return Formatted date-time string.
+     * @param identifier
+     *            Identifier of the state being retrieved.
+     * @param object
+     *            Object from which to retrieve the state.
+     * @return Value retrieved from the object.
+     * @throws MegawidgetStateException
+     *             If the object does not contain a valid state.
      */
-    private String formatAsDate(long time, boolean full) {
-        return (full ? LONG_DATE_FORMATTER : SHORT_DATE_FORMATTER).format(time);
-    }
+    private long getStateValue(String identifier, Object object)
+            throws MegawidgetStateException {
 
-    /**
-     * Get the time in milliseconds since the epoch from the specified date-time
-     * string.
-     * 
-     * @param dateTime
-     *            Date-time string.
-     * @return Time in milliseconds since the epoch if the string could be
-     *         parsed; otherwise, <code>-1</code>.
-     */
-    private long parseDateTime(String dateTime) {
-        ParsePosition parsePosition = new ParsePosition(0);
-        Date date = LONG_DATE_FORMATTER.parse(dateTime, parsePosition);
-        if ((date == null) || (date.getTime() < 0L)) {
-            return -1;
-        } else {
-            return date.getTime();
+        // Ensure that the value is a long integer, and
+        // that it falls within the allowable range.
+        long minimum = scale.getMinimumAllowableValue();
+        long value = getStateLongValueFromObject(object, identifier, minimum);
+        if ((value < minimum) || (value > scale.getMaximumAllowableValue())) {
+            throw new MegawidgetStateException(identifier, getSpecifier()
+                    .getType(), value, "value out of bounds (minimum = "
+                    + minimum + ", maximum = "
+                    + scale.getMaximumAllowableValue() + " (inclusive))");
         }
-    }
-
-    /**
-     * Validate the text in the specified text widget, and set the corresponding
-     * state to match if it is valid.
-     * 
-     * @param text
-     *            Text widget whose contents are to be validated.
-     */
-    private void validateText(Text text) {
-
-        // If a change that is in progress
-        // inspired this event, do nothing.
-        if (changeInProgress) {
-            return;
-        }
-
-        // Get the date value for the date-
-        // time string and, if valid, use
-        // it as the new state value for
-        // the appropriate identifier; if
-        // invalid, reset the text to what
-        // it was before.
-        long value = parseDateTime(text.getText());
-        String identifier = (String) text.getData();
-        int index = ((TimeScaleSpecifier) getSpecifier())
-                .getIndicesForStateIdentifiers().get(identifier);
-        long oldValue = scale.getConstrainedThumbValue(index);
-        if ((value != -1L) && (value != oldValue)
-                && scale.setConstrainedThumbValue(index, value)) {
-
-            // Remember this value for this
-            // identifier.
-            recordStateChange(identifier, value);
-
-            // Set the text in this text
-            // widget to this date/time.
-            // This is done because the user
-            // may have entered the date-
-            // time in a non-canonical form,
-            // and this ensures that it is
-            // correct.
-            text.setText(formatAsDate(value, true));
-            notifyListener(identifier, value);
-            notifyListener();
-        } else {
-            text.setText(formatAsDate(oldValue, true));
-        }
-    }
-
-    /**
-     * Update the text entry fields to match the current values.
-     */
-    private void updateTextEntryFieldsToMatchScaleValues() {
-
-        // Set the flag indicating that the
-        // scale value should not be validated.
-        changeInProgress = true;
-
-        // Iterate through the thumbs, setting
-        // the text entry field for each to
-        // the value of that thumb.
-        TimeScaleSpecifier specifier = getSpecifier();
-        List<String> stateIdentifiers = specifier.getStateIdentifiers();
-        for (String stateIdentifier : stateIdentifiers) {
-            textsForIds.get(stateIdentifier).setText(
-                    formatAsDate(statesForIds.get(stateIdentifier), true));
-        }
-
-        // Reset the in-progress flag.
-        changeInProgress = false;
+        return value;
     }
 
     /**

@@ -44,6 +44,10 @@ import com.google.common.collect.Lists;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Dec 14, 2013    2545    Chris.Golden      Added method to check a key code
+ *                                           to see if it is an increment/
+ *                                           decrement invoker in CDateTime
+ *                                           widgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -108,8 +112,7 @@ public class UiBuilder {
      *            created.
      * @return New label if appropriate, otherwise <code>null</code>.
      */
-    public static Label buildLabel(Composite parent,
-            MegawidgetSpecifier specifier) {
+    public static Label buildLabel(Composite parent, ISpecifier specifier) {
         if ((specifier.getLabel() != null)
                 && (specifier.getLabel().length() > 0)) {
             return buildLabel(parent, specifier.getLabel(), specifier);
@@ -153,7 +156,7 @@ public class UiBuilder {
      * @return New label.
      */
     public static Label buildLabel(Composite parent, String text,
-            MegawidgetSpecifier specifier) {
+            ISpecifier specifier) {
         Label label = new Label(parent, SWT.NONE);
         label.setText(text);
         label.setEnabled(specifier.isEnabled());
@@ -368,5 +371,18 @@ public class UiBuilder {
         return ((event.keyCode == SWT.ARROW_UP)
                 || (event.keyCode == SWT.ARROW_DOWN)
                 || (event.keyCode == SWT.PAGE_UP) || (event.keyCode == SWT.PAGE_DOWN));
+    }
+
+    /**
+     * Determine whether or not the specified key event is used by a date-time
+     * widget to increment or decrement its value.
+     * 
+     * @param event
+     *            Key event to be tested.
+     * @return True if the specified key code is used by a date-time widget to
+     *         increment or decrement its value, false otherwise.
+     */
+    public static boolean isDateTimeValueChanger(KeyEvent event) {
+        return ((event.keyCode == SWT.ARROW_UP) || (event.keyCode == SWT.ARROW_DOWN));
     }
 }

@@ -11,11 +11,9 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Time scale megawidget specifier, providing specification of a megawidget that
@@ -38,32 +36,17 @@ import com.google.common.collect.Sets;
  *                                           to offer option of not notifying
  *                                           listeners of state changes caused by
  *                                           ongoing thumb drags.
+ * Dec 13, 2013   2545     Chris.Golden      Made subclass of new TimeMegawidgetSpecifier.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TimeScaleMegawidget
  */
-public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
+public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
         IControlSpecifier, IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
-
-    /**
-     * Minimum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>createMegawidget()</code>, its value must be an
-     * object of type <code>Long</code> indicating the minimum time in
-     * milliseconds that may be specified using the created megawidget.
-     */
-    public static final String MINIMUM_TIME = "minimumTime";
-
-    /**
-     * Maximum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>createMegawidget()</code>, its value must be an
-     * object of type <code>Long</code> indicating the maximum time in
-     * milliseconds that may be specified using the created megawidget.
-     */
-    public static final String MAXIMUM_TIME = "maximumTime";
 
     /**
      * Minimum visible time megawidget creation time parameter name; if
@@ -84,21 +67,10 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
     // Private Variables
 
     /**
-     * Control options manager.
-     */
-    private final ControlSpecifierOptionsManager optionsManager;
-
-    /**
      * Map pairing state identifier keys with their indices in the list provided
      * by the <code>getStateIdentifiers()</code> method.
      */
     private final Map<String, Integer> indicesForIds;
-
-    /**
-     * Flag indicating whether or not state changes that are part of a group of
-     * rapid changes are to result in notifications to the listener.
-     */
-    private final boolean sendingEveryChange;
 
     // Public Constructors
 
@@ -115,14 +87,6 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
     public TimeScaleSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
-        optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.TRUE);
-
-        // Ensure that the rapid change notification flag, if
-        // provided, is appropriate.
-        sendingEveryChange = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
-                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
         // Compile a mapping of state identifiers to their
         // indices (giving their ordering).
@@ -136,31 +100,6 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
 
     // Public Methods
 
-    @Override
-    public final boolean isEditable() {
-        return optionsManager.isEditable();
-    }
-
-    @Override
-    public final int getWidth() {
-        return optionsManager.getWidth();
-    }
-
-    @Override
-    public final boolean isFullWidthOfColumn() {
-        return optionsManager.isFullWidthOfColumn();
-    }
-
-    @Override
-    public final int getSpacing() {
-        return optionsManager.getSpacing();
-    }
-
-    @Override
-    public final boolean isSendingEveryChange() {
-        return sendingEveryChange;
-    }
-
     /**
      * Get the mapping of state identifier keys to their indices in the list
      * provided by the <code>getStateIdentifiers()</code> method.
@@ -172,13 +111,6 @@ public class TimeScaleSpecifier extends StatefulMegawidgetSpecifier implements
     }
 
     // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(Number.class);
-        return classes;
-    }
 
     @Override
     protected int getMaximumStateIdentifierCount() {

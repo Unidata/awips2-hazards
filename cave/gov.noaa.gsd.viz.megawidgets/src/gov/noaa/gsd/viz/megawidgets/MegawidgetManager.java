@@ -80,6 +80,8 @@ import com.google.common.collect.Sets;
  *                                           doc a note clarifying what it does,
  *                                           and added method to retrieve the
  *                                           parent SWT widget of the megawidgets.
+ * Dec 16, 2013    2545    Chris.Golden      Added current time provider for
+ *                                           megawidget use.
  * </pre>
  * 
  * @author Chris.Golden
@@ -254,7 +256,7 @@ public abstract class MegawidgetManager {
             Map<String, Object> state, ISideEffectsApplier sideEffectsApplier)
             throws MegawidgetException {
         this.sideEffectsApplier = sideEffectsApplier;
-        construct(parent, IMenu.class, specifiers, state, 0L, 0L, 0L, 0L);
+        construct(parent, IMenu.class, specifiers, state, 0L, 0L, 0L, 0L, null);
     }
 
     /**
@@ -277,13 +279,13 @@ public abstract class MegawidgetManager {
      *            convertStateElementToMegawidgetState()</code> and <code>
      *            convertMegawidgetStateToStateElement()</code>).
      * @param minTime
-     *            Minimum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Minimum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param maxTime
-     *            Maximum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Maximum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param minVisibleTime
@@ -294,6 +296,11 @@ public abstract class MegawidgetManager {
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
      * @throws MegawidgetException
      *             If one of the megawidget specifiers is invalid, or if an
      *             error occurs while creating or initializing one of the
@@ -302,10 +309,11 @@ public abstract class MegawidgetManager {
     public MegawidgetManager(Composite parent,
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state, long minTime, long maxTime,
-            long minVisibleTime, long maxVisibleTime)
+            long minVisibleTime, long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetException {
         this(parent, specifiers, state, minTime, maxTime, minVisibleTime,
-                maxVisibleTime, null);
+                maxVisibleTime, currentTimeProvider, null);
     }
 
     /**
@@ -328,13 +336,13 @@ public abstract class MegawidgetManager {
      *            convertStateElementToMegawidgetState()</code> and <code>
      *            convertMegawidgetStateToStateElement()</code>).
      * @param minTime
-     *            Minimum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Minimum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param maxTime
-     *            Maximum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Maximum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param minVisibleTime
@@ -344,6 +352,11 @@ public abstract class MegawidgetManager {
      * @param maxVisibleTime
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
      * @param sideEffectsApplier
      *            Side effects applier to be used, or <code>null</code> if no
@@ -357,6 +370,7 @@ public abstract class MegawidgetManager {
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state, long minTime, long maxTime,
             long minVisibleTime, long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
         this.sideEffectsApplier = sideEffectsApplier;
 
@@ -371,7 +385,7 @@ public abstract class MegawidgetManager {
         // Do the heavy lifting for construction.
         Set<IControl> baseMegawidgets = construct(parent, IControl.class,
                 specifiers, state, minTime, maxTime, minVisibleTime,
-                maxVisibleTime);
+                maxVisibleTime, currentTimeProvider);
 
         // Align the base megawidgets' component elements to one another
         // visually.
@@ -718,13 +732,13 @@ public abstract class MegawidgetManager {
      *            convertStateElementToMegawidgetState()</code> and <code>
      *            convertMegawidgetStateToStateElement()</code>).
      * @param minTime
-     *            Minimum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Minimum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param maxTime
-     *            Maximum time that may be used by any time scale megawidgets
-     *            specified within <code>specifiers</code>. If no time scale
+     *            Maximum time that may be used by any time megawidgets
+     *            specified within <code>specifiers</code>. If no time
      *            megawidgets are included in <code>specifiers</code>, this is
      *            ignored.
      * @param minVisibleTime
@@ -734,6 +748,11 @@ public abstract class MegawidgetManager {
      * @param maxVisibleTime
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
      * @return Set of the top-level megawidgets created during this object's
      *         construction.
@@ -746,7 +765,8 @@ public abstract class MegawidgetManager {
             P parent, Class<M> superClass,
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state, long minTime, long maxTime,
-            long minVisibleTime, long maxVisibleTime)
+            long minVisibleTime, long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetException {
 
         // Remember the parent and state values.
@@ -761,12 +781,17 @@ public abstract class MegawidgetManager {
                 notificationListener);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
                 stateChangeListener);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME, minTime);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME, maxTime);
+        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MINIMUM_TIME,
+                minTime);
+        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MAXIMUM_TIME,
+                maxTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minVisibleTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
                 maxVisibleTime);
+        megawidgetCreationParams.put(
+                TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
+                currentTimeProvider);
 
         // Iterate through the megawidget specifiers, instantiating each one
         // in turn, and then instantiating the corresponding megawidget.

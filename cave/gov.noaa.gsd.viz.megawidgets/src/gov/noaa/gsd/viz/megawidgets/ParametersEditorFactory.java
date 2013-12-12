@@ -45,6 +45,11 @@ import com.google.common.collect.Maps;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2013    2336    Chris.Golden      Initial creation
+ * Dec 15, 2013    2545    Chris.Golden      Changed to use new TimeMegawidget
+ *                                           instead of TimeScaleMegawidget
+ *                                           for Dates and Longs.
+ * Dec 16, 2013    2545    Chris.Golden      Added current time provider for
+ *                                           megawidget use.
  * </pre>
  * 
  * @author Chris.Golden
@@ -115,13 +120,12 @@ public class ParametersEditorFactory {
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         map.put(UnboundedListBuilderSpecifier.class, defaults);
 
-        // Add default values for time scale megawidgets.
+        // Add default values for time megawidgets.
         defaults = Maps.newHashMap();
-        defaults.put(TimeScaleSpecifier.MEGAWIDGET_TYPE, "TimeScale");
-        defaults.put(TimeScaleSpecifier.MEGAWIDGET_SPACING, 5);
-        defaults.put(TimeScaleSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE,
-                false);
-        map.put(TimeScaleSpecifier.class, defaults);
+        defaults.put(TimeSpecifier.MEGAWIDGET_TYPE, "Time");
+        defaults.put(TimeSpecifier.MEGAWIDGET_SPACING, 5);
+        defaults.put(TimeSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
+        map.put(TimeSpecifier.class, defaults);
 
         DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS = ImmutableMap
                 .copyOf(map);
@@ -158,13 +162,17 @@ public class ParametersEditorFactory {
          *            convertStateElementToMegawidgetState()</code> and <code>
          *            convertMegawidgetStateToStateElement()</code>).
          * @param minTime
-         *            Minimum time for any time scale megawidgets specified
-         *            within <code>specifiers</code>. If no time scale
-         *            megawidgets are included in <code>specifiers</code>, this
-         *            is ignored.
+         *            Minimum time for any time megawidgets specified within
+         *            <code>specifiers</code>. If no time megawidgets are
+         *            included in <code>specifiers</code>, this is ignored.
          * @param maxTime
-         *            Maximum time for any time scale megawidgets specified
-         *            within <code>specifiers</code>. If no time scale
+         *            Maximum time for any time megawidgets specified within
+         *            <code>specifiers</code>. If no time megawidgets are
+         *            included in <code>specifiers</code>, this is ignored.
+         * @param currentTimeProvider
+         *            Current time provider for any time megawidgets specified
+         *            within <code>specifiers</code>. If <code>null</code>, a
+         *            default current time provider is used. If no time
          *            megawidgets are included in <code>specifiers</code>, this
          *            is ignored.
          * @throws MegawidgetException
@@ -174,9 +182,11 @@ public class ParametersEditorFactory {
          */
         public ParametersEditor(Composite parent,
                 List<Map<String, Object>> specifiers,
-                Map<String, Object> state, long minTime, long maxTime)
+                Map<String, Object> state, long minTime, long maxTime,
+                ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
-            super(parent, specifiers, state, minTime, maxTime, minTime, maxTime);
+            super(parent, specifiers, state, minTime, maxTime, minTime,
+                    maxTime, currentTimeProvider);
         }
 
         // Public Methods
@@ -265,7 +275,7 @@ public class ParametersEditorFactory {
         // specified as doubles or longs, respectively.
         registerParameterType(String.class, TextSpecifier.class);
         registerParameterType(Integer.class, IntegerSpinnerSpecifier.class);
-        registerParameterType(Long.class, TimeScaleSpecifier.class);
+        registerParameterType(Long.class, TimeSpecifier.class);
         registerParameterType(Float.class, FractionSpinnerSpecifier.class,
                 new IConverter() {
                     @Override
@@ -280,7 +290,7 @@ public class ParametersEditorFactory {
                 });
         registerParameterType(Double.class, FractionSpinnerSpecifier.class);
         registerParameterType(List.class, UnboundedListBuilderSpecifier.class);
-        registerParameterType(Date.class, TimeScaleSpecifier.class,
+        registerParameterType(Date.class, TimeSpecifier.class,
                 new IConverter() {
                     @Override
                     public Object toFirst(Object value) {
@@ -440,9 +450,13 @@ public class ParametersEditorFactory {
      *            that each time a value is changed by the editor, the value
      *            will be changed within this map to match.
      * @param minimumTime
-     *            Minimum time for any time scale megawidgets.
+     *            Minimum time for any time megawidgets.
      * @param maximumTime
-     *            Maximum time for any time scale megawidgets.
+     *            Maximum time for any time megawidgets.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets. If <code>
+     *            null</code>, a default current time provider is used which
+     *            always provides the current system time.
      * @param listener
      *            Listener to be notified each time the one of the parameter
      *            values has changed, if any. If no listener is desired, the
@@ -457,6 +471,7 @@ public class ParametersEditorFactory {
     public MegawidgetManager buildParametersEditor(Composite parent,
             List<String> labels, Map<String, Object> parametersForLabels,
             long minimumTime, long maximumTime,
+            ICurrentTimeProvider currentTimeProvider,
             IParametersEditorListener listener) throws MegawidgetException {
 
         // Assemble a list of the megawidget specifiers, and any
@@ -520,6 +535,6 @@ public class ParametersEditorFactory {
         // that are specified and notifies the listener of any para-
         // meter value changes.
         return new ParametersEditor(parent, specifiers, parametersForLabels,
-                minimumTime, maximumTime);
+                minimumTime, maximumTime, currentTimeProvider);
     }
 }

@@ -20,6 +20,7 @@ import gov.noaa.gsd.viz.megawidgets.ControlSpecifierOptionsManager;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesTreeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControl;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.IExplicitCommitStateful;
 import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.INotificationListener;
@@ -36,6 +37,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierFactory;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.megawidgets.StatefulMegawidget;
 import gov.noaa.gsd.viz.megawidgets.StatefulMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 
@@ -82,6 +84,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -131,6 +134,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
  * Nov 16, 2013   2166     daniel.s.schaffer Some tidying
+ * Dec 16, 2013   2545     Chris.Golden      Added current time provider for megawidget
+ *                                           use.
  * </pre>
  * 
  * @author Chris.Golden
@@ -743,6 +748,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             .newHashSet();
 
     /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
+
+    /**
      * Content panel that holds whichever metadata panel is currently displayed.
      */
     private Composite metadataContentPanel = null;
@@ -1313,6 +1328,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .createMegawidget(timeRangePanel,
                             TimeScaleMegawidget.class, megawidgetCreationParams);
             timeScaleMegawidgets.add(timeRangeMegawidget);
+            ControlComponentHelper
+                    .alignMegawidgetsElements(timeScaleMegawidgets);
             if (primaryParamValues.size() > 0) {
                 timeRangeMegawidget.setUncommittedState(
                         START_TIME_STATE,
@@ -1977,14 +1994,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void initializeMegawidgetCreationParams() {
         megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_TIME,
+        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MINIMUM_TIME,
                 Utilities.MIN_TIME);
-        megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_TIME,
+        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MAXIMUM_TIME,
                 Utilities.MAX_TIME);
         megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minimumVisibleTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
                 maximumVisibleTime);
+        megawidgetCreationParams.put(
+                TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
+                currentTimeProvider);
     }
 
     /**

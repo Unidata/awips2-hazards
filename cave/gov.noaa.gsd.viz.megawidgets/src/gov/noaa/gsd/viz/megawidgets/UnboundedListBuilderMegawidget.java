@@ -59,6 +59,10 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
+ * Dec 14, 2013   2545     Chris.Golden      Added ability to hit the Enter key
+ *                                           within the text widget to add the
+ *                                           entered text to the list as an item
+ *                                           if appropriate.
  * </pre>
  * 
  * @author Chris.Golden
@@ -263,13 +267,26 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
             }
         };
 
-        // Create the text and the buttons.
+        // Create the text and the buttons. The text needs two
+        // listeners, one to enable or disable buttons as its
+        // contents change, and one to respond to Enter key-
+        // strokes to add a new item to the list, if possible.
         text = new Text(sidePanel, SWT.BORDER);
         text.addModifyListener(new ModifyListener() {
             @Override
             public void modifyText(ModifyEvent e) {
                 if (ignoreTextFieldChange == false) {
                     enableOrDisableSidePanel();
+                }
+            }
+        });
+        text.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetDefaultSelected(SelectionEvent e) {
+                if (add.isEnabled()) {
+                    addNewAtIndex(getLastSelectedIndex());
+                    enableOrDisableSidePanel();
+                    megawidgetWidgetsChanged();
                 }
             }
         });
@@ -665,8 +682,8 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         // Create the list. A table is used because tables
         // offer functionality like being able to determine
         // what row lies under a given point.
-        Table table = new Table(parent, SWT.BORDER + SWT.MULTI
-                + SWT.FULL_SELECTION);
+        Table table = new Table(parent, SWT.BORDER | SWT.MULTI
+                | SWT.FULL_SELECTION);
         table.setHeaderVisible(false);
         table.setLinesVisible(false);
         table.setEnabled(specifier.isEnabled());

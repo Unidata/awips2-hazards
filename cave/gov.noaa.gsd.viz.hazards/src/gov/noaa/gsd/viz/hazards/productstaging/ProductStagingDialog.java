@@ -60,7 +60,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                     and foreground colors in order to stay
  *                                     in synch with CAVE mode.
  * Jul 18, 2013    585     Chris G.    Changed to support loading from bundle.
- * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Nov 15, 2013   2182     daniel.s.schaffer Refactoring JSON - ProductStagingDialog
+ * Dec 16, 2013   2545     Chris G.    Added current time provider for
+ *                                     megawidget use.
  * </pre>
  * 
  * @author shouming.wei
@@ -172,7 +174,7 @@ class ProductStagingDialog extends BasicDialog {
          */
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
                 Dict state, Product product) throws MegawidgetException {
-            super(parent, specifiers, state, 0L, 0L, 0L, 0L);
+            super(parent, specifiers, state, 0L, 0L, 0L, 0L, null);
             this.product = product;
         }
 
