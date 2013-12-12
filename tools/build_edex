@@ -3,7 +3,9 @@ if ! $?ADE then
   echo Must set an ADE env variable
 else
   cd $ADE/AWIPS2_baseline/edexOsgi/build.edex
-  ant -f deploy-install.xml -Dwa.to.deploy=$ADE/hazardServices
+  set ARCH=`uname -m`
+  ant -f deploy-install.xml -Dwa.to.deploy=$ADE/hazardServices -Darchitecture=$ARCH
+
   #
   #  We want to assume next to last line of /awips2/edex/bin/start.sh contains
   #   export MAX_MEM="1280"
