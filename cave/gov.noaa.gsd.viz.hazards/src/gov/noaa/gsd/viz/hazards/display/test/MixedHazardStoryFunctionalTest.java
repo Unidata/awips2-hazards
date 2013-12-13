@@ -490,7 +490,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains("REPLACES FLASH FLOOD WATCH"));
+        assertTrue(legacy.contains("REPLACES"));
+        assertTrue(legacy.contains("FLOOD WATCH"));
 
     }
 
