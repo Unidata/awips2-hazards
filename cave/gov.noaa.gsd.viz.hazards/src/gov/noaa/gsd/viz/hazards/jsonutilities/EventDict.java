@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+
 import java.util.List;
 import java.util.TreeMap;
 
@@ -73,7 +75,7 @@ public final class EventDict extends TreeMap<String, Object> {
         put(HazardConstants.HAZARD_EVENT_TYPE, type);
         put(HazardConstants.HAZARD_EVENT_START_TIME, new Long(startTime));
         put(HazardConstants.HAZARD_EVENT_END_TIME, new Long(endTime));
-        put("creationTime", new Long(creationTime));
+        put(CREATION_TIME, new Long(creationTime));
 
     }
 

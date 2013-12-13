@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * Represents an action when Hazard Services is shutting down.
@@ -23,7 +22,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Bryon.Lawrence
  */
-public class HazardServicesCloseAction implements IAction {
+public class HazardServicesCloseAction {
     public HazardServicesCloseAction() {
     }
 }

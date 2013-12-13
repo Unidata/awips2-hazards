@@ -26,6 +26,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -153,7 +155,7 @@ public class Event {
             issueTime = event.getIssueTime().getTime();
             creationTime = event.getIssueTime().getTime();
         } else {
-            Object cTimeAttr = attr.get("creationTime");
+            Object cTimeAttr = attr.get(CREATION_TIME);
             if (cTimeAttr instanceof Date) {
                 creationTime = ((Date) cTimeAttr).getTime();
             }
@@ -529,7 +531,7 @@ public class Event {
             event.setEndTime(new Date(endTime));
         }
         if (creationTime != null) {
-            event.addHazardAttribute("creationTime", new Date(creationTime));
+            event.addHazardAttribute(CREATION_TIME, new Date(creationTime));
         }
         if (hazardCategory != null) {
             event.addHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY,

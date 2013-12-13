@@ -303,16 +303,6 @@ public class SessionManager implements ISessionManager {
         return hatchAreaDisplay;
     }
 
-    @Deprecated
-    @Override
-    public String newEvent(String eventShape) {
-        Event event = jsonConverter.fromJson(eventShape, Event.class);
-        IHazardEvent hevent = event.toHazardEvent();
-        hevent.addHazardAttribute("creationTime", timeManager.getCurrentTime());
-        hevent = eventManager.addEvent(hevent);
-        return hevent.getEventID();
-    }
-
     @Override
     public void reset() {
 

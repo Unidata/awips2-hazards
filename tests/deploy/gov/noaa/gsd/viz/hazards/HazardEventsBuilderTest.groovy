@@ -1,5 +1,6 @@
 package gov.noaa.gsd.viz.hazards
 import static org.junit.Assert.*
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities
 
 import org.joda.time.DateTime
@@ -38,7 +39,7 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
     def "Basic" () {
         when: "Build from JSON"
         String eventsAsJson = Utilities.getCannedEventsAsJSON()
-        HazardEventsBuilder builder = new HazardEventsBuilder(eventsAsJson)
+        HazardEventsBuilderForTesting builder = new HazardEventsBuilderForTesting(eventsAsJson)
         List<IHazardEvent> events = builder.getEvents()
         IHazardEvent anEvent = null;
         for (IHazardEvent event : events) {

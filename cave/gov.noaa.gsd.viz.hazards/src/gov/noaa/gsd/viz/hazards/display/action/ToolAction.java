@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.action;
 
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.mvp.IAction;
 
 import java.util.List;
 
@@ -36,7 +35,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * 
  * @author Chris Golden
  */
-public class ToolAction implements IAction {
+public class ToolAction {
 
     /**
      * Types of actions supported by ToolAction.

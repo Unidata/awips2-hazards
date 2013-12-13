@@ -10,6 +10,8 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -66,21 +68,14 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Override
-    protected void run() {
-        try {
-            super.run();
-
-            /*
-             * Create a new hazard area.
-             */
-            this.step = Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD;
-            autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
-                    FIRST_EVENT_CENTER_Y);
-        } catch (Exception e) {
-            handleException(e);
-        }
-
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        /*
+         * Create a new hazard area.
+         */
+        this.step = Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD;
+        autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
+                FIRST_EVENT_CENTER_Y);
     }
 
     /**
@@ -96,50 +91,48 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
             final SpatialDisplayAction spatialDisplayAction) {
 
         try {
-            String actionType = spatialDisplayAction.getActionType();
+            this.step = Steps.CREATE_NEW_NODE_HAZARD_AREA;
+            List<String> contextMenuEntries = this.toolLayer
+                    .getContextMenuEntries();
 
-            if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)) {
-                if (this.step == Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD) {
-                    this.step = Steps.CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE;
+            assertTrue(contextMenuEntries
+                    .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
 
-                    /*
-                     * Update the event to indicate that it was created using
-                     * the draw-by-area tool.
-                     */
-                    Dict newEventAttributes = new Dict();
-                    ArrayList<String> contextMenuList = Lists.newArrayList();
-                    contextMenuList
-                            .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
-                    newEventAttributes.put(
-                            HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                            contextMenuList);
-                    autoTestUtilities
-                            .updateSelectedEventAttributes(newEventAttributes);
-                } else if (this.step == Steps.CREATE_NEW_NODE_HAZARD_AREA) {
-                    this.step = Steps.CHECK_CONTEXT_MENU_FOR_NO_ADD_REMOVE_SHAPE;
-                    List<String> contextMenuEntries = this.toolLayer
-                            .getContextMenuEntries();
+            /*
+             * Create a new non-draw-by-area event.
+             */
+            autoTestUtilities.createEvent(SECOND_EVENT_CENTER_X,
+                    SECOND_EVENT_CENTER_Y);
 
-                    assertTrue(!contextMenuEntries
-                            .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
-                    this.testSuccess();
-                }
-            } else if (actionType.equals(HazardConstants.UPDATE_EVENT_METADATA)) {
-                this.step = Steps.CREATE_NEW_NODE_HAZARD_AREA;
-                List<String> contextMenuEntries = this.toolLayer
-                        .getContextMenuEntries();
-
-                assertTrue(contextMenuEntries
-                        .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
-
-                /*
-                 * Create a new non-draw-by-area event.
-                 */
-                autoTestUtilities.createEvent(SECOND_EVENT_CENTER_X,
-                        SECOND_EVENT_CENTER_Y);
-            }
         } catch (Exception e) {
             handleException(e);
+        }
+    }
+
+    @Subscribe
+    public void handleNewHazard(NewHazardAction action) {
+        if (this.step == Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD) {
+            this.step = Steps.CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE;
+
+            /*
+             * Update the event to indicate that it was created using the
+             * draw-by-area tool.
+             */
+            Dict newEventAttributes = new Dict();
+            ArrayList<String> contextMenuList = Lists.newArrayList();
+            contextMenuList.add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+            newEventAttributes.put(
+                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                    contextMenuList);
+            autoTestUtilities.updateSelectedEventAttributes(newEventAttributes);
+        } else if (this.step == Steps.CREATE_NEW_NODE_HAZARD_AREA) {
+            this.step = Steps.CHECK_CONTEXT_MENU_FOR_NO_ADD_REMOVE_SHAPE;
+            List<String> contextMenuEntries = this.toolLayer
+                    .getContextMenuEntries();
+
+            assertTrue(!contextMenuEntries
+                    .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+            this.testSuccess();
         }
     }
 

@@ -10,9 +10,10 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.List;
@@ -21,7 +22,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
@@ -60,33 +60,20 @@ public class FilteringFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Override
-    protected void run() {
-        try {
-            super.run();
-            step = Steps.START;
-            autoTestUtilities.createEvent(-96.0, 41.0);
-        } catch (Exception e) {
-            handleException(e);
-        }
-
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        step = Steps.START;
+        autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
     @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void handleNewHazard(NewHazardAction action) {
 
         try {
-            if (spatialDisplayAction.getActionType().equals(
-                    HazardConstants.NEW_EVENT_SHAPE)) {
-                IHazardEvent event = autoTestUtilities.getSelectedEvent();
+            IHazardEvent event = autoTestUtilities.getSelectedEvent();
 
-                autoTestUtilities.assignEventType(
-                        AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
-
-            } else {
-                testError();
-            }
+            autoTestUtilities.assignEventType(
+                    AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
         } catch (Exception e) {
             handleException(e);
         }

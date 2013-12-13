@@ -11,19 +11,20 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
-
-import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Description: {@link FunctionalTest} of changing the area of an event.
@@ -54,31 +55,27 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Override
-    protected void run() {
-        try {
-            super.run();
-            step = Steps.START;
-            autoTestUtilities.createEvent(-96.0, 41.0);
-        } catch (Exception e) {
-            handleException(e);
-        }
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        step = Steps.START;
+        autoTestUtilities.createEvent(-96.0, 41.0);
+    }
+
+    @Subscribe
+    public void handleNewHazard(NewHazardAction action) {
+        autoTestUtilities
+                .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
 
     }
 
     @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void handleHazardGeometryModification(
+            ModifyHazardGeometryAction action) {
 
         try {
-            if (spatialDisplayAction.getActionType().equals(
-                    HazardConstants.NEW_EVENT_SHAPE)) {
-                autoTestUtilities
-                        .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
-            } else {
-                step = Steps.PREVIEW_MODIFIED_EVENT;
-                autoTestUtilities.previewEvent();
-            }
+            step = Steps.PREVIEW_MODIFIED_EVENT;
+            autoTestUtilities.previewEvent();
+
         } catch (Exception e) {
             handleException(e);
         }
@@ -98,31 +95,22 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
     }
 
-    @SuppressWarnings({ "rawtypes" })
     @Subscribe
     public void handleProductGeneratorResult(ProductGenerated generated) {
         try {
             switch (step) {
 
             case ISSUE_FLASH_FLOOD_WATCH:
-                SpatialDisplayAction modifyAreaAction = new SpatialDisplayAction(
-                        HazardConstants.MODIFY_EVENT_AREA);
                 IHazardEvent event = autoTestUtilities.getSelectedEvent();
                 String eventID = event.getEventID();
-                Dict modifiedEvent = autoTestUtilities.buildEventArea(-96.0,
-                        41.0);
-                List shapes = modifiedEvent
-                        .getDynamicallyTypedValue(HazardConstants.SHAPES);
-                Dict floodEvent = (Dict) shapes.get(0);
-                List<List<Double>> points = floodEvent
-                        .getDynamicallyTypedValue(HazardConstants.POINTS);
-                List<Double> onePoint = points.get(1);
-                onePoint.set(1, 39.0);
-                modifiedEvent.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                        eventID);
-                modifyAreaAction.setModifyEventJSON(modifiedEvent
-                        .toJSONString());
-                eventBus.post(modifyAreaAction);
+
+                Geometry geometry = event.getGeometry();
+                Coordinate[] coordinates = geometry.getCoordinates();
+                Coordinate modifiedPoint = coordinates[1];
+                modifiedPoint.y = 39.0;
+                ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(
+                        eventID, geometry);
+                eventBus.post(action);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:

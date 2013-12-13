@@ -25,7 +25,6 @@ import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -167,12 +166,6 @@ public interface ISessionManager extends IUndoRedoable {
     @Deprecated
     void initialize(Date selectedTime, String staticSettingID,
             String dynamicSetting_json, String caveMode, String siteID);
-
-    /**
-     * Create a new {@link IHazardEvent} from an event shape
-     */
-    @Deprecated
-    String newEvent(String eventShape);
 
     @Deprecated
     String handleRecommenderResult(String toolID, EventSet<IEvent> eventList);

@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.action;
 
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.mvp.IAction;
 
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 
@@ -29,7 +28,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
  * 
  * @author Bryon.Lawrence
  */
-public class SpatialDisplayAction implements IAction {
+public class SpatialDisplayAction {
     private FramesInfo framesInfo = null;
 
     private String actionType = null;

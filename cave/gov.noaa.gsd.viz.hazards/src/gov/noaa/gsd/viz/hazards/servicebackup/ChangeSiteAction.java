@@ -20,7 +20,6 @@
 package gov.noaa.gsd.viz.hazards.servicebackup;
 
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
-import gov.noaa.gsd.viz.mvp.IAction;
 
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * @version 1.0
  */
 
-public class ChangeSiteAction extends Action implements IAction {
+public class ChangeSiteAction extends Action {
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ChangeSiteAction.class);

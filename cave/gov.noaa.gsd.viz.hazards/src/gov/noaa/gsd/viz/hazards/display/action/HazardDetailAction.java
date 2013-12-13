@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * This action is "fired" from the Hazard Information Dialog when its state
@@ -25,7 +24,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Bryon.Lawrence
  */
-public class HazardDetailAction implements IAction {
+public class HazardDetailAction {
     private String action;
 
     private String jsonText;
@@ -79,7 +78,8 @@ public class HazardDetailAction implements IAction {
     }
 
     /**
-     * @param isUserInitiated the isUserInitiated to set
+     * @param isUserInitiated
+     *            the isUserInitiated to set
      */
     public void setIsUserInitiated(Boolean isUserInitiated) {
         this.isUserInitiated = isUserInitiated;

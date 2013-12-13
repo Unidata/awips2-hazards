@@ -7,8 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -760,23 +765,6 @@ public class ToolLayer extends
     }
 
     /**
-     * Sends a message over the event bus when an event is modified in the
-     * spatial display.
-     * 
-     * @param JSON
-     *            string describing the modified event.
-     * @return
-     */
-    private void fireModifiedEventActionOccurred(String modifyEventJSON) {
-
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                HazardConstants.MODIFY_EVENT_AREA);
-        action.setModifyEventJSON(modifyEventJSON);
-        eventBus.post(action);
-
-    }
-
-    /**
      * Sends a notification when the spatial display is disposed of, such as in
      * a clear action.
      * 
@@ -1323,7 +1311,23 @@ public class ToolLayer extends
      * @return
      */
     public void notifyModifiedEvent(String modifiedEventJSON) {
-        fireModifiedEventActionOccurred(modifiedEventJSON);
+        Dict modifyEvent = Dict.getInstance(modifiedEventJSON);
+        String shapeType = modifyEvent
+                .getDynamicallyTypedValue(HAZARD_EVENT_SHAPE_TYPE);
+        String eventID = modifyEvent
+                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
+        if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+            List<Dict> shapes = modifyEvent.getDynamicallyTypedValue(SHAPES);
+            Geometry geometry = JSONUtilities.geometryFromJSONShapes(shapes);
+            ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(
+                    eventID, geometry);
+            eventBus.post(action);
+        } else {
+            Dict asDict = Dict.getInstance(modifiedEventJSON);
+            ModifyStormTrackAction action = new ModifyStormTrackAction();
+            action.setParameters(Utilities.asMap(asDict));
+            eventBus.post(action);
+        }
     }
 
     @Override

@@ -12,20 +12,24 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Constants and utilities for {@link FunctionalTest}
@@ -156,17 +160,21 @@ public class AutoTestUtilities {
 
     private final EventBus eventBus;
 
+    private final HazardEventBuilder hazardEventBuilder;
+
     public AutoTestUtilities(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.eventBus = appBuilder.getEventBus();
+        this.hazardEventBuilder = new HazardEventBuilder(
+                appBuilder.getSessionManager());
     }
 
     void createEvent(Double centerX, Double centerY) {
-        SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                HazardConstants.NEW_EVENT_SHAPE);
-        Dict toolParameters = buildEventArea(centerX, centerY);
-        displayAction.setToolParameters(toolParameters);
-        eventBus.post(displayAction);
+        Coordinate[] coordinates = buildEventArea(centerX, centerY);
+        IHazardEvent hazardEvent = hazardEventBuilder
+                .buildPolygonHazardEvent(coordinates);
+        NewHazardAction action = new NewHazardAction(hazardEvent);
+        eventBus.post(action);
     }
 
     void assignSelectedEventType(String eventType) {
@@ -207,42 +215,25 @@ public class AutoTestUtilities {
         return result;
     }
 
-    Dict buildEventArea(Double centerX, Double centerY) {
-        Dict result = new Dict();
-        DictList shapes = new DictList();
-        result.put(HazardConstants.SHAPES, shapes);
-        Dict shape = new Dict();
-        shapes.add(shape);
-        shape.put(HazardConstants.IS_SELECTED_KEY, Boolean.TRUE.toString());
-        shape.put(HazardConstants.IS_VISIBLE_KEY, Boolean.TRUE.toString());
-        shape.put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
-                HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
-        DictList points = new DictList();
-        shape.put(HazardConstants.POINTS, points);
-        DictList point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
-                -EVENT_BUILDER_OFFSET);
-        points.add(point);
-        point = buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
-                -EVENT_BUILDER_OFFSET);
-        points.add(point);
-        point = buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
-                EVENT_BUILDER_OFFSET);
-        points.add(point);
-        point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
-                EVENT_BUILDER_OFFSET);
-        points.add(point);
-        point = buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
-                -EVENT_BUILDER_OFFSET);
-        points.add(point);
-        return result;
+    Coordinate[] buildEventArea(Double centerX, Double centerY) {
+        List<Coordinate> result = Lists.newArrayList();
+
+        result.add(buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET));
+        result.add(buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET));
+        result.add(buildPoint(centerX, centerY, EVENT_BUILDER_OFFSET,
+                EVENT_BUILDER_OFFSET));
+        result.add(buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                EVENT_BUILDER_OFFSET));
+        result.add(buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
+                -EVENT_BUILDER_OFFSET));
+        return result.toArray(new Coordinate[result.size()]);
     }
 
-    private DictList buildPoint(Double centerX, Double centerY, Double xOffset,
-            Double yOffset) {
-        DictList point = new DictList();
-        point.add(centerX + xOffset);
-        point.add(centerY + yOffset);
-        return point;
+    private Coordinate buildPoint(Double centerX, Double centerY,
+            Double xOffset, Double yOffset) {
+        return new Coordinate(centerX + xOffset, centerY + yOffset);
     }
 
     Dict buildEventTypeSelection(IHazardEvent selectedEvent, String fullType) {

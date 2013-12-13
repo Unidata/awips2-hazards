@@ -8,12 +8,18 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -412,5 +418,25 @@ public class Utilities {
                 + (GREEN_LUMINANCE_WEIGHT * color.getGreen()) + (BLUE_LUMINANCE_WEIGHT * color
                 .getBlue())) < 0.5f ? 0f : 1f);
         return new Color(component, component, component);
+    }
+
+    public static Map<String, Serializable> asMap(Dict runData) {
+        if (runData == null) {
+            return null;
+        }
+        HashMap<String, Serializable> result = Maps.newHashMap();
+        for (Entry<String, Object> entry : runData.entrySet()) {
+            Object val = entry.getValue();
+            if (val instanceof Dict) {
+                result.put(entry.getKey(), (Serializable) asMap((Dict) val));
+            } else if (val instanceof Serializable) {
+                result.put(entry.getKey(), (Serializable) val);
+            } else {
+                throw new RuntimeException(entry + ", "
+                        + val.getClass().getSimpleName()
+                        + " does not implement Serializable");
+            }
+        }
+        return result;
     }
 }

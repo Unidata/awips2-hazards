@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.action;
 
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * Action class "fired" from the Product Editor. Registered observers receive
@@ -26,7 +25,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Bryon.Lawrence
  */
-public class ProductStagingAction implements IAction {
+public class ProductStagingAction {
     private String action;
 
     private ProductStagingInfo productStagingInfo;

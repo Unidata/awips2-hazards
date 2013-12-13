@@ -131,16 +131,6 @@ public class SpatialPresenter extends
     }
 
     /**
-     * Creates a new event area and returns its id.
-     * 
-     * @param
-     * @return
-     */
-    public String getNewEventAreaId(String eventAreaJSON) {
-        return getModel().newEvent(eventAreaJSON);
-    }
-
-    /**
      * Get the selected time.
      * 
      * @return Selected time.

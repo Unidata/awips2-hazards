@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * Objects of this class are "fired" from the hazard services app builder over
@@ -25,7 +24,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Bryon.Lawrence
  */
-public class AppBuilderAction implements IAction {
+public class AppBuilderAction {
 
     public enum ActionName {
         SET_SELECTION_DRAWING_ACTION, SET_CONSOLE_TIMELINE_DURATION, UPDATE_CAVE_SELECTED_TIME, USE_SETTING_ZOOM_PARAMETERS, SEND_FRAME_INFORMATION_TO_SESSION_MANAGER

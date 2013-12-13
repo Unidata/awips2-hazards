@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.EventDict;
@@ -14,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -292,16 +295,15 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         // Tell the resource to update its display of
                         // the selected geometries.
                         zoneDisplay.setSelectedGeometries(selectedGeoms);
-                        String eventAreaJSON = eventAreaObject.toJSONString();
-                        eventID = getSpatialPresenter().getNewEventAreaId(
-                                eventAreaJSON);
 
-                        SpatialDisplayAction action = new SpatialDisplayAction(
-                                HazardConstants.NEW_EVENT_SHAPE);
-                        action.setToolParameters(Dict
-                                .getInstance(eventAreaJSON));
-                        action.setEventID(eventID);
-                        getSpatialPresenter().fireAction(action);
+                        IHazardEvent hazardEvent = new HazardEventBuilder(
+                                getSpatialPresenter().getSessionManager())
+                                .buildPolygonHazardEvent(mergedPolygons);
+                        eventID = hazardEvent.getEventID();
+                        NewHazardAction newHazardEventAction = new NewHazardAction(
+                                hazardEvent);
+
+                        getSpatialPresenter().fireAction(newHazardEventAction);
 
                         hazardGeometryList.put(eventID, copyGeometriesList);
 
@@ -330,7 +332,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         geoReferenceDict.put(
                                 HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
                                 contextMenuList);
-                        action = new SpatialDisplayAction(
+                        SpatialDisplayAction action = new SpatialDisplayAction(
                                 HazardConstants.UPDATE_EVENT_METADATA);
                         action.setToolParameters(geoReferenceDict);
                         getSpatialPresenter().fireAction(action);

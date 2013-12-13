@@ -284,6 +284,11 @@ public final class HazardConstants {
     public static final String ISSUETIME = "issueTime";
 
     /**
+     * Creation time key in hazard
+     */
+    public static final String CREATION_TIME = "creationTime";
+
+    /**
      * Start time key in hazard
      */
     public static final String HAZARD_EVENT_START_TIME = "startTime";
@@ -664,6 +669,8 @@ public final class HazardConstants {
     /*
      * TODO The following need to be moved to something specific to storm track
      */
+    public static final String RUN_TOOL = "runTool";
+
     public static final String POINTID = "pointID";
 
     public static final String PIVOTS = "pivots";
@@ -681,6 +688,8 @@ public final class HazardConstants {
     public static final String END_SELECTED_HAZARDS = "End Selected Hazards";
 
     public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected Hazards";
+
+    public static final String SPATIAL_INFO = "spatialInfo";
 
     public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 

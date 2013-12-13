@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
-
 import java.util.Date;
 
 /**
@@ -25,7 +23,7 @@ import java.util.Date;
  * 
  * @author Chris.Golden
  */
-public class ConsoleAction implements IAction {
+public class ConsoleAction {
 
     // Applies in instances where a setting or a tool
     // are chosen.

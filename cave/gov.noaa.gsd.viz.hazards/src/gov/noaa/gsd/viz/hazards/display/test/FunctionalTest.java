@@ -63,6 +63,8 @@ public abstract class FunctionalTest {
 
     protected static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
 
+    protected static final String STORM_TRACK_TOOL = "StormTrackTool";
+
     protected static final String RIVER_FLOOD_RECOMMENDER = "RiverFloodRecommender";
 
     protected static final String CANNED_TORNADO_SETTING = "TOR";

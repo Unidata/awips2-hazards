@@ -7,10 +7,9 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -25,7 +24,7 @@ import java.util.List;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -167,15 +166,15 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                         DrawableType.LINE, attrDlg, "Line", "LINE_DASHED_4",
                         reducedPointsList, getDrawingLayer().getActiveLayer());
 
-                // Convert the object to JSON.
-                String jsonString = JSONUtilities.createNewHazardJSON("",
-                        HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON,
-                        reducedPointsList);
                 points.clear();
 
-                SpatialDisplayAction action = new SpatialDisplayAction(
-                        HazardConstants.NEW_EVENT_SHAPE);
-                action.setToolParameters(Dict.getInstance(jsonString));
+                IHazardEvent hazardEvent = new HazardEventBuilder(
+                        getSpatialPresenter().getSessionManager())
+                        .buildPolygonHazardEvent(reducedGeometry
+                                .getCoordinates());
+                NewHazardAction action = new NewHazardAction(
+                        hazardEvent);
+
                 getSpatialPresenter().fireAction(action);
 
                 // Indicate that this drawing action is done.

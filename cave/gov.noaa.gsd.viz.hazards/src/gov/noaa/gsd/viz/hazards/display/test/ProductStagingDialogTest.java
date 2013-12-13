@@ -13,8 +13,9 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 
 import java.util.List;
 
@@ -62,21 +63,15 @@ public class ProductStagingDialogTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Override
-    protected void run() {
-        try {
-            super.run();
-            step = Steps.START;
-            autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X, 41.0);
-        } catch (Exception e) {
-            handleException(e);
-        }
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        step = Steps.START;
+        autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X, 41.0);
 
     }
 
     @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void handleNewHazard(NewHazardAction action) {
 
         try {
             switch (step) {

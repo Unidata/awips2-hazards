@@ -8,12 +8,16 @@
 package gov.noaa.gsd.viz.hazards.display;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
+import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -25,7 +29,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.codehaus.jackson.JsonNode;
@@ -35,6 +38,7 @@ import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -219,6 +223,7 @@ public final class HazardServicesMessageHandler implements
      * @param dynamicSettingJSON
      *            Settings related to configurations the user has made but has
      *            not save to a static settings file.
+     * @param eventBus
      * @param state
      *            Saved session state to initialize this session from the
      *            previous session.
@@ -226,7 +231,7 @@ public final class HazardServicesMessageHandler implements
      */
     @SuppressWarnings("deprecation")
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            Date currentTime, String dynamicSettingJSON) {
+            Date currentTime, String dynamicSettingJSON, EventBus eventBus) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
 
@@ -237,7 +242,11 @@ public final class HazardServicesMessageHandler implements
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
 
+        /*
+         * TODO Need to consolidate event buses
+         */
         sessionManager.registerForNotification(this);
+        eventBus.register(this);
 
         caveMode = (CAVEMode.getMode()).toString();
         siteID = LocalizationManager.getInstance().getCurrentSite();
@@ -409,7 +418,8 @@ public final class HazardServicesMessageHandler implements
      * 
      * @throws VizException
      */
-    public void runTool(String toolName, Dict spatialInfo, Dict dialogInfo) {
+    public void runTool(String toolName, Map<String, Serializable> spatialInfo,
+            Dict dialogInfo) {
 
         ISessionManager sessionManager = appBuilder.getSessionManager();
         appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
@@ -441,7 +451,8 @@ public final class HazardServicesMessageHandler implements
                 .getTimeManager().getCurrentTime().getTime());
 
         Dict frameInfo = HazardServicesEditorUtilities.buildFrameInformation();
-        eventSet.addAttribute("framesInfo", (Serializable) asMap(frameInfo));
+        eventSet.addAttribute("framesInfo",
+                (Serializable) Utilities.asMap(frameInfo));
 
         HashMap<String, Serializable> staticSettings = buildStaticSettings();
         eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
@@ -452,7 +463,7 @@ public final class HazardServicesMessageHandler implements
                 : HazardEventManager.Mode.OPERATIONAL.toString());
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
-                eventSet, asMap(spatialInfo), asMap(dialogInfo),
+                eventSet, spatialInfo, Utilities.asMap(dialogInfo),
                 getRecommenderListener(toolName));
 
         appBuilder.setCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
@@ -471,26 +482,6 @@ public final class HazardServicesMessageHandler implements
         staticSettings.put("defaultDuration", 1800000);
         staticSettings.put("defaultSiteID", "OAX");
         return staticSettings;
-    }
-
-    private Map<String, Serializable> asMap(Dict runData) {
-        if (runData == null) {
-            return null;
-        }
-        HashMap<String, Serializable> result = Maps.newHashMap();
-        for (Entry<String, Object> entry : runData.entrySet()) {
-            Object val = entry.getValue();
-            if (val instanceof Dict) {
-                result.put(entry.getKey(), (Serializable) asMap((Dict) val));
-            } else if (val instanceof Serializable) {
-                result.put(entry.getKey(), (Serializable) val);
-            } else {
-                throw new RuntimeException(entry + ", "
-                        + val.getClass().getSimpleName()
-                        + " does not implement Serializable");
-            }
-        }
-        return result;
     }
 
     private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
@@ -629,23 +620,33 @@ public final class HazardServicesMessageHandler implements
 
     /**
      * This method is called when a storm track point is moved on the Spatial
-     * Display OR when a polygon is changed by the Cave user
+     * Display
      * 
      * Appropriate adjustments are made to the event and then the Spatial
      * Display is re-drawn
      * 
-     * @param json
-     *            A JSON string containing a dict to replace portions of the
-     *            event with.
-     * @throws VizException
+     * @param action
      */
-    public void modifySpatialDisplayObject(String json) throws VizException {
-        Dict asDict = Dict.getInstance(json);
-        if (asDict.get(HazardConstants.SYMBOL_NEW_LAT_LON) != null) {
-            runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL, asDict, null);
-        } else {
-            sessionManager.getEventManager().modifyEventArea(json);
-        }
+
+    @Subscribe
+    public void handleStormTrackModification(ModifyStormTrackAction action) {
+        runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL,
+                action.getParameters(), null);
+        appBuilder.notifyModelChanged(EnumSet
+                .of(HazardConstants.Element.EVENTS));
+    }
+
+    @Subscribe
+    public void handleNewHazard(NewHazardAction action) {
+        notifyModelEventsChanged();
+    }
+
+    @Subscribe
+    public void handleHazardGeometryModification(
+            ModifyHazardGeometryAction action) {
+        IHazardEvent event = sessionEventManager.getEventById(action
+                .getEventID());
+        event.setGeometry(action.getGeometry());
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
     }
@@ -990,31 +991,6 @@ public final class HazardServicesMessageHandler implements
                 .getSettingsID(), jsonDynamicSetting, caveMode, siteID);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.DYNAMIC_SETTING));
-    }
-
-    /**
-     * This method is called when a new event is created in the Spatial Display.
-     * The originator argument is for extensibility in case the capability to
-     * add events is added to other components.
-     * 
-     * @param eventShape
-     *            Json string representing a newly created event shape.
-     * @param eventID
-     *            The id of the event. If this is null, then a new event and id
-     *            are created.
-     * @param originator
-     *            The originator of the new event (for example, "Spatial"). This
-     *            should be an enum.
-     * @return An eventID for the new event shape.
-     */
-    public String newEventShape(String eventShape, String eventID,
-            String originator) {
-        if (eventID == null) {
-            eventID = sessionManager.newEvent(eventShape);
-        }
-        notifyModelEventsChanged();
-
-        return eventID;
     }
 
     /**

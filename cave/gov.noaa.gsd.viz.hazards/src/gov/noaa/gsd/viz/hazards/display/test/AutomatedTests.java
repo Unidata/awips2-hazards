@@ -79,6 +79,11 @@ public class AutomatedTests {
 
         else if (testCompleted.getTestClass().equals(
                 SimpleHazardStoryFunctionalTest.class)) {
+            new StormTrackFunctionalTest(appBuilder).run();
+        }
+
+        else if (testCompleted.getTestClass().equals(
+                StormTrackFunctionalTest.class)) {
             new AddNewPendingToSelectedTest(appBuilder).run();
         }
 

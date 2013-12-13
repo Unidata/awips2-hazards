@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * Represents an action originating from the alerts view.
@@ -23,7 +22,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Chris.Golden
  */
-public class AlertsAction implements IAction {
+public class AlertsAction {
 
     private String action = null;
 

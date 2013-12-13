@@ -5,7 +5,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards;
+package gov.noaa.gsd.viz.hazards.utilities;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.utilities.DateTimes;
@@ -23,7 +23,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -48,18 +47,18 @@ import com.vividsolutions.jts.geom.Polygon;
  * @author daniel.s.schaffer
  * @version 1.0
  */
-public class HazardEventsBuilder {
+public class HazardEventsBuilderForTesting {
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     private final List<IHazardEvent> events;
 
-    public HazardEventsBuilder(String eventsAsJson) {
+    public HazardEventsBuilderForTesting(String eventsAsJson) {
         events = Lists.newArrayList();
         Dict dict = Dict.getInstance(eventsAsJson);
         for (String eventId : dict.keySet()) {
 
-            IHazardEvent event = new HazardEventManager(getMode())
+            IHazardEvent event = new HazardEventManager(Mode.PRACTICE)
                     .createEvent();
             Dict eventDict = dict.getDynamicallyTypedValue(eventId);
             Map<String, Serializable> attributes = Maps.newHashMap();
@@ -128,16 +127,6 @@ public class HazardEventsBuilder {
             }
             event.setHazardAttributes(attributes);
             events.add(event);
-        }
-    }
-
-    private Mode getMode() {
-        switch (CAVEMode.getMode()) {
-        case PRACTICE:
-        case TEST:
-            return Mode.PRACTICE;
-        default:
-            return Mode.OPERATIONAL;
         }
     }
 

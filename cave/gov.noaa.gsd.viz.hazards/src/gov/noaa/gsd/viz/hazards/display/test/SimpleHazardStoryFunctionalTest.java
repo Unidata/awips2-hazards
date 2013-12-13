@@ -11,12 +11,15 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,6 +33,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: {@link FunctionalTest} of the simple hazard story.
@@ -86,20 +90,16 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Override
-    protected void run() {
-        try {
-            super.run();
-            this.step = Steps.CREATE_NEW_HAZARD_AREA;
-            SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                    HazardConstants.NEW_EVENT_SHAPE);
-            Dict toolParameters = autoTestUtilities.buildEventArea(-96.0, 41.0);
-            displayAction.setToolParameters(toolParameters);
-            eventBus.post(displayAction);
-        } catch (Exception e) {
-            handleException(e);
-        }
-
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        this.step = Steps.CREATE_NEW_HAZARD_AREA;
+        Coordinate[] coordinates = autoTestUtilities
+                .buildEventArea(-96.0, 41.0);
+        IHazardEvent hazardEvent = new HazardEventBuilder(
+                appBuilder.getSessionManager())
+                .buildPolygonHazardEvent(coordinates);
+        NewHazardAction action = new NewHazardAction(hazardEvent);
+        eventBus.post(action);
     }
 
     /**
@@ -147,42 +147,37 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * Listens for spatial display actions generated from within Hazard
      * Services. Performs the appropriate tests based on the current test step.
      * 
-     * @param spatialDisplayAction
-     *            The spatial display action
+     * @param action
      * @return
      */
     @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void handleNewHazard(NewHazardAction action) {
 
         try {
-            String actionType = spatialDisplayAction.getActionType();
 
-            if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)) {
-                this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
+            this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
 
-                /*
-                 * Retrieve the selected event.
-                 */
-                Collection<IHazardEvent> selectedEvents = appBuilder
-                        .getSessionManager().getEventManager()
-                        .getSelectedEvents();
+            /*
+             * Retrieve the selected event.
+             */
+            Collection<IHazardEvent> selectedEvents = appBuilder
+                    .getSessionManager().getEventManager().getSelectedEvents();
 
-                assertTrue(selectedEvents.size() == 1);
+            assertTrue(selectedEvents.size() == 1);
 
-                IHazardEvent selectedEvent = selectedEvents.iterator().next();
+            IHazardEvent selectedEvent = selectedEvents.iterator().next();
 
-                assertTrue(selectedEvent.getEventID().length() > 0);
+            assertTrue(selectedEvent.getEventID().length() > 0);
 
-                Dict dict = autoTestUtilities.buildEventTypeSelection(
-                        selectedEvent,
-                        AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+            Dict dict = autoTestUtilities
+                    .buildEventTypeSelection(selectedEvent,
+                            AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
 
-                HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                        HazardConstants.UPDATE_EVENT_TYPE);
-                hazardDetailAction.setJSONText(dict.toJSONString());
-                eventBus.post(hazardDetailAction);
-            }
+            HazardDetailAction hazardDetailAction = new HazardDetailAction(
+                    HazardConstants.UPDATE_EVENT_TYPE);
+            hazardDetailAction.setJSONText(dict.toJSONString());
+            eventBus.post(hazardDetailAction);
+
         } catch (Exception e) {
             handleException(e);
         }

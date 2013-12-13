@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.mvp.IAction;
 
 /**
  * Represents an action originating from the settings view.
@@ -24,7 +23,7 @@ import gov.noaa.gsd.viz.mvp.IAction;
  * 
  * @author Chris.Golden
  */
-public class SettingsAction implements IAction {
+public class SettingsAction {
 
     private String action = null;
 

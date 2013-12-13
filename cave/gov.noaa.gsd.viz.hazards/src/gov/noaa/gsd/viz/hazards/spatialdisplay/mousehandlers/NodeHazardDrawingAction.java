@@ -8,13 +8,12 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -30,7 +29,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -79,10 +78,13 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
     private final Map<String, HazardServicesDrawingAttributes> drawingAttributesForShapeTypes = Maps
             .newHashMap();
 
+    private final HazardEventBuilder hazardEventBuilder;
+
     private final ISessionManager sessionManager;
 
     public NodeHazardDrawingAction(ISessionManager sessionManager) {
         this.sessionManager = sessionManager;
+        hazardEventBuilder = new HazardEventBuilder(sessionManager);
     }
 
     @Override
@@ -274,17 +276,24 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             // If this is a polygon, it must have a point at the end of its
             // list of points that is the same as its first point.
+            IHazardEvent hazardEvent;
             if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
                 points.add(points.get(0));
-            }
+                hazardEvent = hazardEventBuilder
+                        .buildPolygonHazardEvent(pointsAsArray());
+            } else {
 
-            String jsonString = JSONUtilities.createNewHazardJSON("",
-                    shapeType, points);
+                hazardEvent = hazardEventBuilder
+                        .buildLineHazardEvent(pointsAsArray());
+
+            }
+            NewHazardAction action = new NewHazardAction(hazardEvent);
             points.clear();
-            SpatialDisplayAction action = new SpatialDisplayAction(
-                    HazardConstants.NEW_EVENT_SHAPE);
-            action.setToolParameters(Dict.getInstance(jsonString));
             getSpatialPresenter().fireAction(action);
+        }
+
+        private Coordinate[] pointsAsArray() {
+            return points.toArray(new Coordinate[points.size()]);
         }
 
         /**
@@ -294,8 +303,10 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
          *            Location at which to place the point shape.
          */
         private void createPointShape(Coordinate loc) {
-            points.add(loc);
-            createShapeFromCollectedPoints();
+            IHazardEvent hazardEvent = hazardEventBuilder
+                    .buildPointHazardEvent(loc);
+            NewHazardAction action = new NewHazardAction(hazardEvent);
+            getSpatialPresenter().fireAction(action);
         }
     }
 }

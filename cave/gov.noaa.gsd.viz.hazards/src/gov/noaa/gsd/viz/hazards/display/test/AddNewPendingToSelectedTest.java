@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
@@ -80,52 +81,48 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
             final SpatialDisplayAction spatialDisplayAction) {
 
         try {
-            if (spatialDisplayAction.getActionType().equals(
-                    HazardConstants.ADD_PENDING_TO_SELECTED)) {
-                switch (step) {
-                case START:
-                    step = Steps.EVENT0;
-                    autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X, 41.0);
-                    break;
+            switch (step) {
+            case START:
+                step = Steps.EVENT0;
+                autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X, 41.0);
+                break;
 
-                case TEAR_DOWN:
-                    testSuccess();
-                    break;
+            case TEAR_DOWN:
+                testSuccess();
+                break;
 
-                default:
-                    testError();
-                }
-
-            } else {
-                switch (step) {
-                case EVENT0:
-                    autoTestUtilities
-                            .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
-
-                    break;
-
-                case EVENT1:
-                    Iterator<IHazardEvent> iterator = appBuilder
-                            .getSessionManager().getEventManager()
-                            .getSelectedEvents().iterator();
-
-                    IHazardEvent event = iterator.next();
-                    event = skipToJustCreatedEventIfNecessary(iterator, event);
-
-                    autoTestUtilities
-                            .assignEventType(
-                                    AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE,
-                                    event);
-                    break;
-
-                default:
-                    testError();
-
-                }
+            default:
+                testError();
             }
 
         } catch (Exception e) {
             handleException(e);
+        }
+    }
+
+    @Subscribe
+    public void handleNewHazardEvent(NewHazardAction action) {
+        switch (step) {
+        case EVENT0:
+            autoTestUtilities
+                    .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+
+            break;
+
+        case EVENT1:
+            Iterator<IHazardEvent> iterator = appBuilder.getSessionManager()
+                    .getEventManager().getSelectedEvents().iterator();
+
+            IHazardEvent event = iterator.next();
+            event = skipToJustCreatedEventIfNecessary(iterator, event);
+
+            autoTestUtilities.assignEventType(
+                    AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
+            break;
+
+        default:
+            testError();
+
         }
     }
 

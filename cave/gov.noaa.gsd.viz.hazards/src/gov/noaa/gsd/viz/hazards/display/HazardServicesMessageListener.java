@@ -20,6 +20,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.timer.TimerAction;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.List;
 
@@ -157,13 +158,9 @@ public class HazardServicesMessageListener {
         } else if (actionType.equals(MODIFY_EVENT_AREA)) {
             String jsonText = spatialDisplayAction.getModifyEventJSON();
 
-            try {
-                messageHandler.modifySpatialDisplayObject(jsonText);
-            } catch (VizException e) {
-                statusHandler.error("HazardServicesMessageListener."
-                        + "spatialDisplayActionOccurred(): "
-                        + "Unable to modify event area.", e);
-            }
+            messageHandler.getSessionManager().getEventManager()
+                    .modifyEventArea(jsonText);
+
         } else if (actionType.equals(HazardConstants.ADD_PENDING_TO_SELECTED)) {
             messageHandler.setAddToSelected(spatialDisplayAction
                     .getActionIdentifier());
@@ -212,16 +209,10 @@ public class HazardServicesMessageListener {
             messageHandler.closeHazardServices();
         } else if (actionType.equals("FrameChanged")) {
             messageHandler.sendFrameInformationToSessionManager();
-        } else if (actionType.equals("runTool")) {
+        } else if (actionType.equals(RUN_TOOL)) {
             messageHandler.runTool(spatialDisplayAction.getToolName(),
-                    spatialDisplayAction.getToolParameters(), null);
-        } else if (actionType.equals(NEW_EVENT_SHAPE)) {
-            /**
-             * TODO Change newEventArea to take in a POJO
-             */
-            messageHandler.newEventShape(spatialDisplayAction
-                    .getToolParameters().toJSONString(), spatialDisplayAction
-                    .getEventID(), "Spatial");
+                    Utilities.asMap(spatialDisplayAction.getToolParameters()),
+                    null);
         } else if (actionType.equals(UPDATE_EVENT_METADATA)) {
             /**
              * TODO Change updateEventData to take in a POJO
@@ -232,6 +223,9 @@ public class HazardServicesMessageListener {
             messageHandler.handleUndoAction();
         } else if (actionType.equals("redo")) {
             messageHandler.handleRedoAction();
+        } else {
+            throw new UnsupportedOperationException(String.format(
+                    "ActionType %s not handled", actionType));
         }
 
     }

@@ -45,7 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * @version 1.0
  */
 public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
-        Presenter<ISessionManager, HazardConstants.Element, V> {
+        Presenter<ISessionManager, HazardConstants.Element, V, Object> {
 
     protected JSONConverter jsonConverter = new JSONConverter();
 

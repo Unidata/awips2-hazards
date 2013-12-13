@@ -21,7 +21,7 @@ import com.raytheon.uf.common.time.TimeRange
 import com.vividsolutions.jts.geom.Geometry
 
 import gov.noaa.gsd.common.utilities.DateTimes;
-import gov.noaa.gsd.viz.hazards.HazardEventsBuilder
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 /**
@@ -49,7 +49,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
     def setup() {
         hazardEventManager = new InMemoryHazardEventManager();
         String eventsAsJson = Utilities.getCannedEventsAsJSON()
-        HazardEventsBuilder hazardEventBuilder = new HazardEventsBuilder(eventsAsJson)
+        HazardEventsBuilderForTesting hazardEventBuilder = new HazardEventsBuilderForTesting(eventsAsJson)
         hazardEventManager.storeEvents(hazardEventBuilder.getEvents())
         dateTimes = new DateTimes();
     }

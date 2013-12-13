@@ -339,7 +339,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this);
 
-        messageHandler = new HazardServicesMessageHandler(this, currentTime, "");
+        messageHandler = new HazardServicesMessageHandler(this, currentTime,
+                "", eventBus);
 
         new HazardServicesMessageListener(messageHandler, eventBus);
 

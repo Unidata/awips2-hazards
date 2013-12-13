@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
@@ -36,6 +37,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * JSON helper methods for creating JSON messages. Also, contains utilities for
@@ -183,8 +186,8 @@ public class JSONUtilities {
      */
     static public String createDragDropPointJSON(double lat, double lon,
             long selectedTime) {
-        String json = "{\"spatialInfo\":{\"points\":[[[" + lat + "," + lon
-                + "]," + selectedTime + "]]}}";
+        String json = "{\"" + SPATIAL_INFO + "\":{\"points\":[[[" + lat + ","
+                + lon + "]," + selectedTime + "]]}}";
         return json;
 
     }
@@ -318,5 +321,27 @@ public class JSONUtilities {
         Map<String, Object> map = gson.fromJson(json, hashMapType);
 
         return map;
+    }
+
+    public static Geometry geometryFromJSONShapes(List<Dict> shapes) {
+        GeometryFactory geometryFactory = new GeometryFactory();
+        com.vividsolutions.jts.geom.Polygon[] polygons = new com.vividsolutions.jts.geom.Polygon[shapes
+                .size()];
+        for (int i = 0; i < shapes.size(); i++) {
+
+            Dict shape = shapes.get(i);
+
+            List<List<Double>> points = shape.getDynamicallyTypedValue(POINTS);
+            List<Coordinate> coordinates = Lists.newArrayList();
+            for (List<Double> point : points) {
+                coordinates.add(new Coordinate(point.get(0), point.get(1)));
+            }
+            polygons[i] = geometryFactory
+                    .createPolygon(geometryFactory.createLinearRing(coordinates
+                            .toArray(new Coordinate[coordinates.size()])), null);
+        }
+
+        return geometryFactory.createMultiPolygon(polygons);
+
     }
 }

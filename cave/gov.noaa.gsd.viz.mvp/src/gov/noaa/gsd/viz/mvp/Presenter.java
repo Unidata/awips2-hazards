@@ -17,8 +17,9 @@ import com.google.common.eventbus.EventBus;
  * Superclass from which to derive presenters for specific types of views. Its
  * parameter <code>M</code> specifies the model with which it will be
  * interacting; the parameter <code>E</code> specifies the enumerated type
- * listing the different elements of the model that may be changed; and the
- * parameter <code>V</code> specifies the view managed by the presenter.
+ * listing the different elements of the model that may be changed and the
+ * parameter <code>V</code> specifies the view managed by the presenter; and the
+ * <code>A</code> specifies actions that can be fired off to listeners.
  * 
  * <pre>
  * 
@@ -35,7 +36,7 @@ import com.google.common.eventbus.EventBus;
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
+public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> {
 
     // Private Variables
 
@@ -106,7 +107,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>> {
      * @param action
      *            Action.
      */
-    public final void fireAction(IAction action) {
+    public final void fireAction(A action) {
         eventBus.post(action);
     }
 

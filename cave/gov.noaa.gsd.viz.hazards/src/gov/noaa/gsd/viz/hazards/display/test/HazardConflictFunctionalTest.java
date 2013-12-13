@@ -12,7 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
@@ -133,19 +133,15 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      * Listens for spatial display actions generated from within Hazard
      * Services. Performs the appropriate tests based on the current test step.
      * 
-     * @param spatialDisplayAction
-     *            The spatial display action
+     * @param action
      * @return
      */
     @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
+    public void handleNewHazard(NewHazardAction action) {
 
         try {
-            String actionType = spatialDisplayAction.getActionType();
 
-            if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)
-                    && this.step == Steps.CREATE_FIRST_HAZARD_AREA) {
+            if (this.step == Steps.CREATE_FIRST_HAZARD_AREA) {
                 this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
 
                 /*
@@ -159,8 +155,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
-            } else if (actionType.equals(HazardConstants.NEW_EVENT_SHAPE)
-                    && this.step == Steps.CREATE_SECOND_HAZARD_AREA) {
+            } else {
                 /*
                  * Retrieve the selected event.
                  */
