@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
@@ -31,16 +32,18 @@ import org.osgi.framework.BundleContext;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 14, 2013            mnash     Initial creation
+ * Feb 14, 2013            mnash       Initial creation
  * 
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-public class Activator implements BundleActivator {
+public class Activator extends AbstractUIPlugin implements BundleActivator {
 
     private static BundleContext context;
+
+    private static Activator plugin;
 
     static BundleContext getContext() {
         return context;
@@ -55,6 +58,7 @@ public class Activator implements BundleActivator {
      */
     public void start(BundleContext bundleContext) throws Exception {
         Activator.context = bundleContext;
+        plugin = this;
     }
 
     /*
@@ -65,6 +69,15 @@ public class Activator implements BundleActivator {
      */
     public void stop(BundleContext bundleContext) throws Exception {
         Activator.context = null;
+        plugin = null;
     }
 
+    /**
+     * Get the shared instance.
+     * 
+     * @return Shared instance.
+     */
+    public static Activator getDefault() {
+        return plugin;
+    }
 }

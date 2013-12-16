@@ -19,7 +19,10 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.velocity;bundle-version="1.7.0",
  com.raytheon.uf.viz.core;bundle-version="1.12.1174",
  org.eclipse.ui;bundle-version="3.8.2",
- com.google.guava;bundle-version="1.0.0"
+ com.google.guava;bundle-version="1.0.0",
+ org.apache.commons.io;bundle-version="2.4.0",
+ org.apache.commons.lang;bundle-version="2.3.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
-Export-Package: com.raytheon.uf.viz.productgen.dialog
+Export-Package: com.raytheon.uf.viz.productgen.dialog,
+ com.raytheon.uf.viz.productgen.localization

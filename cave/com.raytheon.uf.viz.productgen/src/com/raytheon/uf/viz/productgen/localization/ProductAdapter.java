@@ -17,13 +17,10 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.localization;
-
-import com.raytheon.uf.viz.productgen.localization.AbstractNewActionAdapter;
-import com.raytheon.uf.viz.productgen.localization.INewBasedVelocityAction;
+package com.raytheon.uf.viz.productgen.localization;
 
 /**
- * Adds ability to grab recommender template directly in Localization
+ * Add ability to grab product template directly in Localization
  * Perspective.
  * 
  * <pre>
@@ -32,20 +29,26 @@ import com.raytheon.uf.viz.productgen.localization.INewBasedVelocityAction;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            mnash       Initial creation
- * Nov 20, 2013            bkowal      Now extends the Copy Python Classes Adapter
- *                                     so that it will be displayed for Recommenders
- *                                     when a Python file is selected.
- * Nov 25, 2013            bkowal      Refactor
+ * Nov 25, 2013            bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author mnash
+ * @author bkowal
  * @version 1.0
  */
 
-public class RecommenderAdapter extends AbstractNewActionAdapter {
+public class ProductAdapter extends AbstractNewActionAdapter {
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.productgen.localization.AbstractNewActionAdapter#
+     * getLocalizationAction()
+     */
+    @Override
     protected INewBasedVelocityAction getLocalizationAction() {
-        return new NewRecommenderAction();
+        return new NewProductAction();
     }
+
 }

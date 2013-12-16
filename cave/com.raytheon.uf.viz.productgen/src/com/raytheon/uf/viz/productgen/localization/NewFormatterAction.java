@@ -17,10 +17,9 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.localization;
+package com.raytheon.uf.viz.productgen.localization;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.velocity.app.VelocityEngine;
 import org.eclipse.jface.dialogs.IInputValidator;
 
@@ -29,11 +28,10 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity;
 
 /**
- * Action for the localization perspective to create a new recommender with the
- * recommender.vm template
+ * Action for the localization perspective to create a new formatter with
+ * the formatter.vm template.
  * 
  * <pre>
  * 
@@ -41,49 +39,45 @@ import com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocit
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 19, 2013            mnash       Initial creation
- * Nov 25, 2013 2461       bkowal      Refactor
+ * Nov 25, 2013            bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author mnash
+ * @author bkowal
  * @version 1.0
  */
 
-public class NewRecommenderAction extends AbstractNewActionBasedVelocity {
+public class NewFormatterAction extends AbstractNewActionBasedVelocity {
 
     private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(NewRecommenderAction.class);
+            .getHandler(NewFormatterAction.class);
 
     private static final String[] directoryPath = { "python", "events",
-            "recommenders" };
-
-    private static final String[] templateDirectoryPath = (String[]) ArrayUtils
-            .addAll(directoryPath, new String[] { "config" });
-
-    private static final String RECOMMENDER_TEMPLATE_DIR = mergeDirectoryPaths(templateDirectoryPath);
+            "productgen", "formats" };
 
     private static final String LOCALIZATION_DIR = mergeDirectoryPaths(directoryPath);
 
-    private static final String RECOMMENDER_TEMPLATE_NAME = "recommender.vm";
+    private static final String FORMATTER_TEMPLATE_NAME = "formatter.vm";
 
-    private static final String DIALOG_TITLE = "New Recommender";
+    private static final String DIALOG_TITLE = "New Formatter";
 
-    private static final String DIALOG_MESSAGE = "Input name for new recommender:";
+    private static final String DIALOG_MESSAGE = "Input name for new formatter:";
 
-    private static final String DIALOG_INITIAL_VALUE = "NewRecommender.py";
+    private static final String DIALOG_INITIAL_VALUE = "NewFormatter.py";
     
     private static VelocityEngine ENGINE;
 
-    public NewRecommenderAction() {
-        super(statusHandler, RECOMMENDER_TEMPLATE_DIR,
-                RECOMMENDER_TEMPLATE_NAME, DIALOG_TITLE, DIALOG_MESSAGE,
-                DIALOG_INITIAL_VALUE);
+    public NewFormatterAction() {
+        super(statusHandler, LOCALIZATION_DIR, FORMATTER_TEMPLATE_NAME,
+                DIALOG_TITLE, DIALOG_MESSAGE, DIALOG_INITIAL_VALUE);
     }
 
     /*
      * (non-Javadoc)
-     * @see com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity#getInputValidator()
+     * 
+     * @see
+     * com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity
+     * #getInputValidator()
      */
     @Override
     protected IInputValidator getInputValidator() {
@@ -94,7 +88,7 @@ public class NewRecommenderAction extends AbstractNewActionBasedVelocity {
                 if (newText.endsWith(".py")) {
                     return null;
                 }
-                return "Recommender name must end with .py";
+                return "Formatter name must end with .py";
             }
         };
 
@@ -118,7 +112,10 @@ public class NewRecommenderAction extends AbstractNewActionBasedVelocity {
 
     /*
      * (non-Javadoc)
-     * @see com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity#getUserFile(java.lang.String, com.raytheon.uf.common.localization.IPathManager, com.raytheon.uf.common.localization.LocalizationContext)
+     * 
+     * @see
+     * com.raytheon.uf.viz.productgen.localization.AbstractNewActionBasedVelocity
+     * #getUserFile(java.lang.String)
      */
     @Override
     protected LocalizationFile getUserFile(String filename, IPathManager pm,

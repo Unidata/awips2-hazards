@@ -1,0 +1,30 @@
+# ----------------------------------------------------------------------------
+# This software is in the public domain, furnished "as is", without technical
+# support, and with no warranty, express or implied, as to its usefulness for
+# any purpose.
+#
+# ${scriptName}
+#
+# Author: $author
+# ----------------------------------------------------------------------------
+
+## Double-pound starts a Velocity comment, so we have to use
+## substitution for Python comments starting with a double-pound
+#set($p = "#")
+
+import abc
+
+class Formatter(object):
+    __metaclass__ = abc.ABCMeta
+    
+    def __init__(self):
+        return
+    
+    @abc.abstractmethod
+    def execute(self, data):
+        """
+        Subclasses need to override this method.
+        @param data: dictionary values provided by the product generator
+        @return: Abstract method does not return anything
+        """
+        return

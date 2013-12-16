@@ -17,14 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.localization;
+package com.raytheon.uf.viz.productgen.localization;
 
-import com.raytheon.uf.viz.productgen.localization.AbstractNewActionAdapter;
-import com.raytheon.uf.viz.productgen.localization.INewBasedVelocityAction;
+import org.eclipse.jface.action.IMenuManager;
+
+import com.raytheon.uf.viz.localization.filetreeview.FileTreeEntryData;
 
 /**
- * Adds ability to grab recommender template directly in Localization
- * Perspective.
+ * Adds a "New ..." menu action to the localization menu for certain file types.
+ * Child classes supply the action that must be an INewBasedVelocity action.
  * 
  * <pre>
  * 
@@ -32,20 +33,26 @@ import com.raytheon.uf.viz.productgen.localization.INewBasedVelocityAction;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            mnash       Initial creation
- * Nov 20, 2013            bkowal      Now extends the Copy Python Classes Adapter
- *                                     so that it will be displayed for Recommenders
- *                                     when a Python file is selected.
- * Nov 25, 2013            bkowal      Refactor
+ * Nov 25, 2013            bkowal     Initial creation
  * 
  * </pre>
  * 
- * @author mnash
+ * @author bkowal
  * @version 1.0
  */
 
-public class RecommenderAdapter extends AbstractNewActionAdapter {
-    protected INewBasedVelocityAction getLocalizationAction() {
-        return new NewRecommenderAction();
+public abstract class AbstractNewActionAdapter extends CopyPythonClassesAdapter {
+
+    @Override
+    public boolean addContextMenuItems(IMenuManager menuMgr,
+            FileTreeEntryData[] selectedData) {
+        super.addContextMenuItems(menuMgr, selectedData);
+        if (selectedData.length == 1
+                && selectedData[0].getClass() == FileTreeEntryData.class) {
+            menuMgr.add(this.getLocalizationAction());
+        }
+        return false;
     }
+
+    abstract protected INewBasedVelocityAction getLocalizationAction();
 }
