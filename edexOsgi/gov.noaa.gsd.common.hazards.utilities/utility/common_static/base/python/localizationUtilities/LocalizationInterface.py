@@ -459,8 +459,13 @@ return ResponseMessageGeneric(site)
             locLevel = locLevels[lll]
             locName = locNames[lll]
             lll -= 1
+            
+            if locLevel!="Base" and locName=="" :
+                continue
+            
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
+            
             try :
                 result = self.__lfi.getFile(pathToXml)
             except :
@@ -820,11 +825,17 @@ return ResponseMessageGeneric(stdout)
             lll = 0
             fileset = {}
             while lll<len(locLevels):
+                
                 locLevel = locLevels[lll]
                 locName = locNames[lll]
+                
+                lll = lll + 1
+                
+                if locLevel != "Base" and locName == "" :
+                    continue
+
                 self.__lfi.setLevel(locLevel)
                 self.__lfi.setName(locName)
-                lll = lll + 1
                 try:
                     result = self.__lfi.getList(dirPath)
                 except:
@@ -885,9 +896,14 @@ return ResponseMessageGeneric(stdout)
         while lll<len(locLevels):
             locLevel = locLevels[lll]
             locName = locNames[lll]
+            lll = lll + 1
+
+            if locLevel != "Base" and locName == "" :
+                continue
+
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            lll = lll + 1
+            
             try:
                 if self.__lfi.check(locPath0) :
                     goodList.append(locLevel)
@@ -969,9 +985,14 @@ return ResponseMessageGeneric(stdout)
         while lll>=0:
             locLevel = locLevels[lll]
             locName = locNames[lll]
+            lll = lll - 1
+            
+            if locLevel != "Base" and locName == "" :
+                continue
+                        
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            lll = lll - 1
+            
             try:
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
@@ -1196,9 +1217,14 @@ return ResponseMessageGeneric(stdout)
         while lll!=eee:
             locLevel = locLevels[lll]
             locName = locNames[lll]
+            lll = lll + d
+            
+            if locLevel != "Base" and locName == "" :
+                continue
+            
             self.__lfi.setLevel(locLevel)
             self.__lfi.setName(locName)
-            lll = lll + d
+            
             try:
                 result = self.__lfi.getFile(locPath0)
                 pyRoot = self.getPyRootFromFileName(locPath0)
