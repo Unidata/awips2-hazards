@@ -227,7 +227,7 @@ public class HazardServicesMessageListener {
              * TODO Change updateEventData to take in a POJO
              */
             messageHandler.updateEventData(spatialDisplayAction
-                    .getToolParameters().toJSONString(), "");
+                    .getToolParameters().toJSONString(), "", true);
         } else if (actionType.equals("undo")) {
             messageHandler.handleUndoAction();
         } else if (actionType.equals("redo")) {
@@ -285,7 +285,7 @@ public class HazardServicesMessageListener {
             eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
             String jsonText = eventInfo.toJSONString();
             messageHandler.updateEventData(jsonText,
-                    HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
+                    HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, true);
         } else if (consoleAction.getAction().equals("Redraw")) {
 
             // Do nothing at this point; this used to clear and
@@ -310,7 +310,7 @@ public class HazardServicesMessageListener {
             eventInfo.put(HAZARD_EVENT_END_TIME,
                     Long.parseLong(consoleAction.getEndTime()));
             messageHandler.updateEventData(eventInfo.toJSONString(),
-                    HazardServicesAppBuilder.TEMPORAL_ORIGINATOR);
+                    HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, true);
         } else if (consoleAction.getAction().equals("SiteChanged")) {
             messageHandler.updateSite(consoleAction.getId());
         } else if (consoleAction.getAction().equals("Close")) {
@@ -342,14 +342,16 @@ public class HazardServicesMessageListener {
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 HazardConstants.UPDATE_TIME_RANGE)) {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
-                    HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
+                    HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
+                    hazardDetailAction.getIsUserInitiated());
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 UPDATE_EVENT_TYPE)) {
             messageHandler.updateEventType(hazardDetailAction.getJSONText());
         } else if (hazardDetailAction.getAction().equalsIgnoreCase(
                 UPDATE_EVENT_METADATA)) {
             messageHandler.updateEventData(hazardDetailAction.getJSONText(),
-                    HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
+                    HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
+                    hazardDetailAction.getIsUserInitiated());
         }
     }
 

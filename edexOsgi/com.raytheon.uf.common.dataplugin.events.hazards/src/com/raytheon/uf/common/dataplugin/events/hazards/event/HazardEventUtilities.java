@@ -237,7 +237,7 @@ public class HazardEventUtilities {
          * Label parameter may be an empty string if defined as such in the
          * HazardTypes.py config file.
          */
-        if (labelParameter.length() > 0) {
+        if (labelParameter != null && labelParameter.length() > 0) {
             mapDataRequest.setParameters(labelParameter);
         }
 

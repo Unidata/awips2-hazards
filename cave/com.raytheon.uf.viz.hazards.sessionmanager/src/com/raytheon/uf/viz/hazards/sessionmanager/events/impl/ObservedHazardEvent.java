@@ -331,6 +331,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                             eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("subtype");
             }
         }
@@ -345,6 +346,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                             eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("subtype");
             }
         }
@@ -359,6 +361,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                             eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("subtype");
             }
         }
@@ -383,6 +386,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                             eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("endTime");
             }
         }
@@ -397,6 +401,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                             eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("startTime");
             }
         }
@@ -413,6 +418,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                                     eventManager, this));
                 }
             } else {
+                this.modified = false;
                 throw new IllegalEventModificationException("geometry");
             }
         }

@@ -3163,8 +3163,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             .error("HazardDetailViewPart.setMegawidgetsStates(): conversion "
                                     + "of event info to JSON string failed.", e);
                 }
-                hazardDetailView.fireAction(new HazardDetailAction(
-                        HazardConstants.UPDATE_EVENT_METADATA, jsonText), true);
+
+                /*
+                 * It is important to distinguish here between information which
+                 * was modified by the forecaster in the Hazard Detail View and
+                 * information which was updated programmatically by the
+                 * software basically doing some book keeping.
+                 */
+                hazardDetailView.fireAction(
+                        new HazardDetailAction(
+                                HazardConstants.UPDATE_EVENT_METADATA,
+                                jsonText, false), true);
             }
         }
     }

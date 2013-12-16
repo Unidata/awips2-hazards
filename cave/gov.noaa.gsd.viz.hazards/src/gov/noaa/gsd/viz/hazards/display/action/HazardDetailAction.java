@@ -30,6 +30,13 @@ public class HazardDetailAction implements IAction {
 
     private String jsonText;
 
+    /*
+     * Need to distinguish between Hazard Detail events which are user-initiated
+     * versus those which are not. This helps determine whether or not to tag an
+     * event as modified by the user.
+     */
+    private Boolean isUserInitiated = true;
+
     public HazardDetailAction(String action) {
         // TODO Auto-generated constructor stub
         this.action = action;
@@ -39,6 +46,13 @@ public class HazardDetailAction implements IAction {
         // TODO Auto-generated constructor stub
         this.action = action;
         this.jsonText = jsonText;
+    }
+
+    public HazardDetailAction(String action, String jsonText,
+            Boolean isUserInitiated) {
+        this(action, jsonText);
+        this.isUserInitiated = isUserInitiated;
+
     }
 
     public void setAction(String action) {
@@ -55,6 +69,20 @@ public class HazardDetailAction implements IAction {
 
     public String getJSONText() {
         return jsonText;
+    }
+
+    /**
+     * @return the isUserInitiated
+     */
+    public Boolean getIsUserInitiated() {
+        return isUserInitiated;
+    }
+
+    /**
+     * @param isUserInitiated the isUserInitiated to set
+     */
+    public void setIsUserInitiated(Boolean isUserInitiated) {
+        this.isUserInitiated = isUserInitiated;
     }
 
 }

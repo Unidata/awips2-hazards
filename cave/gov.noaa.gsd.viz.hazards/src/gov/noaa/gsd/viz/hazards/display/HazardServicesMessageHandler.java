@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -776,10 +777,14 @@ public final class HazardServicesMessageHandler implements
      * @param originator
      *            A string representing the CAVE component from which this
      *            request originated.
+     * @param isUserInitiated
+     *            Flag indicating whether or not the updated data are the result
+     *            of a user-edit.
      * @return
      */
-    public void updateEventData(String jsonText, String originator) {
-        _updateEventData(jsonText, originator);
+    public void updateEventData(String jsonText, String originator,
+            boolean isUserInitiated) {
+        _updateEventData(jsonText, originator, isUserInitiated);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
     }
@@ -793,14 +798,16 @@ public final class HazardServicesMessageHandler implements
      */
     public void updateEventType(String jsonText) {
         _updateEventData(jsonText,
-                HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR);
+                HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, true);
         notifyModelEventsChanged();
     }
 
-    private void _updateEventData(String jsonText, String source) {
+    private void _updateEventData(String jsonText, String source,
+            Boolean isUserInitiated) {
         JsonNode jnode = fromJson(jsonText, JsonNode.class);
         IHazardEvent event = sessionEventManager.getEventById(jnode.get(
                 HazardConstants.HAZARD_EVENT_IDENTIFIER).getValueAsText());
+
         Iterator<String> fields = jnode.getFieldNames();
         while (fields.hasNext()) {
             String key = fields.next();
@@ -865,7 +872,6 @@ public final class HazardServicesMessageHandler implements
             } else if (HAZARD_EVENT_START_TIME.equals(key)) {
                 if (!sessionEventManager.canChangeTimeRange(event)) {
                     event = new BaseHazardEvent(event);
-                    event.setState(HazardState.PENDING);
                     Collection<IHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
                     event = sessionEventManager.addEvent(event);
@@ -876,7 +882,6 @@ public final class HazardServicesMessageHandler implements
             } else if (HAZARD_EVENT_END_TIME.equals(key)) {
                 if (!sessionEventManager.canChangeTimeRange(event)) {
                     event = new BaseHazardEvent(event);
-                    event.setState(HazardState.PENDING);
                     Collection<IHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
                     event = sessionEventManager.addEvent(event);
@@ -922,6 +927,10 @@ public final class HazardServicesMessageHandler implements
                     throw new UnsupportedOperationException("Not implemented");
                 }
             }
+        }
+
+        if (isUserInitiated && event instanceof ObservedHazardEvent) {
+            ((ObservedHazardEvent) event).setModified(true);
         }
 
     }

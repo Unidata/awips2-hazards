@@ -72,8 +72,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.Event;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
@@ -403,9 +403,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
             SessionEventAttributeModified notification) {
         IHazardEvent event = notification.getEvent();
         addModification(event.getEventID());
-        if (event instanceof ObservedHazardEvent) {
-            ((ObservedHazardEvent) event).setModified(true);
-        }
         notificationSender.postNotification(notification);
     }
 
@@ -822,7 +819,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
             if (!canChangeGeometry(event)) {
                 event = new BaseHazardEvent(event);
-                event.setState(HazardState.PENDING);
                 Collection<IHazardEvent> selection = getSelectedEvents();
                 event = addEvent(event);
                 selection.add(event);
