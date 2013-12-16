@@ -385,9 +385,9 @@ class TemporalDisplay {
             .getHandler(TemporalDisplay.class);
 
     /**
-     * Not applicable entry in table.
+     * Empty text representation in hazard event table cell.
      */
-    private static final String NOT_APPLICABLE = "N/A";
+    private static final String EMPTY_STRING = "";
 
     /**
      * Key into filter megawidget definition used to find the column name with
@@ -3580,7 +3580,8 @@ class TemporalDisplay {
         }
 
         // Set the cell text to the appropriate value.
-        setCellText(col, item, getCellValue(row, columnDefinition));
+        setCellText(col, item, getCellValue(row, columnDefinition),
+                getEmptyFieldText(columnDefinition));
     }
 
     /**
@@ -3598,7 +3599,8 @@ class TemporalDisplay {
      */
     private void updateCell(int col, Dict columnDefinition, Object value,
             TableItem item) {
-        setCellText(col, item, convertToCellValue(value, columnDefinition));
+        setCellText(col, item, convertToCellValue(value, columnDefinition),
+                getEmptyFieldText(columnDefinition));
     }
 
     /**
@@ -3610,9 +3612,14 @@ class TemporalDisplay {
      *            Table item holding the cell to have its text set.
      * @param text
      *            Text to be used.
+     * @param emptyValueDisplayString
      */
-    private void setCellText(int col, TableItem item, String text) {
-        item.setText(col, (text == null ? NOT_APPLICABLE : text));
+    private void setCellText(int col, TableItem item, String text,
+            String emptyValueDisplayString) {
+
+        item.setText(col,
+                (text == null || text.length() == 0 ? emptyValueDisplayString
+                        : text));
     }
 
     /**
@@ -4677,5 +4684,23 @@ class TemporalDisplay {
         // Schedule the next countdown timer column redraw.
         countdownTimersDisplayManager
                 .scheduleNextDisplayUpdate(eventIdentifiers);
+    }
+
+    /**
+     * Retrieves the text to display in Hazard Event Table fields which are
+     * empty.
+     * 
+     * @param columnDefinition
+     *            A dictionary describing the column the field resides in
+     *            including the text if any to display if it is empty.
+     * @return The text to display in this field if it is empty.
+     */
+    private String getEmptyFieldText(Dict columnDefinition) {
+        if (columnDefinition.containsKey(SETTING_COLUMN_DISPLAY_EMPTY_AS)) {
+            return (String) columnDefinition
+                    .get(SETTING_COLUMN_DISPLAY_EMPTY_AS);
+        } else {
+            return EMPTY_STRING;
+        }
     }
 }

@@ -572,6 +572,11 @@ public final class HazardConstants {
     public static final String SETTING_COLUMN_SORT_DIRECTION_NONE = "none";
 
     /**
+     * Key indicating how to display an empty field in a column.
+     */
+    public static final String SETTING_COLUMN_DISPLAY_EMPTY_AS = "displayEmptyAs";
+
+    /**
      * Columns key in setting dictionary.
      */
     public static final String SETTING_COLUMNS = "columns";

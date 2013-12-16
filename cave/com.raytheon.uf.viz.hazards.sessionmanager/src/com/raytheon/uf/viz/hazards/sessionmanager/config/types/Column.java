@@ -51,6 +51,8 @@ public class Column {
     // TODO enum
     private String sortDir;
 
+    private String displayEmptyAs;
+
     public Column() {
 
     }
@@ -59,8 +61,7 @@ public class Column {
         this(null, type, fieldName, null, sortDir);
     }
 
-    public Column(Integer width, String type, String fieldName,
-            String sortDir) {
+    public Column(Integer width, String type, String fieldName, String sortDir) {
         this(width, type, fieldName, null, sortDir);
     }
 
@@ -128,8 +129,7 @@ public class Column {
                 * result
                 + ((hintTextFieldName == null) ? 0 : hintTextFieldName
                         .hashCode());
-        result = prime * result
-                + ((sortDir == null) ? 0 : sortDir.hashCode());
+        result = prime * result + ((sortDir == null) ? 0 : sortDir.hashCode());
         result = prime * result + ((type == null) ? 0 : type.hashCode());
         result = prime * result + ((width == null) ? 0 : width.hashCode());
         return result;
@@ -188,6 +188,20 @@ public class Column {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * @return the displayEmptyAs
+     */
+    public String getDisplayEmptyAs() {
+        return displayEmptyAs;
+    }
+
+    /**
+     * @param displayEmptyAs the displayEmptyAs to set
+     */
+    public void setDisplayEmptyAs(String displayEmptyAs) {
+        this.displayEmptyAs = displayEmptyAs;
     }
 
 }

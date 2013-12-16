@@ -97,13 +97,15 @@ Flood = {
         "Event ID": {
             "type": "string", 
             "fieldName": "eventID", 
-            "sortDir": "none",
+            "sortDir": "none"
         }, 
         "Hazard Type": {
             "type": "string", 
             "fieldName": "type", 
             "sortDir": "ascending",
-            "hintTextFieldName": "headline"
+            "hintTextFieldName": "headline",
+            "displayEmptyAs": "Undefined"
+            
         }, 
         "State": {
              "sortDir": "none", 

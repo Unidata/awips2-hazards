@@ -483,6 +483,17 @@ public class SessionManager implements ISessionManager {
                 String headline = configManager.getHeadline(hevent);
                 events2[i].setHeadline(headline);
                 events2[i].setFullType(type + " (" + headline + ")");
+            } else {
+                /*
+                 * Support the case where the type has been reset to empty, such
+                 * as when switching to a new hazard category.
+                 */
+                events2[i].setType("");
+                events2[i].setFullType("");
+                events2[i].setHeadline("");
+                events2[i].setPhen("");
+                events2[i].setSig("");
+                events2[i].setSubType("");
             }
             TimeRange hetr = new TimeRange(hevent.getStartTime(),
                     hevent.getEndTime());

@@ -850,7 +850,12 @@ public final class HazardServicesMessageHandler implements
                     visibleTypes.add(HazardEventUtilities.getHazardType(event));
                     appBuilder.notifyModelChanged(EnumSet
                             .of(HazardConstants.Element.DYNAMIC_SETTING));
+                } else {
+                    event.setPhenomenon(null);
+                    event.setSignificance(null);
+                    event.setSubType(null);
                 }
+
                 if (oldEvent != null) {
                     oldEvent.addHazardAttribute("replacedBy",
                             sessionConfigurationManager.getHeadline(event));
