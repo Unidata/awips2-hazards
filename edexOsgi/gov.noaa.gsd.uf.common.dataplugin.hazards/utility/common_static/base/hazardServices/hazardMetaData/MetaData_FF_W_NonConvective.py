@@ -2,8 +2,8 @@ import CommonMetaData
 
 class MetaData(CommonMetaData.MetaData):
     
-    def getMetaData(self, infoDict=None):
-        self._infoDict = infoDict
+    def execute(self, hazardEventSet=None):
+        self._hazardEventSet = hazardEventSet
         metaData = [
                     self.getImmediateCause(),
                     self.getInclude(),

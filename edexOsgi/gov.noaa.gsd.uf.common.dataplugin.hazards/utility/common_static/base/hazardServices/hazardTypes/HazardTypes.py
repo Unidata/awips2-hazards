@@ -21,6 +21,11 @@
 #                           creation.  In milliseconds. (3600000 ms/hour, 60000 ms/minute)
 #         durationIncrement represents the increment when setting the duration directly. 
 #                           In minutes.
+#         allowUntilFurtherNotice if True, the endTime of the hazard and/or the fallBelow
+#                           time of the hazard can be set to "Until Further Notice".
+#                           If entry is absent, then allowUntilFurtherNotice is False.
+#                           Currently by policy only hazards in the FLW_FLS products use
+#                           "Until Further Notice"
 HazardTypes = {
     'AF.Y' : {'headline': 'ASHFALL ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -262,7 +267,8 @@ HazardTypes = {
               'hazardHatchLabel': 'countyName',
               'replacedBy': ['FA.Y'],
               'defaultDuration': 8 * 3600000,
-              'durationIncrement': 60, 
+              'durationIncrement': 60,
+              'allowUntilFurtherNotice': True, 
               },
     'FA.Y' : {'headline': 'AREAL FLOOD ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -276,6 +282,7 @@ HazardTypes = {
               'replacedBy': ['FA.W'],
               'defaultDuration': 8 * 3600000,
               'durationIncrement': 60, 
+              'allowUntilFurtherNotice': True, 
               },
     'FF.A' : {'headline': 'FLASH FLOOD WATCH',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -353,6 +360,7 @@ HazardTypes = {
               'replacedBy': ['FL.Y'],
               'defaultDuration': 8 * 3600000,
               'durationIncrement': 60, 
+              'allowUntilFurtherNotice': True, 
               },
     'FL.Y' : {'headline': 'FLOOD ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
@@ -366,6 +374,7 @@ HazardTypes = {
               'replacedBy': ['FL.W'],
               'defaultDuration': 8 * 3600000,
               'durationIncrement': 60, 
+              'allowUntilFurtherNotice': True, 
               },
     'FR.Y' : {'headline': 'FROST ADVISORY',
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],

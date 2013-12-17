@@ -147,6 +147,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setHazardAttributes(self, hazardAttributes):
         self.jobj.setHazardAttributes(JUtil.pyValToJavaObj(hazardAttributes))
+        
+    def addHazardAttribute(self, key, value):
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(value))
+        
+    def removeHazardAttribute(self, key):
+        self.jobj.removeHazardAttribute(key)
 
     def get(self, key, default=None):
         '''
@@ -274,7 +280,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         return not self.__eq__(other)
     
     def __str__(self):
-        string = 'HazardEvent: ' + self.jobj.toString() +\
+        string = 'HazardEvent: ' + self.jobj.toString() + \
             '\ngeometry: ' + str(self.jobj.getGeometry())
         return string
     

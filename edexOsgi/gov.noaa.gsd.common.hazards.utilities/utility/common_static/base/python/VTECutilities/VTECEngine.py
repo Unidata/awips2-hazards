@@ -36,7 +36,7 @@ class VTECEngine(VTECTableUtil):
 
     def __init__(self, productCategory, siteID4, hazardEvents,
       rawVtecRecords, vtecDefinitions, allowedHazards,
-      vtecMode, creationTime=None, limitGeoZones=None):
+      vtecMode, issueTime=None, limitGeoZones=None):
 
         '''Constructor for VTEC Engine
         Once instantiated, it will run the calculations.  The output may
@@ -59,7 +59,7 @@ class VTECEngine(VTECTableUtil):
         vtecMode -- 'O' for operational product, 'T' for test product,
           'E' for experimental product, 'X' for Experimental VTEC in an
           operational product.
-        creationTime -- time the engine is run, a.k.a. issue time.  Units of
+        issueTime -- time the engine is run, a.k.a. issue time.  Units of
           seconds since epoch (Jan 1 1970 00:00Z)
         limitGeoZones -- A list of zones used to limit the vtec logic.  This is
           only used in places where there are multiple products for the same
@@ -127,8 +127,8 @@ class VTECEngine(VTECTableUtil):
 
         # determine creation time, allows for non-current execution
         # creation time in seconds since epoch
-        if creationTime is not None:
-            self._time = creationTime
+        if issueTime is not None:
+            self._time = issueTime
         else:
             self._time = time.time() #now time in seconds
         self._time = (int(self._time) / 60) * 60  #truncated to minute
@@ -1205,9 +1205,13 @@ class VTECEngine(VTECTableUtil):
 
             # capture any h-vtec from the HazardEvents
             hvtec = {}
-            for p in ['floodSeverity', 'immediateCause', 'floodRecord',
+            for item in ['floodSeverity', 'immediateCause', 'floodRecord',
               'riseAbove', 'crest', 'fallBelow', 'pointID']:
-                hvtec[p] = hazardEvent.get(p) 
+                hvtec[item] = hazardEvent.get(item) 
+            # Convert from ms to seconds
+            for item in ['riseAbove', 'crest', 'fallBelow']:
+                if hvtec.get(item):
+                    hvtec[item] = hvtec[item] / 1000
             if set(hvtec.values()) == set([None]):
                 hvtec = None   # no vtec entries defined.
 
@@ -1217,7 +1221,7 @@ class VTECEngine(VTECTableUtil):
                 d['eventID'] = eventID
                 d['id'] = areaID
                 d['officeid'] = self._siteID4
-                d['key'] = key   #such as TO.W
+                d['key'] = key   #such as TO.W or FF.W.Convective
 
                 if hazardEvent.getState():
                     d['state'] = hazardEvent.getState()
@@ -2344,7 +2348,7 @@ class VTECEngine(VTECTableUtil):
 
         Returns the formatted string.
         ''' 
-        if t:
+        if t and not self.untilFurtherNotice(t):
             return time.strftime('%y%m%dT%H%MZ', self.gmtime_fromMS(t*1000))
         else:
             return '000000T0000Z'
@@ -2912,7 +2916,14 @@ class VTECEngine(VTECTableUtil):
             else:
                 return False   #same phen/sig, not tpc, so. non separate track
         else:
-            return True;
+            return True
+        
+    def untilFurtherNotice(self, time_sec):
+        if time_sec >= sys.maxsize:
+            return True
+        else:
+            return False
+
     
     def flush(self):
         ''' Flush the print buffer '''

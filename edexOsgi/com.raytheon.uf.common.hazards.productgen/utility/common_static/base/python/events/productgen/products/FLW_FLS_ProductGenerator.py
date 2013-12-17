@@ -13,9 +13,9 @@
 20    """
 
 import os, types, copy, sys, json
-import ProductTemplate
+import Legacy_ProductGenerator
 
-class Product(ProductTemplate.Product):
+class Product(Legacy_ProductGenerator.Product):
     
     def __init__(self):
         super(Product, self).__init__()              
@@ -30,13 +30,13 @@ class Product(ProductTemplate.Product):
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
         # NOTE: In PV2, this will gathered as part of the Hazard Information Dialog
-        self._purgeHours = -1
+        self._purgeHours = 12
         self._FLW_ProductName = "Flood Warning"
         self._FLS_ProductName = "Flood Statement"
         self._includeAreaNames = True
         self._includeCityNames = False
 
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
         metadata['author'] = "GSD"
         metadata['description'] = "Product generator for FLW_FLS."
@@ -65,7 +65,7 @@ class Product(ProductTemplate.Product):
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._hazardEvents:
+        if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
         #  each product generated: 
@@ -75,7 +75,7 @@ class Product(ProductTemplate.Product):
         #     "productDict": xmlDict,
         #     }
         #   ]
-        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._hazardEvents) 
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
         return productDicts, hazardEvents        
     
     def _getSegments(self, hazardEvents):
@@ -93,7 +93,7 @@ class Product(ProductTemplate.Product):
         '''
         productSegmentGroups = []
         for segment in segments:
-            segmentHazardEvent = self.getSegmentHazardEvents(self._hazardEvents, [segment])[0]
+            segmentHazardEvent = self.getSegmentHazardEvents([segment])[0]
             geoType = segmentHazardEvent.get("geoType")
             vtecRecords = self.getVtecRecords(segment)
             for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord to process

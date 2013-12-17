@@ -254,7 +254,16 @@ class HazardEvent:
     def addHazardAttributes(self, attributes):
         for attr in attributes:
             self.hazardAttributes[attr] = attributes[attr];
-                   
+                               
+    def addHazardAttribute(self, key, value):
+        self.hazardAttributes[key] = value
+        
+    def removeHazardAttribute(self, key):
+        try:
+            del self.hazardAttributes[key]
+        except:
+            pass
+
     def get(self, key, default=None):
         return self.hazardAttributes.get(key, default);
 

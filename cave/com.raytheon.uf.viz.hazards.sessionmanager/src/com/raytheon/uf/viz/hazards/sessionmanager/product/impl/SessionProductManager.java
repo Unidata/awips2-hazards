@@ -68,7 +68,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Puntal;
 
@@ -150,6 +149,9 @@ public class SessionProductManager implements ISessionProductManager {
         List<String> supportedHazards = new ArrayList<String>();
         Set<String> unsupportedHazards = new HashSet<String>();
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
+            if (entry.getValue().isReservedNameNotYetImplemented()) {
+                continue;
+            }
             Set<IHazardEvent> productEvents = new HashSet<IHazardEvent>();
             Set<IHazardEvent> possibleProductEvents = new HashSet<IHazardEvent>();
 
@@ -258,8 +260,13 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         HashMap<String, String> sessionDict = new HashMap<String, String>();
-        sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
-                .toString());
+        // TODO
+        // There is no operational database currently.
+        // When this is fixed, then the correct CAVEMode needs to
+        // be entered into the sessionDict.
+        // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
+        // .toString());
+        sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
         events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
 
         if (information.getDialogSelections() != null) {

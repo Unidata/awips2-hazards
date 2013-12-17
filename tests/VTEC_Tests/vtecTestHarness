@@ -144,7 +144,7 @@ class VTECTestHarness(object):
                 for k, v in other.items():
                     # translate hydro times into actual times
                     if k in ['riseAbove', 'crest', 'fallBelow']:
-                        v = (gridsStartTime + v * 3600) #* 1000 #milliseconds
+                        v = (gridsStartTime + v * 3600) * 1000 #milliseconds
                     # store the key/value into the HazardEvent
                     if k == "eventID":
                         event.setEventID(str(v))
@@ -196,7 +196,7 @@ class VTECTestHarness(object):
 
         # run the calculations
         wrapper = VTECEngineWrapper(None, productType, 'KTBW', hazardEvents,
-          creationTime=drtTime, vtecMode=script['vtecMode'], testHarnessMode=1)
+          issueTime=drtTime, vtecMode=script['vtecMode'], testHarnessMode=1)
 
         # get the ordered segments
         segments = wrapper.engine().getSegments()

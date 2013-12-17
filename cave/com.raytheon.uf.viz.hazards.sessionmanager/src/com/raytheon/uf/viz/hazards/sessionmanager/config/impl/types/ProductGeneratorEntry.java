@@ -42,6 +42,12 @@ public class ProductGeneratorEntry {
 
     private String[][] allowedHazards;
 
+    private boolean reservedNameNotYetImplemented;
+
+    private String[] previewFormatters;
+
+    private String[] issueFormatters;
+
     public String[][] getAllowedHazards() {
         return allowedHazards;
     }
@@ -53,5 +59,51 @@ public class ProductGeneratorEntry {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * @return the reservedNameNotYetImplemented
+     */
+    public boolean isReservedNameNotYetImplemented() {
+        return reservedNameNotYetImplemented;
+    }
+
+    /**
+     * @param reservedNameNotYetImplemented
+     *            the reservedNameNotYetImplemented to set
+     */
+    public void setReservedNameNotYetImplemented(
+            boolean reservedNameNotYetImplemented) {
+        this.reservedNameNotYetImplemented = reservedNameNotYetImplemented;
+    }
+
+    /**
+     * @return the previewFormatters
+     */
+    public String[] getPreviewFormatters() {
+        return previewFormatters;
+    }
+
+    /**
+     * @param previewFormatters
+     *            the previewFormatters to set
+     */
+    public void setPreviewFormatters(String[] previewFormatters) {
+        this.previewFormatters = previewFormatters;
+    }
+
+    /**
+     * @return the issueFormatters
+     */
+    private String[] getIssueFormatters() {
+        return issueFormatters;
+    }
+
+    /**
+     * @param issueFormatters
+     *            the issueFormatters to set
+     */
+    public void setIssueFormatters(String[] issueFormatters) {
+        this.issueFormatters = issueFormatters;
     }
 }

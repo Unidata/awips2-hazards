@@ -19,7 +19,7 @@ from MetaData_ShortFused import MetaData_ShortFused
 HazardMetaData =[
                 {"hazardTypes": [("FF", "W", "Convective")],"metaData": MetaData_FFW_Convective,},
                 {"hazardTypes": [("FF", "W", "NonConvective")],"metaData": MetaData_FFW_NonConvective,},
-                {"hazardTypes": [("FA", "Y")],"metaData": MetaData_FAY, },
+                {"hazardTypes": [("FA", "Y")],"metaData": MetaData_FAY,},
                 {"hazardTypes": [("FA", "W")],"metaData": MetaData_FAW,},
                 {"hazardTypes": [("FF", "A")],"metaData": MetaData_FFA,},
                 {"hazardTypes": [("FA", "A")],"metaData": MetaData_FAA,},

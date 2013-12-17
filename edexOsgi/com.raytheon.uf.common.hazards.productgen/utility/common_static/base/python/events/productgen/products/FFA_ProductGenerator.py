@@ -11,9 +11,9 @@
     @version 1.0
     """
 import os, types, copy, sys, json
-import ProductTemplate
+import Legacy_ProductGenerator
 
-class Product(ProductTemplate.Product):
+class Product(Legacy_ProductGenerator.Product):
     
     def __init__(self):
         super(Product, self).__init__()       
@@ -34,7 +34,7 @@ class Product(ProductTemplate.Product):
         self._includeAreaNames = True
         self._includeCityNames = True
                 
-    def getScriptMetadata(self):
+    def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
         metadata['author'] = "GSD"
         metadata['description'] = "Product generator for FFA."
@@ -90,7 +90,7 @@ class Product(ProductTemplate.Product):
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._hazardEvents:
+        if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
         #  each product generated: 
@@ -100,7 +100,7 @@ class Product(ProductTemplate.Product):
         #     "productDict": productDict,
         #     }
         #   ]
-        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._hazardEvents) 
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
         return productDicts, hazardEvents        
     
     def _getSegments(self, hazardEvents):

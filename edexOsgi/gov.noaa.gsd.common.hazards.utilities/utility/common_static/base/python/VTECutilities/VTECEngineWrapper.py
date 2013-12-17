@@ -64,7 +64,7 @@ DBPATH="/tmp/"+user+"/vtecRecords.db"
 #------------------------------------------------------------------
 class VTECEngineWrapper(object):
     def __init__(self, bridge, productCategory, siteID4, hazardEvents = [],
-      vtecMode = 'O', creationTime=None, limitGeoZones=None, testHarnessMode=0,
+      vtecMode = 'O', issueTime=None, limitGeoZones=None, testHarnessMode=0,
       vtecProduct=True):
         '''Constructor for VTEC Engine Wrapper
         Once instantiated, it will run the VTEC Engine.  Then the user can
@@ -79,7 +79,7 @@ class VTECEngineWrapper(object):
         vtecMode -- 'O' for operational product, 'T' for test product,
           'E' for experimental product, 'X' for Experimental VTEC in an
           operational product.
-        creationTime -- time the engine is run, a.k.a. issue time.  Units of
+        issueTime -- time the engine is run, a.k.a. issue time.  Units of
           milliseconds since epoch (Jan 1 1970 00:00Z)
         limitGeoZones -- A list of zones used to limit the vtec logic.  This is
           only used in places where there are multiple products for the same
@@ -118,7 +118,7 @@ class VTECEngineWrapper(object):
                     "COMMON_STATIC", "Base")
             exec ProductGeneratorTable
 
-        self._creationTime = creationTime
+        self._issueTime = issueTime
 
         # Get the list of allowedHazards from the ProductGeneratorTable
         try:
@@ -138,7 +138,7 @@ class VTECEngineWrapper(object):
         # instantiate the actual vtec engine
         self._engine = VTECEngine(productCategory, siteID4, hazardEvents,
           vtecRecords, vtecDefinitions, allowedHazards, vtecMode,
-          creationTime, limitGeoZones)
+          issueTime, limitGeoZones)
 
     def engine(self):
         '''Returns the VTECEngine object, used for access to information'''
@@ -167,7 +167,7 @@ class VTECEngineWrapper(object):
        
         # Instantiate the ingester, to merge the calculated with vtec database
         ingester = VTECIngester()
-        ingester.ingestVTEC(vtecDicts, vtecRecords, self._creationTime)
+        ingester.ingestVTEC(vtecDicts, vtecRecords, self._issueTime)
         mergedRecords = ingester.mergedVtecRecords()
 
         if self.bridge is not None:

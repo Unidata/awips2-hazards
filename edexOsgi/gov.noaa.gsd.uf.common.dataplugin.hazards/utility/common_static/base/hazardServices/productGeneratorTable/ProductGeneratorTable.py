@@ -5,7 +5,9 @@ ProductGeneratorTable = {
              ('FF.A', "Flood"),
              ('FA.A', "Flood"),
              ('FL.A', "Flood1"),                                                   
-             ] 
+             ],
+            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "issueFormatters": ["Legacy", "XML", "CAP"], 
             },
         "FLW_FLS_ProductGenerator" : {
             "allowedHazards": [
@@ -14,28 +16,38 @@ ProductGeneratorTable = {
              ('FL.W', "Flood3"),             
              ('FL.Y', "Flood4"),             
              ('HY.S', "Flood5"),
-            ] 
+            ],
+            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
             },
         "FFW_FFS_ProductGenerator" : {
             "allowedHazards": [
              ('FF.W.Convective',     "Flood"),
              ('FF.W.NonConvective',  "Flood"),             
-             ] 
+             ],
+            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],   
             }, 
         "ESF_ProductGenerator": {
             "allowedHazards": [
              ('HY.O',     "Flood"),           
-             ] 
+             ],
+            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],   
             },           
 #         "FFW_FFS_Convective_ProductGenerator" : {
 #             "allowedHazards": [
 #              ('FF.W.Convective',     "Flood"),
 #              ],
+#            "previewFormatters": ["Legacy", "XML", "CAP"],
+#            "issueFormatters": ["Legacy", "XML", "CAP"],
 #              },
 #         "FFW_FFS_NonConvective_ProductGenerator" : {
 #             "allowedHazards": [
 #              ('FF.W.NonConvective',  "Flood"),             
-#              ] 
+#              ],
+#            "previewFormatters": ["Legacy", "XML", "CAP"],
+#            "issueFormatters": ["Legacy", "XML", "CAP"],   
 #             },
         "WSW_ProductGenerator" : {
             "allowedHazards": [
@@ -52,7 +64,10 @@ ProductGeneratorTable = {
             ('WC.W', 'WindChill'),    # WIND CHILL WARNING
             ('WC.Y', 'WindChill'),    # WIND CHILL ADVISORY
             ('WC.A', 'WindChill'),    # WIND CHILL WATCH
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "NPW_ProductGenerator" : {
             "allowedHazards": [
@@ -78,7 +93,10 @@ ProductGeneratorTable = {
             ('AF.Y', 'Ashfall'),       # ASHFALL ADVISORY
             ('AS.Y', 'AirStagnation'), # AIR STAGNATION ADVISORY
             ('AS.O', 'AirStagnation'), # AIR STAGNATION OUTLOOK
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "HLS_ProductGenerator" : {
             "allowedHazards": [
@@ -89,23 +107,35 @@ ProductGeneratorTable = {
             ('TY.W','Typhoon'),
             ('TR.A','Tropical'),
             ('TR.W','Tropical'),
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "MWS_ProductGenerator" : {
             "allowedHazards": [
             ('MA.S', 'MarineStatement'), # MARINE STATEMENT
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "AQA_ProductGenerator" : {
             "allowedHazards": [
             ('AQ.Y', 'AirQual'),      # AIR QUALITY ALERT
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "WCN_ProductGenerator" : {
             "allowedHazards": [
             ('TO.A', 'Convective'),
             ('SV.A', 'Convective')
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "MWW_ProductGenerator" : {
             "allowedHazards": [
@@ -129,13 +159,19 @@ ProductGeneratorTable = {
             ('SE.A', 'Marine4'),  # HAZARDOUS SEAS WATCH
             ('SR.A', 'Marine'),   # STORM WATCH
             ('UP.A', 'IceAccr'),  # HEAVY FREEZING SPRAY WATCH
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "RFW_ProductGenerator" : {
             "allowedHazards": [
             ('FW.W', 'FireWx'),
             ('FW.A', 'FireWx')
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "CFW_ProductGenerator" : {
             "allowedHazards": [
@@ -149,17 +185,26 @@ ProductGeneratorTable = {
             ('LS.S', 'CoastalFloodStatement'),     # LAKESHORE FLOOD STATEMENT
             ('SU.W', 'HighSurf'),         # HIGH SURF WARNING
             ('SU.Y', 'HighSurf'),         # HIGH SURF ADVISORY
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "TOR_SVR_SVS_ProductGenerator" : {
             "allowedHazards": [
             ('TO.W', 'Tornado'),     # TORNADO Warning
             ('SV.W', 'SvrThunderstorm'), # Svr Thunderstm Warning
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             },
         "SMW_MWS_ProductGenerator" : {
             "allowedHazards": [
             ('MA.W', 'MarineWarning'),     # Marine Warning
-            ]
+            ],
+            "previewFormatters": ["Legacy"],
+            "issueFormatters": ["Legacy", "XML", "CAP"],  
+            "reservedNameNotYetImplemented": True,
             }
         }
