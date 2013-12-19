@@ -182,7 +182,7 @@ class DamBreakFunctionalTest extends FunctionalTest {
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
                 1.2971484E12));
-        assertEquals(event.get(HAZARD_EVENT_COLOR), "144 224 209");
+        assertEquals(event.get(HAZARD_EVENT_COLOR), "142 224 209");
     }
 
     private void checkDamBreakRecommendationHighConfidence(Dict event) {
