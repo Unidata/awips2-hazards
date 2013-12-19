@@ -59,20 +59,25 @@ def constructPaths(rootPath, relPaths, default='.') :
     return pyPathParts
 
 # Client provides lists of extra paths added to the sys.path data structure,
-# which controls the directories one can import from.
+# which controls the directories one can import from.  It is important that
+# any relative paths provided NOT have either a leading or trailing /.
 # The root directory is located by steping upward through the directory
 # structure from where this source code file is until a directory is
-# encountered with the base name the same as the argument rootName.
+# encountered with a basename of 'edexOsgi', and then the root is assumed to
+# be the next step up.
 # fromRoot specifies a path or list of paths relative to the root directory
 # to add to the sys.path data structure.  Default value of fromRoot, as well
 # as a literal "*", will trigger adding all subdirectories under the root
 # directory with meaningful python.
 # This also pulls out of the sys.path data structure any paths that are in
 # the EDEX utility directories.
-# Optional arguments siblingRoot and fromSibling are used to specify paths
-# under an additional directory at the same level as the root directory.
-# For now, rootName will typically be "hazardServices", and siblingRoot,
-# if used, will typically be "AWIPS2_baseline".
+# Optional argument fromHere is used to specify paths to add relative to
+# where this source code is located.  Optional argument fromSibling is used
+# to specify paths to add to a "sibling directory" to the root directory.
+# Such a sibling directory must have also have an 'edexOsgi' subdirectory
+# in it. For now, the root directory will usually have a basename of
+# "hazardServices", and the sibling root directory will usually have a
+# basename of "AWIPS2_baseline".
 def updateSysPath(fromRoot=None, fromHere=None,
                   fromSibling=None, stepsBelowRoot=2) :
     '''

@@ -14,9 +14,12 @@ set pythonTests = `find . -maxdepth 1 -name 'Test*.py'`
 #
 # Run the tests
 #
+setenv TZ GMT
 set npassed = 0
 set nfailed = 0
 foreach pythonTest ( $pythonTests )
+    if ( ! -x $pythonTest ) continue
+    echo Running $pythonTest ...
     $pythonTest
     if ( $status == 0 ) then
         @ npassed ++

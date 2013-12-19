@@ -286,6 +286,19 @@ return ResponseMessageGeneric(site)
         self.__selectedSite = self.__defLoc
         return self.__defLoc
 
+    # Get the current working user id.
+    def getDefUser(self) :
+        return self.__curUser
+
+    # Get the current working EDEX host.
+    def getEdexHost(self) :
+        return self.__locServer
+
+    # Get the current working EDEX port.
+    def getEdexPort(self) :
+        global caveEdexPort
+        return caveEdexPort
+
     # Get the current default value for Desk.
     def getDefDesk(self) :
         global edexDeskMap
@@ -936,7 +949,7 @@ return ResponseMessageGeneric(stdout)
     # applied, and the combined data structures will be returned as a valid
     # python variable initialization.
     # If these contain python code defining a class with the file basename,
-    # these will automaticallyh be daisy chained into an inheritance
+    # these will automatically be daisy chained into an inheritance
     # heirarcy.
     # Otherwise the data for the least general localization level found will
     # be returned as a string.  A failure will return None; this routine
@@ -1233,7 +1246,11 @@ return ResponseMessageGeneric(stdout)
                 t = self.checkDataType(result, pyRoot)
                 last = result
 
-                if t==4 :
+                if t==8 :
+                    result = self.getLocFile( \
+                              locPath, typeArg, levelArg, siteUser)
+                    return result
+                elif t==4 :
                     #
                     # Try treating this as a Python file and retrieving
                     # the variable definition (which is JSON-like)
