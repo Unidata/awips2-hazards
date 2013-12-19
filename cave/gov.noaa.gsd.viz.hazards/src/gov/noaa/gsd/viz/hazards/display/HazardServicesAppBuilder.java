@@ -1109,10 +1109,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     "Error removing hazard services workbench listener", e);
         }
 
-        // Exit from DRT.
-        SimulatedTime.getSystemTime().setRealTime();
-        SimulatedTime.getSystemTime().setFrozen(false);
-
         // Prepare the Python side effects applier for shutdown.
         PythonSideEffectsApplier.prepareForShutDown();
     }
