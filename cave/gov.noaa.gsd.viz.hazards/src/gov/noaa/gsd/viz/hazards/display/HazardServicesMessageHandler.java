@@ -7,7 +7,15 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ADD_PENDING_TO_SELECTED_ON;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATIONTIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUETIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
@@ -40,6 +48,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -446,6 +455,9 @@ public final class HazardServicesMessageHandler implements
         eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
         eventSet.addAttribute(HazardConstants.SITEID, sessionManager
                 .getConfigurationManager().getSiteID());
+        eventSet.addAttribute("hazardMode", caveMode.equals(CAVEMode.PRACTICE
+                .toString()) ? HazardEventManager.Mode.PRACTICE.toString()
+                : HazardEventManager.Mode.OPERATIONAL.toString());
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
                 eventSet, asMap(spatialInfo), asMap(dialogInfo),

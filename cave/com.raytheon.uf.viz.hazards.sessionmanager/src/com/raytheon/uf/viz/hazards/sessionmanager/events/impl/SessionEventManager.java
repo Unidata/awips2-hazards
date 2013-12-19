@@ -49,8 +49,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -850,12 +848,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
          * Retrieve matching events from the Hazard Event Manager Also, include
          * those from the session state.
          */
-        /*
-         * TODO: How do we get the actual Mode in here?
-         */
-        HazardEventManager hazardEventManager = new HazardEventManager(
-                Mode.PRACTICE);
-        Map<String, HazardHistoryList> eventMap = hazardEventManager
+        Map<String, HazardHistoryList> eventMap = this.dbManager
                 .getEventsByFilter(hazardQueryBuilder.getQuery());
         List<IHazardEvent> eventsToCheck = Lists.newArrayList(getEvents());
         Map<String, IHazardEvent> sessionEventMap = Maps.newHashMap();

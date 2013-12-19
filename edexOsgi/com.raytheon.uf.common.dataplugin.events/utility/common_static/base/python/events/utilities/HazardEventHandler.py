@@ -32,7 +32,6 @@
 
 from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
 from com.raytheon.uf.common.dataplugin.events.hazards.event import IHazardEvent
-from com.raytheon.uf.common.dataplugin.events.hazards.event import PracticeHazardEvent
 from com.raytheon.uf.common.python import PyJavaUtil
 
 from HazardEvent import HazardEvent

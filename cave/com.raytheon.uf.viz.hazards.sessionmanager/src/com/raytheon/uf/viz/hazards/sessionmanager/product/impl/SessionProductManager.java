@@ -38,6 +38,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -68,6 +69,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Puntal;
 
@@ -252,6 +254,12 @@ public class SessionProductManager implements ISessionProductManager {
         events.addAttribute(HazardConstants.SITEID, configManager.getSiteID());
         events.addAttribute(HazardConstants.BACKUP_SITEID, LocalizationManager
                 .getInstance().getCurrentSite());
+        String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
+                .toString() : HazardEventManager.Mode.OPERATIONAL.toString();
+        events.addAttribute("hazardMode", mode);
+        String runMode = CAVEMode.getMode().toString();
+        events.addAttribute("runMode", runMode);
+        events.addAttribute("vtecMode", "O");
 
         if (issue) {
             events.addAttribute(HazardConstants.ISSUE_FLAG, "True");

@@ -3098,6 +3098,16 @@ A WINTER WEATHER ADVISORY FOR SNOW MEANS THAT PERIODS OF SNOW WILL CAUSE PRIMARI
         return [
         ]
 
+    def getVTECMode(self, runMode, vtecMode):
+        returnMode = "T"
+        if runMode == "OPERATIONAL" :
+            returnMode = "O"
+        elif runMode == "TEST" :
+            returnMode = "T"
+        elif runMode == "PRACTICE" :
+            returnMode = vtecMode
+        return returnMode
+        
         
     
     

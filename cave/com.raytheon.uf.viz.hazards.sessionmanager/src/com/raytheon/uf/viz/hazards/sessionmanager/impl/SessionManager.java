@@ -39,7 +39,6 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -133,6 +132,8 @@ public class SessionManager implements ISessionManager {
 
     private final IHazardSessionAlertsManager alertsManager;
 
+    private final IHazardEventManager hazardManager;
+
     /*
      * TODO These need to go away when via JSON refactor.
      */
@@ -168,6 +169,7 @@ public class SessionManager implements ISessionManager {
                 new HazardEventExpirationAlertStrategy(alertsManager,
                         timeManager, configManager, hazardEventManager,
                         new AllHazardsFilterStrategy()));
+        hazardManager = hazardEventManager;
 
         /**
          * TODO Where should a call be made to remove the NotificationJob
@@ -307,9 +309,7 @@ public class SessionManager implements ISessionManager {
             eventManager.removeEvent(event);
         }
 
-        IHazardEventManager manager = new HazardEventManager(
-                HazardEventManager.Mode.PRACTICE);
-        manager.removeAllEvents();
+        hazardManager.removeAllEvents();
 
         /*
          * Reset the VTEC information in the VTEC files. This needs to be done.

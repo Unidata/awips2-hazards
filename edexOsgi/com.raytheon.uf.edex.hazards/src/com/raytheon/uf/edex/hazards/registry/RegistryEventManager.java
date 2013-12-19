@@ -54,12 +54,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
- * <<<<<<< HEAD
  * Oct 30, 2013 #1472     bkowal    Implemented retrieval from the registry
  *                                  by phensig.
- * =======
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * >>>>>>> Issue #2182.
  * 
  * </pre>
  * 
@@ -142,8 +139,6 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             Map<String, List<Object>> filters) {
         Map<String, HazardHistoryList> events = new HashMap<String, HazardHistoryList>();
         try {
-            // TODO, need to implement the following :
-            // get by other values
             Set<HazardEvent> listEvents = new HashSet<HazardEvent>();
             if (filters != null) {
                 GeometryFactory factory = new GeometryFactory();
