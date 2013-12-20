@@ -34,7 +34,7 @@
 
 import datetime
 
-import EventFactory
+import EventFactory, EventSetFactory
 import RecommenderTemplate
 import JUtil
 import GridHelper
@@ -51,7 +51,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata["author"] = "Raytheon"
         metadata["description"] = "Creates hazards out of the GFE Hazards Grid."
         metadata["version"] = "1.0"
-        metadata["productsgenerated"] = ['GFE Hazards']
+        metadata["productsgenerated"] = ["GFE Hazards"]
         return metadata
 
     def defineDialog(self):
@@ -87,7 +87,7 @@ class Recommender(RecommenderTemplate.Recommender):
             values = GridHelper.getValuesToSearch(keys)
 
             # TODO, will become an EventSet
-            events = list()
+            events = EventSetFactory.createEventSet()
 
             # have the grid, now I need to contour that stuff
             # for each phensig, possibly creating multiple hazard events
@@ -117,9 +117,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 event.setHazardMode(mode)
                 event.setGeometry(mp)
                 
-                # TODO, once this is an EventSet
-                # events.add(event)
-                events.append(event)
+                events.add(event)
             return events
         # return no events, will this happen?  I'm pretty sure this will not happen for this recommender.
         return None

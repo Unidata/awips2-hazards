@@ -17,27 +17,24 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.hazards.warnings;
+package com.raytheon.uf.edex.hazards.warnings;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import com.raytheon.uf.common.actionregistry.IActionable;
+import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
+import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 
 /**
- * {@link IActionable} to convert {@link AbstractWarningRecord} objects to
- * {@link IHazardEvent} objects to support interoperability of Warngen -> Hazard
- * Services
+ * Allows for warning compatibility with interoperability. Creates IHazardEvent
+ * objects from AbstractWarningRecords.
  * 
  * <pre>
  * 
@@ -45,9 +42,7 @@ import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 22, 2013            mnash       Initial creation
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
+ * Jun 11, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -55,33 +50,22 @@ import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
  * @version 1.0
  */
 
-public class WarningActionable implements IActionable {
+public class WarningHazardsCreator {
 
-    /**
-     * 
-     */
-    public WarningActionable() {
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.actionregistry.IActionable#handleAction()
-     */
-    @Override
-    public void handleAction(Object... objects) {
-        if (objects.length > 0) {
-            // TODO, change this once we turn on the registry as well
-            // Mode mode = objects[0] instanceof PracticeWarningRecord ?
-            // Mode.PRACTICE
-            // : Mode.OPERATIONAL;
-            Mode mode = Mode.PRACTICE;
-            HazardEventManager manager = new HazardEventManager(mode);
+    public void createHazards(List<PluginDataObject> objects) {
+        if (objects.isEmpty() == false) {
+            Mode mode = objects.get(0) instanceof PracticeWarningRecord ? Mode.PRACTICE
+                    : Mode.OPERATIONAL;
+            // TODO, use mode above
+            HazardEventManager manager = new HazardEventManager(Mode.PRACTICE);
             List<IHazardEvent> events = new ArrayList<IHazardEvent>();
-            for (Object ob : objects) {
+            for (PluginDataObject ob : objects) {
                 AbstractWarningRecord record = null;
                 if (ob instanceof AbstractWarningRecord) {
                     record = (AbstractWarningRecord) ob;
+                    if (record.getGeometry() == null) {
+                        continue;
+                    }
                 } else {
                     continue;
                 }
@@ -100,7 +84,8 @@ public class WarningActionable implements IActionable {
                 event.setSiteID(record.getXxxid());
                 event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, record
                         .getPurgeTime().getTime().getTime());
-                event.addHazardAttribute("etns", "[" + record.getEtn() + "]");
+                event.addHazardAttribute(HazardConstants.ETNS,
+                        "[" + record.getEtn() + "]");
                 event.setHazardMode(HazardConstants
                         .productClassFromAbbreviation(record.getProductClass()));
                 event.setState(HazardEventUtilities.stateBasedOnAction(record
@@ -152,15 +137,16 @@ public class WarningActionable implements IActionable {
                             immediateCause);
                 }
 
-                if (HazardEventUtilities.isDuplicate(manager, event)) {
+                if (HazardEventUtilities.isDuplicate(manager, event) == false) {
                     events.add(event);
                 }
             }
-
-            boolean stored = manager.storeEvents(events);
-            if (stored == false) {
-                throw new RuntimeException(
-                        "Unable to store converted events to the database");
+            if (events.isEmpty() == false) {
+                boolean stored = manager.storeEvents(events);
+                if (stored == false) {
+                    throw new RuntimeException(
+                            "Unable to store converted events to the database");
+                }
             }
         }
     }

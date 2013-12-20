@@ -3,27 +3,14 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="warningActionableRegistry"
-		class="com.raytheon.uf.common.hazards.warnings.WarningActionable" />
-
-	<bean id="hazardWarningNotifier"
-		class="com.raytheon.uf.common.hazards.warnings.HazardWarningNotifier" />
-
-	<bean factory-bean="pluginNotifier" factory-method="register">
-		<constructor-arg value="warning" /> 
-		<constructor-arg value="direct-vm:warningFound" />
-	</bean>
-
-	<bean factory-bean="actionRegistry" factory-method="register">
-		<constructor-arg value="warngen" />
-		<constructor-arg ref="warningActionableRegistry" />
-	</bean>
+	<bean id="warningHazardsCreator"
+		class="com.raytheon.uf.edex.hazards.warnings.WarningHazardsCreator" />
 
 	<camelContext id="warningactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
-		<route id="warningFound">
-			<from uri="direct-vm:warningFound"/>
-			<bean ref="hazardWarningNotifier" method="postToRegistry" />
+		<route id="hazards.warningIngest">
+			<from uri="vm:hazards.warningIngest"/>
+			<bean ref="warningHazardsCreator" method="createHazards" />
 		</route>
 	</camelContext>
 </beans>

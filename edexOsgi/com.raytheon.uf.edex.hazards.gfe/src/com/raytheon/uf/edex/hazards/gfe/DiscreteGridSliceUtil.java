@@ -84,7 +84,7 @@ public class DiscreteGridSliceUtil {
             TimeRange timeRange, Date currentDate) {
         GridParmInfo gridParmInfo = gridSlice.getGridParmInfo();
         Grid2DByte byteGrid = gridSlice.getDiscreteGrid();
-        DiscreteKey[] splitHazKeys = gridSlice.getKey();
+        DiscreteKey[] splitHazKeys = gridSlice.getKeys();
 
         Set<String> uniqueKeys = new TreeSet<String>();
         for (DiscreteKey discreteKey : splitHazKeys) {
@@ -317,7 +317,7 @@ public class DiscreteGridSliceUtil {
             for (DiscreteGridSlice discreteGridSlice : discreteGridSlices) {
                 // the grids should have been separated so there should only be
                 // 1 valid key.
-                DiscreteKey discreteKey = discreteGridSlice.getKey()[1];
+                DiscreteKey discreteKey = discreteGridSlice.getKeys()[1];
                 String addHaz = discreteKey.getSubKeys().get(0);
                 Grid2DByte byteGrid = discreteGridSlice.getDiscreteGrid();
 
@@ -476,11 +476,11 @@ public class DiscreteGridSliceUtil {
             List<DiscreteGridSlice> dgList2) {
         List<DiscreteKey> keys1 = new ArrayList<DiscreteKey>();
         for (DiscreteGridSlice dg1 : dgList1) {
-            keys1.add(dg1.getKey()[1]);
+            keys1.add(dg1.getKeys()[1]);
         }
         List<DiscreteKey> keys2 = new ArrayList<DiscreteKey>();
         for (DiscreteGridSlice dg2 : dgList2) {
-            keys2.add(dg2.getKey()[1]);
+            keys2.add(dg2.getKeys()[1]);
         }
         return keys1.containsAll(keys2);
     }
@@ -507,12 +507,15 @@ public class DiscreteGridSliceUtil {
             GFERecord record = intersectingRecords.get(0);
             DiscreteGridSlice slice = (DiscreteGridSlice) record
                     .getMessageData();
-            List<String> keys = slice.getKey()[1].getSubKeys();
-            if (keys.size() == 1 && keys.contains(phenSigToRemove)) {
-                // just delete the individual grid can return from here
-                separatedRecords.timeRangesToRemove = Arrays
-                        .asList(new TimeRange[] { record.getTimeRange() });
-                return separatedRecords;
+            DiscreteKey[] sliceKeys = slice.getKeys();
+            if (sliceKeys.length > 0) {
+                List<String> keys = slice.getKeys()[1].getSubKeys();
+                if (keys.size() == 1 && keys.contains(phenSigToRemove)) {
+                    // just delete the individual grid can return from here
+                    separatedRecords.timeRangesToRemove = Arrays
+                            .asList(new TimeRange[] { record.getTimeRange() });
+                    return separatedRecords;
+                }
             }
         }
 

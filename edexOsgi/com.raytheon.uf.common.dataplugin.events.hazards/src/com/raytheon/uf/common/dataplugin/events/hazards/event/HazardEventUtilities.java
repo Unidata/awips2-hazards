@@ -565,21 +565,21 @@ public class HazardEventUtilities {
         builder.addKey(HazardConstants.SIGNIFICANCE, event.getSignificance());
         Map<String, HazardHistoryList> hazards = manager
                 .getEventsByFilter(builder.getQuery());
-        boolean toStore = true;
+        boolean isDup = false;
         for (HazardHistoryList list : hazards.values()) {
             Iterator<IHazardEvent> iter = list.iterator();
             while (iter.hasNext()) {
                 IHazardEvent ev = iter.next();
-                toStore = HazardEventUtilities.checkDifferentEvents(ev, event);
-                if (toStore == false) {
+                isDup = HazardEventUtilities.checkDifferentEvents(ev, event);
+                if (isDup) {
                     break;
                 }
             }
-            if (toStore == false) {
+            if (isDup) {
                 break;
             }
         }
-        return toStore;
+        return isDup;
     }
 
     public static String determineEtn(String site, String action, String etn,
@@ -671,10 +671,9 @@ public class HazardEventUtilities {
                 etns2.add(String.valueOf(in));
             }
         }
-        // TODO need better ETN assignment for this test
-        // if (compareEtns(etns1, etns2) == false) {
-        // return true;
-        // }
+        if (compareEtns(etns1, etns2) == false) {
+            return true;
+        }
         return false;
     }
 
@@ -691,11 +690,11 @@ public class HazardEventUtilities {
         for (String etn1 : etns1) {
             for (String etn2 : etns2) {
                 if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
-                    return true;
+                    return false;
                 }
             }
         }
-        return false;
+        return true;
     }
 
 }

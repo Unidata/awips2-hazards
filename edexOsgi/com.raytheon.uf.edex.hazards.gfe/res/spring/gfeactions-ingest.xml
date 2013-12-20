@@ -3,14 +3,14 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="riverproHazardsCreator"
-		class="com.raytheon.uf.edex.hazards.riverpro.RiverProHazardsCreator" />
+	<bean id="gfeHazardsCreator"
+		class="com.raytheon.uf.edex.hazards.gfe.GFEHazardsCreator" />
 
-	<camelContext id="riverproactions-camel" xmlns="http://camel.apache.org/schema/spring"
+	<camelContext id="gfeactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
-		<route id="hazards.riverproIngest">
-			<from uri="vm:hazards.riverproIngest" />
-			<bean ref="riverproHazardsCreator" method="createHazards" />
+		<route id="hazards.gfeIngest">
+			<from uri="vm:hazards.gfeIngest"/>
+			<bean ref="gfeHazardsCreator" method="createHazards" />
 		</route>
 	</camelContext>
 </beans>

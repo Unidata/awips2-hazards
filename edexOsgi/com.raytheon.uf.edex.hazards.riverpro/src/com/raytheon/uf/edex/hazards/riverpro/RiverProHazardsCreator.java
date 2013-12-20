@@ -26,9 +26,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.raytheon.edex.plugin.text.dao.AfosToAwipsDao;
-import com.raytheon.uf.common.actionregistry.IActionable;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
+import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecaction;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
@@ -53,9 +53,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 
 /**
- * Helps to take {@link AbstractWarningRecord} from the warning ingest route and
- * turns them into the corresponding IHFS table records so that RiverPro can
- * read them later. Should NEVER be used outside of that single task.
+ * Interoperates between Riverpro and Hazard Services
  * 
  * <pre>
  * 
@@ -63,7 +61,7 @@ import com.vividsolutions.jts.geom.Point;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013            mnash     Initial creation
+ * Jul 11, 2013            mnash     Initial creation
  * 
  * </pre>
  * 
@@ -71,32 +69,38 @@ import com.vividsolutions.jts.geom.Point;
  * @version 1.0
  */
 
-class RiverProActionable implements IActionable {
-
+public class RiverProHazardsCreator {
     private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(RiverProActionable.class);
+            .getHandler(RiverProHazardsCreator.class);
 
     private static final String IHFS_DB = "ihfs";
 
-    private static final String FXA_DB = "fxa";
+    private static final String SEVERITY = "severity";
+
+    private static final String SIGNIF = "signif";
+
+    private static final String PHENOM = "phenom";
+
+    private static final String VTEC_SIGNIF = "vtecsignif";
+
+    private static final String VTEC_PHENOM = "vtecphenom";
+
+    private static final String IMMED_CAUSE = "immedCause";
+
+    private static final String SELECT_GAUGE_STRING = "select lid,lat,lon from location;";
+
+    private static final String ACTION = "action";
+
+    private static final String RECORD = "record";
 
     private static final CoreDao dao = new CoreDao(
             DaoConfig.forDatabase(IHFS_DB));
 
     private static final AfosToAwipsDao a2aDao = new AfosToAwipsDao();
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.actionregistry.IActionable#handleAction(com.raytheon
-     * .uf.common.actionregistry.PluginDataObject[])
-     */
-    @Override
-    public void handleAction(Object... arguments) {
-        if (arguments.length > 0) {
-            boolean practice = arguments[0] instanceof PracticeWarningRecord ? true
-                    : false;
+    public void createHazards(List<PluginDataObject> objects) {
+        if (objects.isEmpty() == false) {
+            boolean practice = objects.get(0) instanceof PracticeWarningRecord;
             // find the gauge locations from the table
             Map<String, Point> gaugeLocations = null;
             try {
@@ -107,12 +111,11 @@ class RiverProActionable implements IActionable {
                 return;
             }
             // retrieve the available phenomenons for RiverPro
-            Map<String, String> phens = retrieveAvailable("phenom",
-                    "vtecphenom");
+            Map<String, String> phens = retrieveAvailable(PHENOM, VTEC_PHENOM);
             // retrieve the available significances for RiverPro
-            Map<String, String> sigs = retrieveAvailable("signif", "vtecsignif");
+            Map<String, String> sigs = retrieveAvailable(SIGNIF, VTEC_SIGNIF);
             // loop over each record
-            for (Object obj : arguments) {
+            for (PluginDataObject obj : objects) {
                 AbstractWarningRecord warning = null;
                 if (obj instanceof AbstractWarningRecord) {
                     warning = (AbstractWarningRecord) obj;
@@ -194,22 +197,22 @@ class RiverProActionable implements IActionable {
 
                                 event.setVteccause(retrieveVtecObject(
                                         warning.getImmediateCause(),
-                                        "immedCause", Vteccause.class));
+                                        IMMED_CAUSE, Vteccause.class));
                                 event.setVtecaction(retrieveVtecObject(
-                                        warning.getAct(), "action",
+                                        warning.getAct(), ACTION,
                                         Vtecaction.class));
                                 event.setVtecphenom(retrieveVtecObject(
-                                        warning.getPhen(), "phenom",
+                                        warning.getPhen(), PHENOM,
                                         Vtecphenom.class));
                                 event.setVtecsignif(retrieveVtecObject(
-                                        warning.getSig(), "signif",
+                                        warning.getSig(), SIGNIF,
                                         Vtecsignif.class));
                                 event.setVtecsever(retrieveVtecObject(
-                                        warning.getFloodSeverity(), "severity",
+                                        warning.getFloodSeverity(), SEVERITY,
                                         Vtecsever.class));
                                 event.setVtecrecord(retrieveVtecObject(
-                                        warning.getFloodRecordStatus(),
-                                        "record", Vtecrecord.class));
+                                        warning.getFloodRecordStatus(), RECORD,
+                                        Vtecrecord.class));
                                 dao.create(event);
                             }
                         }
@@ -228,8 +231,8 @@ class RiverProActionable implements IActionable {
     private Map<String, Point> calculateGaugeLocations() {
         Map<String, Point> gaugeLocations = new HashMap<String, Point>();
         List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_SQLQUERY, "select lid,lat,lon from location;",
-                IHFS_DB, "location");
+                QUERY_MODE.MODE_SQLQUERY, SELECT_GAUGE_STRING, IHFS_DB,
+                "location");
         GeometryFactory factory = new GeometryFactory();
         for (Object[] obj : objects) {
             if (obj[0] == null || obj[1] == null || obj[2] == null) {

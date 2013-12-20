@@ -17,33 +17,21 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.actionregistry;
-
-
 /**
- * Interface for actions that will receive PluginDataObject[]
- * 
+ * Mechanisms to successfully interoperate warnings and Hazard Services 
  * <pre>
- * 
+ *
  * SOFTWARE HISTORY
- * 
+ *
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 20, 2013            mnash     Initial creation
- * 
+ * May 22, 2013            mnash     Initial creation
+ *
  * </pre>
- * 
+ *
  * @author mnash
- * @version 1.0
+ * @version 1.0	
  */
 
-public interface IActionable {
+package com.raytheon.uf.edex.hazards.warnings;
 
-    /**
-     * Anything that implements this class will have this method executed when
-     * the registry is triggered.
-     * 
-     * @param arguments
-     */
-    public void handleAction(Object... arguments);
-}

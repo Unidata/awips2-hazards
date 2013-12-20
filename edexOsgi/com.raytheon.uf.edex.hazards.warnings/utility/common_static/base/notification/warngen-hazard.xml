@@ -1,0 +1,12 @@
+<pluginNotificationList>
+    <pluginNotification>
+        <endpointName>hazards.warningIngest</endpointName>
+        <format>PDO</format>
+        <endpointType>VM</endpointType>
+        <metadataMap>
+            <mapping key="pluginName">
+                <constraint constraintValue="warning" constraintType="EQUALS"/>
+            </mapping>
+        </metadataMap>
+    </pluginNotification>
+</pluginNotificationList>
