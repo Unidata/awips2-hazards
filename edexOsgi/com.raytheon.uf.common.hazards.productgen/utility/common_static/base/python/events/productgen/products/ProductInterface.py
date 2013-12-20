@@ -80,7 +80,7 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
         val = self.runMethod(moduleName, className, 'defineDialog', **kwargs)
         return JUtil.pyValToJavaObj(val)
     
-    def defineScriptMetadata(self, moduleName, className, **kwargs):
+    def getScriptMetadata(self, moduleName, className, **kwargs):
         """
         @return: Returns a map of string to string of the metadata.
         """
