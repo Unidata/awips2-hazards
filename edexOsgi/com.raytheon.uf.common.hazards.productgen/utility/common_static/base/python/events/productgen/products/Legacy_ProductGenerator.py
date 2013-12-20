@@ -20,10 +20,6 @@
 '''
 
 import ProductTemplate
-try:
-    import JUtil
-except:
-    pass
 
 from Bridge import Bridge
 from LocalizationInterface import *
@@ -42,11 +38,6 @@ from pytz import timezone
 import os, types, copy, sys, json
 from QueryAfosToAwips import QueryAfosToAwips
 import HazardDataAccess
-
-try:
-    from java.util import ArrayList
-except:
-    pass
 
 from HazardEvent import HazardEvent
 from shapely import geometry
@@ -171,34 +162,13 @@ class Product(ProductTemplate.Product):
                 ProductPart('segments', productParts=segmentParts),
                 ProductPart('endProduct')
                 ]
-
-    def _unpackEventSet(self, eventSet):  
-        '''
-        Must convert Java object eventSet to HazardEvents
-        NOTE: ProductInterface.py will be fixed to do this
-
-        '''
-        # Translate Hazard Event Set from Java to Python HazardEvents and metaDict
-        iterator = eventSet.iterator()
-        hazardEvents = []
-        while iterator.hasNext():
-            event = iterator.next()
-            hazardEvent = HazardEvent(event)
-            # TODO 
-            #  Remove this test code when the HMI is set up to handle "Until Further Notice"
-            # To test the "Until Further Notice" functionality, uncomment the following lines
-            #hazardEvent.setEndTime(datetime.datetime.fromtimestamp(sys.maxsize))
-            #hazardEvent.set('fallBelow', sys.maxsize*1000)
-            hazardEvents.append(hazardEvent)                             
-        attributes = eventSet.getAttributes()
-        metaDict = JUtil.javaMapToPyDict(attributes)            
-        return hazardEvents, metaDict                
                           
     def _getVariables(self, eventSet): 
         '''
          Set up class variables
         ''' 
-        self._inputHazardEvents, metaDict = self._unpackEventSet(eventSet) 
+        self._inputHazardEvents = eventSet.getEvents()
+        metaDict = eventSet.getAttributes()
                 
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on

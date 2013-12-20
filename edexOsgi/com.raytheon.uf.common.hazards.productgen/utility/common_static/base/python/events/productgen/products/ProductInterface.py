@@ -52,6 +52,8 @@ import logging, UFStatusHandler
 
 from com.raytheon.uf.common.dataplugin.events import EventSet
 
+from EventSet import EventSet as PythonEventSet
+
 class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
     
     def __init__(self, scriptPath):
@@ -62,9 +64,12 @@ class ProductInterface(RollbackMasterInterface.RollbackMasterInterface):
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
     
-    def execute(self, moduleName, className, eventSet, formats):
-        # TODO Convert eventSet to Python eventSet
-        kwargs = {'eventSet':eventSet}
+    def execute(self, moduleName, className, **kwargs):
+        
+        # TODO
+        # Add dialogInputMap in here as well???
+        formats = kwargs.pop('formats')
+        kwargs['eventSet'] = PythonEventSet(kwargs['eventSet'])
              
         dataList, hazardEvents = self.runMethod(moduleName, className, 'execute', **kwargs)
         if not isinstance(dataList, list):
