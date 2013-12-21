@@ -22,11 +22,10 @@
     @version 1.0
 """
 import os, types, copy, sys, json
-import ProductTemplate
+import Legacy_ProductGenerator
 from ProductPart import ProductPart
 
-
-class Product(ProductTemplate.Product):
+class Product(Legacy_ProductGenerator.Product):
     
     def __init__(self):
         super(Product, self).__init__()       
@@ -73,7 +72,7 @@ class Product(ProductTemplate.Product):
         
         # Extract information for execution
         self._getVariables(eventSet)
-        if not self._hazardEvents:
+        if not self._inputHazardEvents:
             return []
         # Here is the format of the dictionary that is returned for
         #  each product generated: 
@@ -83,7 +82,7 @@ class Product(ProductTemplate.Product):
         #     "productDict": productDict,
         #     }
         #   ]
-        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._hazardEvents) 
+        productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
         return productDicts, hazardEvents        
     
     
