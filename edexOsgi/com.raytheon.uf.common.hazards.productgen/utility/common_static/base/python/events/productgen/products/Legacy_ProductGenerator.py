@@ -38,6 +38,7 @@ from pytz import timezone
 import os, types, copy, sys, json
 from QueryAfosToAwips import QueryAfosToAwips
 import HazardDataAccess
+import HazardConstants
 
 from HazardEvent import HazardEvent
 from shapely import geometry
@@ -883,8 +884,10 @@ class Product(ProductTemplate.Product):
     def _extractPolygons(self, hazardEvent):
         polygons = hazardEvent.getGeometry()
         polygonPointLists = []            
-        if type(polygons) == geometry.polygon.Polygon:
+        if polygons.geom_type == HazardConstants.SHAPELY_POLYGON:
             polygonPointLists.append(list(polygons.exterior.coords))
+        elif polygons.geom_type == HazardConstants.SHAPELY_POINT or polygons.geom_type == HazardConstants.SHAPELY_LINE:
+            polygonPointLists.append(list(polygons.coords))
         else:
             for polygon in polygons:
                 polygonPointLists.append(list(polygon.exterior.coords))
@@ -999,48 +1002,34 @@ class Product(ProductTemplate.Product):
             # VTEC processing expects siteID4 e.g. KOAX instead of OAX
             hazardEvent.set('siteID4', str(self._fullStationID))
 
-            # hazardEvent.get('geoType') = 'area', 'line', or 'point'
-            if hazardEvent.get('geoType') == 'area':
-                polygons = self._extractPolygons(hazardEvent)
-                ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType,
-                                polygons, siteID=self._siteID)
-                newUgcs = []
-                for ugc in ugcs:
-                    if ugc in newUgcs: continue
-                    newUgcs.append(ugc)
-                    
-                hazardEvent.set('ugcs', newUgcs)
+            geometryType = hazardEvent.getGeometry().geom_type
+            
+            if geometryType in [HazardConstants.SHAPELY_POLYGON, HazardConstants.SHAPELY_MULTIPOLYGON]:
+                geometryList = self._extractPolygons(hazardEvent)
+                ugcType = self._areaUgcType
                 hazardEvent.set('shapeType', 'polygon')
-            elif hazardEvent.get('geoType') == 'line':
+            elif geometryType == HazardConstants.SHAPELY_LINE:
                 # For now, we treat line points as polygon points, and
                 # match UGCs from those. But really it should treat them
                 # as actual lines when matching UGCs. 
-                lines = hazardEvent.getGeometry()  
-                ugcs = self._mapInfo.getUGCsMatchPolygons(self._areaUgcType,
-                                lines, siteID=self._siteID)
-                newUgcs = []
-                for ugc in ugcs:
-                    if ugc in newUgcs: continue
-                    newUgcs.append(ugc)
-                    
-                hazardEvent.set('ugcs', newUgcs)
+                geometryList = [list(hazardEvent.getGeometry().coords)]
+                ugcType = self._areaUgcType
                 hazardEvent.set('shapeType', 'line')
             else:
-                ugcs = []
-                #  For points, convert a lat/lon to a UGC
-                #  forecastPoint': {'id': 'DCTN1', 'name': 'Decatur', 
-                #   'point': ['-96.2413888888889', '42.0072222222222']}
-                forecastPoint = hazardEvent.get('forecastPoint')
-                ugcs = None
-                if forecastPoint is not None:
-                    hazardEvent.set('shapeType', 'point')
-                    lon, lat = forecastPoint.get('point')
-                    ugcs = self._mapInfo.getUGCsMatchPolygons(self._pointUgcType,
-                            [[(float(lon), float(lat))]], siteID=self._siteID)
-                if not ugcs:
-                    # TODO Preventing a crash, but need to handle better 
-                    ugcs = ['COC003']
-                hazardEvent.set('ugcs',  ugcs)        
+                #  For point geometries, convert a lat/lon to a UGC
+                geometryList = [list(hazardEvent.getGeometry().coords)]
+                ugcType = self._pointUgcType
+                hazardEvent.set('shapeType', 'point')
+
+            ugcs = self._mapInfo.getUGCsMatchPolygons(ugcType,
+                   geometryList, siteID=self._siteID)
+            
+            uniqueUgcs = list(set(ugcs))
+
+            hazardEvent.set('ugcs', uniqueUgcs)
+                
+            
+                        
             #  Handle 'previewState' 
             #  IF we are previewing an 'ended' state, temporarily set the state as 'ended'
             #   so that the VTEC processing will be done correctly

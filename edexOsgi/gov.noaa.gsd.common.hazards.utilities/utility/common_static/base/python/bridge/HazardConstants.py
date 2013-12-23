@@ -173,3 +173,9 @@ XML_FORMAT = "XML"
 LEGACY_FORMAT = "Legacy"
 CAP_FORMAT = "CAP"
 
+#################################
+# Shapely Geometry Constants
+SHAPELY_POINT = "Point"
+SHAPELY_LINE = "LineString"
+SHAPELY_POLYGON = "Polygon"
+SHAPELY_MULTIPOLYGON = "MultiPolygon"
