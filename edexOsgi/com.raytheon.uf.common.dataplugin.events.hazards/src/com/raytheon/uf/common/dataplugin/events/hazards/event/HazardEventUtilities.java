@@ -165,16 +165,20 @@ public class HazardEventUtilities {
         List<IGeometryData> geometryDataList = getMapGeometries(mapDBtableName,
                 labelParameter, cwa);
 
-        outer: for (IGeometryData geoData : geometryDataList) {
+        for (IGeometryData geoData : geometryDataList) {
 
             Geometry mapGeometry = geoData.getGeometry();
 
-            for (Geometry geometry : geometryList) {
+            outer: for (int j = 0; j < mapGeometry.getNumGeometries(); ++j) {
 
-                for (int i = 0; i < geometry.getNumGeometries(); ++i) {
-                    if (geometry.getGeometryN(i).intersects(mapGeometry)) {
-                        intersectingGeometries.add(geoData);
-                        continue outer;
+                for (Geometry geometry : geometryList) {
+
+                    for (int i = 0; i < geometry.getNumGeometries(); ++i) {
+                        if (geometry.getGeometryN(i).intersects(
+                                mapGeometry.getGeometryN(j))) {
+                            intersectingGeometries.add(geoData);
+                            continue outer;
+                        }
                     }
                 }
             }
@@ -375,18 +379,21 @@ public class HazardEventUtilities {
         List<IGeometryData> geometryDataList = getMapGeometries(mapDBtableName,
                 labelParameter, cwa);
 
-        outer: for (IGeometryData geoData : geometryDataList) {
+        for (IGeometryData geoData : geometryDataList) {
             Geometry mapGeometry = geoData.getGeometry();
 
-            for (Geometry geometry : geometryList) {
-                for (int i = 0; i < geometry.getNumGeometries(); ++i) {
+            outer: for (int j = 0; j < mapGeometry.getNumGeometries(); ++j) {
 
-                    if (geometry.getGeometryN(i).contains(mapGeometry)) {
-                        containedGeometries.add(geoData);
-                        continue outer;
+                for (Geometry geometry : geometryList) {
+                    for (int i = 0; i < geometry.getNumGeometries(); ++i) {
+
+                        if (geometry.getGeometryN(i).contains(mapGeometry)) {
+                            containedGeometries.add(geoData);
+                            continue outer;
+                        }
                     }
-                }
 
+                }
             }
 
         }
@@ -464,11 +471,16 @@ public class HazardEventUtilities {
                             geometry.getGeometryN(i))) {
                         Geometry intersectionGeometry = geoData.getGeometry()
                                 .intersection(geometry);
+
                         clippedGeometry = clippedGeometry
                                 .union(intersectionGeometry);
-                        DefaultGeometryData clippedGeoData = new DefaultGeometryData();
-                        clippedGeoData.setGeometry(clippedGeometry);
-                        clippedGeometries.add(clippedGeoData);
+
+                        for (int j = 0; j < clippedGeometry.getNumGeometries(); ++j) {
+                            DefaultGeometryData clippedGeoData = new DefaultGeometryData();
+                            clippedGeoData.setGeometry(clippedGeometry
+                                    .getGeometryN(j));
+                            clippedGeometries.add(clippedGeoData);
+                        }
                     }
                 }
             }

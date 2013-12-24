@@ -11,6 +11,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.EventDict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
@@ -256,10 +257,14 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     // Geometry mergedPolygons = geomColl.convexHull();
                     mergedPolygons = TopologyPreservingSimplifier.simplify(
                             mergedPolygons, 0.0001);
+                    List<Shape> shapes = Lists.newArrayList();
 
-                    Polygon polygon = new Polygon("", "true", "true", "true",
-                            "White", 2, "SOLID", "White",
-                            mergedPolygons.getCoordinates());
+                    for (int i = 0; i < mergedPolygons.getNumGeometries(); ++i) {
+                        Polygon polygon = new Polygon("", "true", "true",
+                                "true", "White", 2, "SOLID", "White",
+                                mergedPolygons.getGeometryN(i).getCoordinates());
+                        shapes.add(polygon);
+                    }
 
                     if (!modifyingEvent) {
                         // Request an event ID for this newly drawn polygon.
@@ -267,7 +272,10 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         // Send off JSON Message.
                         EventDict eventAreaObject = new EventDict();
                         eventAreaObject.put("eventId", "");
-                        eventAreaObject.addShape(polygon);
+
+                        for (Shape shape : shapes) {
+                            eventAreaObject.addShape(shape);
+                        }
 
                         /*
                          * Clone the list of selected geometries.
@@ -340,7 +348,10 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         modifiedEventAreaObject
                                 .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
                                         HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
-                        modifiedEventAreaObject.addShape(polygon);
+
+                        for (Shape shape : shapes) {
+                            modifiedEventAreaObject.addShape(shape);
+                        }
 
                         SpatialDisplayAction action = new SpatialDisplayAction(
                                 "ModifyEventArea");

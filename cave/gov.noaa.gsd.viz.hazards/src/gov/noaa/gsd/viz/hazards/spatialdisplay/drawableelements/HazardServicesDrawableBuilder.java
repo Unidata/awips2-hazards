@@ -581,11 +581,14 @@ public class HazardServicesDrawableBuilder {
                     .buildHatchedAreaForEvent(mapDBtableName,
                             mapLabelParameter, cwa, hazardEvent);
 
-            for (IGeometryData geometry : hazardArea) {
+            for (IGeometryData geometryData : hazardArea) {
 
-                drawableComponent = buildPolygon(hazardEvent,
-                        geometry.getGeometry(), activeLayer);
-                drawableComponents.add(drawableComponent);
+                for (int i = 0; i < geometryData.getGeometry()
+                        .getNumGeometries(); ++i) {
+                    drawableComponent = buildPolygon(hazardEvent, geometryData
+                            .getGeometry().getGeometryN(i), activeLayer);
+                    drawableComponents.add(drawableComponent);
+                }
             }
 
             /*
