@@ -1020,11 +1020,19 @@ class Product(ProductTemplate.Product):
                 geometryList = [list(hazardEvent.getGeometry().coords)]
                 ugcType = self._pointUgcType
                 hazardEvent.set('shapeType', 'point')
+                
+                # Ensure the event has a pointID
+                if hazardEvent.get('pointID') is None:
+                    hazardEvent.set('pointID', 'XXXXX')
 
             ugcs = self._mapInfo.getUGCsMatchPolygons(ugcType,
                    geometryList, siteID=self._siteID)
+
+            uniqueUgcs = []        
+            for ugc in ugcs:        
+                if ugc in uniqueUgcs: continue        
+                uniqueUgcs.append(ugc)
             
-            uniqueUgcs = list(set(ugcs))
 
             hazardEvent.set('ugcs', uniqueUgcs)
                 
