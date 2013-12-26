@@ -206,8 +206,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             }
         } else if (newObj.equalsExact(oldObj)) {
             return false;
-        } else if (newObj.equals(oldObj)) {
-            return false;
         }
         return true;
     }

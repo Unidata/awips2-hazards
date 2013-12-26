@@ -43,7 +43,7 @@ TestCaseResults = \
     }, 
     "phenomenon": "FF", 
     "startTime": "2011-02-08 04:00:00", 
-    "geometry": [
+    "geometry": [[
         [
             -95.86844908574184, 
             41.29436510183439
@@ -315,7 +315,7 @@ TestCaseResults = \
         [
             -95.86844908574184, 
             41.29436510183439
-        ]
+        ]]
     ], 
     "state": "PENDING", 
     "hazardMode": "O", 

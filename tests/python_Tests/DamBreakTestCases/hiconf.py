@@ -44,7 +44,7 @@ TestCaseResults = \
     }, 
     "phenomenon": "FF", 
     "startTime": "2011-02-08 04:00:00", 
-    "geometry": [
+    "geometry": [[
         [
             -96.85449113562532, 
             40.96250664273423
@@ -1228,7 +1228,7 @@ TestCaseResults = \
         [
             -96.85449113562532, 
             40.96250664273423
-        ]
+        ]]
     ], 
     "subtype": "NonConvective", 
     "state": "PENDING", 

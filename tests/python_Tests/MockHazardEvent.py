@@ -13,6 +13,7 @@
  *                                     for VTEC tests
  *                                     but this one is specialized
  *                                     for Jim's Python Test Framework.
+ *
  * </pre>
  * 
  * @author blawrenc
@@ -246,7 +247,12 @@ class HazardEvent:
      *            the geometry to set
      '''
     def setGeometry(self, geometry):
-        self.geometry = list(geometry.exterior.coords)
+        coordList = []
+        
+        for geo in geometry:
+            coordList.append(list(geo.exterior.coords))
+                
+        self.geometry = coordList
 
     def getHazardAttributes(self):
         return self.hazardAttributes

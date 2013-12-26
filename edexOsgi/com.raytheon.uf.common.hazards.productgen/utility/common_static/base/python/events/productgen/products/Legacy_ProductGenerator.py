@@ -882,15 +882,17 @@ class Product(ProductTemplate.Product):
         return polyDict
 
     def _extractPolygons(self, hazardEvent):
-        polygons = hazardEvent.getGeometry()
+
         polygonPointLists = []            
-        if polygons.geom_type == HazardConstants.SHAPELY_POLYGON:
-            polygonPointLists.append(list(polygons.exterior.coords))
-        elif polygons.geom_type == HazardConstants.SHAPELY_POINT or polygons.geom_type == HazardConstants.SHAPELY_LINE:
-            polygonPointLists.append(list(polygons.coords))
-        else:
-            for polygon in polygons:
-                polygonPointLists.append(list(polygon.exterior.coords))
+        for geometry in hazardEvent.getGeometry():
+            
+            if geometry.geom_type == HazardConstants.SHAPELY_POLYGON:
+                polygonPointLists.append(list(geometry.exterior.coords))
+            elif geometry.geom_type == HazardConstants.SHAPELY_POINT or geometry.geom_type == HazardConstants.SHAPELY_LINE:
+                polygonPointLists.append(list(geometry.coords))
+            else:
+                for geo in geometry:
+                    polygonPointLists.append(list(geo.exterior.coords))
         return polygonPointLists
         
     def _createTimeMotionLocationEntry(self):
@@ -1002,28 +1004,33 @@ class Product(ProductTemplate.Product):
             # VTEC processing expects siteID4 e.g. KOAX instead of OAX
             hazardEvent.set('siteID4', str(self._fullStationID))
 
-            geometryType = hazardEvent.getGeometry().geom_type
+            geometryCollection = hazardEvent.getGeometry()
+            geometryList = []
             
-            if geometryType in [HazardConstants.SHAPELY_POLYGON, HazardConstants.SHAPELY_MULTIPOLYGON]:
-                geometryList = self._extractPolygons(hazardEvent)
-                ugcType = self._areaUgcType
-                hazardEvent.set('shapeType', 'polygon')
-            elif geometryType == HazardConstants.SHAPELY_LINE:
-                # For now, we treat line points as polygon points, and
-                # match UGCs from those. But really it should treat them
-                # as actual lines when matching UGCs. 
-                geometryList = [list(hazardEvent.getGeometry().coords)]
-                ugcType = self._areaUgcType
-                hazardEvent.set('shapeType', 'line')
-            else:
-                #  For point geometries, convert a lat/lon to a UGC
-                geometryList = [list(hazardEvent.getGeometry().coords)]
-                ugcType = self._pointUgcType
-                hazardEvent.set('shapeType', 'point')
-                
-                # Ensure the event has a pointID
-                if hazardEvent.get('pointID') is None:
-                    hazardEvent.set('pointID', 'XXXXX')
+            for geometry in geometryCollection:
+            
+                geometryType = geometry.geom_type
+            
+                if geometryType in [HazardConstants.SHAPELY_POLYGON, HazardConstants.SHAPELY_MULTIPOLYGON]:
+                    geometryList.extend(self._extractPolygons(hazardEvent))
+                    ugcType = self._areaUgcType
+                    hazardEvent.set('shapeType', 'polygon')
+                elif geometryType == HazardConstants.SHAPELY_LINE:
+                    # For now, we treat line points as polygon points, and
+                    # match UGCs from those. But really it should treat them
+                    # as actual lines when matching UGCs. 
+                    geometryList.append(list(geometry.coords))
+                    ugcType = self._areaUgcType
+                    hazardEvent.set('shapeType', 'line')
+                else:
+                    #  For point geometries, convert a lat/lon to a UGC
+                    geometryList.append(list(geometry.coords))
+                    ugcType = self._pointUgcType
+                    hazardEvent.set('shapeType', 'point')
+
+                    # Ensure the event has a pointID
+                    if hazardEvent.get('pointID') is None:
+                        hazardEvent.set('pointID', 'XXXXX')
 
             ugcs = self._mapInfo.getUGCsMatchPolygons(ugcType,
                    geometryList, siteID=self._siteID)

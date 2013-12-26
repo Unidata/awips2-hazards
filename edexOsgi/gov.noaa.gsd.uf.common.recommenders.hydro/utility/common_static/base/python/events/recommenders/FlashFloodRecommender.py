@@ -10,6 +10,7 @@ FFMP preprocessed data sources(QPE, QPF and Guidance).
 """
 import datetime
 import EventFactory
+import GeometryFactory
 import RecommenderTemplate
 import sys
 import EventSetFactory
@@ -444,7 +445,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     hazardEvent.setSignificance(FFW_SIGNIFICANCE)
                     hazardEvent.setSubtype(FFW_SUBTYPE)
                     geometry = basin[GEOMETRY_KEY]
-                    hazardEvent.setGeometry(geometry)
+                    hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
                     
                     currentTime = long(self.sessionAttributes['currentTime'])
                     

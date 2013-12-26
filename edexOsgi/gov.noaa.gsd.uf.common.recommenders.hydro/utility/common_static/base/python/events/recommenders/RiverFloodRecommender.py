@@ -175,8 +175,8 @@ def applySideEffects(triggerIdentifier, mutableProperties):
             geometry = GeometryFactory.createPolygon(hazardPolygon)
             geometryList.append(geometry)      
             
-        multiPolygon = GeometryFactory.createMultiPolygon(geometryList, 'polygons')
-        hazardEvent.setGeometry(multiPolygon)
+        geometryCollection = GeometryFactory.createCollection(geometryList)
+        hazardEvent.setGeometry(geometryCollection)
             
     def addFloodPolygons(self, hazardEvents):
         """

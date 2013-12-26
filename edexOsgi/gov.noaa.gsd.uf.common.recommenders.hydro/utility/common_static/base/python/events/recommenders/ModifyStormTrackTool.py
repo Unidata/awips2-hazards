@@ -371,7 +371,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardPolygon = forJavaObj.get("hazardPolygon")
         if hazardPolygon != None :
             geometry = GeometryFactory.createPolygon(hazardPolygon)
-            hazardEvent.setGeometry(geometry)
+            hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
         hazardEvent.setHazardAttributes(resultDict)
         return hazardEvent
 

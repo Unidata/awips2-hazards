@@ -624,6 +624,7 @@ public class HazardServicesDrawableBuilder {
             boolean drawHazardHatchArea, Geometry geometry) {
         AbstractDrawableComponent result;
         Class<?> geometryClass = geometry.getClass();
+
         if (geometryClass.equals(Point.class)) {
             result = buildPoint(hazardEvent, shapeNum, activeLayer, DOT);
 

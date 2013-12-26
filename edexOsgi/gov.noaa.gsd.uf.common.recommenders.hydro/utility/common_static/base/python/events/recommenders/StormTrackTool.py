@@ -327,7 +327,7 @@ class Recommender(RecommenderTemplate.Recommender):
         resultDict["stormTrackLine"] = \
             GeometryFactory.createLineString(forJavaObj["track"])
         geometry = GeometryFactory.createPolygon(forJavaObj["hazardPolygon"])
-        hazardEvent.setGeometry(geometry)
+        hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
 
         hazardEvent.setHazardMode("O")
         hazardEvent.setHazardAttributes(resultDict)

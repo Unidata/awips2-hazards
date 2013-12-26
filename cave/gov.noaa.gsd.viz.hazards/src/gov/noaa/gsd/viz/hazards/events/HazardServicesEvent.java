@@ -160,8 +160,9 @@ public class HazardServicesEvent {
                     }
                 }
 
-                Geometry geometry = geoFactory.createMultiPolygon(polygonList
-                        .toArray(new Polygon[0]));
+                Geometry geometry = geoFactory
+                        .createGeometryCollection(polygonList
+                                .toArray(new Geometry[0]));
                 baseEvent.setGeometry(geometry);
 
             } else {

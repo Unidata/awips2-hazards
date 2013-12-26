@@ -464,22 +464,28 @@ public class HazardEventUtilities {
             for (int i = 0; i < geometry.getNumGeometries(); ++i) {
                 for (IGeometryData geoData : geometryDataList) {
 
-                    Geometry clippedGeometry = geoFactory.createPolygon(null,
-                            null);
+                    for (int k = 0; k < geoData.getGeometry()
+                            .getNumGeometries(); ++k) {
 
-                    if (geoData.getGeometry().intersects(
-                            geometry.getGeometryN(i))) {
-                        Geometry intersectionGeometry = geoData.getGeometry()
-                                .intersection(geometry);
+                        Geometry clippedGeometry = geoFactory.createPolygon(
+                                null, null);
 
-                        clippedGeometry = clippedGeometry
-                                .union(intersectionGeometry);
+                        if (geoData.getGeometry().getGeometryN(k)
+                                .intersects(geometry.getGeometryN(i))) {
+                            Geometry intersectionGeometry = geoData
+                                    .getGeometry().getGeometryN(k)
+                                    .intersection(geometry.getGeometryN(i));
 
-                        for (int j = 0; j < clippedGeometry.getNumGeometries(); ++j) {
-                            DefaultGeometryData clippedGeoData = new DefaultGeometryData();
-                            clippedGeoData.setGeometry(clippedGeometry
-                                    .getGeometryN(j));
-                            clippedGeometries.add(clippedGeoData);
+                            clippedGeometry = clippedGeometry
+                                    .union(intersectionGeometry);
+
+                            for (int j = 0; j < clippedGeometry
+                                    .getNumGeometries(); ++j) {
+                                DefaultGeometryData clippedGeoData = new DefaultGeometryData();
+                                clippedGeoData.setGeometry(clippedGeometry
+                                        .getGeometryN(j));
+                                clippedGeometries.add(clippedGeoData);
+                            }
                         }
                     }
                 }

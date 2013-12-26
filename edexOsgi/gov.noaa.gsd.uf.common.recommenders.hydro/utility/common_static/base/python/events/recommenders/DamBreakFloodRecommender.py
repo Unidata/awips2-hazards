@@ -151,7 +151,8 @@ class Recommender(RecommenderTemplate.Recommender):
                                    startTime / MILLIS_PER_SECOND))
         hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
                                    endTime / MILLIS_PER_SECOND))
-        hazardEvent.setGeometry(GeometryFactory.createPolygon(hazardGeometry))
+        hazardPolygon = GeometryFactory.createPolygon(hazardGeometry) 
+        hazardEvent.setGeometry(GeometryFactory.createCollection([hazardPolygon]))
 
         hazardEvent.setHazardAttributes({"cause":"Dam Failure",
                                           "damName":damName

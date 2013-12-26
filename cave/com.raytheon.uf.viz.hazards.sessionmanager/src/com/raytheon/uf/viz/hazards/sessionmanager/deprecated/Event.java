@@ -43,10 +43,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Lineal;
-import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Polygonal;
@@ -564,14 +564,11 @@ public class Event {
     public Geometry getGeometry() {
         assert (shapes != null && shapes.length != 0);
         List<Geometry> geometries = Lists.newArrayList();
-        boolean onlyPolygons = true;
         for (Shape shape : shapes) {
             if (shape.getShapeType().equals("point")) {
                 geometries.add(buildPoint(shape));
-                onlyPolygons = false;
             } else if (shape.getShapeType().equals("line")) {
                 geometries.add(buildLine(shape));
-                onlyPolygons = false;
             } else if (shape.getShapeType().equals("polygon")) {
                 geometries.add(buildPolygon(shape));
             } else {
@@ -580,16 +577,10 @@ public class Event {
                                 + shape.getShapeType() + "\"");
             }
         }
-        Geometry result;
-        if (geometries.size() == 1) {
-            result = geometries.get(0);
-        } else if (onlyPolygons) {
-            result = new MultiPolygon(geometries.toArray(new Polygon[geometries
-                    .size()]), geometryFactory);
-        } else {
-            throw new IllegalStateException(
-                    "Cannot get geometry for multiple shapes including at least one non-polygon");
-        }
+
+        Geometry result = new GeometryCollection(
+                geometries.toArray(new Geometry[geometries.size()]),
+                geometryFactory);
 
         return result;
     }
