@@ -116,7 +116,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                 Dict floodEvent = (Dict) shapes.get(0);
                 List<List<Double>> points = floodEvent
                         .getDynamicallyTypedValue(HazardConstants.POINTS);
-                List<Double> onePoint = points.get(3);
+                List<Double> onePoint = points.get(1);
                 onePoint.set(1, 39.0);
                 modifiedEvent.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
                         eventID);

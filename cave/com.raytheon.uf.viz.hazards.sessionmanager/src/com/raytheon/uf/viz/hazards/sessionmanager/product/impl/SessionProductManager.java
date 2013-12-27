@@ -248,92 +248,100 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void generate(ProductInformation information, boolean issue) {
-        EventSet<IEvent> events = new EventSet<IEvent>();
-        events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
-                .getCurrentTime().getTime());
-        events.addAttribute(HazardConstants.SITEID, configManager.getSiteID());
-        events.addAttribute(HazardConstants.BACKUP_SITEID, LocalizationManager
-                .getInstance().getCurrentSite());
-        String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
-                .toString() : HazardEventManager.Mode.OPERATIONAL.toString();
-        events.addAttribute("hazardMode", mode);
-        String runMode = CAVEMode.getMode().toString();
-        events.addAttribute("runMode", runMode);
-        events.addAttribute("vtecMode", "O");
 
-        if (issue) {
-            events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
-        } else {
-            events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
-        }
+        if (eventManager.clipSelectedHazardGeometries()) {
 
-        HashMap<String, String> sessionDict = new HashMap<String, String>();
-        // TODO
-        // There is no operational database currently.
-        // When this is fixed, then the correct CAVEMode needs to
-        // be entered into the sessionDict.
-        // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
-        // .toString());
-        sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
-        events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
+            eventManager.reduceSelectedHazardGeometries();
 
-        if (information.getDialogSelections() != null) {
-            for (Entry<String, String> entry : information
-                    .getDialogSelections().entrySet()) {
-                events.addAttribute(entry.getKey(), entry.getValue());
+            EventSet<IEvent> events = new EventSet<IEvent>();
+            events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
+                    .getCurrentTime().getTime());
+            events.addAttribute(HazardConstants.SITEID,
+                    configManager.getSiteID());
+            events.addAttribute(HazardConstants.BACKUP_SITEID,
+                    LocalizationManager.getInstance().getCurrentSite());
+            String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
+                    .toString() : HazardEventManager.Mode.OPERATIONAL
+                    .toString();
+            events.addAttribute("hazardMode", mode);
+            String runMode = CAVEMode.getMode().toString();
+            events.addAttribute("runMode", runMode);
+            events.addAttribute("vtecMode", "O");
+
+            if (issue) {
+                events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
+            } else {
+                events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
             }
-        }
-        for (IHazardEvent event : information.getProductEvents()) {
-            event = new BaseHazardEvent(event);
-            for (Entry<String, Serializable> entry : event
-                    .getHazardAttributes().entrySet()) {
-                if (entry.getValue() instanceof Date) {
-                    entry.setValue(((Date) entry.getValue()).getTime());
+
+            HashMap<String, String> sessionDict = new HashMap<String, String>();
+            // TODO
+            // There is no operational database currently.
+            // When this is fixed, then the correct CAVEMode needs to
+            // be entered into the sessionDict.
+            // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
+            // .toString());
+            sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
+            events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
+
+            if (information.getDialogSelections() != null) {
+                for (Entry<String, String> entry : information
+                        .getDialogSelections().entrySet()) {
+                    events.addAttribute(entry.getKey(), entry.getValue());
                 }
             }
-            String headline = configManager.getHeadline(event);
-            event.addHazardAttribute(HazardConstants.HEADLINE, headline);
-            if (event.getHazardAttribute(HazardConstants.FORECAST_POINT) != null) {
-                event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                        HazardConstants.POINT_TYPE);
-            } else {
-                Class<?> geometryClass = event.getGeometry().getClass();
-                if (geometryClass.equals(Point.class)) {
+            for (IHazardEvent event : information.getProductEvents()) {
+                event = new BaseHazardEvent(event);
+                for (Entry<String, Serializable> entry : event
+                        .getHazardAttributes().entrySet()) {
+                    if (entry.getValue() instanceof Date) {
+                        entry.setValue(((Date) entry.getValue()).getTime());
+                    }
+                }
+                String headline = configManager.getHeadline(event);
+                event.addHazardAttribute(HazardConstants.HEADLINE, headline);
+                if (event.getHazardAttribute(HazardConstants.FORECAST_POINT) != null) {
                     event.addHazardAttribute(HazardConstants.GEO_TYPE,
                             HazardConstants.POINT_TYPE);
-                } else if (geometryClass.equals(LineString.class)) {
-                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                            HazardConstants.LINE_TYPE);
                 } else {
-                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                            HazardConstants.AREA_TYPE);
+                    Class<?> geometryClass = event.getGeometry().getClass();
+                    if (geometryClass.equals(Point.class)) {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.POINT_TYPE);
+                    } else if (geometryClass.equals(LineString.class)) {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.LINE_TYPE);
+                    } else {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.AREA_TYPE);
+                    }
                 }
-            }
-            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
+                event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
 
-            /*
-             * Need to re-initialize product information when issuing
-             */
-            if (issue) {
-                event.removeHazardAttribute(HazardConstants.EXPIRATIONTIME);
-                event.removeHazardAttribute(HazardConstants.ISSUETIME);
-                event.removeHazardAttribute(HazardConstants.VTEC_CODES);
-                event.removeHazardAttribute(HazardConstants.ETNS);
-                event.removeHazardAttribute(HazardConstants.PILS);
-            }
-            event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+                /*
+                 * Need to re-initialize product information when issuing
+                 */
+                if (issue) {
+                    event.removeHazardAttribute(HazardConstants.EXPIRATIONTIME);
+                    event.removeHazardAttribute(HazardConstants.ISSUETIME);
+                    event.removeHazardAttribute(HazardConstants.VTEC_CODES);
+                    event.removeHazardAttribute(HazardConstants.ETNS);
+                    event.removeHazardAttribute(HazardConstants.PILS);
+                }
+                event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
+                event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
+                event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+                event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
 
-            events.add(event);
+                events.add(event);
+            }
+
+            String product = information.getProductName();
+            String[] formats = information.getFormats();
+            IPythonJobListener<List<IGeneratedProduct>> listener = new JobListener(
+                    issue, notificationSender, information);
+            productGen.generate(product, events, formats, listener);
         }
-
-        String product = information.getProductName();
-        String[] formats = information.getFormats();
-        IPythonJobListener<List<IGeneratedProduct>> listener = new JobListener(
-                issue, notificationSender, information);
-        productGen.generate(product, events, formats, listener);
     }
 
     @Override

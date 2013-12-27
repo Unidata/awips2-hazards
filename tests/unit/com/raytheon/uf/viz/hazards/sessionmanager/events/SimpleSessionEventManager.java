@@ -163,7 +163,18 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     public void proposeEvent(IHazardEvent event) {
     }
 
+    @Override
     public void modifyEventArea(String jsonText) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean clipSelectedHazardGeometries() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void reduceSelectedHazardGeometries() {
         throw new UnsupportedOperationException();
     }
 

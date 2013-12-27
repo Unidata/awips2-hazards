@@ -306,7 +306,7 @@ public interface ISessionEventManager {
      */
     public void proposeEvent(IHazardEvent event);
 
-     /**
+    /**
      * @return id of the most recently selected event
      */
     @Deprecated
@@ -318,5 +318,25 @@ public interface ISessionEventManager {
      */
     @Deprecated
     void modifyEventArea(String jsonText);
+
+    /**
+     * Clips the selected hazard geometries to the cwa or hsa boundaries as
+     * specified in the hazard type definition in HazardTypes.py.
+     * 
+     * @param
+     * @return true - this function successfully clipped the hazard geometries
+     *         false - this function failed, probably because a geometry was
+     *         outside of the forecast area (cwa or hsa).
+     */
+    boolean clipSelectedHazardGeometries();
+
+    /**
+     * If a point limit is specified in hazard types, then the number of points
+     * in the geometry are reduced to match that limit.
+     * 
+     * @param
+     * @return
+     */
+    void reduceSelectedHazardGeometries();
 
 }

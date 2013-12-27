@@ -61,6 +61,10 @@ public class HazardTypeEntry {
 
     private String hazardHatchLabel;
 
+    private String hazardClipArea;
+
+    private int hazardPointLimit;
+
     public String getHeadline() {
         return headline;
     }
@@ -144,9 +148,40 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @param hazardHatchLabel the hazardHatchLabel to set
+     * @param hazardHatchLabel
+     *            the hazardHatchLabel to set
      */
     public void setHazardHatchLabel(String hazardHatchLabel) {
         this.hazardHatchLabel = hazardHatchLabel;
+    }
+
+    /**
+     * @return the hazardClipArea
+     */
+    public String getHazardClipArea() {
+        return hazardClipArea;
+    }
+
+    /**
+     * @param hazardClipArea
+     *            the hazardClipArea to set
+     */
+    public void setHazardClipArea(String hazardClipArea) {
+        this.hazardClipArea = hazardClipArea;
+    }
+
+    /**
+     * @return the hazardPointLimit
+     */
+    public int getHazardPointLimit() {
+        return hazardPointLimit;
+    }
+
+    /**
+     * @param hazardPointLimit
+     *            the hazardPointLimit to set
+     */
+    public void setHazardPointLimit(int hazardPointLimit) {
+        this.hazardPointLimit = hazardPointLimit;
     }
 }

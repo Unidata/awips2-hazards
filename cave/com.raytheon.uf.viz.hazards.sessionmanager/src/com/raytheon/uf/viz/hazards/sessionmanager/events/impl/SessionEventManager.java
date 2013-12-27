@@ -39,6 +39,9 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.time.DateUtils;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -82,6 +85,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
 /**
  * Implementation of ISessionEventManager
@@ -115,6 +120,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
+
+    /**
+     * Default distance tolerance and increment for use in geometry point
+     * reduction algorithm.
+     */
+    private static double DEFAULT_DISTANCE_TOLERANCE = 0.001f;
+
+    private static double DEFAULT_DISTANCE_TOLERANCE_INCREMENT = 0.001f;
 
     private final ISessionTimeManager timeManager;
 
@@ -1019,6 +1032,141 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
+    @Override
+    public boolean clipSelectedHazardGeometries() {
+        /*
+         * Clip the selected hazard polygons to the forecast area boundary. If
+         * the returned polygon is empty, then do not generate the product.
+         */
+        boolean success = true;
+
+        GeometryFactory geoFactory = new GeometryFactory();
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+        Collection<IHazardEvent> selectedEvents = this.getSelectedEvents();
+        String cwa = LocalizationManager.getContextName(LocalizationLevel.SITE);
+
+        for (IHazardEvent selectedEvent : selectedEvents) {
+
+            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                    .getHazardType());
+
+            if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
+                    .getState() != HazardState.ISSUED)
+                    || (selectedEvent.getState() == HazardState.ISSUED
+                            && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
+                                .isModified())) {
+
+                Set<IGeometryData> geoDataSet = HazardEventUtilities
+                        .getClippedMapGeometries(
+                                hazardType.getHazardClipArea(), null, cwa,
+                                selectedEvent);
+
+                List<Geometry> geometryList = Lists.newArrayList();
+
+                for (IGeometryData geoData : geoDataSet) {
+                    for (int i = 0; i < geoData.getGeometry()
+                            .getNumGeometries(); ++i) {
+                        geometryList.add(geoData.getGeometry().getGeometryN(i));
+                    }
+                }
+
+                if (geometryList.isEmpty()) {
+                    Shell shell = PlatformUI.getWorkbench()
+                            .getActiveWorkbenchWindow().getShell();
+                    StringBuffer errorMessage = new StringBuffer();
+                    errorMessage.append("Event " + selectedEvent.getEventID()
+                            + " ");
+                    errorMessage.append("is outside of the forecast area.\n");
+                    errorMessage.append("Product generation halted.");
+                    MessageDialog dialog = new MessageDialog(shell,
+                            "Invalid Hazard", null, errorMessage.toString(),
+                            MessageDialog.ERROR, new String[] { "OK" }, 0);
+                    dialog.open();
+                    success = false;
+                    break;
+                }
+
+                Geometry geoCollection = geoFactory
+                        .createGeometryCollection(geometryList
+                                .toArray(new Geometry[0]));
+                selectedEvent.setGeometry(geoCollection);
+            }
+        }
+
+        return success;
+    }
+
+    @Override
+    public void reduceSelectedHazardGeometries() {
+
+        GeometryFactory geoFactory = new GeometryFactory();
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+        Collection<IHazardEvent> selectedEvents = getSelectedEvents();
+
+        for (IHazardEvent selectedEvent : selectedEvents) {
+
+            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                    .getHazardType());
+
+            if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
+                    .getState() != HazardState.ISSUED)
+                    || (selectedEvent.getState() == HazardState.ISSUED
+                            && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
+                                .isModified())) {
+
+                /*
+                 * Test if point reduction is necessary...
+                 */
+                int pointLimit = hazardType.getHazardPointLimit();
+
+                if (pointLimit > 0) {
+
+                    List<Geometry> geometryList = Lists.newArrayList();
+
+                    /**
+                     * TODO: Eventually we want to share the same logic WarnGen
+                     * uses to reduce points. This is not accessible right not,
+                     * at least without creating a dependency between Hazard
+                     * Services and WarnGen.
+                     */
+                    Geometry geometryCollection = selectedEvent.getGeometry();
+
+                    for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
+
+                        Geometry geometry = geometryCollection.getGeometryN(i);
+
+                        if (geometry.getNumPoints() > pointLimit) {
+
+                            double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
+
+                            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
+                                    geometry);
+                            Geometry newGeometry = null;
+
+                            do {
+                                simplifier
+                                        .setDistanceTolerance(distanceTolerance);
+                                newGeometry = simplifier.getResultGeometry();
+                                distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
+                            } while (newGeometry.getNumPoints() > pointLimit);
+
+                            geometryList.add(newGeometry);
+                        } else {
+                            geometryList.add(geometry);
+                        }
+                    }
+
+                    Geometry geoCollection = geoFactory
+                            .createGeometryCollection(geometryList
+                                    .toArray(new Geometry[0]));
+                    selectedEvent.setGeometry(geoCollection);
+
+                }
+
+            }
+        }
+    }
+
     /**
      * Clears the undo/redo stack for the hazard event.
      * 
@@ -1029,4 +1177,5 @@ public class SessionEventManager extends AbstractSessionEventManager {
     private void clearUndoRedo(IHazardEvent event) {
         ((IUndoRedoable) event).clearUndoRedo();
     }
+
 }

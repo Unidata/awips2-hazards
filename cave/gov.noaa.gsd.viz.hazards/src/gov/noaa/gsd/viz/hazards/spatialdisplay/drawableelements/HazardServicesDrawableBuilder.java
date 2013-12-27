@@ -598,9 +598,9 @@ public class HazardServicesDrawableBuilder {
              */
             if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
 
-                hazardArea = HazardEventUtilities.buildHatchedAreaForEvent(
+                hazardArea = HazardEventUtilities.getIntersectingMapGeometries(
                         HazardConstants.MAPDATA_COUNTY, mapLabelParameter, cwa,
-                        hazardEvent);
+                        true, hazardEvent);
 
                 for (IGeometryData geometryData : hazardArea) {
                     Point centroid = geometryData.getGeometry().getCentroid();

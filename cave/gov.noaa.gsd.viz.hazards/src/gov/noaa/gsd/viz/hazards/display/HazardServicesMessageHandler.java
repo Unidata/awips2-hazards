@@ -7,15 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ADD_PENDING_TO_SELECTED_ON;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATIONTIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUETIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;

@@ -68,6 +68,11 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 public class HazardEventUtilities {
 
     /**
+     * Precision for deciding when two geometries intersect.
+     */
+    private static double minimumIntersectionPercentage = 0.05f;
+
+    /**
      * Map for caching geometries retrieved from the geo database.
      */
     private static Map<String, Map<String, List<IGeometryData>>> mapGeometryCache = Maps
@@ -120,13 +125,18 @@ public class HazardEventUtilities {
      *            The identifier of the county warning area (e.g. OAX)
      * @param eventList
      *            A list of one or more events.
+     * @param applyIntersectionThreshold
+     *            Whether or not an intersection threshold is applied to the
+     *            hazard. This is generally used for short-fused hazards in
+     *            determining which counties are included as a part of the
+     *            products associated with the hazard.
      * 
      * @return A set of intersecting map db geometries. This set will be empty
      *         if there are no intersecting geometries.
      */
     public static Set<IGeometryData> getIntersectingMapGeometries(
             String mapDBtableName, String labelParameter, String cwa,
-            final IHazardEvent... eventList) {
+            boolean applyIntersectionThreshold, final IHazardEvent... eventList) {
 
         List<Geometry> geometryList = Lists.newArrayList();
 
@@ -135,7 +145,7 @@ public class HazardEventUtilities {
         }
 
         return getIntersectingMapGeometries(mapDBtableName, labelParameter,
-                cwa, geometryList);
+                cwa, applyIntersectionThreshold, geometryList);
     }
 
     /**
@@ -149,6 +159,11 @@ public class HazardEventUtilities {
      *            labeling.
      * @param cwa
      *            The identifier of the county warning area (e.g. OAX)
+     * @param applyIntersectionThreshold
+     *            Whether or not an intersection threshold is applied to the
+     *            hazard. This is generally used for short-fused hazards in
+     *            determining which counties are included as a part of the
+     *            products associated with the hazard.
      * @param geometryList
      *            A list of one or more geometries
      * 
@@ -158,7 +173,7 @@ public class HazardEventUtilities {
 
     public static Set<IGeometryData> getIntersectingMapGeometries(
             String mapDBtableName, String labelParameter, String cwa,
-            List<Geometry> geometryList) {
+            boolean applyIntersectionThreshold, List<Geometry> geometryList) {
 
         Set<IGeometryData> intersectingGeometries = Sets.newHashSet();
 
@@ -174,10 +189,29 @@ public class HazardEventUtilities {
                 for (Geometry geometry : geometryList) {
 
                     for (int i = 0; i < geometry.getNumGeometries(); ++i) {
-                        if (geometry.getGeometryN(i).intersects(
-                                mapGeometry.getGeometryN(j))) {
-                            intersectingGeometries.add(geoData);
-                            continue outer;
+
+                        Geometry hazardGeometry = geometry.getGeometryN(i);
+                        Geometry mapdbGeometry = mapGeometry.getGeometryN(j);
+
+                        if (hazardGeometry.intersects(mapdbGeometry)) {
+                            if (applyIntersectionThreshold) {
+                                Geometry intersection = hazardGeometry
+                                        .intersection(mapdbGeometry);
+
+                                double intersectionPercentage = intersection
+                                        .getArea() / mapdbGeometry.getArea();
+                                if (intersectionPercentage > minimumIntersectionPercentage
+                                        || mapdbGeometry
+                                                .contains(hazardGeometry)
+                                        || hazardGeometry
+                                                .contains(mapdbGeometry)) {
+                                    intersectingGeometries.add(geoData);
+                                    continue outer;
+                                }
+                            } else {
+                                intersectingGeometries.add(geoData);
+                                continue outer;
+                            }
                         }
                     }
                 }
@@ -313,7 +347,7 @@ public class HazardEventUtilities {
         } else {
             Set<IGeometryData> intersectingGeometries = HazardEventUtilities
                     .getIntersectingMapGeometries(mapDBtableName,
-                            labelParameter, cwa, hazardEvent);
+                            labelParameter, cwa, false, hazardEvent);
 
             hatchedArea.addAll(intersectingGeometries);
 
@@ -387,7 +421,8 @@ public class HazardEventUtilities {
                 for (Geometry geometry : geometryList) {
                     for (int i = 0; i < geometry.getNumGeometries(); ++i) {
 
-                        if (geometry.getGeometryN(i).contains(mapGeometry)) {
+                        if (geometry.getGeometryN(i).contains(
+                                mapGeometry.getGeometryN(j))) {
                             containedGeometries.add(geoData);
                             continue outer;
                         }
@@ -662,4 +697,5 @@ public class HazardEventUtilities {
         }
         return false;
     }
+
 }
