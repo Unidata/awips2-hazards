@@ -75,6 +75,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -125,7 +126,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * @version 1.0
  */
 public class HazardServicesAppBuilder implements IPerspectiveListener4,
-        IGlobalChangedListener, IWorkbenchListener {
+        IGlobalChangedListener, IWorkbenchListener, IMessenger {
 
     // Public Static Constants
 
@@ -266,17 +267,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private AlertVizPresenter alertVizPresenter;
 
-    public interface IQuestionAnswerer {
-        public boolean getUserAnswerToQuestion(String question);
-    }
-
-    /**
-     * Interface defining a warner.
-     */
-    public interface IWarner {
-        public void warnUser(String warning);
-    }
-
     private IQuestionAnswerer questionAnswerer;
 
     /**
@@ -347,7 +337,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * practice mode.
          */
         currentTime = SimulatedTime.getSystemTime().getTime();
-        this.sessionManager = SessionManagerFactory.getSessionManager();
+        this.sessionManager = SessionManagerFactory.getSessionManager(this);
 
         messageHandler = new HazardServicesMessageHandler(this, currentTime, "");
 
@@ -1153,6 +1143,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.questionAnswerer = questionAnswerer;
     }
 
+    @Override
     public IQuestionAnswerer getQuestionAnswerer() {
         return questionAnswerer;
     }
@@ -1163,6 +1154,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param
      * @return The warner.
      */
+    @Override
     public IWarner getWarner() {
         return warner;
     }

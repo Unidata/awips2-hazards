@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 
 /**
  * This is the preferred method of obtaining a new ISessionManager. This
@@ -48,8 +49,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 
 public class SessionManagerFactory {
 
-    public static ISessionManager getSessionManager() {
+    public static ISessionManager getSessionManager(IMessenger messenger) {
         return new SessionManager(PathManagerFactory.getPathManager(),
-                new HazardEventManager(HazardEventManager.Mode.PRACTICE));
+                new HazardEventManager(HazardEventManager.Mode.PRACTICE),
+                messenger);
     }
 }

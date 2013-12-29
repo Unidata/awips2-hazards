@@ -39,9 +39,6 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang.time.DateUtils;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -81,6 +78,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -151,10 +149,21 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private ISimulatedTimeChangeListener timeListener;
 
+    /*
+     * The messenger for displaying questions and warnings to the user and
+     * retrieving answers. This allows the viz side (App Builder) to be
+     * responsible for these dialogs, but gives the event manager and other
+     * managers access to them without creating a dependency on the
+     * gov.noaa.gsd.viz.hazards plugin. Since all parts of Hazard Services can
+     * use the same code for creating these dialogs, it makes it easier for them
+     * to be stubbed for testing.
+     */
+    private final IMessenger messenger;
+
     public SessionEventManager(ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             IHazardEventManager dbManager,
-            ISessionNotificationSender notificationSender) {
+            ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.configManager = configManager;
         this.timeManager = timeManager;
         this.dbManager = dbManager;
@@ -162,6 +171,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         new SessionHazardNotificationListener(this);
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 createTimeListener());
+        this.messenger = messenger;
     }
 
     @Subscribe
@@ -1071,17 +1081,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 }
 
                 if (geometryList.isEmpty()) {
-                    Shell shell = PlatformUI.getWorkbench()
-                            .getActiveWorkbenchWindow().getShell();
-                    StringBuffer errorMessage = new StringBuffer();
-                    errorMessage.append("Event " + selectedEvent.getEventID()
+                    StringBuffer warningMessage = new StringBuffer();
+                    warningMessage.append("Event " + selectedEvent.getEventID()
                             + " ");
-                    errorMessage.append("is outside of the forecast area.\n");
-                    errorMessage.append("Product generation halted.");
-                    MessageDialog dialog = new MessageDialog(shell,
-                            "Invalid Hazard", null, errorMessage.toString(),
-                            MessageDialog.ERROR, new String[] { "OK" }, 0);
-                    dialog.open();
+                    warningMessage.append("is outside of the forecast area.\n");
+                    warningMessage.append("Product generation halted.");
+                    messenger.getWarner().warnUser(warningMessage.toString());
                     success = false;
                     break;
                 }

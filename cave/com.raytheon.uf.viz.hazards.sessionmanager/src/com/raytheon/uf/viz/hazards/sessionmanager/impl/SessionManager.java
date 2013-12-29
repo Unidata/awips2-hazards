@@ -65,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.TemporalComponentDa
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -151,8 +152,18 @@ public class SessionManager implements ISessionManager {
      */
     private boolean hatchAreaDisplay = false;
 
+    /*
+     * Messenger for displaying questions and warnings to the user and
+     * retrieving answers. This allows the viz side (App Builder) to be
+     * responsible for these dialogs, but gives the session manager and other
+     * managers access to them without creating a dependency on the
+     * gov.noaa.gsd.viz.hazards plugin. Since all parts of Hazard Services can
+     * use the same code for creating these dialogs, it makes it easier for them
+     * to be stubbed for testing.
+     */
+
     public SessionManager(IPathManager pathManager,
-            IHazardEventManager hazardEventManager) {
+            IHazardEventManager hazardEventManager, IMessenger messenger) {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         eventBus = new EventBus();
@@ -161,7 +172,7 @@ public class SessionManager implements ISessionManager {
         timeManager = new SessionTimeManager(sender);
         configManager = new SessionConfigurationManager(pathManager, sender);
         eventManager = new SessionEventManager(timeManager, configManager,
-                hazardEventManager, sender);
+                hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(timeManager, configManager,
                 eventManager, sender);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
