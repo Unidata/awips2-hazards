@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
@@ -23,6 +24,7 @@ import gov.noaa.nws.ncep.ui.pgen.display.DisplayProperties;
 import gov.noaa.nws.ncep.ui.pgen.display.ElementContainerFactory;
 import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
@@ -812,11 +814,15 @@ public class ToolLayer extends
         // This ensures that they scale properly as
         // the user zooms in/out of the display.
         // Only do this if the user is zooming.
-        if (el instanceof Symbol) {
+        if (el instanceof Symbol || el instanceof Text) {
             if ((paintProps.isZooming())
                     || (previousZoomLevel != paintProps.getZoomLevel())) {
                 previousZoomLevel = paintProps.getZoomLevel();
                 displayMap.remove(el);
+
+                if (el instanceof HazardServicesText) {
+                    ((HazardServicesText) el).updatePosition();
+                }
             }
         }
 
@@ -990,9 +996,15 @@ public class ToolLayer extends
      */
     public String elementClicked(AbstractDrawableComponent element,
             boolean multipleSelection, boolean fireEvent) {
+
+        if (element instanceof DECollection) {
+            element = ((DECollection) element).getItemAt(0);
+        }
+
         if (element instanceof IHazardServicesShape) {
 
             String clickedEventId = ((IHazardServicesShape) element).getID();
+
             if (fireEvent) {
 
                 /*
@@ -1510,7 +1522,9 @@ public class ToolLayer extends
             throws VizException {
 
         if ((selectedHazardIHISLayer != null) && (drawSelectedHandleBars)) {
-            if (((IHazardServicesShape) selectedHazardIHISLayer).isEditable()) {
+            if ((selectedHazardIHISLayer instanceof IHazardServicesShape)
+                    && ((IHazardServicesShape) selectedHazardIHISLayer)
+                            .isEditable()) {
 
                 if (!handleBarPoints.isEmpty()) {
 

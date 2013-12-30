@@ -229,7 +229,7 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
             radius = 5.0;
         }
         Coordinate centerPointInWorld = hazardEvent.getGeometry()
-                .getCoordinate();
+                .getGeometryN(shapeNum).getCoordinate();
 
         List<Coordinate> result = buildCircleCoordinates(radius,
                 centerPointInWorld);

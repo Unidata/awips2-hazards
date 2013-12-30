@@ -167,8 +167,7 @@ def applySideEffects(triggerIdentifier, mutableProperties):
         point = forecastPointDict.get(POINT)
         coords = [float(point[0]), float(point[1])]
         pointGeometry = GeometryFactory.createPoint(coords)
-        defaultFloodPolygon = pointGeometry.buffer(DEFAULT_POLYGON_BUFFER)
-        geometryList = [defaultFloodPolygon]
+        geometryList = [pointGeometry]
                 
         if id in self.hazardPolygonDict:
             hazardPolygon = self.hazardPolygonDict[id]

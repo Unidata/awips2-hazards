@@ -40,6 +40,11 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
 
     private String id;
 
+    /*
+     * The center point of the drawable that the text is annotating.
+     */
+    private final Coordinate textCoordinate;
+
     /**
      * 
      * @param drawingAttributes
@@ -65,6 +70,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
             Layer activeLayer, String id) {
         this.id = id;
         this.drawingAttributes = drawingAttributes;
+        this.textCoordinate = textCoord;
         update(drawingAttributes);
         setPgenCategory(pgenCategory);
         setPgenType(pgenType);
@@ -74,9 +80,7 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
 
         // Allow the TextPositioner to adjust the label's location
         // relative to the centroid of the hazard area.
-        TextPositioner textPositioner = drawingAttributes.getTextPosition();
-        Coordinate labelCoord = textPositioner.getLabelPosition(textCoord);
-        setLocation(labelCoord);
+        updatePosition();
 
         setStyle(FontStyle.BOLD);
 
@@ -182,6 +186,19 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
     @Override
     public void setIsEditable(boolean isEditable) {
         throw new UnsupportedOperationException("Text is never editable");
+    }
+
+    /**
+     * Updates the position of this text object relative to the centroid of the
+     * hazard area.
+     * 
+     * @param
+     * @return
+     */
+    public void updatePosition() {
+        TextPositioner textPositioner = drawingAttributes.getTextPosition();
+        Coordinate labelCoord = textPositioner.getLabelPosition(textCoordinate);
+        setLocation(labelCoord);
     }
 
 }
