@@ -34,6 +34,7 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -49,6 +50,7 @@ import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
@@ -63,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
@@ -133,15 +136,27 @@ public class SessionProductManager implements ISessionProductManager {
 
     private final ProductGeneration productGen;
 
+    /*
+     * The messenger for displaying questions and warnings to the user and
+     * retrieving answers. This allows the viz side (App Builder) to be
+     * responsible for these dialogs, but gives the event manager and other
+     * managers access to them without creating a dependency on the
+     * gov.noaa.gsd.viz.hazards plugin. Since all parts of Hazard Services can
+     * use the same code for creating these dialogs, it makes it easier for them
+     * to be stubbed for testing.
+     */
+    private final IMessenger messenger;
+
     public SessionProductManager(ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             ISessionEventManager eventManager,
-            ISessionNotificationSender notificationSender) {
+            ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.timeManager = timeManager;
         this.configManager = configManager;
         this.eventManager = eventManager;
         this.notificationSender = notificationSender;
         this.productGen = new ProductGeneration();
+        this.messenger = messenger;
     }
 
     @Override
@@ -249,7 +264,8 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void generate(ProductInformation information, boolean issue) {
 
-        if (eventManager.clipSelectedHazardGeometries()) {
+        if (validateSelectedHazardsForProductGeneration()
+                && eventManager.clipSelectedHazardGeometries()) {
 
             eventManager.reduceSelectedHazardGeometries();
 
@@ -547,6 +563,46 @@ public class SessionProductManager implements ISessionProductManager {
         /**
          * Nothing to do right now.
          */
+    }
+
+    @Override
+    public boolean validateSelectedHazardsForProductGeneration() {
+
+        Collection<IHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        Date simulatedTime = SimulatedTime.getSystemTime().getTime();
+        List<String> eventIds = Lists.newArrayList();
+
+        for (IHazardEvent selectedEvent : selectedEvents) {
+
+            /*
+             * Test if the end time of the selected event is in the past.
+             * Products will not be generated for events with end times in the
+             * past.
+             */
+            if (selectedEvent.getEndTime().before(simulatedTime)) {
+                eventIds.add(selectedEvent.getEventID());
+            }
+        }
+
+        if (!eventIds.isEmpty()) {
+            StringBuffer warningMessage = new StringBuffer();
+            warningMessage.append(eventIds.size() > 1 ? "Events " : "Event ");
+
+            for (String eventId : eventIds) {
+                warningMessage.append(eventId);
+                warningMessage.append(", ");
+            }
+
+            warningMessage.deleteCharAt(warningMessage.lastIndexOf(","));
+            warningMessage.append(eventIds.size() > 1 ? "have end times "
+                    : "has an end time ");
+            warningMessage.append("before the CAVE time.\n");
+            warningMessage.append("Product generation halted.");
+            messenger.getWarner().warnUser(warningMessage.toString());
+        }
+
+        return eventIds.isEmpty() ? true : false;
     }
 
 }

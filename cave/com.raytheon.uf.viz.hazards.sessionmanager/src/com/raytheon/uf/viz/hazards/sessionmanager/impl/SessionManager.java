@@ -174,7 +174,7 @@ public class SessionManager implements ISessionManager {
         eventManager = new SessionEventManager(timeManager, configManager,
                 hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(timeManager, configManager,
-                eventManager, sender);
+                eventManager, sender, messenger);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,

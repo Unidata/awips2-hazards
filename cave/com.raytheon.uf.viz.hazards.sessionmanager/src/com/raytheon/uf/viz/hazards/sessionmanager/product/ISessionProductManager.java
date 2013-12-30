@@ -69,4 +69,14 @@ public interface ISessionProductManager {
      * Execute any shutdown needed.
      */
     public void shutdown();
+
+    /**
+     * Validate the selected events before product generation.
+     * 
+     * @param
+     * @return true - the selected events are valid for product generation false
+     *         - the selected events are not valid.
+     */
+    public boolean validateSelectedHazardsForProductGeneration();
+
 }
