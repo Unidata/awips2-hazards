@@ -491,9 +491,13 @@ public class ToolLayer extends
                 selectedEventIDs.add(eventID);
             }
 
+            boolean isEventAreaEditable = eventManager
+                    .canEventAreaBeChanged(hazardEvent);
+
             List<AbstractDrawableComponent> drawables = drawableBuilder
                     .buildDrawableComponents(this, hazardEvent,
-                            getActiveLayer(), areHatchedAreasDisplayed);
+                            getActiveLayer(), isEventAreaEditable,
+                            areHatchedAreasDisplayed);
 
             if (areHatchedAreasDisplayed && isSelected) {
                 hatchedAreas.addAll(drawableBuilder.buildhazardAreas(this,
@@ -1424,7 +1428,16 @@ public class ToolLayer extends
 
             if (contextMenuEntries != null) {
                 for (String contextMenuEntry : contextMenuEntries) {
-                    entries.add(contextMenuEntry);
+
+                    if (contextMenuEntry
+                            .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
+
+                        if (!eventManager.canEventAreaBeChanged(event)) {
+                            continue;
+                        }
+
+                        entries.add(contextMenuEntry);
+                    }
                 }
             }
         }

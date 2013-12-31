@@ -81,9 +81,24 @@ public interface IHazardServicesShape {
     public boolean isEditable();
 
     /**
-     * 
+     * @return True if the user can move this shape.
+     */
+    public boolean isMovable();
+
+    /**
      * Set the editable status of this shape.
+     * 
+     * @param isEditable
+     *            true if this shape is editable.
      */
     public void setIsEditable(boolean isEditable);
+
+    /**
+     * Set the movable status of this shape.
+     * 
+     * @param isMovable
+     *            true if this shape is movable.
+     */
+    public void setMovable(boolean isMovable);
 
 }

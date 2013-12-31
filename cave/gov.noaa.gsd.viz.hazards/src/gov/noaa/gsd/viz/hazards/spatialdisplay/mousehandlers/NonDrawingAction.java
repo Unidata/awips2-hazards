@@ -9,7 +9,9 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
@@ -60,6 +62,65 @@ public class NonDrawingAction extends AbstractMouseHandler {
     @Override
     protected IInputHandler createMouseHandler() {
         return new NonDrawingHandler();
+    }
+
+    /**
+     * Determines whether or not the drawable is editable.
+     * 
+     * @param drawableComponent
+     *            The drawable to test
+     * @return true - the drawable is editable, false - the drawable is not
+     *         editable
+     * 
+     */
+    public boolean isComponentEditable(
+            AbstractDrawableComponent drawableComponent) {
+
+        boolean isEditable;
+
+        if (drawableComponent instanceof DECollection) {
+
+            DECollection deCollection = (DECollection) drawableComponent;
+            IHazardServicesShape drawable = (IHazardServicesShape) deCollection
+                    .getItemAt(0);
+            isEditable = drawable.isEditable();
+        } else {
+
+            isEditable = ((IHazardServicesShape) drawableComponent)
+                    .isEditable();
+        }
+
+        return isEditable;
+
+    }
+
+    /**
+     * Determines whether or not the drawable is movable.
+     * 
+     * @param drawableComponent
+     *            The drawable to test
+     * @return true - the drawable is movable, false - the drawable is not
+     *         movable
+     * 
+     */
+    public boolean isComponentMovable(
+            AbstractDrawableComponent drawableComponent) {
+
+        boolean isMovable;
+
+        if (drawableComponent instanceof DECollection) {
+
+            DECollection deCollection = (DECollection) drawableComponent;
+            IHazardServicesShape drawable = (IHazardServicesShape) deCollection
+                    .getItemAt(0);
+            isMovable = drawable.isMovable();
+        } else {
+
+            isMovable = ((IHazardServicesShape) drawableComponent).isMovable();
+        }
+
+        return isMovable;
+
     }
 
     public class NonDrawingHandler extends InputHandlerDefaultImpl {
@@ -136,73 +197,83 @@ public class NonDrawingAction extends AbstractMouseHandler {
             double distanceToSelect = 20;
 
             if (elSelected != null) {
-                // start to copy if the click is near the selected hazard.
-                if (ghostEl == null) {
-                    GeometryFactory gf = new GeometryFactory();
-                    Point clickPoint = gf.createPoint(loc);
-                    double distance;
-                    if (elSelected instanceof HazardServicesSymbol) {
-                        Point centroid = gf.createPoint(elSelected.getPoints()
-                                .get(0));
-                        distance = centroid.distance(clickPoint);
-                    } else {
-                        List<Coordinate> drawnPoints = elSelected.getPoints();
 
-                        /*
-                         * Must make a copy of the points. Do not want to modify
-                         * the List of Coordinates in the geometry itself.
-                         */
-                        Coordinate[] copyOfCoords = new Coordinate[drawnPoints
-                                .size() + 1];
-                        copyOfCoords = drawnPoints.toArray(copyOfCoords);
-                        copyOfCoords[drawnPoints.size()] = drawnPoints.get(0);
+                boolean isMovable = isComponentMovable(elSelected);
 
-                        LineString ls = gf.createLineString(copyOfCoords);
+                if (isMovable) {
 
-                        distance = ls.distance(clickPoint);
-                    }
+                    // start to copy if the click is near the selected hazard.
+                    if (ghostEl == null) {
+                        GeometryFactory gf = new GeometryFactory();
+                        Point clickPoint = gf.createPoint(loc);
+                        double distance;
+                        if (elSelected instanceof HazardServicesSymbol) {
+                            Point centroid = gf.createPoint(elSelected
+                                    .getPoints().get(0));
+                            distance = centroid.distance(clickPoint);
+                        } else {
+                            List<Coordinate> drawnPoints = elSelected
+                                    .getPoints();
 
-                    if (distance < distanceToSelect) {
-                        ptSelected = new Coordinate(clickPoint.getX(),
-                                clickPoint.getY());
-                        ghostEl = getDrawingLayer().getSelectedDE().copy();
+                            /*
+                             * Must make a copy of the points. Do not want to
+                             * modify the List of Coordinates in the geometry
+                             * itself.
+                             */
+                            Coordinate[] copyOfCoords = new Coordinate[drawnPoints
+                                    .size() + 1];
+                            copyOfCoords = drawnPoints.toArray(copyOfCoords);
+                            copyOfCoords[drawnPoints.size()] = drawnPoints
+                                    .get(0);
 
-                    }
-                }
+                            LineString ls = gf.createLineString(copyOfCoords);
 
-                if (ghostEl != null) {
-                    // use screen coordinate to copy/move
-                    // double[] locScreen =
-                    // mapEditor.translateInverseClick(loc);
-                    double[] ptScreen = editor
-                            .translateInverseClick(ptSelected);
-
-                    double deltaX = anX - ptScreen[0];
-                    double deltaY = aY - ptScreen[1];
-
-                    // calculate locations of the ghost el
-                    for (int idx = 0; idx < elSelected.getPoints().size(); idx++) {
-                        double[] scnPt = editor
-                                .translateInverseClick(elSelected.getPoints()
-                                        .get(idx));
-                        scnPt[0] += deltaX;
-                        scnPt[1] += deltaY;
-
-                        Coordinate cord = editor.translateClick(scnPt[0],
-                                scnPt[1]);
-                        if (cord == null) {
-                            continue;
+                            distance = ls.distance(clickPoint);
                         }
-                        ghostEl.getPoints().get(idx).x = cord.x;
-                        ghostEl.getPoints().get(idx).y = cord.y;
 
+                        if (distance < distanceToSelect) {
+                            ptSelected = new Coordinate(clickPoint.getX(),
+                                    clickPoint.getY());
+                            ghostEl = getDrawingLayer().getSelectedDE().copy();
+
+                        }
                     }
-                    // set ghost color
-                    ghostEl.setColors(new Color[] { ghostColor,
-                            new java.awt.Color(255, 255, 255) });
 
-                    getDrawingLayer().setGhostLine(ghostEl);
-                    getDrawingLayer().issueRefresh();
+                    if (ghostEl != null) {
+                        // use screen coordinate to copy/move
+                        // double[] locScreen =
+                        // mapEditor.translateInverseClick(loc);
+                        double[] ptScreen = editor
+                                .translateInverseClick(ptSelected);
+
+                        double deltaX = anX - ptScreen[0];
+                        double deltaY = aY - ptScreen[1];
+
+                        // calculate locations of the ghost el
+                        for (int idx = 0; idx < elSelected.getPoints().size(); idx++) {
+                            double[] scnPt = editor
+                                    .translateInverseClick(elSelected
+                                            .getPoints().get(idx));
+                            scnPt[0] += deltaX;
+                            scnPt[1] += deltaY;
+
+                            Coordinate cord = editor.translateClick(scnPt[0],
+                                    scnPt[1]);
+                            if (cord == null) {
+                                continue;
+                            }
+                            ghostEl.getPoints().get(idx).x = cord.x;
+                            ghostEl.getPoints().get(idx).y = cord.y;
+
+                        }
+                        // set ghost color
+                        ghostEl.setColors(new Color[] { ghostColor,
+                                new java.awt.Color(255, 255, 255) });
+
+                        getDrawingLayer().setGhostLine(ghostEl);
+                        getDrawingLayer().issueRefresh();
+                    }
+
                 }
 
             }

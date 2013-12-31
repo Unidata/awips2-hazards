@@ -328,7 +328,7 @@ public class HazardServicesDrawableBuilder {
 
     public List<AbstractDrawableComponent> buildDrawableComponents(
             ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer,
-            boolean drawHazardHatchArea) {
+            boolean isEventAreaEditable, boolean drawHazardHatchArea) {
 
         List<AbstractDrawableComponent> result = Lists.newArrayList();
 
@@ -344,8 +344,36 @@ public class HazardServicesDrawableBuilder {
                         toolLayer, hazardEvent, activeLayer, result,
                         drawHazardHatchArea, shapeNum);
 
+                if (drawableComponent instanceof DECollection) {
+
+                    DECollection deCollection = (DECollection) drawableComponent;
+
+                    for (int i = 0; i < deCollection.size(); ++i) {
+                        IHazardServicesShape drawable = (IHazardServicesShape) deCollection
+                                .getItemAt(i);
+                        if (!(drawable instanceof HazardServicesSymbol)) {
+                            drawable.setIsEditable(isEventAreaEditable);
+                        }
+
+                        drawable.setMovable(isEventAreaEditable);
+
+                    }
+
+                } else {
+
+                    IHazardServicesShape drawable = (IHazardServicesShape) drawableComponent;
+
+                    if (!(drawableComponent instanceof HazardServicesSymbol)) {
+                        drawable.setIsEditable(isEventAreaEditable);
+                    }
+
+                    drawable.setMovable(isEventAreaEditable);
+
+                }
+
                 addTextComponent(toolLayer, hazardEvent.getEventID(), result,
                         drawableComponent);
+
             }
 
         }

@@ -37,6 +37,8 @@ public abstract class HazardServicesShape extends Line implements
 
     private boolean isEditable = true;
 
+    private boolean isMovable = true;
+
     private final HazardServicesDrawingAttributes drawingAttributes;
 
     @Override
@@ -74,6 +76,16 @@ public abstract class HazardServicesShape extends Line implements
     @Override
     public void setIsEditable(boolean isEditable) {
         this.isEditable = isEditable;
+    }
+
+    @Override
+    public boolean isMovable() {
+        return isMovable;
+    }
+
+    @Override
+    public void setMovable(boolean isMovable) {
+        this.isMovable = isMovable;
     }
 
 }

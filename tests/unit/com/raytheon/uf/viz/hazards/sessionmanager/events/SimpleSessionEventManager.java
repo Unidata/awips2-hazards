@@ -178,4 +178,9 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public boolean canEventAreaBeChanged(IHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
 }

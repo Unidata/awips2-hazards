@@ -1172,6 +1172,23 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
+    @Override
+    public boolean canEventAreaBeChanged(IHazardEvent hazardEvent) {
+        HazardTypes hazardTypes = configManager.getHazardTypes();
+
+        HazardTypeEntry hazardTypeEntry = hazardTypes.get(hazardEvent
+                .getHazardType());
+
+        if (hazardTypeEntry != null
+                && hazardEvent.getState() == HazardState.ISSUED) {
+
+            return hazardTypeEntry.isAllowAreaChange();
+        } else {
+            return true;
+        }
+
+    }
+
     /**
      * Clears the undo/redo stack for the hazard event.
      * 

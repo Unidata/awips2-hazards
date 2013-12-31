@@ -63,6 +63,11 @@ public class HazardServicesSymbol extends Symbol implements
      */
     private final long pointID;
 
+    /**
+     * Flag indicating whether or not this symbol is movable.
+     */
+    private boolean isMovable = true;
+
     private Geometry geometry = null;
 
     /**
@@ -216,5 +221,15 @@ public class HazardServicesSymbol extends Symbol implements
     @Override
     public void setIsEditable(boolean isEditable) {
         throw new UnsupportedOperationException("Symbols are never editable");
+    }
+
+    @Override
+    public boolean isMovable() {
+        return isMovable;
+    }
+
+    @Override
+    public void setMovable(boolean isMovable) {
+        this.isMovable = isMovable;
     }
 }

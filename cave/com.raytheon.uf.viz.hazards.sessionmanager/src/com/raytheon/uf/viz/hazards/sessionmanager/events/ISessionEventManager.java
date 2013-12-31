@@ -339,4 +339,14 @@ public interface ISessionEventManager {
      */
     void reduceSelectedHazardGeometries();
 
+    /**
+     * Tests if an event's area can be changed.
+     * 
+     * @param event
+     *            The event to test
+     * @return True - the event's area can be changed. False - the event's area
+     *         cannot be changed.
+     */
+    public boolean canEventAreaBeChanged(IHazardEvent event);
+
 }

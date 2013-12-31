@@ -201,4 +201,14 @@ public class HazardServicesText extends Text implements IHazardServicesShape {
         setLocation(labelCoord);
     }
 
+    @Override
+    public boolean isMovable() {
+        return false;
+    }
+
+    @Override
+    public void setMovable(boolean isMovable) {
+        throw new UnsupportedOperationException("Text is never movable.");
+    }
+
 }
