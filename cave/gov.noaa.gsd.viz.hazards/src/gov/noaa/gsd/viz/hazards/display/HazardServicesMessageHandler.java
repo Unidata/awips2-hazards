@@ -602,12 +602,9 @@ public final class HazardServicesMessageHandler implements
      * Issues the events upon user confirmation.
      */
     private void issueEvents() {
-        if (appBuilder.getUserAnswerToQuestion("Are you sure "
-                + "you want to issue the hazard event(s)?")) {
-            if (continueIfThereAreHazardConflicts()) {
-                generateProducts(true);
-                notifyModelEventsChanged();
-            }
+        if (continueIfThereAreHazardConflicts()) {
+            generateProducts(true);
+            notifyModelEventsChanged();
         }
     }
 
@@ -1188,14 +1185,11 @@ public final class HazardServicesMessageHandler implements
             changeSelectedEventsToProposedState();
         } else if (productDisplayAction
                 .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
-            if (appBuilder.getUserAnswerToQuestion("Are you sure "
-                    + "you want to issue the hazard event(s)?")) {
-                if (continueIfThereAreHazardConflicts()) {
+            if (continueIfThereAreHazardConflicts()) {
 
-                    productGeneratorHandler.createProductsFromHazardEventSets(
-                            true, productDisplayJSON);
-                    notifyModelEventsChanged();
-                }
+                productGeneratorHandler.createProductsFromHazardEventSets(true,
+                        productDisplayJSON);
+                notifyModelEventsChanged();
             }
         }
 

@@ -269,6 +269,16 @@ public class SessionProductManager implements ISessionProductManager {
 
             eventManager.reduceSelectedHazardGeometries();
 
+            if (issue) {
+                boolean answer = messenger
+                        .getQuestionAnswerer()
+                        .getUserAnswerToQuestion(
+                                "Are you sure "
+                                        + "you want to issue the hazard event(s)?");
+                if (!answer) {
+                    return;
+                }
+            }
             EventSet<IEvent> events = new EventSet<IEvent>();
             events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                     .getCurrentTime().getTime());
