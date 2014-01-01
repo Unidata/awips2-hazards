@@ -1569,6 +1569,11 @@ public class ToolLayer extends
         Point centerPoint = null;
 
         if ((comp != null) && !(comp instanceof Text)) {
+
+            if (comp instanceof DECollection) {
+                comp = ((DECollection) comp).getItemAt(0);
+            }
+
             Geometry p = ((IHazardServicesShape) comp).getGeometry();
 
             if (p != null) {

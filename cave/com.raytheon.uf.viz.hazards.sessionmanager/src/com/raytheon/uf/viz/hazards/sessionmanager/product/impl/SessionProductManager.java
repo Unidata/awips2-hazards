@@ -73,8 +73,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Lineal;
+import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Implementation of ISessionProductManager
@@ -331,16 +332,21 @@ public class SessionProductManager implements ISessionProductManager {
                     event.addHazardAttribute(HazardConstants.GEO_TYPE,
                             HazardConstants.POINT_TYPE);
                 } else {
-                    Class<?> geometryClass = event.getGeometry().getClass();
-                    if (geometryClass.equals(Point.class)) {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                HazardConstants.POINT_TYPE);
-                    } else if (geometryClass.equals(LineString.class)) {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                HazardConstants.LINE_TYPE);
-                    } else {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                HazardConstants.AREA_TYPE);
+                    Geometry geometryCollection = event.getGeometry();
+
+                    for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
+                        Geometry geometry = geometryCollection.getGeometryN(i);
+
+                        if (geometry instanceof Puntal) {
+                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                    HazardConstants.POINT_TYPE);
+                        } else if (geometry instanceof Lineal) {
+                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                    HazardConstants.LINE_TYPE);
+                        } else {
+                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                    HazardConstants.AREA_TYPE);
+                        }
                     }
                 }
                 event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
