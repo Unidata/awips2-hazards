@@ -56,6 +56,7 @@ import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * 
@@ -613,9 +614,18 @@ public class HazardServicesDrawableBuilder {
 
                 for (int i = 0; i < geometryData.getGeometry()
                         .getNumGeometries(); ++i) {
-                    drawableComponent = buildPolygon(hazardEvent, geometryData
-                            .getGeometry().getGeometryN(i), activeLayer);
-                    drawableComponents.add(drawableComponent);
+
+                    Geometry geometry = geometryData.getGeometry()
+                            .getGeometryN(i);
+                    /*
+                     * Skip point geometries. Hatching does not make sense for
+                     * points.
+                     */
+                    if (!(geometry instanceof Puntal)) {
+                        drawableComponent = buildPolygon(hazardEvent, geometry,
+                                activeLayer);
+                        drawableComponents.add(drawableComponent);
+                    }
                 }
             }
 
