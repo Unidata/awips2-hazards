@@ -55,8 +55,11 @@ public interface ISessionProductManager {
      *            the information about the product to generate
      * @param issue
      *            whether to immediately issue the product or not
+     * @param confim
+     *            whether or not to confirm issuance
      */
-    public void generate(ProductInformation information, boolean issue);
+    public void generate(ProductInformation information, boolean issue,
+            boolean confirm);
 
     /**
      * Issue the provided product and all the events associated with it.

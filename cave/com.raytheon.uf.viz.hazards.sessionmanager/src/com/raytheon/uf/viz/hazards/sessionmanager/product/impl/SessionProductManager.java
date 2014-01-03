@@ -262,14 +262,15 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     @Override
-    public void generate(ProductInformation information, boolean issue) {
+    public void generate(ProductInformation information, boolean issue,
+            boolean confirm) {
 
         if (validateSelectedHazardsForProductGeneration()
                 && eventManager.clipSelectedHazardGeometries()) {
 
             eventManager.reduceSelectedHazardGeometries();
 
-            if (issue) {
+            if (issue && confirm) {
                 boolean answer = messenger
                         .getQuestionAnswerer()
                         .getUserAnswerToQuestion(

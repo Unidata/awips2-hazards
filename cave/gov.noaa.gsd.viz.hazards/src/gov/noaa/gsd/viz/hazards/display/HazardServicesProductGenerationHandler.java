@@ -125,9 +125,10 @@ class HazardServicesProductGenerationHandler {
         generatedProducts = new ProductGenerationResult();
         numProducts = products.size();
         this.issue = issue;
+        boolean confirm = true;
         for (ProductInformation info : products) {
-            productManager.generate(info, issue);
-
+            productManager.generate(info, issue, confirm);
+            confirm = false;
         }
     }
 
@@ -213,6 +214,7 @@ class HazardServicesProductGenerationHandler {
         generatedProducts = new ProductGenerationResult();
         numProducts = result.getHazardEventSets().length;
         this.issue = issue;
+        boolean confirm = true;
         for (HazardEventSet set : result.getHazardEventSets()) {
             ProductInformation info = null;
             for (ProductInformation testInfo : products) {
@@ -239,8 +241,8 @@ class HazardServicesProductGenerationHandler {
                 }
             }
             info.setProductEvents(selectedEvents);
-            productManager.generate(info, issue);
-
+            productManager.generate(info, issue, confirm);
+            confirm = false;
         }
     }
 
@@ -255,6 +257,7 @@ class HazardServicesProductGenerationHandler {
         generatedProducts = new ProductGenerationResult();
         numProducts = productStagingInfo.numProducts();
         this.issue = issue;
+        boolean confirm = true;
         for (Product stagedProduct : productStagingInfo.getProducts()) {
             for (ProductInformation product : products) {
                 if (stagedProduct.getProductGenerator().equals(
@@ -277,7 +280,8 @@ class HazardServicesProductGenerationHandler {
                         }
                     }
                     product.setProductEvents(selectedEvents);
-                    productManager.generate(product, issue);
+                    productManager.generate(product, issue, confirm);
+                    confirm = false;
                 }
             }
 
