@@ -472,6 +472,8 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 
+    public static final String CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS = "Clip and Reduce Selected Hazards";
+
     public static final String CONTEXT_MENU_DELETE = "Delete";
 
     public static final String CONTEXT_MENU_ADD_NODE = "Add Node";

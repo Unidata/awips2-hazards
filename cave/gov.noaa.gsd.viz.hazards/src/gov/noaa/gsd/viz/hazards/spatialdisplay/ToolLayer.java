@@ -1411,13 +1411,20 @@ public class ToolLayer extends
                 .getEventManager();
         List<String> entries = new ArrayList<String>();
         EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
+
         boolean isModified = false;
+        boolean canBeClippedAndReduced = false;
+
         for (IHazardEvent event : eventManager.getSelectedEvents()) {
             states.add(event.getState());
 
             if (event instanceof IModifiable
                     && ((IModifiable) event).isModified()) {
                 isModified = true;
+            }
+
+            if (event.getHazardType() != null) {
+                canBeClippedAndReduced = true;
             }
 
             /*
@@ -1449,6 +1456,9 @@ public class ToolLayer extends
         entries.add(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
         if (!isModified && states.contains(HazardState.ISSUED)) {
             entries.add(HazardConstants.END_SELECTED_HAZARDS);
+        }
+        if (canBeClippedAndReduced) {
+            entries.add(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS);
         }
         if (!states.contains(HazardState.PROPOSED) || states.size() > 1) {
             entries.add(HazardConstants.PROPOSE_SELECTED_HAZARDS);
