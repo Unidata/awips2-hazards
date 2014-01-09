@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IPerspectiveListener4;
 import org.eclipse.ui.IWorkbench;
@@ -274,6 +275,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private IWarner warner;
 
+    private IContinueCanceller continueCanceller;
+
     private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
     public boolean getUserAnswerToQuestion(String question) {
@@ -284,12 +287,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Warn the user. This delegates to the warner either created by the app
      * builder or injected by the client.
      * 
+     * @param title
+     *            The title of the warning
      * @param warning
      *            The warning message to convey to the user
      * @return
      */
-    public void warnUser(String warning) {
-        warner.warnUser(warning);
+    public void warnUser(String title, String warning) {
+        warner.warnUser(title, warning);
     }
 
     // Private Constructors
@@ -364,11 +369,30 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.warner = new IWarner() {
 
             @Override
-            public void warnUser(String warning) {
+            public void warnUser(String title, String warning) {
 
-                MessageDialog.openWarning(null, "Hazard Services", warning);
+                MessageDialog.openWarning(null, title, warning);
             }
 
+        };
+
+        this.continueCanceller = new IContinueCanceller() {
+
+            @Override
+            public boolean getUserAnswerToQuestion(String title, String question) {
+                String[] buttons = new String[] {
+                        HazardConstants.CANCEL_BUTTON,
+                        HazardConstants.CONTINUE_BUTTON };
+
+                Shell shell = PlatformUI.getWorkbench()
+                        .getActiveWorkbenchWindow().getShell();
+
+                MessageDialog dialog = new MessageDialog(shell, title, null,
+                        question, MessageDialog.ERROR, buttons, 0);
+
+                int response = dialog.open();
+                return response == 1 ? true : false;
+            }
         };
     }
 
@@ -1161,6 +1185,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
+     * Returns the continue/canceller.
+     */
+    @Override
+    public IContinueCanceller getContinueCanceller() {
+        return continueCanceller;
+    }
+
+    /**
      * Sets the warner.
      * 
      * @param warner
@@ -1170,4 +1202,5 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public void setWarner(IWarner warner) {
         this.warner = warner;
     }
+
 }

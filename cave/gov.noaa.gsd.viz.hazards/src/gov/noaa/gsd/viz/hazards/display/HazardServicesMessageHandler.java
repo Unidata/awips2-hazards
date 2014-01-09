@@ -65,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -610,7 +611,39 @@ public final class HazardServicesMessageHandler implements
     private void generateProducts(boolean issue) {
 
         if (productGeneratorHandler.productGenerationRequired()) {
-            productGeneratorHandler.generateProducts(issue);
+
+            List<String> unsupportedHazards = sessionManager
+                    .getProductManager().getUnsupportedHazards();
+
+            Collection<ProductInformation> selectedProducts = sessionManager
+                    .getProductManager().getSelectedProducts();
+
+            boolean continueWithGeneration = true;
+
+            if (!unsupportedHazards.isEmpty()) {
+                StringBuffer message = new StringBuffer(
+                        "Products for the following hazard types are not yet supported: ");
+                for (String type : unsupportedHazards) {
+                    message.append(type + " ");
+                }
+
+                if (!selectedProducts.isEmpty()) {
+                    message.append("\nPress Continue to generate products for the supported hazard types.");
+                    continueWithGeneration = appBuilder.getContinueCanceller()
+                            .getUserAnswerToQuestion("Unsupported HazardTypes",
+                                    message.toString());
+                } else {
+                    appBuilder.getWarner().warnUser("Unsupported HazardTypes",
+                            message.toString());
+                    continueWithGeneration = false;
+                }
+
+            }
+
+            if (continueWithGeneration) {
+                productGeneratorHandler.generateProducts(issue);
+            }
+
         } else {
             ProductStagingInfo productStagingInfo = productGeneratorHandler
                     .buildProductStagingInfo();
@@ -1442,7 +1475,7 @@ public final class HazardServicesMessageHandler implements
                         .toString());
 
             } else {
-                appBuilder.warnUser(message.toString());
+                appBuilder.warnUser("Conflicting Hazards", message.toString());
             }
         }
 

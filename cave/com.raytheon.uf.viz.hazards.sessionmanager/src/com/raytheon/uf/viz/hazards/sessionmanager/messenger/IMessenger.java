@@ -34,7 +34,7 @@ public interface IMessenger {
      * Interface defining a warner
      */
     public interface IWarner {
-        public void warnUser(String warning);
+        public void warnUser(String title, String warning);
     }
 
     /**
@@ -42,6 +42,14 @@ public interface IMessenger {
      */
     public interface IQuestionAnswerer {
         public boolean getUserAnswerToQuestion(String question);
+    }
+
+    /**
+     * Interface allowing the user to continue or cancel an operation based on a
+     * question.
+     */
+    public interface IContinueCanceller {
+        public boolean getUserAnswerToQuestion(String title, String question);
     }
 
     /**
@@ -62,4 +70,15 @@ public interface IMessenger {
      *         to the user. This can be easily stubbed for testing.
      */
     public IWarner getWarner();
+
+    /**
+     * Returns a continue/canceller.
+     * 
+     * @param
+     * @return A continue/canceller. The implementation will allow a question to
+     *         be displayed and give the forecaster the ability to continue or
+     *         cancel the current operation.
+     */
+    public IContinueCanceller getContinueCanceller();
+
 }

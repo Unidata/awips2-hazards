@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Manages product generation for a session.
@@ -81,5 +82,15 @@ public interface ISessionProductManager {
      *         - the selected events are not valid.
      */
     public boolean validateSelectedHazardsForProductGeneration();
+
+    /**
+     * Return a list of hazard types which product generation currently does not
+     * support (i.e. these are hazared types for which product generation cannot
+     * generate products).
+     * 
+     * @param
+     * @return List of unsupported hazard types.
+     */
+    public List<String> getUnsupportedHazards();
 
 }

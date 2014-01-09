@@ -1086,7 +1086,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                             + " ");
                     warningMessage.append("is outside of the forecast area.\n");
                     warningMessage.append("Product generation halted.");
-                    messenger.getWarner().warnUser(warningMessage.toString());
+                    messenger.getWarner().warnUser("Clip Error",
+                            warningMessage.toString());
                     success = false;
                     break;
                 }

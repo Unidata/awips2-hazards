@@ -30,10 +30,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
-
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -164,8 +160,7 @@ public class SessionProductManager implements ISessionProductManager {
     public Collection<ProductInformation> getSelectedProducts() {
         List<ProductInformation> result = new ArrayList<ProductInformation>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
-        List<String> supportedHazards = new ArrayList<String>();
-        Set<String> unsupportedHazards = new HashSet<String>();
+
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
             if (entry.getValue().isReservedNameNotYetImplemented()) {
                 continue;
@@ -180,7 +175,6 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
-                        supportedHazards.add(key);
                         if (e.getHazardAttribute(
                                 ISessionEventManager.ATTR_SELECTED)
                                 .equals(true)) {
@@ -206,10 +200,36 @@ public class SessionProductManager implements ISessionProductManager {
                 result.add(info);
             }
         }
-        /*
-         * Put up dialog to warn user that products are not supported for some
-         * requested hazard types
-         */
+
+        // TODO remove the reverse. Currently removing the reverse breaks
+        // the Replace Watch with Warning Story.
+        Collections.reverse(result);
+        return result;
+    }
+
+    @Override
+    public List<String> getUnsupportedHazards() {
+        ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
+        List<String> supportedHazards = Lists.newArrayList();
+        List<String> unsupportedHazards = Lists.newArrayList();
+        for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
+            if (entry.getValue().isReservedNameNotYetImplemented()) {
+                continue;
+            }
+
+            for (IHazardEvent e : eventManager.getEvents()) {
+                if (e.getPhenomenon() == null || e.getSignificance() == null) {
+                    continue;
+                }
+                String key = HazardEventUtilities.getHazardType(e);
+                for (String[] pair : entry.getValue().getAllowedHazards()) {
+                    if (pair[0].equals(key)) {
+                        supportedHazards.add(key);
+                    }
+                }
+            }
+        }
+
         for (IHazardEvent e : eventManager.getEvents()) {
             String key = HazardEventUtilities.getHazardType(e);
             boolean found = false;
@@ -225,33 +245,7 @@ public class SessionProductManager implements ISessionProductManager {
                 unsupportedHazards.add(key);
             }
         }
-        if (!unsupportedHazards.isEmpty()) {
-            String message = "Products for the following hazard types are not yet supported: ";
-            for (String type : unsupportedHazards) {
-                message += type + " ";
-            }
-            String[] buttons;
-            if (!result.isEmpty()) {
-                message += "\nPress Continue to generate products for the supported hazard types.";
-                buttons = new String[] { HazardConstants.CANCEL_BUTTON,
-                        HazardConstants.CONTINUE_BUTTON };
-            } else {
-                buttons = new String[] { "OK" };
-            }
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-            MessageDialog dialog = new MessageDialog(shell,
-                    "Unsupported HazardTypes", null, message,
-                    MessageDialog.ERROR, buttons, 0);
-            int response = dialog.open();
-            if (response == 0) {
-                result = new ArrayList<ProductInformation>();
-            }
-        }
-        // TODO remove the reverse. Currently removing the reverse breaks
-        // the Replace Watch with Warning Story.
-        Collections.reverse(result);
-        return result;
+        return unsupportedHazards;
     }
 
     private boolean isCombinable(IHazardEvent e) {
@@ -616,7 +610,8 @@ public class SessionProductManager implements ISessionProductManager {
                     : "has an end time ");
             warningMessage.append("before the CAVE time.\n");
             warningMessage.append("Product generation halted.");
-            messenger.getWarner().warnUser(warningMessage.toString());
+            messenger.getWarner().warnUser("Product Error",
+                    warningMessage.toString());
         }
 
         return eventIds.isEmpty() ? true : false;
