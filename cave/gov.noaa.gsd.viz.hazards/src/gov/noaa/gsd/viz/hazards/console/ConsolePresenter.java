@@ -9,19 +9,22 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
@@ -119,11 +122,15 @@ public class ConsolePresenter extends
             getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(configurationManager.getSettingsListAsJSON());
+            getView().setSettings(
+                    configurationManager.getSettings().getSettingsID(),
+                    configurationManager.getAvailableSettings());
         }
-        if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)
-                || changed.contains(HazardConstants.Element.EVENTS)) {
-            updateHazardEvents();
+        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
+            updateHazardEventsForSettingChange();
+        }
+        if (changed.contains(HazardConstants.Element.EVENTS)) {
+            updateHazardEventsForEventChange();
         }
         if (changed.contains(HazardConstants.Element.SITE)) {
             view.updateTitle(configurationManager.getSiteID());
@@ -150,77 +157,93 @@ public class ConsolePresenter extends
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.
         boolean temporalControlsInToolBar = true;
-        String jsonStartUpConfig = configurationManager
-                .getConfigItem(HazardConstants.START_UP_CONFIG);
+        String jsonStartUpConfig = jsonConverter.toJson(configurationManager
+                .getStartUpConfig());
         if (jsonStartUpConfig != null) {
             Dict startUpConfig = Dict.getInstance(jsonStartUpConfig);
             Dict consoleConfig = startUpConfig
-                    .getDynamicallyTypedValue(Utilities.START_UP_CONFIG_CONSOLE);
+                    .getDynamicallyTypedValue(HazardConstants.START_UP_CONFIG_CONSOLE);
             if (consoleConfig != null) {
                 String temporalControlsPosition = consoleConfig
-                        .getDynamicallyTypedValue(Utilities.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION);
+                        .getDynamicallyTypedValue(HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION);
                 if (temporalControlsPosition != null) {
                     temporalControlsInToolBar = !(temporalControlsPosition
-                            .equals(Utilities.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW));
+                            .equals(HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW));
                 }
             }
         }
 
+        List<Dict> eventsAsDicts = adaptEventsForDisplay();
+
         // Initialize the view.
-        view.initialize(
-                this,
-                timeManager.getSelectedTime(),
-                timeManager.getCurrentTime(),
-                configurationManager.getSettings()
-                        .getDefaultTimeDisplayDuration(),
-                getModel().getComponentData(
-                        HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all"),
-                configurationManager.getSettingsListAsJSON(),
-                configurationManager.getConfigItem(HazardConstants.FILTER_CONFIG),
+        view.initialize(this, timeManager.getSelectedTime(), timeManager
+                .getCurrentTime(), configurationManager.getSettings()
+                .getDefaultTimeDisplayDuration(), eventsAsDicts,
+                configurationManager.getSettings(), configurationManager
+                        .getAvailableSettings(), jsonConverter
+                        .toJson(configurationManager.getFilterConfig()),
                 alertsManager.getActiveAlerts(), temporalControlsInToolBar);
+    }
+
+    private List<Dict> adaptEventsForDisplay() {
+        Collection<IHazardEvent> currentEvents = eventManager
+                .getEventsForCurrentSettings();
+
+        DeprecatedEvent[] jsonEvents = DeprecatedUtilities
+                .eventsAsJSONEvents(currentEvents);
+        DeprecatedUtilities.adaptJSONEvent(jsonEvents, currentEvents,
+                configurationManager, timeManager);
+        List<Dict> result = Lists.newArrayList();
+        for (DeprecatedEvent event : jsonEvents) {
+            result.add(Dict.getInstance(jsonConverter.toJson(event)));
+        }
+        return result;
     }
 
     // Private Methods
 
-    /**
-     * Update the hazard events in the view as needed.
-     */
-    private void updateHazardEvents() {
+    private void updateHazardEventsForSettingChange() {
+        List<Dict> eventsAsDicts = adaptEventsForDisplay();
 
-        // Compare the dynamic setting being used by the view versus the
-        // one in the model. If they are not the same, then a complete
-        // refresh is in order as if the events have changed.
-        Dict oldSetting = getView().getDynamicSetting();
-        String componentDataJSON = getModel().getComponentData(
-                HazardServicesAppBuilder.TEMPORAL_ORIGINATOR, "all");
-        Dict componentData = Dict.getInstance(componentDataJSON);
-        Dict newSetting = componentData
-                .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_DYNAMIC_SETTING);
-        if (oldSetting.equals(newSetting) == false) {
-            getView().setHazardEvents(componentDataJSON);
-            return;
-        }
+        /**
+         * Optimization. Only update the view of the hazard events if the
+         * settings are changed by a different component. If it was by this
+         * component, then the view current settings and the
+         * configurationManager current settings will be identical so no need to
+         * update the view. This optimization is particularly useful when you
+         * sort the console rows!!!
+         * 
+         * TODO An optimization that was here needs to be resurrected. Need to
+         * take another approach; probably by including the originator in the
+         * {@link CurrentSettingsAction}. The code would skip call if the
+         * originator is the Console.
+         */
+
+        getView().setHazardEvents(eventsAsDicts,
+                configurationManager.getSettings());
+    }
+
+    private void updateHazardEventsForEventChange() {
+
+        List<Dict> eventsAsDicts = adaptEventsForDisplay();
 
         // Get the hazard events as shown by the view, and compare them
         // to the hazard events in the model. If the number of events
         // and their identifiers are unchanged, then one or more events
         // have had their parameters changed; otherwise, the event set
         // as a whole has changed.
-        List<Dict> oldEventsList = getView().getHazardEvents();
-        List<Dict> newEventsList = componentData
-                .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_EVENTS);
+        List<Dict> oldEvents = getView().getHazardEvents();
         Map<String, Dict> oldEventsMap = null;
         Map<String, Dict> newEventsMap = null;
-        boolean eventsListUnchanged = (newEventsList.size() == oldEventsList
-                .size());
+        boolean eventsListUnchanged = (eventsAsDicts.size() == oldEvents.size());
         if (eventsListUnchanged) {
             oldEventsMap = Maps.newHashMap();
             newEventsMap = Maps.newHashMap();
-            for (int j = 0; j < newEventsList.size(); j++) {
-                Dict event = oldEventsList.get(j);
+            for (int j = 0; j < eventsAsDicts.size(); j++) {
+                Dict event = oldEvents.get(j);
                 oldEventsMap.put((String) event
                         .get(HazardConstants.HAZARD_EVENT_IDENTIFIER), event);
-                event = newEventsList.get(j);
+                event = eventsAsDicts.get(j);
                 newEventsMap.put((String) event
                         .get(HazardConstants.HAZARD_EVENT_IDENTIFIER), event);
             }
@@ -242,7 +265,8 @@ public class ConsolePresenter extends
                 }
             }
         } else {
-            getView().setHazardEvents(componentDataJSON);
+            getView().setHazardEvents(eventsAsDicts,
+                    configurationManager.getSettings());
         }
     }
 

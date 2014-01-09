@@ -149,7 +149,7 @@ public class HazardEventExpirationAlertFactory {
          */
         Date hazardExpiration = new Date(
                 (Long) hazardEvent
-                        .getHazardAttribute(HazardConstants.EXPIRATIONTIME));
+                        .getHazardAttribute(HazardConstants.EXPIRATION_TIME));
         return hazardExpiration;
     }
 
@@ -158,7 +158,7 @@ public class HazardEventExpirationAlertFactory {
             IHazardEvent hazardEvent) {
 
         Long hazardExpiration = (Long) hazardEvent
-                .getHazardAttribute(HazardConstants.EXPIRATIONTIME);
+                .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
 
         Long activationTimeInMillis;
         if (alertCriterion.getUnits().equals(

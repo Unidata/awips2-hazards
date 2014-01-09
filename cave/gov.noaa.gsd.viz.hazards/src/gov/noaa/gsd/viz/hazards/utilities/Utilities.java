@@ -22,7 +22,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -30,8 +29,6 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.BundleScanner;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -66,102 +63,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 public class Utilities {
 
     /**
-     * Logging mechanism.
-     */
-    @SuppressWarnings("unused")
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(Utilities.class);
-
-    // Public Static Constants
-
-    /**
-     * Default hazard color.
-     */
-    public static final Color WHITE = new Color(255f, 255f, 255f);
-
-    /**
      * ID of plug-in containing the Hazard Services SessionManager code.
      */
-    public static final String SESSION_MANAGER_PLUGIN = "gov.noaa.gsd.viz.hazards.sessionmanager";
-
-    /**
-     * Minimum time as an epoch time in milliseconds.
-     */
-    public static final long MIN_TIME = 0L;
-
-    /**
-     * Maximum time as an epoch time in milliseconds. This is arbitrarily large,
-     * but not so large as to be anywhere close to the limit of what a long
-     * integer value can represent, so that accidental overflow during
-     * calculations does not occur.
-     */
-    public static final long MAX_TIME = Long.MAX_VALUE / 2L;
-
-    /**
-     * Key into {@link IHazardEvent} attributes for the time associated with a
-     * point in storm track, for example.
-     */
-    public static final String POINT_TIME = "pointTime";
-
-    /**
-     * Hazard events list key in temporal display component data dictionary.
-     */
-    public static final String TEMPORAL_DISPLAY_EVENTS = "events";
-
-    /**
-     * Dynamic setting in temporal display component data dictionary.
-     */
-    public static final String TEMPORAL_DISPLAY_DYNAMIC_SETTING = "dynamicSettings";
-
-    /**
-     * General megawidgets key in hazard information dialog dictionary.
-     */
-    public static final String HAZARD_INFO_GENERAL_CONFIG_WIDGETS = "hazardCategories";
-
-    /**
-     * Types of hazard events key in hazard metadata megawidgets definitions
-     * list.
-     */
-    public static final String HAZARD_INFO_METADATA_TYPES = "hazardTypes";
-
-    /**
-     * Metadata of hazard events key in hazard metadata megawidgets definitions
-     * list.
-     */
-    public static final String HAZARD_INFO_METADATA_MEGAWIDGETS_LIST = "metaData";
-
-    /**
-     * Point metadata of hazard events key in hazard metadata megawidgets
-     * definitions list.
-     */
-    public static final String HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST = "pointOptions";
-
-    /**
-     * Console key in start up configuration item.
-     */
-    public static final String START_UP_CONFIG_CONSOLE = "Console";
-
-    /**
-     * Timeline navigation key in console dictionary in start up configuration
-     * item.
-     */
-    public static final String START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION = "TimeLineNavigation";
-
-    /**
-     * Timeline navigation key in console dictionary in start up configuration
-     * item.
-     */
-    public static final String START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW = "belowTimeLine";
-
-    /**
-     * Persistent shape key.
-     */
-    public static final String PERSISTENT_SHAPE = "persistentShape";
-
-    /**
-     * Drag drop dot identifier.
-     */
-    public static final String DRAG_DROP_DOT = "DragDropDot";
+    private static final String SESSION_MANAGER_PLUGIN = "gov.noaa.gsd.viz.hazards.sessionmanager";
 
     // Private Static Constants
 
@@ -333,73 +237,6 @@ public class Utilities {
         }
 
         return sourcePaths;
-    }
-
-    /**
-     * Searches the Style Rule Sets associated with Hazard Services for the
-     * specified phen.sig.subtype key and returns the fill color for the closest
-     * matching phen.sig.subtype.
-     * 
-     * @param hazardType
-     *            The phen, sig, subtype to find the fill color for
-     * @return The fill color as a Color object.
-     */
-    public static Color getHazardFillColor(final String hazardType) {
-
-        /*
-         * The hazard display preferences map is built as preferences for
-         * specific hazard types are requested.
-         */
-        Color bestHazardColor = WHITE;
-
-        /*
-         * Hazard type may be null. This occurs in the case where the hazard has
-         * been drawn, but it has not yet been assigned as hazard type. So, we
-         * need to check for it here.
-         */
-        /*
-         * Commented out this block until HAZARDS("HazardStyleRules.xml") is
-         * added to the StyleType enum in the AWIPS II baseline StyleManager
-         * class. This method will always return the color white for now.
-         */
-        // if (hazardType != null) {
-        // Assert.isTrue(hazardType.length() > 0);
-        //
-        // if (hazardDisplayPreferencesMap.containsKey(hazardType)) {
-        // bestHazardColor = hazardDisplayPreferencesMap.get(hazardType)
-        // .getColor();
-        // } else {
-        // /*
-        // * Attempt to load the requested hazard type's color from the
-        // * style rules. If it cannot be loaded, set it to white by
-        // * default.
-        // */
-        // ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
-        // match.setParameterName(Arrays.asList(hazardType));
-        //
-        // try {
-        // StyleRule styleRule = StyleManager
-        // .getInstance()
-        // .getStyleRule(StyleManager.StyleType.HAZARDS, match);
-        //
-        // HazardStyle pref = (HazardStyle) styleRule.getPreferences();
-        //
-        // if (pref != null) {
-        // bestHazardColor = pref.getColor();
-        // pref.setColor(bestHazardColor);
-        // hazardDisplayPreferencesMap.put(hazardType, pref);
-        // }
-        //
-        // } catch (VizStyleException e) {
-        // statusHandler.error(
-        // "Error loading style preferences for hazard type: "
-        // + hazardType, e);
-        // }
-        // }
-        //
-        // }
-
-        return bestHazardColor;
     }
 
     /**

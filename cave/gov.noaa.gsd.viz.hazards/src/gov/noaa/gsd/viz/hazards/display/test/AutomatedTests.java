@@ -15,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -63,8 +62,8 @@ public class AutomatedTests {
 
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
-        if (consoleAction.getAction().equals(
-                HazardConstants.RUN_AUTOMATED_TESTS)) {
+        if (consoleAction.getActionType().equals(
+                ConsoleAction.ActionType.RUN_AUTOMATED_TESTS)) {
             new MixedHazardStoryFunctionalTest(appBuilder).run();
         }
     }
@@ -121,8 +120,8 @@ public class AutomatedTests {
         } else {
             statusHandler.debug("All tests completed");
             appBuilder.getEventBus().post(
-                    new ConsoleAction(HazardConstants.RESET_ACTION,
-                            HazardConstants.RESET_EVENTS));
+                    new ConsoleAction(ConsoleAction.ActionType.RESET,
+                            ConsoleAction.RESET_EVENTS));
         }
     }
 

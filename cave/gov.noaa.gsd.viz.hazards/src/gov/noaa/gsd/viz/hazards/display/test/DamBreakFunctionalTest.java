@@ -70,7 +70,7 @@ class DamBreakFunctionalTest extends FunctionalTest {
     public void toolActionOccurred(final ToolAction action) {
         try {
             List<Dict> hazards;
-            switch (action.getAction()) {
+            switch (action.getActionType()) {
             case RUN_TOOL:
                 switch (step) {
                 case RUN_DAM_BREAK_LOW_CONFIDENCE:
@@ -172,12 +172,12 @@ class DamBreakFunctionalTest extends FunctionalTest {
 
     private void checkDamBreakRecommendationLowConfidence(Dict event) {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FLASH_FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(SITEID), OAX);
+        assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUETIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
@@ -187,12 +187,12 @@ class DamBreakFunctionalTest extends FunctionalTest {
 
     private void checkDamBreakRecommendationHighConfidence(Dict event) {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FFW_NON_CONVECTIVE_PHEN_SIG);
-        assertEquals(event.get(SITEID), OAX);
+        assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUETIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
@@ -202,12 +202,12 @@ class DamBreakFunctionalTest extends FunctionalTest {
 
     private void checkDamBreakRecommendationDamFailed(Dict event) {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FFW_NON_CONVECTIVE_PHEN_SIG);
-        assertEquals(event.get(SITEID), OAX);
+        assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUETIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(

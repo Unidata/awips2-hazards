@@ -13,6 +13,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.List;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+
 /**
  * Interface describing the methods required for implementing a settings view,
  * used by the user to view and manipulate settings.
@@ -38,17 +42,15 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
-     * @param jsonSettings
-     *            JSON string providing a dictionary of settings.
+     * @param settings
      * @param jsonFilters
      *            JSON string providing a list of dictionaries, each specifying
      *            a filter megawidget.
-     * @param jsonDynamicSetting
-     *            JSON string providing a dictionary defining the dynamic
-     *            setting.
+     * @param currentSettings
      */
-    public void initialize(SettingsPresenter presenter, String jsonSettings,
-            String jsonFilters, String jsonDynamicSetting);
+    public void initialize(SettingsPresenter presenter,
+            List<Settings> settings, String jsonFilters,
+            Settings currentSettings);
 
     /**
      * Show the settings detail subview.
@@ -65,19 +67,12 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Set the settings to those specified.
      * 
-     * @param jsonSettings
-     *            JSON string holding a dictionary an entry for the list of
-     *            settings, and another entry for the current setting
-     *            identifier.
+     * @param settings
      */
-    public void setSettings(String jsonSettings);
+    public void setSettings(List<Settings> settings);
 
     /**
-     * Set the dynamic setting to that specified.
-     * 
-     * @param jsonSetting
-     *            JSON string holding a dictionary defining the dynamic setting
-     *            to be used.
+     * @param currentSettings
      */
-    public void setDynamicSetting(String jsonSetting);
+    public void setCurrentSettings(Settings currentSettings);
 }

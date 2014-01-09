@@ -186,12 +186,12 @@ public class SpatialView implements
         /**
          * Action type.
          */
-        private final String actionType;
+        private final SpatialDisplayAction.ActionType actionType;
 
         /**
          * Action name.
          */
-        private final String actionName;
+        private final SpatialDisplayAction.ActionIdentifier actionName;
 
         // Public Constructors
 
@@ -216,7 +216,8 @@ public class SpatialView implements
          *            send "on" or "off" as their action name.
          */
         public BasicSpatialAction(String text, String iconFileName, int style,
-                String toolTipText, String actionType, String actionName) {
+                String toolTipText, SpatialDisplayAction.ActionType actionType,
+                SpatialDisplayAction.ActionIdentifier actionName) {
             super(text, iconFileName, style, toolTipText);
             this.actionType = actionType;
             this.actionName = actionName;
@@ -229,9 +230,11 @@ public class SpatialView implements
          */
         @Override
         public void run() {
-            fireAction(new SpatialDisplayAction(actionType,
-                    (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? "on"
-                            : "off") : actionName)));
+            fireAction(new SpatialDisplayAction(
+                    actionType,
+                    (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
+                            : SpatialDisplayAction.ActionIdentifier.OFF)
+                            : actionName)));
         }
     }
 
@@ -388,8 +391,9 @@ public class SpatialView implements
                             item.setText(mapName);
                             if (overlayResource.getProperties().isVisible()) {
                                 item.setData(new SpatialDisplayAction(
-                                        "Drawing", "SelectByArea", mapName
-                                                + " (Select By Area)",
+                                        SpatialDisplayAction.ActionType.DRAWING,
+                                        SpatialDisplayAction.ActionIdentifier.SELECT_BY_AREA,
+                                        mapName + " (Select By Area)",
                                         tableName));
                                 item.addSelectionListener(listener);
                             } else {
@@ -727,31 +731,42 @@ public class SpatialView implements
 
             // Create the actions.
             undoCommandAction = new BasicSpatialAction("", "undo.png",
-                    Action.AS_PUSH_BUTTON, "Undo", "undo", null);
+                    Action.AS_PUSH_BUTTON, "Undo",
+                    SpatialDisplayAction.ActionType.UNDO, null);
             undoCommandAction.setEnabled(false);
             redoCommandAction = new BasicSpatialAction("", "redo.png",
-                    Action.AS_PUSH_BUTTON, "Redo", "redo", null);
+                    Action.AS_PUSH_BUTTON, "Redo",
+                    SpatialDisplayAction.ActionType.REDO, null);
             redoCommandAction.setEnabled(false);
             addToSelectedToggleAction = new BasicSpatialAction("",
                     "addToSelected.png", Action.AS_CHECK_BOX,
                     "Add New Pending to Selected",
-                    HazardConstants.ADD_PENDING_TO_SELECTED, null);
+                    SpatialDisplayAction.ActionType.ADD_PENDING_TO_SELECTED,
+                    null);
             moveAndSelectChoiceAction = new BasicSpatialAction("",
                     "moveAndSelect.png", Action.AS_RADIO_BUTTON,
-                    "Select Event", "Drawing", "SelectEvent");
+                    "Select Event", SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.SELECT_EVENT);
             moveAndSelectChoiceAction.setChecked(true);
             drawNodedPolygonChoiceAction = new BasicSpatialAction("",
                     "drawPolygon.png", Action.AS_RADIO_BUTTON, "Draw Polygon",
-                    "Drawing", "DrawPolygon");
-            drawFreehandPolygonChoiceAction = new BasicSpatialAction("",
-                    "drawFreehandPolygon.png", Action.AS_RADIO_BUTTON,
-                    "Draw Freehand Polygon", "Drawing", "DrawFreeHandPolygon");
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON);
+            drawFreehandPolygonChoiceAction = new BasicSpatialAction(
+                    "",
+                    "drawFreehandPolygon.png",
+                    Action.AS_RADIO_BUTTON,
+                    "Draw Freehand Polygon",
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON);
             drawNodedPathChoiceAction = new BasicSpatialAction("",
                     "drawPath.png", Action.AS_RADIO_BUTTON, "Draw Path",
-                    "Drawing", "DrawLine");
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.DRAW_LINE);
             drawPointChoiceAction = new BasicSpatialAction("", "drawPoint.png",
-                    Action.AS_RADIO_BUTTON, "Draw Points", "Drawing",
-                    "DrawPoint");
+                    Action.AS_RADIO_BUTTON, "Draw Points",
+                    SpatialDisplayAction.ActionType.DRAWING,
+                    SpatialDisplayAction.ActionIdentifier.DRAW_POINT);
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
 
             // Return the list.
@@ -939,7 +954,8 @@ public class SpatialView implements
 
             if (caveNewTime != currentFrameTime) {
                 if (framesInfo != null) {
-                    fireAction(new SpatialDisplayAction("FrameChanged",
+                    fireAction(new SpatialDisplayAction(
+                            SpatialDisplayAction.ActionType.FRAME_CHANGED,
                             framesInfo));
                 }
 

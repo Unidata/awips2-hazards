@@ -17,7 +17,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.StarDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.StormTrackDotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.TextPositioner;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
@@ -296,7 +295,7 @@ public class HazardServicesDrawableBuilder {
             drawingAttributes.setAttributes();
 
             result = new HazardServicesSymbol(drawingAttributes, DOT, DOT,
-                    points, activeLayer, Utilities.DRAG_DROP_DOT);
+                    points, activeLayer, HazardConstants.DRAG_DROP_DOT);
             return result;
         } catch (VizException e) {
             statusHandler.error("Could not build storm track dot", e);

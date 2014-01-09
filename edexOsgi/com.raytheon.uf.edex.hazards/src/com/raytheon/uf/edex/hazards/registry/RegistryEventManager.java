@@ -203,7 +203,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                                                 .get(HazardConstants.HAZARD_EVENT_START_TIME),
                                         (Date) filters
                                                 .get(HazardConstants.HAZARD_EVENT_END_TIME)));
-                    } else if (finalKey.equals(HazardConstants.PHENSIG)) {
+                    } else if (finalKey.equals(HazardConstants.PHEN_SIG)) {
                         for (Object ob : entry.getValue()) {
                             String phensig = ob.toString();
 

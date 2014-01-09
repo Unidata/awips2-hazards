@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
-import java.util.Date;
-
 import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -160,17 +158,6 @@ public interface ISessionManager extends IUndoRedoable {
      */
     public boolean areHatchedAreasDisplayed();
 
-    /**
-     * Initialize the session manager.
-     */
-    @Deprecated
-    void initialize(Date selectedTime, String staticSettingID,
-            String dynamicSetting_json, String caveMode, String siteID);
-
-    @Deprecated
-    String handleRecommenderResult(String toolID, EventSet<IEvent> eventList);
-
-    @Deprecated
-    String getComponentData(String component, String eventID);
+    void handleRecommenderResult(EventSet<IEvent> eventList);
 
 }

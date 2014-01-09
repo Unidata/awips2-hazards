@@ -11,17 +11,18 @@ package gov.noaa.gsd.viz.hazards.console;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.utilities.DateStringComparator;
+import gov.noaa.gsd.common.utilities.DoubleStringComparator;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.common.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.IMenuSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
@@ -106,9 +107,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: Temporal display, providing the user the ability to view and
@@ -650,7 +654,7 @@ class TemporalDisplay {
     /**
      * A dictionary containing the current dynamic setting.
      */
-    private Dict dynamicSetting;
+    private Settings currentSettings;
 
     /**
      * List of visible column names. The order of this list is the order in
@@ -736,7 +740,7 @@ class TemporalDisplay {
      * Map of column names to definitions of the corresponding columns. Each
      * definition is a dictionary of key-value pairs defining that column.
      */
-    private Dict columnDefinitionsForNames;
+    private Map<String, Column> columnsForNames;
 
     /**
      * Flag indicating whether or not column move events should be ignored.
@@ -764,6 +768,8 @@ class TemporalDisplay {
      * modification is scheduled to occur.
      */
     private boolean willNotifyOfSettingChange = false;
+
+    private final JSONConverter jsonConverter = new JSONConverter();
 
     /**
      * Multi-value linear control listener for thumb movements on the hazard
@@ -810,15 +816,16 @@ class TemporalDisplay {
                     int columnIndex = getIndexOfColumnInTable(columnName);
                     if (columnIndex != -1) {
                         updateCell(columnIndex,
-                                (Dict) columnDefinitionsForNames
-                                        .get(columnName), values[j], item);
+                                columnsForNames.get(columnName), values[j],
+                                item);
                     }
                 }
 
                 // Notify listeners of the change.
                 fireConsoleActionOccurred(new ConsoleAction(
-                        "EventTimeRangeChanged", eventID,
-                        Long.toString(values[0]), Long.toString(values[1])));
+                        ConsoleAction.ActionType.EVENT_TIME_RANGE_CHANGED,
+                        eventID, Long.toString(values[0]),
+                        Long.toString(values[1])));
             }
         }
 
@@ -1309,12 +1316,11 @@ class TemporalDisplay {
         // Create the various lists and dictionaries required.
         eventIdentifiers = Lists.newArrayList();
         dictsForEventIdentifiers = Maps.newHashMap();
-        columnDefinitionsForNames = new Dict();
+        columnsForNames = Maps.newHashMap();
         columnNamesForIdentifiers = Maps.newHashMap();
         visibleColumnNames = Lists.newArrayList();
         hintTextIdentifiersForVisibleColumnNames = Maps.newHashMap();
         dateIdentifiersForVisibleColumnNames = Maps.newHashMap();
-        dynamicSetting = new Dict();
         tableEditorsForIdentifiers = Maps.newHashMap();
 
         // Configure the date-time formatter.
@@ -1337,7 +1343,7 @@ class TemporalDisplay {
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
      * @param hazardEvents
-     *            JSON string holding a list of hazard events.
+     * @param currentSettings
      * @param filterMegawidgets
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -1349,8 +1355,9 @@ class TemporalDisplay {
      *            they are provided at the bottom of this composite instead.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, String hazardEvents,
-            String filterMegawidgets, ImmutableList<IHazardAlert> activeAlerts,
+            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Settings currentSettings, String filterMegawidgets,
+            ImmutableList<IHazardAlert> activeAlerts,
             boolean showControlsInToolBar) {
 
         // Remember the presenter.
@@ -1384,25 +1391,25 @@ class TemporalDisplay {
         // current time. Also send the visible time range back as a
         // model change.
         long lowerTime = this.currentTime - (visibleTimeRange / 4L);
-        if (lowerTime < Utilities.MIN_TIME) {
-            lowerTime = Utilities.MIN_TIME;
+        if (lowerTime < HazardConstants.MIN_TIME) {
+            lowerTime = HazardConstants.MIN_TIME;
         }
         long upperTime = lowerTime + visibleTimeRange - 1L;
-        if (upperTime > Utilities.MAX_TIME) {
-            lowerTime -= upperTime - Utilities.MAX_TIME;
-            upperTime = Utilities.MAX_TIME;
+        if (upperTime > HazardConstants.MAX_TIME) {
+            lowerTime -= upperTime - HazardConstants.MAX_TIME;
+            upperTime = HazardConstants.MAX_TIME;
         }
         ruler.setVisibleValueRange(lowerTime, upperTime);
         fireConsoleActionOccurred(new ConsoleAction(
-                ("VisibleTimeRangeChanged"), Long.toString(lowerTime),
-                Long.toString(upperTime)));
+                ConsoleAction.ActionType.VISIBLE_TIME_RANGE_CHANGED,
+                Long.toString(lowerTime), Long.toString(upperTime)));
         ruler.setFreeMarkedValues(this.currentTime);
         ruler.setFreeThumbValues(this.selectedTime);
 
         // Use the provided hazard events, clearing the old ones first
         // in case this is a re-initialization.
         clearEvents();
-        setComponentData(hazardEvents, filterMegawidgets);
+        setComponentData(hazardEvents, currentSettings, filterMegawidgets);
 
         // Add the mouse wheel filter, used to handle mouse wheel
         // events properly when they should apply to the table.
@@ -1558,8 +1565,6 @@ class TemporalDisplay {
     }
 
     /**
-     * Get the list of the current hazard events.
-     * 
      * @return List of the current hazard events.
      */
     public List<Dict> getEvents() {
@@ -1570,24 +1575,19 @@ class TemporalDisplay {
         return dictList;
     }
 
-    /**
-     * Get the dictionary defining the dynamic setting currently in use.
-     * 
-     * @return Dictionary defining the dynamic setting currently in use.
-     */
-    public Dict getDynamicSetting() {
-        return dynamicSetting;
+    public Settings getCurrentSettings() {
+        return currentSettings;
     }
 
     /**
      * Set the specified hazard events as the events to be shown in the table.
      * 
      * @param hazardEvents
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding an event as a set of key-value pairs.
+     * @param currentSettings
      */
-    public void setComponentData(String hazardEvents) {
-        setComponentData(hazardEvents, null);
+    public void setComponentData(List<Dict> hazardEvents,
+            Settings currentSettings) {
+        setComponentData(hazardEvents, currentSettings, null);
     }
 
     /**
@@ -1718,8 +1718,7 @@ class TemporalDisplay {
                             int columnIndex = getIndexOfColumnInTable(columnName);
                             if (columnIndex != -1) {
                                 updateCell(columnIndex,
-                                        (Dict) columnDefinitionsForNames
-                                                .get(columnName),
+                                        columnsForNames.get(columnName),
                                         dict.get(key), item);
                             }
                         }
@@ -1901,8 +1900,8 @@ class TemporalDisplay {
                         .setConstrainedMarkedValues();
             }
             fireConsoleActionOccurred(new ConsoleAction(
-                    "SelectedTimeRangeChanged", Long.toString(-1L),
-                    Long.toString(-1L)));
+                    ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
+                    Long.toString(-1L), Long.toString(-1L)));
         } else {
             if (timeRangeStart == -1) {
                 timeRangeStart = selectedTime;
@@ -1921,8 +1920,8 @@ class TemporalDisplay {
                 scale.setConstrainedMarkedRangeColor(1, timeRangeFillColor);
             }
             fireConsoleActionOccurred(new ConsoleAction(
-                    "SelectedTimeRangeChanged", Long.toString(timeRangeStart),
-                    Long.toString(timeRangeEnd)));
+                    ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
+                    Long.toString(timeRangeStart), Long.toString(timeRangeEnd)));
         }
     }
 
@@ -1932,8 +1931,7 @@ class TemporalDisplay {
      * Set the specified hazard events as the events to be shown in the table.
      * 
      * @param hazardEvents
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding an event as a set of key-value pairs.
+     * @param currentSettings
      * @param filterMegawidgets
      *            JSON string holding an array of dictionaries, each of the
      *            latter holding a filter megawidget as a set of key-value
@@ -1941,7 +1939,8 @@ class TemporalDisplay {
      *            method is called, in order to construct the context menus; it
      *            is ignored otherwise.
      */
-    private void setComponentData(String hazardEvents, String filterMegawidgets) {
+    private void setComponentData(List<Dict> hazardEvents,
+            Settings currentSettings, String filterMegawidgets) {
 
         // Prepare for the addition and/or removal of columns.
         boolean lastIgnoreResize = ignoreResize;
@@ -1953,8 +1952,9 @@ class TemporalDisplay {
         // Remove the sorting column, if any.
         table.setSortColumn(null);
 
-        // Update the events and setting information.
-        parseHazardEventsFromJSON(hazardEvents);
+        updateSettings(currentSettings);
+
+        updateHazardEvents(hazardEvents);
 
         // If the header menus for the various columns have not yet been
         // created, create them now.
@@ -1962,8 +1962,8 @@ class TemporalDisplay {
 
             // Get a list of all the column names for which there are
             // definitions, sorted alphabetically.
-            List<String> columnNames = Lists
-                    .newArrayList(columnDefinitionsForNames.keySet());
+            List<String> columnNames = Lists.newArrayList(columnsForNames
+                    .keySet());
             Collections.sort(columnNames);
 
             // Copy the list of column names to another list that will be
@@ -2026,10 +2026,11 @@ class TemporalDisplay {
                     // associated filter.
                     if (filterColumnName != null) {
                         try {
+                            final Dict settingsAsDict = settingsAsDict();
                             headerMegawidgetManagersForColumnNames.put(
                                     filterColumnName, new MegawidgetManager(
                                             menu, Lists.newArrayList(filter),
-                                            dynamicSetting) {
+                                            settingsAsDict) {
                                         @Override
                                         protected void commandInvoked(
                                                 String identifier,
@@ -2053,8 +2054,15 @@ class TemporalDisplay {
                                             // visibleTypes and
                                             // hidHazardCategories lists in the
                                             // dynamic setting.
+                                            Dict settingsAsDict = (Dict) getState();
                                             SettingsView
-                                                    .translateHazardCategoriesAndTypesToOldLists(dynamicSetting);
+                                                    .translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
+                                            Settings updatedSettings = jsonConverter
+                                                    .fromJson(settingsAsDict
+                                                            .toJSONString(),
+                                                            Settings.class);
+                                            TemporalDisplay.this.currentSettings
+                                                    .apply(updatedSettings);
 
                                             // Forward the dynamic setting
                                             // change to the
@@ -2110,11 +2118,9 @@ class TemporalDisplay {
                 continue;
             }
             columnNames.add(columnName);
-            Dict columnDefinition = columnDefinitionsForNames
-                    .getDynamicallyTypedValue(columnName);
+            Column columnDefinition = columnsForNames.get(columnName);
             if (columnDefinition != null) {
-                Number width = columnDefinition
-                        .getDynamicallyTypedValue(SETTING_COLUMN_WIDTH);
+                Number width = columnDefinition.getWidth();
                 if (width != null) {
                     table.getColumn(j).setWidth(width.intValue());
                 }
@@ -2152,6 +2158,15 @@ class TemporalDisplay {
         ignoreResize = lastIgnoreResize;
         ignoreMove = lastIgnoreMove;
         visibleColumnCountChanged();
+    }
+
+    private Dict settingsAsDict() {
+        final Dict result = Dict.getInstance(settingsAsJSON());
+        return result;
+    }
+
+    private String settingsAsJSON() {
+        return new JSONConverter().toJson(currentSettings);
     }
 
     /**
@@ -2292,57 +2307,42 @@ class TemporalDisplay {
         }
     }
 
-    /**
-     * Parse the specified JSON string into a list of hazard event dictionaries.
-     * 
-     * @param hazardEvents
-     *            JSON string holding the hazard event dictionaries as a list.
-     */
-    private void parseHazardEventsFromJSON(String hazardEvents) {
+    private void updateHazardEvents(List<Dict> hazardEvents) {
+        /*
+         * Add each hazard event to the list of event dictionaries
+         */
+        if (hazardEvents != null) {
+            numberOfRows = hazardEvents.size();
+            for (Dict dict : hazardEvents) {
+                String eventId = (String) dict.get(HAZARD_EVENT_IDENTIFIER);
+                eventIdentifiers.add(eventId);
+                dictsForEventIdentifiers.put(eventId, dict);
+            }
+        }
+    }
 
-        // Get the list of hazard events, the dynamic setting, the
-        // column definitions, and the visible column names. Also
-        // determine which of the visible columns may generate hint
-        // text, and which hold date values.
-        Dict hazardEventData = Dict.getInstance(hazardEvents);
-        List<Dict> eventArray = hazardEventData
-                .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_EVENTS);
-        dynamicSetting = hazardEventData
-                .getDynamicallyTypedValue(Utilities.TEMPORAL_DISPLAY_DYNAMIC_SETTING);
-        columnDefinitionsForNames = dynamicSetting
-                .getDynamicallyTypedValue(SETTING_COLUMNS);
-        visibleColumnNames = dynamicSetting
-                .getDynamicallyTypedValue(SETTING_VISIBLE_COLUMNS);
+    private void updateSettings(Settings currentSettings) {
+        /*
+         * Get the column definitions, and the visible column names. Also
+         * determine which of the visible columns may generate hint text, and
+         * which hold date values.
+         */
+        this.currentSettings = currentSettings;
+        columnsForNames = currentSettings.getColumns();
+        visibleColumnNames = currentSettings.getVisibleColumns();
+
         hintTextIdentifiersForVisibleColumnNames.clear();
         dateIdentifiersForVisibleColumnNames.clear();
         for (String columnName : visibleColumnNames) {
             determineSpecialPropertiesOfColumn(columnName);
         }
 
-        // com.google.gson.Gson gson =
-        // gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities
-        // .createPrettyGsonInterpreter();
-        // statusHandler.debug(gson.toJson(eventArray));
-
         // Compile a mapping of column identifiers to their
         // names.
         columnNamesForIdentifiers.clear();
-        for (String name : columnDefinitionsForNames.keySet()) {
-            columnNamesForIdentifiers.put(
-                    (String) ((Dict) columnDefinitionsForNames.get(name))
-                            .get(SETTING_COLUMN_IDENTIFIER), name);
-        }
-
-        // Add each hazard event to the list of event dictio-
-        // naries.
-        if (eventArray != null) {
-            numberOfRows = eventArray.size();
-            for (int j = 0; j < eventArray.size(); ++j) {
-                Dict dict = eventArray.get(j);
-                String eventId = (String) dict.get(HAZARD_EVENT_IDENTIFIER);
-                eventIdentifiers.add(eventId);
-                dictsForEventIdentifiers.put(eventId, dict);
-            }
+        for (String name : columnsForNames.keySet()) {
+            Column column = columnsForNames.get(name);
+            columnNamesForIdentifiers.put((column).getFieldName(), name);
         }
     }
 
@@ -2474,8 +2474,8 @@ class TemporalDisplay {
 
         // Create a time scale widget with two thumbs and configure it
         // appropriately.
-        MultiValueScale scale = new MultiValueScale(table, Utilities.MIN_TIME,
-                Utilities.MAX_TIME);
+        MultiValueScale scale = new MultiValueScale(table,
+                HazardConstants.MIN_TIME, HazardConstants.MAX_TIME);
         scale.setSnapValueCalculator(snapValueCalculator);
         scale.setTooltipTextProvider(thumbTooltipTextProvider);
         scale.setInsets(TIME_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING,
@@ -2668,8 +2668,9 @@ class TemporalDisplay {
                             break;
                         }
                     }
-                    fireConsoleActionOccurred(new ConsoleAction("CheckBox",
-                            identifier, isChecked));
+                    fireConsoleActionOccurred(new ConsoleAction(
+                            ConsoleAction.ActionType.CHECK_BOX, identifier,
+                            isChecked));
                 } else {
                     if (e.time == lastCheckEventTime) {
                         e.doit = false;
@@ -2689,7 +2690,8 @@ class TemporalDisplay {
                         selectedIndices = table.getSelectionIndices();
                         updateEventDictListSelection(selectedIdentifiers);
                         fireConsoleActionOccurred(new ConsoleAction(
-                                SELECTED_EVENTS_CHANGED, selectedIdentifiers
+                                ConsoleAction.ActionType.SELECTED_EVENTS_CHANGED,
+                                selectedIdentifiers
                                         .toArray(new String[selectedIdentifiers
                                                 .size()])));
                     }
@@ -2771,7 +2773,7 @@ class TemporalDisplay {
                                 .get(column.getText());
                         if (megawidgetManager != null) {
                             try {
-                                megawidgetManager.setState(dynamicSetting);
+                                megawidgetManager.setState(settingsAsDict());
                             } catch (MegawidgetStateException exception) {
                                 statusHandler
                                         .error("TemporalDisplay.createTable().MenuDetectListener."
@@ -2998,7 +3000,7 @@ class TemporalDisplay {
 
         // Get the column definition dictionary corresponding to this
         // name.
-        Dict columnDefinition = (Dict) columnDefinitionsForNames.get(name);
+        Column columnDefinition = columnsForNames.get(name);
         if (columnDefinition == null) {
             statusHandler
                     .error("TemporalDisplay.createTableColumn(): Problem: "
@@ -3015,8 +3017,7 @@ class TemporalDisplay {
         column.setImage(spacerImage);
         column.setMoveable(true);
         column.setResizable(true);
-        if (columnDefinition.getDynamicallyTypedValue(SETTING_COLUMN_TYPE)
-                .equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
+        if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
             countdownTimerColumnIndex = index;
             countdownTimerColumnName = name;
             updateCountdownTimers();
@@ -3032,8 +3033,7 @@ class TemporalDisplay {
         // change the width to something other than that provided by
         // the definition.
         column.pack();
-        Number width = columnDefinition
-                .getDynamicallyTypedValue(SETTING_COLUMN_WIDTH);
+        Number width = columnDefinition.getWidth();
         if (width != null) {
             column.setWidth(width.intValue());
         }
@@ -3041,8 +3041,7 @@ class TemporalDisplay {
         // Create the appropriate comparator for sorting by the
         // contents of the cells in this column, and associate it with
         // the column.
-        String type = columnDefinition
-                .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
+        String type = columnDefinition.getType();
         Comparator<?> comparator = null;
         if (type.equals(SETTING_COLUMN_TYPE_STRING)) {
             comparator = Collator.getInstance(Locale.getDefault());
@@ -3159,8 +3158,8 @@ class TemporalDisplay {
         // color changes must be ignored, since the ModeListener
         // objects may try to change the colors when the CAVE
         // mode changes, which in this case is undesirable.
-        ruler = new MultiValueRuler(parent, Utilities.MIN_TIME,
-                Utilities.MAX_TIME, hatchMarkGroups) {
+        ruler = new MultiValueRuler(parent, HazardConstants.MIN_TIME,
+                HazardConstants.MAX_TIME, hatchMarkGroups) {
             @Override
             public void setBackground(Color background) {
 
@@ -3210,15 +3209,15 @@ class TemporalDisplay {
         ruler.setViewportDraggable(true);
 
         long lowerTime = currentTime - (visibleTimeRange / 4L);
-        if (lowerTime < Utilities.MIN_TIME) {
-            lowerTime = Utilities.MIN_TIME;
+        if (lowerTime < HazardConstants.MIN_TIME) {
+            lowerTime = HazardConstants.MIN_TIME;
         }
         long upperTime = lowerTime + visibleTimeRange - 1L;
-        if (upperTime > Utilities.MAX_TIME) {
-            lowerTime -= upperTime - Utilities.MAX_TIME;
-            upperTime = Utilities.MAX_TIME;
+        if (upperTime > HazardConstants.MAX_TIME) {
+            lowerTime -= upperTime - HazardConstants.MAX_TIME;
+            upperTime = HazardConstants.MAX_TIME;
         } else if (upperTime <= lowerTime) {
-            upperTime = Utilities.MAX_TIME;
+            upperTime = HazardConstants.MAX_TIME;
         }
         ruler.setVisibleValueRange(lowerTime, upperTime);
         ruler.setFreeMarkedValues(currentTime);
@@ -3265,8 +3264,8 @@ class TemporalDisplay {
                 if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
                         || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     fireConsoleActionOccurred(new ConsoleAction(
-                            "SelectedTimeRangeChanged", Long
-                                    .toString(timeRangeStart), Long
+                            ConsoleAction.ActionType.SELECTED_TIME_RANGE_CHANGED,
+                            Long.toString(timeRangeStart), Long
                                     .toString(timeRangeEnd)));
                 }
             }
@@ -3286,7 +3285,8 @@ class TemporalDisplay {
                 if ((source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
                         || (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)) {
                     fireConsoleActionOccurred(new ConsoleAction(
-                            "SelectedTimeChanged", Long.toString(selectedTime)));
+                            ConsoleAction.ActionType.SELECTED_TIME_CHANGED,
+                            Long.toString(selectedTime)));
                 }
             }
         });
@@ -3407,7 +3407,7 @@ class TemporalDisplay {
             // to the column.
             for (String name : visibleColumnNames) {
                 updateCell(j, getIndexOfColumnInTable(name),
-                        (Dict) columnDefinitionsForNames.get(name), item);
+                        columnsForNames.get(name), item);
             }
 
             // Determine whether or not the row is to be selected.
@@ -3543,8 +3543,7 @@ class TemporalDisplay {
         // appropriate.
         int index = getIndexOfColumnInTable(columnName);
         if (index != -1) {
-            Dict columnDefinition = columnDefinitionsForNames
-                    .getDynamicallyTypedValue(columnName);
+            Column columnDefinition = columnsForNames.get(columnName);
             TableItem[] tableItems = table.getItems();
             for (int j = 0; j < tableItems.length; j++) {
                 updateCell(j, index, columnDefinition, tableItems[j]);
@@ -3561,19 +3560,16 @@ class TemporalDisplay {
      * @param col
      *            Column to be updated.
      * @param columnDefinition
-     *            Dictionary holding the definition of the column as key-value
-     *            pairs.
      * @param item
      *            Table item holding the cell that is to be updated.
      */
-    private void updateCell(int row, int col, Dict columnDefinition,
+    private void updateCell(int row, int col, Column columnDefinition,
             TableItem item) {
 
         // If the cell is in the countdown column, update the display
         // properties for any countdown timer associated with this
         // row's event.
-        if (columnDefinition.get(SETTING_COLUMN_TYPE).equals(
-                SETTING_COLUMN_TYPE_COUNTDOWN)
+        if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_COUNTDOWN)
                 && (countdownTimersDisplayManager != null)) {
             countdownTimersDisplayManager.updateDisplayPropertiesForEvent(
                     (String) item.getData(), item.getFont());
@@ -3590,14 +3586,12 @@ class TemporalDisplay {
      * @param col
      *            Column to be updated.
      * @param columnDefinition
-     *            Dictionary holding the definition of the column as key-value
-     *            pairs.
      * @param value
      *            Value to be displayed.
      * @param item
      *            Table item holding the cell that is to be updated.
      */
-    private void updateCell(int col, Dict columnDefinition, Object value,
+    private void updateCell(int col, Column columnDefinition, Object value,
             TableItem item) {
         setCellText(col, item, convertToCellValue(value, columnDefinition),
                 getEmptyFieldText(columnDefinition));
@@ -3683,15 +3677,15 @@ class TemporalDisplay {
 
         // Sanity check the bounds.
         boolean altered = false;
-        if (lower < Utilities.MIN_TIME) {
+        if (lower < HazardConstants.MIN_TIME) {
             altered = true;
-            upper += Utilities.MIN_TIME - lower;
-            lower = Utilities.MIN_TIME;
+            upper += HazardConstants.MIN_TIME - lower;
+            lower = HazardConstants.MIN_TIME;
         }
-        if (upper > Utilities.MAX_TIME) {
+        if (upper > HazardConstants.MAX_TIME) {
             altered = true;
-            lower -= upper - Utilities.MAX_TIME;
-            upper = Utilities.MAX_TIME;
+            lower -= upper - HazardConstants.MAX_TIME;
+            upper = HazardConstants.MAX_TIME;
         }
 
         // If the time range has changed from what the time line
@@ -3701,8 +3695,8 @@ class TemporalDisplay {
             ruler.setVisibleValueRange(lower, upper);
             if (forwardAction || altered) {
                 fireConsoleActionOccurred(new ConsoleAction(
-                        ("VisibleTimeRangeChanged"), Long.toString(lower),
-                        Long.toString(upper)));
+                        ConsoleAction.ActionType.VISIBLE_TIME_RANGE_CHANGED,
+                        Long.toString(lower), Long.toString(upper)));
             }
         }
     }
@@ -3730,8 +3724,8 @@ class TemporalDisplay {
         updateRulerButtonsState();
         if (forwardAction) {
             fireConsoleActionOccurred(new ConsoleAction(
-                    ("VisibleTimeRangeChanged"), Long.toString(lower),
-                    Long.toString(upper)));
+                    ConsoleAction.ActionType.VISIBLE_TIME_RANGE_CHANGED,
+                    Long.toString(lower), Long.toString(upper)));
         }
     }
 
@@ -3789,13 +3783,13 @@ class TemporalDisplay {
             buttonsForIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
                     getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
             buttonsForIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
+                    ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             buttonsForIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
+                    ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             buttonsForIdentifiers.get(BUTTON_PAN_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
+                    ruler.getUpperVisibleValue() < HazardConstants.MAX_TIME);
             buttonsForIdentifiers.get(BUTTON_PAGE_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
+                    ruler.getUpperVisibleValue() < HazardConstants.MAX_TIME);
         }
 
         // Update the toolbar buttons if they exist.
@@ -3805,13 +3799,13 @@ class TemporalDisplay {
             actionsForButtonIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
                     getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
             actionsForButtonIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
+                    ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
-                    ruler.getLowerVisibleValue() > Utilities.MIN_TIME);
+                    ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAN_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
+                    ruler.getUpperVisibleValue() < HazardConstants.MAX_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAGE_FORWARD).setEnabled(
-                    ruler.getUpperVisibleValue() < Utilities.MAX_TIME);
+                    ruler.getUpperVisibleValue() < HazardConstants.MAX_TIME);
         }
     }
 
@@ -3820,13 +3814,13 @@ class TemporalDisplay {
      */
     private void showTime(long time) {
         long lower = time - (visibleTimeRange / 2L);
-        if (lower < Utilities.MIN_TIME) {
-            lower = Utilities.MIN_TIME;
+        if (lower < HazardConstants.MIN_TIME) {
+            lower = HazardConstants.MIN_TIME;
         }
         long upper = lower + visibleTimeRange - 1L;
-        if (upper > Utilities.MAX_TIME) {
-            lower -= upper - Utilities.MAX_TIME;
-            upper = Utilities.MAX_TIME;
+        if (upper > HazardConstants.MAX_TIME) {
+            lower -= upper - HazardConstants.MAX_TIME;
+            upper = HazardConstants.MAX_TIME;
         }
         setVisibleTimeRange(lower, upper, true);
     }
@@ -4064,16 +4058,16 @@ class TemporalDisplay {
      * 
      * @param row
      *            Index of the row from which to retrieve the value.
+     * @param columnDefinition
      * @return Value to display in the specified table cell.
      */
-    private String getCellValue(int row, Dict columnDefinition) {
+    private String getCellValue(int row, Column columnDefinition) {
         if (columnDefinition == null) {
             statusHandler.error("TemporalDisplay.getCellValue(): Problem: "
                     + "no column definition provided");
             return null;
         }
-        if (columnDefinition.get(SETTING_COLUMN_TYPE).equals(
-                SETTING_COLUMN_TYPE_COUNTDOWN)) {
+        if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
             if (countdownTimersDisplayManager == null) {
                 return null;
             }
@@ -4082,8 +4076,7 @@ class TemporalDisplay {
         }
         return (convertToCellValue(
                 dictsForEventIdentifiers.get(eventIdentifiers.get(row)).get(
-                        columnDefinition.get(SETTING_COLUMN_IDENTIFIER)),
-                columnDefinition));
+                        columnDefinition.getFieldName()), columnDefinition));
     }
 
     /**
@@ -4095,14 +4088,13 @@ class TemporalDisplay {
      *            Column definition for this cell.
      * @return Value to display in a table cell.
      */
-    private String convertToCellValue(Object value, Dict columnDefinition) {
+    private String convertToCellValue(Object value, Column columnDefinition) {
         if (columnDefinition == null) {
             statusHandler.error("TemporalDisplay.convertToCellValue(): "
                     + "Problem: no column definition provided");
             return null;
         }
-        if (columnDefinition.getDynamicallyTypedValue(SETTING_COLUMN_TYPE)
-                .equals(SETTING_COLUMN_TYPE_DATE)) {
+        if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_DATE)) {
             Number number = (Number) value;
             if (number != null) {
                 return getDateTimeString(number.longValue());
@@ -4120,8 +4112,8 @@ class TemporalDisplay {
      * orders, etc.).
      */
     private void notifyListenersOfSettingDefinitionChange() {
-        SettingsAction action = new SettingsAction(DYNAMIC_SETTING_CHANGED,
-                dynamicSetting.toJSONString());
+        CurrentSettingsAction action = new CurrentSettingsAction(
+                currentSettings);
         presenter.fireAction(action);
     }
 
@@ -4175,22 +4167,19 @@ class TemporalDisplay {
      *            Column name.
      */
     private void determineSpecialPropertiesOfColumn(String columnName) {
-        Dict columnDefinition = (Dict) columnDefinitionsForNames
-                .get(columnName);
+        Column columnDefinition = columnsForNames.get(columnName);
         if (columnDefinition == null) {
             return;
         }
-        String hintTextIdentifier = columnDefinition
-                .getDynamicallyTypedValue(SETTING_COLUMN_HINT_TEXT_IDENTIFIER);
+        String hintTextIdentifier = columnDefinition.getHintTextFieldName();
         if (hintTextIdentifier != null) {
             hintTextIdentifiersForVisibleColumnNames.put(columnName,
                     hintTextIdentifier);
         }
-        String columnType = columnDefinition
-                .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
+        String columnType = columnDefinition.getType();
         if (columnType.equals(SETTING_COLUMN_TYPE_DATE)) {
             dateIdentifiersForVisibleColumnNames.put(columnName,
-                    (String) columnDefinition.get(SETTING_COLUMN_IDENTIFIER));
+                    columnDefinition.getFieldName());
         }
     }
 
@@ -4203,27 +4192,23 @@ class TemporalDisplay {
         // Alter the column definitions to record the fact that a new
         // column is the sort column, and its direction.
         String sortName = table.getSortColumn().getText();
-        for (String name : columnDefinitionsForNames.keySet()) {
-            Dict columnDefinition = (Dict) columnDefinitionsForNames.get(name);
+        for (String name : columnsForNames.keySet()) {
+            Column columnDefinition = columnsForNames.get(name);
             if (name.equals(sortName)) {
                 if (table.getSortDirection() == SWT.UP) {
-                    columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
-                            SETTING_COLUMN_SORT_DIRECTION_ASCENDING);
+                    columnDefinition
+                            .setSortDir(SETTING_COLUMN_SORT_DIRECTION_ASCENDING);
                 } else {
-                    columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
-                            SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
+                    columnDefinition
+                            .setSortDir(SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
                 }
             } else {
-                columnDefinition.put(SETTING_COLUMN_SORT_DIRECTION,
-                        SETTING_COLUMN_SORT_DIRECTION_NONE);
+                columnDefinition.setSortDir(SETTING_COLUMN_SORT_DIRECTION_NONE);
             }
         }
 
         // Notify listeners of the setting change.
         scheduleNotificationOfSettingDefinitionChange();
-
-        // Gson gson = JSONUtilities.createPrettyGsonInterpreter();
-        // statusHandler.debug(gson.toJson(columnDefinitionsForNames));
     }
 
     /**
@@ -4234,17 +4219,14 @@ class TemporalDisplay {
      *            The table column which has been resized.
      */
     private void updateTableColumnWidthInSettingDefinition(TableColumn column) {
-        Dict columnDefinition = (Dict) columnDefinitionsForNames.get(column
-                .getText());
+        Column columnDefinition = columnsForNames.get(column.getText());
         if (columnDefinition != null) {
-            columnDefinition.put(SETTING_COLUMN_WIDTH, column.getWidth());
+            columnDefinition.setWidth(column.getWidth());
         }
 
         // Notify listeners of the setting change.
         scheduleNotificationOfSettingDefinitionChange();
 
-        // Gson gson = JSONUtilities.createPrettyGsonInterpreter();
-        // statusHandler.debug(gson.toJson(columnDefinitionsForNames));
     }
 
     /**
@@ -4253,18 +4235,15 @@ class TemporalDisplay {
      */
     private void updateAllTableColumnWidthsInSettingDefinition() {
         for (TableColumn column : table.getColumns()) {
-            Dict columnDefinition = (Dict) columnDefinitionsForNames.get(column
-                    .getText());
+            Column columnDefinition = columnsForNames.get(column.getText());
             if (columnDefinition != null) {
-                columnDefinition.put(SETTING_COLUMN_WIDTH, column.getWidth());
+                columnDefinition.setWidth(column.getWidth());
             }
         }
 
         // Notify listeners of the setting change.
         scheduleNotificationOfSettingDefinitionChange();
 
-        // Gson gson = JSONUtilities.createPrettyGsonInterpreter();
-        // statusHandler.debug(gson.toJson(columnDefinitionsForNames));
     }
 
     /**
@@ -4301,10 +4280,9 @@ class TemporalDisplay {
      * @param tableColumn
      *            Table column for this definition.
      */
-    private void setSortInfoIfSortColumn(Dict columnDefinition,
+    private void setSortInfoIfSortColumn(Column columnDefinition,
             TableColumn tableColumn) {
-        String sortDirection = columnDefinition
-                .getDynamicallyTypedValue(SETTING_COLUMN_SORT_DIRECTION);
+        String sortDirection = columnDefinition.getSortDir();
         if (sortDirection != null) {
             if (sortDirection.equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING)) {
                 table.setSortColumn(tableColumn);
@@ -4331,8 +4309,7 @@ class TemporalDisplay {
             // Get the sort direction, the event dictionary field it
             // represents, and the type of the field.
             int tableSortDirection = table.getSortDirection();
-            Dict columnDefinition = (Dict) columnDefinitionsForNames.get(column
-                    .getText());
+            Column columnDefinition = columnsForNames.get(column.getText());
             if (columnDefinition == null) {
                 statusHandler
                         .error("TemporalDisplay.sortEventData(): Problem: no "
@@ -4340,10 +4317,8 @@ class TemporalDisplay {
                                 + "\".");
                 return;
             }
-            String sortByIdentifier = columnDefinition
-                    .getDynamicallyTypedValue(SETTING_COLUMN_IDENTIFIER);
-            String sortByType = columnDefinition
-                    .getDynamicallyTypedValue(SETTING_COLUMN_TYPE);
+            String sortByIdentifier = columnDefinition.getFieldName();
+            String sortByType = columnDefinition.getType();
 
             // Determine which is the appropriate comparator.
             Comparator<? super String> comparator = null;
@@ -4351,7 +4326,7 @@ class TemporalDisplay {
                 comparator = Collator.getInstance(Locale.getDefault());
             } else if (sortByType.equals(SETTING_COLUMN_TYPE_DATE)
                     || sortByType.equals(SETTING_COLUMN_TYPE_NUMBER)) {
-                comparator = new LongStringComparator();
+                comparator = new DoubleStringComparator();
             } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
 
                 // No action; comparator should be null.
@@ -4619,8 +4594,8 @@ class TemporalDisplay {
 
             // Iterate through the countdown timers, updating the
             // display of any that have corresponding table cells.
-            Dict columnDefinition = columnDefinitionsForNames
-                    .getDynamicallyTypedValue(countdownTimerColumnName);
+            Column columnDefinition = columnsForNames
+                    .get(countdownTimerColumnName);
             TableItem[] items = table.getItems();
             for (String eventId : updateTypesForEventIdentifiers.keySet()) {
 
@@ -4691,14 +4666,11 @@ class TemporalDisplay {
      * empty.
      * 
      * @param columnDefinition
-     *            A dictionary describing the column the field resides in
-     *            including the text if any to display if it is empty.
      * @return The text to display in this field if it is empty.
      */
-    private String getEmptyFieldText(Dict columnDefinition) {
-        if (columnDefinition.containsKey(SETTING_COLUMN_DISPLAY_EMPTY_AS)) {
-            return (String) columnDefinition
-                    .get(SETTING_COLUMN_DISPLAY_EMPTY_AS);
+    private String getEmptyFieldText(Column columnDefinition) {
+        if (columnDefinition.getDisplayEmptyAs() != null) {
+            return columnDefinition.getDisplayEmptyAs();
         } else {
             return EMPTY_STRING;
         }

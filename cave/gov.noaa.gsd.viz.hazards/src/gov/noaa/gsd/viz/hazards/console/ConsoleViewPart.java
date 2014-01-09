@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
@@ -26,6 +25,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -63,12 +63,6 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public static final String ID = "gov.noaa.gsd.viz.hazards.console.view";
 
-    /**
-     * Key into a setting dictionary where the displayable name of the setting
-     * is found as a value.
-     */
-    private static final String DISPLAY_NAME = "displayName";
-
     // Private Static Constants
 
     /**
@@ -83,7 +77,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     /**
      * Name of the currently selected setting.
      */
-    private String selectedSettingName = null;
+    private String selectedSettingName;
 
     /**
      * Name of the current site being used.
@@ -119,8 +113,9 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
-     * @param jsonSettings
-     *            JSON string holding a dictionary providing settings.
+     * @param hazardEvents
+     * @param currentSettings
+     * @param availableSettings
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -132,16 +127,17 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      *            shown in the temporal display composite itself.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, String hazardEvents,
-            String jsonSettings, String jsonFilters,
-            ImmutableList<IHazardAlert> activeAlerts,
+            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Settings currentSettings, List<Settings> availableSettings,
+            String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar) {
         this.currentSite = LocalizationManager
                 .getContextName(LocalizationLevel.SITE);
-        setSettings(jsonSettings);
+        String currentSettingsID = currentSettings.getSettingsID();
+        setSettings(currentSettingsID, availableSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
-                visibleTimeRange, hazardEvents, jsonFilters, activeAlerts,
-                temporalControlsInToolBar);
+                visibleTimeRange, hazardEvents, currentSettings, jsonFilters,
+                activeAlerts, temporalControlsInToolBar);
     }
 
     /**
@@ -299,12 +295,12 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * Add the specified hazard events.
      * 
      * @param hazardEvents
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding an event as a set of key-value pairs.
+     * @param currentSetttings
      */
-    public void updateHazardEvents(String hazardEvents) {
+    public void updateHazardEvents(List<Dict> hazardEvents,
+            Settings currentSettings) {
         temporalDisplay.clearEvents();
-        temporalDisplay.setComponentData(hazardEvents);
+        temporalDisplay.setComponentData(hazardEvents, currentSettings);
     }
 
     /**
@@ -332,45 +328,33 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     }
 
     /**
-     * Get the dictionary defining the dynamic setting currently in use.
-     * 
-     * @return Dictionary defining the dynamic setting currently in use.
+     * @return the settings currently in use.
      */
-    public Dict getDynamicSetting() {
-        return temporalDisplay.getDynamicSetting();
+    public Settings getCurrentSetting() {
+        return temporalDisplay.getCurrentSettings();
     }
 
     /**
      * Set the settings to those specified.
      * 
-     * @param jsonSettings
-     *            JSON string holding a dictionary with an entry for the list of
-     *            settings, and another entry for the current setting
-     *            identifier.
+     * @param currentSettingsID
+     * @param availableSettings
      */
-    public void setSettings(String jsonSettings) {
+    public void setSettings(String currentSettingsID,
+            List<Settings> availableSettings) {
 
-        // Get the dictionary from the JSON, and the list of settings
-        // from that.
-        Dict settingDict = Dict.getInstance(jsonSettings);
-        List<Dict> settings = settingDict
-                .getDynamicallyTypedValue(SETTINGS_LIST);
-        if ((settings == null) || (settings.size() < 1)) {
+        if (currentSettingsID == null) {
             return;
         }
 
-        // Get the identifier of the currently selected setting.
-        String currentIdentifier = settingDict
-                .getDynamicallyTypedValue(SETTINGS_CURRENT_IDENTIFIER);
-
         // Get the names and identifiers of the settings.
-        for (int j = 0; j < settings.size(); j++) {
-            if (currentIdentifier.equals(settings.get(j).get(
-                    SETTINGS_LIST_IDENTIFIER))) {
-                selectedSettingName = settings.get(j).getDynamicallyTypedValue(
-                        DISPLAY_NAME);
+        for (Settings settings : availableSettings) {
+
+            if (currentSettingsID.equals(settings.getSettingsID())) {
+                selectedSettingName = settings.getDisplayName();
                 break;
             }
+
         }
 
         // Show as the text the currently selected setting

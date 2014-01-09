@@ -29,11 +29,26 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
  * @author Bryon.Lawrence
  */
 public class SpatialDisplayAction {
+
+    public enum ActionType {
+        DRAWING, FRAME_CHANGED, ADD_PENDING_TO_SELECTED, CONEXT_MENU_SELECTED,
+
+        SELECTED_EVENTS_CHANGED, DMTS, DISPLAY_DISPOSED, RUN_TOOL,
+
+        UPDATE_EVENT_METADATA, UNDO, REDO
+    }
+
+    public enum ActionIdentifier {
+        SELECT_EVENT, DRAW_POLYGON, DRAW_LINE, DRAW_POINT,
+
+        DRAW_FREE_HAND_POLYGON, SELECT_BY_AREA, ON, OFF
+    }
+
     private FramesInfo framesInfo = null;
 
-    private String actionType = null;
+    private ActionType actionType;
 
-    private String actionIdentifier = null;
+    private ActionIdentifier actionIdentifier = null;
 
     private String legendName = null;
 
@@ -57,53 +72,55 @@ public class SpatialDisplayAction {
 
     private double dragToLongitude = 0;
 
-    public SpatialDisplayAction(String actionType) {
+    public SpatialDisplayAction(ActionType actionType) {
         this.actionType = actionType;
     }
 
-    public SpatialDisplayAction(String actionType, long timeInMilliseconds) {
+    public SpatialDisplayAction(ActionType actionType, long timeInMilliseconds) {
         this(actionType);
         this.timeInMilliSeconds = timeInMilliseconds;
     }
 
-    public SpatialDisplayAction(String actionType, FramesInfo framesInfo) {
+    public SpatialDisplayAction(ActionType actionType, FramesInfo framesInfo) {
         this(actionType);
         this.framesInfo = framesInfo;
     }
 
-    public SpatialDisplayAction(String actionType, double dragToLatitude,
+    public SpatialDisplayAction(ActionType actionType, double dragToLatitude,
             double dragToLongitude) {
         this(actionType);
         this.dragToLatitude = dragToLatitude;
         this.dragToLongitude = dragToLongitude;
     }
 
-    public SpatialDisplayAction(String actionType, String actionIdentifier) {
+    public SpatialDisplayAction(ActionType actionType,
+            ActionIdentifier actionIdentifier) {
         this.actionType = actionType;
         this.actionIdentifier = actionIdentifier;
     }
 
-    public SpatialDisplayAction(String actionType, String toolName,
+    public SpatialDisplayAction(ActionType actionType, String toolName,
             Dict toolParameters) {
         this.actionType = actionType;
         this.toolName = toolName;
         this.toolParameters = toolParameters;
     }
 
-    public SpatialDisplayAction(String actionType, String actionIdentifier,
-            String legendName, String mapsDbTableName) {
+    public SpatialDisplayAction(ActionType actionType,
+            ActionIdentifier actionIdentifier, String legendName,
+            String mapsDbTableName) {
         this.actionType = actionType;
         this.actionIdentifier = actionIdentifier;
         this.legendName = legendName;
         this.mapsDbTableName = mapsDbTableName;
     }
 
-    public SpatialDisplayAction(String actionType, String[] selectedEventIds) {
+    public SpatialDisplayAction(ActionType actionType, String[] selectedEventIds) {
         this(actionType);
         this.selectedEventIDs = selectedEventIds;
     }
 
-    public SpatialDisplayAction(String actionType, int menuPosition,
+    public SpatialDisplayAction(ActionType actionType, int menuPosition,
             String contextMenulabel) {
 
         this(actionType);
@@ -119,15 +136,15 @@ public class SpatialDisplayAction {
         return timeInMilliSeconds;
     }
 
-    public void setActionType(String actionType) {
+    public void setActionType(ActionType actionType) {
         this.actionType = actionType;
     }
 
-    public String getActionType() {
+    public ActionType getActionType() {
         return actionType;
     }
 
-    public String getActionIdentifier() {
+    public ActionIdentifier getActionIdentifier() {
         return actionIdentifier;
     }
 

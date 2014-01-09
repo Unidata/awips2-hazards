@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
+import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -333,33 +334,14 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                 HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
                                 contextMenuList);
                         SpatialDisplayAction action = new SpatialDisplayAction(
-                                HazardConstants.UPDATE_EVENT_METADATA);
+                                SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
                         action.setToolParameters(geoReferenceDict);
                         getSpatialPresenter().fireAction(action);
                     } else {
-                        /*
-                         * Construct a modified event message and pass it on to
-                         * the mediator.
-                         */
-                        // Send JSON Message
-                        // Convert the object to JSON.
-                        EventDict modifiedEventAreaObject = new EventDict();
-                        modifiedEventAreaObject.put(
-                                HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                                eventID);
-                        modifiedEventAreaObject
-                                .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
-                                        HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+                        ModifyHazardGeometryAction modifyAction = new ModifyHazardGeometryAction(
+                                eventID, mergedPolygons);
 
-                        for (Shape shape : shapes) {
-                            modifiedEventAreaObject.addShape(shape);
-                        }
-
-                        SpatialDisplayAction action = new SpatialDisplayAction(
-                                "ModifyEventArea");
-                        action.setModifyEventJSON(modifiedEventAreaObject
-                                .toJSONString());
-                        getSpatialPresenter().fireAction(action);
+                        getSpatialPresenter().fireAction(modifyAction);
 
                     }
 

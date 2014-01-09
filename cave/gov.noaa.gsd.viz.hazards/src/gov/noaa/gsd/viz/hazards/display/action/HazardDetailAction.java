@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-
 /**
  * This action is "fired" from the Hazard Information Dialog when its state
  * changes. Registered observers receive this object and act on it.
@@ -25,7 +24,12 @@ package gov.noaa.gsd.viz.hazards.display.action;
  * @author Bryon.Lawrence
  */
 public class HazardDetailAction {
-    private String action;
+
+    public enum ActionType {
+        PREVIEW, PROPOSE, ISSUE, DISMISS, UPDATE_TIME_RANGE, UPDATE_EVENT_TYPE, UPDATE_EVENT_METADATA
+    }
+
+    private ActionType actionType;
 
     private String jsonText;
 
@@ -36,30 +40,28 @@ public class HazardDetailAction {
      */
     private Boolean isUserInitiated = true;
 
-    public HazardDetailAction(String action) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
+    public HazardDetailAction(ActionType actionType) {
+        this.actionType = actionType;
     }
 
-    public HazardDetailAction(String action, String jsonText) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
+    public HazardDetailAction(ActionType actionType, String jsonText) {
+        this.actionType = actionType;
         this.jsonText = jsonText;
     }
 
-    public HazardDetailAction(String action, String jsonText,
+    public HazardDetailAction(ActionType actionType, String jsonText,
             Boolean isUserInitiated) {
-        this(action, jsonText);
+        this(actionType, jsonText);
         this.isUserInitiated = isUserInitiated;
 
     }
 
-    public void setAction(String action) {
-        this.action = action;
+    public void setActionType(ActionType actionType) {
+        this.actionType = actionType;
     }
 
-    public String getAction() {
-        return action;
+    public ActionType getActionType() {
+        return actionType;
     }
 
     public void setJSONText(String jsonText) {

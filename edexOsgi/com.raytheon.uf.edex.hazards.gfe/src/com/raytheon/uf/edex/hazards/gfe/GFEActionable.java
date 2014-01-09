@@ -90,12 +90,12 @@ public class GFEActionable implements IActionable {
             Object returnValue = null;
             try {
                 EventSet<IEvent> eventSet = new EventSet<IEvent>();
-                eventSet.addAttribute(HazardConstants.SITEID, rec.getXxxid());
+                eventSet.addAttribute(HazardConstants.SITE_ID, rec.getXxxid());
                 eventSet.addAttribute(HazardConstants.HAZARD_EVENT_START_TIME,
                         rec.getStartTime().getTime());
                 eventSet.addAttribute(HazardConstants.HAZARD_EVENT_END_TIME,
                         rec.getEndTime().getTime());
-                eventSet.addAttribute(HazardConstants.PHENSIG, rec.getPhensig());
+                eventSet.addAttribute(HazardConstants.PHEN_SIG, rec.getPhensig());
                 returnValue = engine.runRecommender(GFE_RECOMMENDER, eventSet,
                         null, null);
             } catch (Exception e) {
@@ -108,7 +108,7 @@ public class GFEActionable implements IActionable {
                 event.setState(HazardEventUtilities.stateBasedOnAction(rec
                         .getAct()));
                 event.setEventID(generateEventID(event.getSiteID()));
-                event.addHazardAttribute(HazardConstants.EXPIRATIONTIME, rec
+                event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, rec
                         .getPurgeTime().getTime().getTime());
                 event.addHazardAttribute("etns", "[" + rec.getEtn() + "]");
                 event.setIssueTime(rec.getIssueTime().getTime());

@@ -9,8 +9,9 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.Collection;
@@ -99,10 +100,9 @@ public class HazardDetailPresenter extends
                 && (eventChange == false)) {
             eventChange = true;
 
-            getView().updateHazardDetail(
-                    DictList.getInstance(getModel().getComponentData(
-                            HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                            "all")), eventManager.getLastSelectedEventID(),
+            DictList eventsAsDictList = adaptEventsForDisplay();
+            getView().updateHazardDetail(eventsAsDictList,
+                    eventManager.getLastSelectedEventID(),
                     getConflictingEventsForSelectedEvents());
             eventChange = false;
         }
@@ -120,17 +120,15 @@ public class HazardDetailPresenter extends
 
         // Get the hazard events to be displayed in detail, and
         // determine which event should be foregrounded.
-        String jsonEventsList = getModel().getComponentData(
-                HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, "all");
-        DictList eventsList = DictList.getInstance(jsonEventsList);
+        DictList eventsAsDictList = adaptEventsForDisplay();
         if ((force == false)
-                && ((eventsList == null) || (eventsList.size() == 0))) {
+                && ((eventsAsDictList == null) || (eventsAsDictList.size() == 0))) {
             return;
         }
         String topEventID = eventManager.getLastSelectedEventID();
 
         // Have the view open the alert detail subview.
-        getView().showHazardDetail(eventsList, topEventID,
+        getView().showHazardDetail(eventsAsDictList, topEventID,
                 getConflictingEventsForSelectedEvents(), force);
     }
 
@@ -153,24 +151,33 @@ public class HazardDetailPresenter extends
     public void initialize(IHazardDetailView<?, ?> view) {
 
         // Get the basic initialization info for the subview.
-        String basicInfo = configurationManager
-                .getConfigItem(HazardConstants.HAZARD_INFO_GENERAL_CONFIG);
-        String metadataMegawidgets = configurationManager
-                .getConfigItem(HazardConstants.HAZARD_INFO_METADATA_CONFIG);
+        String basicInfo = jsonConverter.toJson(configurationManager
+                .getHazardInfoConfig());
+        String metadataMegawidgets = jsonConverter.toJson(configurationManager
+                .getHazardInfoOptions());
         TimeRange timeRange = timeManager.getVisibleRange();
         getView().initialize(this, basicInfo, metadataMegawidgets,
                 timeRange.getStart().getTime(), timeRange.getEnd().getTime());
 
         // Update the view with the currently selected hazard events,
         // if any.
-        getView()
-                .updateHazardDetail(
-                        DictList.getInstance(getModel()
-                                .getComponentData(
-                                        HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR,
-                                        "all")),
-                        eventManager.getLastSelectedEventID(),
-                        getConflictingEventsForSelectedEvents());
+        DictList eventsAsDictList = adaptEventsForDisplay();
+
+        getView().updateHazardDetail(eventsAsDictList,
+                eventManager.getLastSelectedEventID(),
+                getConflictingEventsForSelectedEvents());
+    }
+
+    private DictList adaptEventsForDisplay() {
+        Collection<IHazardEvent> selectedEvents = eventManager
+                .getSelectedEvents();
+        DeprecatedEvent[] jsonEvents = DeprecatedUtilities
+                .eventsAsJSONEvents(selectedEvents);
+        DeprecatedUtilities.adaptJSONEvent(jsonEvents, selectedEvents,
+                configurationManager, timeManager);
+        String eventsAsJSON = DeprecatedUtilities.eventsAsNodeJSON(
+                selectedEvents, jsonEvents);
+        return DictList.getInstance(eventsAsJSON);
     }
 
     /**

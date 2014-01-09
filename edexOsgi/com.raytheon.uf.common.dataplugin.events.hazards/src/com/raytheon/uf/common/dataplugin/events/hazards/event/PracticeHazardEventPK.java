@@ -64,7 +64,7 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
 
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.SITEID)
+    @Column(name = HazardConstants.SITE_ID)
     private String siteID;
 
     @DynamicSerializeElement
@@ -75,7 +75,7 @@ public class PracticeHazardEventPK implements ISerializableObject, Serializable 
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "PRACTICE_HAZARD_GENERATOR")
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.UNIQUEID)
+    @Column(name = HazardConstants.UNIQUE_ID)
     private String uniqueID;
 
     /**

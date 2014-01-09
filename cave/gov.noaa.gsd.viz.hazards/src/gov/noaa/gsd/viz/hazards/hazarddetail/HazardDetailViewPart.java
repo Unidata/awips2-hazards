@@ -14,7 +14,6 @@ import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.ControlSpecifierOptionsManager;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesTreeSpecifier;
@@ -724,12 +723,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Minimum visible time in the time range.
      */
-    private long minimumVisibleTime = Utilities.MIN_TIME;
+    private long minimumVisibleTime = HazardConstants.MIN_TIME;
 
     /**
      * Maximum visible time in the time range.
      */
-    private long maximumVisibleTime = Utilities.MAX_TIME;
+    private long maximumVisibleTime = HazardConstants.MAX_TIME;
 
     /**
      * Megawidget specifier factory.
@@ -995,7 +994,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         typesForCategories.clear();
         categoriesForTypes.clear();
         for (Object item : (List<?>) jsonGeneralWidgets
-                .get(Utilities.HAZARD_INFO_GENERAL_CONFIG_WIDGETS)) {
+                .get(HazardConstants.HAZARD_INFO_GENERAL_CONFIG_WIDGETS)) {
 
             // Get the category.
             Dict jsonItem = (Dict) item;
@@ -1052,7 +1051,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Dict jsonItem = jsonHazardWidgets.getDynamicallyTypedValue(j);
             List<String> types = Lists.newArrayList();
             for (Object child : (List<?>) jsonItem
-                    .get(Utilities.HAZARD_INFO_METADATA_TYPES)) {
+                    .get(HazardConstants.HAZARD_INFO_METADATA_TYPES)) {
                 types.add((String) child);
             }
             Set<String> typesSet = Sets.newHashSet();
@@ -1073,7 +1072,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // type as a whole.
                 List<ISpecifier> megawidgetSpecifiers = Lists.newArrayList();
                 List<Dict> objects = getJsonObjectList(jsonItem
-                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
+                        .get(HazardConstants.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
                     for (Dict object : objects) {
                         megawidgetSpecifiers.add(megawidgetSpecifierFactory
@@ -1098,7 +1097,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // that it does not get too far into the
                 // table's personal space.
                 Object pointObject = jsonItem
-                        .get(Utilities.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
+                        .get(HazardConstants.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
                 if (pointObject != null) {
                     megawidgetSpecifiers = Lists.newArrayList();
                     objects = getJsonObjectList(pointObject);
@@ -1433,7 +1432,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // Send off the JSON to notify listeners of
                 // the change.
                 fireHIDAction(new HazardDetailAction(
-                        HazardConstants.UPDATE_EVENT_TYPE, jsonText));
+                        HazardDetailAction.ActionType.UPDATE_EVENT_TYPE,
+                        jsonText));
             }
         });
 
@@ -1443,7 +1443,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         top.getShell().addListener(SWT.Hide, new Listener() {
             @Override
             public void handleEvent(Event event) {
-                fireHIDAction(new HazardDetailAction("Dismiss"));
+                fireHIDAction(new HazardDetailAction(
+                        HazardDetailAction.ActionType.DISMISS));
             }
         });
 
@@ -1513,50 +1514,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // No action.
     }
 
-    /**
-     * Receive notification that the given specifier's megawidget has been
-     * invoked or has changed state. Megawidgets will only call this method if
-     * they were marked as being notifiers when they were constructed.
-     * 
-     * @param megawidget
-     *            Megawidget that was invoked.
-     * @param extraCallback
-     *            Extra callback information associated with this megawidget, or
-     *            <code>null</code> if no such extra information is provided.
-     */
     @Override
     public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
-
-        // If there are no event dictionaries or if the
-        // megawidget is stateful, do nothing.
-        if ((primaryParamValues.size() == 0)
-                || (megawidget instanceof IStateful)) {
-            return;
-        }
-
-        // Create an event dictionary and add the event
-        // identifier to it. Add any extra callback info
-        // as well if it exists.
-        Dict eventInfo = new Dict();
-        eventInfo.put(
-                HAZARD_EVENT_IDENTIFIER,
-                primaryParamValues.get(visibleHazardIndex).get(
-                        HAZARD_EVENT_IDENTIFIER));
-        if (extraCallback != null) {
-            eventInfo.put("callback", extraCallback);
-        }
-
-        // Fire off an action indicating that this
-        // megawidget was invoked.
-        String eventString = null;
-        try {
-            eventString = eventInfo.toJSONString();
-        } catch (Exception e) {
-            statusHandler.error("HazardDetailViewPart.megawidgetInvoked(): "
-                    + "Could not serialize JSON.", e);
-        }
-        fireHIDAction(new HazardDetailAction(megawidget.getSpecifier()
-                .getIdentifier(), eventString));
+        /**
+         * No action.
+         */
     }
 
     /**
@@ -1648,69 +1610,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             + "of event info to JSON string failed.", e);
         }
         fireHIDAction(new HazardDetailAction(
-                HazardConstants.UPDATE_EVENT_METADATA, jsonText));
-    }
-
-    /**
-     * Get the event information based upon the current values of the various
-     * megawidgets.
-     * 
-     * @return JSON string.
-     */
-    public String getHidEventInfo() {
-
-        // For each primary event, add it and any associated point
-        // or auxiliary events to a list of dictionaries to be
-        // returned.
-        DictList eventsList = new DictList();
-        for (int j = 0; j < primaryParamValues.size(); j++) {
-
-            // Create the JSON object for the primary shape(s),
-            // populating it with all the key-value pairings of
-            // the original.
-            Dict eventInfo = new Dict();
-            for (String key : primaryParamValues.get(j).keySet()) {
-                eventInfo.put(key, primaryParamValues.get(j).get(key));
-            }
-
-            // Add the primary event dictionary to the list.
-            eventsList.add(eventInfo);
-
-            // If there are point events and/or auxiliary
-            // events associated with the main event, add
-            // them to the events list as well.
-            if (pointsParamValues.get(j) != null) {
-                for (Map<String, Object> pointParamValues : pointsParamValues
-                        .get(j)) {
-                    eventsList.add(convertToJsonObject(pointParamValues));
-                }
-            }
-            if (auxiliaryParamValues.get(j) != null) {
-                for (Map<String, Object> auxParamValues : auxiliaryParamValues
-                        .get(j)) {
-                    eventsList.add(convertToJsonObject(auxParamValues));
-                }
-            }
-        }
-
-        // Write the event dictionaries list out to a
-        // string.
-        String jsonText = null;
-        try {
-            jsonText = eventsList.toJSONString();
-        } catch (Exception e) {
-            statusHandler.error(
-                    "HazardDetailViewPart.getHidEventInfo(): write "
-                            + "of JSON string failed.", e);
-        }
-
-        // Print out diagnostic info.
-        // Gson gson = JSONcreatePrettyGsonInterpreter();
-        // statusHandler.debug("HID: JSON output of values: "
-        // + gson.toJson(eventsList));
-
-        // Return the result.
-        return jsonText;
+                HazardDetailAction.ActionType.UPDATE_EVENT_METADATA, jsonText));
     }
 
     /**
@@ -1995,9 +1895,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
         megawidgetCreationParams.put(TimeMegawidgetSpecifier.MINIMUM_TIME,
-                Utilities.MIN_TIME);
+                HazardConstants.MIN_TIME);
         megawidgetCreationParams.put(TimeMegawidgetSpecifier.MAXIMUM_TIME,
-                Utilities.MAX_TIME);
+                HazardConstants.MAX_TIME);
         megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minimumVisibleTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
@@ -2080,13 +1980,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void buttonPressed(int buttonId) {
         if (buttonId == PROPOSE_ID) {
             fireHIDAction(new HazardDetailAction(
-                    HazardConstants.HazardAction.PROPOSE.getValue()));
+                    HazardDetailAction.ActionType.PROPOSE));
         } else if (buttonId == ISSUE_ID) {
             fireHIDAction(new HazardDetailAction(
-                    HazardConstants.HazardAction.ISSUE.getValue()));
+                    HazardDetailAction.ActionType.ISSUE));
         } else if (buttonId == PREVIEW_ID) {
             fireHIDAction(new HazardDetailAction(
-                    HazardConstants.HazardAction.PREVIEW.getValue()));
+                    HazardDetailAction.ActionType.PREVIEW));
         }
     }
 
@@ -2833,8 +2733,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     "HazardDetailViewPart.timeRangeChanged(): conversion "
                             + "of event info to JSON string failed.", e);
         }
-        fireHIDAction(new HazardDetailAction(HazardConstants.UPDATE_TIME_RANGE,
-                jsonText));
+        fireHIDAction(new HazardDetailAction(
+                HazardDetailAction.ActionType.UPDATE_TIME_RANGE, jsonText));
     }
 
     /**
@@ -3190,10 +3090,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                  * information which was updated programmatically by the
                  * software basically doing some book keeping.
                  */
-                hazardDetailView.fireAction(
-                        new HazardDetailAction(
-                                HazardConstants.UPDATE_EVENT_METADATA,
-                                jsonText, false), true);
+                hazardDetailView.fireAction(new HazardDetailAction(
+                        HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
+                        jsonText, false), true);
             }
         }
     }
@@ -3250,35 +3149,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
         }
         return objects;
-    }
-
-    /**
-     * Convert the specified object to a JSON object, as appropriate.
-     * 
-     * @param object
-     *            Object to be converted.
-     * @return JSON version.
-     */
-    @SuppressWarnings("unchecked")
-    private Object convertToJsonObject(Object object) {
-        if ((object instanceof DictList) || (object instanceof Dict)) {
-            return object;
-        } else if (object instanceof List) {
-            DictList jsonArray = new DictList();
-            for (Object item : (List<?>) object) {
-                jsonArray.add(convertToJsonObject(item));
-            }
-            return jsonArray;
-        } else if (object instanceof Map) {
-            Dict jsonObject = new Dict();
-            Map<String, ?> map = (Map<String, ?>) object;
-            for (String key : map.keySet()) {
-                jsonObject.put(key, convertToJsonObject(map.get(key)));
-            }
-            return jsonObject;
-        } else {
-            return object;
-        }
     }
 
     /**

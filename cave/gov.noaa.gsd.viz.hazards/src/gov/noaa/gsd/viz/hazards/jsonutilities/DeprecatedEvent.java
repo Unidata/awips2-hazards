@@ -24,9 +24,10 @@
  * August 2013  1360       hansen      Added fields for product information
  *
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
+package gov.noaa.gsd.viz.hazards.jsonutilities;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -57,6 +58,11 @@ import com.vividsolutions.jts.geom.Puntal;
 /**
  * Implements many of the fields that are used on JSON events.
  * 
+ * TODO This class is a nightmare and badly needs to go away. It's involved in
+ * some but not all of the POJO/JSON conversions. But it also has some other
+ * unrelated logic that converts colors; knows things about dam names. etc. See
+ * {@link DeprecatedUtilities#eventsAsNodeJSON} for further discussion.
+ * 
  * <pre>
  * 
  * SOFTWARE HISTORY
@@ -76,14 +82,21 @@ import com.vividsolutions.jts.geom.Puntal;
  * @version 1.0
  */
 @Deprecated
-public class Event {
+public class DeprecatedEvent {
+
+    /**
+     * 
+     */
+    private static final String DAM_NAME = "damName";
+
+    private static final String CAUSE = "cause";
 
     // TODO int
     private String eventID;
 
     private String pointID;
 
-    private Shape[] shapes;
+    private DeprecatedShape[] shapes;
 
     private String backupSiteID;
 
@@ -141,10 +154,10 @@ public class Event {
 
     private static GeometryFactory geometryFactory = new GeometryFactory();
 
-    public Event() {
+    public DeprecatedEvent() {
     }
 
-    public Event(IHazardEvent event) {
+    public DeprecatedEvent(IHazardEvent event) {
         Map<String, Serializable> attr = event.getHazardAttributes();
 
         eventID = event.getEventID();
@@ -185,11 +198,11 @@ public class Event {
             state = event.getState().toString().toLowerCase();
         }
 
-        if (attr.containsKey("cause")) {
-            cause = attr.get("cause").toString();
+        if (attr.containsKey(CAUSE)) {
+            cause = attr.get(CAUSE).toString();
         }
-        if (attr.containsKey("damName")) {
-            damName = attr.get("damName").toString();
+        if (attr.containsKey(DAM_NAME)) {
+            damName = attr.get(DAM_NAME).toString();
         }
 
         if (type != null) {
@@ -211,7 +224,7 @@ public class Event {
         Geometry geom = event.getGeometry();
 
         int numberOfGeometries = geom.getNumGeometries();
-        shapes = new Shape[numberOfGeometries];
+        shapes = new DeprecatedShape[numberOfGeometries];
 
         for (int i = 0; i < numberOfGeometries; ++i) {
             shapes[i] = convertGeometry(geom.getGeometryN(i));
@@ -227,32 +240,32 @@ public class Event {
 
         polyModified = true;
 
-        if (attr.containsKey("expirationTime")) {
-            expirationTime = (Long) attr.get("expirationTime");
+        if (attr.containsKey(EXPIRATION_TIME)) {
+            expirationTime = (Long) attr.get(EXPIRATION_TIME);
         }
-        if (attr.containsKey("issueTime")) {
-            issueTime = (Long) attr.get("issueTime");
+        if (attr.containsKey(ISSUE_TIME)) {
+            issueTime = (Long) attr.get(ISSUE_TIME);
         }
-        if (attr.containsKey("vtecCodes")) {
-            Serializable eventVtecCodes = attr.get("vtecCodes");
+        if (attr.containsKey(VTEC_CODES)) {
+            Serializable eventVtecCodes = attr.get(VTEC_CODES);
             if (eventVtecCodes != null) {
-                vtecCodes = attr.get("vtecCodes").toString();
+                vtecCodes = attr.get(VTEC_CODES).toString();
             } else {
                 vtecCodes = "[]";
             }
         }
-        if (attr.containsKey("etns")) {
-            Serializable eventVtecCodes = attr.get("etns");
+        if (attr.containsKey(ETNS)) {
+            Serializable eventVtecCodes = attr.get(ETNS);
             if (eventVtecCodes != null) {
-                etns = attr.get("etns").toString();
+                etns = attr.get(ETNS).toString();
             } else {
                 etns = "[]";
             }
         }
-        if (attr.containsKey("pils")) {
-            Serializable eventVtecCodes = attr.get("pils");
+        if (attr.containsKey(PILS)) {
+            Serializable eventVtecCodes = attr.get(PILS);
             if (eventVtecCodes != null) {
-                pils = attr.get("pils").toString();
+                pils = attr.get(PILS).toString();
             } else {
                 pils = "[]";
             }
@@ -260,12 +273,12 @@ public class Event {
 
     }
 
-    private Shape convertGeometry(Geometry geom) {
+    private DeprecatedShape convertGeometry(Geometry geom) {
         List<double[]> points = new ArrayList<double[]>();
         for (Coordinate c : geom.getCoordinates()) {
             points.add(new double[] { c.x, c.y });
         }
-        Shape shape = new Shape();
+        DeprecatedShape shape = new DeprecatedShape();
         shape.setPoints(points.toArray(new double[0][]));
         shape.setShapeType(geom instanceof Polygonal ? "polygon"
                 : (geom instanceof Lineal ? "line" : "point"));
@@ -295,11 +308,11 @@ public class Event {
         this.pointID = pointID;
     }
 
-    public Shape[] getShapes() {
+    public DeprecatedShape[] getShapes() {
         return shapes;
     }
 
-    public void setShapes(Shape[] shapes) {
+    public void setShapes(DeprecatedShape[] shapes) {
         this.shapes = shapes;
     }
 
@@ -554,7 +567,7 @@ public class Event {
             event.addHazardAttribute("type", type);
         }
         if (damName != null) {
-            event.addHazardAttribute("damName", damName);
+            event.addHazardAttribute(DAM_NAME, damName);
         }
 
         event.setGeometry(getGeometry());
@@ -566,7 +579,7 @@ public class Event {
     public Geometry getGeometry() {
         assert (shapes != null && shapes.length != 0);
         List<Geometry> geometries = Lists.newArrayList();
-        for (Shape shape : shapes) {
+        for (DeprecatedShape shape : shapes) {
             if (shape.getShapeType().equals("point")) {
                 geometries.add(buildPoint(shape));
             } else if (shape.getShapeType().equals("line")) {
@@ -587,23 +600,23 @@ public class Event {
         return result;
     }
 
-    private Point buildPoint(Shape shape) {
+    private Point buildPoint(DeprecatedShape shape) {
         return geometryFactory.createPoint(new Coordinate(shape.points[0][0],
                 shape.points[0][1]));
     }
 
-    private LineString buildLine(Shape shape) {
+    private LineString buildLine(DeprecatedShape shape) {
         return geometryFactory
                 .createLineString(translateShapePointsToCoordinates(shape));
     }
 
-    private Polygon buildPolygon(Shape shape) {
+    private Polygon buildPolygon(DeprecatedShape shape) {
         return geometryFactory.createPolygon(geometryFactory
                 .createLinearRing(translateShapePointsToCoordinates(shape)),
                 null);
     }
 
-    private Coordinate[] translateShapePointsToCoordinates(Shape shape) {
+    private Coordinate[] translateShapePointsToCoordinates(DeprecatedShape shape) {
         List<Coordinate> coords = new ArrayList<Coordinate>(shape.points.length);
         for (double[] point : shape.points) {
             coords.add(new Coordinate(point[0], point[1]));

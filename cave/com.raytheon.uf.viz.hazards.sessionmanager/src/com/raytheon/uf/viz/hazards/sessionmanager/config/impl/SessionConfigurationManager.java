@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import gov.noaa.gsd.common.utilities.JSONConverter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +73,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.SettingsList;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
@@ -141,11 +139,6 @@ public class SessionConfigurationManager implements
     private ObservedSettings settings;
 
     private String siteId;
-
-    /**
-     * TODO This will go away with JSON refactor.
-     */
-    private final JSONConverter jsonConverter = new JSONConverter();
 
     public SessionConfigurationManager(IPathManager pathManager,
             ISessionNotificationSender notificationSender) {
@@ -333,7 +326,7 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public List<Settings> getSettingsList() {
+    public List<Settings> getAvailableSettings() {
         List<Settings> result = new ArrayList<Settings>(allSettings.size());
         for (ConfigLoader<Settings> settings : allSettings) {
             result.add(settings.getConfig());
@@ -568,35 +561,6 @@ public class SessionConfigurationManager implements
         }
         return (String) event
                 .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
-    }
-
-    @Deprecated
-    @Override
-    public String getSettingsListAsJSON() {
-        Settings[] s = getSettingsList().toArray(new Settings[0]);
-        SettingsList list = new SettingsList();
-        list.setSettingsList(s);
-        list.setCurrentSettingsID(getSettings().getSettingsID());
-        return jsonConverter.toJson(list);
-    }
-
-    @Deprecated
-    @Override
-    public String getConfigItem(String item) {
-        if (item.equals(START_UP_CONFIG)) {
-            return jsonConverter.toJson(getStartUpConfig());
-        } else if (item.equals(HAZARD_INFO_GENERAL_CONFIG)) {
-            return jsonConverter.toJson(getHazardInfoConfig());
-        } else if (item.equals(FILTER_CONFIG)) {
-            return jsonConverter.toJson(getFilterConfig());
-        } else if (item.equals(HAZARD_INFO_METADATA_CONFIG)) {
-            return jsonConverter.toJson(getHazardInfoOptions());
-        } else if (item.equals(SETTING_CONFIG)) {
-            return jsonConverter
-                    .toJson(new SettingsConfig[] { getSettingsConfig() });
-        } else {
-            throw new UnsupportedOperationException("Not implemented");
-        }
     }
 
     protected void settingsChanged(SettingsModified notification) {

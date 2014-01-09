@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.LineAttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 
@@ -22,6 +21,7 @@ import java.util.Map;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
@@ -271,7 +271,7 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
                 .getHazardAttribute(HAZARD_EVENT_SHAPES);
         Map<String, Serializable> shape = shapesList.get(shapeNum);
 
-        Long pointTime = (Long) shape.get(Utilities.POINT_TIME);
+        Long pointTime = (Long) shape.get(HazardConstants.POINT_TIME);
 
         setPointID(pointTime);
     }

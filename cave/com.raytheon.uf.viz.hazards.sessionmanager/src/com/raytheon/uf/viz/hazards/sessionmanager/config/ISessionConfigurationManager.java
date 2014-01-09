@@ -95,7 +95,7 @@ public interface ISessionConfigurationManager {
      * 
      * @return
      */
-    public List<Settings> getSettingsList();
+    public List<Settings> getAvailableSettings();
 
     /**
      * Get the startUpConfig. This object is currently stored in the
@@ -197,11 +197,5 @@ public interface ISessionConfigurationManager {
      * Execute any shutdown needed.
      */
     public void shutdown();
-
-    @Deprecated
-    String getSettingsListAsJSON();
-
-    @Deprecated
-    String getConfigItem(String item);
 
 }

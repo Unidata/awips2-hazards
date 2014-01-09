@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
+package gov.noaa.gsd.viz.hazards.display.deprecated;
 
 import java.util.HashMap;
 import java.util.Map;

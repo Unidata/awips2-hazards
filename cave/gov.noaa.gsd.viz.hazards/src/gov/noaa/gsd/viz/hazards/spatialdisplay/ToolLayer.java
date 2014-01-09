@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
@@ -352,10 +353,13 @@ public class ToolLayer extends
                 String setting = ((ToolLayerResourceData) getResourceData())
                         .getSetting();
                 if (setting != null) {
-                    ToolLayer.this.appBuilder.setSetting(setting);
+                    ToolLayer.this.appBuilder.setCurrentSettings(JSONUtilities
+                            .settingsFromJSON(setting));
                 } else {
                     ((ToolLayerResourceData) getResourceData())
-                            .setSetting(ToolLayer.this.appBuilder.getSetting());
+                            .setSetting(new JSONConverter()
+                                    .toJson(ToolLayer.this.appBuilder
+                                            .getCurrentSettings()));
                 }
             }
         };
@@ -511,7 +515,7 @@ public class ToolLayer extends
             }
 
             Boolean isPersistent = (Boolean) hazardEvent
-                    .getHazardAttribute(Utilities.PERSISTENT_SHAPE);
+                    .getHazardAttribute(HazardConstants.PERSISTENT_SHAPE);
             trackPersistentShapes(isPersistent, hazardEvent.getEventID(),
                     drawables);
         }
@@ -531,10 +535,11 @@ public class ToolLayer extends
                 .newArrayList(shapeComponent);
         addElement(shapeComponent);
         drawableComponents.add(shapeComponent);
-        drawableBuilder.addTextComponent(this, Utilities.DRAG_DROP_DOT,
+        drawableBuilder.addTextComponent(this, HazardConstants.DRAG_DROP_DOT,
                 drawableComponents, shapeComponent);
 
-        trackPersistentShapes(true, Utilities.DRAG_DROP_DOT, drawableComponents);
+        trackPersistentShapes(true, HazardConstants.DRAG_DROP_DOT,
+                drawableComponents);
         setObjects(dataManager.getActiveLayer().getDrawables());
         issueRefresh();
     }
@@ -743,7 +748,8 @@ public class ToolLayer extends
      */
     private void fireSelectedEventActionOccurred(String[] eventIDs) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                HazardConstants.SELECTED_EVENTS_CHANGED, eventIDs);
+                SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
+                eventIDs);
         eventBus.post(action);
     }
 
@@ -760,7 +766,8 @@ public class ToolLayer extends
      */
     private void fireContextMenuItemSelected(String menuLabel) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                HazardConstants.CONEXT_MENU_SELECTED, 0, menuLabel);
+                SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0,
+                menuLabel);
         eventBus.post(action);
     }
 
@@ -774,7 +781,7 @@ public class ToolLayer extends
     private void fireSpatialDisplayDisposedActionOccurred() {
         if (allowDisposeMessage) {
             final SpatialDisplayAction action = new SpatialDisplayAction(
-                    "DisplayDisposed");
+                    SpatialDisplayAction.ActionType.DISPLAY_DISPOSED);
 
             VizApp.runAsync(new Runnable() {
                 @Override

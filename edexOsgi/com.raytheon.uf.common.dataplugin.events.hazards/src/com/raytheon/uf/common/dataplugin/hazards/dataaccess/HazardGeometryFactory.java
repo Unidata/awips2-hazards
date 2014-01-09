@@ -79,11 +79,11 @@ public class HazardGeometryFactory extends AbstractDataFactory {
 
     private static final String MODE = "mode";
 
-    private static final String SITEID = HazardConstants.SITEID;
+    private static final String SITEID = HazardConstants.SITE_ID;
 
     private static final String EVENTID = HazardConstants.HAZARD_EVENT_IDENTIFIER;
 
-    private static final String HAZARDMODE = HazardConstants.HAZARDMODE;
+    private static final String HAZARDMODE = HazardConstants.HAZARD_MODE;
 
     private static final String STATE = HazardConstants.HAZARD_EVENT_STATE;
 
@@ -238,7 +238,7 @@ public class HazardGeometryFactory extends AbstractDataFactory {
             List<?> phensigs = (List<?>) request.getIdentifiers().get(
                     HAZARD_TYPE);
             for (Object phensig : phensigs) {
-                builder.addKey(HazardConstants.PHENSIG, phensig.toString());
+                builder.addKey(HazardConstants.PHEN_SIG, phensig.toString());
             }
         }
 

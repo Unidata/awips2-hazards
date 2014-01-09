@@ -68,7 +68,7 @@ public class HazardEventsBuilderForTesting {
                 } else if (key.equals(HAZARD_EVENT_STATE)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setState(hazardStateFromString(value));
-                } else if (key.equals(SITEID)) {
+                } else if (key.equals(SITE_ID)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(value);
                 } else if (key.equals(HAZARD_EVENT_START_TIME)) {
@@ -83,7 +83,7 @@ public class HazardEventsBuilderForTesting {
                 } else if (key.equals(HAZARD_EVENT_END_TIME)) {
                     Date date = dateFromMillis(eventDict, key);
                     event.setEndTime(date);
-                } else if (key.equals(SITEID)) {
+                } else if (key.equals(SITE_ID)) {
                     String site = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(site);
                 } else if (key.equals(HAZARD_EVENT_VTEC_MODE)) {

@@ -81,8 +81,8 @@ import com.vividsolutions.jts.geom.Geometry;
 @XmlRootElement(name = "hazard")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-@RegistryObject({ HazardConstants.SITEID,
-        HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUEID })
+@RegistryObject({ HazardConstants.SITE_ID,
+        HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUE_ID })
 public class HazardEvent implements IHazardEvent, IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -90,7 +90,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.SITEID)
+    @SlotAttribute(HazardConstants.SITE_ID)
     private String siteID;
 
     @DynamicSerializeElement
@@ -100,7 +100,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.UNIQUEID)
+    @SlotAttribute(HazardConstants.UNIQUE_ID)
     private String uniqueID;
 
     /**
@@ -149,13 +149,13 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.ISSUETIME)
+    @SlotAttribute(HazardConstants.ISSUE_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
     private Date issueTime;
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARDMODE)
+    @SlotAttribute(HazardConstants.HAZARD_MODE)
     private ProductClass hazardMode;
 
     @DynamicSerializeElement

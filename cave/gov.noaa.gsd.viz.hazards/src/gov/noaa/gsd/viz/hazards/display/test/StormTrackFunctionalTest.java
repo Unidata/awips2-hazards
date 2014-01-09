@@ -12,9 +12,10 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: {@link FunctionalTest} of storm track tool.
@@ -48,10 +50,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  */
 public class StormTrackFunctionalTest extends FunctionalTest {
 
-    private Dict savedDynamicSettings;
+    private Settings savedCurrentSettings;
 
     private enum Steps {
-        START, MODIFY_TOOL, CHANGE_BACK_DYNAMIC_SETTINGS
+        START, MODIFY_TOOL, CHANGE_BACK_CURRENT_SETTINGS
+
     }
 
     private Steps step;
@@ -65,7 +68,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         step = Steps.START;
-        savedDynamicSettings = Dict.getInstance(appBuilder.getSetting());
+        savedCurrentSettings = appBuilder.getCurrentSettings();
         autoTestUtilities.changeStaticSettings(CANNED_TORNADO_SETTING);
 
     }
@@ -106,7 +109,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
     @Subscribe
     public void toolActionOccurred(final ToolAction action) {
         try {
-            switch (action.getAction()) {
+            switch (action.getActionType()) {
             case TOOL_RECOMMENDATIONS:
                 if (step.equals(Steps.START)) {
                     EventSet<IEvent> events = action.getRecommendedEventList();
@@ -134,7 +137,8 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     toolParameters.put(SYMBOL_NEW_LAT_LON, point);
 
                     SpatialDisplayAction modifyAction = new SpatialDisplayAction(
-                            RUN_TOOL, MODIFY_STORM_TRACK_TOOL, toolParameters);
+                            SpatialDisplayAction.ActionType.RUN_TOOL,
+                            MODIFY_STORM_TRACK_TOOL, toolParameters);
                     step = Steps.MODIFY_TOOL;
                     eventBus.post(modifyAction);
                 } else {
@@ -160,7 +164,8 @@ public class StormTrackFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void settingsActionOccurred(final SettingsAction settingsAction) {
+    public void staticSettingsActionOccurred(
+            final StaticSettingsAction settingsAction) {
         try {
             switch (step) {
 
@@ -184,17 +189,14 @@ public class StormTrackFunctionalTest extends FunctionalTest {
 
                 // step = Steps.RUN_TOOL;
                 SpatialDisplayAction action = new SpatialDisplayAction(
-                        RUN_TOOL, STORM_TRACK_TOOL, toolParameters);
+                        SpatialDisplayAction.ActionType.RUN_TOOL,
+                        STORM_TRACK_TOOL, toolParameters);
                 eventBus.post(action);
                 break;
 
             case MODIFY_TOOL:
-                step = Steps.CHANGE_BACK_DYNAMIC_SETTINGS;
-                autoTestUtilities.changeDynamicSettings(savedDynamicSettings);
-                break;
-
-            case CHANGE_BACK_DYNAMIC_SETTINGS:
-                testSuccess();
+                step = Steps.CHANGE_BACK_CURRENT_SETTINGS;
+                autoTestUtilities.changeCurrentSettings(savedCurrentSettings);
                 break;
 
             default:
@@ -202,6 +204,18 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                 break;
 
             }
+        } catch (Exception e) {
+            handleException(e);
+        }
+
+    }
+
+    @Subscribe
+    public void currrentSettingsActionOccurred(
+            final CurrentSettingsAction settingsAction) {
+        try {
+            testSuccess();
+
         } catch (Exception e) {
             handleException(e);
         }

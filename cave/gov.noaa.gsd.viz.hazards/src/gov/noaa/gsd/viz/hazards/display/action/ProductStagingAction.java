@@ -26,11 +26,8 @@ import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
  * @author Bryon.Lawrence
  */
 public class ProductStagingAction {
-    private String action;
 
     private ProductStagingInfo productStagingInfo;
-
-    private String eventID;
 
     private String issueFlag;
 
@@ -49,33 +46,7 @@ public class ProductStagingAction {
         this.issueFlag = issueFlag;
     }
 
-    public ProductStagingAction(String action) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
-    }
-
-    public ProductStagingAction(String action, String ID,
-            ProductStagingInfo productStagingInfo) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
-        this.productStagingInfo = productStagingInfo;
-        this.eventID = ID;
-    }
-
-    public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getAction() {
-        return action;
-    }
-
-    public void setEventID(String ID) {
-        this.eventID = ID;
-    }
-
-    public String getEventID() {
-        return eventID;
+    public ProductStagingAction() {
     }
 
     public ProductStagingInfo getProductStagingInfo() {

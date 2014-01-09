@@ -103,7 +103,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     public void toolActionOccurred(final ToolAction action) {
         try {
             List<Dict> hazards;
-            switch (action.getAction()) {
+            switch (action.getActionType()) {
             case RUN_TOOL:
                 switch (step) {
                 case RUN_DAM_BREAK:
@@ -186,7 +186,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     String[] eventIDs = new String[] { e0, e1 };
                     step = Steps.SELECT_RECOMMENDED;
                     SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                            SELECTED_EVENTS_CHANGED, eventIDs);
+                            SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
+                            eventIDs);
                     eventBus.post(displayAction);
                     break;
                 default:
@@ -243,11 +244,12 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
-            String action = hazardDetailAction.getAction();
-            if (action.equalsIgnoreCase(HazardAction.PREVIEW.getValue())) {
+            switch (hazardDetailAction.getActionType()) {
+            case PREVIEW:
                 assertFalse(mockProductStagingView.isToBeIssued());
+                break;
 
-            } else if (action.equals(UPDATE_EVENT_TYPE)) {
+            case UPDATE_EVENT_TYPE:
 
                 switch (step) {
                 case UPDATING_FIRST_EVENT:
@@ -266,10 +268,16 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 default:
                     testError();
                 }
+                break;
 
-            } else if (action.equals(UPDATE_EVENT_METADATA)) {
+            case UPDATE_EVENT_METADATA:
                 step = Steps.CONTINUED_PREVIEW_FIRST_PRODUCT;
                 autoTestUtilities.previewEvent();
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unexpected action type "
+                        + hazardDetailAction.getActionType());
             }
         } catch (Exception e) {
             handleException(e);
@@ -400,7 +408,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     private void postContextMenuEvent(String choice) {
         SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                CONEXT_MENU_SELECTED, 0, choice);
+                SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0, choice);
         eventBus.post(spatialAction);
     }
 
@@ -541,8 +549,9 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 HYDROLOGY_SETTING);
         metadata.put(HAZARD_EVENT_FULL_TYPE, eventType);
 
-        eventBus.post(new HazardDetailAction(UPDATE_EVENT_TYPE, metadata
-                .toJSONString()));
+        eventBus.post(new HazardDetailAction(
+                HazardDetailAction.ActionType.UPDATE_EVENT_TYPE, metadata
+                        .toJSONString()));
     }
 
     private void updateEvent(Dict event, Dict metadata) {
@@ -554,8 +563,9 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             allMetadata.put(key, metadata.get(key));
         }
 
-        eventBus.post(new HazardDetailAction(UPDATE_EVENT_METADATA, allMetadata
-                .toJSONString()));
+        eventBus.post(new HazardDetailAction(
+                HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
+                allMetadata.toJSONString()));
     }
 
     private void checkConsoleSelections() {
@@ -574,12 +584,12 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     private void checkDamBreakRecommendation(Dict event) {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FLASH_FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(SITEID), OAX);
+        assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUETIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(

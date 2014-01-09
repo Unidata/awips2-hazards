@@ -258,8 +258,8 @@ public abstract class AbstractHazardStorageTest {
         IHazardEvent createdEvent = storeEvent();
         HazardQueryBuilder builder = new HazardQueryBuilder();
         // get by kxxx OR koax
-        builder.addKey(HazardConstants.SITEID, site);
-        builder.addKey(HazardConstants.SITEID, "koax");
+        builder.addKey(HazardConstants.SITE_ID, site);
+        builder.addKey(HazardConstants.SITE_ID, "koax");
         Map<String, HazardHistoryList> list = manager.getEventsByFilter(builder
                 .getQuery());
         assertTrue("No events returned", list.isEmpty() == false);

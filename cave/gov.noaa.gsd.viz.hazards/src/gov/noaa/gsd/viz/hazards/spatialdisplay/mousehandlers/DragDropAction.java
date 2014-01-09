@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
@@ -88,7 +87,8 @@ public class DragDropAction extends NonDrawingAction {
                         coord.x, selectedTime);
 
                 SpatialDisplayAction action = new SpatialDisplayAction(
-                        RUN_TOOL, toolName, Dict.getInstance(json));
+                        SpatialDisplayAction.ActionType.RUN_TOOL, toolName,
+                        Dict.getInstance(json));
                 getSpatialPresenter().fireAction(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 

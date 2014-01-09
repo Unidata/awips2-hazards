@@ -51,7 +51,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -70,7 +69,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.Event;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
@@ -220,12 +218,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (visibleSites == null || visibleSites.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.SITEID, new ArrayList<Object>(visibleSites));
+        filters.put(HazardConstants.SITE_ID, new ArrayList<Object>(visibleSites));
         Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.PHENSIG,
+        filters.put(HazardConstants.PHEN_SIG,
                 new ArrayList<Object>(visibleTypes));
         Set<String> visibleStates = settings.getVisibleStates();
         if (visibleStates == null || visibleStates.isEmpty()) {
@@ -738,7 +736,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                             HazardConstants.HAZARD_EVENT_END_TIME,
                             eventToCompare.getEndTime());
                     for (String conflictPhenSig : hazardConflictList) {
-                        hazardQueryBuilder.addKey(HazardConstants.PHENSIG,
+                        hazardQueryBuilder.addKey(HazardConstants.PHEN_SIG,
                                 conflictPhenSig);
                     }
 
@@ -826,29 +824,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
 
         return conflictingHazardsMap;
-    }
-
-    @Deprecated
-    @Override
-    public void modifyEventArea(String jsonText) {
-        Event jevent = jsonConverter.fromJson(jsonText, Event.class);
-        IHazardEvent event = getEventById(jevent.getEventID());
-
-        if (event != null) {
-
-            Geometry modifiedGeometry = jevent.getGeometry();
-
-            if (!canChangeGeometry(event)) {
-                event = new BaseHazardEvent(event);
-                Collection<IHazardEvent> selection = getSelectedEvents();
-                event = addEvent(event);
-                selection.add(event);
-                setSelectedEvents(selection);
-            }
-            event.setGeometry(modifiedGeometry);
-            event.addHazardAttribute(HazardConstants.POLYGON_MODIFIED,
-                    new Boolean(true));
-        }
     }
 
     /**

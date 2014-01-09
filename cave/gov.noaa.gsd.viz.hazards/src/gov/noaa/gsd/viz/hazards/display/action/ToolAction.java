@@ -49,7 +49,7 @@ public class ToolAction {
     /**
      * Identifier of the action that occurred.
      */
-    private ToolActionEnum action;
+    private ToolActionEnum actionType;
 
     private String toolName;
 
@@ -78,11 +78,11 @@ public class ToolAction {
     /**
      * Construct a standard instance with no additional details.
      * 
-     * @param action
+     * @param actionType
      *            Identifier of the action that is occurring.
      */
-    public ToolAction(ToolActionEnum action) {
-        this(action, null);
+    public ToolAction(ToolActionEnum actionType) {
+        this(actionType, null);
     }
 
     /**
@@ -94,22 +94,22 @@ public class ToolAction {
      * 
      */
     public ToolAction(ToolActionEnum action, String toolName) {
-        this.action = action;
+        this.actionType = action;
         this.toolName = toolName;
     }
 
     /**
      * Construct a standard instance.
      * 
-     * @param action
+     * @param actionType
      *            Identifier of the action that is occurring.
      * @param toolName
      * 
      * @param aux
      *            Optional auxiliary details.
      */
-    public ToolAction(ToolActionEnum action, String toolName, Dict aux) {
-        this.action = action;
+    public ToolAction(ToolActionEnum actionType, String toolName, Dict aux) {
+        this.actionType = actionType;
         this.toolName = toolName;
         this.aux = aux;
     }
@@ -117,7 +117,7 @@ public class ToolAction {
     /**
      * Construct an action instance for handling recommender results.
      * 
-     * @param action
+     * @param actionType
      *            Identifier of the action that is occurring.
      * @param eventList
      *            List of recommended events
@@ -125,9 +125,9 @@ public class ToolAction {
      *            Name of the tool which generated these events
      */
 
-    public ToolAction(ToolActionEnum action, EventSet<IEvent> eventList,
+    public ToolAction(ToolActionEnum actionType, EventSet<IEvent> eventList,
             String toolName) {
-        this.action = action;
+        this.actionType = actionType;
         this.recommendedEventList = eventList;
         this.toolName = toolName;
     }
@@ -135,16 +135,16 @@ public class ToolAction {
     /**
      * Construct an action instance for handling product generator results.
      * 
-     * @param action
+     * @param actionType
      *            Identifier of the action that is occurring.
      * @param productList
      *            List of recommended events
      * @param productGeneratorName
      *            Name of the tool which generated these events
      */
-    public ToolAction(ToolActionEnum action, String productGeneratorName,
+    public ToolAction(ToolActionEnum actionType, String productGeneratorName,
             List<IGeneratedProduct> productList) {
-        this.action = action;
+        this.actionType = actionType;
         this.productList = productList;
         this.productGeneratorName = productGeneratorName;
     }
@@ -156,18 +156,18 @@ public class ToolAction {
      * 
      * @return Action identifier.
      */
-    public ToolActionEnum getAction() {
-        return action;
+    public ToolActionEnum getActionType() {
+        return actionType;
     }
 
     /**
      * Set the action identifier as specified.
      * 
-     * @param action
+     * @param actionType
      *            New action identifier.
      */
-    public void setAction(ToolActionEnum action) {
-        this.action = action;
+    public void setActionType(ToolActionEnum actionType) {
+        this.actionType = actionType;
     }
 
     public String getToolName() {

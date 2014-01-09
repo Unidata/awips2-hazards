@@ -115,7 +115,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
     public void toolActionOccurred(final ToolAction action) {
 
         try {
-            switch (action.getAction()) {
+            switch (action.getActionType()) {
             case PRODUCTS_GENERATED:
                 if (step.equals(Steps.ISSUE_AREAL_FLOOD_WATCH)) {
                     checkArealFloodWatchIssue();
@@ -174,7 +174,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                             AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
 
             HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                    HazardConstants.UPDATE_EVENT_TYPE);
+                    HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
             hazardDetailAction.setJSONText(dict.toJSONString());
             eventBus.post(hazardDetailAction);
 
@@ -195,9 +195,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
-            String action = hazardDetailAction.getAction();
+            switch (hazardDetailAction.getActionType()) {
 
-            if (action.equals(HazardConstants.UPDATE_EVENT_TYPE)) {
+            case UPDATE_EVENT_TYPE:
 
                 if (step == Steps.ASSIGN_AREAL_FLOOD_WATCH) {
                     /*
@@ -258,10 +258,11 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                     autoTestUtilities.previewEvent();
 
                 }
+                break;
 
-            } else if (action.equals(HazardConstants.HazardAction.PREVIEW
-                    .getValue())) {
+            case PREVIEW:
                 assertFalse(mockProductStagingView.isToBeIssued());
+                break;
 
             }
         } catch (Exception e) {
@@ -312,7 +313,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                         AREAL_FLOOD_WARNING_FULLTYPE);
 
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                        HazardConstants.UPDATE_EVENT_TYPE);
+                        HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
                 hazardDetailAction.setJSONText(dict.toJSONString());
                 eventBus.post(hazardDetailAction);
             } else if (step == Steps.PREVIEW_AREAL_FLOOD_WARNING) {
@@ -356,8 +357,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                  */
                 step = Steps.PREVIEW_CANCELLATION_STATEMENT;
                 SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                        HazardConstants.CONEXT_MENU_SELECTED, 0,
-                        HazardConstants.END_SELECTED_HAZARDS);
+                        SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED,
+                        0, HazardConstants.END_SELECTED_HAZARDS);
                 eventBus.post(spatialAction);
             } else if (step == Steps.PREVIEW_CANCELLATION_STATEMENT) {
                 checkCancellationStatementPreview();

@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.deprecated;
+package gov.noaa.gsd.viz.hazards.jsonutilities;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.codehaus.jackson.annotate.JsonProperty;
@@ -40,7 +40,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * @version 1.0
  */
 @Deprecated
-public class Shape {
+public class DeprecatedShape {
 
     @JsonProperty("fill color")
     private String fillColor;

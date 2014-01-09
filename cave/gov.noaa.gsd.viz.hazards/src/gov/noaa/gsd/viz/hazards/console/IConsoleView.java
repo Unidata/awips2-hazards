@@ -18,6 +18,7 @@ import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Console view, an interface describing the methods that a class must implement
@@ -52,11 +53,9 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
-     * @param jsonHazardEvents
-     *            JSON string holding a list of hazard events in dictionary
-     *            form.
-     * @param jsonSettings
-     *            JSON string holding a dictionary providing settings.
+     * @param hazardEvents
+     * @param currentSettings
+     * @param availableSettings
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -68,9 +67,9 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            shown in the temporal display composite itself.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, String jsonHazardEvents,
-            String jsonSettings, String jsonFilters,
-            ImmutableList<IHazardAlert> activeAlerts,
+            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
+            Settings currentSettings, List<Settings> availableSettings,
+            String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             boolean temporalControlsInToolBar);
 
     /**
@@ -145,11 +144,11 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Set the hazard events to those specified.
      * 
-     * @param hazardEventsJSON
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding an event as a set of key-value pairs.
+     * @param eventsAsDicts
+     * @param currentSettings
      */
-    public void setHazardEvents(String hazardEventsJSON);
+    public void setHazardEvents(List<Dict> eventsAsDicts,
+            Settings currentSettings);
 
     /**
      * Update the specified hazard event.
@@ -172,21 +171,17 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     public void setActiveAlerts(ImmutableList<IHazardAlert> activeAlerts);
 
     /**
-     * Get the dictionary defining the current dynamic setting being used.
-     * 
-     * @return Dictionary defining the current dynamic setting being used.
+     * @return the current dynamic setting.
      */
-    public Dict getDynamicSetting();
+    public Settings getCurrentSettings();
 
     /**
      * Set the settings to those specified.
      * 
-     * @param jsonSettings
-     *            JSON string holding a dictionary an entry for the list of
-     *            settings, and another entry for the current setting
-     *            identifier.
+     * @param currentSettingsID
+     * @param settings
      */
-    public void setSettings(String jsonSettings);
+    public void setSettings(String currentSettingsID, List<Settings> settings);
 
     /**
      * Updates the title of the implementing gui

@@ -11,18 +11,21 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
@@ -42,16 +45,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  */
 public class FilteringFunctionalTest extends FunctionalTest {
 
-    private final List<String> visibleTypes = Lists
-            .newArrayList(AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG);
+    private final Set<String> visibleTypes = Sets
+            .newHashSet(AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG);
 
-    private final List<String> visibleSites = Lists
-            .newArrayList(AutoTestUtilities.OAX);
+    private final Set<String> visibleSites = Sets
+            .newHashSet(AutoTestUtilities.OAX);
 
-    private Dict savedDynamicSettings;
+    private Settings savedCurrentSettings;
 
     private enum Steps {
-        START, BACK_TO_CANNED_FLOOD, CHANGING_DYNAMIC_SETTTINGS, CHANGE_BACK_DYNAMIC_SETTINGS
+        START, BACK_TO_CANNED_FLOOD, CHANGING_CURRENT_SETTTINGS, CHANGE_BACK_CURRENT_SETTINGS
     }
 
     private Steps step;
@@ -96,7 +99,8 @@ public class FilteringFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void settingsActionOccurred(final SettingsAction settingsAction) {
+    public void staticSettingsActionOccurred(
+            final StaticSettingsAction settingsAction) {
         switch (step) {
 
         case START:
@@ -112,14 +116,28 @@ public class FilteringFunctionalTest extends FunctionalTest {
             autoTestUtilities.issueEvent();
             break;
 
-        case CHANGING_DYNAMIC_SETTTINGS:
-            events = mockConsoleView.getHazardEvents();
-            assertEquals(events.size(), 0);
-            step = Steps.CHANGE_BACK_DYNAMIC_SETTINGS;
-            autoTestUtilities.changeDynamicSettings(savedDynamicSettings);
+        default:
+            testError();
             break;
 
-        case CHANGE_BACK_DYNAMIC_SETTINGS:
+        }
+
+    }
+
+    @Subscribe
+    public void currentSettingsActionOccurred(
+            final CurrentSettingsAction settingsAction) {
+        List<Dict> events = mockConsoleView.getHazardEvents();
+        switch (step) {
+
+        case CHANGING_CURRENT_SETTTINGS:
+            events = mockConsoleView.getHazardEvents();
+            assertEquals(events.size(), 0);
+            step = Steps.CHANGE_BACK_CURRENT_SETTINGS;
+            autoTestUtilities.changeCurrentSettings(savedCurrentSettings);
+            break;
+
+        case CHANGE_BACK_CURRENT_SETTINGS:
             events = mockConsoleView.getHazardEvents();
             assertEquals(events.size(), 1);
             testSuccess();
@@ -136,12 +154,13 @@ public class FilteringFunctionalTest extends FunctionalTest {
     @Subscribe
     public void handleProductGeneratorResult(ProductGenerated generated) {
 
-        List<String> visibleStates = Lists.newArrayList();
-        savedDynamicSettings = Dict.getInstance(appBuilder.getSetting());
-        Dict settings = autoTestUtilities.buildEventFilterCriteria(
+        Settings currentSettings = appBuilder.getCurrentSettings();
+        savedCurrentSettings = new Settings(currentSettings);
+        Set<String> visibleStates = Sets.newHashSet();
+        Settings settings = autoTestUtilities.buildEventFilterCriteria(
                 visibleTypes, visibleStates, visibleSites);
-        step = Steps.CHANGING_DYNAMIC_SETTTINGS;
-        autoTestUtilities.changeDynamicSettings(settings);
+        step = Steps.CHANGING_CURRENT_SETTTINGS;
+        autoTestUtilities.changeCurrentSettings(settings);
     }
 
     @Override

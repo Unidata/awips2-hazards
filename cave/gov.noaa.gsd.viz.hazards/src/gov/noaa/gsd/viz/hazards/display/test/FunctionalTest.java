@@ -29,7 +29,6 @@ import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.google.common.eventbus.EventBus;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -150,8 +149,8 @@ public abstract class FunctionalTest {
     }
 
     private void resetEvents() {
-        eventBus.post(new ConsoleAction(HazardConstants.RESET_ACTION,
-                HazardConstants.RESET_EVENTS));
+        eventBus.post(new ConsoleAction(ConsoleAction.ActionType.RESET,
+                ConsoleAction.RESET_EVENTS));
     }
 
     protected void mockViews() {
@@ -163,8 +162,8 @@ public abstract class FunctionalTest {
         consolePresenter = appBuilder.getConsolePresenter();
         realConsoleView = consolePresenter.getView();
         mockConsoleView = new ConsoleViewForTesting();
-        mockConsoleView.setDynamicSetting(consolePresenter.getView()
-                .getDynamicSetting());
+        mockConsoleView.setCurrentSettings(consolePresenter.getView()
+                .getCurrentSettings());
         consolePresenter.setView(mockConsoleView);
 
         productStagingPresenter = appBuilder.getProductStagingPresenter();

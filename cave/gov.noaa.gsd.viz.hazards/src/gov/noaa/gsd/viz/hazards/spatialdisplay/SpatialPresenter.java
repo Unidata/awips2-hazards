@@ -97,7 +97,7 @@ public class SpatialPresenter extends
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
             useSettingZoomParameters();
-        } else if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)) {
+        } else if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
             Settings dset = configurationManager.getSettings();
             String settingsAsJSON = jsonConverter.toJson(dset);
             getView().setSetting(settingsAsJSON);
@@ -154,20 +154,6 @@ public class SpatialPresenter extends
         }
         getView().initialize(this, mouseFactory);
         updateSpatialDisplay();
-    }
-
-    // Package Methods
-
-    /**
-     * Get the hazard events with the specified identifier.
-     * 
-     * @param eventId
-     *            Event identifier.
-     * @return JSON string containing a list of key-value mappings that define
-     *         the events.
-     */
-    String getEvents(String eventId) {
-        return getModel().getComponentData("Spatial", eventId);
     }
 
     // Private Methods

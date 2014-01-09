@@ -344,7 +344,7 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getBySiteID(String site) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SITEID, site);
+        builder.addKey(HazardConstants.SITE_ID, site);
         return getEventsByFilter(builder.getQuery());
     }
 
@@ -393,7 +393,7 @@ public class HazardEventManager implements IHazardEventManager {
             List<String> phensigs) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         for (String phensig : phensigs) {
-            builder.addKey(HazardConstants.PHENSIG, phensig);
+            builder.addKey(HazardConstants.PHEN_SIG, phensig);
         }
         return getEventsByFilter(builder.getQuery());
     }

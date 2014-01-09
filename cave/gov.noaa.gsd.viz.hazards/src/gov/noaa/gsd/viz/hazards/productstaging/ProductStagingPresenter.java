@@ -69,8 +69,7 @@ public class ProductStagingPresenter extends
             try {
                 String issueFlag = (getView().isToBeIssued() ? Boolean.TRUE
                         .toString() : Boolean.FALSE.toString());
-                ProductStagingAction action = new ProductStagingAction(
-                        HazardConstants.CONTINUE_BUTTON);
+                ProductStagingAction action = new ProductStagingAction();
                 action.setIssueFlag(issueFlag);
                 ProductStagingInfo productStagingInfo = getView()
                         .getProductStagingInfo();

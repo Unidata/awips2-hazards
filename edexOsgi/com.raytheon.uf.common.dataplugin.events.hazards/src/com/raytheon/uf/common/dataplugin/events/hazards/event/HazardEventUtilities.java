@@ -560,7 +560,7 @@ public class HazardEventUtilities {
     public static boolean isDuplicate(IHazardEventManager manager,
             IHazardEvent event) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SITEID, event.getSiteID());
+        builder.addKey(HazardConstants.SITE_ID, event.getSiteID());
         builder.addKey(HazardConstants.PHENOMENON, event.getPhenomenon());
         builder.addKey(HazardConstants.SIGNIFICANCE, event.getSignificance());
         Map<String, HazardHistoryList> hazards = manager

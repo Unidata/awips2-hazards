@@ -381,7 +381,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setSignificance("W")
         hazardEvent.setSubType("NonConvective")
         hazardEvent.setState(HazardState.ISSUED)
-        hazardEvent.addHazardAttribute(HazardConstants.EXPIRATIONTIME, dateTime.getMillis())
+        hazardEvent.addHazardAttribute(HazardConstants.EXPIRATION_TIME, dateTime.getMillis())
         return hazardEvent
     }
 

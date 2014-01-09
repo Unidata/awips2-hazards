@@ -25,9 +25,27 @@ import java.util.Date;
  */
 public class ConsoleAction {
 
+    public enum ActionType {
+        RESET, CHANGE_MODE, SELECTED_TIME_CHANGED, VISIBLE_TIME_RANGE_CHANGED,
+
+        SELECTED_TIME_RANGE_CHANGED, CHECK_BOX, SELECTED_EVENTS_CHANGED,
+
+        EVENT_TIME_RANGE_CHANGED, SITE_CHANGED, CLOSE, RUN_AUTOMATED_TESTS
+    }
+
+    public static final String CHECK_CONFLICTS = "CheckConflicts";
+
+    public static final String AUTO_CHECK_CONFLICTS = "AutoCheckConflicts";
+
+    public static final String SHOW_HATCHED_AREA = "ShowHazardHatchedArea";
+
+    public static final String RESET_EVENTS = "Events";
+
+    public static final String RESET_SETTINGS = "Settings";
+
     // Applies in instances where a setting or a tool
     // are chosen.
-    private String action = null;
+    private ActionType actionType;
 
     private String selectedTimeAsString = null;
 
@@ -54,8 +72,8 @@ public class ConsoleAction {
      * 
      *            The action type.
      */
-    public ConsoleAction(String actionType) {
-        action = actionType;
+    public ConsoleAction(ActionType actionType) {
+        this.actionType = actionType;
     }
 
     /**
@@ -69,8 +87,8 @@ public class ConsoleAction {
      * 
      *            The ID of the action, or the new time.
      */
-    public ConsoleAction(String actionType, String idOrNewTime) {
-        action = actionType;
+    public ConsoleAction(ActionType actionType, String idOrNewTime) {
+        this.actionType = actionType;
         this.selectedTimeAsString = idOrNewTime;
     }
 
@@ -89,8 +107,8 @@ public class ConsoleAction {
      * 
      *            Boolean indicating whether or not the item is checked.
      */
-    public ConsoleAction(String actionType, String id, boolean checked) {
-        action = actionType;
+    public ConsoleAction(ActionType actionType, String id, boolean checked) {
+        this.actionType = actionType;
         this.selectedTimeAsString = id;
         this.checked = checked;
     }
@@ -106,8 +124,8 @@ public class ConsoleAction {
      * 
      *            Array of selected event IDs.
      */
-    public ConsoleAction(String actionType, String[] selectedEventIds) {
-        action = actionType;
+    public ConsoleAction(ActionType actionType, String[] selectedEventIds) {
+        this.actionType = actionType;
         this.auxStringArray = selectedEventIds;
     }
 
@@ -127,8 +145,8 @@ public class ConsoleAction {
      *            End time.
      * 
      */
-    public ConsoleAction(String actionType, String startTime, String endTime) {
-        action = actionType;
+    public ConsoleAction(ActionType actionType, String startTime, String endTime) {
+        this.actionType = actionType;
         this.auxString1 = startTime;
         this.auxString2 = endTime;
     }
@@ -154,7 +172,7 @@ public class ConsoleAction {
      *            The name of the maps DB table to retrieve geometries from, or
      *            the end time.
      */
-    public ConsoleAction(String actionType, String actionId,
+    public ConsoleAction(ActionType actionType, String actionId,
             String legendNameOrStartTime, String mapsDbTableNameOrEndTime) {
         this(actionType, actionId);
         this.auxString1 = legendNameOrStartTime;
@@ -211,18 +229,18 @@ public class ConsoleAction {
 
     /**
      * 
-     * @param action
+     * @param actionType
      */
-    public void setAction(String action) {
-        this.action = action;
+    public void setActionType(ActionType actionType) {
+        this.actionType = actionType;
     }
 
     /**
      * 
      * 
      */
-    public String getAction() {
-        return action;
+    public ActionType getActionType() {
+        return actionType;
     }
 
     public void setLegendName(String legendName) {

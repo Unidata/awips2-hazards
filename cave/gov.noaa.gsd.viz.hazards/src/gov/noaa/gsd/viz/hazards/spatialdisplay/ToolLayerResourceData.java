@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -111,7 +112,8 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
             AbstractVizResource<?, ?> rsc = rp.getResource();
             if (rsc instanceof ToolLayer) {
                 if (setting != null) {
-                    ((ToolLayer) rsc).getAppBuilder().setSetting(setting);
+                    ((ToolLayer) rsc).getAppBuilder().setCurrentSettings(
+                            JSONUtilities.settingsFromJSON(setting));
                 }
                 return null;
             }

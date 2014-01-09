@@ -235,7 +235,7 @@ public class DatabaseEventManager implements
                                         HazardConstants.HAZARD_EVENT_END_TIME)
                                         .get(0)));
                     }
-                } else if (finalKey.equals(HazardConstants.PHENSIG)) {
+                } else if (finalKey.equals(HazardConstants.PHEN_SIG)) {
                     Disjunction criterion = Restrictions.disjunction();
                     for (Object ob : entry.getValue()) {
                         String phensig = ob.toString();

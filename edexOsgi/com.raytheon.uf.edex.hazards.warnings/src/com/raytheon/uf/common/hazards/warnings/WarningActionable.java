@@ -98,7 +98,7 @@ public class WarningActionable implements IActionable {
                 event.setPhenomenon(record.getPhen());
                 event.setSignificance(record.getSig());
                 event.setSiteID(record.getXxxid());
-                event.addHazardAttribute(HazardConstants.EXPIRATIONTIME, record
+                event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, record
                         .getPurgeTime().getTime().getTime());
                 event.addHazardAttribute("etns", "[" + record.getEtn() + "]");
                 event.setHazardMode(HazardConstants

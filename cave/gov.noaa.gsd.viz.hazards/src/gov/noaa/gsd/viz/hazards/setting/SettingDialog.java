@@ -9,9 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
@@ -113,12 +112,15 @@ class SettingDialog extends BasicDialog {
      * that has no effect.
      */
     private final List<?> FILE_MENU_ITEM_ACTIONS = Lists.newArrayList(
-            new SettingsAction("New", null), new Runnable() {
+            new StaticSettingsAction(StaticSettingsAction.ActionType.NEW),
+            new Runnable() {
                 @Override
                 public void run() {
-                    fireAction(new SettingsAction("Save", getState()));
+                    fireAction(new StaticSettingsAction(
+                            StaticSettingsAction.ActionType.SAVE, getState()));
                 }
-            }, new Runnable() {
+            },
+            new Runnable() {
                 private final IInputValidator validator = new IInputValidator() {
                     @Override
                     public String isValid(String text) {
@@ -135,10 +137,12 @@ class SettingDialog extends BasicDialog {
                     if (inputDialog.open() == InputDialog.OK) {
                         values.put(DISPLAY_NAME, inputDialog.getValue());
                         setDialogName(getShell());
-                        fireAction(new SettingsAction("Save As", getState()));
+                        fireAction(new StaticSettingsAction(
+                                StaticSettingsAction.ActionType.SAVE_AS, getState()));
                     }
                 }
-            }, new SettingsAction("Dialog", "Delete"), null, "Close");
+            }, new StaticSettingsAction(StaticSettingsAction.ActionType.DIALOG), null,
+            "Close");
 
     /**
      * Edit menu item actions; each is either a <code>SettingsAction</code>,
@@ -148,7 +152,7 @@ class SettingDialog extends BasicDialog {
      * that has no effect.
      */
     private final List<?> EDIT_MENU_ITEM_ACTIONS = ImmutableList
-            .of(new SettingsAction("Revert", null));
+            .of(new StaticSettingsAction(StaticSettingsAction.ActionType.REVERT));
 
     // Private Variables
 
@@ -189,8 +193,8 @@ class SettingDialog extends BasicDialog {
         @Override
         public void widgetSelected(SelectionEvent e) {
             Object action = ((MenuItem) e.widget).getData();
-            if (action instanceof SettingsAction) {
-                fireAction((SettingsAction) action);
+            if (action instanceof StaticSettingsAction) {
+                fireAction((StaticSettingsAction) action);
             } else if (action instanceof String) {
                 handleMenuItemInvocationInternally((String) action);
             } else if (action instanceof Runnable) {
@@ -334,7 +338,8 @@ class SettingDialog extends BasicDialog {
                 @Override
                 protected void stateElementChanged(String identifier,
                         Object state) {
-                    fireAction(new SettingsAction(DYNAMIC_SETTING_CHANGED,
+                    fireAction(new StaticSettingsAction(
+                            StaticSettingsAction.ActionType.SETTINGS_MODIFIED,
                             SettingDialog.this.getState()));
                 }
             };
@@ -433,7 +438,7 @@ class SettingDialog extends BasicDialog {
      * @param action
      *            Action to be fired.
      */
-    private void fireAction(SettingsAction action) {
+    private void fireAction(StaticSettingsAction action) {
         presenter.fireAction(action);
     }
 }

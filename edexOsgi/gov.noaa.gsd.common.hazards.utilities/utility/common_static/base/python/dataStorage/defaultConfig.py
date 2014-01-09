@@ -307,25 +307,6 @@ shortFusedOptions =  [
             "fieldType":"ComboBox",
            },
            {
-            "fieldName": "polygonComposite",
-            "fieldType": "Composite",
-            "numColumns": 2,
-            "fields": [
-                       {
-                        "fieldName":"makePolygon",
-                        "fieldType":"Button",
-                        "label":"Make Polygon",
-                        "notify": 1,
-                       },
-                       {
-                        "fieldName":"curve",
-                        "fieldType":"CheckBoxes",
-                        "choices": [ "Curve" ],
-                        "notify": 1,
-                       },
-                      ],
-           },
-           {
             "fieldName":"basis",
             "fieldType":"RadioButtons",
             "label":"Basis for Warning (Choose 1):",

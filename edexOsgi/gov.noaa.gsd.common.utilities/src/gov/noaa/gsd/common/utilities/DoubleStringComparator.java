@@ -12,21 +12,20 @@ package gov.noaa.gsd.common.utilities;
 import java.util.Comparator;
 
 /**
- * Description: Class that compares two long integers given as strings.
+ * Description: Class that compares two doubles given as strings.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 19, 2013            Chris.Golden      Initial creation
- * Nov 25, 2013    2336    Chris.Golden      Moved to gov.noaa.gsd.common.utilities.
+ * Jan 14, 2014            daniel.s.schaffer@noaa.gov      Initial creation
  * </pre>
  * 
- * @author Chris.Golden
+ * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class LongStringComparator implements Comparator<String> {
+public class DoubleStringComparator implements Comparator<String> {
 
     // Public Methods
 
@@ -43,8 +42,8 @@ public class LongStringComparator implements Comparator<String> {
      */
     @Override
     public int compare(String o1, String o2) {
-        long value1 = Long.parseLong(o1);
-        long value2 = Long.parseLong(o2);
+        double value1 = Double.parseDouble(o1);
+        double value2 = Double.parseDouble(o2);
         if (value1 < value2) {
             return -1;
         } else if (value1 > value2) {

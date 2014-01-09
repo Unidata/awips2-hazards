@@ -10,12 +10,14 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -36,6 +39,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.ImmutableList;
@@ -44,6 +48,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Settings view, an implementation of ISettingsView that provides an SWT-based
@@ -68,12 +73,6 @@ public class SettingsView implements
         ISettingsView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
-
-    /**
-     * Key into the settings dictionaries that yields the displayable name for
-     * each setting.
-     */
-    private static final String DISPLAY_NAME = "displayName";
 
     /**
      * Edit menu item text.
@@ -131,9 +130,15 @@ public class SettingsView implements
 
                     // Remember the newly selected setting name and fire off
                     // the action.
-                    fireAction(SETTING_CHOSEN, (String) event.widget.getData());
+                    String settingsID = (String) event.widget.getData();
+                    presenter.fireAction(new StaticSettingsAction(
+                            StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
+                            settingsID));
                 } else {
-                    fireAction("UnsupportedOperation", "");
+                    Shell shell = PlatformUI.getWorkbench()
+                            .getActiveWorkbenchWindow().getShell();
+                    MessageDialog.openInformation(shell, null,
+                            "This feature is not yet implemented.");
                 }
             }
         };
@@ -282,7 +287,7 @@ public class SettingsView implements
                 }
                 try {
                     megawidgetManager = new MegawidgetManager(menu, fieldsList,
-                            dynamicSetting) {
+                            currentSettings) {
                         @Override
                         protected void commandInvoked(String identifier,
                                 String extraCallback) {
@@ -300,15 +305,17 @@ public class SettingsView implements
                             // and the old hazard categories list and hazard
                             // types list. This should be removed if we can get
                             // rid of the visibleTypes and hidHazardCategories
-                            // lists in the dynamic setting.
-                            translateHazardCategoriesAndTypesToOldLists(dynamicSetting);
+                            // lists in the current setting.
+                            translateHazardCategoriesAndTypesToOldLists(currentSettings);
 
-                            // Forward the dynamic setting change to the
+                            // Forward the current setting change to the
                             // presenter.
                             try {
-                                presenter.fireAction(new SettingsAction(
-                                        DYNAMIC_SETTING_CHANGED, dynamicSetting
-                                                .toJSONString()));
+                                presenter
+                                        .fireAction(new CurrentSettingsAction(
+                                                JSONUtilities
+                                                        .settingsFromJSON(currentSettings
+                                                                .toJSONString())));
                             } catch (Exception e) {
                                 statusHandler
                                         .error("SettingsView.FiltersPulldownAction.MegawidgetManager."
@@ -316,6 +323,7 @@ public class SettingsView implements
                                                 e);
                             }
                         }
+
                     };
                 } catch (MegawidgetException e) {
                     statusHandler
@@ -329,11 +337,11 @@ public class SettingsView implements
             // states.
             if (filtersChanged) {
                 try {
-                    megawidgetManager.setState(dynamicSetting);
+                    megawidgetManager.setState(currentSettings);
                 } catch (MegawidgetStateException e) {
                     statusHandler.error(
                             "SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
-                                    + "accept new dynamic setting parameters.",
+                                    + "accept new current setting parameters.",
                             e);
                 }
                 filtersChanged = false;
@@ -368,9 +376,9 @@ public class SettingsView implements
     private DictList filterMegawidgetSpecifiers = null;
 
     /**
-     * Dynamic setting.
+     * Current settings.
      */
-    private Dict dynamicSetting = null;
+    private Dict currentSettings = null;
 
     /**
      * Settings pulldown action.
@@ -404,7 +412,7 @@ public class SettingsView implements
      * the specified map, and translate its categories and types into separate
      * lists, placing those lists back in the map. This should be removed if we
      * can get rid of the visibleTypes and hidHazardCategories lists in the
-     * dynamic setting.
+     * current setting.
      * 
      * @param map
      *            Map in which the translation is to occur.
@@ -455,22 +463,20 @@ public class SettingsView implements
      * 
      * @param presenter
      *            Presenter managing this view.
-     * @param jsonSettings
-     *            JSON string providing a dictionary of settings.
+     * @param settings
      * @param jsonFilters
      *            JSON string providing a list of dictionaries, each specifying
      *            a filter megawidget.
-     * @param jsonDynamicSetting
-     *            JSON string providing a dictionary defining the dynamic
-     *            setting.
+     * @param currentSettings
      */
     @Override
     public final void initialize(SettingsPresenter presenter,
-            String jsonSettings, String jsonFilters, String jsonDynamicSetting) {
+            List<Settings> settings, String jsonFilters,
+            Settings currentSettings) {
         this.presenter = presenter;
-        setSettings(jsonSettings);
+        setSettings(settings);
         setFilterMegawidgets(jsonFilters);
-        setDynamicSetting(jsonDynamicSetting);
+        setCurrentSettings(currentSettings);
     }
 
     /**
@@ -528,32 +534,21 @@ public class SettingsView implements
     /**
      * Set the settings to those specified.
      * 
-     * @param jsonSettings
-     *            JSON string holding a dictionary an entry for the list of
-     *            settings, and another entry for the current setting
-     *            identifier.
+     * @param availableSettings
      */
     @Override
-    public final void setSettings(String jsonSettings) {
-
-        // Get the dictionary from the JSON, and the list of settings
-        // from that.
-        Dict settingDict = Dict.getInstance(jsonSettings);
-        List<Dict> settings = settingDict
-                .getDynamicallyTypedValue(SETTINGS_LIST);
-        if ((settings == null) || (settings.size() < 1)) {
+    public final void setSettings(List<Settings> availableSettings) {
+        if ((availableSettings == null) || (availableSettings.size() < 1)) {
             return;
         }
 
         // Get the names and identifiers of the settings.
         settingNames.clear();
         settingIdentifiersForNames.clear();
-        for (int j = 0; j < settings.size(); j++) {
-            Dict setting = settings.get(j);
-            String name = setting.getDynamicallyTypedValue(DISPLAY_NAME);
+        for (Settings settings : availableSettings) {
+            String name = settings.getDisplayName();
             settingNames.add(name);
-            String identifier = setting
-                    .getDynamicallyTypedValue(SETTINGS_LIST_IDENTIFIER);
+            String identifier = settings.getSettingsID();
             settingIdentifiersForNames.put(name, identifier);
         }
 
@@ -565,21 +560,22 @@ public class SettingsView implements
     }
 
     /**
-     * Set the dynamic setting to that specified.
-     * 
-     * @param jsonSetting
-     *            JSON string holding a dictionary defining the dynamic setting
-     *            to be used.
+     * @param currentSettings
      */
     @Override
-    public final void setDynamicSetting(String jsonSetting) {
-        dynamicSetting = Dict.getInstance(jsonSetting);
+    public final void setCurrentSettings(Settings currentSettings) {
+        Dict settingsAsDict = settingsAsDict(currentSettings);
+        this.currentSettings = settingsAsDict;
         if (filtersPulldownAction != null) {
             filtersPulldownAction.filtersChanged();
         }
         if (settingDialog != null) {
-            settingDialog.setState(dynamicSetting);
+            settingDialog.setState(settingsAsDict);
         }
+    }
+
+    private Dict settingsAsDict(Settings settings) {
+        return Dict.getInstance(new JSONConverter().toJson(settings));
     }
 
     // Private Methods
@@ -595,15 +591,4 @@ public class SettingsView implements
         filterMegawidgetSpecifiers = DictList.getInstance(jsonFilters);
     }
 
-    /**
-     * Fire an action event to its listener.
-     * 
-     * @param action
-     *            Action.
-     * @param detail
-     *            Detail.
-     */
-    private void fireAction(String action, String detail) {
-        presenter.fireAction(new SettingsAction(action, detail));
-    }
 }

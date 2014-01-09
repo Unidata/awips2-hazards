@@ -8,15 +8,26 @@
 package gov.noaa.gsd.viz.hazards.display;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
+import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
+import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.timer.TimerAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.IOException;
@@ -34,7 +45,10 @@ import java.util.Set;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -43,6 +57,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardComponent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -163,10 +178,6 @@ public final class HazardServicesMessageHandler implements
 
     // Private Variables
 
-    private final String caveMode;
-
-    private final String siteID;
-
     /**
      * An instance of the Hazard Services app builder.
      */
@@ -183,6 +194,8 @@ public final class HazardServicesMessageHandler implements
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     private final HazardServicesProductGenerationHandler productGeneratorHandler;
+
+    private final EventBus eventBus;
 
     // Public Static Methods
 
@@ -221,18 +234,14 @@ public final class HazardServicesMessageHandler implements
      *            A reference to the Hazard Services app builder
      * @param currentTime
      *            The current time, based on the CAVE current time.
-     * @param dynamicSettingJSON
-     *            Settings related to configurations the user has made but has
-     *            not save to a static settings file.
      * @param eventBus
      * @param state
      *            Saved session state to initialize this session from the
      *            previous session.
      * 
      */
-    @SuppressWarnings("deprecation")
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            Date currentTime, String dynamicSettingJSON, EventBus eventBus) {
+            Date currentTime, EventBus eventBus) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
 
@@ -242,20 +251,20 @@ public final class HazardServicesMessageHandler implements
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
+        this.eventBus = eventBus;
 
         /*
          * TODO Need to consolidate event buses
          */
         sessionManager.registerForNotification(this);
-        eventBus.register(this);
+        this.eventBus.register(this);
 
-        caveMode = (CAVEMode.getMode()).toString();
-        siteID = LocalizationManager.getInstance().getCurrentSite();
+        sessionConfigurationManager.setSiteID(LocalizationManager.getInstance()
+                .getCurrentSite());
 
         String staticSettingID = getSettingForCurrentPerspective();
 
-        sessionManager.initialize(currentTime, staticSettingID,
-                dynamicSettingJSON, caveMode, siteID);
+        sessionConfigurationManager.changeSettings(staticSettingID);
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(this);
     }
 
@@ -276,7 +285,7 @@ public final class HazardServicesMessageHandler implements
      * @throws VizException
      */
     public void updateSelectedEvents(final List<String> eventIDs,
-            String originator) throws VizException {
+            HazardComponent originator) throws VizException {
         String updateTime = setSelectedEvents(eventIDs, originator);
 
         if (updateTime.contains(SINGLE_SELECTED_TIME)) {
@@ -291,18 +300,19 @@ public final class HazardServicesMessageHandler implements
 
         notifyModelEventsChanged();
         appBuilder.showHazardDetail();
-        if (originator.equals(HazardServicesAppBuilder.TEMPORAL_ORIGINATOR)) {
+        if (originator.equals(HazardComponent.CONSOLE)) {
             appBuilder.recenterRezoomDisplay();
         }
 
     }
 
-    private String setSelectedEvents(List<String> eventIDs, String originator) {
+    private String setSelectedEvents(List<String> eventIDs,
+            HazardComponent originator) {
         Collection<IHazardEvent> selectedEvents = fromIDs(eventIDs);
         Date selectedTime = sessionTimeManager.getSelectedTime();
 
         sessionEventManager.setSelectedEvents(selectedEvents);
-        if (originator.equalsIgnoreCase("Temporal")
+        if (originator.equals(HazardComponent.CONSOLE)
                 && !selectedTime.equals(sessionTimeManager.getSelectedTime())) {
             return "Single";
         } else {
@@ -457,11 +467,14 @@ public final class HazardServicesMessageHandler implements
 
         HashMap<String, Serializable> staticSettings = buildStaticSettings();
         eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
-        eventSet.addAttribute(HazardConstants.SITEID, sessionManager
+        eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
                 .getConfigurationManager().getSiteID());
-        eventSet.addAttribute("hazardMode", caveMode.equals(CAVEMode.PRACTICE
-                .toString()) ? HazardEventManager.Mode.PRACTICE.toString()
-                : HazardEventManager.Mode.OPERATIONAL.toString());
+        eventSet.addAttribute(
+                HAZARD_MODE,
+                (CAVEMode.getMode()).toString().equals(
+                        CAVEMode.PRACTICE.toString()) ? HazardEventManager.Mode.PRACTICE
+                        .toString() : HazardEventManager.Mode.OPERATIONAL
+                        .toString());
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
                 eventSet, spatialInfo, Utilities.asMap(dialogInfo),
@@ -496,16 +509,13 @@ public final class HazardServicesMessageHandler implements
      * result are now available. This method processes these results, updating
      * the model state and notifying presenters of new events.
      * 
-     * @param recommenderID
-     *            The name of the recommender
      * @param eventList
      *            A list of recommended events
      * @return
      */
-    void handleRecommenderResults(String recommenderID,
-            final EventSet<IEvent> eventList) {
+    void handleRecommenderResults(final EventSet<IEvent> eventList) {
 
-        sessionManager.handleRecommenderResult(recommenderID, eventList);
+        sessionManager.handleRecommenderResult(eventList);
 
         notifyModelEventsChanged();
 
@@ -697,8 +707,8 @@ public final class HazardServicesMessageHandler implements
         /*
          * Switch back to the default settings only if resetting the settings.
          */
-        if (type == HazardConstants.RESET_SETTINGS) {
-            changeSetting(getSettingForCurrentPerspective(), false, true);
+        if (type.equals(ConsoleAction.RESET_SETTINGS)) {
+            changeSetting(getSettingForCurrentPerspective(), true);
         }
     }
 
@@ -707,28 +717,25 @@ public final class HazardServicesMessageHandler implements
      * 
      * @param settingID
      *            New setting to be used.
-     * @param saveEvents
-     *            Flag indicating whether or not to save existing events.
      * @param eventsChanged
      *            Flag indicating whether or not hazard events have changed as
      *            part of this change.
      */
-    public void changeSetting(String settingID, boolean saveEvents,
-            boolean eventsChanged) {
+    public void changeSetting(String settingID, boolean eventsChanged) {
 
-        sessionManager.initialize(sessionTimeManager.getSelectedTime(),
-                settingID, "", caveMode, siteID);
+        sessionConfigurationManager.changeSettings(settingID);
 
         appBuilder.notifyModelChanged(eventsChanged ? EnumSet.of(
                 HazardConstants.Element.EVENTS,
                 HazardConstants.Element.SETTINGS,
                 HazardConstants.Element.TOOLS,
                 HazardConstants.Element.VISIBLE_TIME_DELTA,
-                HazardConstants.Element.DYNAMIC_SETTING) : EnumSet.of(
+                HazardConstants.Element.CURRENT_SETTINGS) : EnumSet.of(
                 HazardConstants.Element.SETTINGS,
                 HazardConstants.Element.TOOLS,
                 HazardConstants.Element.VISIBLE_TIME_DELTA,
-                HazardConstants.Element.DYNAMIC_SETTING));
+                HazardConstants.Element.CURRENT_SETTINGS));
+
     }
 
     /**
@@ -738,19 +745,17 @@ public final class HazardServicesMessageHandler implements
      * 
      * @param selectedTime
      * @param originator
-     *            Where the selected time was changed. Can be "CAVE_ORIGINATOR"
-     *            for CAVE or "TEMPORAL_ORIGINATOR" for the Console.
      */
-    public void updateSelectedTime(Date selectedTime, String originator)
+    public void updateSelectedTime(Date selectedTime, HazardComponent originator)
             throws VizException {
         sessionTimeManager.setSelectedTime(selectedTime);
 
-        if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
+        if (originator.equals(HazardComponent.CAVE)) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(HazardConstants.Element.SELECTED_TIME));
         }
 
-        if (originator.equals(HazardServicesAppBuilder.TEMPORAL_ORIGINATOR)) {
+        if (originator.equals(HazardComponent.CONSOLE)) {
             updateCaveSelectedTime();
         }
     }
@@ -762,11 +767,9 @@ public final class HazardServicesMessageHandler implements
      *            Start of the selected time range, or -1 if no range exists.
      * @param selectedTimeEnd_ms
      *            End of the selected time range, or -1 if no range exists.
-     * @param originator
-     *            Originator of this update.
      */
     public void updateSelectedTimeRange(String selectedTimeStart_ms,
-            String selectedTimeEnd_ms, String originator) {
+            String selectedTimeEnd_ms) {
         TimeRange selectedRange = new TimeRange(toDate(selectedTimeStart_ms),
                 toDate(selectedTimeEnd_ms));
         sessionTimeManager.setSelectedTimeRange(selectedRange);
@@ -782,8 +785,7 @@ public final class HazardServicesMessageHandler implements
      * This method is called when the visible time range is changed in the
      * Temporal Window.
      */
-    public void updateVisibleTimeRange(String jsonStartTime,
-            String jsonEndTime, String originator) {
+    public void updateVisibleTimeRange(String jsonStartTime, String jsonEndTime) {
         TimeRange visibleRange = new TimeRange(toDate(jsonStartTime),
                 toDate(jsonEndTime));
         sessionTimeManager.setVisibleRange(visibleRange);
@@ -797,9 +799,9 @@ public final class HazardServicesMessageHandler implements
      * @param state
      *            New state of the add-to-selected mode.
      */
-    public void setAddToSelected(String state) {
+    public void setAddToSelected(SpatialDisplayAction.ActionIdentifier state) {
         sessionConfigurationManager.getSettings().setAddToSelected(
-                state.equalsIgnoreCase(ADD_PENDING_TO_SELECTED_ON));
+                state.equals(SpatialDisplayAction.ActionIdentifier.ON));
     }
 
     /**
@@ -809,17 +811,13 @@ public final class HazardServicesMessageHandler implements
      * @param jsonText
      *            The json containing the portions of the event which are being
      *            updated.
-     * @param originator
-     *            A string representing the CAVE component from which this
-     *            request originated.
      * @param isUserInitiated
      *            Flag indicating whether or not the updated data are the result
      *            of a user-edit.
      * @return
      */
-    public void updateEventData(String jsonText, String originator,
-            boolean isUserInitiated) {
-        _updateEventData(jsonText, originator, isUserInitiated);
+    public void updateEventData(String jsonText, boolean isUserInitiated) {
+        _updateEventData(jsonText, isUserInitiated);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
     }
@@ -832,13 +830,11 @@ public final class HazardServicesMessageHandler implements
      *            Contains information regarding the event type.
      */
     public void updateEventType(String jsonText) {
-        _updateEventData(jsonText,
-                HazardServicesAppBuilder.HAZARD_INFO_ORIGINATOR, true);
+        _updateEventData(jsonText, true);
         notifyModelEventsChanged();
     }
 
-    private void _updateEventData(String jsonText, String source,
-            Boolean isUserInitiated) {
+    private void _updateEventData(String jsonText, Boolean isUserInitiated) {
         JsonNode jnode = fromJson(jsonText, JsonNode.class);
         IHazardEvent event = sessionEventManager.getEventById(jnode.get(
                 HazardConstants.HAZARD_EVENT_IDENTIFIER).getValueAsText());
@@ -859,8 +855,8 @@ public final class HazardServicesMessageHandler implements
                     event.addHazardAttribute(HazardConstants.REPLACES,
                             sessionConfigurationManager.getHeadline(oldEvent));
                     // New event should not have product information
-                    event.removeHazardAttribute(EXPIRATIONTIME);
-                    event.removeHazardAttribute(ISSUETIME);
+                    event.removeHazardAttribute(EXPIRATION_TIME);
+                    event.removeHazardAttribute(ISSUE_TIME);
                     event.removeHazardAttribute(VTEC_CODES);
                     event.removeHazardAttribute(ETNS);
                     event.removeHazardAttribute(PILS);
@@ -891,7 +887,7 @@ public final class HazardServicesMessageHandler implements
                             .getSettings().getVisibleTypes();
                     visibleTypes.add(HazardEventUtilities.getHazardType(event));
                     appBuilder.notifyModelChanged(EnumSet
-                            .of(HazardConstants.Element.DYNAMIC_SETTING));
+                            .of(HazardConstants.Element.CURRENT_SETTINGS));
                 } else {
                     event.setPhenomenon(null);
                     event.setSignificance(null);
@@ -981,49 +977,39 @@ public final class HazardServicesMessageHandler implements
     /**
      * Update the specified static setting.
      * 
-     * @param jsonSetting
-     *            JSON string holding a dictionary of key-value pairs defining
-     *            the setting being saved.
+     * @param settings
      */
-    public void updateStaticSetting(String settings) {
-        Settings settingsObj = fromJson(settings, Settings.class);
-        sessionConfigurationManager.getSettings().apply(settingsObj);
+    public void updateStaticSetting(Settings settings) {
+        sessionConfigurationManager.getSettings().apply(settings);
         sessionConfigurationManager.saveSettings();
     }
 
     /**
      * Create a new static setting.
      * 
-     * @param jsonSetting
-     *            JSON string holding a dictionary of key-value pairs defining
-     *            the setting being saved.
+     * @param settings
      */
-    public void createStaticSetting(String jsonSetting) {
-        String settingID = newStaticSettings(jsonSetting);
-        changeSetting(settingID, true, false);
+    public void createStaticSetting(Settings settings) {
+        newStaticSettings(settings);
+        String settingsID = settings.getSettingsID();
+        changeSetting(settingsID, false);
     }
 
-    private String newStaticSettings(String settings) {
-        Settings settingsObj = fromJson(settings, Settings.class);
-        settingsObj.setSettingsID(settingsObj.getDisplayName());
-        sessionConfigurationManager.getSettings().apply(settingsObj);
+    private void newStaticSettings(Settings settings) {
+        settings.setSettingsID(settings.getDisplayName());
+        sessionConfigurationManager.getSettings().apply(settings);
         sessionConfigurationManager.saveSettings();
-        return settingsObj.getSettingsID();
     }
 
     /**
-     * Respond to the dynamic setting having changed.
+     * Respond to the current setting having changed.
      * 
-     * @param jsonDynamicSetting
-     *            JSON string holding the dictionary defining the dynamic
-     *            setting.
+     * @param settings
      */
-    public void dynamicSettingChanged(String jsonDynamicSetting) {
-        sessionManager.initialize(sessionManager.getTimeManager()
-                .getSelectedTime(), sessionConfigurationManager.getSettings()
-                .getSettingsID(), jsonDynamicSetting, caveMode, siteID);
+    public void changeCurrentSettings(Settings settings) {
+        sessionConfigurationManager.getSettings().apply(settings);
         appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.DYNAMIC_SETTING));
+                .of(HazardConstants.Element.CURRENT_SETTINGS));
     }
 
     /**
@@ -1036,9 +1022,10 @@ public final class HazardServicesMessageHandler implements
      * 
      * @throws VizException
      */
-    public void updateCurrentTime(String originator) throws VizException {
+    public void updateCurrentTime(HazardComponent originator)
+            throws VizException {
 
-        if (originator.equals(HazardServicesAppBuilder.CAVE_ORIGINATOR)) {
+        if (originator.equals(HazardComponent.CAVE)) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(HazardConstants.Element.CURRENT_TIME));
         }
@@ -1090,7 +1077,7 @@ public final class HazardServicesMessageHandler implements
             if ((frameCount > 0) && (frameIndex != -1)) {
                 try {
                     updateSelectedTime(new Date(dataTimeList.get(frameIndex)),
-                            HazardServicesAppBuilder.CAVE_ORIGINATOR);
+                            HazardComponent.CAVE);
                 } catch (VizException e) {
                     statusHandler.error("HazardServicesMessageHandler:", e);
                 }
@@ -1239,7 +1226,7 @@ public final class HazardServicesMessageHandler implements
                 && !appBuilder.getTimer().isInterrupted()) {
 
             try {
-                updateCurrentTime(HazardServicesAppBuilder.CAVE_ORIGINATOR);
+                updateCurrentTime(HazardComponent.CAVE);
             } catch (VizException e) {
                 statusHandler.error(
                         "Error updating Hazard Services components", e);
@@ -1373,6 +1360,420 @@ public final class HazardServicesMessageHandler implements
         });
     }
 
+    /**
+     * Handle a received spatial display action. This method is called
+     * implicitly by the event bus when actions of this type are sent across the
+     * latter.
+     * 
+     * @param spatialDisplayAction
+     *            Action received.
+     */
+    @Subscribe
+    public void spatialDisplayActionOccurred(
+            final SpatialDisplayAction spatialDisplayAction) {
+        SpatialDisplayAction.ActionType actionType = spatialDisplayAction
+                .getActionType();
+        statusHandler.debug("SpatialDisplayActionOccurred actionType: "
+                + actionType);
+        switch (actionType) {
+        case SELECTED_EVENTS_CHANGED:
+            try {
+                statusHandler.debug(getClass().getName()
+                        + "spatialDisplayActionOccurred(): eventIDs: "
+                        + spatialDisplayAction.getSelectedEventIDs());
+                List<String> convertedEventIDs = Lists
+                        .newArrayList(spatialDisplayAction
+                                .getSelectedEventIDs());
+                updateSelectedEvents(convertedEventIDs,
+                        HazardComponent.SPATIAL_DISPLAY);
+
+            } catch (VizException e) {
+                statusHandler.error(getClass().getName()
+                        + "spatialDisplayActionOccurred(): "
+                        + "Unable to handle selected events changed.", e);
+            }
+            break;
+
+        case ADD_PENDING_TO_SELECTED:
+            setAddToSelected(spatialDisplayAction.getActionIdentifier());
+            break;
+
+        case DRAWING:
+            if (spatialDisplayAction.getActionIdentifier().equals(
+                    SpatialDisplayAction.ActionIdentifier.SELECT_EVENT)) {
+                // Activate the select hazard mouse handler
+                requestMouseHandler(HazardServicesMouseHandlers.SINGLE_SELECTION);
+            } else if (spatialDisplayAction.getActionIdentifier().equals(
+                    SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON)
+                    || spatialDisplayAction.getActionIdentifier().equals(
+                            SpatialDisplayAction.ActionIdentifier.DRAW_LINE)
+                    || spatialDisplayAction.getActionIdentifier().equals(
+                            SpatialDisplayAction.ActionIdentifier.DRAW_POINT)) {
+                String shapeType = (spatialDisplayAction
+                        .getActionIdentifier()
+                        .equals(SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON) ? HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                        : (spatialDisplayAction
+                                .getActionIdentifier()
+                                .equals(SpatialDisplayAction.ActionIdentifier.DRAW_LINE) ? HAZARD_EVENT_SHAPE_TYPE_LINE
+                                : HAZARD_EVENT_SHAPE_TYPE_POINT));
+
+                // Activate the hazard drawing mouse handler.
+                requestMouseHandler(HazardServicesMouseHandlers.NODE_DRAWING,
+                        shapeType);
+            } else if (spatialDisplayAction
+                    .getActionIdentifier()
+                    .equals(SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON)) {
+                requestMouseHandler(HazardServicesMouseHandlers.FREEHAND_DRAWING);
+            } else if (spatialDisplayAction.getActionIdentifier().equals(
+                    SpatialDisplayAction.ActionIdentifier.SELECT_BY_AREA)) {
+                String tableName = spatialDisplayAction.getMapsDbTableName();
+                String displayName = spatialDisplayAction.getLegendName();
+                requestMouseHandler(HazardServicesMouseHandlers.DRAW_BY_AREA,
+                        tableName, displayName);
+            }
+            break;
+
+        case DMTS:
+            String lonLat = spatialDisplayAction.getDragToLongitude() + ","
+                    + spatialDisplayAction.getDragToLatitude();
+            runTool(lonLat, null, null);
+            break;
+
+        case CONEXT_MENU_SELECTED:
+            String label = spatialDisplayAction.getContextMenuLabel();
+            handleContextMenuSelection(label);
+            break;
+
+        case DISPLAY_DISPOSED:
+            eventBus.unregister(this);
+            closeHazardServices();
+            break;
+
+        case FRAME_CHANGED:
+            sendFrameInformationToSessionManager();
+            break;
+
+        case RUN_TOOL:
+            runTool(spatialDisplayAction.getToolName(),
+                    Utilities.asMap(spatialDisplayAction.getToolParameters()),
+                    null);
+            break;
+
+        case UPDATE_EVENT_METADATA:
+            /**
+             * TODO Change updateEventData to take in a POJO
+             */
+            updateEventData(spatialDisplayAction.getToolParameters()
+                    .toJSONString(), true);
+            break;
+
+        case UNDO:
+            handleUndoAction();
+            break;
+
+        case REDO:
+            handleRedoAction();
+            break;
+
+        default:
+            throw new UnsupportedOperationException(String.format(
+                    "ActionType %s not handled", actionType));
+        }
+
+    }
+
+    /**
+     * Handle a received console display action. This method is called
+     * implicitly by the event bus when actions of this type are sent across the
+     * latter.
+     * 
+     * @param consoleAction
+     *            Action received.
+     */
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        switch (consoleAction.getActionType()) {
+        case RESET:
+            reset(consoleAction.getId());
+            break;
+
+        case CHANGE_MODE:
+            if (consoleAction.getId().equals(ConsoleAction.CHECK_CONFLICTS)) {
+                checkHazardConflicts();
+            } else if (consoleAction.getId().equals(
+                    ConsoleAction.AUTO_CHECK_CONFLICTS)) {
+                toggleAutoCheckConflicts();
+            } else if (consoleAction.getId().equals(
+                    ConsoleAction.SHOW_HATCHED_AREA)) {
+                toggleHatchedAreaDisplay();
+            }
+            break;
+
+        case SELECTED_TIME_CHANGED:
+            try {
+                updateSelectedTime(consoleAction.getNewTime(),
+                        HazardComponent.CONSOLE);
+            } catch (VizException e) {
+                statusHandler.error("HazardServicesMessageListener."
+                        + "consoleActionOccurred(): Unable to update "
+                        + "selected time.", e);
+            }
+            break;
+
+        case VISIBLE_TIME_RANGE_CHANGED:
+            updateVisibleTimeRange(consoleAction.getStartTime(),
+                    consoleAction.getEndTime());
+            break;
+
+        case SELECTED_TIME_RANGE_CHANGED:
+            updateSelectedTimeRange(consoleAction.getStartTime(),
+                    consoleAction.getEndTime());
+            break;
+
+        case CHECK_BOX: {
+            Dict eventInfo = new Dict();
+            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
+            eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
+            String jsonText = eventInfo.toJSONString();
+            updateEventData(jsonText, true);
+            break;
+        }
+
+        case SELECTED_EVENTS_CHANGED:
+
+            try {
+                List<String> eventIDsString = Lists.newArrayList(consoleAction
+                        .getSelectedEventIDs());
+                updateSelectedEvents(eventIDsString, HazardComponent.CONSOLE);
+
+            } catch (VizException e) {
+                statusHandler.error("Error updating selected events", e);
+            }
+            break;
+
+        case EVENT_TIME_RANGE_CHANGED: {
+            Dict eventInfo = new Dict();
+            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
+            eventInfo.put(HAZARD_EVENT_START_TIME,
+                    Long.parseLong(consoleAction.getStartTime()));
+            eventInfo.put(HAZARD_EVENT_END_TIME,
+                    Long.parseLong(consoleAction.getEndTime()));
+            updateEventData(eventInfo.toJSONString(), true);
+            break;
+        }
+
+        case SITE_CHANGED:
+            updateSite(consoleAction.getId());
+            break;
+
+        case CLOSE:
+            eventBus.unregister(this);
+            closeHazardServices();
+            break;
+
+        case RUN_AUTOMATED_TESTS:
+            /*
+             * Nothing to do here
+             */
+            break;
+
+        default:
+            throw new IllegalArgumentException("Unexpected action type "
+                    + consoleAction.getActionType());
+        }
+
+    }
+
+    /**
+     * Handle a received hazard detail action. This method is called implicitly
+     * by the event bus when actions of this type are sent across the latter.
+     * 
+     * @param hazardDetailAction
+     *            Action received.
+     */
+    @Subscribe
+    public void hazardDetailActionOccurred(
+            final HazardDetailAction hazardDetailAction) {
+        switch (hazardDetailAction.getActionType()) {
+        case PREVIEW:
+            preview();
+            break;
+
+        case PROPOSE:
+            changeSelectedEventsToProposedState();
+            break;
+
+        case ISSUE:
+            setIssuedState();
+            break;
+
+        case DISMISS:
+            setDismissedState();
+            break;
+
+        case UPDATE_TIME_RANGE:
+            updateEventData(hazardDetailAction.getJSONText(),
+
+            hazardDetailAction.getIsUserInitiated());
+            break;
+
+        case UPDATE_EVENT_TYPE:
+            updateEventType(hazardDetailAction.getJSONText());
+            break;
+        case UPDATE_EVENT_METADATA:
+            updateEventData(hazardDetailAction.getJSONText(),
+                    hazardDetailAction.getIsUserInitiated());
+            break;
+
+        default:
+            throw new IllegalArgumentException("Unsupported actionType "
+                    + hazardDetailAction.getActionType());
+        }
+
+    }
+
+    /**
+     * Handle a received product editor action. This method is called implicitly
+     * by the event bus when actions of this type are sent across the latter.
+     * 
+     * @param productEditorAction
+     *            Action received.
+     */
+    @Subscribe
+    public void productEditorActionOccurred(
+            final ProductEditorAction productEditorAction) {
+        handleProductDisplayAction(productEditorAction);
+    }
+
+    /**
+     * Handle a received product staging action. This method is called
+     * implicitly by the event bus when actions of this type are sent across the
+     * latter.
+     * 
+     * @param productStagingAction
+     *            Action received.
+     */
+    @Subscribe
+    public void productStagingActionOccurred(
+            final ProductStagingAction productStagingAction) {
+
+        // If the action equals Continue, that means we have to generate
+        // product and make sure that we will issue those products or not.
+        // Thus we need a return message that contains issueFlag and revised
+        // productList
+        handleProductDisplayContinueAction(productStagingAction.getIssueFlag()
+                .equals(Boolean.TRUE.toString()),
+                productStagingAction.getProductStagingInfo());
+
+    }
+
+    @Subscribe
+    public void currentSettingsActionOccurred(
+            final CurrentSettingsAction settingsAction) {
+        changeCurrentSettings(settingsAction.getSettings());
+    }
+
+    /**
+     * Handle a received settings action. This method is called implicitly by
+     * the event bus when actions of this type are sent across the latter.
+     * 
+     * @param settingsAction
+     *            Action received.
+     */
+    @Subscribe
+    public void settingsActionOccurred(final StaticSettingsAction settingsAction) {
+        switch (settingsAction.getActionType()) {
+
+        case SETTINGS_MODIFIED:
+            changeCurrentSettings(JSONUtilities.settingsFromJSON(settingsAction
+                    .getDetail()));
+            break;
+
+        case SETTINGS_CHOSEN:
+            changeSetting(settingsAction.getDetail(), true);
+            break;
+
+        default:
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageDialog.openInformation(shell, null,
+                    "This feature is not yet implemented.");
+
+        }
+    }
+
+    /**
+     * Handle a received timer action. This method is called implicitly by the
+     * event bus when actions of this type are sent across the latter.
+     * 
+     * @param timerAction
+     *            Action received.
+     */
+    @Subscribe
+    public void timerActionOccurred(final TimerAction timerAction) {
+        handleTimerAction(timerAction.getCaveTime());
+    }
+
+    /**
+     * Handle a received tool action. This method is called implicitly by the
+     * event bus when actions of this type are sent across the latter.
+     * 
+     * @param toolAction
+     *            Action received.
+     */
+    @Subscribe
+    public void toolActionOccurred(final ToolAction action) {
+        switch (action.getActionType()) {
+        case RUN_TOOL:
+            runTool(action.getToolName());
+            break;
+
+        case RUN_TOOL_WITH_PARAMETERS:
+            runTool(action.getToolName(), null, action.getAuxiliaryDetails());
+            break;
+
+        case TOOL_RECOMMENDATIONS:
+            EventSet<IEvent> eventList = action.getRecommendedEventList();
+            handleRecommenderResults(eventList);
+            break;
+
+        case PRODUCTS_GENERATED:
+            String toolID = action.getProductGeneratorName();
+            List<IGeneratedProduct> productList = action.getProductList();
+            handleProductGeneratorResult(toolID, productList);
+            break;
+
+        default:
+            statusHandler
+                    .debug("HazardServicesMessageListener: Unrecognized tool action :"
+                            + action.getActionType());
+            break;
+        }
+
+    }
+
+    @Subscribe
+    public void changeSiteOccurred(ChangeSiteAction action) {
+        getSessionManager().getConfigurationManager().setSiteID(
+                action.getSite());
+        ConsoleAction cAction = new ConsoleAction(
+                ConsoleAction.ActionType.SITE_CHANGED);
+        cAction.setId(action.getSite());
+        consoleActionOccurred(cAction);
+    }
+
+    /**
+     * Handle a received shut down action.
+     * 
+     * @param closeAction
+     *            The Hazard Services shutdown notification.
+     */
+    @Subscribe
+    public void HazardServicesShutDownListener(
+            final HazardServicesCloseAction closeAction) {
+        eventBus.unregister(this);
+    }
+
     public ISessionManager getSessionManager() {
         return sessionManager;
     }
@@ -1390,7 +1791,7 @@ public final class HazardServicesMessageHandler implements
         String perspectiveID = VizPerspectiveListener
                 .getCurrentPerspectiveManager().getPerspectiveId();
         List<Settings> settingsList = sessionManager.getConfigurationManager()
-                .getSettingsList();
+                .getAvailableSettings();
 
         for (Settings settings : settingsList) {
             Set<String> settingPerspectiveList = settings.getPerspectiveIDs();
@@ -1485,7 +1886,7 @@ public final class HazardServicesMessageHandler implements
     @Override
     public void timechanged() {
         try {
-            updateCurrentTime(HazardServicesAppBuilder.CAVE_ORIGINATOR);
+            updateCurrentTime(HazardComponent.CAVE);
         } catch (VizException e) {
             statusHandler.error("Error updating Hazard Services current time",
                     e);

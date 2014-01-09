@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -283,14 +285,14 @@ public class SessionProductManager implements ISessionProductManager {
             EventSet<IEvent> events = new EventSet<IEvent>();
             events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                     .getCurrentTime().getTime());
-            events.addAttribute(HazardConstants.SITEID,
+            events.addAttribute(HazardConstants.SITE_ID,
                     configManager.getSiteID());
             events.addAttribute(HazardConstants.BACKUP_SITEID,
                     LocalizationManager.getInstance().getCurrentSite());
             String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
                     .toString() : HazardEventManager.Mode.OPERATIONAL
                     .toString();
-            events.addAttribute("hazardMode", mode);
+            events.addAttribute(HAZARD_MODE, mode);
             String runMode = CAVEMode.getMode().toString();
             events.addAttribute("runMode", runMode);
             events.addAttribute("vtecMode", "O");
@@ -359,8 +361,8 @@ public class SessionProductManager implements ISessionProductManager {
                  * Need to re-initialize product information when issuing
                  */
                 if (issue) {
-                    event.removeHazardAttribute(HazardConstants.EXPIRATIONTIME);
-                    event.removeHazardAttribute(HazardConstants.ISSUETIME);
+                    event.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
+                    event.removeHazardAttribute(HazardConstants.ISSUE_TIME);
                     event.removeHazardAttribute(HazardConstants.VTEC_CODES);
                     event.removeHazardAttribute(HazardConstants.ETNS);
                     event.removeHazardAttribute(HazardConstants.PILS);

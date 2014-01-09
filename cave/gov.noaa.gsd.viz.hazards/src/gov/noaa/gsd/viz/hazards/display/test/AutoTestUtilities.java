@@ -11,23 +11,24 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
-import gov.noaa.gsd.viz.hazards.display.action.SettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
 import java.util.List;
+import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -54,6 +55,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class AutoTestUtilities {
 
     public static Double EVENT_BUILDER_OFFSET = 0.0025;
+
+    static final String CAUSE = "cause";
 
     static final String OAX = "OAX";
 
@@ -186,7 +189,7 @@ public class AutoTestUtilities {
         Dict dict = buildEventTypeSelection(selectedEvent, eventType);
 
         HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                HazardConstants.UPDATE_EVENT_TYPE);
+                HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
         hazardDetailAction.setJSONText(dict.toJSONString());
         appBuilder.getEventBus().post(hazardDetailAction);
     }
@@ -197,21 +200,12 @@ public class AutoTestUtilities {
         return selectedEvent;
     }
 
-    Dict buildEventFilterCriteria(List<String> visibleTypes,
-            List<String> visibleStates, List<String> visibleSites) {
-        Dict result = new Dict();
-        DictList visibleTypesContainer = new DictList();
-        result.put(SETTING_HAZARD_TYPES, visibleTypesContainer);
-        visibleTypesContainer.addAll(visibleTypes);
-
-        DictList visibleStatesContainer = new DictList();
-        result.put(SETTING_HAZARD_STATES, visibleStatesContainer);
-        visibleStatesContainer.addAll(visibleStates);
-
-        DictList visibleSitesContainer = new DictList();
-        result.put(SETTING_HAZARD_SITES, visibleSitesContainer);
-        visibleSitesContainer.addAll(visibleSites);
-
+    Settings buildEventFilterCriteria(Set<String> visibleTypes,
+            Set<String> visibleStates, Set<String> visibleSites) {
+        Settings result = new Settings();
+        result.setVisibleTypes(visibleTypes);
+        result.setVisibleStates(visibleStates);
+        result.setVisibleSites(visibleSites);
         return result;
     }
 
@@ -256,11 +250,13 @@ public class AutoTestUtilities {
      * @return
      */
     void issueEvent() {
-        eventBus.post(new HazardDetailAction(HazardAction.ISSUE.getValue()));
+        eventBus.post(new HazardDetailAction(
+                HazardDetailAction.ActionType.ISSUE));
     }
 
     void previewEvent() {
-        eventBus.post(new HazardDetailAction(HazardAction.PREVIEW.getValue()));
+        eventBus.post(new HazardDetailAction(
+                HazardDetailAction.ActionType.PREVIEW));
     }
 
     @SuppressWarnings("unchecked")
@@ -282,20 +278,20 @@ public class AutoTestUtilities {
                 FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
     }
 
-    void setAddToPendingMode(String mode) {
+    void setAddToPendingMode(SpatialDisplayAction.ActionIdentifier mode) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                HazardConstants.ADD_PENDING_TO_SELECTED, mode);
+                SpatialDisplayAction.ActionType.ADD_PENDING_TO_SELECTED, mode);
         eventBus.post(action);
     }
 
     void changeStaticSettings(String settingsID) {
-        SettingsAction action = new SettingsAction(SETTING_CHOSEN, settingsID);
+        StaticSettingsAction action = new StaticSettingsAction(
+                StaticSettingsAction.ActionType.SETTINGS_CHOSEN, settingsID);
         eventBus.post(action);
     }
 
-    void changeDynamicSettings(Dict settings) {
-        SettingsAction action = new SettingsAction(DYNAMIC_SETTING_CHANGED,
-                settings.toJSONString());
+    void changeCurrentSettings(Settings settings) {
+        CurrentSettingsAction action = new CurrentSettingsAction(settings);
         eventBus.post(action);
     }
 
@@ -304,7 +300,7 @@ public class AutoTestUtilities {
         updatedEventAttributes.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
                 selectedEvent.getEventID());
         SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                HazardConstants.UPDATE_EVENT_METADATA);
+                SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
         displayAction.setToolParameters(updatedEventAttributes);
         eventBus.post(displayAction);
     }

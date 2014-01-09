@@ -21,6 +21,7 @@ import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -89,11 +90,10 @@ public class SettingsPresenter extends
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(configurationManager.getSettingsListAsJSON());
+            getView().setSettings(configurationManager.getAvailableSettings());
         }
-        if (changed.contains(HazardConstants.Element.DYNAMIC_SETTING)) {
-            Settings settings = configurationManager.getSettings();
-            getView().setDynamicSetting(jsonConverter.toJson(settings));
+        if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
+            getView().setCurrentSettings(configurationManager.getSettings());
         }
     }
 
@@ -103,8 +103,9 @@ public class SettingsPresenter extends
     public final void showSettingDetail() {
 
         // Get the parameters for the settings view.
-        DictList fields = DictList.getInstance(configurationManager
-                .getConfigItem(HazardConstants.SETTING_CONFIG));
+        DictList fields = DictList.getInstance(jsonConverter
+                .toJson(new SettingsConfig[] { configurationManager
+                        .getSettingsConfig() }));
         Settings settings = configurationManager.getSettings();
         Dict values = Dict.getInstance(jsonConverter.toJson(settings));
 
@@ -132,9 +133,9 @@ public class SettingsPresenter extends
     @Override
     public void initialize(ISettingsView<?, ?> view) {
         Settings settings = configurationManager.getSettings();
-        view.initialize(this, configurationManager.getSettingsListAsJSON(),
-                configurationManager.getConfigItem("filterConfig"),
-                jsonConverter.toJson(settings));
+        view.initialize(this, configurationManager.getAvailableSettings(),
+                jsonConverter.toJson(configurationManager.getFilterConfig()),
+                settings);
     }
 
     // Private Methods

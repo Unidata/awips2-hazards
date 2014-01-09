@@ -85,8 +85,8 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
              */
             this.step = Steps.TOGGLE_ON_HAZARD_DETECTION;
             ConsoleAction consoleAction = new ConsoleAction(
-                    HazardConstants.CHECK_CONFLICT_ACTION,
-                    HazardConstants.AUTO_CHECK_CONFLICTS);
+                    ConsoleAction.ActionType.CHANGE_MODE,
+                    ConsoleAction.AUTO_CHECK_CONFLICTS);
             eventBus.post(consoleAction);
         } catch (Exception e) {
             handleException(e);
@@ -105,7 +105,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      */
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction action) {
-        if (action.getId().equals(HazardConstants.AUTO_CHECK_CONFLICTS)) {
+        if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
 
             if (this.step == Steps.TOGGLE_ON_HAZARD_DETECTION) {
                 /*
@@ -187,9 +187,8 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
-            String action = hazardDetailAction.getAction();
-
-            if (action.equals(HazardConstants.UPDATE_EVENT_TYPE)) {
+            if (hazardDetailAction.getActionType().equals(
+                    HazardDetailAction.ActionType.UPDATE_EVENT_TYPE)) {
 
                 if (step == Steps.ASSIGN_AREAL_FLOOD_WATCH) {
 
@@ -207,8 +206,8 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
                     this.step = Steps.TOGGLE_OFF_HAZARD_DETECTION;
                     ConsoleAction consoleAction = new ConsoleAction(
-                            HazardConstants.CHECK_CONFLICT_ACTION,
-                            HazardConstants.AUTO_CHECK_CONFLICTS);
+                            ConsoleAction.ActionType.CHANGE_MODE,
+                            ConsoleAction.AUTO_CHECK_CONFLICTS);
                     eventBus.post(consoleAction);
                 }
 

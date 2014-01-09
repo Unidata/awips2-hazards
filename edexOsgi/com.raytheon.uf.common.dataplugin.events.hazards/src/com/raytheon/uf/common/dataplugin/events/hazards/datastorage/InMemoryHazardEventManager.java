@@ -99,7 +99,7 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(SITEID)) {
+            if (filterName.equals(SITE_ID)) {
                 for (Object filterValue : list) {
                     if (hazardEvent.getSiteID().equals(filterValue)) {
                         internalTruth = true;

@@ -11,6 +11,12 @@ package gov.noaa.gsd.viz.hazards.display;
 
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.DeprecatedChoice;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.DeprecatedField;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.GeneratedProduct;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.HazardEventSet;
+import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.StagingInfo;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesGeneratorJobListener;
 
@@ -35,12 +41,6 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.DeprecatedChoice;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.DeprecatedField;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.GeneratedProduct;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.HazardEventSet;
-import com.raytheon.uf.viz.hazards.sessionmanager.deprecated.ProductGenerationResult.StagingInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;

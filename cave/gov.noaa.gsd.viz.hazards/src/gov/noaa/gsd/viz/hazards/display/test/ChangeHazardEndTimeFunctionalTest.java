@@ -21,7 +21,6 @@ import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
@@ -73,10 +72,10 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
-            if (hazardDetailAction.getAction().equals(
-                    HazardAction.ISSUE.getValue())
-                    || hazardDetailAction.getAction().equals(
-                            HazardAction.PREVIEW.getValue())) {
+            if (hazardDetailAction.getActionType().equals(
+                    HazardDetailAction.ActionType.ISSUE)
+                    || hazardDetailAction.getActionType().equals(
+                            HazardDetailAction.ActionType.PREVIEW)) {
                 return;
             }
             if (step == Steps.START) {
@@ -109,7 +108,8 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                         .getStartTime().getTime());
                 updatedMetadata.put(HAZARD_EVENT_END_TIME, endTimeInMillis);
                 HazardDetailAction action = new HazardDetailAction(
-                        UPDATE_TIME_RANGE, updatedMetadata.toJSONString());
+                        HazardDetailAction.ActionType.UPDATE_TIME_RANGE,
+                        updatedMetadata.toJSONString());
                 eventBus.post(action);
                 break;
 

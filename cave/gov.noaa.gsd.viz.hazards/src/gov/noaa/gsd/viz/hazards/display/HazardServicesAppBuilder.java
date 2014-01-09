@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
@@ -135,31 +134,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Timer interval in milliseconds.
      */
     public static final long TIMER_UPDATE_MS = TimeUnit.SECONDS.toMillis(10);
-
-    /**
-     * Temporal display originator.
-     */
-    public static final String TEMPORAL_ORIGINATOR = "Temporal";
-
-    /**
-     * Hazard info dialog originator.
-     */
-    public static final String HAZARD_INFO_ORIGINATOR = "HID";
-
-    /**
-     * Setting dialog originator.
-     */
-    public static final String SETTING_DIALOG_ORIGINATOR = "SettingDialog";
-
-    /**
-     * Spatial display originator.
-     */
-    public static final String SPATIAL_ORIGINATOR = "Spatial";
-
-    /**
-     * CAVE originator.
-     */
-    public static final String CAVE_ORIGINATOR = "Cave";
 
     /**
      * Hard-coded canned case time. For use in Operation Mode for now.
@@ -345,9 +319,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.sessionManager = SessionManagerFactory.getSessionManager(this);
 
         messageHandler = new HazardServicesMessageHandler(this, currentTime,
-                "", eventBus);
-
-        new HazardServicesMessageListener(messageHandler, eventBus);
+                eventBus);
 
         /**
          * Get a true/false, or OK/cancel, or yes/no answer from the user.
@@ -425,7 +397,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                             @Override
                             public void run() {
                                 eventBus.post(new ConsoleAction(
-                                        HazardConstants.RUN_AUTOMATED_TESTS));
+                                        ConsoleAction.ActionType.RUN_AUTOMATED_TESTS));
                             }
                         };
                         return Lists.newArrayList(autoTestAction);
@@ -747,28 +719,21 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
-     * Get the current setting.
      * 
-     * @return JSON string containing the mapping of key-value pairs defining
-     *         the setting.
+     * @return the current settings
      */
-    public String getSetting() {
-        Settings settings = sessionManager.getConfigurationManager()
-                .getSettings();
-        JSONConverter jsonConverter = new JSONConverter();
-        return jsonConverter.toJson(settings);
+    public Settings getCurrentSettings() {
+        return (sessionManager.getConfigurationManager().getSettings());
 
     }
 
     /**
      * Set the current setting.
      * 
-     * @param setting
-     *            JSON string containing the mapping of key-value pairs defining
-     *            the setting.
+     * @param settings
      */
-    public void setSetting(String setting) {
-        messageHandler.dynamicSettingChanged(setting);
+    public void setCurrentSettings(Settings settings) {
+        messageHandler.changeCurrentSettings(settings);
     }
 
     /**

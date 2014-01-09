@@ -3,9 +3,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -14,6 +12,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: {@link IConsoleView} used for {@link AutomatedTests}.
@@ -32,14 +31,14 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 @SuppressWarnings("rawtypes")
 public class ConsoleViewForTesting implements IConsoleView {
 
-    private DictList hazardEvents;
+    private List hazardEvents;
 
-    private Dict dynamicSetting;
+    private Settings currentSettings;
 
     private ImmutableList activeAlerts;
 
     public ConsoleViewForTesting() {
-        hazardEvents = new DictList();
+        hazardEvents = Lists.newArrayList();
     }
 
     @Override
@@ -54,10 +53,10 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     @Override
     public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, String jsonHazardEvents,
-            String jsonSettings, String jsonFilters,
+            Date currentTime, long visibleTimeRange, List hazardEvents,
+            Settings currentSettings, List settings, String jsonFilters,
             ImmutableList activeAlerts, boolean temporalControlsInToolBar) {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -106,17 +105,12 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public void setHazardEvents(String hazardEventsJSON) {
-        Dict dict = Dict.getInstance(hazardEventsJSON);
-        ArrayList elements = (ArrayList) dict.get("events");
-        this.hazardEvents = new DictList();
-        for (Object object : elements) {
-            hazardEvents.add(object);
-
-        }
+    public void setHazardEvents(List hazardEvents, Settings currentSettings) {
+        this.hazardEvents = hazardEvents;
 
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void updateHazardEvent(String hazardEventJSON) {
         Dict updatedEvent = Dict.getInstance(hazardEventJSON);
@@ -141,13 +135,12 @@ public class ConsoleViewForTesting implements IConsoleView {
     }
 
     @Override
-    public Dict getDynamicSetting() {
-        return dynamicSetting;
+    public Settings getCurrentSettings() {
+        return currentSettings;
     }
 
     @Override
-    public void setSettings(String jsonSettings) {
-
+    public void setSettings(String currentSettingsID, List settings) {
     }
 
     @Override
@@ -155,8 +148,8 @@ public class ConsoleViewForTesting implements IConsoleView {
 
     }
 
-    public void setDynamicSetting(Dict dynamicSetting) {
-        this.dynamicSetting = dynamicSetting;
+    public void setCurrentSettings(Settings currentSettings) {
+        this.currentSettings = currentSettings;
     }
 
     @Override
@@ -167,4 +160,5 @@ public class ConsoleViewForTesting implements IConsoleView {
     ImmutableList getActiveAlerts() {
         return activeAlerts;
     }
+
 }

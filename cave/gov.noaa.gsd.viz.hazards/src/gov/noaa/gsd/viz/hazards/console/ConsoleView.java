@@ -47,10 +47,10 @@ import org.eclipse.ui.internal.WorkbenchPage;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Console view, an implementation of IConsoleView that provides an Eclipse
@@ -186,7 +186,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         /**
          * Action type.
          */
-        private final String actionType;
+        private final ConsoleAction.ActionType actionType;
 
         /**
          * Action name.
@@ -216,7 +216,8 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
          *            send "on" or "off" as their action name.
          */
         public BasicConsoleAction(String text, String iconFileName, int style,
-                String toolTipText, String actionType, String actionName) {
+                String toolTipText, ConsoleAction.ActionType actionType,
+                String actionName) {
             super(text, iconFileName, style, toolTipText);
             this.actionType = actionType;
             this.actionName = actionName;
@@ -495,7 +496,8 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             if (partRef == getViewPartReference()) {
                 statusHandler
                         .debug("ConsoleView.partClosed(): console view part closed.");
-                presenter.fireAction(new ConsoleAction("Close", (String) null));
+                presenter.fireAction(new ConsoleAction(
+                        ConsoleAction.ActionType.CLOSE, (String) null));
             }
         }
 
@@ -620,11 +622,9 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
-     * @param jsonHazardEvents
-     *            JSON string holding a list of hazard events in dictionary
-     *            form.
-     * @param jsonSettings
-     *            JSON string holding a dictionary providing settings.
+     * @param hazardEvents
+     * @param currentSettings
+     * @param availableSettings
      * @param jsonFilters
      *            JSON string holding a list of dictionaries providing filter
      *            megawidget specifiers.
@@ -638,8 +638,9 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     @Override
     public final void initialize(final ConsolePresenter presenter,
             final Date selectedTime, final Date currentTime,
-            final long visibleTimeRange, final String jsonHazardEvents,
-            final String jsonSettings, final String jsonFilters,
+            final long visibleTimeRange, final List<Dict> hazardEvents,
+            final Settings currentSettings,
+            final List<Settings> availableSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
             final boolean temporalControlsInToolBar) {
         this.presenter = presenter;
@@ -648,8 +649,9 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             @Override
             public void run() {
                 getViewPart().initialize(presenter, selectedTime, currentTime,
-                        visibleTimeRange, jsonHazardEvents, jsonSettings,
-                        jsonFilters, activeAlerts, temporalControlsInToolBar);
+                        visibleTimeRange, hazardEvents, currentSettings,
+                        availableSettings, jsonFilters, activeAlerts,
+                        temporalControlsInToolBar);
             }
         });
     }
@@ -777,29 +779,30 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         } else {
             resetEventsCommandAction = new BasicConsoleAction(
                     RESET_EVENTS_COMMAND_MENU_TEXT, null,
-                    Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
-                    HazardConstants.RESET_EVENTS);
+                    Action.AS_PUSH_BUTTON, null,
+                    ConsoleAction.ActionType.RESET, ConsoleAction.RESET_EVENTS);
             resetSettingsCommandAction = new BasicConsoleAction(
                     RESET_SETTINGS_COMMAND_MENU_TEXT, null,
-                    Action.AS_PUSH_BUTTON, null, HazardConstants.RESET_ACTION,
-                    HazardConstants.RESET_SETTINGS);
+                    Action.AS_PUSH_BUTTON, null,
+                    ConsoleAction.ActionType.RESET,
+                    ConsoleAction.RESET_SETTINGS);
             SeparatorAction sep = new SeparatorAction();
             checkHazardConflictsAction = new BasicConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
                     Action.AS_PUSH_BUTTON, null,
-                    HazardConstants.CHECK_CONFLICT_ACTION,
-                    HazardConstants.CHECK_CONFLICTS);
+                    ConsoleAction.ActionType.CHANGE_MODE,
+                    ConsoleAction.CHECK_CONFLICTS);
 
             autoCheckHazardConflictsAction = new BasicConsoleAction(
                     AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
                     Action.AS_CHECK_BOX, null,
-                    HazardConstants.CHECK_CONFLICT_ACTION,
-                    HazardConstants.AUTO_CHECK_CONFLICTS);
+                    ConsoleAction.ActionType.CHANGE_MODE,
+                    ConsoleAction.AUTO_CHECK_CONFLICTS);
 
             showHatchedAreaAction = new BasicConsoleAction(
                     SHOW_HATCHED_AREAS_MENU_TEXT, null, Action.AS_CHECK_BOX,
-                    null, HazardConstants.CHECK_CONFLICT_ACTION,
-                    HazardConstants.SHOW_HATCHED_AREA);
+                    null, ConsoleAction.ActionType.CHANGE_MODE,
+                    ConsoleAction.SHOW_HATCHED_AREA);
 
             Action changeSiteAction = new ChangeSiteAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
@@ -928,15 +931,16 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * Set the hazard events to those specified.
      * 
      * @param hazardEvents
-     *            JSON string holding an array of dictionaries, each of the
-     *            latter holding an event as a set of key-value pairs.
+     * @param currentSettings
      */
     @Override
-    public final void setHazardEvents(final String hazardEvents) {
+    public final void setHazardEvents(final List<Dict> hazardEvents,
+            final Settings currentSetttings) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateHazardEvents(hazardEvents);
+                getViewPart()
+                        .updateHazardEvents(hazardEvents, currentSetttings);
             }
         });
     }
@@ -978,33 +982,28 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     }
 
     /**
-     * Get the dictionary defining the current dynamic setting being used.
      * 
-     * @return Dictionary defining the current dynamic setting being used.
+     * @return the current dynamic setting being used.
      */
     @Override
-    public final Dict getDynamicSetting() {
+    public final Settings getCurrentSettings() {
         ConsoleViewPart viewPart = getViewPart();
-        if (viewPart == null) {
-            return new Dict();
-        }
-        return viewPart.getDynamicSetting();
+        return viewPart.getCurrentSetting();
     }
 
     /**
      * Set the settings to those specified.
      * 
-     * @param jsonSettings
-     *            JSON string holding a dictionary an entry for the list of
-     *            settings, and another entry for the current setting
-     *            identifier.
+     * @param currentSettingsID
+     * @param settings
      */
     @Override
-    public final void setSettings(final String jsonSettings) {
+    public final void setSettings(final String currentSettingsID,
+            final List<Settings> settings) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().setSettings(jsonSettings);
+                getViewPart().setSettings(currentSettingsID, settings);
             }
         });
     }
@@ -1019,7 +1018,8 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * @param actionName
      *            Name of action.
      */
-    private void fireConsoleAction(String actionType, String actionName) {
+    private void fireConsoleAction(ConsoleAction.ActionType actionType,
+            String actionName) {
         presenter.fireAction(new ConsoleAction(actionType, actionName));
     }
 

@@ -22,6 +22,8 @@ package com.raytheon.uf.common.dataplugin.events.hazards;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
 /**
  * Contants to be used by both Java and Python code, Python will have a class
  * that mirrors many of the values within this class for use by the tool writers
@@ -154,11 +156,15 @@ public final class HazardConstants {
         }
     }
 
+    public static enum HazardComponent {
+        CONSOLE, SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, CAVE
+    }
+
     /**
      * Enumeration of all types of changes that may occur within the model.
      */
     public static enum Element {
-        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, DYNAMIC_SETTING, TOOLS, SITE;
+        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
     }
 
     public static Significance significanceFromAbbreviation(String value) {
@@ -212,7 +218,7 @@ public final class HazardConstants {
      * the database implementation and the registry implementation
      */
 
-    public static final String SITEID = "siteID";
+    public static final String SITE_ID = "siteID";
 
     public static final String GEOMETRY = "geometry";
 
@@ -220,23 +226,21 @@ public final class HazardConstants {
 
     public static final String PHENOMENON = "phenomenon";
 
-    public static final String PHENSIG = "phensig";
+    public static final String PHEN_SIG = "phensig";
 
     public static final String SIGNIFICANCE = "significance";
 
-    public static final String UNIQUEID = "uniqueID";
+    public static final String UNIQUE_ID = "uniqueID";
 
-    public static final String EXPIRATIONTIME = "expirationTime";
+    public static final String EXPIRATION_TIME = "expirationTime";
 
-    public static final String HAZARDMODE = "hazardMode";
+    public static final String HAZARD_MODE = "hazardMode";
 
     public static final String RISE_ABOVE = "riseAbove";
 
     public static final String CREST = "crest";
 
     public static final String FALL_BELOW = "fallBelow";
-
-    public static final String CAUSE = "cause";
 
     /**
      * Event identifier key
@@ -281,7 +285,7 @@ public final class HazardConstants {
     /**
      * End time key in hazard
      */
-    public static final String ISSUETIME = "issueTime";
+    public static final String ISSUE_TIME = "issueTime";
 
     /**
      * Creation time key in hazard
@@ -433,29 +437,6 @@ public final class HazardConstants {
     public static final String POLYGON_TYPE = "polygon";
 
     /*
-     * Information related to the type of a reset action.
-     */
-    public static final String RESET_EVENTS = "Events";
-
-    public static final String RESET_SETTINGS = "Settings";
-
-    public static final String RESET_ACTION = "Reset";
-
-    /*
-     * Information related to the type of a check hazard conflict action.
-     */
-
-    public static final String CONSOLE_ACTION = "consoleAction";
-
-    public static final String CHECK_CONFLICT_ACTION = "CheckConflictAction";
-
-    public static final String CHECK_CONFLICTS = "CheckConflicts";
-
-    public static final String AUTO_CHECK_CONFLICTS = "AutoCheckConflicts";
-
-    public static final String SHOW_HATCHED_AREA = "ShowHazardHatchedArea";
-
-    /*
      * Context menu entries.
      */
     public static final String CONTEXT_MENU_CONTRIBUTION_KEY = "contextMenu";
@@ -500,32 +481,6 @@ public final class HazardConstants {
      */
     public static final String HYDROLOGY_SETTING = "Hydrology";
 
-    public static final String DYNAMIC_SETTING_CHANGED = "DynamicSettingChanged";
-
-    public static final String SETTING_CHOSEN = "SettingChosen";
-
-    /**
-     * Column identifier key in column definition dictionary in setting
-     * dictionary.
-     */
-    public static final String SETTING_COLUMN_IDENTIFIER = "fieldName";
-
-    /**
-     * Column hint text identifier key in column definition dictionary in
-     * setting dictionary.
-     */
-    public static final String SETTING_COLUMN_HINT_TEXT_IDENTIFIER = "hintTextFieldName";
-
-    /**
-     * Column width key in column definition dictionary in setting dictionary.
-     */
-    public static final String SETTING_COLUMN_WIDTH = "width";
-
-    /**
-     * Column type key in column definition dictionary in setting dictionary.
-     */
-    public static final String SETTING_COLUMN_TYPE = "type";
-
     /**
      * String column type value in column definition dictionary in setting
      * dictionary.
@@ -563,6 +518,8 @@ public final class HazardConstants {
     /**
      * Ascending sort direction value in column definition dictionary in setting
      * dictionary.
+     * 
+     * TODO These should be converted to an ENUM
      */
     public static final String SETTING_COLUMN_SORT_DIRECTION_ASCENDING = "ascending";
 
@@ -598,46 +555,6 @@ public final class HazardConstants {
      */
     public static final String SETTING_HAZARD_CATEGORIES = "hidHazardCategories";
 
-    /**
-     * Settings list in settings dictionary.
-     */
-    public static final String SETTINGS_LIST = "settingsList";
-
-    /**
-     * Setting identifier in setting definition in settings list.
-     */
-    public static final String SETTINGS_LIST_IDENTIFIER = "settingsID";
-
-    /**
-     * Current setting identifier in settings dictionary.
-     */
-    public static final String SETTINGS_CURRENT_IDENTIFIER = "currentSettingsID";
-
-    /**
-     * Start up configuration item key.
-     */
-    public static final String START_UP_CONFIG = "startUpConfig";
-
-    /**
-     * General hazard information configuration item key.
-     */
-    public static final String HAZARD_INFO_GENERAL_CONFIG = "hazardInfoConfig";
-
-    /**
-     * Filter configuration item key.
-     */
-    public static final String FILTER_CONFIG = "filterConfig";
-
-    /**
-     * Metadata hazard information configuration item key.
-     */
-    public static final String HAZARD_INFO_METADATA_CONFIG = "hazardInfoOptions";
-
-    /**
-     * Setting configuration item key.
-     */
-    public static final String SETTING_CONFIG = "viewConfig";
-
     /*
      * Hazard types key in settings.
      */
@@ -648,31 +565,8 @@ public final class HazardConstants {
     public static final String SETTING_HAZARD_SITES = "visibleSites";
 
     /*
-     * Constants relating to hazard actions
-     */
-    public static final String UPDATE_EVENT_METADATA = "updateEventMetadata";
-
-    public static final String UPDATE_EVENT_TYPE = "updateEventType";
-
-    public static final String SELECTED_EVENTS_CHANGED = "SelectedEventsChanged";
-
-    public static final String MODIFY_EVENT_AREA = "ModifyEventArea";
-
-    public static final String UPDATE_TIME_RANGE = "updateTimeRange";
-
-    public static final String ADD_PENDING_TO_SELECTED = "addToSelected";
-
-    public static final String ADD_PENDING_TO_SELECTED_ON = "on";
-
-    public static final String ADD_PENDING_TO_SELECTED_OFF = "off";
-
-    public static final String POLYGON_MODIFIED = "polyModified";
-
-    /*
      * TODO The following need to be moved to something specific to storm track
      */
-    public static final String RUN_TOOL = "runTool";
-
     public static final String POINTID = "pointID";
 
     public static final String PIVOTS = "pivots";
@@ -685,8 +579,6 @@ public final class HazardConstants {
 
     public static final String STATIC_SETTINGS = "staticSettings";
 
-    public static final String RUN_AUTOMATED_TESTS = "runAutomatedTests";
-
     public static final String END_SELECTED_HAZARDS = "End Selected Hazards";
 
     public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected Hazards";
@@ -694,19 +586,6 @@ public final class HazardConstants {
     public static final String SPATIAL_INFO = "spatialInfo";
 
     public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
-
-    /*
-     * TODO The following need to be organized better.
-     */
-    public static final String CONTINUE_BUTTON = "Continue";
-
-    public static final String CANCEL_BUTTON = "Cancel";
-
-    public static final String IS_SELECTED_KEY = "isSelected";
-
-    public static final String IS_VISIBLE_KEY = "isVisible";
-
-    public static final String SHAPES = "shapes";
 
     /*
      * Constants related to Data Access Framework Requests.
@@ -759,5 +638,87 @@ public final class HazardConstants {
     public static final String ROUTINE_ACTION = "ROU";
 
     public static final String CANCEL_ACTION = "CAN";
+
+    /*
+     * TODO The following need to be organized better.
+     */
+    public static final String CONTINUE_BUTTON = "Continue";
+
+    public static final String CANCEL_BUTTON = "Cancel";
+
+    public static final String IS_SELECTED_KEY = "isSelected";
+
+    public static final String IS_VISIBLE_KEY = "isVisible";
+
+    public static final String SHAPES = "shapes";
+
+    /**
+     * Drag drop dot identifier.
+     */
+    public static final String DRAG_DROP_DOT = "DragDropDot";
+
+    /**
+     * Persistent shape key.
+     */
+    public static final String PERSISTENT_SHAPE = "persistentShape";
+
+    /**
+     * Timeline navigation key in console dictionary in start up configuration
+     * item.
+     */
+    public static final String START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW = "belowTimeLine";
+
+    /**
+     * Timeline navigation key in console dictionary in start up configuration
+     * item.
+     */
+    public static final String START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION = "TimeLineNavigation";
+
+    /**
+     * Console key in start up configuration item.
+     */
+    public static final String START_UP_CONFIG_CONSOLE = "Console";
+
+    /**
+     * Point metadata of hazard events key in hazard metadata megawidgets
+     * definitions list.
+     */
+    public static final String HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST = "pointOptions";
+
+    /**
+     * Metadata of hazard events key in hazard metadata megawidgets definitions
+     * list.
+     */
+    public static final String HAZARD_INFO_METADATA_MEGAWIDGETS_LIST = "metaData";
+
+    /**
+     * Types of hazard events key in hazard metadata megawidgets definitions
+     * list.
+     */
+    public static final String HAZARD_INFO_METADATA_TYPES = "hazardTypes";
+
+    /**
+     * General megawidgets key in hazard information dialog dictionary.
+     */
+    public static final String HAZARD_INFO_GENERAL_CONFIG_WIDGETS = "hazardCategories";
+
+    /**
+     * Key into {@link IHazardEvent} attributes for the time associated with a
+     * point in storm track, for example.
+     */
+    public static final String POINT_TIME = "pointTime";
+
+    /**
+     * Maximum time as an epoch time in milliseconds. This is arbitrarily large,
+     * but not so large as to be anywhere close to the limit of what a long
+     * integer value can represent, so that accidental overflow during
+     * calculations does not occur.
+     */
+    public static final long MAX_TIME = Long.MAX_VALUE / 2L;
+
+    /**
+     * Minimum time as an epoch time in milliseconds.
+     */
+    public static final long MIN_TIME = 0L;
 
 }

@@ -25,7 +25,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
@@ -68,7 +67,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
             super.run();
             step = Steps.START;
             autoTestUtilities
-                    .setAddToPendingMode(HazardConstants.ADD_PENDING_TO_SELECTED_ON);
+                    .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.ON);
 
         } catch (Exception e) {
             handleException(e);
@@ -166,7 +165,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     @Subscribe
     public void toolActionOccurred(final ToolAction action) {
         try {
-            if (action.getAction().equals(ToolActionEnum.TOOL_RECOMMENDATIONS)) {
+            if (action.getActionType().equals(ToolActionEnum.TOOL_RECOMMENDATIONS)) {
                 step = Steps.PREVIEW;
                 autoTestUtilities.previewEvent();
             }
@@ -183,7 +182,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
         assertEquals(eventSet.size(), 3);
         step = Steps.TEAR_DOWN;
         autoTestUtilities
-                .setAddToPendingMode(HazardConstants.ADD_PENDING_TO_SELECTED_OFF);
+                .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.OFF);
 
     }
 
