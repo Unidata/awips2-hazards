@@ -11,7 +11,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.EventDict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
@@ -258,7 +257,6 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     .toArray(new Geometry[1]));
                     Geometry mergedPolygons = geomColl.buffer(0.001);
 
-                    // Geometry mergedPolygons = geomColl.convexHull();
                     mergedPolygons = TopologyPreservingSimplifier.simplify(
                             mergedPolygons, 0.0001);
                     List<Shape> shapes = Lists.newArrayList();
@@ -270,26 +268,16 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         shapes.add(polygon);
                     }
 
+                    /*
+                     * Clone the list of selected geometries.
+                     */
+                    List<Geometry> copyGeometriesList = Lists.newArrayList();
+
+                    for (Geometry geometry : selectedGeoms) {
+                        copyGeometriesList.add((Geometry) geometry.clone());
+                    }
+
                     if (!modifyingEvent) {
-                        // Request an event ID for this newly drawn polygon.
-
-                        // Send off JSON Message.
-                        EventDict eventAreaObject = new EventDict();
-                        eventAreaObject.put("eventId", "");
-
-                        for (Shape shape : shapes) {
-                            eventAreaObject.addShape(shape);
-                        }
-
-                        /*
-                         * Clone the list of selected geometries.
-                         */
-                        List<Geometry> copyGeometriesList = Lists
-                                .newArrayList();
-
-                        for (Geometry geometry : selectedGeoms) {
-                            copyGeometriesList.add((Geometry) geometry.clone());
-                        }
 
                         selectedGeoms.clear();
 
@@ -306,7 +294,13 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                         getSpatialPresenter().fireAction(newHazardEventAction);
 
-                        hazardGeometryList.put(eventID, copyGeometriesList);
+                        if (hazardGeometryList.containsKey(eventID)) {
+                            hazardGeometryList.get(eventID).addAll(
+                                    copyGeometriesList);
+
+                        } else {
+                            hazardGeometryList.put(eventID, copyGeometriesList);
+                        }
 
                         /*
                          * Store the geometry table that this hazard was
@@ -340,6 +334,22 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     } else {
                         ModifyHazardGeometryAction modifyAction = new ModifyHazardGeometryAction(
                                 eventID, mergedPolygons);
+                        hazardGeometryList.put(eventID, copyGeometriesList);
+
+                        // /*
+                        // * Construct a modified event message and pass it on
+                        // to
+                        // * the mediator.
+                        // */
+                        // // Send JSON Message
+                        // // Convert the object to JSON.
+                        // EventDict modifiedEventAreaObject = new EventDict();
+                        // modifiedEventAreaObject.put(
+                        // HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                        // eventID);
+                        // modifiedEventAreaObject
+                        // .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
+                        // HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
 
                         getSpatialPresenter().fireAction(modifyAction);
 
@@ -367,8 +377,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
              * contained within this polygon.
              */
             List<Geometry> geometries = hazardGeometryList.get(eventID);
-            zoneDisplay.setSelectedGeometries(geometries);
-            selectedGeoms = geometries;
+            selectedGeoms = Lists.newArrayList(geometries);
+            zoneDisplay.setSelectedGeometries(selectedGeoms);
         }
 
         private boolean isContainedInSelectedGeometries(

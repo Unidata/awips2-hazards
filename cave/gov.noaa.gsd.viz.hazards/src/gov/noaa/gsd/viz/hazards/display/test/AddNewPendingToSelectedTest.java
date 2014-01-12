@@ -165,7 +165,8 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     @Subscribe
     public void toolActionOccurred(final ToolAction action) {
         try {
-            if (action.getActionType().equals(ToolActionEnum.TOOL_RECOMMENDATIONS)) {
+            if (action.getActionType().equals(
+                    ToolActionEnum.TOOL_RECOMMENDATIONS)) {
                 step = Steps.PREVIEW;
                 autoTestUtilities.previewEvent();
             }

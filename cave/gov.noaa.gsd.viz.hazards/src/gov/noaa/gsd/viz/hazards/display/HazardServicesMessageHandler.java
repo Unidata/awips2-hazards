@@ -805,6 +805,20 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
+     * Set the add geometry to selected mode as specified.
+     * 
+     * @param state
+     *            New state of the add-geometry-to-selected mode.
+     * @return
+     */
+    public void setAddGeometryToSelected(
+            SpatialDisplayAction.ActionIdentifier state) {
+        sessionConfigurationManager.getSettings().setAddGeometryToSelected(
+                state.equals(SpatialDisplayAction.ActionIdentifier.ON));
+
+    }
+
+    /**
      * Updates information for an event taking into consideration the
      * originator.
      * 
@@ -1397,6 +1411,9 @@ public final class HazardServicesMessageHandler implements
         case ADD_PENDING_TO_SELECTED:
             setAddToSelected(spatialDisplayAction.getActionIdentifier());
             break;
+
+        case ADD_GEOMETRY_TO_SELECTED:
+            setAddGeometryToSelected(spatialDisplayAction.getActionIdentifier());
 
         case DRAWING:
             if (spatialDisplayAction.getActionIdentifier().equals(

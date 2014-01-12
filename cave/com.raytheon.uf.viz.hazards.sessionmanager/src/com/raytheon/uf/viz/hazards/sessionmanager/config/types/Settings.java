@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
@@ -119,6 +121,12 @@ public class Settings {
     private Boolean addToSelected;
 
     /**
+     * Flag indicating whether or not newly drawn geometries should be added to
+     * the current selected hazard event.
+     */
+    private Boolean addGeometryToSelected;
+
+    /**
      * Identifiers of perspectives (if any) associated with this Setting. When
      * Hazard Services is started, these are searched to determine the
      * appropriate setting to load.
@@ -153,6 +161,7 @@ public class Settings {
         setColumns(other.getColumns());
         setStaticSettingsID(other.getStaticSettingsID());
         setAddToSelected(other.getAddToSelected());
+        setAddGeometryToSelected(other.getAddGeometryToSelected());
     }
 
     public String getSettingsID() {
@@ -263,8 +272,16 @@ public class Settings {
         return addToSelected;
     }
 
+    public Boolean getAddGeometryToSelected() {
+        return addGeometryToSelected;
+    }
+
     public void setAddToSelected(Boolean addToSelected) {
         this.addToSelected = addToSelected;
+    }
+
+    public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
+        this.addGeometryToSelected = addGeometryToSelected;
     }
 
     public Set<String> getPerspectiveIDs() {
@@ -277,166 +294,12 @@ public class Settings {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result
-                + ((addToSelected == null) ? 0 : addToSelected.hashCode());
-        result = prime * result + ((columns == null) ? 0 : columns.hashCode());
-        result = prime * result
-                + ((defaultCategory == null) ? 0 : defaultCategory.hashCode());
-        result = prime * result
-                + ((defaultDuration == null) ? 0 : defaultDuration.hashCode());
-        result = prime
-                * result
-                + ((defaultTimeDisplayDuration == null) ? 0
-                        : defaultTimeDisplayDuration.hashCode());
-        result = prime * result
-                + ((displayName == null) ? 0 : displayName.hashCode());
-        result = prime * result
-                + ((mapCenter == null) ? 0 : mapCenter.hashCode());
-        result = prime * result
-                + ((settingsID == null) ? 0 : settingsID.hashCode());
-        result = prime
-                * result
-                + ((staticSettingsID == null) ? 0 : staticSettingsID.hashCode());
-        result = prime * result
-                + ((toolbarTools == null) ? 0 : toolbarTools.hashCode());
-        result = prime * result
-                + ((visibleColumns == null) ? 0 : visibleColumns.hashCode());
-        result = prime * result
-                + ((visibleSites == null) ? 0 : visibleSites.hashCode());
-        result = prime * result
-                + ((visibleStates == null) ? 0 : visibleStates.hashCode());
-        result = prime * result
-                + ((visibleTypes == null) ? 0 : visibleTypes.hashCode());
-        result = prime * result
-                + ((perspectiveIDs == null) ? 0 : perspectiveIDs.hashCode());
-
-        return result;
+        return HashCodeBuilder.reflectionHashCode(this);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        Settings other = (Settings) obj;
-        if (addToSelected == null) {
-            if (other.addToSelected != null) {
-                return false;
-            }
-        } else if (!addToSelected.equals(other.addToSelected)) {
-            return false;
-        }
-        if (columns == null) {
-            if (other.columns != null) {
-                return false;
-            }
-        } else if (!columns.equals(other.columns)) {
-            return false;
-        }
-        if (defaultCategory == null) {
-            if (other.defaultCategory != null) {
-                return false;
-            }
-        } else if (!defaultCategory.equals(other.defaultCategory)) {
-            return false;
-        }
-        if (defaultDuration == null) {
-            if (other.defaultDuration != null) {
-                return false;
-            }
-        } else if (!defaultDuration.equals(other.defaultDuration)) {
-            return false;
-        }
-        if (defaultTimeDisplayDuration == null) {
-            if (other.defaultTimeDisplayDuration != null) {
-                return false;
-            }
-        } else if (!defaultTimeDisplayDuration
-                .equals(other.defaultTimeDisplayDuration)) {
-            return false;
-        }
-        if (displayName == null) {
-            if (other.displayName != null) {
-                return false;
-            }
-        } else if (!displayName.equals(other.displayName)) {
-            return false;
-        }
-        if (mapCenter == null) {
-            if (other.mapCenter != null) {
-                return false;
-            }
-        } else if (!mapCenter.equals(other.mapCenter)) {
-            return false;
-        }
-        if (settingsID == null) {
-            if (other.settingsID != null) {
-                return false;
-            }
-        } else if (!settingsID.equals(other.settingsID)) {
-            return false;
-        }
-        if (staticSettingsID == null) {
-            if (other.staticSettingsID != null) {
-                return false;
-            }
-        } else if (!staticSettingsID.equals(other.staticSettingsID)) {
-            return false;
-        }
-        if (toolbarTools == null) {
-            if (other.toolbarTools != null) {
-                return false;
-            }
-        } else if (!toolbarTools.equals(other.toolbarTools)) {
-            return false;
-        }
-        if (visibleColumns == null) {
-            if (other.visibleColumns != null) {
-                return false;
-            }
-        } else if (!visibleColumns.equals(other.visibleColumns)) {
-            return false;
-        }
-        if (visibleSites == null) {
-            if (other.visibleSites != null) {
-                return false;
-            }
-        } else if (!visibleSites.equals(other.visibleSites)) {
-            return false;
-        }
-        if (visibleStates == null) {
-            if (other.visibleStates != null) {
-                return false;
-            }
-        } else if (!visibleStates.equals(other.visibleStates)) {
-            return false;
-        }
-        if (visibleTypes == null) {
-            if (other.visibleTypes != null) {
-                return false;
-            }
-        } else if (!visibleTypes.equals(other.visibleTypes)) {
-            return false;
-        }
-
-        if (perspectiveIDs == null) {
-            if (other.perspectiveIDs != null) {
-                return false;
-            }
-
-        } else if (!perspectiveIDs.equals(other.perspectiveIDs)) {
-            return false;
-        }
-
-        return true;
+        return EqualsBuilder.reflectionEquals(this, obj);
     }
 
     @Override

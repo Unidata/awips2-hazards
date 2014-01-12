@@ -480,69 +480,74 @@ public class SpatialView implements
     /**
      * Hazard Services Tool Layer
      */
-    private ToolLayer spatialDisplay = null;
+    private ToolLayer spatialDisplay;
 
     /**
      * Presenter.
      */
-    private SpatialPresenter presenter = null;
+    private SpatialPresenter presenter;
 
     /**
      * Undo command action. NOTE: This may not belong here; which view should
      * manage Undo/Redo? For now, the action is disabled anyway.
      */
-    private Action undoCommandAction = null;
+    private Action undoCommandAction;
 
     /**
      * Redo command action. NOTE: This may not belong here; which view should
      * manage Undo/Redo? For now, the action is disabled anyway.
      */
-    private Action redoCommandAction = null;
+    private Action redoCommandAction;
 
     /**
      * Add to selected toggle action.
      */
-    private Action addToSelectedToggleAction = null;
+    private Action addToSelectedToggleAction;
 
     /**
      * Move and select choice action.
      */
-    private Action moveAndSelectChoiceAction = null;
+    private Action moveAndSelectChoiceAction;
 
     /**
      * Draw noded polygon choice action.
      */
-    private Action drawNodedPolygonChoiceAction = null;
+    private Action drawNodedPolygonChoiceAction;
 
     /**
      * Draw freehand polygon choice action.
      */
-    private Action drawFreehandPolygonChoiceAction = null;
+    private Action drawFreehandPolygonChoiceAction;
 
     /**
      * Draw noded path choice action.
      */
-    private Action drawNodedPathChoiceAction = null;
+    private Action drawNodedPathChoiceAction;
 
     /**
      * Draw point choice action.
      */
-    private Action drawPointChoiceAction = null;
+    private Action drawPointChoiceAction;
 
     /**
      * Maps for select by area pulldown action.
      */
-    private Action selectByAreaMapsPulldownAction = null;
+    private Action selectByAreaMapsPulldownAction;
+
+    /**
+     * Add geometry to selected event action.
+     */
+    private Action addGeometryToSelectedAction;
 
     private long currentFrameTime = Long.MIN_VALUE;
 
     /**
      * Map DB display with selectable geometries
      */
-    private SelectByAreaDbMapResource selectableGeometryDisplay = null;
+    private SelectByAreaDbMapResource selectableGeometryDisplay;
 
     // Mouse handler factory.
-    private MouseHandlerFactory mouseFactory = null;
+    private MouseHandlerFactory mouseFactory;
 
     // Public Constructors
 
@@ -769,6 +774,12 @@ public class SpatialView implements
                     SpatialDisplayAction.ActionIdentifier.DRAW_POINT);
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
 
+            addGeometryToSelectedAction = new BasicSpatialAction("",
+                    "addGeometryToSelected.png", Action.AS_CHECK_BOX,
+                    "Add Geometry To Selected",
+                    SpatialDisplayAction.ActionType.ADD_GEOMETRY_TO_SELECTED,
+                    null);
+
             // Return the list.
             return Lists.newArrayList(undoCommandAction, redoCommandAction,
                     new SeparatorAction(), addToSelectedToggleAction,
@@ -776,7 +787,8 @@ public class SpatialView implements
                     drawNodedPolygonChoiceAction,
                     drawFreehandPolygonChoiceAction, drawNodedPathChoiceAction,
                     drawPointChoiceAction, new SeparatorAction(),
-                    selectByAreaMapsPulldownAction);
+                    selectByAreaMapsPulldownAction, new SeparatorAction(),
+                    addGeometryToSelectedAction);
         }
         return Collections.emptyList();
     }

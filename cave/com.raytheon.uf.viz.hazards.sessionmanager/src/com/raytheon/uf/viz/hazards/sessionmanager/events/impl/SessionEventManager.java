@@ -81,6 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
 
@@ -158,6 +159,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
      */
     private final IMessenger messenger;
 
+    private final GeometryFactory geoFactory;
+
     public SessionEventManager(ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             IHazardEventManager dbManager,
@@ -170,6 +173,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 createTimeListener());
         this.messenger = messenger;
+        geoFactory = new GeometryFactory();
     }
 
     @Subscribe
@@ -299,7 +303,42 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         if (event.getState() == null || event.getState() == HazardState.PENDING
                 || event.getState() == HazardState.POTENTIAL) {
-            oevent.setEventID(generateEventID(), false);
+
+            /*
+             * Can only add geometry to selected if the hazard type is empty.
+             */
+            if ((Boolean.TRUE.equals(configManager.getSettings()
+                    .getAddGeometryToSelected()))
+                    && (event.getHazardType() == null)
+                    && (getSelectedEvents().size() == 1)) {
+                IHazardEvent existingEvent = getSelectedEvents().iterator()
+                        .next();
+                Geometry existingGeometries = existingEvent.getGeometry();
+                List<Geometry> geometryList = Lists.newArrayList();
+
+                for (int i = 0; i < existingGeometries.getNumGeometries(); ++i) {
+                    geometryList.add(existingGeometries.getGeometryN(i));
+                }
+
+                Geometry newGeometries = oevent.getGeometry();
+
+                for (int i = 0; i < newGeometries.getNumGeometries(); ++i) {
+                    geometryList.add(newGeometries.getGeometryN(i));
+                }
+
+                GeometryCollection geometryCollection = geoFactory
+                        .createGeometryCollection(geometryList
+                                .toArray(new Geometry[geometryList.size()]));
+
+                existingEvent.setGeometry(geometryCollection);
+                existingEvent
+                        .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+                return existingEvent;
+
+            } else {
+
+                oevent.setEventID(generateEventID(), false);
+            }
         }
 
         Settings settings = configManager.getSettings();
@@ -1025,7 +1064,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
          */
         boolean success = true;
 
-        GeometryFactory geoFactory = new GeometryFactory();
         HazardTypes hazardTypes = configManager.getHazardTypes();
         Collection<IHazardEvent> selectedEvents = this.getSelectedEvents();
         String cwa = LocalizationManager.getContextName(LocalizationLevel.SITE);
@@ -1080,7 +1118,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Override
     public void reduceSelectedHazardGeometries() {
 
-        GeometryFactory geoFactory = new GeometryFactory();
         HazardTypes hazardTypes = configManager.getHazardTypes();
         Collection<IHazardEvent> selectedEvents = getSelectedEvents();
 

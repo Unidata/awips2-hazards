@@ -35,7 +35,7 @@ public class SpatialDisplayAction {
 
         SELECTED_EVENTS_CHANGED, DMTS, DISPLAY_DISPOSED, RUN_TOOL,
 
-        UPDATE_EVENT_METADATA, UNDO, REDO
+        UPDATE_EVENT_METADATA, UNDO, REDO, ADD_GEOMETRY_TO_SELECTED
     }
 
     public enum ActionIdentifier {
@@ -50,27 +50,29 @@ public class SpatialDisplayAction {
 
     private ActionIdentifier actionIdentifier = null;
 
-    private String legendName = null;
+    private boolean actionState;
 
-    private String mapsDbTableName = null;
+    private String legendName;
 
-    private String modifyEventJSON = null;
+    private String mapsDbTableName;
 
-    private String[] selectedEventIDs = null;
+    private String modifyEventJSON;
 
-    private String contextMenuLabel = null;
+    private String[] selectedEventIDs;
 
-    private String toolName = null;
+    private String contextMenuLabel;
 
-    private Dict toolParameters = null;
+    private String toolName;
 
-    private String eventID = null;
+    private Dict toolParameters;
 
-    private long timeInMilliSeconds = 0;
+    private String eventID;
 
-    private double dragToLatitude = 0;
+    private long timeInMilliSeconds;
 
-    private double dragToLongitude = 0;
+    private double dragToLatitude;
+
+    private double dragToLongitude;
 
     public SpatialDisplayAction(ActionType actionType) {
         this.actionType = actionType;
@@ -146,6 +148,10 @@ public class SpatialDisplayAction {
 
     public ActionIdentifier getActionIdentifier() {
         return actionIdentifier;
+    }
+
+    public boolean getActionState() {
+        return actionState;
     }
 
     public String getLegendName() {
