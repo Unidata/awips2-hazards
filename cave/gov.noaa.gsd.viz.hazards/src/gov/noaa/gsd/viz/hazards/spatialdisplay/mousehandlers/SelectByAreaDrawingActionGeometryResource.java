@@ -26,7 +26,10 @@ import java.util.Map;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -61,6 +64,10 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  */
 public class SelectByAreaDrawingActionGeometryResource extends
         AbstractMouseHandler {
+
+    /** for logging */
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(SelectByAreaDrawingActionGeometryResource.class);
 
     private enum Mode {
         CREATE, ADD_TO_ZONE, REMOVE, NONE
@@ -285,52 +292,61 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         // the selected geometries.
                         zoneDisplay.setSelectedGeometries(selectedGeoms);
 
-                        IHazardEvent hazardEvent = new HazardEventBuilder(
-                                getSpatialPresenter().getSessionManager())
-                                .buildPolygonHazardEvent(mergedPolygons);
-                        eventID = hazardEvent.getEventID();
-                        NewHazardAction newHazardEventAction = new NewHazardAction(
-                                hazardEvent);
+                        try {
+                            IHazardEvent hazardEvent = new HazardEventBuilder(
+                                    getSpatialPresenter().getSessionManager())
+                                    .buildPolygonHazardEvent(mergedPolygons);
+                            eventID = hazardEvent.getEventID();
+                            NewHazardAction newHazardEventAction = new NewHazardAction(
+                                    hazardEvent);
 
-                        getSpatialPresenter().fireAction(newHazardEventAction);
+                            getSpatialPresenter().fireAction(
+                                    newHazardEventAction);
 
-                        if (hazardGeometryList.containsKey(eventID)) {
-                            hazardGeometryList.get(eventID).addAll(
-                                    copyGeometriesList);
+                            if (hazardGeometryList.containsKey(eventID)) {
+                                hazardGeometryList.get(eventID).addAll(
+                                        copyGeometriesList);
 
-                        } else {
-                            hazardGeometryList.put(eventID, copyGeometriesList);
+                            } else {
+                                hazardGeometryList.put(eventID,
+                                        copyGeometriesList);
+                            }
+
+                            /*
+                             * Store the geometry table that this hazard was
+                             * originally based on in the eventDict as well.
+                             */
+                            String geometryTable = zoneDisplay
+                                    .getResourceData().getTable();
+                            String geometryLegend = zoneDisplay
+                                    .getResourceData().getMapName();
+                            Dict geoReferenceDict = new Dict();
+                            geoReferenceDict.put(
+                                    HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                                    eventID);
+                            geoReferenceDict.put(
+                                    HazardConstants.GEOMETRY_REFERENCE_KEY,
+                                    geometryTable);
+                            geoReferenceDict.put(
+                                    HazardConstants.GEOMETRY_MAP_NAME_KEY,
+                                    geometryLegend);
+                            ArrayList<String> contextMenuList = Lists
+                                    .newArrayList();
+                            contextMenuList
+                                    .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+                            geoReferenceDict
+                                    .put(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                                            contextMenuList);
+                            SpatialDisplayAction action = new SpatialDisplayAction(
+                                    SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
+                            action.setToolParameters(geoReferenceDict);
+                            getSpatialPresenter().fireAction(action);
+                        } catch (InvalidGeometryException e) {
+                            statusHandler
+                                    .warn("Error creating Select-by-Area polygon: "
+                                            + e.getMessage());
                         }
 
-                        /*
-                         * Store the geometry table that this hazard was
-                         * originally based on in the eventDict as well.
-                         */
-                        String geometryTable = zoneDisplay.getResourceData()
-                                .getTable();
-                        String geometryLegend = zoneDisplay.getResourceData()
-                                .getMapName();
-                        Dict geoReferenceDict = new Dict();
-                        geoReferenceDict.put(
-                                HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                                eventID);
-                        geoReferenceDict.put(
-                                HazardConstants.GEOMETRY_REFERENCE_KEY,
-                                geometryTable);
-                        geoReferenceDict.put(
-                                HazardConstants.GEOMETRY_MAP_NAME_KEY,
-                                geometryLegend);
-                        ArrayList<String> contextMenuList = Lists
-                                .newArrayList();
-                        contextMenuList
-                                .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
-                        geoReferenceDict.put(
-                                HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                                contextMenuList);
-                        SpatialDisplayAction action = new SpatialDisplayAction(
-                                SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
-                        action.setToolParameters(geoReferenceDict);
-                        getSpatialPresenter().fireAction(action);
                     } else {
                         ModifyHazardGeometryAction modifyAction = new ModifyHazardGeometryAction(
                                 eventID, mergedPolygons);

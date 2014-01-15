@@ -27,9 +27,11 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -60,7 +62,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     /**
      * Logging mechanism.
      */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandHazardDrawingAction.class);
 
     protected AttrDlg attrDlg = null;
@@ -168,17 +170,25 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 points.clear();
 
-                IHazardEvent hazardEvent = new HazardEventBuilder(
-                        getSpatialPresenter().getSessionManager())
-                        .buildPolygonHazardEvent(reducedGeometry
-                                .getCoordinates());
-                NewHazardAction action = new NewHazardAction(
-                        hazardEvent);
+                IHazardEvent hazardEvent;
 
-                getSpatialPresenter().fireAction(action);
+                try {
+                    hazardEvent = new HazardEventBuilder(getSpatialPresenter()
+                            .getSessionManager())
+                            .buildPolygonHazardEvent(reducedGeometry);
+
+                    NewHazardAction action = new NewHazardAction(hazardEvent);
+                    getSpatialPresenter().fireAction(action);
+                } catch (InvalidGeometryException e) {
+                    statusHandler
+                            .handle(Priority.WARN,
+                                    "Error drawing freehand polygon: "
+                                            + e.getMessage());
+                }
 
                 // Indicate that this drawing action is done.
                 getSpatialPresenter().getView().drawingActionComplete();
+
             }
 
             return false;

@@ -30,7 +30,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.TopologyException;
 
 /**
  * Description: Constants and utilities for {@link FunctionalTest}
@@ -174,8 +176,15 @@ public class AutoTestUtilities {
 
     void createEvent(Double centerX, Double centerY) {
         Coordinate[] coordinates = buildEventArea(centerX, centerY);
-        IHazardEvent hazardEvent = hazardEventBuilder
-                .buildPolygonHazardEvent(coordinates);
+        IHazardEvent hazardEvent = null;
+
+        try {
+            hazardEvent = hazardEventBuilder
+                    .buildPolygonHazardEvent(coordinates);
+        } catch (InvalidGeometryException e) {
+            throw new TopologyException(e.getMessage());
+        }
+
         NewHazardAction action = new NewHazardAction(hazardEvent);
         eventBus.post(action);
     }

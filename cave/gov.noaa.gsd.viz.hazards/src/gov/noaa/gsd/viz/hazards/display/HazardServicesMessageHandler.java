@@ -85,6 +85,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Description: Handles messages delegated from the message listener object.
@@ -173,7 +175,7 @@ public final class HazardServicesMessageHandler implements
     /**
      * Logging mechanism.
      */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardServicesMessageHandler.class);
 
     // Private Variables
@@ -689,7 +691,17 @@ public final class HazardServicesMessageHandler implements
             ModifyHazardGeometryAction action) {
         IHazardEvent event = sessionEventManager.getEventById(action
                 .getEventID());
-        event.setGeometry(action.getGeometry());
+        Geometry geometry = action.getGeometry();
+
+        if (geometry.isValid()) {
+            event.setGeometry(geometry);
+        } else {
+            IsValidOp op = new IsValidOp(geometry);
+            statusHandler.warn("Invalid Geometry: "
+                    + op.getValidationError().getMessage()
+                    + ": Geometry modification undone");
+        }
+
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
     }

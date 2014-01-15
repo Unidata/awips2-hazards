@@ -14,9 +14,11 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Description: Constructs hazard events from various geometries represented by
@@ -35,6 +37,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * @version 1.0
  */
 public class HazardEventBuilder {
+
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
     private final ISessionManager sessionManager;
@@ -43,30 +46,55 @@ public class HazardEventBuilder {
         this.sessionManager = sessionManager;
     }
 
-    public IHazardEvent buildPolygonHazardEvent(Geometry geometry) {
+    public IHazardEvent buildPolygonHazardEvent(Geometry geometry)
+            throws InvalidGeometryException {
+
+        if (!geometry.isValid()) {
+            IsValidOp op = new IsValidOp(geometry);
+            throw new InvalidGeometryException("Invalid Geometry: "
+                    + op.getValidationError().getMessage());
+        }
+
         IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);
         return result;
     }
 
-    public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates) {
-        IHazardEvent event = new BaseHazardEvent();
+    public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates)
+            throws InvalidGeometryException {
         Geometry geometry = geometryFactory.createPolygon(
                 geometryFactory.createLinearRing(coordinates), null);
+
+        if (!geometry.isValid()) {
+            IsValidOp op = new IsValidOp(geometry);
+            throw new InvalidGeometryException("Invalid Geometry: "
+                    + op.getValidationError().getMessage());
+        }
+
+        IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);
         return result;
     }
 
     public IHazardEvent buildPointHazardEvent(Coordinate coordinate) {
-        IHazardEvent event = new BaseHazardEvent();
         Geometry geometry = geometryFactory.createPoint(coordinate);
+
+        IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);
         return result;
     }
 
-    public IHazardEvent buildLineHazardEvent(Coordinate[] coordinates) {
-        IHazardEvent event = new BaseHazardEvent();
+    public IHazardEvent buildLineHazardEvent(Coordinate[] coordinates)
+            throws InvalidGeometryException {
         Geometry geometry = geometryFactory.createLineString(coordinates);
+
+        if (!geometry.isValid()) {
+            IsValidOp op = new IsValidOp(geometry);
+            throw new InvalidGeometryException("Invalid Geometry: "
+                    + op.getValidationError().getMessage());
+        }
+
+        IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);
         return result;
     }

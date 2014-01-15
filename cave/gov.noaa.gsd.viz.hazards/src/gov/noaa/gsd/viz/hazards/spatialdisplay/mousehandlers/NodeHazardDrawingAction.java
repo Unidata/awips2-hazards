@@ -32,9 +32,11 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -63,8 +65,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * @version 1.0
  */
 public class NodeHazardDrawingAction extends AbstractMouseHandler {
+
     /** for logging */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(NodeHazardDrawingAction.class);
 
     /**
@@ -276,20 +279,27 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             // If this is a polygon, it must have a point at the end of its
             // list of points that is the same as its first point.
-            IHazardEvent hazardEvent;
-            if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
-                points.add(points.get(0));
-                hazardEvent = hazardEventBuilder
-                        .buildPolygonHazardEvent(pointsAsArray());
-            } else {
+            try {
+                IHazardEvent hazardEvent;
+                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+                    points.add(points.get(0));
+                    hazardEvent = hazardEventBuilder
+                            .buildPolygonHazardEvent(pointsAsArray());
+                } else {
 
-                hazardEvent = hazardEventBuilder
-                        .buildLineHazardEvent(pointsAsArray());
+                    hazardEvent = hazardEventBuilder
+                            .buildLineHazardEvent(pointsAsArray());
 
+                }
+
+                NewHazardAction action = new NewHazardAction(hazardEvent);
+                getSpatialPresenter().fireAction(action);
+            } catch (InvalidGeometryException e) {
+                statusHandler.handle(Priority.WARN,
+                        "Error drawing noded polygon: " + e.getMessage());
             }
-            NewHazardAction action = new NewHazardAction(hazardEvent);
+
             points.clear();
-            getSpatialPresenter().fireAction(action);
         }
 
         private Coordinate[] pointsAsArray() {

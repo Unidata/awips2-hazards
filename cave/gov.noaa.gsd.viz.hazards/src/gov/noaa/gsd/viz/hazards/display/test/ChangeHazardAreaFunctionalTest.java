@@ -58,6 +58,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         step = Steps.START;
+
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
@@ -107,7 +108,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                 Geometry geometry = event.getGeometry();
                 Coordinate[] coordinates = geometry.getCoordinates();
                 Coordinate modifiedPoint = coordinates[1];
-                modifiedPoint.y = 39.0;
+                modifiedPoint.y = 42.0;
                 ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(
                         eventID, geometry);
                 eventBus.post(action);

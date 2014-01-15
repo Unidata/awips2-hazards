@@ -95,11 +95,15 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         this.step = Steps.CREATE_NEW_HAZARD_AREA;
         Coordinate[] coordinates = autoTestUtilities
                 .buildEventArea(-96.0, 41.0);
-        IHazardEvent hazardEvent = new HazardEventBuilder(
-                appBuilder.getSessionManager())
-                .buildPolygonHazardEvent(coordinates);
-        NewHazardAction action = new NewHazardAction(hazardEvent);
-        eventBus.post(action);
+        try {
+            IHazardEvent hazardEvent = new HazardEventBuilder(
+                    appBuilder.getSessionManager())
+                    .buildPolygonHazardEvent(coordinates);
+            NewHazardAction action = new NewHazardAction(hazardEvent);
+            eventBus.post(action);
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     /**
