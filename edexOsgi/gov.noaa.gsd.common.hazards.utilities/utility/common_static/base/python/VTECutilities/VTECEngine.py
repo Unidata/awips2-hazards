@@ -1,27 +1,32 @@
-'''
-    Description: 
-#------------------------------------------------------------------
-#  VTEC Engine
-#------------------------------------------------------------------
-# This is the object that takes a proposed set of events, a list of
-# the currently active events, and calculates the proper VTEC to
-# determine the segments, VTEC codes, HVTEC codes, and vtecRecords.
-#------------------------------------------------------------------
-    
-    SOFTWARE HISTORY
-    Date         Ticket#    Engineer    Description
-    ------------ ---------- ----------- --------------------------
-    Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
-    
+"""This is the object that takes a proposed set of events, a list of the 
+currently active events, and calculates the proper VTEC to determine the 
+segments, VTEC codes, HVTEC codes, and vtecRecords.
+
     @author Mark Mathewson / Tracy.L.Hansen@noaa.gov
     @version 1.0
-'''
+
+"""
+
+#
+#     SOFTWARE HISTORY
+#    
+#    Date            Ticket#       Engineer       Description
+#    ------------    ----------    -----------    --------------------------
+#    12/??/13        2368       Tracy L. Hansen   Changing from eventDics to 
+#                                                 hazardEvents.
+#    01/16/14        2462          dgilling       Rewrite to use GetNextEtnRequest.    
+#
+#
+    
+
 import cPickle, os, types, string, copy
 import sys, gzip, time
 import collections
 from VTECTableUtil import VTECTableUtil
 from Pil import Pil
 import Logger as LogStream
+import ProductGenEtnProvider
+
 
 # Define several named tuples for cleaner code
 VTECDefinitions = collections.namedtuple('VTECDefinitions',
@@ -858,40 +863,11 @@ class VTECEngine(VTECTableUtil):
 
         Returns the max etn used.  If not yet used, 0 is returned.
         '''
-        #check active table for highest etn for this year
-        presentyear = time.gmtime(self._time)[0]
-        etn_base = 0 
-        
-        for active in vtecRecords:
-            # find only records with
-            # 1. same phen and sig
-            # 2. in the present year
-            # and not from the national center
-            activeyear = time.gmtime(active['issueTime'])[0]
-            phensig = (active['phen'],active['sig'])
-            if active['phen'] == phen and active['sig'] == sig and \
-              activeyear == presentyear:
-                # find the max ETN...
-                # 1. highest ETN period for non-national products (ncKey)
-                # or
-                # 2. highest ETN < 1000 for the national products (ncKey)
-                #
-                # Local WFOs do not assign these numbers, so they should have
-                # numbers < 1000
-                # Because at this time, TO and SV phen use numbers starting
-                # at 0001. We will use the ufnKey instead which does not
-                # include TO and SV.
-                if active['etn'] > etn_base and phensig not in self._tpcKeys:
-                    etn_base = active['etn']
-                elif active['etn'] > etn_base and phensig in self._tpcKeys:
-                    if self._siteID4 == 'PGUM':
-                        # GUM uses their own ETNs regardless of hazard
-                        etn_base = active['etn']
-                    elif active['etn'] <= self._tpcBaseETN:  # is WFO etn
-                        etn_base = active['etn']
-                        
-        LogStream.logDebug('HIGHEST ETN for ', phen, sig, etn_base)
-        return etn_base
+        etn_provider = ProductGenEtnProvider.ProductGenEtnProvider(
+                self._siteID4, self._time, self._tpcKeys, self._tpcBaseETN)
+        highest_etn = etn_provider.getLastETN(phen, sig, vtecRecords)
+        LogStream.logDebug('HIGHEST ETN for ', phen, sig, highest_etn)
+        return highest_etn
 
     def _getNewETN(self, pRecord):
         '''Returns the ETN to be assigned to the vtec record, using the
