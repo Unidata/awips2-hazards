@@ -151,8 +151,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                    startTime / MILLIS_PER_SECOND))
         hazardEvent.setEndTime(datetime.datetime.fromtimestamp(\
                                    endTime / MILLIS_PER_SECOND))
-        hazardPolygon = GeometryFactory.createPolygon(hazardGeometry) 
-        hazardEvent.setGeometry(GeometryFactory.createCollection([hazardPolygon]))
+        hazardEvent.setGeometry(GeometryFactory.createCollection([hazardGeometry]))
 
         hazardEvent.setHazardAttributes({"cause":"Dam Failure",
                                           "damName":damName
@@ -173,7 +172,7 @@ class Recommender(RecommenderTemplate.Recommender):
                           the flood hazard polygon
         """
         if damName in self.damPolygonDict:
-            return self.damPolygonDict[damName]
+            return GeometryFactory.createPolygon(self.damPolygonDict[damName])
         else:
             return None    
         

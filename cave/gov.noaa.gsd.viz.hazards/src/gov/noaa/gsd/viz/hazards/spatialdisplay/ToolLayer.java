@@ -1584,7 +1584,8 @@ public class ToolLayer extends
 
         if ((comp != null) && !(comp instanceof Text)) {
 
-            if (comp instanceof DECollection) {
+            if (comp instanceof DECollection
+                    && !((DECollection) comp).isEmpty()) {
                 comp = ((DECollection) comp).getItemAt(0);
             }
 

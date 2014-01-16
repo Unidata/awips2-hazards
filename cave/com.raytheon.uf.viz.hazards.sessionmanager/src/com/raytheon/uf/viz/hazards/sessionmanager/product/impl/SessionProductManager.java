@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.Lineal;
+import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.Puntal;
 
 /**
@@ -217,12 +218,16 @@ public class SessionProductManager implements ISessionProductManager {
                 continue;
             }
 
+            String[][] allowedHazards = entry.getValue().getAllowedHazards();
+
             for (IHazardEvent e : eventManager.getEvents()) {
+
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
+
                 String key = HazardEventUtilities.getHazardType(e);
-                for (String[] pair : entry.getValue().getAllowedHazards()) {
+                for (String[] pair : allowedHazards) {
                     if (pair[0].equals(key)) {
                         supportedHazards.add(key);
                     }
@@ -337,9 +342,14 @@ public class SessionProductManager implements ISessionProductManager {
                         } else if (geometry instanceof Lineal) {
                             event.addHazardAttribute(HazardConstants.GEO_TYPE,
                                     HazardConstants.LINE_TYPE);
-                        } else {
+                        } else if (geometry instanceof Polygonal) {
                             event.addHazardAttribute(HazardConstants.GEO_TYPE,
                                     HazardConstants.AREA_TYPE);
+                        } else {
+                            statusHandler
+                                    .warn("SessionProductManager: Geometry type "
+                                            + geometry.getClass()
+                                            + " not supported. GEO_TYPE hazard attribute not set.");
                         }
                     }
                 }

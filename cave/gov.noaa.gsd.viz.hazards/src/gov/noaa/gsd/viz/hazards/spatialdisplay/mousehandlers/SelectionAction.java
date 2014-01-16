@@ -671,9 +671,11 @@ public class SelectionAction extends NonDrawingAction {
                                     // Test to determine if the mouse is close
                                     // to
                                     // one of the hazard's vertices...
-                                    Coordinate coords[] = selectedElement
-                                            .getPoints().toArray(
-                                                    new Coordinate[4]);
+                                    List<Coordinate> coordList = selectedElement
+                                            .getPoints();
+                                    Coordinate coords[] = coordList
+                                            .toArray(new Coordinate[coordList
+                                                    .size()]);
 
                                     double minDistance = Double.MAX_VALUE;
 
