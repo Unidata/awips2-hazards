@@ -50,8 +50,6 @@ public class SpatialDisplayAction {
 
     private ActionIdentifier actionIdentifier = null;
 
-    private boolean actionState;
-
     private String legendName;
 
     private String mapsDbTableName;
@@ -148,10 +146,6 @@ public class SpatialDisplayAction {
 
     public ActionIdentifier getActionIdentifier() {
         return actionIdentifier;
-    }
-
-    public boolean getActionState() {
-        return actionState;
     }
 
     public String getLegendName() {

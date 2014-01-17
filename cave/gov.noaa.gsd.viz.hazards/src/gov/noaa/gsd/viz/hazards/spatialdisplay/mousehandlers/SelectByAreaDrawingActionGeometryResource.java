@@ -335,22 +335,6 @@ public class SelectByAreaDrawingActionGeometryResource extends
                         ModifyHazardGeometryAction modifyAction = new ModifyHazardGeometryAction(
                                 eventID, mergedPolygons);
                         hazardGeometryList.put(eventID, copyGeometriesList);
-
-                        // /*
-                        // * Construct a modified event message and pass it on
-                        // to
-                        // * the mediator.
-                        // */
-                        // // Send JSON Message
-                        // // Convert the object to JSON.
-                        // EventDict modifiedEventAreaObject = new EventDict();
-                        // modifiedEventAreaObject.put(
-                        // HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                        // eventID);
-                        // modifiedEventAreaObject
-                        // .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
-                        // HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON);
-
                         getSpatialPresenter().fireAction(modifyAction);
 
                     }
