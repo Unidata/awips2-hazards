@@ -20,6 +20,7 @@ import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Rectangle;
@@ -53,6 +54,9 @@ import org.eclipse.swt.widgets.Display;
  *                                           fixed minor painting bug causing
  *                                           colored tracks to not fill the
  *                                           track all the way to the right.
+ * Jan 15, 2014    2704    Chris.Golden      Changed to make its visual
+ *                                           components size themselves pro-
+ *                                           portionally to the current font.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,28 +64,46 @@ import org.eclipse.swt.widgets.Display;
  */
 public class MultiValueScale extends MultiValueLinearControl {
 
+    // Public Static Constants
+
+    /**
+     * Base font height; if the current font height is not the same as this,
+     * dimensions of visual components are multiplied by the current font height
+     * divided by this value.
+     */
+    public static final float BASE_FONT_HEIGHT = 17.0f;
+
     // Private Static Constants
 
     /**
-     * Default longitudinal dimension of a thumb in pixels.
+     * Default longitudinal dimension of a thumb in pixels, assuming a font
+     * height of {@link #BASE_FONT_HEIGHT}; if the font height is not the
+     * latter, this value is multiplied by the font height divided by
+     * {@link #BASE_FONT_HEIGHT}.
      */
     private static final int DEFAULT_THUMB_LONGITUDINAL_DIMENSION = 13;
 
     /**
-     * Default lateral dimension of a thumb in pixels.
+     * Default lateral dimension of a thumb in pixels, assuming a font height of
+     * {@link #BASE_FONT_HEIGHT}; if the font height is not the latter, this
+     * value is multiplied by the font height divided by
+     * {@link #BASE_FONT_HEIGHT}.
      */
     private static final int DEFAULT_THUMB_LATERAL_DIMENSION = 27;
+
+    /**
+     * Thickness of the track in pixels, assuming a font height of
+     * {@link #BASE_FONT_HEIGHT}; if the font height is not the latter, this
+     * value is multiplied by the font height divided by
+     * {@link #BASE_FONT_HEIGHT}.
+     */
+    private static final int DEFAULT_TRACK_THICKNESS = 5;
 
     /**
      * Corner arc divisor, by which the longest of the two thumb dimensions is
      * divided to yield the thumb corner arc size in pixels.
      */
     private static final int THUMB_ARC_SIZE_DIVIDER = 2;
-
-    /**
-     * Thickness of the track in pixels.
-     */
-    private static final int DEFAULT_TRACK_THICKNESS = 5;
 
     /**
      * Color of the border of the widget; this should be fetchable via <code>
@@ -191,25 +213,48 @@ public class MultiValueScale extends MultiValueLinearControl {
 
     /**
      * Longitudinal dimension of the thumbs, this being the dimension along the
-     * axis parallel to the track.
+     * axis parallel to the track, before adjusting for font size.
      */
-    private int thumbLongitudinalDimension = DEFAULT_THUMB_LONGITUDINAL_DIMENSION;
+    private int baseThumbLongitudinalDimension = DEFAULT_THUMB_LONGITUDINAL_DIMENSION;
 
     /**
      * Lateral dimension of the thumbs, this being the dimension along the axis
-     * perpendicular to the track.
+     * perpendicular to the track, before adjusting for font size.
      */
-    private int thumbLateralDimension = DEFAULT_THUMB_LATERAL_DIMENSION;
+    private int baseThumbLateralDimension = DEFAULT_THUMB_LATERAL_DIMENSION;
+
+    /**
+     * Thickness of the track, before adjusting for font size.
+     */
+    private int baseTrackThickness = DEFAULT_TRACK_THICKNESS;
+
+    /**
+     * Longitudinal dimension of the thumbs, this being the dimension along the
+     * axis parallel to the track. This is the actual value in pixels, that is,
+     * {@link #baseThumbLongitudinalDimension} multiplied by the current font
+     * height divided by {@link #BASE_FONT_HEIGHT}.
+     */
+    private int thumbLongitudinalDimension;
+
+    /**
+     * Lateral dimension of the thumbs, this being the dimension along the axis
+     * perpendicular to the track. This is the actual value in pixels, that is,
+     * {@link #baseThumbLateralDimension} multiplied by the current font height
+     * divided by {@link #BASE_FONT_HEIGHT}.
+     */
+    private int thumbLateralDimension;
+
+    /**
+     * Thickness of the track. This is the actual value in pixels, that is,
+     * {@link #baseTrackThickness} multiplied by the current font height divided
+     * by {@link #BASE_FONT_HEIGHT}.
+     */
+    private int trackThickness;
 
     /**
      * Thumb corner arc size, used to round the corners of the thumb.
      */
     private int thumbCornerArcSize = 0;
-
-    /**
-     * Thickness of the track.
-     */
-    private int trackThickness = DEFAULT_TRACK_THICKNESS;
 
     /**
      * List of 1-pixel-wide images to be used as tiles to draw the track area
@@ -301,31 +346,42 @@ public class MultiValueScale extends MultiValueLinearControl {
 
     /**
      * Get the longitudinal dimension of the thumb. The longitudinal dimension
-     * is the dimension of the thumb along the axis parallel to the track.
+     * is the dimension of the thumb along the axis parallel to the track. It is
+     * not adjusted for font height; to adjust for the latter, the returned
+     * value may be multiplied by the current font height divided by
+     * {@link #BASE_FONT_HEIGHT} and rounding to the nearest integer, yielding
+     * the true longitudinal dimension in pixels.
      * 
      * @return Longitudinal dimension of the thumb.
      */
     public final int getThumbLongitudinalDimension() {
-        return thumbLongitudinalDimension;
+        return baseThumbLongitudinalDimension;
     }
 
     /**
      * Get the lateral dimension of the thumb. The lateral dimension is the
-     * dimension of the thumb along the axis perpendicular to the track.
+     * dimension of the thumb along the axis perpendicular to the track. It is
+     * not adjusted for font height; to adjust for the latter, the returned
+     * value may be multiplied by the current font height divided by
+     * {@link #BASE_FONT_HEIGHT} and rounding to the nearest integer, yielding
+     * the true lateral dimension in pixels.
      * 
      * @return Lateral dimension of the thumb.
      */
     public final int getThumbLateralDimension() {
-        return thumbLateralDimension;
+        return baseThumbLateralDimension;
     }
 
     /**
-     * Get the track thickness.
+     * Get the track thickness. It is not adjusted for font height; to adjust
+     * for the latter, the returned value may be multiplied by the current font
+     * height divided by {@link #BASE_FONT_HEIGHT} and rounding to the nearest
+     * integer, yielding the true track thickness in pixels.
      * 
      * @return Track thickness.
      */
     public final int getTrackThickness() {
-        return trackThickness;
+        return baseTrackThickness;
     }
 
     /**
@@ -333,6 +389,11 @@ public class MultiValueScale extends MultiValueLinearControl {
      * best visual results, the longitudinal dimension of the thumb must be an
      * odd number, and the lateral thumb dimension and track thickness must both
      * be odd or both be even.
+     * <p>
+     * Also note that the values here are not true pixel values; they are values
+     * relative to font size. To determine the true pixel values, each of the
+     * values would be multiplied by the current font height divided by
+     * {@link #BASE_FONT_HEIGHT} and rounded to the nearest integer.
      * 
      * @param thumbLongitudinal
      *            Longitudinal dimension of the thumb, this being the dimension
@@ -342,21 +403,20 @@ public class MultiValueScale extends MultiValueLinearControl {
      *            Lateral dimension of the thumb, this being the dimension along
      *            the axis perpendicular to the track.
      * @param trackThickness
-     *            Thickness of the track; must be 3 or more.
+     *            Thickness of the track.
      */
     public final void setComponentDimensions(int thumbLongitudinal,
             int thumbLateral, int trackThickness) {
 
         // Remember the new component dimensions.
-        boolean thumbChanged = ((this.thumbLongitudinalDimension != thumbLongitudinal) || (this.thumbLateralDimension != thumbLateral));
-        this.thumbLongitudinalDimension = thumbLongitudinal;
-        this.thumbLateralDimension = thumbLateral;
-        boolean trackChanged = (this.trackThickness != trackThickness);
-        this.trackThickness = trackThickness;
-        if (this.trackThickness < 3) {
-            throw new IllegalArgumentException(
-                    "track thickness must be 3 or greater");
-        }
+        boolean thumbChanged = ((this.baseThumbLongitudinalDimension != thumbLongitudinal) || (this.baseThumbLateralDimension != thumbLateral));
+        this.baseThumbLongitudinalDimension = thumbLongitudinal;
+        this.baseThumbLateralDimension = thumbLateral;
+        boolean trackChanged = (this.baseTrackThickness != trackThickness);
+        this.baseTrackThickness = trackThickness;
+
+        // Recalculate the font-relative pixel dimensions.
+        calculateFontRelativePixelDimensions();
 
         // Recreate the track tile images using the new thickness, if the
         // thickness changed.
@@ -395,6 +455,26 @@ public class MultiValueScale extends MultiValueLinearControl {
             computePreferredSize(true);
             redraw();
         }
+    }
+
+    /**
+     * Set the font to that specified.
+     * 
+     * @param font
+     *            New font.
+     */
+    @Override
+    public final void setFont(Font font) {
+
+        // Let the superclass do its work.
+        super.setFont(font);
+
+        // Recalculate the font-relative pixel dimensions.
+        calculateFontRelativePixelDimensions();
+
+        // Recalculate the preferred size.
+        computePreferredSize(true);
+        redraw();
     }
 
     // Protected Methods
@@ -674,8 +754,7 @@ public class MultiValueScale extends MultiValueLinearControl {
      * of the area in which a mouse hover may generate a tooltip showing the
      * value under the mouse. Since multi-value scale widgets never show
      * tooltips along the track, this implementation simply sets the tooltip
-     * bounds to <code>
-     * null</code>.
+     * bounds to <code>null</code>.
      * <p>
      * If this class is changed to show tooltip bounds along the track, this
      * method will have to be called whenever the track size changes.
@@ -738,11 +817,43 @@ public class MultiValueScale extends MultiValueLinearControl {
      */
     private void initialize() {
 
+        // Calculate the font-relative pixel dimensions.
+        calculateFontRelativePixelDimensions();
+
         // Initialize the member data and the thumb images as well.
         calculateThumbCornerArcSize();
         thumbImage = createThumbImage(ThumbState.NORMAL);
         activeThumbImage = createThumbImage(ThumbState.ACTIVE);
         disabledThumbImage = createThumbImage(ThumbState.DISABLED);
+    }
+
+    /**
+     * Record the font height in pixels.
+     */
+    private void calculateFontRelativePixelDimensions() {
+        GC sampleGC = new GC(this);
+        float fontMultiplier = sampleGC.getFontMetrics().getHeight()
+                / BASE_FONT_HEIGHT;
+        sampleGC.dispose();
+        thumbLongitudinalDimension = toPixels(baseThumbLongitudinalDimension,
+                fontMultiplier);
+        thumbLateralDimension = toPixels(baseThumbLateralDimension,
+                fontMultiplier);
+        trackThickness = Math.max(toPixels(baseTrackThickness, fontMultiplier),
+                3);
+    }
+
+    /**
+     * Convert the specified dimensional value to a pixel value. This is done by
+     * multiplying it by the current font height divided by the base font
+     * height.
+     * 
+     * @param dimensionalValue
+     *            Dimensional value to be converted to a pixel value.
+     * @return Pixel value.
+     */
+    private int toPixels(int dimensionalValue, float fontMultiplier) {
+        return Math.round(dimensionalValue * fontMultiplier);
     }
 
     /**

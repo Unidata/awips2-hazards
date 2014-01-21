@@ -62,12 +62,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  */
 public class Utilities {
 
+    // Private Static Constants
+
     /**
      * ID of plug-in containing the Hazard Services SessionManager code.
      */
     private static final String SESSION_MANAGER_PLUGIN = "gov.noaa.gsd.viz.hazards.sessionmanager";
-
-    // Private Static Constants
 
     /**
      * Weight of red luminance component of a color.

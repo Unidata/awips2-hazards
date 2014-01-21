@@ -66,6 +66,8 @@ import org.eclipse.swt.widgets.Composite;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Nov 05, 2013    2336    Chris.Golden      Modified to work wtih new base
  *                                           class's ChangeSource.
+ * Jan 14, 2014    2704    Chris.Golden      Adjusted vertical point at which
+ *                                           hatch mark labels are drawn.
  * </pre>
  * 
  * @author Chris.Golden
@@ -738,7 +740,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
     /**
      * Add the specified hatch mark group.
      * 
-     * @param matchMarkGroup
+     * @param hatchMarkGroup
      *            Hatch mark group to be added.
      */
     public final void addHatchMarkGroup(IHatchMarkGroup hatchMarkGroup) {
@@ -985,7 +987,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
 
             // Determine the Y coordinate at which the labels should
             // be drawn, if any.
-            int labelY = lineY - thisFontHeight;
+            int labelY = lineY + 1 - thisFontHeight;
             if (labelY < 0) {
                 labelY = 0;
             }

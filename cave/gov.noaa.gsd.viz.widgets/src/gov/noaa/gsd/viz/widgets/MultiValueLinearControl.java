@@ -2820,7 +2820,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * Update the range color for the specified list of ranges at the specified
      * index.
      * 
-     * @parma list List of range colors to be updated.
+     * @param list
+     *            List of range colors to be updated.
      * @param index
      *            Index of the track color being updated; must be between 0 and
      *            the number of track tiles inclusive.

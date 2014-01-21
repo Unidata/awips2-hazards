@@ -41,9 +41,7 @@ import gov.noaa.gsd.viz.widgets.MultiValueRuler;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 
-import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.text.Collator;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -56,9 +54,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-import javax.imageio.ImageIO;
-
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.jface.action.Action;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.TableEditor;
@@ -110,6 +105,7 @@ import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -157,6 +153,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           horizontal scrollbar was showing and
  *                                           scrolled over at least partway to the
  *                                           right.
+ * Jan 14, 2014    2704    Chris.Golden      Removed sort-direction-arrow image from
+ *                                           the header of the column that is the
+ *                                           sort column, since these are now pro-
+ *                                           vided by SWT column headers. Also
+ *                                           adjusted timeline widget and time scale
+ *                                           widgets positioning to be more appro-
+ *                                           priate for different table font sizes.
+ *                                           Fixed bug that caused timeline to
+ *                                           rapidly shift its viewport left or
+ *                                           right when the selected time was
+ *                                           dragged close to the left or right edge
+ *                                           respectively. Finally, fixed bug that
+ *                                           caused a null pointer exception when
+ *                                           the area just outside the timeline, but
+ *                                           within its enclosing column header, was
+ *                                           right-clicked.
  * </pre>
  * 
  * @author Chris.Golden
@@ -285,16 +297,6 @@ class TemporalDisplay {
     private static final String SHOW_TIME_UNDER_MOUSE_TOGGLE_MENU_TEXT = "Show Time Under Mouse";
 
     /**
-     * Width in pixels of the margin used in the form layout.
-     */
-    private static final int FORM_MARGIN_WIDTH = 3;
-
-    /**
-     * Height in pixels of the margin used in the form layout.
-     */
-    private static final int FORM_MARGIN_HEIGHT = 3;
-
-    /**
      * Width in pixels of the time scale thumbs.
      */
     private static final int SCALE_THUMB_WIDTH = 13;
@@ -310,20 +312,32 @@ class TemporalDisplay {
     private static final int SCALE_TRACK_THICKNESS = 11;
 
     /**
+     * Width in pixels of the margin used in the form layout.
+     */
+    private static final int FORM_MARGIN_WIDTH = 2;
+
+    /**
+     * Height in pixels of the margin used in the form layout.
+     */
+    private static final int FORM_MARGIN_HEIGHT = 1;
+
+    /**
+     * Left padding of table cell in which scale widgets are placed. Where this
+     * value comes from is unknown; hopefully it will not change with shifts in
+     * window managers, etc.
+     */
+    private static final int CELL_PADDING_LEFT = 3;
+
+    /**
      * Width of horizontal padding in pixels to the left and right of time
-     * widgets.
+     * widgets (both ruler and scales).
      */
     private static final int TIME_HORIZONTAL_PADDING = 10;
 
     /**
-     * Height of vertical padding in pixels above and below the ruler.
+     * The default height of the button panel.
      */
-    private static final int RULER_VERTICAL_PADDING = 0;
-
-    /**
-     * Height of vertical padding in pixels above and below time scales.
-     */
-    private static final int SCALE_VERTICAL_PADDING = 3;
+    private static final int BUTTON_PANEL_HEIGHT = 40;
 
     /**
      * Number of milliseconds in a minute.
@@ -363,26 +377,6 @@ class TemporalDisplay {
     private static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
 
     /**
-     * The default table width value.
-     */
-    private static final int TABLE_WIDTH = 700;
-
-    /**
-     * The default table height value.
-     */
-    private static final int TABLE_HEIGHT = 145;
-
-    /**
-     * The default height of the button panel.
-     */
-    private static final int BUTTON_PANEL_HEIGHT = 40;
-
-    /**
-     * The default height of the table header.
-     */
-    private static final int TABLE_COLUMN_HEADER_HEIGHT = 42;
-
-    /**
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
@@ -398,35 +392,6 @@ class TemporalDisplay {
      * which the megawidget should be associated.
      */
     private static final String COLUMN_NAME = "columnName";
-
-    /**
-     * Path to icons.
-     */
-    private static final String ICONS_PATH;
-
-    // Initialize the icons path.
-    static {
-        String iconsPath = null;
-        try {
-            iconsPath = FileLocator.resolve(
-                    HazardServicesActivator.getDefault().getBundle()
-                            .getEntry("icons")).getPath();
-        } catch (Exception e) {
-            statusHandler.error("<static init>: Will not be able to load "
-                    + "button icons because couldn't resolve location: " + e);
-        }
-        ICONS_PATH = iconsPath;
-    }
-
-    /**
-     * Up sort arrow image file.
-     */
-    private static final String UP_SORT_ARROW_IMAGE_FILE_NAME = "upSortArrow.png";
-
-    /**
-     * Down sort arrow image file.
-     */
-    private static final String DOWN_SORT_ARROW_IMAGE_FILE_NAME = "downSortArrow.png";
 
     // Private Constants
 
@@ -451,22 +416,10 @@ class TemporalDisplay {
     private boolean showRulerToolTipsForAllTimes = true;
 
     /**
-     * Spacer image, used to make space in column headers for an arrow image to
-     * show sort direction, when a column is the sorting column, and to ensure
-     * the columns are tall enough to handle the time ruler embedded in the last
-     * column header.
+     * Spacer image, used to ensure that column headers are tall enough to
+     * handle the time ruler embedded in the last column header.
      */
     private Image spacerImage = null;
-
-    /**
-     * Up arrow image, used to show that a column is sorting upwards.
-     */
-    private Image upArrowImage = null;
-
-    /**
-     * Down arrow image, used to show that a column is sorting downwards.
-     */
-    private Image downArrowImage = null;
 
     /**
      * Set of basic resources created for use in this window, to be disposed of
@@ -1180,14 +1133,12 @@ class TemporalDisplay {
                 updateCellsForColumn(columnName);
 
                 // If the newly added column is the sort column,
-                // sort by its cells' contents and update the images
-                // in the column headers to reflect this.
+                // sort by its cells' contents.
                 if (table.getColumn(table.getColumnCount() - 2) == table
                         .getSortColumn()) {
                     sortRowsByColumn(table.getColumnCount() - 2,
                             (Comparator<? super String>) table.getSortColumn()
                                     .getData());
-                    updateTableColumnSortImages();
                 }
             }
 
@@ -1203,9 +1154,6 @@ class TemporalDisplay {
             // Update the column order to match that given by
             // the visible columns list.
             updateColumnOrder();
-
-            // Update the table column headers' sort images.
-            updateTableColumnSortImages();
 
             // Finish up following the addition or removal of
             // a column.
@@ -1245,11 +1193,6 @@ class TemporalDisplay {
             sortRowsByColumn(table.indexOf(sortColumn),
                     (Comparator<? super String>) sortColumn.getData());
 
-            // Set the images in the columns to indicate which column
-            // is the sorting column, and which direction the sort is
-            // in.
-            updateTableColumnSortImages();
-
             // Update the sort column information.
             updateTableSortColumnInSettingDefinition();
         }
@@ -1261,57 +1204,6 @@ class TemporalDisplay {
      * Construct a standard instance.
      */
     public TemporalDisplay() {
-
-        // Read in the up- and down-arrow images for indicating the
-        // direction of a sorting column.
-        BufferedImage[] sourceImages = null;
-        try {
-            sourceImages = new BufferedImage[] {
-                    ImageIO.read((new File(ICONS_PATH + File.separator
-                            + UP_SORT_ARROW_IMAGE_FILE_NAME)).toURI().toURL()),
-                    ImageIO.read((new File(ICONS_PATH + File.separator
-                            + DOWN_SORT_ARROW_IMAGE_FILE_NAME)).toURI().toURL()) };
-        } catch (Exception e) {
-            statusHandler
-                    .error("<init>: Cannot find up- and down-arrow icon images: "
-                            + e);
-        }
-
-        // Create a spacer image to take the place of the arrow
-        // images for non-sorting columns.
-        BufferedImage finalImage = new BufferedImage((sourceImages == null ? 1
-                : sourceImages[0].getWidth()), TABLE_COLUMN_HEADER_HEIGHT,
-                BufferedImage.TYPE_INT_ARGB);
-        spacerImage = ImageUtilities.convertAwtImageToSwt(finalImage);
-        resources.add(spacerImage);
-
-        // If the arrow images were successfully loaded, paint them
-        // onto larger transparent images with the same height as the
-        // column headers to be created in the table. This is done
-        // using the AWT BufferedImage class to allow for easy trans-
-        // parent image creation.
-        if (sourceImages != null) {
-            for (BufferedImage sourceImage : sourceImages) {
-                finalImage = new BufferedImage(sourceImage.getWidth(),
-                        TABLE_COLUMN_HEADER_HEIGHT, BufferedImage.TYPE_INT_ARGB);
-                Graphics gc = finalImage.getGraphics();
-                gc.drawImage(sourceImage, 0,
-                        (finalImage.getHeight() - sourceImage.getHeight()) / 2,
-                        null);
-                gc.dispose();
-                if (upArrowImage == null) {
-                    upArrowImage = ImageUtilities
-                            .convertAwtImageToSwt(finalImage);
-                    resources.add(upArrowImage);
-                } else {
-                    downArrowImage = ImageUtilities
-                            .convertAwtImageToSwt(finalImage);
-                    resources.add(downArrowImage);
-                }
-            }
-        } else {
-            upArrowImage = downArrowImage = spacerImage;
-        }
 
         // Create the various lists and dictionaries required.
         eventIdentifiers = Lists.newArrayList();
@@ -1528,8 +1420,11 @@ class TemporalDisplay {
      */
     public void updateSelectedTime(Date selectedTime) {
 
-        // Set the selected time.
+        // Only set the selected time if it has changed.
         long time = selectedTime.getTime();
+        if (ruler.getFreeThumbValue(0) == time) {
+            return;
+        }
         ruler.setFreeThumbValue(0, time);
 
         // Ensure that the selected time is visible, and not just at
@@ -2144,9 +2039,6 @@ class TemporalDisplay {
         // leftmost column.
         ensureCheckboxesAreInLeftmostColumn(false);
 
-        // Update the table column headers' sort images.
-        updateTableColumnSortImages();
-
         // Sort the incoming event identifiers based on the table's
         // sort column and direction.
         if (eventIdentifiers.size() > 0) {
@@ -2259,7 +2151,8 @@ class TemporalDisplay {
             rulerFormData.left = new FormAttachment(0, cellBeginXPixels
                     + FORM_MARGIN_WIDTH);
             rulerFormData.top = new FormAttachment(0, rulerTopOffset);
-            rulerFormData.right = new FormAttachment(100, -1 * cellEndXPixels);
+            rulerFormData.right = new FormAttachment(100,
+                    (FORM_MARGIN_WIDTH + cellEndXPixels) * -1);
             ruler.setLayoutData(rulerFormData);
 
             // If the navigation controls are present below the
@@ -2293,20 +2186,6 @@ class TemporalDisplay {
         }
     }
 
-    /**
-     * Set the images in the column headers to indicate which direction the sort
-     * is in for the sorting column, and that the other columns are not being
-     * used for sorting.
-     */
-    private void updateTableColumnSortImages() {
-        TableColumn sortColumn = table.getSortColumn();
-        for (TableColumn column : table.getColumns()) {
-            column.setImage(sortColumn == column ? (table.getSortDirection() == SWT.DOWN ? downArrowImage
-                    : upArrowImage)
-                    : spacerImage);
-        }
-    }
-
     private void updateHazardEvents(List<Dict> hazardEvents) {
         /*
          * Add each hazard event to the list of event dictionaries
@@ -2330,7 +2209,6 @@ class TemporalDisplay {
         this.currentSettings = currentSettings;
         columnsForNames = currentSettings.getColumns();
         visibleColumnNames = currentSettings.getVisibleColumns();
-
         hintTextIdentifiersForVisibleColumnNames.clear();
         dateIdentifiersForVisibleColumnNames.clear();
         for (String columnName : visibleColumnNames) {
@@ -2473,15 +2351,24 @@ class TemporalDisplay {
             long startTime, long endTime) {
 
         // Create a time scale widget with two thumbs and configure it
-        // appropriately.
+        // appropriately. Note that the right inset of the widget is
+        // larger than the left because it must match the width of the
+        // time ruler, which has the form margin width subtracted from
+        // its right edge. Furthermore, the left inset of the widget is
+        // reduced by the difference between the cell left-side padding
+        // and the form margin width, since the time ruler is only in-
+        // set by the form margin width from the left of the column.
         MultiValueScale scale = new MultiValueScale(table,
                 HazardConstants.MIN_TIME, HazardConstants.MAX_TIME);
         scale.setSnapValueCalculator(snapValueCalculator);
         scale.setTooltipTextProvider(thumbTooltipTextProvider);
-        scale.setInsets(TIME_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING,
-                TIME_HORIZONTAL_PADDING, SCALE_VERTICAL_PADDING);
         scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
                 SCALE_TRACK_THICKNESS);
+        int verticalPadding = (table.getItemHeight() - scale.computeSize(
+                SWT.DEFAULT, SWT.DEFAULT).y) / 2;
+        scale.setInsets(TIME_HORIZONTAL_PADDING
+                - (CELL_PADDING_LEFT - FORM_MARGIN_WIDTH), verticalPadding,
+                TIME_HORIZONTAL_PADDING + FORM_MARGIN_WIDTH, verticalPadding);
         scale.setVisibleValueRange(ruler.getLowerVisibleValue(),
                 ruler.getUpperVisibleValue());
         scale.setConstrainedThumbValues(startTime, endTime);
@@ -2513,7 +2400,7 @@ class TemporalDisplay {
         TableEditor scaleEditor = new TableEditor(table);
         scaleEditor.grabHorizontal = scaleEditor.grabVertical = true;
         scaleEditor.verticalAlignment = SWT.CENTER;
-        scaleEditor.minimumHeight = table.getItemHeight() + 3;
+        scaleEditor.minimumHeight = table.getItemHeight()/* + 3 */;
         scaleEditor.setEditor(scale, item, table.getColumnCount() - 1);
         tableEditorsForIdentifiers.put((String) item.getData(), scaleEditor);
     }
@@ -2533,8 +2420,6 @@ class TemporalDisplay {
         tableFormData.top = new FormAttachment(0, 0);
         tableFormData.bottom = new FormAttachment(100, -1 * BUTTON_PANEL_HEIGHT);
         tableFormData.right = new FormAttachment(100, 0);
-        tableFormData.height = TABLE_HEIGHT;
-        tableFormData.width = TABLE_WIDTH;
         table.setLayoutData(tableFormData);
         table.setHeaderVisible(true);
         table.setLinesVisible(true);
@@ -2753,13 +2638,18 @@ class TemporalDisplay {
                 // able that checkbox so that the user cannot un-
                 // check it. Then update any associated megawidget
                 // manager's state as well, and set the menu as
-                // belonging to the table.
+                // belonging to the table. If no menu is found for
+                // the specified column, do nothing.
                 if (e.doit) {
                     TableColumn column = getTableColumnAtPoint(new Point(e.x,
                             e.y));
                     if (column != null) {
                         Menu menu = headerMenusForColumnNames.get(column
                                 .getText());
+                        if (menu == null) {
+                            e.doit = false;
+                            return;
+                        }
                         for (MenuItem menuItem : menu.getItems()) {
                             if (menuItem.getStyle() == SWT.SEPARATOR) {
                                 break;
@@ -2976,7 +2866,9 @@ class TemporalDisplay {
         // Create the time scale column.
         TableColumn column = new TableColumn(table, SWT.NONE);
         column.setText(TIME_SCALE_COLUMN_NAME);
-        column.setImage(spacerImage);
+        if (spacerImage != null) {
+            column.setImage(spacerImage);
+        }
         column.setMoveable(false);
         column.setResizable(true);
         column.pack();
@@ -3014,7 +2906,9 @@ class TemporalDisplay {
         }
         TableColumn column = new TableColumn(table, SWT.NONE, index);
         column.setText(name);
-        column.setImage(spacerImage);
+        if (spacerImage != null) {
+            column.setImage(spacerImage);
+        }
         column.setMoveable(true);
         column.setResizable(true);
         if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
@@ -3101,8 +2995,8 @@ class TemporalDisplay {
 
         // Create a visual separator between the combo box and
         // anything else next to it, and the table above.
-        separator = new Label(parent, SWT.SEPARATOR + SWT.SHADOW_OUT
-                + SWT.HORIZONTAL);
+        separator = new Label(parent, SWT.SEPARATOR | SWT.SHADOW_OUT
+                | SWT.HORIZONTAL);
         FormData separatorFormData = new FormData();
         separatorFormData.left = new FormAttachment(0, 0);
         separatorFormData.top = new FormAttachment(table, 0);
@@ -3204,8 +3098,7 @@ class TemporalDisplay {
         ruler.setHeightMultiplier(2.95f);
         ruler.setSnapValueCalculator(snapValueCalculator);
         ruler.setTooltipTextProvider(thumbTooltipTextProvider);
-        ruler.setInsets(TIME_HORIZONTAL_PADDING, RULER_VERTICAL_PADDING,
-                TIME_HORIZONTAL_PADDING, RULER_VERTICAL_PADDING);
+        ruler.setInsets(TIME_HORIZONTAL_PADDING, 0, TIME_HORIZONTAL_PADDING, 0);
         ruler.setViewportDraggable(true);
 
         long lowerTime = currentTime - (visibleTimeRange / 4L);
@@ -3304,6 +3197,18 @@ class TemporalDisplay {
         });
         ruler.setMenu(contextMenu);
 
+        // Create a spacer image of a sufficient height to avoid having
+        // the column headers smaller than they need to be in order to
+        // have the last column header visually surround the time ruler,
+        // and assign it as the image for each column.
+        BufferedImage finalImage = new BufferedImage(1, ruler.computeSize(
+                SWT.DEFAULT, SWT.DEFAULT).y, BufferedImage.TYPE_INT_ARGB);
+        spacerImage = ImageUtilities.convertAwtImageToSwt(finalImage);
+        resources.add(spacerImage);
+        for (TableColumn column : table.getColumns()) {
+            column.setImage(spacerImage);
+        }
+
         // Pack the composite with everything created so far, as the
         // bounds of the time ruler are needed to continue.
         temporalDisplayPanel.pack(true);
@@ -3324,8 +3229,9 @@ class TemporalDisplay {
         Rectangle rectangle = ruler.getBounds();
         int rulerHeight = rectangle.height;
         FormData rulerFormData = new FormData();
-        rulerFormData.left = new FormAttachment(0, xPixels + 3);
-        rulerTopOffset = tableYPixels + ((headerHeight - rulerHeight) / 2) - 3;
+        rulerFormData.left = new FormAttachment(0, xPixels + FORM_MARGIN_WIDTH);
+        rulerTopOffset = tableYPixels + ((headerHeight - rulerHeight) / 2)
+                - FORM_MARGIN_HEIGHT;
         rulerFormData.top = new FormAttachment(0, rulerTopOffset);
         rulerFormData.right = new FormAttachment(100, 0);
         ruler.setLayoutData(rulerFormData);
@@ -3369,9 +3275,9 @@ class TemporalDisplay {
             }
         };
         for (int j = 0; j < BUTTON_IMAGE_NAMES.size(); j++) {
-            Image image = new Image(Display.getCurrent(), ICONS_PATH
-                    + File.separator + BUTTON_IMAGE_NAMES.get(j)
-                    + PNG_FILE_NAME_SUFFIX);
+            Image image = IconUtil.getImage(HazardServicesActivator
+                    .getDefault().getBundle(), BUTTON_IMAGE_NAMES.get(j)
+                    + PNG_FILE_NAME_SUFFIX, Display.getCurrent());
             resources.add(image);
             createCommandButton(buttonsPanel, BUTTON_IMAGE_NAMES.get(j), image,
                     BUTTON_DESCRIPTIONS.get(j), buttonListener);

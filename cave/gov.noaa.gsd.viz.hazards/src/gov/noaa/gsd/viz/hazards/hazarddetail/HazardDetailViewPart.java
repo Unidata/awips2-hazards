@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
@@ -58,7 +59,10 @@ import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -84,6 +88,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -135,6 +140,13 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Nov 16, 2013   2166     daniel.s.schaffer Some tidying
  * Dec 16, 2013   2545     Chris.Golden      Added current time provider for megawidget
  *                                           use.
+ * Jan 14, 2014   2704     Chris.Golden      Removed conflict label and replaced it with
+ *                                           coloring of all tabs if there is a conflict
+ *                                           in at least one tab, together with placing
+ *                                           an icon in each tab that conflicts. This had
+ *                                           the side effect of fixing the visual glitch
+ *                                           whereby the bottom border of the time range
+ *                                           group was not displayed at certain times.
  * </pre>
  * 
  * @author Chris.Golden
@@ -275,6 +287,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Points details tab text.
      */
     private static final String POINTS_DETAILS_TAB_TEXT = "Points Details";
+
+    /**
+     * Conflict image icon file name.
+     */
+    private static final String CONFLICT_ICON_IMAGE_FILE_NAME = "hidConflict.png";
+
+    /**
+     * Conflict tooltip.
+     */
+    private static final String CONFLICT_TOOLTIP = "Conflicts with other hazard(s)";
 
     // Private Classes
 
@@ -684,12 +706,50 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
     }
 
+    // Private Constants
+
+    /**
+     * Conflict tab image icon.
+     */
+    private final Image CONFLICT_TAB_ICON = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            CONFLICT_ICON_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
+     * Conflict unselected tab background color.
+     */
+    private final Color CONFLICT_UNSELECTED_TAB_COLOR = new Color(
+            Display.getCurrent(), 237, 185, 144);
+
+    /**
+     * Conflict selected tab background color.
+     */
+    private final Color CONFLICT_SELECTED_TAB_COLOR = new Color(
+            Display.getCurrent(), 237, 218, 208);
+
     // Private Variables
+
+    /**
+     * Set of basic resources created for use in this window, to be disposed of
+     * when this window is disposed of.
+     */
+    private final Set<Resource> resources = Sets.newHashSet(CONFLICT_TAB_ICON,
+            CONFLICT_UNSELECTED_TAB_COLOR, CONFLICT_SELECTED_TAB_COLOR);
 
     /**
      * Tab folder holding the different hazard events, one per tab page.
      */
     private CTabFolder eventTabFolder = null;
+
+    /**
+     * Standard unselected tab background color for the event tab folder.
+     */
+    private Color standardUnselectedColor;
+
+    /**
+     * Standard selected tab background color for the event tab folder.
+     */
+    private Color standardSelectedColor;
 
     /**
      * Index into hazard information array indicating which element has its tab
@@ -863,7 +923,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             .newArrayList();
 
     /**
-     * Map of event ids displayed in the HID and lists of conflicting events
+     * Map of event identifiers displayed in the HID and lists of conflicting
+     * events.
      */
     private Map<String, Collection<IHazardEvent>> eventConflictMap = Maps
             .newHashMap();
@@ -918,11 +979,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private HazardDetailView hazardDetailView = null;
 
-    /**
-     * Label for showing conflict message.
-     */
-    private Label conflictLabel;
-
     // Public Methods
 
     /**
@@ -943,8 +999,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Maximum visible time.
      */
     public void initialize(HazardDetailView hazardDetailView,
-            String generalWidgets, String hazardWidgets, long minVisibleTime,
-            long maxVisibleTime) {
+            String generalWidgets, String hazardMegawidgets,
+            long minVisibleTime, long maxVisibleTime) {
 
         // Remember the minimum and maximum visible times.
         minimumVisibleTime = minVisibleTime;
@@ -973,7 +1029,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Parse the strings into a JSON object and a JSON array.
         Dict jsonGeneralWidgets = null;
-        DictList jsonHazardWidgets = null;
+        DictList jsonHazardMegawidgets = null;
         try {
             jsonGeneralWidgets = Dict.getInstance(generalWidgets);
         } catch (Exception e) {
@@ -981,7 +1037,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     + "parsing JSON for general megawidgets.", e);
         }
         try {
-            jsonHazardWidgets = DictList.getInstance(hazardWidgets);
+            jsonHazardMegawidgets = DictList.getInstance(hazardMegawidgets);
         } catch (Exception e) {
             statusHandler.error("HazardDetailViewPart.initialize(): Error "
                     + "parsing JSON for hazard megawidgets.", e);
@@ -1036,7 +1092,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Get the megawidget specifier lists for the event types.
         megawidgetsForTypes.clear();
         pointMegawidgetsForTypes.clear();
-        for (int j = 0; j < jsonHazardWidgets.size(); j++) {
+        for (int j = 0; j < jsonHazardMegawidgets.size(); j++) {
 
             // Get the event types to which this list of megawidget
             // specifiers applies, ignoring any that already
@@ -1048,7 +1104,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // which case the first set in which it appears is
             // considered to be the set in which it actually
             // belongs.
-            Dict jsonItem = jsonHazardWidgets.getDynamicallyTypedValue(j);
+            Dict jsonItem = jsonHazardMegawidgets.getDynamicallyTypedValue(j);
             List<String> types = Lists.newArrayList();
             for (Object child : (List<?>) jsonItem
                     .get(HazardConstants.HAZARD_INFO_METADATA_TYPES)) {
@@ -1142,12 +1198,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
     }
 
-    /**
-     * Create the part control for the view.
-     * 
-     * @param parent
-     *            Parent panel to populate with widgets.
-     */
+    @Override
+    public void dispose() {
+        for (Resource resource : resources) {
+            resource.dispose();
+        }
+    }
+
     @Override
     public void createPartControl(Composite parent) {
         super.createPartControl(parent);
@@ -1187,6 +1244,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // megawidgets therein for each different
         // tab selection.
         eventTabFolder = new CTabFolder(tabTop, SWT.TOP);
+        standardUnselectedColor = eventTabFolder.getBackground();
+        standardSelectedColor = eventTabFolder.getSelectionBackground();
         eventTabFolder.setBorderVisible(true);
         eventTabFolder.setTabHeight(eventTabFolder.getTabHeight() + 8);
         eventTabFolder.addSelectionListener(new SelectionAdapter() {
@@ -1247,11 +1306,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 + mainLayout.marginBottom + mainLayout.marginTop
                 + (mainLayout.verticalSpacing * 2);
 
-        conflictLabel = new Label(top, SWT.None);
-        conflictLabel.setText("Hazard Conflict");
-        conflictLabel.setBackground(Display.getDefault().getSystemColor(
-                SWT.COLOR_RED));
-        conflictLabel.setVisible(false);
         Group hazardGroup = new Group(top, SWT.NONE);
         hazardGroup.setText(HAZARD_TYPE_SECTION_TEXT);
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
@@ -1521,17 +1575,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          */
     }
 
-    /**
-     * Receive notification that the given specifier's megawidget's state has
-     * changed.
-     * 
-     * @param megawidget
-     *            Megawidget that experienced the state change.
-     * @param identifier
-     *            Identifier of the state that has changed.
-     * @param state
-     *            New state.
-     */
     @Override
     public void megawidgetStateChanged(IStateful megawidget, String identifier,
             Object state) {
@@ -1614,8 +1657,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Use the specified JSON string to set the values of the various
-     * megawidgets in the window.
+     * Set the HID event info.
      * 
      * @param eventDictList
      *            List of dictionaries, each providing the key-value pairs that
@@ -1623,14 +1665,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param eventConflictMap
      *            Map of selected events and corresponding lists of conflicting
      *            events.
-     * @param jsonEventID
-     *            JSON string specifying the identifier of the event that should
-     *            be brought to the top of the tab list, or <code>null</code> if
-     *            it should not be changed.
+     * @param topmostEvent
+     *            Identifier of the event that should be brought to the top of
+     *            the tab list, or <code>null</code> if it should not be
+     *            changed.
      */
     public void setHidEventInfo(DictList eventDictList,
             Map<String, Collection<IHazardEvent>> eventConflictMap,
-            String jsonEventID) {
+            String topmostEvent) {
 
         // If there are no event dictionaries, ensure that
         // a zero-length list of them exists at least.
@@ -1638,8 +1680,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             eventDictList = new DictList();
         }
 
-        // Parse the passed-in JSON and configure the
-        // megawidgets accordingly.
+        // Parse the passed-in events and conflicts and
+        // configure the megawidgets accordingly.
         List<String> eventIDs = Lists.newArrayList();
         List<String> types = Lists.newArrayList();
         try {
@@ -1669,8 +1711,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         .getDynamicallyTypedValue(j);
                 primaryParamValues.add(eventDict);
 
-                // If the JSON does not include the hazard
-                // type, set it to nothing; it should then
+                // If the map does not include the hazard
+                // type, set it to nothing; it shoul: d then
                 // have a category listed, and if it does
                 // not, complain.
                 String fullType = (String) eventDict
@@ -1729,7 +1771,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 .debug("HazardDetailViewPart.setHidEventInfo(): "
                                         + "For hazard type of \""
                                         + fullType
-                                        + "\", points (if found in JSON) should be "
+                                        + "\", points (if found in list) should be "
                                         + "on separate tab.");
                     } else {
                         statusHandler
@@ -1771,7 +1813,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
         } catch (Exception e) {
             statusHandler.error("HazardDetailViewPart.setHidEventInfo():"
-                    + "Problem reading event dictionary JSON.", e);
+                    + "Problem reading event dictionaries.", e);
         }
 
         // If the event tab folder exists yet, recreate
@@ -1820,13 +1862,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
             }
 
+            // Show any conflicts visually within the tab
+            // folder.
+            updateEventTabsToReflectConflicts();
+
             // Bring the tab to the top for the event that
             // belongs in the front.
             if (eventTabFolder.getItemCount() > 0) {
                 CTabItem tabItemToSelect = null;
-                if (jsonEventID != null) {
+                if (topmostEvent != null) {
                     for (CTabItem tabItem : eventTabFolder.getItems()) {
-                        if (tabItem.getData().equals(jsonEventID)) {
+                        if (tabItem.getData().equals(topmostEvent)) {
                             tabItemToSelect = tabItem;
                             break;
                         }
@@ -1987,6 +2033,39 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         } else if (buttonId == PREVIEW_ID) {
             fireHIDAction(new HazardDetailAction(
                     HazardDetailAction.ActionType.PREVIEW));
+        }
+    }
+
+    /**
+     * Update the event tabs to visually indicate any conflicts.
+     */
+    private void updateEventTabsToReflectConflicts() {
+
+        // Iterate through the tabs, ensuring that each
+        // has an icon if it is a conflicting hazard, or
+        // does not have an icon if it is not.
+        boolean conflictExists = false;
+        Set<String> conflictingHazards = eventConflictMap.keySet();
+        for (CTabItem tabItem : eventTabFolder.getItems()) {
+            if (conflictingHazards.contains(tabItem.getData())) {
+                conflictExists = true;
+                tabItem.setImage(CONFLICT_TAB_ICON);
+                tabItem.setToolTipText(CONFLICT_TOOLTIP);
+            } else {
+                tabItem.setImage(null);
+                tabItem.setToolTipText(null);
+            }
+        }
+
+        // If a conflict exists, hint at this by setting
+        // the tab folder to use eye-catching background
+        // colors for both selected and unselected tabs.
+        if (conflictExists) {
+            eventTabFolder.setBackground(CONFLICT_UNSELECTED_TAB_COLOR);
+            eventTabFolder.setSelectionBackground(CONFLICT_SELECTED_TAB_COLOR);
+        } else {
+            eventTabFolder.setBackground(standardUnselectedColor);
+            eventTabFolder.setSelectionBackground(standardSelectedColor);
         }
     }
 
@@ -2170,9 +2249,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
                 if (description != null) {
                     item.setText(col, description);
-                    //
-                    // // Set the item as checked.
-                    // item.setChecked(true);
                 }
             }
         }
@@ -2343,15 +2419,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return;
         }
 
-        // Determine whether or not to show the conflict message.
-        String eventID = (String) primaryParamValues.get(visibleHazardIndex)
-                .get(HAZARD_EVENT_IDENTIFIER);
-
-        if (eventConflictMap.keySet().contains(eventID)) {
-            conflictLabel.setVisible(true);
-        } else {
-            conflictLabel.setVisible(false);
-        }
+        // Update the tab folder to visually indicate
+        // any conflicts.
+        updateEventTabsToReflectConflicts();
 
         // Set the category and type combo boxes.
         String category = getCategoryOfCurrentEvent();
