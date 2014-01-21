@@ -24,7 +24,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -41,8 +40,9 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 27, 2013            mnash     Initial creation
- * Dec 3, 2013  1472       bkowal    Ignore entire class.
+ * Feb 27, 2013            mnash       Initial creation
+ * Dec 3, 2013  1472       bkowal      Ignore entire class.
+ * Jan 27, 2013 2766       bkowal      Remove unit test ignore.
  * 
  * </pre>
  * 
@@ -50,7 +50,6 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
-@Ignore
 public class RecommenderTestFailure extends AbstractRecommenderTest {
 
     @Test

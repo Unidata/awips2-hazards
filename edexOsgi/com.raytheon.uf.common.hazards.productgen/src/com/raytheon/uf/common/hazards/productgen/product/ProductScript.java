@@ -50,6 +50,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            jsanchez     Initial creation
+ * Jan 20, 2014 2766       bkowal       Updated to use the Python Overrider
  * 
  * </pre>
  * 
@@ -106,7 +107,8 @@ public class ProductScript extends PythonScriptController {
         String scriptPath = PythonBuildPaths
                 .buildDirectoryPath(PRODUCTS_DIRECTORY);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
-                + "')");
+                + "', '" + PythonBuildPaths.PYTHON_EVENTS_DIRECTORY
+                + PRODUCTS_DIRECTORY + "')");
         List<String> errors = getStartupErrors();
         if (errors.size() > 0) {
             StringBuffer sb = new StringBuffer();
@@ -164,7 +166,6 @@ public class ProductScript extends PythonScriptController {
      * @param product
      * @return
      */
-    @SuppressWarnings("unchecked")
     public Map<String, String> getDialogInfo(String product) {
         return getInfo(product, "getDialogInfo");
     }

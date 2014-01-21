@@ -41,6 +41,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 1, 2013            jsanchez     Initial creation
+ * Jan 20, 2014 2766      bkowal       Re-ordered the paths. Created static
+ *                                     variable for the python events directory.
  * 
  * </pre>
  * 
@@ -49,6 +51,9 @@ import com.raytheon.uf.common.util.FileUtil;
  */
 
 public class PythonBuildPaths {
+
+    public static final String PYTHON_EVENTS_DIRECTORY = "python"
+            + File.separator + "events" + File.separator;
 
     /**
      * Builds the path for the directory in python/events
@@ -66,8 +71,7 @@ public class PythonBuildPaths {
         LocalizationContext userContext = pathMgr.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
 
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + directory;
+        String fileLoc = PYTHON_EVENTS_DIRECTORY + directory;
 
         String userPath = pathMgr.getLocalizationFile(userContext, fileLoc)
                 .getFile().getPath();
@@ -76,7 +80,7 @@ public class PythonBuildPaths {
         String basePath = pathMgr.getLocalizationFile(baseContext, fileLoc)
                 .getFile().getPath();
 
-        return PyUtil.buildJepIncludePath(userPath, sitePath, basePath);
+        return PyUtil.buildJepIncludePath(basePath, sitePath, userPath);
     }
 
     /**

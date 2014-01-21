@@ -19,16 +19,15 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
+import java.io.Serializable;
+import java.util.Map;
+
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.io.Serializable;
-import java.util.Map;
-
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -37,7 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 
 /**
- * Unit test for recommenders, successfully returns an IEvent.
+ * Tests the recommender python override / merge capability.
  * 
  * <pre>
  * 
@@ -45,23 +44,56 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            mnash       Initial creation
- * Jul 19, 2013 1257       bsteffen    Convert recommender dialog info to use
- *                                     Serializeables for values instead of
- *                                     Strings.
- * Dec 3, 2013  1472       bkowal      Ignore entire class.
- * Jan 27, 2013 2766       bkowal      Remove unit test ignore.
+ * Jan 24, 2014            bkowal     Initial creation
  * 
  * </pre>
  * 
- * @author mnash
+ * @author bkowal
  * @version 1.0
  */
 
-public class RecommenderTestSuccess extends AbstractRecommenderTest {
+public abstract class AbstractRecommenderOverrideTest extends
+        AbstractRecommenderTest {
+    private static final String DICT_KEY_TEST = "test";
+
+    private String recommenderName;
+
+    private String expectedKeyValue;
+
+    /**
+     * 
+     */
+    public AbstractRecommenderOverrideTest(String recommenderName,
+            String expectedKeyValue) {
+        this.recommenderName = recommenderName;
+        this.expectedKeyValue = expectedKeyValue;
+    }
 
     @Test
     public void run() {
+        super.runRecommender(this.recommenderName, this.getPythonJobListener());
+        while (proceed == false) {
+            // sit and wait
+        }
+    }
+
+    @Test
+    public void runGetDialogInfo() {
+        Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
+        assertNotNull(vals);
+        assertThat((String) vals.get(DICT_KEY_TEST),
+                equalTo(this.expectedKeyValue));
+    }
+
+    @Test
+    public void runGetSpatialInfo() {
+        Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
+        assertNotNull(vals);
+        assertThat((String) vals.get(DICT_KEY_TEST),
+                equalTo(this.expectedKeyValue));
+    }
+
+    private IPythonJobListener<EventSet<IEvent>> getPythonJobListener() {
         IPythonJobListener<EventSet<IEvent>> listener = new IPythonJobListener<EventSet<IEvent>>() {
             @Override
             public void jobFailed(Throwable e) {
@@ -78,24 +110,7 @@ public class RecommenderTestSuccess extends AbstractRecommenderTest {
                 proceed = true;
             }
         };
-        runRecommender("RecommenderSuccess", listener);
-        while (proceed == false) {
-            // sit and wait
-        }
-    }
 
-    @Test
-    public void runGetDialogInfo() {
-        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
-        assertNotNull(vals);
-        assertThat((String) vals.get("test"), equalTo("value"));
+        return listener;
     }
-
-    @Test
-    public void runGetSpatialInfo() {
-        Map<String, Serializable> vals = getDialogInfo("RecommenderSuccess");
-        assertNotNull(vals);
-        assertThat((String) vals.get("test"), equalTo("value"));
-    }
-
 }

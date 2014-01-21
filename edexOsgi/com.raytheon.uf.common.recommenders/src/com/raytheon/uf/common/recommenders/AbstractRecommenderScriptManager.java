@@ -67,6 +67,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     tracking tools
  * Dec 4, 2013  2461       bkowal      Recommenders at other localization
  *                                     levels can now override the base recommender.
+ * Jan 20, 2014 2766       bkowal      Updated to use the Python Overrider
  * 
  * </pre>
  * 
@@ -111,7 +112,9 @@ public abstract class AbstractRecommenderScriptManager extends
         inventory = new ConcurrentHashMap<String, EventRecommender>();
 
         String scriptPath = buildRecommenderPath();
-        jep.eval(INTERFACE + " = RecommenderInterface('" + scriptPath + "')");
+
+        jep.eval(INTERFACE + " = RecommenderInterface('" + scriptPath + "', '"
+                + RECOMMENDERS_LOCALIZATION_DIR + "')");
         List<String> errors = getStartupErrors();
         if (errors.size() > 0) {
             StringBuffer sb = new StringBuffer();
@@ -220,10 +223,12 @@ public abstract class AbstractRecommenderScriptManager extends
         String genUtilPath = FileUtil.join(pythonPath, "generalUtilities");
         String logUtilPath = FileUtil.join(pythonPath, "logUtilities");
 
-        /* This is so we can access CommHandler.py, Util.py, and
-           UEConfig.py.  Maybe there is a better way to do this. */
-        String fxaBinPath =
-            FileUtil.join(File.separator, "awips2", "fxa", "bin", "src");
+        /*
+         * This is so we can access CommHandler.py, Util.py, and UEConfig.py.
+         * Maybe there is a better way to do this.
+         */
+        String fxaBinPath = FileUtil.join(File.separator, "awips2", "fxa",
+                "bin", "src");
 
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 recommenderConfigPath, recommenderUserPath,
