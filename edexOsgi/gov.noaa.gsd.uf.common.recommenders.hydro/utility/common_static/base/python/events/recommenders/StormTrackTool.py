@@ -104,22 +104,19 @@ class Recommender(RecommenderTemplate.Recommender):
     def initializeTypeOfEvent(self, staticSettings) :
         '''
         @summary: Focal points can customize this method to change the initial
-                  phenomena, significance, and subtype for the hazard.
+                  phenomena, significance, subtype, and phensig.
         @param staticSettings: "staticSettings" member of session attributes.
-        @return: A tuple containing the phenomena, significance, and subtype
+        @return: A tuple containing the phenomena, significance, subtype,
+                 and phensig.
         '''
         # Eventually we want the hazard type to be totally undefined when
-        # we fire up the tracker.  However, for now we can make the initial
-        # type be sensitive to the current setting.
-        phenomena = "TO"
-        significance = "WARNING"
-        subType = "TO.W"
-        visibleTypes = staticSettings.get("visibleTypes")
-        if visibleTypes != None :
-            if "FF.W.Convective" in visibleTypes :
-                phenomena = "FF"
-                subType = "FF.W.Convective"
-        return ( phenomena, significance, subType )
+        # we fire up the tracker.  However, for now we hardcode it to convective
+        # flash flood warning.
+        phenomena = "FF"
+        significance = "W"
+        subType = "Convective"
+        phenSig = "FF.W"
+        return ( phenomena, significance, subType, phenSig )
 
     def updateEventAttributes(self, sessionAttributes, dialogInputMap, \
                                 spatialInputMap):
@@ -237,7 +234,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # Call method that initializes the phenomena, significance, and subtype
         # for hazard. This is a reasonable thing for a focal point to customize.
-        ( phenomena, significance, subType ) = \
+        ( phenomena, significance, subType, phenSig ) = \
                  self.initializeTypeOfEvent(staticSettings)
 
         # Finalize our set of output attributes.
@@ -253,7 +250,7 @@ class Recommender(RecommenderTemplate.Recommender):
         resultDict["stormMotion"] = stormMotion
         resultDict["pivots"] = pivotList
         resultDict["pivotTimes"] = pivotTimeList
-        resultDict["type"] = subType
+        resultDict["type"] = phenSig
 
         # Cache some stuff the logic that composes the returned Java backed
         # HazardEvent object needs. We will make this a temporary member of the
@@ -266,10 +263,10 @@ class Recommender(RecommenderTemplate.Recommender):
         forJavaObj["endTime"] = endTime
         forJavaObj["phenomena"] = phenomena
         forJavaObj["significance"] = significance
+        forJavaObj["subType"] = subType
         forJavaObj["track"] = trackCoordinates
         forJavaObj["hazardPolygon"] = hazardPolygon
         resultDict["forJavaObj"] = forJavaObj
-
 
         return resultDict
 
@@ -317,12 +314,14 @@ class Recommender(RecommenderTemplate.Recommender):
           forJavaObj["endTime"] / MILLIS_PER_SECOND))
 
         hazardEvent.setPhenomenon(forJavaObj["phenomena"])
+        if forJavaObj["subType"] != "" :
+            hazardEvent.setSubtype(forJavaObj["subType"])
         hazardEvent.setSignificance(forJavaObj["significance"])
 
         #
         # The track should not be considered to be an actual hazard geometry.
         # The hazard geometry is just the the polygon. Creating a line geometry
-        # as an attribute is  a convenient way to return track point information
+        # as an attribute is a convenient way to return track point information
         # to the client.
         resultDict["stormTrackLine"] = \
             GeometryFactory.createLineString(forJavaObj["track"])

@@ -116,7 +116,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     assertEquals(events.size(), 1);
                     IHazardEvent event = (IHazardEvent) events.iterator()
                             .next();
-                    assertEquals(event.getHazardType(), "TO.WARNING");
+                    assertEquals(event.getHazardType(), "FF.W.Convective");
                     assertEquals(event.getState(), HazardState.PENDING);
                     Dict consoleEvent = mockConsoleView.getHazardEvents()
                             .get(0);

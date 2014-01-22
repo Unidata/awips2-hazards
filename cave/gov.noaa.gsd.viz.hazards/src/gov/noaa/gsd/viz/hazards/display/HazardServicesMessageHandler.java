@@ -519,9 +519,27 @@ public final class HazardServicesMessageHandler implements
 
         sessionManager.handleRecommenderResult(eventList);
 
-        notifyModelEventsChanged();
+        /*
+         * Make sure the updated hazard type is a part of the
+         * visible types in the current setting. If not, add it.
+         */
+        Set<String> visibleTypes = 
+               sessionConfigurationManager.getSettings().getVisibleTypes();
+        int startSize = visibleTypes.size();
+        for (IEvent ievent: eventList) {
+            IHazardEvent event = (IHazardEvent)ievent;
+            visibleTypes.add(HazardEventUtilities.getHazardType(event));
+        }
 
-    }
+        if ( startSize == visibleTypes.size() ) {
+            notifyModelEventsChanged();
+        } else {
+            appBuilder.notifyModelChanged(
+               EnumSet.of(HazardConstants.Element.EVENTS,
+                          HazardConstants.Element.CURRENT_SETTINGS));
+        }
+
+     }
 
     public void handleProductGeneratorResult(String toolID,
             final List<IGeneratedProduct> productList) {

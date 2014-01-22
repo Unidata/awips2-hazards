@@ -67,10 +67,11 @@ TestCaseResults = \
                 41.928263345301275
             ]
         ], 
-        "phenomena": "TO", 
+        "phenomena": "FF", 
+        "subType": "Convective", 
         "SiteID": "OAX", 
         "startTime": 1297137600000, 
-        "significance": "WARNING", 
+        "significance": "W", 
         "endTime": 1297139400000
     }, 
     "trackPoints": [
@@ -105,5 +106,5 @@ TestCaseResults = \
     "state": "pending", 
     "startTime": 1297137600000, 
     "endTime": 1297139400000, 
-    "type": "TO.W"
+    "type": "FF.W"
 }
