@@ -1323,7 +1323,7 @@ public class ToolLayer extends
                 .getDynamicallyTypedValue(HAZARD_EVENT_SHAPE_TYPE);
         String eventID = modifyEvent
                 .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
-        if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+        if (modifyEvent.getDynamicallyTypedValue(SYMBOL_NEW_LAT_LON) == null) {
             List<Dict> shapes = modifyEvent.getDynamicallyTypedValue(SHAPES);
             Geometry geometry = JSONUtilities.geometryFromJSONShapes(shapes);
             ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(

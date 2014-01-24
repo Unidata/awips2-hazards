@@ -9,13 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-
 import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -55,7 +54,7 @@ final public class Polygon extends Shape {
             String include, String fillColor, int borderThickness,
             String borderStyle, String borderColor, List<double[]> points) {
         super(label, isVisible, isSelected, include);
-        setShapeType(HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+        setGeometryType(GeometryType.POLYGON);
         this.fillColor = fillColor;
         this.borderThickness = borderThickness;
         this.borderStyle = borderStyle;
@@ -67,7 +66,7 @@ final public class Polygon extends Shape {
             String include, String fillColor, int borderThickness,
             String borderStyle, String borderColor, Coordinate[] points) {
         super(label, isVisible, isSelected, include);
-        setShapeType(HAZARD_EVENT_SHAPE_TYPE_POLYGON);
+        setGeometryType(GeometryType.POLYGON);
         this.fillColor = fillColor;
         this.borderThickness = borderThickness;
         this.borderStyle = borderStyle;

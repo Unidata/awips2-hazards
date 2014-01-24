@@ -57,6 +57,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardComponent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
@@ -520,26 +521,26 @@ public final class HazardServicesMessageHandler implements
         sessionManager.handleRecommenderResult(eventList);
 
         /*
-         * Make sure the updated hazard type is a part of the
-         * visible types in the current setting. If not, add it.
+         * Make sure the updated hazard type is a part of the visible types in
+         * the current setting. If not, add it.
          */
-        Set<String> visibleTypes = 
-               sessionConfigurationManager.getSettings().getVisibleTypes();
+        Set<String> visibleTypes = sessionConfigurationManager.getSettings()
+                .getVisibleTypes();
         int startSize = visibleTypes.size();
-        for (IEvent ievent: eventList) {
-            IHazardEvent event = (IHazardEvent)ievent;
+        for (IEvent ievent : eventList) {
+            IHazardEvent event = (IHazardEvent) ievent;
             visibleTypes.add(HazardEventUtilities.getHazardType(event));
         }
 
-        if ( startSize == visibleTypes.size() ) {
+        if (startSize == visibleTypes.size()) {
             notifyModelEventsChanged();
         } else {
-            appBuilder.notifyModelChanged(
-               EnumSet.of(HazardConstants.Element.EVENTS,
-                          HazardConstants.Element.CURRENT_SETTINGS));
+            appBuilder.notifyModelChanged(EnumSet.of(
+                    HazardConstants.Element.EVENTS,
+                    HazardConstants.Element.CURRENT_SETTINGS));
         }
 
-     }
+    }
 
     public void handleProductGeneratorResult(String toolID,
             final List<IGeneratedProduct> productList) {
@@ -1456,17 +1457,17 @@ public final class HazardServicesMessageHandler implements
                             SpatialDisplayAction.ActionIdentifier.DRAW_LINE)
                     || spatialDisplayAction.getActionIdentifier().equals(
                             SpatialDisplayAction.ActionIdentifier.DRAW_POINT)) {
-                String shapeType = (spatialDisplayAction
+                GeometryType geometryType = (spatialDisplayAction
                         .getActionIdentifier()
-                        .equals(SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON) ? HAZARD_EVENT_SHAPE_TYPE_POLYGON
+                        .equals(SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON) ? GeometryType.POLYGON
                         : (spatialDisplayAction
                                 .getActionIdentifier()
-                                .equals(SpatialDisplayAction.ActionIdentifier.DRAW_LINE) ? HAZARD_EVENT_SHAPE_TYPE_LINE
-                                : HAZARD_EVENT_SHAPE_TYPE_POINT));
+                                .equals(SpatialDisplayAction.ActionIdentifier.DRAW_LINE) ? GeometryType.LINE
+                                : GeometryType.POINT));
 
                 // Activate the hazard drawing mouse handler.
                 requestMouseHandler(HazardServicesMouseHandlers.NODE_DRAWING,
-                        shapeType);
+                        geometryType.getValue());
             } else if (spatialDisplayAction
                     .getActionIdentifier()
                     .equals(SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON)) {

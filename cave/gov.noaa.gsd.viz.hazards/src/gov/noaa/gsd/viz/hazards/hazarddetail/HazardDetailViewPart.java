@@ -84,6 +84,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -1791,7 +1792,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             if (shape.get(HAZARD_EVENT_SHAPE_TYPE).equals(
                                     HAZARD_EVENT_SHAPE_TYPE_CIRCLE)
                                     || shape.get(HAZARD_EVENT_SHAPE_TYPE)
-                                            .equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                                            .equals(GeometryType.POINT
+                                                    .getValue())) {
                                 listAsPoint = true;
                             }
                         }

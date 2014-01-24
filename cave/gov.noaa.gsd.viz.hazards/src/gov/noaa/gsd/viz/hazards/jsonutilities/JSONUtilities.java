@@ -25,6 +25,7 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -82,9 +83,11 @@ public class JSONUtilities {
                 .put(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventID);
         modifiedAreaObject
                 .put(HazardConstants.HAZARD_EVENT_SHAPE_TYPE,
-                        (modifiedShape instanceof HazardServicesLine ? HazardConstants.HAZARD_EVENT_SHAPE_TYPE_LINE
-                                : (modifiedShape instanceof HazardServicesPolygon ? HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POLYGON
-                                        : HazardConstants.HAZARD_EVENT_SHAPE_TYPE_POINT)));
+                        (modifiedShape instanceof HazardServicesLine ? GeometryType.LINE
+                                .getValue()
+                                : (modifiedShape instanceof HazardServicesPolygon ? GeometryType.POLYGON
+                                        .getValue() : GeometryType.POINT
+                                        .getValue())));
 
         for (IHazardServicesShape shape : shapesForEvent) {
 
@@ -166,7 +169,7 @@ public class JSONUtilities {
 
     public static Geometry geometryFromJSONShapes(List<Dict> shapes) {
         GeometryFactory geometryFactory = new GeometryFactory();
-        com.vividsolutions.jts.geom.Polygon[] polygons = new com.vividsolutions.jts.geom.Polygon[shapes
+        com.vividsolutions.jts.geom.Geometry[] geometries = new com.vividsolutions.jts.geom.Geometry[shapes
                 .size()];
         for (int i = 0; i < shapes.size(); i++) {
 
@@ -177,12 +180,31 @@ public class JSONUtilities {
             for (List<Double> point : points) {
                 coordinates.add(new Coordinate(point.get(0), point.get(1)));
             }
-            polygons[i] = geometryFactory
-                    .createPolygon(geometryFactory.createLinearRing(coordinates
-                            .toArray(new Coordinate[coordinates.size()])), null);
+
+            GeometryType geometryType = GeometryType.valueOf((String) shape
+                    .getDynamicallyTypedValue(HAZARD_EVENT_GEOMETRY_TYPE));
+
+            Coordinate[] coordinateArray = coordinates
+                    .toArray(new Coordinate[coordinates.size()]);
+
+            switch (geometryType) {
+            case POINT:
+                geometries[i] = geometryFactory.createPoint(coordinateArray[0]);
+                break;
+            case LINE:
+                geometries[i] = geometryFactory
+                        .createLineString(coordinateArray);
+                break;
+            case POLYGON:
+                geometries[i] = geometryFactory
+                        .createPolygon(geometryFactory
+                                .createLinearRing(coordinateArray), null);
+                break;
+            }
+
         }
 
-        return geometryFactory.createMultiPolygon(polygons);
+        return geometryFactory.createGeometryCollection(geometries);
 
     }
 

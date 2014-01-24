@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-
 import java.util.List;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -45,7 +44,7 @@ final public class Line extends Shape {
     public Line(String label, String isVisible, String isSelected,
             String include, String color, int thickness, Coordinate[] points) {
         super(label, isVisible, isSelected, include);
-        setShapeType(HAZARD_EVENT_SHAPE_TYPE_LINE);
+        setGeometryType(GeometryType.LINE);
         this.color = color;
         this.thickness = thickness;
 

@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
+
 /**
  * 
  * Description: Defines an abstract shape which can be extended to define
@@ -52,7 +54,7 @@ abstract public class Shape {
     /**
      * The type of shape.
      */
-    private String shapeType;
+    private GeometryType geometryType;
 
     /**
      * Initializes the shape member variables.
@@ -69,7 +71,7 @@ abstract public class Shape {
     public Shape(String label, String isVisible, String isSelected,
             String include) {
         this.label = label;
-        this.shapeType = getShapeType();
+        this.geometryType = getGeometryType();
         this.isVisible = isVisible;
         this.isSelected = isSelected;
         this.include = include;
@@ -128,19 +130,19 @@ abstract public class Shape {
     }
 
     /**
-     * @param shapeType
+     * @param geometryType
      *            The type to assign to this shape
      * @return
      */
-    public void setShapeType(String shapeType) {
-        this.shapeType = shapeType;
+    public void setGeometryType(GeometryType geometryType) {
+        this.geometryType = geometryType;
     }
 
     /**
      * @return The shape's type
      */
-    public String getShapeType() {
-        return shapeType;
+    public GeometryType getGeometryType() {
+        return geometryType;
     }
 
     /**

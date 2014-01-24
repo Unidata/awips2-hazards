@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
@@ -29,6 +28,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -106,10 +106,10 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         if (drawingAttributesForShapeTypes.get(shapeType) == null) {
             try {
                 HazardServicesDrawingAttributes drawingAttributes = (shapeType
-                        .equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? new PolygonDrawingAttributes(
+                        .equals(GeometryType.POLYGON.getValue()) ? new PolygonDrawingAttributes(
                         PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                                 .getShell(), false, sessionManager)
-                        : (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_LINE) ? new LineDrawingAttributes(
+                        : (shapeType.equals(GeometryType.LINE.getValue()) ? new LineDrawingAttributes(
                                 PlatformUI.getWorkbench()
                                         .getActiveWorkbenchWindow().getShell(),
                                 sessionManager) : new PointDrawingAttributes(
@@ -205,7 +205,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             }
 
             if (mouseButton == 1) {
-                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                if (shapeType.equals(GeometryType.POINT.getValue())) {
                     createPointShape(loc);
                 } else {
                     addPointIfNotIdenticalToPreviousPoint(loc);
@@ -213,7 +213,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             } else if (mouseButton == 3) {
 
-                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POINT)) {
+                if (shapeType.equals(GeometryType.POINT.getValue())) {
                     createPointShape(loc);
                 } else {
 
@@ -224,7 +224,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                     if (points.size() != 0) {
                         getDrawingLayer().removeGhostLine();
                         if (points.size() < (shapeType
-                                .equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON) ? 3
+                                .equals(GeometryType.POLYGON.getValue()) ? 3
                                 : 2)) {
                             points.clear();
                             getDrawingLayer().issueRefresh();
@@ -281,7 +281,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             // list of points that is the same as its first point.
             try {
                 IHazardEvent hazardEvent;
-                if (shapeType.equals(HAZARD_EVENT_SHAPE_TYPE_POLYGON)) {
+                if (shapeType.equals(GeometryType.POLYGON.getValue())) {
                     points.add(points.get(0));
                     hazardEvent = hazardEventBuilder
                             .buildPolygonHazardEvent(pointsAsArray());

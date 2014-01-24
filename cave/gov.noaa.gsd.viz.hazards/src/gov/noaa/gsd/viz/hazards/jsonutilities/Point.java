@@ -46,7 +46,7 @@ final public class Point extends Shape {
     public Point(String label, String isVisible, String isSelected,
             String include, String color, Coordinate point, String pointID) {
         super(label, isVisible, isSelected, include);
-        setShapeType(HAZARD_EVENT_SHAPE_TYPE_POINT);
+        setGeometryType(GeometryType.POINT);
         this.color = color;
         this.points = Lists.newArrayList(new double[] { point.x, point.y });
         this.pointID = pointID;

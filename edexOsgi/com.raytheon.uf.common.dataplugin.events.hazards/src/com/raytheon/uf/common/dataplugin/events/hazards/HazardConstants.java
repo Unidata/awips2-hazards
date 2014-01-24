@@ -167,6 +167,23 @@ public final class HazardConstants {
         EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
     }
 
+    /**
+     * Enumeration of possible geometry types.
+     */
+    public static enum GeometryType {
+        POINT("point"), LINE("line"), POLYGON("polygon");
+
+        private final String value;
+
+        private GeometryType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
     public static Significance significanceFromAbbreviation(String value) {
         for (Significance clazz : Significance.values()) {
             if (clazz.getAbbreviation().equals(value)) {
@@ -328,29 +345,19 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_SHAPES = "shapes";
 
     /**
-     * Shape type key hazard
+     * Shape type key in hazard
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE = "shapeType";
+
+    /**
+     * Geometry type key in hazard
+     */
+    public static final String HAZARD_EVENT_GEOMETRY_TYPE = "geometryType";
 
     /**
      * Circle shape type
      */
     public static final String HAZARD_EVENT_SHAPE_TYPE_CIRCLE = "circle";
-
-    /**
-     * Point shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_POINT = "point";
-
-    /**
-     * Line shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_LINE = "line";
-
-    /**
-     * Polygon shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_POLYGON = "polygon";
 
     /**
      * Dot shape type
