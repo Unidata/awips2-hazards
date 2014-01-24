@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -453,7 +454,7 @@ public class SelectByAreaDbMapResource extends
             LoadProperties loadProperties) {
         super(data, loadProperties);
         groupShapes = new ArrayList<IShadedShape>();
-        geometryMap = new ArrayList<Geometry>();
+        geometryMap = new CopyOnWriteArrayList<Geometry>();
         selectedGeometries = new ArrayList<Geometry>();
         queryJob = new MapQueryJob();
     }
@@ -469,15 +470,6 @@ public class SelectByAreaDbMapResource extends
         }
 
         super.disposeInternal();
-
-        // Let the IHIS layer know that this layer is gone.
-        // HazardServicesAppBuilder ihisLayer =
-        // HazardServicesAppBuilder.getCurrentInstance();
-        //
-        // if ( ihisLayer != null )
-        // {
-        // ihisLayer.dbMapResourceUnloaded();
-        // }
 
     }
 
