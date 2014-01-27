@@ -821,6 +821,7 @@ public class SpatialView implements
     @Override
     public void drawEvents(boolean toggleAutoHazardChecking,
             boolean areHatchedAreasDisplayed) {
+        enableAddGeometryToSelected();
         spatialDisplay.drawEventAreas(true, toggleAutoHazardChecking,
                 areHatchedAreasDisplayed);
     }
@@ -1475,6 +1476,24 @@ public class SpatialView implements
          */
         if (this.redoCommandAction != null) {
             this.redoCommandAction.setEnabled(redoFlag);
+        }
+    }
+
+    /**
+     * Enables or disables the "add geometry to selected" button based on the
+     * number of selected hazard events. This button is enabled only if there is
+     * one hazard event selected.
+     * 
+     * @param
+     * @return
+     */
+    private void enableAddGeometryToSelected() {
+
+        int numSelected = presenter.getSessionManager().getEventManager()
+                .getSelectedEvents().size();
+
+        if (addGeometryToSelectedAction != null) {
+            addGeometryToSelectedAction.setEnabled(numSelected == 1);
         }
     }
 }
