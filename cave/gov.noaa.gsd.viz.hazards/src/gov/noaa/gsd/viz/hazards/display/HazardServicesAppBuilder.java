@@ -118,7 +118,14 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             for testing.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * 
+ * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Jan 27, 2014 2155       Chris.Golden        Fixed bug that caused occasional exceptions
+ *                                             when loading a bundle with Hazard Services in
+ *                                             it when H.S. was already running; the time
+ *                                             change that would occur would cause the old
+ *                                             H.S. to try to react when it was already
+ *                                             closing, leading to null pointer exceptions.
  * 
  * </pre>
  * 
@@ -743,6 +750,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            Set of model elements that have changed.
      */
     public void notifyModelChanged(EnumSet<HazardConstants.Element> changed) {
+        if (disposing) {
+            return;
+        }
         for (HazardServicesPresenter<?> presenter : presenters) {
             presenter.modelChanged(changed);
         }

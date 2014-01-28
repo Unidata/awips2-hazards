@@ -169,6 +169,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           the area just outside the timeline, but
  *                                           within its enclosing column header, was
  *                                           right-clicked.
+ * Jan 27, 2014   2155     Chris.Golden      Fixed bug that intermittently occurred
+ *                                           because an asynchronous execution of
+ *                                           code that expected non-disposed widgets
+ *                                           encountered widgets that had been dis-
+ *                                           posed between the scheduling and run-
+ *                                           ning of the aysnchronous code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -3402,6 +3408,9 @@ class TemporalDisplay {
      *            some reason, it will turn it back on before returning.
      */
     private void ensureCheckboxesAreInLeftmostColumn(boolean redrawEnabled) {
+        if (table.isDisposed()) {
+            return;
+        }
 
         // If the first column is not the first actual column,
         // delete it and recreate it in order to ensure that
@@ -3747,6 +3756,9 @@ class TemporalDisplay {
      * having occurred.
      */
     private void visibleColumnCountChanged() {
+        if (table.isDisposed()) {
+            return;
+        }
 
         // Turn on table redraw, and make the time ruler visible and
         // fit it to its column.
@@ -3762,6 +3774,9 @@ class TemporalDisplay {
      * time scale column being resized.
      */
     private void resizeColumnsProportionally() {
+        if (table.isDisposed()) {
+            return;
+        }
 
         // Define a class used to pair column indices and the widths
         // of said columns, and which is sortable by the widths (with

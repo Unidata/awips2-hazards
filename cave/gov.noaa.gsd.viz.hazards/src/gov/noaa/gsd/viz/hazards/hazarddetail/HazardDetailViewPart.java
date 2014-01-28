@@ -148,6 +148,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           the side effect of fixing the visual glitch
  *                                           whereby the bottom border of the time range
  *                                           group was not displayed at certain times.
+ * Jan 27, 2014   2155     Chris.Golden      Fixed bug that intermittently occurred be-
+ *                                           cause an asynchronous execution of code that
+ *                                           expected non-disposed widgets encountered
+ *                                           widgets that had been disposed between the
+ *                                           scheduling and running of the aysnchronous
+ *                                           code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2675,6 +2681,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Panel to be held.
      */
     private void configureScrolledCompositeToHoldPanel(Composite panel) {
+        if (metadataContentPanel.isDisposed()) {
+            return;
+        }
         scrolledCompositeContentsChanging = true;
         metadataContentLayout.topControl = panel;
         metadataContentPanel.layout();
