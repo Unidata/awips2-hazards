@@ -28,6 +28,7 @@
                                       set from product generators
  August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
                                       This is not used.
+ January 29 2013  2882   bkowal       Eliminated Python Script Adapter
 """
 
 
@@ -44,7 +45,6 @@ import collections
 try:
     import HazardEventPythonAdapter as Adapter
     from HazardEventPythonAdapter import HazardEventPythonAdapter
-    from ScriptAdapter import ScriptAdapter
     import JUtil 
     from jep import *  
     import logging, UFStatusHandler
@@ -67,8 +67,6 @@ class Bridge:
         # unit tests, we have no access to JAVA stuff which is embedded in HazardEventPythonAdapter
         try:
             self.hazardEventPythonAdapter = HazardEventPythonAdapter()
-            self.recommenderScriptAdapter = ScriptAdapter(RECOMMENDER_TOOL)
-            self.generatorScriptAdapter = ScriptAdapter(PRODUCT_GENERATOR_TOOL)
         except:
             tbData = traceback.format_exc()
             self.logger.error(tbData)
@@ -90,23 +88,6 @@ class Bridge:
                                     Implements IHazardEventManager interface. 
         """
         self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)
-    
-    def runTool(self, toolID, toolType, runData=None):
-        """
-        Runs a tool.
-        @param toolID: The name of a tool to run.
-        @param runData: A JSON string representing any input
-                        data this tool might need to run.
-        @return: The result of running this tool.
-        """
-        if toolType == PRODUCT_GENERATOR_TOOL:
-            pythonJobListener = self.generatorScriptAdapter.buildGeneratorJobListener(self.eventBus, toolID)
-            self.generatorScriptAdapter.executeProductGeneratorScript(toolID, pythonJobListener, runData)
-        elif toolType == RECOMMENDER_TOOL:
-            pythonJobListener = self.recommenderScriptAdapter.buildRecommenderJobListener(self.eventBus, toolID)
-            self.recommenderScriptAdapter.executeRecommenderScript(toolID, pythonJobListener, runData)
-            
-        return None 
                 
     def handleRecommenderResult(self, toolID, eventList, enclosed=True):
         Adapter.setEnclosed(enclosed)
@@ -120,50 +101,7 @@ class Bridge:
             eventDicts.append(JUtil.javaObjToPyVal(iterator.next(), Adapter.eventConverter))
         generatedProductList = eventSet.getAttribute('generatedProducts')  
         generatedProducts = JUtil.javaObjToPyVal(generatedProductList, Adapter.generatedProductConverter)
-        return generatedProducts, eventDicts
-            
-    def getMetaData(self, toolID, toolType, runData=None):
-        """
-        @param toolID: The id of the tool
-        @param runData: A JSON string representing any input
-                        data this tool might need. 
-        @return: A JSON string containing information describing this
-                 tool and its services.
-        """
-        if toolType == RECOMMENDER_TOOL:
-            result = self.recommenderScriptAdapter.getScriptMetaData(toolID, runData)
-        else:
-            result = self.generatorScriptAdapter.getScriptMetaData(toolID, runData)
-        return result   
-
-    def getDialogInfo(self, toolID, toolType, runData=None):
-        """
-        Determine if this tool requires input from the user, and retrieve
-        instructions on how to build the user interface.
-        @param toolID: The id of the tool
-        @param toolType: Type of tool, e.g. recommender or product generator 
-        @param runData: A JSON string representing any input
-                        information this tool might need.
-        @return: A JSON string which can be used to build a user-interface.
-        """
-        if toolType == PRODUCT_GENERATOR_TOOL:
-            result = self.generatorScriptAdapter.getScriptDialogInfo(toolID, runData)
-        else:
-            result = self.recommenderScriptAdapter.getScriptDialogInfo(toolID, runData)
-        return result   
-    
-    def getSpatialInfo(self, toolID, toolType, runData=None):
-        """
-        Determine if this tool requires input from the user from the
-        CAVE Spatial Display. 
-        @param toolID: The id of the tool
-        @param runData: A JSON string representing any input
-                        information this might need. 
-        @return: JSON instructions for type type of spatial input this
-                 tool requires.
-        """
-        result = self.recommenderScriptAdapter.getScriptSpatialInfo(toolID, runData)
-        return result
+        return generatedProducts, eventDicts    
     
     def getTools(self, criteria):
         """
