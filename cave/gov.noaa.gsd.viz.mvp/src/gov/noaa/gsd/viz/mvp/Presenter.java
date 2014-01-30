@@ -53,7 +53,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * Event bus used to signal changes.
      */
-    private final EventBus eventBus;
+    protected final EventBus eventBus;
 
     // Public Constructors
 

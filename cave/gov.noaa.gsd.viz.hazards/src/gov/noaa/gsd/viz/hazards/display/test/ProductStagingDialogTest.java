@@ -15,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 
 import java.util.List;
 
@@ -29,6 +28,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
@@ -54,7 +54,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
     private static final double FIRST_EVENT_CENTER_X = -96.0;
 
     private enum Steps {
-        START, EVENT0, EVENT1
+        START, EVENT0, EVENT1, PREVIEW
     }
 
     private Steps step;
@@ -71,7 +71,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
 
         try {
             switch (step) {
@@ -82,12 +82,13 @@ public class ProductStagingDialogTest extends FunctionalTest {
                 break;
 
             case EVENT0:
+                step = Steps.EVENT1;
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
                 break;
 
             default:
-                testError();
+                break;
 
             }
 
@@ -107,16 +108,13 @@ public class ProductStagingDialogTest extends FunctionalTest {
                         FIRST_EVENT_CENTER_Y + 3 * EVENT_BUILDER_OFFSET);
                 break;
 
-            case EVENT0:
-                step = Steps.EVENT1;
+            case EVENT1:
+                step = Steps.PREVIEW;
                 autoTestUtilities.previewEvent();
                 break;
 
-            case EVENT1:
-                break;
-
             default:
-                testError();
+                break;
 
             }
         } catch (Exception e) {

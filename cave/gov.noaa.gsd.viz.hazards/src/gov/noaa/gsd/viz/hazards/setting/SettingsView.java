@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
@@ -95,6 +94,8 @@ public class SettingsView implements
      * Filters toolbar menu button text.
      */
     private static final String FILTERS_TOOLBAR_BUTTON_TEXT = "Filters";
+
+    private final JSONConverter jsonConverter = new JSONConverter();
 
     /**
      * Logging mechanism.
@@ -287,7 +288,7 @@ public class SettingsView implements
                 }
                 try {
                     megawidgetManager = new MegawidgetManager(menu, fieldsList,
-                            currentSettings) {
+                            settingsAsDict()) {
                         @Override
                         protected void commandInvoked(String identifier,
                                 String extraCallback) {
@@ -306,16 +307,19 @@ public class SettingsView implements
                             // types list. This should be removed if we can get
                             // rid of the visibleTypes and hidHazardCategories
                             // lists in the current setting.
-                            translateHazardCategoriesAndTypesToOldLists(currentSettings);
+                            Dict settingsAsDict = (Dict) getState();
+                            translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
+                            Settings updatedSettings = jsonConverter.fromJson(
+                                    settingsAsDict.toJSONString(),
+                                    Settings.class);
+                            SettingsView.this.currentSettings
+                                    .apply(updatedSettings);
 
                             // Forward the current setting change to the
                             // presenter.
                             try {
-                                presenter
-                                        .fireAction(new CurrentSettingsAction(
-                                                JSONUtilities
-                                                        .settingsFromJSON(currentSettings
-                                                                .toJSONString())));
+                                presenter.fireAction(new CurrentSettingsAction(
+                                        currentSettings));
                             } catch (Exception e) {
                                 statusHandler
                                         .error("SettingsView.FiltersPulldownAction.MegawidgetManager."
@@ -337,7 +341,7 @@ public class SettingsView implements
             // states.
             if (filtersChanged) {
                 try {
-                    megawidgetManager.setState(currentSettings);
+                    megawidgetManager.setState(settingsAsDict());
                 } catch (MegawidgetStateException e) {
                     statusHandler.error(
                             "SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
@@ -378,7 +382,7 @@ public class SettingsView implements
     /**
      * Current settings.
      */
-    private Dict currentSettings = null;
+    private Settings currentSettings;
 
     /**
      * Settings pulldown action.
@@ -564,18 +568,17 @@ public class SettingsView implements
      */
     @Override
     public final void setCurrentSettings(Settings currentSettings) {
-        Dict settingsAsDict = settingsAsDict(currentSettings);
-        this.currentSettings = settingsAsDict;
+        this.currentSettings = currentSettings;
         if (filtersPulldownAction != null) {
             filtersPulldownAction.filtersChanged();
         }
         if (settingDialog != null) {
-            settingDialog.setState(settingsAsDict);
+            settingDialog.setState(settingsAsDict());
         }
     }
 
-    private Dict settingsAsDict(Settings settings) {
-        return Dict.getInstance(new JSONConverter().toJson(settings));
+    private Dict settingsAsDict() {
+        return Dict.getInstance(jsonConverter.toJson(currentSettings));
     }
 
     // Private Methods

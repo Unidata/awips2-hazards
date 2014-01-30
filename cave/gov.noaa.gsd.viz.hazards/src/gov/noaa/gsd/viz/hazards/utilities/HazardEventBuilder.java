@@ -49,11 +49,7 @@ public class HazardEventBuilder {
     public IHazardEvent buildPolygonHazardEvent(Geometry geometry)
             throws InvalidGeometryException {
 
-        if (!geometry.isValid()) {
-            IsValidOp op = new IsValidOp(geometry);
-            throw new InvalidGeometryException("Invalid Geometry: "
-                    + op.getValidationError().getMessage());
-        }
+        checkValidity(geometry);
 
         IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);
@@ -65,15 +61,20 @@ public class HazardEventBuilder {
         Geometry geometry = geometryFactory.createPolygon(
                 geometryFactory.createLinearRing(coordinates), null);
 
+        checkValidity(geometry);
+
+        IHazardEvent event = new BaseHazardEvent();
+        IHazardEvent result = finishBuild(event, geometry);
+        return result;
+    }
+
+    private void checkValidity(Geometry geometry)
+            throws InvalidGeometryException {
         if (!geometry.isValid()) {
             IsValidOp op = new IsValidOp(geometry);
             throw new InvalidGeometryException("Invalid Geometry: "
                     + op.getValidationError().getMessage());
         }
-
-        IHazardEvent event = new BaseHazardEvent();
-        IHazardEvent result = finishBuild(event, geometry);
-        return result;
     }
 
     public IHazardEvent buildPointHazardEvent(Coordinate coordinate) {
@@ -88,11 +89,7 @@ public class HazardEventBuilder {
             throws InvalidGeometryException {
         Geometry geometry = geometryFactory.createLineString(coordinates);
 
-        if (!geometry.isValid()) {
-            IsValidOp op = new IsValidOp(geometry);
-            throw new InvalidGeometryException("Invalid Geometry: "
-                    + op.getValidationError().getMessage());
-        }
+        checkValidity(geometry);
 
         IHazardEvent event = new BaseHazardEvent();
         IHazardEvent result = finishBuild(event, geometry);

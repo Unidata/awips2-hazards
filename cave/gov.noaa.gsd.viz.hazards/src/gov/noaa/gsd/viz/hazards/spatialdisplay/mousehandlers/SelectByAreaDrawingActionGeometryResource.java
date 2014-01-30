@@ -7,8 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
@@ -29,7 +27,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -148,6 +149,9 @@ public class SelectByAreaDrawingActionGeometryResource extends
         private List<Geometry> selectedGeoms = Lists.newArrayList();
 
         private Mode mode = Mode.CREATE;
+
+        private final ISessionManager sessionManager = getSpatialPresenter()
+                .getSessionManager();
 
         /*
          * (non-Javadoc)
@@ -294,14 +298,14 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                         try {
                             IHazardEvent hazardEvent = new HazardEventBuilder(
-                                    getSpatialPresenter().getSessionManager())
+                                    sessionManager)
                                     .buildPolygonHazardEvent(mergedPolygons);
                             eventID = hazardEvent.getEventID();
-                            NewHazardAction newHazardEventAction = new NewHazardAction(
+                            SessionEventAdded addAction = new SessionEventAdded(
+                                    sessionManager.getEventManager(),
                                     hazardEvent);
 
-                            getSpatialPresenter().fireAction(
-                                    newHazardEventAction);
+                            getSpatialPresenter().fireAction(addAction);
 
                             if (hazardGeometryList.containsKey(eventID)) {
                                 hazardGeometryList.get(eventID).addAll(
@@ -346,11 +350,14 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     .warn("Error creating Select-by-Area polygon: "
                                             + e.getMessage());
                         }
-
                     } else {
-                        ModifyHazardGeometryAction modifyAction = new ModifyHazardGeometryAction(
-                                eventID, mergedPolygons);
+
                         hazardGeometryList.put(eventID, copyGeometriesList);
+                        IHazardEvent modifiedEvent = sessionManager
+                                .getEventManager().getEventById(eventID);
+                        modifiedEvent.setGeometry(mergedPolygons);
+                        SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
+                                sessionManager.getEventManager(), modifiedEvent);
                         getSpatialPresenter().fireAction(modifyAction);
 
                     }

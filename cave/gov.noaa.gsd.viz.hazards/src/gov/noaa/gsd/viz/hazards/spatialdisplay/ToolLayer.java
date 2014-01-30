@@ -10,7 +10,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -88,6 +87,7 @@ import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
@@ -100,6 +100,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygonal;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * This is the AbstractVizResource used for the display of IHIS hazards. This
@@ -1326,9 +1327,23 @@ public class ToolLayer extends
         if (modifyEvent.getDynamicallyTypedValue(SYMBOL_NEW_LAT_LON) == null) {
             List<Dict> shapes = modifyEvent.getDynamicallyTypedValue(SHAPES);
             Geometry geometry = JSONUtilities.geometryFromJSONShapes(shapes);
-            ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(
-                    eventID, geometry);
-            eventBus.post(action);
+            if (geometry.isValid()) {
+                ISessionEventManager sessionEventManager = appBuilder
+                        .getSessionManager().getEventManager();
+
+                IHazardEvent hazardEvent = sessionEventManager
+                        .getEventById(eventID);
+                hazardEvent.setGeometry(geometry);
+                SessionEventGeometryModified action = new SessionEventGeometryModified(
+                        sessionEventManager, hazardEvent);
+                eventBus.post(action);
+            } else {
+                IsValidOp op = new IsValidOp(geometry);
+                statusHandler.warn("Invalid Geometry: "
+                        + op.getValidationError().getMessage()
+                        + ": Geometry modification undone");
+
+            }
         } else {
             Dict asDict = Dict.getInstance(modifiedEventJSON);
             ModifyStormTrackAction action = new ModifyStormTrackAction();

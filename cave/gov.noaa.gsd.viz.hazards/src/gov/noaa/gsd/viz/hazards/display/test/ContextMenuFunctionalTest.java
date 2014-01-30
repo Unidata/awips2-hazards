@@ -11,7 +11,6 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -23,6 +22,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
  * Description: {@link FunctionalTest} of the spatial display context menu.
@@ -56,7 +56,9 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
      * Steps defining this test.
      */
     private enum Steps {
-        CREATE_NEW_DRAW_BY_AREA_HAZARD, CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE, CREATE_NEW_NODE_HAZARD_AREA, CHECK_CONTEXT_MENU_FOR_NO_ADD_REMOVE_SHAPE
+        START, CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE,
+
+        CREATE_NEW_NODE_HAZARD_AREA
     }
 
     /**
@@ -73,7 +75,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
         /*
          * Create a new hazard area.
          */
-        this.step = Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD;
+        this.step = Steps.START;
         autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
                 FIRST_EVENT_CENTER_Y);
     }
@@ -110,29 +112,43 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
-        if (this.step == Steps.CREATE_NEW_DRAW_BY_AREA_HAZARD) {
-            this.step = Steps.CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE;
+    public void handleNewHazard(SessionEventAdded action) {
+        try {
+            switch (step) {
 
-            /*
-             * Update the event to indicate that it was created using the
-             * draw-by-area tool.
-             */
-            Dict newEventAttributes = new Dict();
-            ArrayList<String> contextMenuList = Lists.newArrayList();
-            contextMenuList.add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
-            newEventAttributes.put(
-                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                    contextMenuList);
-            autoTestUtilities.updateSelectedEventAttributes(newEventAttributes);
-        } else if (this.step == Steps.CREATE_NEW_NODE_HAZARD_AREA) {
-            this.step = Steps.CHECK_CONTEXT_MENU_FOR_NO_ADD_REMOVE_SHAPE;
-            List<String> contextMenuEntries = this.toolLayer
-                    .getContextMenuEntries();
+            case START:
 
-            assertTrue(!contextMenuEntries
-                    .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
-            this.testSuccess();
+                this.step = Steps.CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE;
+
+                /*
+                 * Update the event to indicate that it was created using the
+                 * draw-by-area tool.
+                 */
+                Dict newEventAttributes = new Dict();
+                ArrayList<String> contextMenuList = Lists.newArrayList();
+                contextMenuList
+                        .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+                newEventAttributes.put(
+                        HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                        contextMenuList);
+                autoTestUtilities
+                        .updateSelectedEventAttributes(newEventAttributes);
+                break;
+
+            case CREATE_NEW_NODE_HAZARD_AREA:
+                List<String> contextMenuEntries = this.toolLayer
+                        .getContextMenuEntries();
+
+                assertTrue(!contextMenuEntries
+                        .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+                this.testSuccess();
+                break;
+
+            default:
+                testError();
+            }
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 

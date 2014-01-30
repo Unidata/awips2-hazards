@@ -13,7 +13,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -62,7 +61,10 @@ public class AutoTestUtilities {
 
     static final String OAX = "OAX";
 
-    static final String AREAL_FLOOD_WATCH_PHEN_SIG = "FA.A";
+    static final String AREAL_FLOOD_WATCH_PHEN = "FA";
+
+    static final String AREAL_FLOOD_WATCH_PHEN_SIG = AREAL_FLOOD_WATCH_PHEN
+            + ".A";
 
     static final String FLASH_FLOOD_WATCH_PHEN_SIG = "FF.A";
 
@@ -176,17 +178,11 @@ public class AutoTestUtilities {
 
     void createEvent(Double centerX, Double centerY) {
         Coordinate[] coordinates = buildEventArea(centerX, centerY);
-        IHazardEvent hazardEvent = null;
-
         try {
-            hazardEvent = hazardEventBuilder
-                    .buildPolygonHazardEvent(coordinates);
+            hazardEventBuilder.buildPolygonHazardEvent(coordinates);
         } catch (InvalidGeometryException e) {
             throw new TopologyException(e.getMessage());
         }
-
-        NewHazardAction action = new NewHazardAction(hazardEvent);
-        eventBus.post(action);
     }
 
     void assignSelectedEventType(String eventType) {

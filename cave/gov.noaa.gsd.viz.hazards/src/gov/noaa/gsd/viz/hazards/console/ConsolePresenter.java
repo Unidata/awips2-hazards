@@ -152,7 +152,7 @@ public class ConsolePresenter extends
      */
     @Override
     public final void initialize(IConsoleView<?, ?> view) {
-        getModel().registerForNotification(this);
+        eventBus.register(this);
 
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.

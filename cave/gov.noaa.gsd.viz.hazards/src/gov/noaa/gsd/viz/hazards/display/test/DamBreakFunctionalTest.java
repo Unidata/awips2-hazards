@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -57,13 +58,21 @@ class DamBreakFunctionalTest extends FunctionalTest {
     protected void run() {
         try {
             super.run();
-            this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
-            eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
-                    DAM_BREAK_FLOOD_RECOMMENDER));
+
         } catch (Exception e) {
             handleException(e);
         }
 
+    }
+
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        /*
+         * Create a new hazard area.
+         */
+        this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
+        eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
+                DAM_BREAK_FLOOD_RECOMMENDER));
     }
 
     @Subscribe

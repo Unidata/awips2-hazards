@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
+import gov.noaa.gsd.viz.hazards.display.test.FunctionalTest.StopTesting;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -109,20 +110,38 @@ public class AutomatedTests {
         else if (testCompleted.getTestClass().equals(
                 FilteringFunctionalTest.class)) {
             new ContextMenuFunctionalTest(appBuilder).run();
-        }
 
-        else if (testCompleted.getTestClass().equals(
+        } else if (testCompleted.getTestClass().equals(
                 ContextMenuFunctionalTest.class)) {
             new HazardConflictFunctionalTest(appBuilder).run();
+
         } else if (testCompleted.getTestClass().equals(
                 HazardConflictFunctionalTest.class)) {
             new DamBreakFunctionalTest(appBuilder).run();
+
+        } else if (testCompleted.getTestClass().equals(StopTesting.class)) {
+            statusHandler.debug("Stopping tests");
+            resetEvents();
+
         } else {
             statusHandler.debug("All tests completed");
-            appBuilder.getEventBus().post(
-                    new ConsoleAction(ConsoleAction.ActionType.RESET,
-                            ConsoleAction.RESET_EVENTS));
+
+            /**
+             * TODO If the HID is detached, in causes a an error in
+             * {@link HazardDetailViewPart#configureScrolledCompositeToHoldPanel}
+             * when it calls metadataContentPanel.layout(); Chris is working the
+             * problem.
+             */
+            resetEvents();
+
         }
+
+    }
+
+    private void resetEvents() {
+        appBuilder.getEventBus().post(
+                new ConsoleAction(ConsoleAction.ActionType.RESET,
+                        ConsoleAction.RESET_EVENTS));
     }
 
     @Override

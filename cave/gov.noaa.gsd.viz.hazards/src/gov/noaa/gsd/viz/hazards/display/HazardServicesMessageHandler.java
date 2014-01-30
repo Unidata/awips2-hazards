@@ -7,14 +7,22 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -79,15 +87,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Description: Handles messages delegated from the message listener object.
@@ -237,14 +246,13 @@ public final class HazardServicesMessageHandler implements
      *            A reference to the Hazard Services app builder
      * @param currentTime
      *            The current time, based on the CAVE current time.
-     * @param eventBus
      * @param state
      *            Saved session state to initialize this session from the
      *            previous session.
      * 
      */
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            Date currentTime, EventBus eventBus) {
+            Date currentTime) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
 
@@ -254,12 +262,8 @@ public final class HazardServicesMessageHandler implements
         this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
-        this.eventBus = eventBus;
+        this.eventBus = appBuilder.getEventBus();
 
-        /*
-         * TODO Need to consolidate event buses
-         */
-        sessionManager.registerForNotification(this);
         this.eventBus.register(this);
 
         sessionConfigurationManager.setSiteID(LocalizationManager.getInstance()
@@ -542,11 +546,11 @@ public final class HazardServicesMessageHandler implements
 
     }
 
-    public void handleProductGeneratorResult(String toolID,
+    public void handleProductGeneratorResult(String productGeneratorName,
             final List<IGeneratedProduct> productList) {
 
         String resultJSON = productGeneratorHandler
-                .handleProductGeneratorResult(toolID, productList);
+                .handleProductGeneratorResult(productGeneratorName, productList);
 
         if (resultJSON != null) {
 
@@ -701,25 +705,13 @@ public final class HazardServicesMessageHandler implements
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
         notifyModelEventsChanged();
     }
 
     @Subscribe
     public void handleHazardGeometryModification(
-            ModifyHazardGeometryAction action) {
-        IHazardEvent event = sessionEventManager.getEventById(action
-                .getEventID());
-        Geometry geometry = action.getGeometry();
-
-        if (geometry.isValid()) {
-            event.setGeometry(geometry);
-        } else {
-            IsValidOp op = new IsValidOp(geometry);
-            statusHandler.warn("Invalid Geometry: "
-                    + op.getValidationError().getMessage()
-                    + ": Geometry modification undone");
-        }
+            SessionEventGeometryModified action) {
 
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
@@ -1785,12 +1777,6 @@ public final class HazardServicesMessageHandler implements
             handleRecommenderResults(eventList);
             break;
 
-        case PRODUCTS_GENERATED:
-            String toolID = action.getProductGeneratorName();
-            List<IGeneratedProduct> productList = action.getProductList();
-            handleProductGeneratorResult(toolID, productList);
-            break;
-
         default:
             statusHandler
                     .debug("HazardServicesMessageListener: Unrecognized tool action :"
@@ -1798,6 +1784,14 @@ public final class HazardServicesMessageHandler implements
             break;
         }
 
+    }
+
+    @Subscribe
+    public void handleProductGeneratorResult(ProductGenerated generated) {
+        String productGeneratorName = generated.getProductInformation()
+                .getProductGeneratorName();
+        List<IGeneratedProduct> products = generated.getProducts();
+        handleProductGeneratorResult(productGeneratorName, products);
     }
 
     @Subscribe

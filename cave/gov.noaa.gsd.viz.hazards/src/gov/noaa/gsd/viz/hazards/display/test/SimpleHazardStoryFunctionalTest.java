@@ -13,9 +13,7 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
@@ -32,6 +30,7 @@ import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -92,56 +91,13 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
-        this.step = Steps.CREATE_NEW_HAZARD_AREA;
-        Coordinate[] coordinates = autoTestUtilities
-                .buildEventArea(-96.0, 41.0);
         try {
-            IHazardEvent hazardEvent = new HazardEventBuilder(
-                    appBuilder.getSessionManager())
+            this.step = Steps.CREATE_NEW_HAZARD_AREA;
+            Coordinate[] coordinates = autoTestUtilities.buildEventArea(-96.0,
+                    41.0);
+
+            new HazardEventBuilder(appBuilder.getSessionManager())
                     .buildPolygonHazardEvent(coordinates);
-            NewHazardAction action = new NewHazardAction(hazardEvent);
-            eventBus.post(action);
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    /**
-     * Listens for tool actions occurring within Hazard Services. Calls the
-     * appropriate tests based on the current test step.
-     * 
-     * @param action
-     *            Contains the tool action sent over the Event Bus by Hazard
-     *            Services
-     * @return
-     */
-    @Subscribe
-    public void toolActionOccurred(final ToolAction action) {
-
-        try {
-            switch (action.getActionType()) {
-            case PRODUCTS_GENERATED:
-                if (step.equals(Steps.ISSUE_AREAL_FLOOD_WATCH)) {
-                    checkArealFloodWatchIssue();
-                } else if (step.equals(Steps.ISSUE_AREAL_FLOOD_WARNING)) {
-                    checkArealFloodWarningIssue();
-                } else if (step.equals(Steps.ISSUE_FOLLOW_UP_STATEMENT)) {
-                    checkFollowUpStatementIssue();
-                } else if (step.equals(Steps.ISSUE_CANCELLATION_STATEMENT)) {
-                    checkCancellationStatementIssue();
-                    testSuccess();
-                }
-
-                break;
-            case RUN_TOOL:
-                break;
-            case RUN_TOOL_WITH_PARAMETERS:
-                break;
-            case TOOL_RECOMMENDATIONS:
-                break;
-            default:
-                break;
-            }
         } catch (Exception e) {
             handleException(e);
         }
@@ -155,32 +111,41 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
 
         try {
 
-            this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
+            switch (step) {
 
-            /*
-             * Retrieve the selected event.
-             */
-            Collection<IHazardEvent> selectedEvents = appBuilder
-                    .getSessionManager().getEventManager().getSelectedEvents();
+            case CREATE_NEW_HAZARD_AREA:
+                this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
 
-            assertTrue(selectedEvents.size() == 1);
+                /*
+                 * Retrieve the selected event.
+                 */
+                Collection<IHazardEvent> selectedEvents = appBuilder
+                        .getSessionManager().getEventManager()
+                        .getSelectedEvents();
 
-            IHazardEvent selectedEvent = selectedEvents.iterator().next();
+                assertTrue(selectedEvents.size() == 1);
 
-            assertTrue(selectedEvent.getEventID().length() > 0);
+                IHazardEvent selectedEvent = selectedEvents.iterator().next();
 
-            Dict dict = autoTestUtilities
-                    .buildEventTypeSelection(selectedEvent,
-                            AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+                assertTrue(selectedEvent.getEventID().length() > 0);
 
-            HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                    HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
-            hazardDetailAction.setJSONText(dict.toJSONString());
-            eventBus.post(hazardDetailAction);
+                Dict dict = autoTestUtilities.buildEventTypeSelection(
+                        selectedEvent,
+                        AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+
+                HazardDetailAction hazardDetailAction = new HazardDetailAction(
+                        HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
+                hazardDetailAction.setJSONText(dict.toJSONString());
+                eventBus.post(hazardDetailAction);
+                break;
+
+            default:
+                break;
+            }
 
         } catch (Exception e) {
             handleException(e);
@@ -203,14 +168,14 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
             case UPDATE_EVENT_TYPE:
 
-                if (step == Steps.ASSIGN_AREAL_FLOOD_WATCH) {
-                    /*
-                     * Retrieve the selected event.
-                     */
-                    Collection<IHazardEvent> selectedEvents = appBuilder
-                            .getSessionManager().getEventManager()
-                            .getSelectedEvents();
+                Collection<IHazardEvent> selectedEvents = appBuilder
+                        .getSessionManager().getEventManager()
+                        .getSelectedEvents();
 
+                DictList hidContents = mockHazardDetailView.getContents();
+
+                switch (step) {
+                case ASSIGN_AREAL_FLOOD_WATCH:
                     assertTrue(selectedEvents.size() == 1);
 
                     IHazardEvent selectedEvent = selectedEvents.iterator()
@@ -225,7 +190,6 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                      * Check the information passed to the mocked Hazard
                      * Information Dialog
                      */
-                    DictList hidContents = mockHazardDetailView.getContents();
                     assertTrue(hidContents.size() == 1);
 
                     Dict hidContent = hidContents.getDynamicallyTypedValue(0);
@@ -238,14 +202,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                      */
                     this.step = Steps.PREVIEW_AREAL_FLOOD_WATCH;
                     autoTestUtilities.previewEvent();
-                } else if (step == Steps.UPGRADE_TO_AREAL_FLOOD_WARNING) {
-                    /*
-                     * Retrieve the selected event.
-                     */
-                    Collection<IHazardEvent> selectedEvents = appBuilder
-                            .getSessionManager().getEventManager()
-                            .getSelectedEvents();
+                    break;
 
+                case UPGRADE_TO_AREAL_FLOOD_WARNING:
                     /*
                      * There should be two events selected, the FA.A and the
                      * FA.W
@@ -256,16 +215,21 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                      * Check the information passed to the mocked Hazard
                      * Information Dialog
                      */
-                    DictList hidContents = mockHazardDetailView.getContents();
                     assertTrue(hidContents.size() == 2);
                     step = Steps.PREVIEW_AREAL_FLOOD_WARNING;
                     autoTestUtilities.previewEvent();
+
+                default:
+                    break;
 
                 }
                 break;
 
             case PREVIEW:
                 assertFalse(mockProductStagingView.isToBeIssued());
+                break;
+
+            default:
                 break;
 
             }
@@ -287,11 +251,13 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
     @Subscribe
     public void handleProductGeneratorResult(ProductGenerated generated) {
         try {
+
             if (step.equals(Steps.PREVIEW_AREAL_FLOOD_WATCH)) {
                 checkArealFloodWatchPreview();
                 step = Steps.ISSUE_AREAL_FLOOD_WATCH;
                 autoTestUtilities.issueEvent();
             } else if (step.equals(Steps.ISSUE_AREAL_FLOOD_WATCH)) {
+                checkArealFloodWatchIssue();
                 step = Steps.UPGRADE_TO_AREAL_FLOOD_WARNING;
 
                 /*
@@ -339,6 +305,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 /*
                  * Fire off another preview action.
                  */
+                checkArealFloodWarningIssue();
                 step = Steps.PREVIEW_FOLLOW_UP_STATEMENT;
                 autoTestUtilities.previewEvent();
             } else if (step == Steps.PREVIEW_FOLLOW_UP_STATEMENT) {
@@ -359,6 +326,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 /*
                  * End the selected event.
                  */
+                checkFollowUpStatementIssue();
                 step = Steps.PREVIEW_CANCELLATION_STATEMENT;
                 SpatialDisplayAction spatialAction = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED,
@@ -368,6 +336,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 checkCancellationStatementPreview();
                 step = Steps.ISSUE_CANCELLATION_STATEMENT;
                 autoTestUtilities.issueEvent();
+            } else if (step == Steps.ISSUE_CANCELLATION_STATEMENT) {
+                checkCancellationStatementIssue();
+                testSuccess();
             }
         } catch (Exception e) {
             handleException(e);

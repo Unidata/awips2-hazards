@@ -611,7 +611,7 @@ class TemporalDisplay {
     private Map<String, MegawidgetManager> headerMegawidgetManagersForColumnNames;
 
     /**
-     * A dictionary containing the current dynamic setting.
+     * the current dynamic settings
      */
     private Settings currentSettings;
 
@@ -1307,7 +1307,9 @@ class TemporalDisplay {
         // Use the provided hazard events, clearing the old ones first
         // in case this is a re-initialization.
         clearEvents();
-        setComponentData(hazardEvents, currentSettings, filterMegawidgets);
+        updateHazardEvents(hazardEvents);
+        updateSettings(currentSettings);
+        updateConsole(filterMegawidgets);
 
         // Add the mouse wheel filter, used to handle mouse wheel
         // events properly when they should apply to the table.
@@ -1478,17 +1480,6 @@ class TemporalDisplay {
 
     public Settings getCurrentSettings() {
         return currentSettings;
-    }
-
-    /**
-     * Set the specified hazard events as the events to be shown in the table.
-     * 
-     * @param hazardEvents
-     * @param currentSettings
-     */
-    public void setComponentData(List<Dict> hazardEvents,
-            Settings currentSettings) {
-        setComponentData(hazardEvents, currentSettings, null);
     }
 
     /**
@@ -1831,8 +1822,6 @@ class TemporalDisplay {
     /**
      * Set the specified hazard events as the events to be shown in the table.
      * 
-     * @param hazardEvents
-     * @param currentSettings
      * @param filterMegawidgets
      *            JSON string holding an array of dictionaries, each of the
      *            latter holding a filter megawidget as a set of key-value
@@ -1840,8 +1829,7 @@ class TemporalDisplay {
      *            method is called, in order to construct the context menus; it
      *            is ignored otherwise.
      */
-    private void setComponentData(List<Dict> hazardEvents,
-            Settings currentSettings, String filterMegawidgets) {
+    void updateConsole(String filterMegawidgets) {
 
         // Prepare for the addition and/or removal of columns.
         boolean lastIgnoreResize = ignoreResize;
@@ -1852,10 +1840,6 @@ class TemporalDisplay {
 
         // Remove the sorting column, if any.
         table.setSortColumn(null);
-
-        updateSettings(currentSettings);
-
-        updateHazardEvents(hazardEvents);
 
         // If the header menus for the various columns have not yet been
         // created, create them now.
@@ -1973,7 +1957,8 @@ class TemporalDisplay {
                                     });
                         } catch (MegawidgetException e) {
                             statusHandler
-                                    .error("TemporalDisplay.setComponentData(): Unable to create megawidget "
+                                    .error(getClass().getName()
+                                            + " Unable to create megawidget "
                                             + "manager due to megawidget construction problem.",
                                             e);
                         }
@@ -2192,7 +2177,7 @@ class TemporalDisplay {
         }
     }
 
-    private void updateHazardEvents(List<Dict> hazardEvents) {
+    void updateHazardEvents(List<Dict> hazardEvents) {
         /*
          * Add each hazard event to the list of event dictionaries
          */
@@ -2206,7 +2191,7 @@ class TemporalDisplay {
         }
     }
 
-    private void updateSettings(Settings currentSettings) {
+    void updateSettings(Settings currentSettings) {
         /*
          * Get the column definitions, and the visible column names. Also
          * determine which of the visible columns may generate hint text, and
@@ -2215,6 +2200,7 @@ class TemporalDisplay {
         this.currentSettings = currentSettings;
         columnsForNames = currentSettings.getColumns();
         visibleColumnNames = currentSettings.getVisibleColumns();
+
         hintTextIdentifiersForVisibleColumnNames.clear();
         dateIdentifiersForVisibleColumnNames.clear();
         for (String columnName : visibleColumnNames) {
@@ -2226,7 +2212,7 @@ class TemporalDisplay {
         columnNamesForIdentifiers.clear();
         for (String name : columnsForNames.keySet()) {
             Column column = columnsForNames.get(name);
-            columnNamesForIdentifiers.put((column).getFieldName(), name);
+            columnNamesForIdentifiers.put(column.getFieldName(), name);
         }
     }
 

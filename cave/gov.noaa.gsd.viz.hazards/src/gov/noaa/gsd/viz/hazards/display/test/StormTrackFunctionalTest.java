@@ -13,7 +13,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -67,43 +66,11 @@ public class StormTrackFunctionalTest extends FunctionalTest {
 
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
+
         step = Steps.START;
         savedCurrentSettings = appBuilder.getCurrentSettings();
         autoTestUtilities.changeStaticSettings(CANNED_TORNADO_SETTING);
 
-    }
-
-    @Subscribe
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
-
-        try {
-            switch (step) {
-            case START:
-                break;
-            default:
-                break;
-
-            }
-
-        } catch (Exception e) {
-            handleException(e);
-        }
-    }
-
-    @Subscribe
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        try {
-            switch (step) {
-
-            default:
-                break;
-
-            }
-        } catch (Exception e) {
-            handleException(e);
-        }
     }
 
     @Subscribe

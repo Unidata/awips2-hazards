@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
@@ -32,6 +31,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -170,15 +170,16 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 points.clear();
 
-                IHazardEvent hazardEvent;
-
                 try {
-                    hazardEvent = new HazardEventBuilder(getSpatialPresenter()
-                            .getSessionManager())
-                            .buildPolygonHazardEvent(reducedGeometry);
-
-                    NewHazardAction action = new NewHazardAction(hazardEvent);
+                    IHazardEvent hazardEvent = new HazardEventBuilder(
+                            getSpatialPresenter().getSessionManager())
+                            .buildPolygonHazardEvent(reducedGeometry
+                                    .getCoordinates());
+                    SessionEventAdded action = new SessionEventAdded(
+                            getSpatialPresenter().getSessionManager()
+                                    .getEventManager(), hazardEvent);
                     getSpatialPresenter().fireAction(action);
+
                 } catch (InvalidGeometryException e) {
                     statusHandler
                             .handle(Priority.WARN,

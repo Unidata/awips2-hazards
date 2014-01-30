@@ -18,7 +18,6 @@ import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.Gener
 import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.HazardEventSet;
 import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.StagingInfo;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
-import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesGeneratorJobListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,13 +36,13 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 
 /**
@@ -72,6 +71,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  */
 class HazardServicesProductGenerationHandler {
 
+    private final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(this.getClass());
+
     private static final String COMBINE_MESSAGE = "When issuing this hazard, there are other related hazards that could be included in the legacy product:";
 
     private static final String CHECK_LIST_FIELD_TYPE = "CheckList";
@@ -90,15 +92,13 @@ class HazardServicesProductGenerationHandler {
 
     private final ISessionProductManager productManager;
 
-    private final EventBus eventBus;
-
     HazardServicesProductGenerationHandler(ISessionManager sessionManager,
             EventBus eventBus) {
         this.sessionManager = sessionManager;
         this.productManager = sessionManager.getProductManager();
-        this.sessionManager.registerForNotification(this);
         this.jsonConverter = new JSONConverter();
-        this.eventBus = eventBus;
+        eventBus.register(this);
+
     }
 
     boolean productGenerationRequired() {
@@ -144,7 +144,7 @@ class HazardServicesProductGenerationHandler {
         ProductStagingInfo result = new ProductStagingInfo();
         for (ProductInformation info : products) {
             ProductStagingInfo.Product product = new ProductStagingInfo.Product(
-                    info.getProductName());
+                    info.getProductGeneratorName());
             if (info.getPossibleProductEvents().size() > 0) {
                 result.addProducts(product);
                 List<Field> fields = Lists.newArrayList();
@@ -218,7 +218,7 @@ class HazardServicesProductGenerationHandler {
         for (HazardEventSet set : result.getHazardEventSets()) {
             ProductInformation info = null;
             for (ProductInformation testInfo : products) {
-                if (set.getProductGenerator().equals(testInfo.getProductName())) {
+                if (set.getProductGeneratorName().equals(testInfo.getProductGeneratorName())) {
                     info = testInfo;
                     break;
                 }
@@ -261,7 +261,7 @@ class HazardServicesProductGenerationHandler {
         for (Product stagedProduct : productStagingInfo.getProducts()) {
             for (ProductInformation product : products) {
                 if (stagedProduct.getProductGenerator().equals(
-                        product.getProductName())) {
+                        product.getProductGeneratorName())) {
 
                     Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
                     for (String eventID : stagedProduct.getSelectedEventIDs()) {
@@ -293,13 +293,13 @@ class HazardServicesProductGenerationHandler {
      * generator Collect the results for the list of product generators run When
      * all are collected, issue or display them
      * 
-     * @param toolID
+     * @param productGeneratorName
      *            -- name of product generator
      * @param generatedProducts
      *            -- list of IGeneratedProduct Java object
      * 
      */
-    String handleProductGeneratorResult(String toolID,
+    String handleProductGeneratorResult(String productGeneratorName,
             List<IGeneratedProduct> generatedProductsList) {
         numProducts -= 1;
 
@@ -371,7 +371,7 @@ class HazardServicesProductGenerationHandler {
         stagingInfo.setValueDict(valueDict);
         HazardEventSet hes = new HazardEventSet();
         hes.setStagingInfo(stagingInfo);
-        hes.setProductGenerator(toolID);
+        hes.setProductGeneratorName(productGeneratorName);
         hes.setDialogInfo(new HashMap<String, String>());
         List<HazardEventSet> sets = new ArrayList<HazardEventSet>();
         sets.add(hes);
@@ -386,22 +386,10 @@ class HazardServicesProductGenerationHandler {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
-        getProductGenerationListener(
-                generated.getProductInformation().getProductName())
-                .jobFinished(generated.getProductInformation().getProducts());
-    }
-
-    @Subscribe
     public void handleProductGeneratorResult(ProductFailed failed) {
-        getProductGenerationListener(
-                failed.getProductInformation().getProductName()).jobFailed(
-                failed.getProductInformation().getError());
-    }
+        statusHandler.error("Product Generator "
+                + failed.getProductInformation().getProductGeneratorName() + " failed.");
 
-    private IPythonJobListener<List<IGeneratedProduct>> getProductGenerationListener(
-            String toolName) {
-        return new HazardServicesGeneratorJobListener(eventBus, toolName);
     }
 
     @Override

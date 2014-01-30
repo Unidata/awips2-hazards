@@ -124,7 +124,7 @@ public class ProductGenerationResult {
 
         private StagingInfo stagingInfo;
 
-        private String productGenerator;
+        private String productGeneratorName;
 
         private Map<String, String> dialogInfo;
 
@@ -136,12 +136,12 @@ public class ProductGenerationResult {
             this.stagingInfo = stagingInfo;
         }
 
-        public String getProductGenerator() {
-            return productGenerator;
+        public String getProductGeneratorName() {
+            return productGeneratorName;
         }
 
-        public void setProductGenerator(String productGenerator) {
-            this.productGenerator = productGenerator;
+        public void setProductGeneratorName(String productGeneratorName) {
+            this.productGeneratorName = productGeneratorName;
         }
 
         public Map<String, String> getDialogInfo() {

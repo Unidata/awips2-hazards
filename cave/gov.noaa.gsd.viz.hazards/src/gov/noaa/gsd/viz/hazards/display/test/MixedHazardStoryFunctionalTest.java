@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -90,13 +91,18 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     protected void run() {
         try {
             super.run();
-            this.step = Steps.RUN_DAM_BREAK;
-            eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
-                    DAM_BREAK_FLOOD_RECOMMENDER));
+
         } catch (Exception e) {
             handleException(e);
         }
 
+    }
+
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+        this.step = Steps.RUN_DAM_BREAK;
+        eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
+                DAM_BREAK_FLOOD_RECOMMENDER));
     }
 
     @Subscribe
@@ -129,12 +135,6 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case RUN_TOOL_WITH_PARAMETERS:
-                break;
-
-            case PRODUCTS_GENERATED:
-                if (step.equals(Steps.SELECTION_ISSUE)) {
-                    checkFirstSelectionIssue();
-                }
                 break;
 
             case TOOL_RECOMMENDATIONS:
@@ -298,6 +298,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case SELECTION_ISSUE:
+                checkFirstSelectionIssue();
                 List<String> contextMenuEntries = toolLayer
                         .getContextMenuEntries();
                 checkMenuContextMenu(contextMenuEntries,

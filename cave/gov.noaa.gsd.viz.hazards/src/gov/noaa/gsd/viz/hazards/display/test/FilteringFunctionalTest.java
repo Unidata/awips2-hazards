@@ -13,7 +13,6 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -26,6 +25,7 @@ import com.google.common.collect.Sets;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
@@ -54,7 +54,9 @@ public class FilteringFunctionalTest extends FunctionalTest {
     private Settings savedCurrentSettings;
 
     private enum Steps {
-        START, BACK_TO_CANNED_FLOOD, CHANGING_CURRENT_SETTTINGS, CHANGE_BACK_CURRENT_SETTINGS
+        START, CHANGE_TO_TORNADO, BACK_TO_CANNED_FLOOD,
+
+        CHANGING_CURRENT_SETTTINGS, CHANGE_BACK_CURRENT_SETTINGS
     }
 
     private Steps step;
@@ -70,13 +72,20 @@ public class FilteringFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
 
         try {
-            IHazardEvent event = autoTestUtilities.getSelectedEvent();
+            switch (step) {
+            case START:
+                IHazardEvent event = autoTestUtilities.getSelectedEvent();
 
-            autoTestUtilities.assignEventType(
-                    AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
+                autoTestUtilities.assignEventType(
+                        AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
+                break;
+
+            default:
+                break;
+            }
         } catch (Exception e) {
             handleException(e);
         }
@@ -87,9 +96,8 @@ public class FilteringFunctionalTest extends FunctionalTest {
             final HazardDetailAction hazardDetailAction) {
         switch (step) {
         case START:
+            step = Steps.CHANGE_TO_TORNADO;
             autoTestUtilities.changeStaticSettings(CANNED_TORNADO_SETTING);
-            break;
-        case BACK_TO_CANNED_FLOOD:
             break;
 
         default:
@@ -103,7 +111,7 @@ public class FilteringFunctionalTest extends FunctionalTest {
             final StaticSettingsAction settingsAction) {
         switch (step) {
 
-        case START:
+        case CHANGE_TO_TORNADO:
             List<Dict> events = mockConsoleView.getHazardEvents();
             assertEquals(events.size(), 0);
             step = Steps.BACK_TO_CANNED_FLOOD;

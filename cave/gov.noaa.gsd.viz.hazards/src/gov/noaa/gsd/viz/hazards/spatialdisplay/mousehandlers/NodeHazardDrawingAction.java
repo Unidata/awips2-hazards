@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
@@ -37,6 +36,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -292,14 +292,15 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
                 }
 
-                NewHazardAction action = new NewHazardAction(hazardEvent);
+                SessionEventAdded action = new SessionEventAdded(
+                        sessionManager.getEventManager(), hazardEvent);
                 getSpatialPresenter().fireAction(action);
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
                         "Error drawing noded polygon: " + e.getMessage());
             }
-
             points.clear();
+
         }
 
         private Coordinate[] pointsAsArray() {
@@ -315,7 +316,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         private void createPointShape(Coordinate loc) {
             IHazardEvent hazardEvent = hazardEventBuilder
                     .buildPointHazardEvent(loc);
-            NewHazardAction action = new NewHazardAction(hazardEvent);
+            SessionEventAdded action = new SessionEventAdded(
+                    sessionManager.getEventManager(), hazardEvent);
             getSpatialPresenter().fireAction(action);
         }
     }

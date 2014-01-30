@@ -42,14 +42,8 @@ public class DoubleStringComparator implements Comparator<String> {
      */
     @Override
     public int compare(String o1, String o2) {
-        double value1 = Double.parseDouble(o1);
-        double value2 = Double.parseDouble(o2);
-        if (value1 < value2) {
-            return -1;
-        } else if (value1 > value2) {
-            return 1;
-        } else {
-            return 0;
-        }
+        Double value1 = Double.valueOf(o1);
+        Double value2 = Double.valueOf(o2);
+        return value1.compareTo(value2);
     }
 }

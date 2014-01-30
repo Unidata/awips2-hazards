@@ -192,7 +192,7 @@ public class SessionProductManager implements ISessionProductManager {
             }
             if (!productEvents.isEmpty()) {
                 ProductInformation info = new ProductInformation();
-                info.setProductName(entry.getKey());
+                info.setProductGeneratorName(entry.getKey());
                 info.setProductEvents(productEvents);
                 info.setPossibleProductEvents(possibleProductEvents);
                 // TODO actually get dialog info. Currently getting the dialog
@@ -375,7 +375,7 @@ public class SessionProductManager implements ISessionProductManager {
                 events.add(event);
             }
 
-            String product = information.getProductName();
+            String product = information.getProductGeneratorName();
             String[] formats = information.getFormats();
             IPythonJobListener<List<IGeneratedProduct>> listener = new JobListener(
                     issue, notificationSender, information);

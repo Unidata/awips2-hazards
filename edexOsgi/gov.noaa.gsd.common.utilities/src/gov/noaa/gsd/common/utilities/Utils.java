@@ -152,7 +152,6 @@ public class Utils {
 
     public static String stackTraceAsString(Throwable e) {
         StringBuilder sb = new StringBuilder();
-        sb.append(e.getMessage() + "\n");
         StackTraceElement[] stackTrace = e.getStackTrace();
         for (StackTraceElement stackTraceElement : stackTrace) {
             sb.append(stackTraceElement.toString() + "\n");

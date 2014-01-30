@@ -11,8 +11,8 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
@@ -26,6 +26,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
@@ -52,7 +53,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     private static final double FIRST_EVENT_CENTER_X = -96.0;
 
     private enum Steps {
-        START, EVENT0, EVENT1, PREVIEW, TEAR_DOWN
+        START, EVENT0, EVENT1, RUN_TOOL, PREVIEW, TEAR_DOWN
     }
 
     private Steps step;
@@ -65,13 +66,19 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     protected void run() {
         try {
             super.run();
-            step = Steps.START;
-            autoTestUtilities
-                    .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.ON);
 
         } catch (Exception e) {
             handleException(e);
         }
+
+    }
+
+    @Subscribe
+    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+
+        step = Steps.START;
+        autoTestUtilities
+                .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.ON);
 
     }
 
@@ -100,7 +107,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazardEvent(NewHazardAction action) {
+    public void handleNewHazardEvent(SessionEventAdded action) {
         switch (step) {
         case EVENT0:
             autoTestUtilities
@@ -117,20 +124,13 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
             autoTestUtilities.assignEventType(
                     AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE, event);
+            step = Steps.RUN_TOOL;
             break;
 
         default:
-            testError();
+            break;
 
         }
-    }
-
-    private IHazardEvent skipToJustCreatedEventIfNecessary(
-            Iterator<IHazardEvent> iterator, IHazardEvent event) {
-        if (event.getPhenomenon().equals("FA")) {
-            event = iterator.next();
-        }
-        return event;
     }
 
     @Subscribe
@@ -144,7 +144,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
                         FIRST_EVENT_CENTER_Y + 3 * EVENT_BUILDER_OFFSET);
                 break;
 
-            case EVENT1:
+            case RUN_TOOL:
                 autoTestUtilities
                         .runDamBreakRecommender(DamBreakUrgencyLevels.LOW_CONFIDENCE_URGENCY_LEVEL);
                 break;
@@ -185,6 +185,14 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
         autoTestUtilities
                 .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.OFF);
 
+    }
+
+    private IHazardEvent skipToJustCreatedEventIfNecessary(
+            Iterator<IHazardEvent> iterator, IHazardEvent event) {
+        if (event.getPhenomenon().equals(AREAL_FLOOD_WATCH_PHEN)) {
+            event = iterator.next();
+        }
+        return event;
     }
 
     @Override

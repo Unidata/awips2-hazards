@@ -222,13 +222,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (visibleSites == null || visibleSites.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.SITE_ID, new ArrayList<Object>(visibleSites));
+        filters.put(HazardConstants.SITE_ID,
+                new ArrayList<Object>(visibleSites));
         Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
         }
-        filters.put(HazardConstants.PHEN_SIG,
-                new ArrayList<Object>(visibleTypes));
+        filters.put(HazardConstants.PHEN_SIG, new ArrayList<Object>(
+                visibleTypes));
         Set<String> visibleStates = settings.getVisibleStates();
         if (visibleStates == null || visibleStates.isEmpty()) {
             return;
@@ -401,12 +402,13 @@ public class SessionEventManager extends AbstractSessionEventManager {
         oevent.addHazardAttribute(ATTR_CHECKED, false, false);
         oevent.addHazardAttribute(ATTR_ISSUED,
                 oevent.getState().equals(HazardState.ISSUED), false);
-        notificationSender
-                .postNotification(new SessionEventAdded(this, oevent));
+
         if (localEvent) {
             oevent.addHazardAttribute(ATTR_SELECTED, true);
         }
         oevent.addHazardAttribute(ATTR_CHECKED, true);
+        notificationSender
+                .postNotification(new SessionEventAdded(this, oevent));
         return oevent;
     }
 

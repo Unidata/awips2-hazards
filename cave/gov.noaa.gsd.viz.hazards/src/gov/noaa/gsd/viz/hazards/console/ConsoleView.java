@@ -940,7 +940,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             @Override
             public void run() {
                 getViewPart()
-                        .updateHazardEvents(hazardEvents, currentSetttings);
+                        .updateConsoleForChanges(hazardEvents, currentSetttings);
             }
         });
     }
@@ -988,7 +988,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     @Override
     public final Settings getCurrentSettings() {
         ConsoleViewPart viewPart = getViewPart();
-        return viewPart.getCurrentSetting();
+        return viewPart.getCurrentSettings();
     }
 
     /**

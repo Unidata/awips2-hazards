@@ -323,10 +323,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * practice mode.
          */
         currentTime = SimulatedTime.getSystemTime().getTime();
-        this.sessionManager = SessionManagerFactory.getSessionManager(this);
-
-        messageHandler = new HazardServicesMessageHandler(this, currentTime,
+        this.sessionManager = SessionManagerFactory.getSessionManager(this,
                 eventBus);
+        messageHandler = new HazardServicesMessageHandler(this, currentTime);
 
         /**
          * Get a true/false, or OK/cancel, or yes/no answer from the user.

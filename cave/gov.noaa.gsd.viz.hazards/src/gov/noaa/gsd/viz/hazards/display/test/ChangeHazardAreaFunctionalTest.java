@@ -13,8 +13,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.ModifyHazardGeometryAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
@@ -22,6 +20,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -46,7 +46,7 @@ import com.vividsolutions.jts.geom.Geometry;
 public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
     private enum Steps {
-        START, ISSUE_FLASH_FLOOD_WATCH, PREVIEW_MODIFIED_EVENT
+        START, ISSUE_FLASH_FLOOD_WATCH, READY_FOR_PREVIEW, PREVIEW_MODIFIED_EVENT
     }
 
     private Steps step;
@@ -63,19 +63,40 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
-        autoTestUtilities
-                .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+    public void handleNewHazard(SessionEventAdded action) {
+        try {
+            switch (step) {
+            case START:
+                autoTestUtilities
+                        .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+                break;
+
+            default:
+                break;
+            }
+
+        } catch (Exception e) {
+            handleException(e);
+        }
 
     }
 
     @Subscribe
     public void handleHazardGeometryModification(
-            ModifyHazardGeometryAction action) {
+            SessionEventGeometryModified action) {
 
         try {
-            step = Steps.PREVIEW_MODIFIED_EVENT;
-            autoTestUtilities.previewEvent();
+            switch (step) {
+
+            case READY_FOR_PREVIEW:
+                step = Steps.PREVIEW_MODIFIED_EVENT;
+                autoTestUtilities.previewEvent();
+                break;
+
+            default:
+                break;
+
+            }
 
         } catch (Exception e) {
             handleException(e);
@@ -103,14 +124,14 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
             case ISSUE_FLASH_FLOOD_WATCH:
                 IHazardEvent event = autoTestUtilities.getSelectedEvent();
-                String eventID = event.getEventID();
-
                 Geometry geometry = event.getGeometry();
                 Coordinate[] coordinates = geometry.getCoordinates();
                 Coordinate modifiedPoint = coordinates[1];
+
                 modifiedPoint.y = 42.0;
-                ModifyHazardGeometryAction action = new ModifyHazardGeometryAction(
-                        eventID, geometry);
+                SessionEventGeometryModified action = new SessionEventGeometryModified(
+                        eventManager, event);
+                step = Steps.READY_FOR_PREVIEW;
                 eventBus.post(action);
                 break;
 

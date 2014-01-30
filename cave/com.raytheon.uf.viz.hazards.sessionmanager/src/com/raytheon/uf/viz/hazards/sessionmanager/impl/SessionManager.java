@@ -137,10 +137,11 @@ public class SessionManager implements ISessionManager {
      */
 
     public SessionManager(IPathManager pathManager,
-            IHazardEventManager hazardEventManager, IMessenger messenger) {
+            IHazardEventManager hazardEventManager, IMessenger messenger,
+            EventBus eventBus) {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
-        eventBus = new EventBus();
+        this.eventBus = eventBus;
         SessionNotificationSender sender = new SessionNotificationSender(
                 eventBus);
         timeManager = new SessionTimeManager(sender);

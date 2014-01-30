@@ -45,7 +45,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  */
 public class ProductInformation {
 
-    private String productName;
+    private String productGeneratorName;
 
     private Set<IHazardEvent> productEvents;
 
@@ -61,12 +61,12 @@ public class ProductInformation {
 
     private Throwable error;
 
-    public String getProductName() {
-        return productName;
+    public String getProductGeneratorName() {
+        return productGeneratorName;
     }
 
-    public void setProductName(String productName) {
-        this.productName = productName;
+    public void setProductGeneratorName(String productGeneratorName) {
+        this.productGeneratorName = productGeneratorName;
     }
 
     public Set<IHazardEvent> getProductEvents() {

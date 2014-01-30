@@ -32,6 +32,7 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
 /**
  * Description: Base class for automated testing. The approach is to create mock
@@ -59,6 +60,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * @version 1.0
  */
 public abstract class FunctionalTest {
+
+    private static final String TEST_ERROR = "Test error";
 
     protected static final String DAM_BREAK_FLOOD_RECOMMENDER = "DamBreakFloodRecommender";
 
@@ -119,8 +122,11 @@ public abstract class FunctionalTest {
 
     protected AutoTestUtilities autoTestUtilities;
 
+    protected final ISessionEventManager eventManager;
+
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
+        this.eventManager = appBuilder.getSessionManager().getEventManager();
         this.eventBus = appBuilder.getEventBus();
         this.autoTestUtilities = new AutoTestUtilities(appBuilder);
         registerForEvents();
@@ -129,7 +135,6 @@ public abstract class FunctionalTest {
 
     private void registerForEvents() {
         this.eventBus.register(this);
-        this.appBuilder.getSessionManager().registerForNotification(this);
     }
 
     protected void run() {
@@ -205,53 +210,45 @@ public abstract class FunctionalTest {
         if (!actual.equals(expected)) {
             String message = String.format("Expected %s, got %s", expected,
                     actual);
-            fail(message);
+            throw new RuntimeException(message);
         }
+
     }
 
     protected void assertTrue(Boolean expression) {
         if (!expression) {
-            String message = "Value unexpectedly false";
-            fail(message);
+            throw new RuntimeException(new Throwable());
         }
+
     }
 
     protected void assertFalse(Boolean expression) {
         if (expression) {
-            String message = "Value unexpectedly true";
-            fail(message);
+            throw new RuntimeException(new Throwable());
         }
     }
 
+    protected void testError() {
+        throw new RuntimeException(new Throwable());
+
+    }
+
     protected void handleException(Exception e) {
-        String message = "Test error\n";
-        message += e.getClass().getName();
-        message += "\n" + Utils.stackTraceAsString(e);
-        fail(message);
+        StringBuilder sb = new StringBuilder();
+        sb.append(TEST_ERROR + "\n");
+        sb.append(e.getMessage() + "\n");
+        if (e.getCause() != null) {
+            sb.append(Utils.stackTraceAsString(e.getCause()));
+        } else {
+            sb.append(Utils.stackTraceAsString(e));
+        }
+        fail(sb.toString());
     }
 
     protected void fail(String message) {
+        String errorMessage = String.format("%s ", message);
+        statusHandler.error(errorMessage);
         testFailure();
-        String errorMessage = String.format("%s %s ", message, this.getClass()
-                .getSimpleName());
-
-        /*
-         * This helps ensure the tester knows immediately a test error occurred.
-         */
-        statusHandler.error(errorMessage);
-
-        /*
-         * Stack trace helps testers see where the failure occurred
-         */
-        throw new RuntimeException(errorMessage);
-
-    }
-
-    protected void testError() {
-        String errorMessage = "A test error occurred";
-        statusHandler.error(errorMessage);
-        throw new IllegalStateException(errorMessage);
-
     }
 
     protected void testSuccess() {
@@ -280,14 +277,19 @@ public abstract class FunctionalTest {
         if (success) {
             statusHandler.debug(String.format("%s Successful", this.getClass()
                     .getSimpleName()));
+            eventBus.post(new TestCompleted(this.getClass()));
+        } else {
+            eventBus.post(new TestCompleted(StopTesting.class));
         }
-        eventBus.post(new TestCompleted(this.getClass()));
+
+    }
+
+    protected static class StopTesting {
 
     }
 
     private void unRegisterForEvents() {
         this.eventBus.unregister(this);
-        this.appBuilder.getSessionManager().unregisterForNotification(this);
     }
 
 }

@@ -41,7 +41,7 @@ public class ToolAction {
      * Types of actions supported by ToolAction.
      */
     public enum ToolActionEnum {
-        RUN_TOOL_WITH_PARAMETERS, RUN_TOOL, TOOL_RECOMMENDATIONS, PRODUCTS_GENERATED
+        RUN_TOOL_WITH_PARAMETERS, RUN_TOOL, TOOL_RECOMMENDATIONS
     };
 
     // Private Variables

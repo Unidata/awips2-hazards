@@ -14,7 +14,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
@@ -23,6 +22,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
 /**
@@ -59,10 +59,18 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
         try {
-            autoTestUtilities
-                    .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+            switch (step) {
+            case START:
+                autoTestUtilities
+                        .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+
+                break;
+
+            default:
+                break;
+            }
         } catch (Exception e) {
             handleException(e);
         }

@@ -297,10 +297,12 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param hazardEvents
      * @param currentSetttings
      */
-    public void updateHazardEvents(List<Dict> hazardEvents,
+    public void updateConsoleForChanges(List<Dict> hazardEvents,
             Settings currentSettings) {
         temporalDisplay.clearEvents();
-        temporalDisplay.setComponentData(hazardEvents, currentSettings);
+        temporalDisplay.updateHazardEvents(hazardEvents);
+        temporalDisplay.updateSettings(currentSettings);
+        temporalDisplay.updateConsole(null);
     }
 
     /**
@@ -330,7 +332,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     /**
      * @return the settings currently in use.
      */
-    public Settings getCurrentSetting() {
+    public Settings getCurrentSettings() {
         return temporalDisplay.getCurrentSettings();
     }
 

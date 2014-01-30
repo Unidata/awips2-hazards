@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.NewHazardAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
@@ -24,6 +23,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
  * Description: {@link FunctionalTest} of the hazard conflict detection.
@@ -79,15 +79,6 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
         try {
             super.run();
 
-            /*
-             * Simulate the forecaster turning 'on' hazard conflict detection
-             * via the Console view menu.
-             */
-            this.step = Steps.TOGGLE_ON_HAZARD_DETECTION;
-            ConsoleAction consoleAction = new ConsoleAction(
-                    ConsoleAction.ActionType.CHANGE_MODE,
-                    ConsoleAction.AUTO_CHECK_CONFLICTS);
-            eventBus.post(consoleAction);
         } catch (Exception e) {
             handleException(e);
         }
@@ -105,7 +96,18 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      */
     @Subscribe
     public void consoleActionOccurred(final ConsoleAction action) {
-        if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
+        if (action.getActionType().equals(ConsoleAction.ActionType.RESET)) {
+
+            /*
+             * Simulate the forecaster turning 'on' hazard conflict detection
+             * via the Console view menu.
+             */
+            this.step = Steps.TOGGLE_ON_HAZARD_DETECTION;
+            ConsoleAction consoleAction = new ConsoleAction(
+                    ConsoleAction.ActionType.CHANGE_MODE,
+                    ConsoleAction.AUTO_CHECK_CONFLICTS);
+            eventBus.post(consoleAction);
+        } else if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
 
             if (this.step == Steps.TOGGLE_ON_HAZARD_DETECTION) {
                 /*
@@ -137,38 +139,34 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      * @return
      */
     @Subscribe
-    public void handleNewHazard(NewHazardAction action) {
+    public void handleNewHazard(SessionEventAdded action) {
 
         try {
 
-            if (this.step == Steps.CREATE_FIRST_HAZARD_AREA) {
+            Collection<IHazardEvent> selectedEvents = appBuilder
+                    .getSessionManager().getEventManager().getSelectedEvents();
+            switch (step) {
+            case CREATE_FIRST_HAZARD_AREA:
                 this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
-
-                /*
-                 * Retrieve the selected event.
-                 */
-                Collection<IHazardEvent> selectedEvents = appBuilder
-                        .getSessionManager().getEventManager()
-                        .getSelectedEvents();
 
                 assertTrue(selectedEvents.size() == 1);
 
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
-            } else {
-                /*
-                 * Retrieve the selected event.
-                 */
-                this.step = Steps.ASSIGN_FLASH_FLOOD_WATCH;
+                break;
 
-                Collection<IHazardEvent> selectedEvents = appBuilder
-                        .getSessionManager().getEventManager()
-                        .getSelectedEvents();
+            case CREATE_SECOND_HAZARD_AREA:
+
+                this.step = Steps.ASSIGN_FLASH_FLOOD_WATCH;
 
                 assertTrue(selectedEvents.size() == 1);
 
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
+                break;
+
+            default:
+                testError();
             }
         } catch (Exception e) {
             handleException(e);

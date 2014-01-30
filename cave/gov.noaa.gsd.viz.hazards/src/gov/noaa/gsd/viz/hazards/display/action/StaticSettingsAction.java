@@ -37,7 +37,7 @@ public class StaticSettingsAction {
     }
 
     public StaticSettingsAction(ActionType actionType, String detail) {
-        this.actionType = actionType;
+        this(actionType);
         this.detail = detail;
     }
 
