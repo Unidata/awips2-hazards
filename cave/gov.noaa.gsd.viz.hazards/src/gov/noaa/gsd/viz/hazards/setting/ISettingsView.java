@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.List;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 
 /**
  * Interface describing the methods required for implementing a settings view,
@@ -43,26 +43,20 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param presenter
      *            Presenter managing this view.
      * @param settings
-     * @param jsonFilters
-     *            JSON string providing a list of dictionaries, each specifying
-     *            a filter megawidget.
+     * @param fields
      * @param currentSettings
      */
     public void initialize(SettingsPresenter presenter,
-            List<Settings> settings, String jsonFilters,
-            Settings currentSettings);
+            List<Settings> settings, Field[] fields, Settings currentSettings);
 
     /**
      * Show the settings detail subview.
      * 
-     * @param fields
-     *            List of dictionaries, each providing a field to be displayed
-     *            in the subview.
-     * @param values
-     *            Dictionary pairing keys found as the field names in
-     *            <code>fields</code> with their values.
+     * @param settingsConfig
+     * @param settings
      */
-    public void showSettingDetail(DictList fields, Dict values);
+    public void showSettingDetail(SettingsConfig settingsConfig,
+            Settings settings);
 
     /**
      * Set the settings to those specified.

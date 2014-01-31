@@ -12,6 +12,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.LineDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PointDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -282,7 +283,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             try {
                 IHazardEvent hazardEvent;
                 if (shapeType.equals(GeometryType.POLYGON.getValue())) {
-                    points.add(points.get(0));
+                    Utilities.closeCoordinatesIfNecessary(points);
                     hazardEvent = hazardEventBuilder
                             .buildPolygonHazardEvent(pointsAsArray());
                 } else {

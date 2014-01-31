@@ -939,17 +939,6 @@ public class SpatialView implements
             deleteMouseHandler.deleteNode();
             break;
 
-        case MOVE_ELEMENT:
-            mouseHandler = mouseFactory.getMouseHandler(
-                    HazardServicesMouseHandlers.SINGLE_SELECTION,
-                    new String[] {});
-            SelectionHandler moveMouseHandler = (SelectionHandler) mouseHandler;
-            moveMouseHandler.setMoveEntireElement();
-            break;
-
-        case COPY_ELEMENT:
-            break;
-
         default:
             statusHandler
                     .debug("SpatialView.modifyShape(): Unrecognized drawing action.");

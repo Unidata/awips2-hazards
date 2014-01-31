@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.util.List;
@@ -75,7 +76,7 @@ public class HazardServicesPolygon extends HazardServicesShape {
             drawnPoints.add((Coordinate) coord.clone());
         }
 
-        drawnPoints.add(drawnPoints.get(0));
+        Utilities.closeCoordinatesIfNecessary(drawnPoints);
         LinearRing ls = gf.createLinearRing(drawnPoints
                 .toArray(new Coordinate[0]));
         geometry = gf.createPolygon(ls, null);

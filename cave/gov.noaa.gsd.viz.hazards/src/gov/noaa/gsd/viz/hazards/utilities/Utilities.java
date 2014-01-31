@@ -31,8 +31,6 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.viz.core.localization.BundleScanner;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * Description: General utility methods specific to Hazard Services.
@@ -83,18 +81,6 @@ public class Utilities {
      * Weight of blue luminance component of a color.
      */
     private static final float BLUE_LUMINANCE_WEIGHT = 0.114f;
-
-    // Private Static Variables
-
-    /**
-     * Geometry factory.
-     */
-    private static final GeometryFactory geometryFactory;
-
-    // Initialize the geometry factory.
-    static {
-        geometryFactory = new GeometryFactory();
-    }
 
     // Public Static Methods
 
@@ -154,11 +140,13 @@ public class Utilities {
         return result;
     }
 
-    public static Geometry geometryFromCoordinates(List<Coordinate> coordinates) {
-        Coordinate[] coordinatesAsArray = Utils.listAsArray(coordinates);
-        Geometry result = geometryFactory.createPolygon(
-                geometryFactory.createLinearRing(coordinatesAsArray), null);
-        return result;
+    public static void closeCoordinatesIfNecessary(List<Coordinate> coordinates) {
+        Coordinate firstPoint = coordinates.get(0);
+        Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
+        if (!firstPoint.equals(lastPoint)) {
+            Coordinate copy = (Coordinate) firstPoint.clone();
+            coordinates.add(copy);
+        }
     }
 
     public static List<String> buildPythonSourcePaths(String basePath)

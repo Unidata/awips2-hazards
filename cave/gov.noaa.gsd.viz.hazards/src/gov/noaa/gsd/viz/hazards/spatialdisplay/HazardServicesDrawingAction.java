@@ -26,8 +26,5 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
  */
 public enum HazardServicesDrawingAction {
     ADD_NODE, // Add a point to the selected hazard
-    DELETE_NODE, // Delete a point from the selected hazard
-    MOVE_ELEMENT, // Move the entire selected hazard
-    COPY_ELEMENT
-    // Copy the hazard
+    DELETE_NODE
 }

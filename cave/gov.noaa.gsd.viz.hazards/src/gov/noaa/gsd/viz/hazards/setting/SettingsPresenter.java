@@ -10,8 +10,6 @@
 package gov.noaa.gsd.viz.hazards.setting;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.EnumSet;
 
@@ -20,8 +18,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -48,19 +46,6 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  */
 public class SettingsPresenter extends
         HazardServicesPresenter<ISettingsView<?, ?>> {
-
-    // Private Static Constants
-
-    /**
-     * Zoom parameters key in a setting dictionary.
-     */
-    private static final String ZOOM_PARAMETERS = "mapCenter";
-
-    /**
-     * Keys for specific zoom parameters in the dictionary value for the
-     * <code>ZOOM_PARAMETERS</code> key in the setting dictionary.
-     */
-    private static final String[] ZOOM_PARAM_NAMES = { "lon", "lat", "zoom" };
 
     // Public Constructors
 
@@ -102,24 +87,18 @@ public class SettingsPresenter extends
      */
     public final void showSettingDetail() {
 
-        // Get the parameters for the settings view.
-        DictList fields = DictList.getInstance(jsonConverter
-                .toJson(new SettingsConfig[] { configurationManager
-                        .getSettingsConfig() }));
         Settings settings = configurationManager.getSettings();
-        Dict values = Dict.getInstance(jsonConverter.toJson(settings));
 
         // Update the setting's zoom parameters with the current
         // values.
         double[] zoomParams = getDisplayZoomParameters();
-        Dict zoomDict = new Dict();
-        for (int j = 0; j < ZOOM_PARAM_NAMES.length; j++) {
-            zoomDict.put(ZOOM_PARAM_NAMES[j], zoomParams[j]);
-        }
-        values.put(ZOOM_PARAMETERS, zoomDict);
+        MapCenter mapCenter = new MapCenter(zoomParams[0], zoomParams[1],
+                zoomParams[2]);
+        settings.setMapCenter(mapCenter);
 
         // Have the view open the setting detail subview.
-        getView().showSettingDetail(fields, values);
+        getView().showSettingDetail(configurationManager.getSettingsConfig(),
+                settings);
     }
 
     // Protected Methods
@@ -134,8 +113,7 @@ public class SettingsPresenter extends
     public void initialize(ISettingsView<?, ?> view) {
         Settings settings = configurationManager.getSettings();
         view.initialize(this, configurationManager.getAvailableSettings(),
-                jsonConverter.toJson(configurationManager.getFilterConfig()),
-                settings);
+                configurationManager.getFilterConfig(), settings);
     }
 
     // Private Methods

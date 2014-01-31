@@ -7,15 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SHAPES;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
@@ -24,7 +19,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSy
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.display.AbstractElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DefaultElementContainer;
 import gov.noaa.nws.ncep.ui.pgen.display.DisplayElementFactory;
@@ -39,6 +33,7 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -1313,46 +1308,30 @@ public class ToolLayer extends
 
     }
 
-    /**
-     * Notifies listeners of a modified event, for example when a point is added
-     * or removed from an event boundary.
-     * 
-     * @param modifiedEventJSON
-     *            A JSON string describing the modified event area.
-     * @return
-     */
-    public void notifyModifiedEvent(String modifiedEventJSON) {
-        Dict modifyEvent = Dict.getInstance(modifiedEventJSON);
-        String shapeType = modifyEvent
-                .getDynamicallyTypedValue(HAZARD_EVENT_SHAPE_TYPE);
-        String eventID = modifyEvent
-                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
-        if (modifyEvent.getDynamicallyTypedValue(SYMBOL_NEW_LAT_LON) == null) {
-            List<Dict> shapes = modifyEvent.getDynamicallyTypedValue(SHAPES);
-            Geometry geometry = JSONUtilities.geometryFromJSONShapes(shapes);
-            if (geometry.isValid()) {
-                ISessionEventManager sessionEventManager = appBuilder
-                        .getSessionManager().getEventManager();
+    public void notifyModifiedGeometry(String eventID, Geometry geometry) {
+        if (geometry.isValid()) {
+            ISessionEventManager sessionEventManager = appBuilder
+                    .getSessionManager().getEventManager();
 
-                IHazardEvent hazardEvent = sessionEventManager
-                        .getEventById(eventID);
-                hazardEvent.setGeometry(geometry);
-                SessionEventGeometryModified action = new SessionEventGeometryModified(
-                        sessionEventManager, hazardEvent);
-                eventBus.post(action);
-            } else {
-                IsValidOp op = new IsValidOp(geometry);
-                statusHandler.warn("Invalid Geometry: "
-                        + op.getValidationError().getMessage()
-                        + ": Geometry modification undone");
-
-            }
-        } else {
-            Dict asDict = Dict.getInstance(modifiedEventJSON);
-            ModifyStormTrackAction action = new ModifyStormTrackAction();
-            action.setParameters(Utilities.asMap(asDict));
+            IHazardEvent hazardEvent = sessionEventManager
+                    .getEventById(eventID);
+            hazardEvent.setGeometry(geometry);
+            SessionEventGeometryModified action = new SessionEventGeometryModified(
+                    sessionEventManager, hazardEvent);
             eventBus.post(action);
+        } else {
+            IsValidOp op = new IsValidOp(geometry);
+            statusHandler.warn("Invalid Geometry: "
+                    + op.getValidationError().getMessage()
+                    + ": Geometry modification undone");
+
         }
+    }
+
+    public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
+        ModifyStormTrackAction action = new ModifyStormTrackAction();
+        action.setParameters(parameters);
+        eventBus.post(action);
     }
 
     @Override

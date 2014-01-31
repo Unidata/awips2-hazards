@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -141,9 +142,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             } else {
                 points.add(loc);
 
-                // Close the polygon...This is required to create a LinearRing
-                // Geometry
-                points.add(points.get(0));
+                Utilities.closeCoordinatesIfNecessary(points);
 
                 // Add logic to simplify the number of
                 // points in the polygon. This will need

@@ -46,6 +46,16 @@ public class MapCenter {
 
     private double zoom;
 
+    public MapCenter() {
+
+    }
+
+    public MapCenter(double lon, double lat, double zoom) {
+        this.lon = lon;
+        this.lat = lat;
+        this.zoom = zoom;
+    }
+
     public double getLat() {
         return lat;
     }
@@ -96,12 +106,10 @@ public class MapCenter {
             return false;
         }
         MapCenter other = (MapCenter) obj;
-        if (Double.doubleToLongBits(lat) != Double
-                .doubleToLongBits(other.lat)) {
+        if (Double.doubleToLongBits(lat) != Double.doubleToLongBits(other.lat)) {
             return false;
         }
-        if (Double.doubleToLongBits(lon) != Double
-                .doubleToLongBits(other.lon)) {
+        if (Double.doubleToLongBits(lon) != Double.doubleToLongBits(other.lon)) {
             return false;
         }
         if (Double.doubleToLongBits(zoom) != Double

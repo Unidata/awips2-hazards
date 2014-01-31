@@ -30,6 +30,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 
 /**
  * Console presenter, used to manage the console view.
@@ -152,22 +154,24 @@ public class ConsolePresenter extends
      */
     @Override
     public final void initialize(IConsoleView<?, ?> view) {
+
+        /**
+         * TODO Can this be pushed into the super class? If so then all
+         * subclasses would have to do that otherwise double registration will
+         * occur.
+         */
         eventBus.register(this);
 
         // Determine whether the time line navigation buttons should be in
         // the console toolbar, or below the console's table.
         boolean temporalControlsInToolBar = true;
-        String jsonStartUpConfig = jsonConverter.toJson(configurationManager
-                .getStartUpConfig());
-        if (jsonStartUpConfig != null) {
-            Dict startUpConfig = Dict.getInstance(jsonStartUpConfig);
-            Dict consoleConfig = startUpConfig
-                    .getDynamicallyTypedValue(HazardConstants.START_UP_CONFIG_CONSOLE);
-            if (consoleConfig != null) {
-                String temporalControlsPosition = consoleConfig
-                        .getDynamicallyTypedValue(HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION);
-                if (temporalControlsPosition != null) {
-                    temporalControlsInToolBar = !(temporalControlsPosition
+        StartUpConfig startUpConfig = configurationManager.getStartUpConfig();
+        if (startUpConfig != null) {
+            Console console = startUpConfig.getConsole();
+            if (console != null) {
+                String timeLineNavigation = console.getTimeLineNavigation();
+                if (timeLineNavigation != null) {
+                    temporalControlsInToolBar = !(timeLineNavigation
                             .equals(HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW));
                 }
             }

@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
@@ -273,7 +274,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
 
                 // Close the polygon...This is required to create a
                 // LinearRing Geometry
-                points.add(points.get(0));
+                Utilities.closeCoordinatesIfNecessary(points);
 
                 // Add logic to simplify the number of
                 // points in the polygon. This will need

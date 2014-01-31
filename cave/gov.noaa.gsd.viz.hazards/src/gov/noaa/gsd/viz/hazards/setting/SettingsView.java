@@ -49,7 +49,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 
 /**
  * Settings view, an implementation of ISettingsView that provides an SWT-based
@@ -477,11 +479,10 @@ public class SettingsView implements
      */
     @Override
     public final void initialize(SettingsPresenter presenter,
-            List<Settings> settings, String jsonFilters,
-            Settings currentSettings) {
+            List<Settings> settings, Field[] fields, Settings currentSettings) {
         this.presenter = presenter;
         setSettings(settings);
-        setFilterMegawidgets(jsonFilters);
+        setFilterMegawidgets(fields);
         setCurrentSettings(currentSettings);
     }
 
@@ -522,15 +523,16 @@ public class SettingsView implements
     /**
      * Show the settings detail subview.
      * 
-     * @param fields
-     *            List of dictionaries, each providing a field to be displayed
-     *            in the subview.
-     * @param values
-     *            Dictionary pairing keys found as the field names in
-     *            <code>fields</code> with their values.
+     * @param settingsConfig
+     * @param settings
      */
     @Override
-    public final void showSettingDetail(DictList fields, Dict values) {
+    public final void showSettingDetail(SettingsConfig settingsConfig,
+            Settings settings) {
+        // Get the parameters for the settings view.
+        DictList fields = DictList.getInstance(jsonConverter
+                .toJson(new SettingsConfig[] { settingsConfig }));
+        Dict values = Dict.getInstance(jsonConverter.toJson(settings));
         settingDialog = new SettingDialog(presenter, PlatformUI.getWorkbench()
                 .getActiveWorkbenchWindow().getShell(), fields, values);
         settingDialog.open();
@@ -588,12 +590,12 @@ public class SettingsView implements
     /**
      * Set the filter megawidgets to those specified.
      * 
-     * @param jsonFilters
-     *            JSON string providing a list of dictionaries, each specifying
-     *            a filter megawidget.
+     * @param fields
+     *            filter megawidgets.
      */
-    private void setFilterMegawidgets(String jsonFilters) {
-        filterMegawidgetSpecifiers = DictList.getInstance(jsonFilters);
+    private void setFilterMegawidgets(Field[] fields) {
+        filterMegawidgetSpecifiers = DictList.getInstance(jsonConverter
+                .toJson(fields));
     }
 
 }
