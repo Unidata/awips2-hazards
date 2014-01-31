@@ -163,6 +163,13 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           widgets that had been disposed between the
  *                                           scheduling and running of the aysnchronous
  *                                           code.
+ * Jan 31, 2014   2710     Chris.Golden      Fixed bug that caused exceptions to be
+ *                                           thrown because the minimum interval between
+ *                                           the start and end time of a hazard here was
+ *                                           a minute, whereas it was 0 in the HID. Also
+ *                                           added use of a constant in HazardConstants
+ *                                           to ensure that all time range widgets use
+ *                                           the same minimum interval.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1147,6 +1154,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         .get(HazardConstants.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
                     for (Dict object : objects) {
+                        object.put(
+                                TimeScaleSpecifier.MEGAWIDGET_MINIMUM_TIME_INTERVAL,
+                                HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
                         megawidgetSpecifiers.add(megawidgetSpecifierFactory
                                 .createMegawidgetSpecifier(
                                         IControlSpecifier.class, object));
@@ -1195,6 +1205,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                             10);
                                 }
                             }
+                            object.put(
+                                    TimeScaleSpecifier.MEGAWIDGET_MINIMUM_TIME_INTERVAL,
+                                    HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
                             megawidgetSpecifiers.add(megawidgetSpecifierFactory
                                     .createMegawidgetSpecifier(
                                             IControlSpecifier.class, object));
@@ -1393,6 +1406,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
                     stateLabels);
             scaleObject.put(IControlSpecifier.MEGAWIDGET_SPACING, 5);
+            scaleObject.put(
+                    TimeScaleSpecifier.MEGAWIDGET_MINIMUM_TIME_INTERVAL,
+                    HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
             timeRangeMegawidget = new TimeScaleSpecifier(scaleObject)
                     .createMegawidget(timeRangePanel,
                             TimeScaleMegawidget.class, megawidgetCreationParams);
@@ -2783,17 +2799,25 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Get the times and save them.
         try {
+            Long oldStartTime = (Long) primaryParamValues.get(
+                    visibleHazardIndex).get(HAZARD_EVENT_START_TIME);
+            Long oldEndTime = (Long) primaryParamValues.get(visibleHazardIndex)
+                    .get(HAZARD_EVENT_END_TIME);
             Long startTime = (Long) timeRangeMegawidget
                     .getState(START_TIME_STATE);
             if (startTime == null) {
                 return;
             }
-            primaryParamValues.get(visibleHazardIndex).put(
-                    HAZARD_EVENT_START_TIME, startTime);
             Long endTime = (Long) timeRangeMegawidget.getState(END_TIME_STATE);
-            if (endTime == null) {
+            if ((endTime == null)
+                    || ((oldStartTime != null)
+                            && oldStartTime.equals(startTime)
+                            && (oldEndTime != null) && oldEndTime
+                                .equals(endTime))) {
                 return;
             }
+            primaryParamValues.get(visibleHazardIndex).put(
+                    HAZARD_EVENT_START_TIME, startTime);
             primaryParamValues.get(visibleHazardIndex).put(
                     HAZARD_EVENT_END_TIME, endTime);
         } catch (Exception e) {

@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -37,6 +38,9 @@ import com.google.common.collect.Maps;
  *                                           listeners of state changes caused by
  *                                           ongoing thumb drags.
  * Dec 13, 2013   2545     Chris.Golden      Made subclass of new TimeMegawidgetSpecifier.
+ * Jan 31, 2014   2710     Chris.Golden      Added minimum interval parameter, to allow
+ *                                           the minimum interval between adjacent state
+ *                                           values to be configured.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,6 +51,14 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
         IControlSpecifier, IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
+
+    /**
+     * Minimum interval parameter name; a time scale megawidget may include a
+     * positive long value associated with this name, providing the minimum
+     * interval in milliseconds between adjacent thumbs. If not specified, the
+     * megawidget allows adjacent values to be a minimum of one minute apart.
+     */
+    public static final String MEGAWIDGET_MINIMUM_TIME_INTERVAL = "minimumTimeInterval";
 
     /**
      * Minimum visible time megawidget creation time parameter name; if
@@ -65,6 +77,11 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
     public static final String MAXIMUM_VISIBLE_TIME = "maximumVisibleTime";
 
     // Private Variables
+
+    /**
+     * Minimum interval allowed between adjacent values.
+     */
+    private final long minimumInterval;
 
     /**
      * Map pairing state identifier keys with their indices in the list provided
@@ -88,6 +105,19 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
             throws MegawidgetSpecificationException {
         super(parameters);
 
+        // Ensure that the minmum interval, if present, is
+        // acceptable.
+        long minimumInterval = getSpecifierLongValueFromObject(
+                parameters.get(MEGAWIDGET_MINIMUM_TIME_INTERVAL),
+                MEGAWIDGET_MINIMUM_TIME_INTERVAL, TimeUnit.MINUTES.toMillis(1L));
+        if (minimumInterval < 1L) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_MINIMUM_TIME_INTERVAL,
+                    parameters.get(MEGAWIDGET_MINIMUM_TIME_INTERVAL),
+                    "must be positive long");
+        }
+        this.minimumInterval = minimumInterval;
+
         // Compile a mapping of state identifiers to their
         // indices (giving their ordering).
         Map<String, Integer> indicesForIds = Maps.newHashMap();
@@ -99,6 +129,15 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
     }
 
     // Public Methods
+
+    /**
+     * Get the minimum interval in milliseconds between adjacent state values.
+     * 
+     * @return Minimum interval in milliseconds.
+     */
+    public final long getMinimumInterval() {
+        return minimumInterval;
+    }
 
     /**
      * Get the mapping of state identifier keys to their indices in the list

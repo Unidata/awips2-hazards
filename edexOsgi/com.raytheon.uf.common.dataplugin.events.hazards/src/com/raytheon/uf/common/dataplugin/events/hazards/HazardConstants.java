@@ -21,6 +21,7 @@ package com.raytheon.uf.common.dataplugin.events.hazards;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
@@ -205,6 +206,14 @@ public final class HazardConstants {
         }
         return vals;
     }
+
+    /**
+     * Minimum interval in milliseconds allowed between adjacent thumbs in time
+     * range widgets, such as those controlling event start/end times and, for
+     * some events, rise/crest/fall times.
+     */
+    public static final long TIME_RANGE_MINIMUM_INTERVAL = TimeUnit.MINUTES
+            .toMillis(1L);
 
     /*
      * The following constants are for use with the hazard attributes object,

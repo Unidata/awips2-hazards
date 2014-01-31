@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -54,6 +55,15 @@ import com.google.common.collect.Sets;
  *                                           objects instead of text fields for
  *                                           viewing/manipulating each state
  *                                           value above the scale widget.
+ * Jan 31, 2014   2710     Chris.Golden      Added minimum interval parameter, to
+ *                                           allow the minimum interval between
+ *                                           adjacent state values to be configured.
+ *                                           Also changed to only send notifications
+ *                                           of scale-caused changes after all the
+ *                                           values have been recorded in the mega-
+ *                                           widget to avoid bugs caused by only
+ *                                           one value of N being updated when the
+ *                                           state of all values is checked.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,7 +93,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     /**
      * Number of milliseconds in a minute.
      */
-    private static final long MINUTE_INTERVAL = 60L * 1000L;
+    private static final long MINUTE_INTERVAL = TimeUnit.MINUTES.toMillis(1L);
 
     /**
      * Width in pixels of the time scale thumbs.
@@ -331,7 +341,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             startingValues[j] = (startingValues.length == 1 ? ((bounds
                     .upperEndpoint() - bounds.lowerEndpoint()) / 2L)
                     + bounds.lowerEndpoint() : bounds.lowerEndpoint()
-                    + (MINUTE_INTERVAL * j));
+                    + (specifier.getMinimumInterval() * j));
             statesForIds.put(specifier.getStateIdentifiers().get(j),
                     startingValues[j]);
         }
@@ -375,7 +385,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         scale.setVisibleValueRange(
                 (Long) paramMap.get(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME),
                 (Long) paramMap.get(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME));
-        scale.setMinimumDeltaBetweenConstrainedThumbs(MINUTE_INTERVAL);
+        scale.setMinimumDeltaBetweenConstrainedThumbs(specifier
+                .getMinimumInterval());
         scale.setConstrainedThumbValues(startingValues);
         for (int j = 1; j < startingValues.length; j++) {
             scale.setConstrainedThumbRangeColor(j, Display.getCurrent()
@@ -387,7 +398,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         gridData.verticalIndent = specifier.getSpacing();
         scale.setLayoutData(gridData);
 
-        // Binding the scale component's value change
+        // Bind the scale component's value change
         // events to trigger a change in the record
         // of the state for the widget, and a change
         // in the corresponding text component.
@@ -437,16 +448,27 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 // Iterate through the thumbs, deter-
                 // mining which have changed their
                 // values and responding accordingly.
+                // Any notification for these values
+                // must occur after all the values
+                // have been changed, to avoid having
+                // a notification of one value change
+                // go out that makes that value
+                // higher than the next value, even
+                // though once all values have been
+                // set, they will be in proper as-
+                // cending order.
                 TimeScaleSpecifier specifier = getSpecifier();
                 List<String> stateIdentifiers = specifier.getStateIdentifiers();
+                List<Integer> indicesOfValuesToNotify = Lists.newArrayList();
                 for (int j = 0; j < values.length; j++) {
 
                     // Get the new value and see if
                     // it has changed, and if so,
                     // make a note of the new value
-                    // and forward the change to any
-                    // listeners if this is some-
-                    // thing that should be sent on.
+                    // and note that it should be
+                    // forwarded to any listeners if
+                    // this is something that should
+                    // be sent on.
                     String identifier = stateIdentifiers.get(j);
                     if ((statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
@@ -454,9 +476,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                         TimeScaleMegawidget.this.dateTimesForIds
                                 .get(identifier).setState(values[j]);
                         if (notify) {
-                            notifyListener(identifier, values[j]);
+                            indicesOfValuesToNotify.add(j);
                         }
                     }
+                }
+                for (int index : indicesOfValuesToNotify) {
+                    notifyListener(stateIdentifiers.get(index), values[index]);
                 }
 
                 // If only ending state changes are

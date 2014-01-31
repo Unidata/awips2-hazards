@@ -181,12 +181,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           the area just outside the timeline, but
  *                                           within its enclosing column header, was
  *                                           right-clicked.
- * Jan 27, 2014   2155     Chris.Golden      Fixed bug that intermittently occurred
+ * Jan 27, 2014    2155    Chris.Golden      Fixed bug that intermittently occurred
  *                                           because an asynchronous execution of
  *                                           code that expected non-disposed widgets
  *                                           encountered widgets that had been dis-
  *                                           posed between the scheduling and run-
  *                                           ning of the aysnchronous code.
+ * Jan 31, 2014    2710    Chris.Golden      Fixed bug that caused exceptions to be
+ *                                           thrown because the minimum interval
+ *                                           between the start and end time of a
+ *                                           hazard here was 0, whereas it was a
+ *                                           minute in the HID. Also added use of a
+ *                                           constant in HazardConstants to ensure
+ *                                           that all time range widgets use the same
+ *                                           minimum interval.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2375,6 +2383,7 @@ class TemporalDisplay {
                 TIME_HORIZONTAL_PADDING + FORM_MARGIN_WIDTH, verticalPadding);
         scale.setVisibleValueRange(ruler.getLowerVisibleValue(),
                 ruler.getUpperVisibleValue());
+        scale.setMinimumDeltaBetweenConstrainedThumbs(HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
         scale.setConstrainedThumbValues(startTime, endTime);
         scale.setConstrainedThumbRangeColor(1, color);
         scale.setFreeMarkedValues(currentTime, selectedTime);
