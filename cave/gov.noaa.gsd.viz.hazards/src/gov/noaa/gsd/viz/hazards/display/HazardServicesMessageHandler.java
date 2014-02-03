@@ -148,6 +148,10 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            to an occasional race condition.
  * Dec 08, 2013 2375       bryon.lawrence     Added code to add updated hazard type to
  *                                            dynamic settings.
+ * Feb 03, 2014 2155       Chris.Golden       Fixed bug that caused floating-
+ *                                            point values to be interpreted
+ *                                            as long integers when doing
+ *                                            conversions to/from JSON.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -983,6 +987,8 @@ public final class HazardServicesMessageHandler implements
                     event.addHazardAttribute(key, primitive.getValueAsText());
                 } else if (primitive.isBoolean()) {
                     event.addHazardAttribute(key, primitive.getBooleanValue());
+                } else if (primitive.isFloatingPointNumber()) {
+                    event.addHazardAttribute(key, primitive.getDoubleValue());
                 } else if (primitive.isNumber()) {
                     Object currentVal = event.getHazardAttribute(key);
                     if (currentVal instanceof Integer) {

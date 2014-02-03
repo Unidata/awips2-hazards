@@ -39,7 +39,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 08, 2014  2182      daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Feb 03, 2014  2155       Chris.Golden      Fixed bug that caused floating-
+ *                                            point values to be interpreted
+ *                                            as long integers when doing
+ *                                            conversions to/from JSON.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -165,6 +168,11 @@ public class DeprecatedUtilities {
                     node.put(entry.getKey(), (Integer) entry.getValue());
                 } else if (entry.getValue() instanceof Long) {
                     node.put(entry.getKey(), (Long) entry.getValue());
+                } else if (entry.getValue() instanceof Float) {
+                    node.put(entry.getKey(),
+                            ((Float) entry.getValue()).doubleValue());
+                } else if (entry.getValue() instanceof Double) {
+                    node.put(entry.getKey(), (Double) entry.getValue());
                 } else if (entry.getValue() instanceof List) {
                     ArrayNode tmpArray = jsonObjectMapper.createArrayNode();
                     for (Object obj : (List<Object>) entry.getValue()) {
