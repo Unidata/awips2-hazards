@@ -9,8 +9,17 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CAUSE;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FFW_NON_CONVECTIVE_PHEN_SIG;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.OAX;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;

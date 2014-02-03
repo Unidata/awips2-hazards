@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 
 import java.util.List;
 import java.util.TreeMap;

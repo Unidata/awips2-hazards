@@ -7,7 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SHAPES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;

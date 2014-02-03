@@ -7,7 +7,20 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREST;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FALL_BELOW;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_PHEN;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SIG;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SUB_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_VTEC_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RISE_ABOVE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.hazardStateFromString;
 import gov.noaa.gsd.common.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 

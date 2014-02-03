@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-
 import java.util.List;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**

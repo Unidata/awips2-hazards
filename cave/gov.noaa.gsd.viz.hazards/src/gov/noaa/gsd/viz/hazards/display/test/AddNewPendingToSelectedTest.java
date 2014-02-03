@@ -9,7 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.AREAL_FLOOD_WATCH_PHEN;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EVENT_BUILDER_OFFSET;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;

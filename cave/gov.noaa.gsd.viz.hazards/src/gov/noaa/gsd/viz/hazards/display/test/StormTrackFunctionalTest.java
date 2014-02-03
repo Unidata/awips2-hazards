@@ -9,7 +9,15 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE_DOT;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MODIFY_STORM_TRACK_TOOL;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTID;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SPATIAL_INFO;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TRACK_POINTS;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;

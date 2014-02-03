@@ -9,7 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -60,12 +61,15 @@ public class HazardAlertsConfigJaxbTest {
             Color color = new Color(1.0f, 1.0f, 0.0f);
             Set<HazardEventExpirationAlertConfigCriterion.Manifestation> manifestations = EnumSet
                     .noneOf(HazardEventExpirationAlertConfigCriterion.Manifestation.class);
-            manifestations.add(HazardEventExpirationAlertConfigCriterion.Manifestation.CONSOLE);
-            manifestations.add(HazardEventExpirationAlertConfigCriterion.Manifestation.POPUP);
+            manifestations
+                    .add(HazardEventExpirationAlertConfigCriterion.Manifestation.CONSOLE);
+            manifestations
+                    .add(HazardEventExpirationAlertConfigCriterion.Manifestation.POPUP);
             HazardEventExpirationAlertConfigCriterion criterion = new HazardEventExpirationAlertConfigCriterion(
-                    "10 min", HazardEventExpirationAlertConfigCriterion.Units.MINUTES,
-                    manifestations, 10 * TimeUtil.MILLIS_PER_MINUTE, color, true,
-                    false, true);
+                    "10 min",
+                    HazardEventExpirationAlertConfigCriterion.Units.MINUTES,
+                    manifestations, 10 * TimeUtil.MILLIS_PER_MINUTE, color,
+                    true, false, true);
             alertConfiguration.add(criterion);
             categoryConfig.setConfiguration(alertConfiguration);
             configByCategory.add(categoryConfig);

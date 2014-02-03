@@ -9,7 +9,19 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_ASCENDING;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_DESCENDING;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_SORT_DIRECTION_NONE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_COUNTDOWN;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_DATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_STRING;
 import gov.noaa.gsd.common.utilities.DateStringComparator;
 import gov.noaa.gsd.common.utilities.DoubleStringComparator;
 import gov.noaa.gsd.common.utilities.JSONConverter;

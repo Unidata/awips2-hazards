@@ -9,7 +9,9 @@
  */
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_GEOMETRY_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SPATIAL_INFO;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPoint;

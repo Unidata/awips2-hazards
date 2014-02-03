@@ -9,7 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.*;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
+import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_SOLID;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 

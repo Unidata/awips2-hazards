@@ -7,7 +7,14 @@
  */
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GEOMETRY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PHENOMENON;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SIGNIFICANCE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 
 import java.util.Date;
 import java.util.List;

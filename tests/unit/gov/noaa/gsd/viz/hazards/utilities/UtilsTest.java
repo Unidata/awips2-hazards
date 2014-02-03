@@ -1,7 +1,10 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static gov.noaa.gsd.common.utilities.Utils.*;
-import static org.junit.Assert.*;
+import static gov.noaa.gsd.common.utilities.Utils.dirName;
+import static gov.noaa.gsd.common.utilities.Utils.removeBlanks;
+import static gov.noaa.gsd.common.utilities.Utils.squeeze;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import gov.noaa.gsd.common.utilities.Utils;
 
 import java.util.Arrays;

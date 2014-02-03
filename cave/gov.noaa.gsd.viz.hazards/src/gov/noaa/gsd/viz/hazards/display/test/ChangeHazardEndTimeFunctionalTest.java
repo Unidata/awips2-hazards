@@ -9,8 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
-import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
+import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXT_VTEC_STRING;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;

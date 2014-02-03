@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 
 import java.io.Serializable;
 import java.util.ArrayList;

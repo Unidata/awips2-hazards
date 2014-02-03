@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.LineAttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 

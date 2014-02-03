@@ -26,7 +26,12 @@
  **/
 package gov.noaa.gsd.viz.hazards.jsonutilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 
 import java.io.Serializable;
