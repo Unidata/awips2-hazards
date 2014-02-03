@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -75,9 +76,17 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeMo
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.MarineZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.NullUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.OffshoreZoneUGCBuilder;
+import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.ZoneUGCBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
@@ -114,6 +123,31 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  */
 
 public class SessionEventManager extends AbstractSessionEventManager {
+
+    /**
+     * Contains the mappings between geodatabase table names and the UGCBuilders
+     * which correspond to them.
+     */
+    private static Map<String, IUGCBuilder> geoTableUGCBuilderMap;
+
+    /**
+     * Look-up IUGCBuilders for tables in the maps geodatabase.
+     */
+    static {
+        Map<String, IUGCBuilder> tempMap = Maps.newHashMap();
+
+        tempMap.put(HazardConstants.MAPDATA_COUNTY, new CountyUGCBuilder());
+        tempMap.put(HazardConstants.POLYGON_TYPE, new CountyUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_ZONE, new ZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_FIRE_ZONES,
+                new FireWXZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_MARINE_ZONES,
+                new MarineZoneUGCBuilder());
+        tempMap.put(HazardConstants.MAPDATA_OFFSHORE,
+                new OffshoreZoneUGCBuilder());
+
+        geoTableUGCBuilderMap = Collections.unmodifiableMap(tempMap);
+    }
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
@@ -748,8 +782,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
                 if (!hazardConflictList.isEmpty()) {
 
-                    String cwa = LocalizationManager
-                            .getContextName(LocalizationLevel.SITE);
+                    String cwa = configManager.getSiteID();
 
                     String hazardHatchArea = hazardTypeEntry
                             .getHazardHatchArea();
@@ -760,9 +793,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     String hazardHatchLabel = hazardTypeEntry
                             .getHazardHatchLabel();
 
-                    Set<IGeometryData> hatchedAreasForEvent = HazardEventUtilities
+                    Set<IGeometryData> hatchedAreasForEvent = HatchingUtilities
                             .buildHatchedAreaForEvent(hazardHatchArea,
-                                    hazardHatchLabel, cwa, eventToCompare);
+                                    hazardHatchLabel, cwa, eventToCompare,
+                                    configManager);
 
                     /*
                      * Retrieve matching events from the Hazard Event Manager
@@ -829,11 +863,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                         String hazardHatchToCheckLabel = hazardTypeEntry
                                                 .getHazardHatchLabel();
 
-                                        Set<IGeometryData> hatchedAreasEventToCheck = HazardEventUtilities
+                                        Set<IGeometryData> hatchedAreasEventToCheck = HatchingUtilities
                                                 .buildHatchedAreaForEvent(
                                                         hazardHatchAreaToCheck,
                                                         hazardHatchToCheckLabel,
-                                                        cwa, eventToCheck);
+                                                        cwa, eventToCheck,
+                                                        configManager);
 
                                         conflictingHazardsMap
                                                 .putAll(buildConflictMap(
@@ -1081,7 +1116,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                             && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
                                 .isModified())) {
 
-                Set<IGeometryData> geoDataSet = HazardEventUtilities
+                Set<IGeometryData> geoDataSet = HatchingUtilities
                         .getClippedMapGeometries(
                                 hazardType.getHazardClipArea(), null, cwa,
                                 selectedEvent);
@@ -1215,4 +1250,65 @@ public class SessionEventManager extends AbstractSessionEventManager {
         ((IUndoRedoable) event).clearUndoRedo();
     }
 
+    @Override
+    public void updateSelectedHazardUGCs() {
+
+        for (IHazardEvent hazardEvent : getSelectedEvents()) {
+            String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+
+            if (hazardType != null) {
+                String mapDBtableName = configManager.getHazardTypes()
+                        .get(hazardType).getHazardHatchArea();
+
+                String mapLabelParameter = configManager.getHazardTypes()
+                        .get(hazardType).getHazardHatchLabel();
+
+                String cwa = configManager.getSiteID();
+
+                Set<IGeometryData> hazardArea;
+
+                if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
+                    hazardArea = HatchingUtilities
+                            .getIntersectingMapGeometries(
+                                    HazardConstants.MAPDATA_COUNTY,
+                                    mapLabelParameter, cwa, true,
+                                    configManager, hazardEvent);
+                } else {
+                    hazardArea = HatchingUtilities.buildHatchedAreaForEvent(
+                            mapDBtableName, mapLabelParameter, cwa,
+                            hazardEvent, configManager);
+                }
+
+                /*
+                 * TODO Will need to support user-additions/removals to/from UGC
+                 * List.
+                 */
+                IUGCBuilder ugcBuilder = getUGCBuilder(mapDBtableName);
+                List<String> ugcList = ugcBuilder.buildUGCList(hazardArea);
+                hazardEvent.addHazardAttribute(HazardConstants.UGCS,
+                        (Serializable) ugcList);
+            }
+        }
+
+    }
+
+    /**
+     * Factory method which builds the correct IUGCBuilder based on the provided
+     * geodatabase table name.
+     * 
+     * @param geoTableName
+     *            The name of the geodatabase table
+     * @return An IUGCBuilder object which knows how to construct UGCs for the
+     *         specified geodatabase table.
+     */
+    private IUGCBuilder getUGCBuilder(String geoTableName) {
+
+        if (geoTableUGCBuilderMap.containsKey(geoTableName)) {
+            return geoTableUGCBuilderMap.get(geoTableName);
+        } else {
+            statusHandler.error("No UGC handler found for maps database table "
+                    + geoTableName);
+            return new NullUGCBuilder();
+        }
+    }
 }

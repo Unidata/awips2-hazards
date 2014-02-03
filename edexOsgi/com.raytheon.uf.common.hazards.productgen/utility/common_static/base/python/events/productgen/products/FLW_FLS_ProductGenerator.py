@@ -23,10 +23,6 @@ class Product(Legacy_ProductGenerator.Product):
         # This is for the VTEC Engine
         self._productCategory = "FLW_FLS"
         self._areaName = "" 
-        # Does the product use zones or counties for areal hazards
-        self._areaUgcType = 'counties'
-        # Does the product use zones or counties for point hazards
-        self._pointUgcType = 'counties'
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
         # NOTE: In PV2, this will gathered as part of the Hazard Information Dialog

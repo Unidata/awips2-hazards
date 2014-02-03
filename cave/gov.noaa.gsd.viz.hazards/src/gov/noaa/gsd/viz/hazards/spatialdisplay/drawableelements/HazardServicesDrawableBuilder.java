@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -605,9 +606,9 @@ public class HazardServicesDrawableBuilder {
             String cwa = LocalizationManager
                     .getContextName(LocalizationLevel.SITE);
 
-            Set<IGeometryData> hazardArea = HazardEventUtilities
+            Set<IGeometryData> hazardArea = HatchingUtilities
                     .buildHatchedAreaForEvent(mapDBtableName,
-                            mapLabelParameter, cwa, hazardEvent);
+                            mapLabelParameter, cwa, hazardEvent, configManager);
 
             for (IGeometryData geometryData : hazardArea) {
 
@@ -635,9 +636,9 @@ public class HazardServicesDrawableBuilder {
              */
             if (mapDBtableName.equals(HazardConstants.POLYGON_TYPE)) {
 
-                hazardArea = HazardEventUtilities.getIntersectingMapGeometries(
+                hazardArea = HatchingUtilities.getIntersectingMapGeometries(
                         HazardConstants.MAPDATA_COUNTY, mapLabelParameter, cwa,
-                        true, hazardEvent);
+                        true, configManager, hazardEvent);
 
                 for (IGeometryData geometryData : hazardArea) {
                     Point centroid = geometryData.getGeometry().getCentroid();

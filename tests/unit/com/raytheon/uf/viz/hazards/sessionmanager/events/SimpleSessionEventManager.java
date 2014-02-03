@@ -178,4 +178,9 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void updateSelectedHazardUGCs() {
+        throw new UnsupportedOperationException();
+    }
+
 }

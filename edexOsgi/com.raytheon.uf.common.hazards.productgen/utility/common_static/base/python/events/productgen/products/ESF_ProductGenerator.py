@@ -29,8 +29,6 @@ class Product(Legacy_ProductGenerator.Product):
         super(Product, self).__init__()       
         self._productCategory = "ESF"
         self._areaName = "" 
-        # Does the product use zones or counties for areal hazards
-        self._areaUgcType = "counties"
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
         # NOTE: In PV2, this will gathered as part of the Hazard Information Dialog

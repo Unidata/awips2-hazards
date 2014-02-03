@@ -321,7 +321,7 @@ class Product(ProductTemplate.Product):
         @param hazardEvents: list of Hazard Events
         @return a list of segments for the hazard events
         '''
-        self._generatedHazardEvents = self.computeUGCsForHazardEvents(hazardEvents)
+        self._generatedHazardEvents = self.determineShapeTypesForHazardEvents(hazardEvents)
         self.getVtecEngine(self._generatedHazardEvents)        
         segments = self._vtecEngine.getSegments()
         return segments
@@ -367,7 +367,7 @@ class Product(ProductTemplate.Product):
             if geoType == 'point' :   events = self._pointEvents
             else:                     events = self._areaEvents
             if not events: continue
-            events = self.computeUGCsForHazardEvents(events)
+            events = self.determineShapeTypesForHazardEvents(events)
             self._generatedHazardEvents += events
             self.getVtecEngine(events)
             segments = self._vtecEngine.getSegments()
@@ -986,14 +986,13 @@ class Product(ProductTemplate.Product):
         else:
             return cityList            
 
-    def computeUGCsForHazardEvents(self, hazardEvents):
+    def determineShapeTypesForHazardEvents(self, hazardEvents):
         '''
-        For each hazard event, determine the set of ugcs
-        For area events, the polygon will be used to map to ugcs
-        For point events, the lat/lon of the point will be used
+        For each hazard event, determine the shapeType
+        to associate with its collection of geometries.
         @param hazardEvents -- list of hazard events
         @return newHazardEvents -- list of augmented hazard events with 
-            entries added for the ugcs
+            entries added for the shape type and site ID
         '''
         newHazardEvents = []
         for hazardEvent in hazardEvents:
@@ -1009,37 +1008,17 @@ class Product(ProductTemplate.Product):
             
                 if geometryType in [HazardConstants.SHAPELY_POLYGON, HazardConstants.SHAPELY_MULTIPOLYGON]:
                     geometryList.extend(self._extractPolygons(hazardEvent))
-                    ugcType = self._areaUgcType
                     hazardEvent.set('shapeType', 'polygon')
                 elif geometryType == HazardConstants.SHAPELY_LINE:
-                    # For now, we treat line points as polygon points, and
-                    # match UGCs from those. But really it should treat them
-                    # as actual lines when matching UGCs. 
                     geometryList.append(list(geometry.coords))
-                    ugcType = self._areaUgcType
                     hazardEvent.set('shapeType', 'line')
                 else:
-                    #  For point geometries, convert a lat/lon to a UGC
                     geometryList.append(list(geometry.coords))
-                    ugcType = self._pointUgcType
                     hazardEvent.set('shapeType', 'point')
 
                     # Ensure the event has a pointID
                     if hazardEvent.get('pointID') is None:
                         hazardEvent.set('pointID', 'XXXXX')
-
-            ugcs = self._mapInfo.getUGCsMatchPolygons(ugcType,
-                   geometryList, siteID=self._siteID)
-
-            uniqueUgcs = []        
-            for ugc in ugcs:        
-                if ugc in uniqueUgcs: continue        
-                uniqueUgcs.append(ugc)
-            
-
-            hazardEvent.set('ugcs', uniqueUgcs)
-                
-            
                         
             #  Handle 'previewState' 
             #  IF we are previewing an 'ended' state, temporarily set the state as 'ended'

@@ -63,6 +63,10 @@ public class HazardTypeEntry {
 
     private String hazardClipArea;
 
+    private boolean inclusionTest;
+
+    private double inclusionPercentage;
+
     private int hazardPointLimit;
 
     public String getHeadline() {
@@ -183,5 +187,33 @@ public class HazardTypeEntry {
      */
     public void setHazardPointLimit(int hazardPointLimit) {
         this.hazardPointLimit = hazardPointLimit;
+    }
+
+    /**
+     * @return the inclusionTest
+     */
+    public boolean isInclusionTest() {
+        return inclusionTest;
+    }
+
+    /**
+     * @param inclusionTest the inclusionTest to set
+     */
+    public void setInclusionTest(boolean inclusionTest) {
+        this.inclusionTest = inclusionTest;
+    }
+
+    /**
+     * @return the inclusionPercentage
+     */
+    public double getInclusionPercentage() {
+        return inclusionPercentage;
+    }
+
+    /**
+     * @param inclusionPercentage the inclusionPercentage to set
+     */
+    public void setInclusionPercentage(double inclusionPercentage) {
+        this.inclusionPercentage = inclusionPercentage;
     }
 }

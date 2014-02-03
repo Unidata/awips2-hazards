@@ -341,4 +341,12 @@ public interface ISessionEventManager {
      */
     public boolean canEventAreaBeChanged(IHazardEvent event);
 
+    /**
+     * Updates the UGC information associated with the selected hazard events.
+     * 
+     * @param
+     * @return
+     */
+    public void updateSelectedHazardUGCs();
+
 }

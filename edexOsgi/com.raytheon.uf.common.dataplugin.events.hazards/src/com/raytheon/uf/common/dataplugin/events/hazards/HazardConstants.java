@@ -335,6 +335,11 @@ public final class HazardConstants {
     public static final String VTEC_CODES = "vtecCodes";
 
     /**
+     * UGCs
+     */
+    public static final String UGCS = "ugcs";
+
+    /**
      * Group identifier key in hazard
      */
     public static final String HAZARD_EVENT_GROUP_IDENTIFIER = "groupID";
@@ -634,6 +639,10 @@ public final class HazardConstants {
 
     public static final String MAPDATA_FIRE_ZONES_LABEL = "name";
 
+    public static final String MAPDATA_MARINE_ZONES = "marinezones";
+
+    public static final String MAPDATA_OFFSHORE = "offshore";
+
     public static final String NEW_ACTION = "NEW";
 
     public static final String EXTEND_IN_TIME_ACTION = "EXT";
@@ -645,6 +654,17 @@ public final class HazardConstants {
     public static final String ROUTINE_ACTION = "ROU";
 
     public static final String CANCEL_ACTION = "CAN";
+
+    /*
+     * Constants related to retrieving UGC information from the maps database.
+     */
+    public static final String UGC_FIPS = "fips";
+
+    public static final String UGC_STATE = "state";
+
+    public static final String UGC_ZONE = "zone";
+
+    public static final String UGC_ID = "id";
 
     /*
      * TODO The following need to be organized better.

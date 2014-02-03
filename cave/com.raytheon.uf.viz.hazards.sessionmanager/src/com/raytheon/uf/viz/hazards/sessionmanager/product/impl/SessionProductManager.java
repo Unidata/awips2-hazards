@@ -311,6 +311,11 @@ public class SessionProductManager implements ISessionProductManager {
 
             eventManager.reduceSelectedHazardGeometries();
 
+            /*
+             * Update the UGC information in the Hazard Event
+             */
+            eventManager.updateSelectedHazardUGCs();
+
             if (issue && confirm) {
                 boolean answer = messenger
                         .getQuestionAnswerer()

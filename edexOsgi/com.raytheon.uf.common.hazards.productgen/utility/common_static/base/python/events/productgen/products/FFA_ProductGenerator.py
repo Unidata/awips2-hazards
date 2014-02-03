@@ -22,10 +22,6 @@ class Product(Legacy_ProductGenerator.Product):
         # This will be accessed through the afos2awips utility which is still being
         #   tested
         self._areaName = "" 
-        # Does the product use zones or counties for areal hazards
-        self._areaUgcType = "publicZones"
-        # Does the product use zones or counties for point hazards
-        self._pointUgcType = "counties"
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
         # NOTE: In PV2, this will gathered as part of the Hazard Information Dialog
