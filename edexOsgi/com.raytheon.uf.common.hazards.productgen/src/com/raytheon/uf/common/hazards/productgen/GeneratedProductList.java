@@ -17,13 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.product;
+package com.raytheon.uf.common.hazards.productgen;
 
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import java.util.ArrayList;
+
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 
 /**
- * Notification that is sent out when a product is successfully generated.
+ * Subclass of ArrayList<IGeneratedProduct> that contains an event set
+ * attribute.
  * 
  * <pre>
  * 
@@ -31,24 +34,34 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 19, 2013 1257       bsteffen    Initial creation
- * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
+ * Oct 29, 2013  2266      jsanchez     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author jsanchez
  * @version 1.0
  */
 
-public class ProductGenerated extends ProductModified implements
-        ISessionNotification {
+public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
 
-    public ProductGenerated(ProductInformation productInformation) {
-        super(productInformation);
+    private String productInfo;
+
+    private EventSet<IEvent> eventSet;
+
+    public String getProductInfo() {
+        return productInfo;
     }
 
-    public GeneratedProductList getProducts() {
-        return getProductInformation().getProducts();
+    public void setProductInfo(String productInfo) {
+        this.productInfo = productInfo;
+    }
+
+    public EventSet<IEvent> getEventSet() {
+        return eventSet;
+    }
+
+    public void setEventSet(EventSet<IEvent> eventSet) {
+        this.eventSet = eventSet;
     }
 
 }

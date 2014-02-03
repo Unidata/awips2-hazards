@@ -27,7 +27,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    02/18/13                      jsanchez       Initial Creation.
-#    
+#    12/11/13        2266          jsanchez       Added abstract method formatFrom.
 #
 #
 
@@ -47,3 +47,14 @@ class Formatter(object):
         @return: Abstract method does not return anything
         """
         return
+    
+    @abc.abstractmethod
+    def formatFrom(self, text):
+        """
+        Subclasses need to override this method.
+        @param text: raw text to be formatted
+        @return: Abstract method does not return anything
+        """
+        return
+
+        

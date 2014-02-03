@@ -103,6 +103,7 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
             } catch (RuntimeException e) {
                 response.setExceptions(e);
             }
+            break;
         case RETRIEVE:
             ProductText pText = request.getProductText();
             Criteria criteria = dao.getSessionFactory().openSession()

@@ -19,6 +19,7 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
  * Description: Test implementation of the product editor view.
@@ -175,8 +176,8 @@ public class TestProductEditorView implements
      * @return
      */
     @Override
-    public List<Dict> getGeneratedProductsDictList() {
-        return Lists.newArrayList();
+    public GeneratedProductList getGeneratedProductList() {
+        return new GeneratedProductList();
     }
 
     /**

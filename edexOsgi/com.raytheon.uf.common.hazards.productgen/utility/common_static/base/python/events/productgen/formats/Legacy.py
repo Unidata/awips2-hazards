@@ -28,13 +28,14 @@
 #    ------------    ----------    -----------    --------------------------
 #    03/14/13                      jsanchez       Initial Creation.
 #    07/08/13        784,1290      Tracy.L.Hansen Added ProductParts and changes for ESF product generator
-# 
+#    12/11/13        2266          jsanchez       Used ProductUtil to format text. Added Editable to track editable entries.
 #
 import FormatTemplate
 from time import gmtime, strftime
 import collections
 import types
-from TextProductCommon import TextProductCommon
+from Editable import Editable
+from com.raytheon.uf.common.hazards.productgen import ProductUtils
 
 class Format(FormatTemplate.Formatter):
     
@@ -44,13 +45,14 @@ class Format(FormatTemplate.Formatter):
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in Legacy format.
         '''
+        from TextProductCommon import TextProductCommon
         self._tpc = TextProductCommon()        
-        data = self.cleanDictKeys(data)
-        self.data = data 
+        self.data = data
+        self.editables = Editable(data)
         #print "Legacy data", data
         #self._tpc.flush()
         text = self._processProductParts(data, self._tpc.getVal(data, 'productParts', []))
-        return str(text.upper())
+        return self.formatFrom(text), self.editables._getResult()
     
     def _processProductParts(self, dataDict, productParts, skipParts=[]):
         '''
@@ -61,8 +63,18 @@ class Format(FormatTemplate.Formatter):
         @return text -- product string
         '''
         text = ''
-        for productPart in productParts: 
-            name = productPart.getName()
+        for part in productParts: 
+            valtype = type(part)
+            if valtype is str:
+                name = part
+            elif valtype is tuple:
+                name = part[0]
+            elif valtype is list:
+                # TODO THIS SHOULD BE REMOVED AFTER THE REFACTOR OF HazardServicesProductGenerationHandler.JAVA
+                tup = (part[0], part[1])
+                part = tup
+                name = part[0]
+
             if name == 'wmoHeader': text += self.processWmoHeader(dataDict['wmoHeader']) + '\n'
             elif name == 'wmoHeader_noCR': text += self.processWmoHeader(dataDict['wmoHeader'])
             elif name == 'easMessage':
@@ -77,9 +89,9 @@ class Format(FormatTemplate.Formatter):
             elif name == 'overview':
                 text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
             elif name == 'segments':
-                text += self.processSegments(dataDict['segments'], productPart.getProductParts()) 
+                text += self.processSegments(dataDict['segments'], part[1]) 
             elif name == 'sections':
-                text += self.processSections(dataDict['sections'], productPart.getProductParts())
+                text += self.processSections(dataDict['sections'], part[1])
             elif name == 'vtecRecords':
                 if 'vtecRecords' in dataDict:
                     vtecRecords = dataDict['vtecRecords']
@@ -106,7 +118,9 @@ class Format(FormatTemplate.Formatter):
             else:
                 textStr = self._tpc.getVal(dataDict, name)
                 if textStr:
-                    text += textStr + '\n'                    
+                    text += textStr + '\n'
+                    self.editables.add(name,self.formatFrom(textStr))
+                    
         return text
         
     def processWmoHeader(self, wmoHeader):
@@ -192,4 +206,6 @@ class Format(FormatTemplate.Formatter):
             temp.append(item)
         return temp
 
+    def formatFrom(self, text):
+        return ProductUtils.wrapLegacy(str(text))
     

@@ -19,8 +19,10 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.product;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -30,7 +32,7 @@ import jep.JepException;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.LocalizationFile;
@@ -65,14 +67,24 @@ public class ProductScript extends PythonScriptController {
 
     private static final String GET_SCRIPT_METADATA = "getScriptMetadata";
 
+    private static final String GET_DIALOG_INFO = "getDialogInfo";
+
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
 
     /** Parameter name in the execute method */
     private static final String EVENT_SET = "eventSet";
 
+    private static final String DIALOG_INPUT_MAP = "dialogInputMap";
+
+    private static final String FORMATS = "formats";
+
+    private static final String DATA_LIST = "dataList";
+
     /** Executing method in the python module */
     private static final String METHOD_NAME = "execute";
+
+    private static final String UPDATE_METHOD = "executeFrom";
 
     private static final String PRODUCTS_DIRECTORY = "productgen/products";
 
@@ -130,31 +142,64 @@ public class ProductScript extends PythonScriptController {
      * 
      * @param product
      * @param eventSet
-     *            the EventSet<IEvent> o
+     * @param dailogVaues
      * @param formats
      *            an array of the formats the IGeneratedProduct should be in
      *            (i.e. XML)
      * @return
      */
     @SuppressWarnings("unchecked")
-    public List<IGeneratedProduct> generateProduct(String product,
-            EventSet<IEvent> eventSet, String[] formats) {
+    public GeneratedProductList generateProduct(String product,
+            EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
+            String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(EVENT_SET, eventSet);
-        args.put("formats", Arrays.asList(formats));
-        List<IGeneratedProduct> retVal = null;
+        args.put(DIALOG_INPUT_MAP, dialogValues);
+        args.put(FORMATS, Arrays.asList(formats));
+        GeneratedProductList retVal = null;
         try {
             if (!isInstantiated(product)) {
                 instantiatePythonScript(product);
             }
 
-            retVal = (List<IGeneratedProduct>) execute(METHOD_NAME, INTERFACE,
+            retVal = (GeneratedProductList) execute(METHOD_NAME, INTERFACE,
                     args);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to execute product generator", e);
+        }
+
+        return retVal;
+    }
+
+    /**
+     * Passes the updatedDataList to the python formatters to return a new
+     * GeneratedProductList.
+     * 
+     * @param updatedDataList
+     * @param formats
+     * @param dailogVaues
+     * 
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    public GeneratedProductList updateGeneratedProducts(String product,
+            List<LinkedHashMap<String, Serializable>> updatedDataList,
+            String[] formats) {
+
+        Map<String, Object> args = new HashMap<String, Object>(
+                getStarterMap(product));
+        args.put(DATA_LIST, updatedDataList);
+        args.put(FORMATS, Arrays.asList(formats));
+        GeneratedProductList retVal = null;
+        try {
+            retVal = (GeneratedProductList) execute(UPDATE_METHOD, INTERFACE,
+                    args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to update the generated products", e);
         }
 
         return retVal;
@@ -167,7 +212,7 @@ public class ProductScript extends PythonScriptController {
      * @return
      */
     public Map<String, String> getDialogInfo(String product) {
-        return getInfo(product, "getDialogInfo");
+        return getInfo(product, GET_DIALOG_INFO);
     }
 
     /**
@@ -177,7 +222,7 @@ public class ProductScript extends PythonScriptController {
      * @return
      */
     public Map<String, String> getScriptMetadata(String product) {
-        return getInfo(product, "getScriptMetadata");
+        return getInfo(product, GET_SCRIPT_METADATA);
     }
 
     /**

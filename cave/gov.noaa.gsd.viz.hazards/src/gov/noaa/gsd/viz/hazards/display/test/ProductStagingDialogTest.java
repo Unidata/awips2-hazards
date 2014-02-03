@@ -28,6 +28,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
@@ -140,12 +141,12 @@ public class ProductStagingDialogTest extends FunctionalTest {
         assertEquals(choices.size(), 2);
         checkChoice(choices.get(0));
         checkChoice(choices.get(1));
-        List<IGeneratedProduct> products = generated.getProducts();
+        GeneratedProductList products = generated.getProducts();
         assertEquals(products.size(), 1);
         IGeneratedProduct generatedProduct = products.get(0);
         assertTrue(generatedProduct.getProductID().equals(
                 FLOOD_WATCH_PRODUCT_ID));
-        EventSet<IEvent> eventSet = generatedProduct.getEventSet();
+        EventSet<IEvent> eventSet = products.getEventSet();
         assertEquals(eventSet.size(), 1);
         IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
         assertEquals(event.getEventID(), product.getSelectedEventIDs().get(0));

@@ -66,6 +66,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 
@@ -567,8 +568,9 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 HazardAction.ISSUE.getValue());
         List<Dict> hazardEventSetsList = mockProductEditorView
                 .getHazardEventSetsList();
-        List<Dict> generatedProductsDictList = mockProductEditorView
-                .getGeneratedProductsDictList();
+        List<Dict> generatedProductsDictList = AutoTestUtilities
+                .createGeneratedProductsDictList(mockProductEditorView
+                        .getGeneratedProductList());
         Dict returnDict = new Dict();
         returnDict.put(GENERATED_PRODUCTS, generatedProductsDictList);
         returnDict.put(HAZARD_EVENT_SETS, hazardEventSetsList);

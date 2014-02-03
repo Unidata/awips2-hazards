@@ -16,14 +16,12 @@
     ------------ ---------- ----------- --------------------------
     July 3, 2013  1290      Tracy.L.Hansen      Initial creation
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
-                                                 dictionary
-    
+    Jan  7, 2014   2367     jsanchez            Replaced ProductProduct with native python objects.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
 import os, types, copy, sys, json
 import Legacy_ProductGenerator
-from ProductPart import ProductPart
 
 class Product(Legacy_ProductGenerator.Product):
     
@@ -55,7 +53,7 @@ class Product(Legacy_ProductGenerator.Product):
         """  
         return {}
                 
-    def execute(self, eventSet):          
+    def execute(self, eventSet, dialogInputMap):          
         '''
         Inputs:
         @param eventSet: a list of hazard events (hazardEvents) plus
@@ -91,13 +89,12 @@ class Product(Legacy_ProductGenerator.Product):
         List of product parts in the order they appear in the product
         Orders and defines the Product Parts for the given productID
         '''
-        return [
-            ProductPart('wmoHeader_noCR'),
-            ProductPart('ugcHeader'),
-            ProductPart('CR'),
-            ProductPart('productHeader'),
-            ProductPart('narrativeForecastInformation'),
-            ProductPart('end'),
+        return ['wmoHeader_noCR',
+                'ugcHeader',
+                'CR',
+                'productHeader',
+                'narrativeForecastInformation',
+                'end',
             ]
             
     def _groupSegments(self, segments):
@@ -146,6 +143,9 @@ class Product(Legacy_ProductGenerator.Product):
          *|
          '''
 
+    def executeFrom(self, dataList):
+        # TODO update the issue time, VTEC ETN, etc.
+        return dataList
         
 
            

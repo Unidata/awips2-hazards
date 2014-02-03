@@ -13,18 +13,23 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.productgen.dialog.GeneratorInfo;
 import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
 
 /**
@@ -114,7 +119,10 @@ public final class ProductEditorView implements
                     .getWorkbench().getActiveWorkbenchWindow().getShell());
             // FIXME TODO XXX this is a temporary change, will be OBE by JSON
             // removal.
-            List<IGeneratedProduct> products = new ArrayList<IGeneratedProduct>();
+            GeneratedProductList products = new GeneratedProductList();
+            List<LinkedHashMap<String, Serializable>> dataList = new ArrayList<LinkedHashMap<String, Serializable>>();
+            int counter = 0;
+            Map<String, GeneratorInfo> generatorInformationMap = new HashMap<String, GeneratorInfo>();
             if (generatedProducts != null) {
                 for (Dict d : generatedProducts) {
                     Dict val = (Dict) d.get("products");
@@ -125,14 +133,67 @@ public final class ProductEditorView implements
                         text.add(val.get(format));
                         product.addEntry(format, text);
                     }
+
+                    product.setEditableEntries((LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>) d
+                            .get("editableEntries"));
+                    product.setData(createDataFromDict((Dict) d.get("data")));
                     products.add(product);
+
+                    String productGeneratorName = String.valueOf(d
+                            .get("productGeneratorName"));
+                    GeneratorInfo generationInfo = generatorInformationMap
+                            .get(productGeneratorName);
+                    if (generationInfo == null) {
+                        generationInfo = new GeneratorInfo(
+                                productGeneratorName, counter);
+                    } else {
+                        generationInfo.increment();
+                    }
+                    generatorInformationMap.put(productGeneratorName,
+                            generationInfo);
                 }
             }
+
+            productGenerationDialog
+                    .setGeneratorInformationMap(generatorInformationMap);
             productGenerationDialog.setProducts(products);
+
             return true;
         }
 
         return false;
+    }
+
+    /*
+     * This is a helper method that should be removed as part of the JSON
+     * refactor.
+     */
+    @Deprecated
+    private LinkedHashMap<String, Serializable> createDataFromDict(Dict dict) {
+        LinkedHashMap<String, Serializable> linkedHashMap = new LinkedHashMap<String, Serializable>();
+        for (String key : dict.keySet()) {
+            Object value = dict.get(key);
+            value.getClass();
+            Serializable serializable = null;
+            if (value instanceof Dict) {
+                serializable = createDataFromDict((Dict) value);
+            } else if (value instanceof List) {
+                ArrayList<Serializable> list = new ArrayList<Serializable>();
+                for (Object item : (List) value) {
+                    if (item instanceof Dict) {
+                        list.add(createDataFromDict((Dict) item));
+                    } else {
+                        list.add((Serializable) item);
+                    }
+                }
+                serializable = list;
+            } else {
+                serializable = (Serializable) value;
+            }
+
+            linkedHashMap.put(key, serializable);
+        }
+        return linkedHashMap;
     }
 
     @Override
@@ -148,8 +209,8 @@ public final class ProductEditorView implements
     }
 
     @Override
-    public List<Dict> getGeneratedProductsDictList() {
-        return generatedProducts;
+    public GeneratedProductList getGeneratedProductList() {
+        return productGenerationDialog.getGeneratedProducts();
     }
 
     @Override

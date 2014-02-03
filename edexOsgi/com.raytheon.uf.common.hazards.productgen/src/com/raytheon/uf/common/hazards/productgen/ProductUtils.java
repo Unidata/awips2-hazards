@@ -109,7 +109,7 @@ public class ProductUtils {
      * @throws TransformerConfigurationException
      * @throws TransformerException
      */
-    public static String prettyXML(String xml) {
+    public static String prettyXML(String xml, boolean includeVersion) {
 
         try {
             // Instantiate transformer input
@@ -121,7 +121,10 @@ public class ProductUtils {
                     .newTransformer(); // An identity transformer
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty(
-                    "{http://xml.apache.org/xslt}indent-amount", "2");
+                    "{http://xml.apache.org/xslt}indent-amount", "0");
+            if (includeVersion == false) {
+                transformer.setOutputProperty("omit-xml-declaration", "yes");
+            }
             transformer.transform(xmlInput, xmlOutput);
 
             return xmlOutput.getWriter().toString();
@@ -140,6 +143,18 @@ public class ProductUtils {
      * @return
      */
     public static String wrapLegacy(String text) {
+
+        // Maintains the number of newline characters on the end of the text.
+        int newlinesAtTheEnd = 0;
+        for (int i = text.length() - 1; i >= 0; i--) {
+            if (text.charAt(i) == '\n') {
+                newlinesAtTheEnd++;
+            } else {
+                break;
+            }
+
+        }
+
         StringBuffer sb = new StringBuffer();
 
         boolean inBullet = false;
@@ -172,7 +187,12 @@ public class ProductUtils {
             }
         }
 
-        return sb.toString();
+        // Adds back the new line characters that were stripped off
+        for (int i = 0; i < newlinesAtTheEnd; i++) {
+            sb.append("\n");
+        }
+
+        return sb.toString().toUpperCase();
     }
 
     /**

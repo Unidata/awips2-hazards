@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
+import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductMetadataExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptExecutor;
+import com.raytheon.uf.common.hazards.productgen.executors.ProductScriptUpdater;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScriptFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
@@ -51,6 +54,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Jan 10, 2013            jsanchez     Initial creation
  * Sep 19, 2013 2046       mnash        Update for less dependencies.
+ * Nov  5, 2013 2266       jsanchez     Removed unused method and used GeneratedProductList.
  * 
  * </pre>
  * 
@@ -84,13 +88,13 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      *            the listener to the aysnc job
      */
     public void generate(String product, EventSet<IEvent> eventSet,
-            String[] formats,
-            IPythonJobListener<List<IGeneratedProduct>> listener) {
+            Map<String, Serializable> dialogInfo, String[] formats,
+            IPythonJobListener<GeneratedProductList> listener) {
         // Validates the parameter values
         validate(formats, product, eventSet, listener);
 
-        IPythonExecutor<ProductScript, List<IGeneratedProduct>> executor = new ProductScriptExecutor(
-                product, eventSet, formats);
+        IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptExecutor(
+                product, eventSet, dialogInfo, formats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);
@@ -100,27 +104,24 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     /**
-     * Generates an array of eventSets into different formats.The job is
-     * performed asynchronously and will be passed to the session manager.
+     * Accepts an updated data list and passes it to the 'executeFrom' of the
+     * product generator.
      * 
      * @param product
-     *            name of the product generator. "ExampleFFW" refers to the
-     *            python class "ExampleFFW.py" which should be in the
-     *            /common_static/base/python/events/productgen/products
-     *            directory
-     * @param eventSets
-     *            an array of EventSet<IEvent> objects that will provide the
-     *            information for the product generator
+     * @param updatedDataList
      * @param formats
-     *            array of formats to be generated (i.e. "XML", "ASCII")
      * @param listener
-     *            the listener to the aysnc job
      */
-    public void generate(String product, EventSet<IEvent>[] eventSets,
-            String[] formats,
-            IPythonJobListener<List<IGeneratedProduct>> listener) {
-        for (EventSet<IEvent> eventSet : eventSets) {
-            generate(product, eventSet, formats, listener);
+    public void update(String product,
+            List<LinkedHashMap<String, Serializable>> updatedDataList,
+            String[] formats, IPythonJobListener<GeneratedProductList> listener) {
+        IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
+                product, updatedDataList, formats);
+
+        try {
+            coordinator.submitAsyncJob(executor, listener);
+        } catch (Exception e) {
+            statusHandler.error("Error executing async job", e);
         }
     }
 
@@ -162,7 +163,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      */
     private void validate(String[] formats, String product,
             EventSet<IEvent> eventSet,
-            IPythonJobListener<List<IGeneratedProduct>> listener) {
+            IPythonJobListener<GeneratedProductList> listener) {
         Validate.notNull(formats, "'FORMATS' must be set.");
         Validate.notNull(product, "'PRODUCT' must be set.");
         Validate.notNull(eventSet, "'HAZARD EVENT SET' must be set");

@@ -19,11 +19,13 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Notification that is sent out when a product is successfully generated.
+ * Contents of productFormats.xml are converted into this object.
  * 
  * <pre>
  * 
@@ -31,24 +33,25 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 19, 2013 1257       bsteffen    Initial creation
- * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
+ * Dec 9, 2013            jsanchez     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author jsanchez
  * @version 1.0
  */
+@XmlAccessorType(XmlAccessType.NONE)
+@XmlRootElement(name = "productFormats")
+public class ProductFormats {
+    @XmlElement(name = "productFormat")
+    private String[] productFormats;
 
-public class ProductGenerated extends ProductModified implements
-        ISessionNotification {
-
-    public ProductGenerated(ProductInformation productInformation) {
-        super(productInformation);
+    public String[] getProductFormats() {
+        return productFormats;
     }
 
-    public GeneratedProductList getProducts() {
-        return getProductInformation().getProducts();
+    public void setProductFormats(String[] productFormats) {
+        this.productFormats = productFormats;
     }
 
 }

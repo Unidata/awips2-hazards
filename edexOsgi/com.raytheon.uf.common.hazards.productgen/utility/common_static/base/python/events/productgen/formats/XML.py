@@ -30,12 +30,16 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    01/10/13                      jsanchez       Initial Creation.
+#    11/05/13        2266          jsanchez       Used ProductUtil to format xml into pretty xml.
 #    
 # 
 #
-import FormatTemplate
+from Editable import Editable
+from com.raytheon.uf.common.hazards.productgen import ProductUtils
 from xml.etree.ElementTree import Element, SubElement, tostring
-import os, collections
+import FormatTemplate
+import os
+import collections
 
 class Format(FormatTemplate.Formatter):
     
@@ -44,11 +48,12 @@ class Format(FormatTemplate.Formatter):
         Main method of execution to generate XML
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in XML format.
-        '''        
+        '''
+        self.editables = Editable(data)  
         xml = Element('product')
         self.dictionary(xml, data)
 
-        return tostring(xml)
+        return self.formatFrom(xml), self.editables._getResult()
     
     def xmlKeys(self): 
         return [   
@@ -135,9 +140,18 @@ class Format(FormatTemplate.Formatter):
         @return: Returns the dictionary in XML format.
         '''   
         if data is not None:
-            for key in data: 
+            for key in data:
+                editable = False
+                if ':editable' in key:
+                    editable = True
                 if key not in self.xmlKeys():
-                    continue  
+                    if ':editable' in key:
+                        editable = True
+                        tmp = key[:-9]
+                        if tmp not in self.xmlKeys():
+                            continue
+                    else:
+                        continue
                 value = data[key]
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)
@@ -145,14 +159,13 @@ class Format(FormatTemplate.Formatter):
                 elif isinstance(value, list):
                     self.list(xml, key, value)
                 else:
-                    editable = False
-                    if ':editable' in key:
-                        editable = True
+                    if editable:
                         key = key[:-9]
                     subElement = SubElement(xml,key)
                     subElement.text = value
                     if editable:
                         subElement.attrib['editable'] = 'true'
+                        self.editables.add(key,ProductUtils.prettyXML(tostring(subElement), False))
     
     def list(self, xml, key, data):
         '''
@@ -173,3 +186,6 @@ class Format(FormatTemplate.Formatter):
                     self.dictionary(subElement, value)
                 else:          
                     subElement.text = value
+                    
+    def formatFrom(self, text):
+        return ProductUtils.prettyXML(tostring(text), True)

@@ -14,11 +14,14 @@ import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
  * Description: Mock {@link IProductEditorView} used for testing.
@@ -40,7 +43,7 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     private String productInfo;
 
-    private List<Dict> generatedProducts;
+    private GeneratedProductList generatedProducts;
 
     private List<Dict> hazardEventSets;
 
@@ -61,8 +64,25 @@ public class ProductEditorViewForTesting implements IProductEditorView {
     public boolean showProductEditorDetail(String productInfo) {
         Dict productDict = Dict.getInstance(productInfo);
         this.productInfo = productInfo;
-        this.generatedProducts = productDict
+        /*
+         * This block of code will need to be updated/removed as part of the JSON refactor.
+         */
+        List<Dict> generatedProductsList = productDict
                 .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
+        generatedProducts = new GeneratedProductList();
+        if (generatedProductsList != null) {
+            for (Dict d : generatedProductsList) {
+                Dict val = (Dict) d.get("products");
+                GeneratedProduct product = new GeneratedProduct(
+                        (String) d.get("productID"));
+                for (String format : val.keySet()) {
+                    List<Object> text = new ArrayList<Object>();
+                    text.add(val.get(format));
+                    product.addEntry(format, text);
+                }
+                generatedProducts.add(product);
+            }
+        }
         this.hazardEventSets = productDict
                 .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
         return true;
@@ -73,7 +93,7 @@ public class ProductEditorViewForTesting implements IProductEditorView {
     }
 
     @Override
-    public List getGeneratedProductsDictList() {
+    public GeneratedProductList getGeneratedProductList() {
         return generatedProducts;
     }
 

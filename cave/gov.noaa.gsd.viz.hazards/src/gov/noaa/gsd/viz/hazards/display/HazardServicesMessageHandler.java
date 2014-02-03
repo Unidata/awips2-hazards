@@ -72,7 +72,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -547,7 +547,7 @@ public final class HazardServicesMessageHandler implements
     }
 
     public void handleProductGeneratorResult(String productGeneratorName,
-            final List<IGeneratedProduct> productList) {
+            final GeneratedProductList productList) {
 
         String resultJSON = productGeneratorHandler
                 .handleProductGeneratorResult(productGeneratorName, productList);
@@ -1790,7 +1790,7 @@ public final class HazardServicesMessageHandler implements
     public void handleProductGeneratorResult(ProductGenerated generated) {
         String productGeneratorName = generated.getProductInformation()
                 .getProductGeneratorName();
-        List<IGeneratedProduct> products = generated.getProducts();
+        GeneratedProductList products = generated.getProducts();
         handleProductGeneratorResult(productGeneratorName, products);
     }
 

@@ -19,11 +19,10 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
+import java.io.Serializable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 
 /**
  * 
@@ -37,7 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * ------------ ---------- ----------- --------------------------
  * Oct 17, 2012            jsanchez     Initial creation
  * Aug 20, 2013 1360       blawrenc     Added methods to set/get event set
- * 
+ * Nov  5, 2013 2266       jsanchez     Removed getter/setter for event set.
  * </pre>
  * 
  * @author jsanchez
@@ -51,6 +50,14 @@ public interface IGeneratedProduct {
     /** @return Returns a map of format types to generated products */
     public Map<String, List<Object>> getEntries();
 
+    public void setEntries(Map<String, List<Object>> entries);
+
+    public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries();
+
+    public LinkedHashMap<String, Serializable> getData();
+
+    public void setData(LinkedHashMap<String, Serializable> data);
+
     /**
      * @param format
      *            the format type
@@ -60,20 +67,5 @@ public interface IGeneratedProduct {
 
     /** @return Errors thrown when executing a python class */
     public String getErrors();
-
-    /**
-     * 
-     * @param
-     * @return A set of events
-     */
-    public EventSet<IEvent> getEventSet();
-
-    /**
-     * 
-     * @param An
-     *            event set
-     * @return
-     */
-    public void setEventSet(EventSet<IEvent> eventSet);
 
 }

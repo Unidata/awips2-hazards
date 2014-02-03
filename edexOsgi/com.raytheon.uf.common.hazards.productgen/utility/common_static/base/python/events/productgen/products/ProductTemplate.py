@@ -32,7 +32,7 @@ class Product(object):
         return
         
     @abc.abstractmethod
-    def execute(self, eventSet, dialogInputMap=None):
+    def execute(self, eventSet, dialogInputMap):
         '''
         @param eventSet: a list of hazard events (hazardEvents) plus
                                a map of additional variables
@@ -45,4 +45,9 @@ class Product(object):
              the desired formatters.
              Also, returned is a set of hazard events, updated with product information.
         '''
+        return
+    
+    @abc.abstractmethod
+    def executeFrom(self, dataList):
+        
         return

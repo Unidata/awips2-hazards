@@ -179,8 +179,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
     @Subscribe
     public void handleProductGeneratorResult(ProductGenerated generated) {
-        EventSet<IEvent> eventSet = generated.getProducts().get(0)
-                .getEventSet();
+        EventSet<IEvent> eventSet = generated.getProducts().getEventSet();
         assertEquals(eventSet.size(), 3);
         step = Steps.TEAR_DOWN;
         autoTestUtilities

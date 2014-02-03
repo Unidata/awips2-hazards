@@ -35,6 +35,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -218,7 +219,8 @@ class HazardServicesProductGenerationHandler {
         for (HazardEventSet set : result.getHazardEventSets()) {
             ProductInformation info = null;
             for (ProductInformation testInfo : products) {
-                if (set.getProductGeneratorName().equals(testInfo.getProductGeneratorName())) {
+                if (set.getProductGeneratorName().equals(
+                        testInfo.getProductGeneratorName())) {
                     info = testInfo;
                     break;
                 }
@@ -295,12 +297,12 @@ class HazardServicesProductGenerationHandler {
      * 
      * @param productGeneratorName
      *            -- name of product generator
-     * @param generatedProducts
+     * @param generatedProductsList
      *            -- list of IGeneratedProduct Java object
      * 
      */
     String handleProductGeneratorResult(String productGeneratorName,
-            List<IGeneratedProduct> generatedProductsList) {
+            GeneratedProductList generatedProductsList) {
         numProducts -= 1;
 
         Collection<IHazardEvent> selectedEvents = sessionManager
@@ -316,6 +318,10 @@ class HazardServicesProductGenerationHandler {
                 genProduct.addProduct(formatKey, product.getEntry(formatKey)
                         .get(0).toString());
             }
+            genProduct.setProductGeneratorName(productGeneratorName);
+            genProduct.setData(product.getData());
+
+            genProduct.setEditableEntries(product.getEditableEntries());
             products.add(genProduct);
         }
         if (products.isEmpty()) {
@@ -382,13 +388,15 @@ class HazardServicesProductGenerationHandler {
         if (numProducts > 0) {
             return null;
         }
+
         return jsonConverter.toJson(result);
     }
 
     @Subscribe
     public void handleProductGeneratorResult(ProductFailed failed) {
         statusHandler.error("Product Generator "
-                + failed.getProductInformation().getProductGeneratorName() + " failed.");
+                + failed.getProductInformation().getProductGeneratorName()
+                + " failed.");
 
     }
 

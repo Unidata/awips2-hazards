@@ -19,12 +19,10 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 
 /**
  * 
@@ -39,6 +37,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * Oct 19, 2012            jsanchez     Initial creation
  * Aug 20, 2013 1360       blawrenc     Added event set.
  * Sep 19, 2013 2046       mnash        Update for product generation.
+ * Nov  5, 2013 2266       jsanchez     Created getter/setters for eventSet. Added editableEntries.
  * 
  * </pre>
  * 
@@ -49,10 +48,13 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
 
     private final String productID;
 
-    private EventSet<IEvent> eventSet;
-
     /** Resulting products generated */
     private Map<String, List<Object>> entries = new LinkedHashMap<String, List<Object>>();
+
+    /* Map of editable entries - mainly used for GUI highlighting */
+    private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
+
+    private LinkedHashMap<String, Serializable> data;
 
     /** Errors thrown executing python product classes */
     private String errors;
@@ -71,12 +73,21 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         return entries;
     }
 
+    @Override
     public void setEntries(Map<String, List<Object>> entries) {
         this.entries = entries;
     }
 
     public void addEntry(String key, List<Object> entry) {
         this.entries.put(key, entry);
+    }
+
+    public LinkedHashMap<String, Serializable> getData() {
+        return data;
+    }
+
+    public void setData(LinkedHashMap<String, Serializable> data) {
+        this.data = data;
     }
 
     @Override
@@ -97,14 +108,13 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         return null;
     }
 
-    @Override
-    public EventSet<IEvent> getEventSet() {
-        return eventSet;
+    public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries() {
+        return editableEntries;
     }
 
-    @Override
-    public void setEventSet(EventSet<IEvent> eventSet) {
-        this.eventSet = eventSet;
+    public void setEditableEntries(
+            Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries) {
+        this.editableEntries = editableEntries;
     }
 
     /*

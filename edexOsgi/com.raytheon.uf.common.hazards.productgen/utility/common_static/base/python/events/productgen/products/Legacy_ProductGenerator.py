@@ -15,6 +15,7 @@
                                                  on ended hazard events, correctly reporting currentStage, 
                                                  floodStage
     Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
+    Jan  7, 2014   2367      jsanchez            Replaced ProductParts with a native python objects.
     
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -27,7 +28,6 @@ from LocalizationInterface import *
 from HazardServicesGenericHazards import HazardServicesGenericHazards
 from TextProductCommon import TextProductCommon
 from TextProductCommon import CallToActions
-from ProductPart import ProductPart
 
 import logging, UFStatusHandler
 from MapInfo import MapInfo
@@ -99,7 +99,7 @@ class Product(ProductTemplate.Product):
         '''  
         return {}
     
-    def execute(self, eventSet):          
+    def execute(self, eventSet, dialogInputMap):          
         '''
         Must be overridden by the Product Generator
         '''
@@ -111,58 +111,54 @@ class Product(ProductTemplate.Product):
         Order and defines the Product Parts for the given productID
         This is a generic product format, however, it can be overridden by the Product Generator.
         '''
-        sectionParts = [
-            ProductPart('attribution'),
-            ProductPart('bulletHeading'),
-            ProductPart('firstBullet'),
-            ProductPart('timePhrase'),
-            ProductPart('pointPhrase'),
-            ProductPart('basis'),
-            ProductPart('impacts'),
-        ]
+        sectionParts = ['attribution',
+                        'bulletHeading',
+                        'firstBullet',
+                        'timePhrase',
+                        'pointPhrase',
+                        'basis',
+                        'impacts'
+                        ]
         if self._segmented:
-            segmentParts = [
-                ProductPart('ugcHeader'),
-                ProductPart('vtecRecords'),
-                ProductPart('areaString'),
-                ProductPart('cityString'),
-                ProductPart('issuanceTimeDate'),
-                ProductPart('summaryHeadlines'),
-                ProductPart('sections', productParts=sectionParts),
-                ProductPart('callsToAction'),
-                ProductPart('polygonText'),
-                ProductPart('endSegment'),
+            segmentParts = ['ugcHeader',
+                            'vtecRecords',
+                            'areaString',
+                            'cityString',
+                            'issuanceTimeDate',
+                            'summaryHeadlines',
+                            ('sections', sectionParts),
+                            'callsToAction',
+                            'polygonText',
+                            'endSegment',
                 ]
             return [
-                ProductPart('wmoHeader'),
-                ProductPart('easMessage'),
-                ProductPart('productHeader'),
-                ProductPart('overview'),
-                ProductPart('segments', productParts=segmentParts),
-                ProductPart('endProduct')
+                'wmoHeader',
+                'easMessage',
+                'productHeader',
+                'overview',
+                ('segments', segmentParts),
+                'endProduct'
                 ]
         
         else:  # not self._segmented (only one segment) 
-            segmentParts = [
-                ProductPart('ugcHeader'),
-                ProductPart('vtecRecords'),
-                ProductPart('issuanceTimeDate'),
+            segmentParts = ['ugcHeader',
+                'vtecRecords',
+                'issuanceTimeDate',
+                'easMessage',
+                'productHeader',
                 
-                ProductPart('easMessage'),
-                ProductPart('productHeader'),
-                
-                ProductPart('summaryHeadlines'),
-                ProductPart('sections', productParts=sectionParts),
-                ProductPart('callsToAction'),
-                ProductPart('polygonText'),
-                ProductPart('endSegment'),
+                'summaryHeadlines',
+                ('sections', sectionParts),
+                'callsToAction',
+                'polygonText',
+                'endSegment',
                 ]
             return [
-                ProductPart('wmoHeader'),
-                ProductPart('overview'),
-                ProductPart('segments', productParts=segmentParts),
-                ProductPart('endProduct')
-                ]
+                    'wmoHeader',
+                    'overview',
+                    ('segments', segmentParts),
+                    'endProduct'
+                    ]
                           
     def _getVariables(self, eventSet): 
         '''

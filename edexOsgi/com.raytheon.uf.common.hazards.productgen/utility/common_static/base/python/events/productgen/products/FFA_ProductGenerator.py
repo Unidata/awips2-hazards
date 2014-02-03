@@ -74,7 +74,7 @@ class Product(Legacy_ProductGenerator.Product):
 #        dialogDict["valueDict"] = valueDict        
 #        return dialogDict
                 
-    def execute(self, eventSet):          
+    def execute(self, eventSet, dialogInputMap):          
         '''
         Inputs:
         @param eventSet: a list of hazard events (hazardEvents) plus
@@ -139,6 +139,7 @@ class Product(Legacy_ProductGenerator.Product):
             productSegmentGroups.append(areaSegmentGroup)
         return productSegmentGroups
     
-        
-
+    def executeFrom(self, dataList):
+        # TODO update the issue time, VTEC ETN, etc.
+        return dataList
            

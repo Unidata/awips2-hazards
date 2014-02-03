@@ -18,9 +18,9 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -28,6 +28,8 @@ import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
@@ -267,11 +269,18 @@ public class AutoTestUtilities {
 
     @SuppressWarnings("unchecked")
     Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
-        List<Dict> productsCollection = editorView
-                .getGeneratedProductsDictList();
-        Dict productCollection = productsCollection.get(0);
-        Dict products = productCollection
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
+        GeneratedProductList generatedProducts = editorView
+                .getGeneratedProductList();
+        IGeneratedProduct generatedProduct = generatedProducts.get(0);
+        Dict d = new Dict();
+        String productID = generatedProduct.getProductID();
+        d.put("productID", productID);
+        Dict products = new Dict();
+        for (String format : generatedProduct.getEntries().keySet()) {
+            products.put(format,
+                    generatedProduct.getEntries().get(format).get(0));
+        }
+
         return products;
     }
 
@@ -309,6 +318,34 @@ public class AutoTestUtilities {
                 SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
         displayAction.setToolParameters(updatedEventAttributes);
         eventBus.post(displayAction);
+    }
+
+    /*
+     * This is a helper method to convert a GeneratedProductList to a
+     * List<Dict>. This method will go away as part of the JSON refacctor.
+     */
+    @Deprecated
+    public static List<Dict> createGeneratedProductsDictList(
+            GeneratedProductList generatedProducts) {
+        List<Dict> generatedProductsDictList = new ArrayList<Dict>();
+        if (generatedProducts != null) {
+
+            for (IGeneratedProduct generatedProduct : generatedProducts) {
+                Dict d = new Dict();
+                String productID = generatedProduct.getProductID();
+                d.put("productID", productID);
+                Dict val = new Dict();
+                for (String format : generatedProduct.getEntries().keySet()) {
+                    val.put(format, generatedProduct.getEntries().get(format)
+                            .get(0));
+                }
+
+                d.put("products", val);
+                generatedProductsDictList.add(d);
+            }
+        }
+
+        return generatedProductsDictList;
     }
 
 }

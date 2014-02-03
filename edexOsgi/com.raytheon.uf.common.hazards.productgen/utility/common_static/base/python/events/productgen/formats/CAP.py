@@ -7,6 +7,7 @@
     June     2013  648     Tracy.L.Hansen  Format CAP XML messages
     August   2013  784     hansen          Added handling of sections 
                                            within segments
+    Nov      2013 2266     jsanchez        Used ProductUtil to format xml into pretty xml. Added Editble to track editable entries.
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -222,8 +223,9 @@ OrderedDict([
 import FormatTemplate
 from xml.etree.ElementTree import Element, SubElement, tostring
 import os, collections, datetime, dateutil.parser
+from Editable import Editable
 from TextProductCommon import TextProductCommon
-
+from com.raytheon.uf.common.hazards.productgen import ProductUtils
 
 class Format(FormatTemplate.Formatter):
     
@@ -234,7 +236,8 @@ class Format(FormatTemplate.Formatter):
         
         @param prodDict: dictionary values provided by the product generator
         @return: Returns the resulting CAP messages in XML format.
-        '''         
+        '''
+        self.editables = Editable(prodDict)   
         self._tpc = TextProductCommon()
         self.capVersion = 'urn:oasis:names:tc:emergency:cap:1.2'
         self.issuedBy = ' Issued by '
@@ -248,8 +251,8 @@ class Format(FormatTemplate.Formatter):
                 xml = Element('alert')
                 xml.attrib['xmlns'] = self.capVersion
                 self.createCAP_Message(xml, prodDict, segDict)
-                messages.append(tostring(xml))
-        return messages
+                messages.append(self.formatFrom(xml))
+        return messages, self.editables._getResult()
    
     def createCAP_Message(self, xml, prodDict, segDict):
         '''
@@ -539,4 +542,7 @@ class Format(FormatTemplate.Formatter):
         sub = SubElement(xml, tag, attrs)
         if text is not None:
             sub.text = text
+            
+    def formatFrom(self, text):
+        return ProductUtils.prettyXML(tostring(text),True)
 

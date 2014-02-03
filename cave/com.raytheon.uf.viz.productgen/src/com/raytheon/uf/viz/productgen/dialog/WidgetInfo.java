@@ -17,13 +17,13 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.product;
+package com.raytheon.uf.viz.productgen.dialog;
 
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import java.io.Serializable;
+import java.util.List;
 
 /**
- * Notification that is sent out when a product is successfully generated.
+ * Maintains the location of the value in the dictionary/map.
  * 
  * <pre>
  * 
@@ -31,24 +31,45 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 19, 2013 1257       bsteffen    Initial creation
- * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
+ * Dec 16, 2013            jsanchez     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author jsanchez
  * @version 1.0
  */
 
-public class ProductGenerated extends ProductModified implements
-        ISessionNotification {
+public class WidgetInfo {
 
-    public ProductGenerated(ProductInformation productInformation) {
-        super(productInformation);
+    private String label;
+
+    /*
+     * List of key values to handle a map within a map
+     */
+    private List<String> path;
+
+    private Serializable value;
+
+    public WidgetInfo(String label, List<String> path, Serializable value) {
+        this.label = label;
+        this.path = path;
+        this.value = value;
     }
 
-    public GeneratedProductList getProducts() {
-        return getProductInformation().getProducts();
+    public String getLabel() {
+        return label;
+    }
+
+    public List<String> getPath() {
+        return path;
+    }
+
+    public Serializable getValue() {
+        return value;
+    }
+
+    public void setValue(Serializable value) {
+        this.value = value;
     }
 
 }

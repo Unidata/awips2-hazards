@@ -13,6 +13,8 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.List;
 
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+
 /**
  * Description: Defines the interface a concrete Product Editor View must
  * fulfill.
@@ -24,6 +26,7 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
  * Sep 19, 2013 2046       mnash        Update for product generation.
+ * Jan  7, 2013 2367       jsanchez     Used GeneratedProductList.
  * 
  * </pre>
  * 
@@ -56,11 +59,11 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
     public void closeProductEditorDialog();
 
     /**
-     * Get the generated products dictionary list.
+     * Get the generated products list.
      * 
-     * @return Generated products dictionary list.
+     * @return Generated products list.
      */
-    public List<Dict> getGeneratedProductsDictList();
+    public GeneratedProductList getGeneratedProductList();
 
     /**
      * Get the hazard event set list.

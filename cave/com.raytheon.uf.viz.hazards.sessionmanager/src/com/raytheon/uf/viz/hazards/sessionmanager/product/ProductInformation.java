@@ -19,12 +19,11 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
  * 
@@ -37,6 +36,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2013 1257       bsteffen    Initial creation
+ * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
  * 
  * </pre>
  * 
@@ -57,7 +57,7 @@ public class ProductInformation {
 
     private String[] formats;
 
-    private List<IGeneratedProduct> products;
+    private GeneratedProductList products;
 
     private Throwable error;
 
@@ -109,11 +109,11 @@ public class ProductInformation {
         this.formats = formats;
     }
 
-    public List<IGeneratedProduct> getProducts() {
+    public GeneratedProductList getProducts() {
         return products;
     }
 
-    public void setProducts(List<IGeneratedProduct> products) {
+    public void setProducts(GeneratedProductList products) {
         this.products = products;
     }
 

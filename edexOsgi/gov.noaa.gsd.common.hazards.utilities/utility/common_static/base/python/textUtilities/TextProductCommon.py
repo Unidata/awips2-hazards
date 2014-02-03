@@ -57,6 +57,10 @@ class TextProductCommon(object):
         @param zone: time zone e.g.'CST7CDT'.   If None use UTC 
         @return datetime formatted with time zone e.g. '1400 PM CST Mon 12 Feb 2011'
         '''
+        # TODO REMOVE THIS BLOCK AS PART OF THE JSON REFACTOR.
+        if type(dt) is float:
+            dt = datetime.fromtimestamp(dt / 1000)
+        
         from_zone = tz.tzutc()
         new_time = dt.replace(tzinfo=from_zone)
         if timeZone is not None:

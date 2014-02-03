@@ -19,7 +19,10 @@
  **/
 package gov.noaa.gsd.viz.hazards.display.deprecated;
 
+import java.io.Serializable;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -90,6 +93,12 @@ public class ProductGenerationResult {
 
         private String productID;
 
+        private String productGeneratorName;
+
+        private LinkedHashMap<String, Serializable> data;
+
+        private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
+
         public Map<String, String> getProducts() {
             return products;
         }
@@ -108,6 +117,31 @@ public class ProductGenerationResult {
 
         public void setProductID(String productID) {
             this.productID = productID;
+        }
+
+        public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries() {
+            return editableEntries;
+        }
+
+        public void setEditableEntries(
+                Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries) {
+            this.editableEntries = editableEntries;
+        }
+
+        public String getProductGeneratorName() {
+            return productGeneratorName;
+        }
+
+        public void setProductGeneratorName(String productGeneratorName) {
+            this.productGeneratorName = productGeneratorName;
+        }
+
+        public LinkedHashMap<String, Serializable> getData() {
+            return data;
+        }
+
+        public void setData(LinkedHashMap<String, Serializable> data) {
+            this.data = data;
         }
 
         @Override

@@ -17,13 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.product;
-
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+package com.raytheon.uf.viz.productgen.dialog;
 
 /**
- * Notification that is sent out when a product is successfully generated.
+ * Helper class to ProductGenerationDialog. Helps identify which products to
+ * group together in the dialog since there can be multiple products and
+ * multiple generators that could be ran at one time.
  * 
  * <pre>
  * 
@@ -31,24 +30,42 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 19, 2013 1257       bsteffen    Initial creation
- * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
+ * Jan 29, 2014            jsanchez     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author jsanchez
  * @version 1.0
  */
 
-public class ProductGenerated extends ProductModified implements
-        ISessionNotification {
+public class GeneratorInfo {
 
-    public ProductGenerated(ProductInformation productInformation) {
-        super(productInformation);
+    private String productGeneratorName;
+
+    private int start;
+
+    private int size;
+
+    public GeneratorInfo(String productGeneratorName, int start) {
+        this.productGeneratorName = productGeneratorName;
+        this.start = start;
+        this.size = 1;
     }
 
-    public GeneratedProductList getProducts() {
-        return getProductInformation().getProducts();
+    public String getProductGeneratorName() {
+        return productGeneratorName;
+    }
+
+    public int getStart() {
+        return start;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void increment() {
+        size++;
     }
 
 }

@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,10 +43,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SingleTypeJAXBManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -66,6 +72,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSende
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -112,6 +119,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * Nov 29, 2013  2378       blarenc    Simplified state changes when products are issued.
+ * Dec 11, 2013  2266      jsanchez     Used GeneratedProductList.
  * </pre>
  * 
  * @author bsteffen
@@ -123,6 +131,12 @@ public class SessionProductManager implements ISessionProductManager {
             .getHandler(SessionProductManager.class);
 
     private final ISessionTimeManager timeManager;
+
+    private static final SingleTypeJAXBManager<ProductFormats> jaxb = SingleTypeJAXBManager
+            .createWithoutException(ProductFormats.class);
+
+    private static final String PRODUCT_FORMATS_FILE = "hazardServices"
+            + File.separator + "productFormats.xml";
 
     /*
      * A full configuration manager is needed to get access to the product
@@ -199,7 +213,7 @@ public class SessionProductManager implements ISessionProductManager {
                 // info breaks the Replace Watch with Warning Story.
                 // info.setDialogInfo(productGen.getDialogInfo(entry.getKey()));
                 info.setDialogInfo(Collections.<String, String> emptyMap());
-                info.setFormats(new String[] { "XML", "Legacy", "CAP" });
+                info.setFormats(getProductFormats());
                 result.add(info);
             }
         }
@@ -253,6 +267,31 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
         return unsupportedHazards;
+    }
+
+    /*
+     * Returns a list of product formats from the proudctFormats.xml.
+     */
+    private static String[] getProductFormats() {
+        String[] formats = null;
+
+        IPathManager pm = PathManagerFactory.getPathManager();
+        File hazardEventGridsXml = pm.getStaticFile(PRODUCT_FORMATS_FILE);
+
+        try {
+            ProductFormats productFormats = jaxb
+                    .unmarshalFromXmlFile(hazardEventGridsXml);
+            if (productFormats.getProductFormats() != null) {
+                formats = productFormats.getProductFormats();
+            }
+
+        } catch (SerializationException e) {
+            statusHandler
+                    .error("XML file unable to be read. Will not be able to create formats!.",
+                            e);
+        }
+        return formats;
+
     }
 
     private boolean isCombinable(IHazardEvent e) {
@@ -377,9 +416,13 @@ public class SessionProductManager implements ISessionProductManager {
 
             String product = information.getProductGeneratorName();
             String[] formats = information.getFormats();
-            IPythonJobListener<List<IGeneratedProduct>> listener = new JobListener(
+            IPythonJobListener<GeneratedProductList> listener = new JobListener(
                     issue, notificationSender, information);
-            productGen.generate(product, events, formats, listener);
+            /*
+             * TODO The third parameter is for passing in dialogInfo. Until it's
+             * determined null will be currently be passed in.
+             */
+            productGen.generate(product, events, null, formats, listener);
         }
     }
 
@@ -397,7 +440,7 @@ public class SessionProductManager implements ISessionProductManager {
              * Update Hazard Events with product information returned from the
              * Product Generators
              */
-            for (IEvent ev : information.getProducts().get(0).getEventSet()) {
+            for (IEvent ev : information.getProducts().getEventSet()) {
                 IHazardEvent updatedEvent = (IHazardEvent) ev;
                 if (checkForConflicts(updatedEvent)) {
                     statusHandler
@@ -438,12 +481,13 @@ public class SessionProductManager implements ISessionProductManager {
              * This is temporary: issueFormats should be user configurable and
              * will be addressed by Issue #691 -- Clean up Configuration Files
              */
-            String[] issueFormats = { "Legacy", "CAP", "XML" };
-            for (String format : issueFormats) {
-                List<Object> objs = product.getEntry(format);
-                if (objs != null) {
-                    for (Object obj : objs) {
-                        ProductUtils.disseminate(String.valueOf(obj));
+            if (information.getFormats() != null) {
+                for (String format : information.getFormats()) {
+                    List<Object> objs = product.getEntry(format);
+                    if (objs != null) {
+                        for (Object obj : objs) {
+                            ProductUtils.disseminate(String.valueOf(obj));
+                        }
                     }
                 }
             }
@@ -484,8 +528,7 @@ public class SessionProductManager implements ISessionProductManager {
                                 HazardState.ENDED.toString())) {
                     selectedEvent.setState(HazardState.ENDED);
                 } else {
-                    for (IEvent ev : information.getProducts().get(0)
-                            .getEventSet()) {
+                    for (IEvent ev : information.getProducts().getEventSet()) {
                         IHazardEvent event = (IHazardEvent) ev;
                         if (selectedEvent.getEventID().equals(
                                 event.getEventID())) {
@@ -528,7 +571,7 @@ public class SessionProductManager implements ISessionProductManager {
      * bus.
      */
     private class JobListener implements
-            IPythonJobListener<List<IGeneratedProduct>> {
+            IPythonJobListener<GeneratedProductList> {
 
         private final boolean issue;
 
@@ -545,7 +588,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         @Override
-        public void jobFinished(final List<IGeneratedProduct> result) {
+        public void jobFinished(final GeneratedProductList result) {
 
             /*
              * Need to place the result on the thread the Session Manager is
@@ -556,6 +599,8 @@ public class SessionProductManager implements ISessionProductManager {
                 @Override
                 public void run() {
                     info.setProducts(result);
+                    info.getProducts().getEventSet()
+                            .addAttribute(HazardConstants.ISSUE_FLAG, issue);
                     if (issue) {
                         issue(info);
                     }

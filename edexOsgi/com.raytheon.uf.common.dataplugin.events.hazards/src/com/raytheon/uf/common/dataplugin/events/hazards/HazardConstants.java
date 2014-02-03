@@ -659,6 +659,26 @@ public final class HazardConstants {
 
     public static final String SHAPES = "shapes";
 
+    /*
+     * Constants related to the python data dictionary keys
+     */
+
+    public static final String SEGMENTS = "segments";
+
+    public static final String SEGMENT = "segment";
+
+    public static final String VTEC_RECORDS = "vtecRecords";
+
+    public static final String VTEC_RECORD_TYPE = "vtecRecordType";
+
+    public static final String PVTEC_RECORD = "pvtecRecord";
+
+    public static final String ACTION = "action";
+
+    public static final String SITE = "site";
+
+    public static final String ETN = "eventTrackingNumber";
+
     /**
      * Drag drop dot identifier.
      */

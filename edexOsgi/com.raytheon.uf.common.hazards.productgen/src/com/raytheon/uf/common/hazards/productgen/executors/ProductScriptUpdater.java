@@ -20,15 +20,17 @@
 package com.raytheon.uf.common.hazards.productgen.executors;
 
 import java.io.Serializable;
-import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.List;
 
-import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.IEvent;
+import jep.JepException;
+
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
- * Executes the generateProduct method of ProductScript
+ * Allows a python dictionary to be updated without having to go through a
+ * product generator.
  * 
  * <pre>
  * 
@@ -36,8 +38,7 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 18, 2013            jsanchez     Initial creation
- * Nov  5, 2013 2266       jsanchez     Used GeneratedProductList.
+ * Oct 24, 2013  2266      jsanchez     Initial creation
  * 
  * </pre>
  * 
@@ -45,40 +46,30 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  * @version 1.0
  */
 
-public class ProductScriptExecutor extends
+public class ProductScriptUpdater extends
         AbstractProductExecutor<GeneratedProductList> {
 
-    /** provide the information for the product generator */
-    private EventSet<IEvent> eventSet;
+    private String product;
 
-    private Map<String, Serializable> dialogInfo;
+    private List<LinkedHashMap<String, Serializable>> updatedDataList;
 
     /** String array of formats */
     private String[] formats;
 
-    /** Name of the product generator */
-    private String product;
-
-    /**
-     * Constructor.
-     * 
-     * @param product
-     *            name of the product generator
-     * @param eventSet
-     *            the EventSet<IEvent> object that will provide the information
-     *            for the product generator
-     */
-    public ProductScriptExecutor(String product, EventSet<IEvent> eventSet,
-            Map<String, Serializable> dialogInfo, String[] formats) {
+    public ProductScriptUpdater(String product,
+            List<LinkedHashMap<String, Serializable>> updateDataList,
+            String[] formats) {
         this.product = product;
-        this.eventSet = eventSet;
-        this.dialogInfo = dialogInfo;
+        this.updatedDataList = updateDataList;
         this.formats = formats;
     }
 
     @Override
-    public GeneratedProductList execute(ProductScript script) {
-        return script.generateProduct(product, eventSet, dialogInfo, formats);
+    public GeneratedProductList execute(ProductScript script)
+            throws JepException {
+        GeneratedProductList generatedProducts = script
+                .updateGeneratedProducts(product, updatedDataList, formats);
+        return generatedProducts;
     }
 
 }

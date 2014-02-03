@@ -49,7 +49,7 @@ class Product(Legacy_ProductGenerator.Product):
         """  
         return {}
 
-    def execute(self, eventSet):          
+    def execute(self, eventSet, dialogInputMap):          
         '''
         Inputs:
         @param eventSet: a list of hazard events (hazardEvents) plus
@@ -169,4 +169,8 @@ class Product(Legacy_ProductGenerator.Product):
                " ARE NOT LIMITED TO "
         para += self.getCityInfo(self._ugcs)
         return "\n"+para
+    
+    def executeFrom(self, dataList):
+        # TODO update the issue time, VTEC ETN, etc.
+        return dataList
 
