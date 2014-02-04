@@ -1,7 +1,7 @@
-import copy
+import copy, traceback
 import json
 import os
-import sys
+import sys, types
 from HazardServicesConfig import HazardServicesConfig
 
 pythonPath = None
@@ -15,7 +15,7 @@ class HazardMetaData :
         a selfless method.
         
         @param datatype: data type representing hazard
-                         metadata.  Should be "hazardMetaData:
+                         metadata.  Should be "hazardMetaData"
         @param phenomena: hazard phenomena
         @param significance:  hazard significance
         @param subtype: optional hazard subtype
@@ -34,7 +34,26 @@ class HazardMetaData :
                 for hazardType in hazardTypesList:
                     if phenomena in hazardType and significance in hazardType:
                         if subtype is None or (subtype is not None and subtype in hazardType):
-                            return metaDataDict['metaData']
+                            metaDataEntry = metaDataDict['classMetaData'] #['metaData']
+                            
+                            if type(metaDataEntry) is types.StringType:
+                                from PythonOverriderPure import importModule
+                                from LocalizationInterface import LocalizationInterface
+                                li = LocalizationInterface("") 
+                                locPath = "hazardServices/hazardMetaData/" + metaDataEntry + ".py"
+                                try :
+                                    result = importModule(locPath, li.getEdexHost(), \
+                                         li.getEdexPort(), li.getDefLoc(), li.getDefUser() )
+                                    m = result.MetaData()
+                                    return m
+                                except :
+                                    traceback.print_exc()
+                                    self.assertEqual("PARSE of "+locPath,"OK")
+                                    return
+                            elif metaDataEntry is None:
+                                return []
+                            else:
+                                return metaDataEntry
 
         return None
     

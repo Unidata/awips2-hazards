@@ -175,10 +175,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         '''
         currentVal = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
         if currentVal:
-            newVal = currentVal.append(value)
+            currentVal.append(value)
         else:
-            newVal = [value]
-        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(newVal))
+            currentVal = [value]
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(currentVal))
                
     def _getMillis(self, date):
         epoch = datetime.datetime.utcfromtimestamp(0)

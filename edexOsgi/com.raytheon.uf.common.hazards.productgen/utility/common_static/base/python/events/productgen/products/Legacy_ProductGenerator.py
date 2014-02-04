@@ -78,9 +78,9 @@ class Product(ProductTemplate.Product):
         self._tpc = TextProductCommon()
         self._tpc.setUp(self._areaDictionary)
                 
-        self.logger = logging.getLogger('ProductGeneratorTemplate')
+        self.logger = logging.getLogger('Legacy_ProductGenerator')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
-            'com.raytheon.uf.common.hazards.productgen', 'ProductGeneratorTemplate', level=logging.INFO))
+            'com.raytheon.uf.common.hazards.productgen', 'Legacy_ProductGenerator', level=logging.INFO))
         self.logger.setLevel(logging.INFO)  
         
         # Default is True -- Products which are not VTEC can override and set to False
@@ -244,7 +244,7 @@ class Product(ProductTemplate.Product):
         '''        
         # Determine the list of segments given the hazard events        
         segments = self._getSegments(hazardEvents)
-        self.logger.info('Product Generator Template --  len(segments)=' + str(len(segments)))
+        self.logger.info('Product Generator --  len(segments)=' + str(len(segments)))
          
         # Determine the list of products and associated segments given the segments
         productSegmentGroups = self._groupSegments(segments)
@@ -258,7 +258,6 @@ class Product(ProductTemplate.Product):
             #   partner XML, CAP, and Legacy text            
             segments = productSegmentGroup.get('segments')
             productDict = self._initializeProductDict(productSegmentGroup, segments)                                            
-            
 #             # Product header information
 #             self._preProcessProduct(productSegmentGroup, segments)
             
@@ -516,8 +515,7 @@ class Product(ProductTemplate.Product):
         '''                     
         self._metaDataList, self._segmentHazardEvents = self.getHazardMetaData(segment)
         self._segmentVtecRecords = self.getVtecRecords(segment)
-        #self._segmentHazardEvents = [hazardEvent for metaData, hazardEvent in self._metaDataList]
-        
+       
         # There may be multiple (metaData, hazardEvent) pairs in a segment 
         #   An example would be for a NPW product which had a Frost Advisory and a Wind Advisory in one segment
         # There will be a section for each 
@@ -536,8 +534,7 @@ class Product(ProductTemplate.Product):
             if tz not in self._productTimeZones:
                 self._productTimeZones.append(tz)
         self._expireTime = self._tpc.getExpireTime(
-                    self._issueTime, self._purgeHours,
-                    self._segmentVtecRecords) 
+                    self._issueTime, self._purgeHours, self._segmentVtecRecords) 
         self._ugcHeader = self._tpc.formatUGCs(self._ugcs, self._expireTime)
         
         # Area String, City String        
@@ -621,23 +618,25 @@ class Product(ProductTemplate.Product):
     
     def _createSection(self, section, segment, canVtecRecord, areaPhrase, areaPhraseShort): 
         '''
-        Create the dictionary information for the segment body -- Example:
-                 
-        THE NATIONAL WEATHER SERVICE IN DENVER HAS ISSUED A
+        Create the dictionary information for the section body -- Example:
+        
+         ...FLOOD WATCH IN EFFECT THROUGH WEDNESDAY MORNING...
 
+        THE NATIONAL WEATHER SERVICE IN BLACKSBURG HAS ISSUED A
+                
         * FLOOD WATCH FOR A PORTION OF SOUTH CENTRAL COLORADO...INCLUDING 
           THE FOLLOWING COUNTY...ALAMOSA.
 
-        * LATE MONDAY NIGHT
+        * UNTIL hhmm am/pm <day of week> time_zone   
 
-        * |* BASIS FOR THE WATCH *|
+        * AT hhmm am/pm time_zone <warning basis and expected impacts>.
 
-        * |* (OPTIONAL) POTENTIAL IMPACTS OF FLOODING *|
+        * (OPTIONAL) POTENTIAL IMPACTS OF FLOODING e.g. <forecast path of flood and/or locations to be affected>.
 
         ''' 
         vtecRecord, metaData, sectionHazardEvent = section 
         self._setProductInformation(vtecRecord, sectionHazardEvent)
-                                                                  
+        
         # Process each part of the section
         testMode = self._sessionDict.get('testMode', 0)
 #       Need to rectify this code taken from existing A2 to make 
@@ -720,6 +719,7 @@ class Product(ProductTemplate.Product):
             # Reset state if previewing ended
             if sectionHazardEvent.get('previewState') == 'ended':
                 sectionHazardEvent.setState('ISSUED')
+
 
     def _addToProductDict(self, productDict):
         '''
@@ -1057,8 +1057,11 @@ class Product(ProductTemplate.Product):
                     'filter':{'phen':phen, 'sig':sig, 'subType':subType}
                     }
             metaData = self.bridge.getData(json.dumps(criteria))
+            
+            if type(metaData) is not types.ListType:
+                metaData = metaData.execute(hazardEvent, {})
             metaDataList.append((metaData, hazardEvent))
-
+            
         return metaDataList, segmentEvents
         
     def _saveVTEC(self, hazardEvents):
@@ -1160,7 +1163,7 @@ class Product(ProductTemplate.Product):
 
         @return the associated productString.  If a productString is not given, return the displayString.
             If no value is specified in the hazardEvent, return empty string.
-        '''     
+        '''    
         for widget in metaData:
             if widget.get('fieldName') == fieldName:
                 for choice in widget.get('choices'):
@@ -1215,20 +1218,20 @@ class Product(ProductTemplate.Product):
             elif vtecRecord['act'] == 'CAN':
                 attribution = 'THE ' + hazName + \
                    ' FOR ' + areaPhrase + ' HAS BEEN CANCELLED. ' + \
-                   '|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|\n\n'
+                   '\n|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|\n\n'
     
             elif vtecRecord['act'] == 'EXP':
                 expTimeCurrent = issueTime
                 if vtecRecord['endTime'] <= expTimeCurrent:
                     attribution = 'THE ' + hazName + \
                       ' FOR ' + areaPhrase + ' HAS EXPIRED. ' + \
-                      '|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|'
+                      '\n|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|'
                 else:
                    timeWords = self._tpc.getTimingPhrase(vtecRecord, expTimeCurrent)
                    attribution = 'THE ' + hazName + \
                       ' FOR ' + areaPhrase + ' WILL EXPIRE ' + timeWords + \
                       '. ' + \
-                      '|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|'
+                      '\n|* BRIEF POST-SYNOPSIS/SUMMARY OF HYDROMET ACTIVITY *|'
 
         if headPhrase is not None:
             headPhrase = self._tpc.indentText(headPhrase, indentFirstString='',
@@ -1292,7 +1295,7 @@ class Product(ProductTemplate.Product):
         return pointPhrase
     
     def getMetaDataPhrases(self, vtecRecord, canVtecRecord, hazardEvent, metaData):
-        
+                
         basisPhrase = self.getBasisPhrase(vtecRecord, canVtecRecord, hazardEvent, metaData)
         if vtecRecord['act'] not in ['CAN', 'EXP']:
             impactsPhrase = self.getImpactsPhrase(vtecRecord, canVtecRecord, hazardEvent, metaData)
@@ -1444,7 +1447,6 @@ class Product(ProductTemplate.Product):
 #         return ''
     
     def formatTimeMotionLocationForEvent(self, hazardEvent) :
-        modNam = 'ProductGeneratorTemplate:formatTimeMotionLocationForEvent'
         # Time Motion Location
         clientid = hazardEvent.get('clientid')
         if clientid == None :
@@ -1501,7 +1503,6 @@ class Product(ProductTemplate.Product):
                            still='STATIONARY', slow='NEARLY STATIONARY',
                            lead='MOVING', trail='',
                            minSpd=2.5, round=5.0) :
-        modNam = 'ProductGeneratorTemplate:descMotionForEvent'
         clientid = hazardEvent.get('clientid')
         if clientid == None :
             return None
@@ -1569,7 +1570,6 @@ class Product(ProductTemplate.Product):
              line='FROM A LINE OF THUNDERSTORMS. THESE STORMS WERE LOCATED', \
              lead='', \
              trail='over the warned area') :
-        modNam = 'ProductGeneratorTemplate:descWxLocForEvent'
         clientid = hazardEvent.get('clientid')
         if clientid == None :
             if lead == '-' :

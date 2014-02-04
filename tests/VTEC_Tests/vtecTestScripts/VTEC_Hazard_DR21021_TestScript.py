@@ -8,6 +8,7 @@
 # Author: mathewson
 # ----------------------------------------------------------------------------
 
+import TestScript
 
 scripts = [
     {    
@@ -18,22 +19,22 @@ scripts = [
          ],
     "clearHazardsTable": 1,
     },
- 
+
     {    
     "name":"TAE_DR21021_2", 
     "productType": "HLS",
     "drtTime": "20100201_0000",
     "gridsStartTime": "20100201_0000",
-    "commentary": "TAE initial setup - step 1, create TR.W etn=0001",
+    "commentary": "TAE initial setup - step 1, create TR.W etn=1022",
     "checkStrings": [
       "GMZ830-",
-      "/O.NEW.KTBW.TR.W.0001.100201T0000Z-000000T0000Z/",
+      "/O.NEW.KTBW.TR.W.1022.100201T0000Z-000000T0000Z/",
          ],
     "createGrids": [
-      (0, 24, "TR.W", ["GMZ830"]),
+      (0, 24, "TR.W", ["GMZ830"], {'forceEtn': 1022}),
          ],
     },
- 
+
     {    
     "name":"TAE_DR21021_3", 
     "productType": "HLS",
@@ -41,12 +42,12 @@ scripts = [
     "commentary": "TAE initial setup - step 1, cancel TR.W",
     "checkStrings": [
       "GMZ830-",
-      "/O.CAN.KTBW.TR.W.0001.000000T0000Z-000000T0000Z/",
+      "/O.CAN.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       ],
     "createGrids": [
       ],
     },
- 
+
     {    
     "name":"TAE_DR21021_4", 
     "productType": "HLS",
@@ -55,23 +56,23 @@ scripts = [
     "commentary": "TAE initial setup - setting up active table, create events for testing (NEW)",
     "checkStrings": [
       "FLZ048>050-",
-      "/O.NEW.KTBW.HU.W.1011.100401T0000Z-000000T0000Z/",
+      "/O.NEW.KTBW.HU.W.1022.100401T0000Z-000000T0000Z/",
       "GMZ870-873-",
-      "/O.NEW.KTBW.HU.W.0001.100401T0000Z-000000T0000Z/",
+      "/O.NEW.KTBW.HU.W.1022.100401T0000Z-000000T0000Z/",
       "FLZ039-042-043-",
-      "/O.NEW.KTBW.TR.W.1011.100401T0000Z-000000T0000Z/",
+      "/O.NEW.KTBW.TR.W.1022.100401T0000Z-000000T0000Z/",
       "GMZ830-850-853-856-",
-      "/O.NEW.KTBW.TR.W.0002.100401T0000Z-000000T0000Z/",
+      "/O.NEW.KTBW.TR.W.1022.100401T0000Z-000000T0000Z/",
       ],
- 
+
     "createGrids": [
-      (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ856"]),
-      (0, 24, "HU.W", ["GMZ873","GMZ870"]),
-      (0, 24, "TR.W", ["FLZ039","FLZ042","FLZ043"], {'forceEtn': 1011}),
-      (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1011}),
+      (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ856"], {'forceEtn': 1022}),
+      (0, 24, "HU.W", ["GMZ873","GMZ870"], {'forceEtn': 1022}),
+      (0, 24, "TR.W", ["FLZ039","FLZ042","FLZ043"], {'forceEtn': 1022}),
+      (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1022}),
       ],
     },
- 
+
     {    
     "name":"TAE_DR21021_5", 
     "productType": "HLS",
@@ -80,22 +81,22 @@ scripts = [
     "commentary": "TAE initial setup - setting up active table, create events for testing (CON) - this is the initial testing state we need",
     "checkStrings": [
       "FLZ048>050-",
-      "/O.CON.KTBW.HU.W.1011.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.HU.W.1022.000000T0000Z-000000T0000Z/",
       "GMZ870-873-",
-      "/O.CON.KTBW.HU.W.0001.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.HU.W.1022.000000T0000Z-000000T0000Z/",
       "FLZ039-042-043-",
-      "/O.CON.KTBW.TR.W.1011.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       "GMZ830-850-853-856-",
-      "/O.CON.KTBW.TR.W.0002.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       ],
     "createGrids": [
       (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ856"]),
       (0, 24, "HU.W", ["GMZ873","GMZ870"]),
-      (0, 24, "TR.W", ["FLZ039","FLZ042","FLZ043"], {'forceEtn': 1011}),
-      (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1011}),
+      (0, 24, "TR.W", ["FLZ039","FLZ042","FLZ043"], {'forceEtn': 1022}),
+      (0, 24, "HU.W", ["FLZ048","FLZ049","FLZ050"], {'forceEtn': 1022}),
       ],
     },
- 
+
     {    
     "name":"TAE_DR21021_6", 
     "productType": "HLS",
@@ -104,22 +105,22 @@ scripts = [
     "commentary": "TAE setting grids that caused error, change HU.W to TR.W",
     "checkStrings": [
       "FLZ048>050-",
-      "/O.CAN.KTBW.HU.W.1011.000000T0000Z-000000T0000Z/",
-      "/O.EXA.KTBW.TR.W.1011.000000T0000Z-000000T0000Z/",
+      "/O.CAN.KTBW.HU.W.1022.000000T0000Z-000000T0000Z/",
+      "/O.EXA.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       "GMZ870-873-",
-      "/O.CAN.KTBW.HU.W.0001.000000T0000Z-000000T0000Z/",
-      "/O.EXA.KTBW.TR.W.0002.000000T0000Z-000000T0000Z/",
+      "/O.CAN.KTBW.HU.W.1022.000000T0000Z-000000T0000Z/",
+      "/O.EXA.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       "FLZ039-042-043-",
-      "/O.CON.KTBW.TR.W.1011.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       "GMZ830-850-853-856-",
-      "/O.CON.KTBW.TR.W.0002.000000T0000Z-000000T0000Z/",
+      "/O.CON.KTBW.TR.W.1022.000000T0000Z-000000T0000Z/",
       ],
     "createGrids": [
-      (0, 24, "TR.W", ["FLZ048","FLZ049","FLZ050","FLZ039","FLZ042","FLZ043"], {'forceEtn': 1011}),
+      (0, 24, "TR.W", ["FLZ048","FLZ049","FLZ050","FLZ039","FLZ042","FLZ043"], {'forceEtn': 1022}),
       (0, 24, "TR.W", ["GMZ830","GMZ850","GMZ853","GMZ873","GMZ856","GMZ870"]),
       ],
     },
- 
+
     {    
     "name":"TAE_DR21021_7, MOB_DR21021_1", 
     "productType": None,
@@ -144,24 +145,24 @@ scripts = [
       ],
     },
 
-#     {    
-#     "name":"MOB_DR21021_3", 
-#     "productType": "HLS",
-#     "drtTime": "20101108_2349",
-#     "gridsStartTime": "20101108_2200",
-#     "commentary": "MOB test - adding marine HU.A",
-#     "checkStrings": [
-#       "GMZ850-853-870-876-",
-#       "/O.NEW.KTBW.HU.A.0001.101108T2349Z-000000T0000Z/",
-#       "FLZ039-042-043-048>050-",
-#       "/O.CON.KTBW.HU.A.1011.000000T0000Z-000000T0000Z/",
-#       ],
-#  
-#     "createGrids": [
-#       (0, 24, "HU.A", ["FLZ048","FLZ049", "FLZ039", "FLZ042", "FLZ043","FLZ050"], {'forceEtn': 1011}),
-#       (24, 48, "HU.A", ["GMZ850", "GMZ853","GMZ870","GMZ876"]),
-#       ],
-#     },
+    {    
+    "name":"MOB_DR21021_3", 
+    "productType": "HLS",
+    "drtTime": "20101108_2349",
+    "gridsStartTime": "20101108_2200",
+    "commentary": "MOB test - adding marine HU.A",
+    "checkStrings": [
+      "GMZ850-853-870-876-",
+      "/O.EXA.KTBW.HU.A.1011.000000T0000Z-000000T0000Z/",
+      "FLZ039-042-043-048>050-",
+      "/O.CON.KTBW.HU.A.1011.000000T0000Z-000000T0000Z/",
+      ],
+
+    "createGrids": [
+      (0, 24, "HU.A", ["FLZ048","FLZ049", "FLZ039", "FLZ042", "FLZ043","FLZ050"], {'forceEtn': 1011}),
+      (24, 48, "HU.A", ["GMZ850", "GMZ853","GMZ870","GMZ876"]),
+      ],
+    },
 
     {    
     "name":"MOB_DR21021_4", 
@@ -173,7 +174,7 @@ scripts = [
     },
     ]
 
-import TestScript as TestScript
+#import AFPS
 def testScript():
     gridsStartTime = "20100601_0400"
     drtTime = "20100601_0800"
@@ -183,4 +184,3 @@ def testScript():
         "decodeVTEC": 1,
         }
     return TestScript.generalTestScript(scripts, defaults)
-

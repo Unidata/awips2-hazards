@@ -859,7 +859,7 @@ class VTECEngine(VTECTableUtil):
         Returns the max etn used.  If not yet used, 0 is returned.
         '''
         #check active table for highest etn for this year
-        presentyear = self.gmtime_fromMS(self._time)[0]
+        presentyear = time.gmtime(self._time)[0]
         etn_base = 0 
         
         for active in vtecRecords:
@@ -867,7 +867,7 @@ class VTECEngine(VTECTableUtil):
             # 1. same phen and sig
             # 2. in the present year
             # and not from the national center
-            activeyear = self.gmtime_fromMS(active['issueTime'])[0]
+            activeyear = time.gmtime(active['issueTime'])[0]
             phensig = (active['phen'],active['sig'])
             if active['phen'] == phen and active['sig'] == sig and \
               activeyear == presentyear:
@@ -979,8 +979,9 @@ class VTECEngine(VTECTableUtil):
         if not combinableSegments:
             outCombo = []   # start with an empty list
             for rec in vtecRecords:
-                # ensure Z and C ids are kept separated
-                idSets = [set([v for v in rec['id'] if v[2] == 'Z']),
+                # ensure Z, C, and marine zone ids are kept separated
+                idSets = [set([v for v in rec['id'] if v[2] == 'Z' and self._isMarineZone(v)]),
+                  set([v for v in rec['id'] if v[2] == 'Z' and not self._isMarineZone(v)]),
                   set([v for v in rec['id'] if v[2] not in 'Z'])]
                 for ids in idSets:
                     if ids and (ids, set([rec['eventID']])) not in outCombo:
@@ -989,8 +990,9 @@ class VTECEngine(VTECTableUtil):
             # start with a complete list
             outCombo = [set(zoneList)]
             for rec in vtecRecords:
-                # ensure Z and C ids are kept separated
-                idSets = [set([v for v in rec['id'] if v[2] == 'Z']),
+                # ensure Z, C, and marine zone ids are kept separated
+                idSets = [set([v for v in rec['id'] if v[2] == 'Z' and self._isMarineZone(v)]),
+                  set([v for v in rec['id'] if v[2] == 'Z' and not self._isMarineZone(v)]),
                   set([v for v in rec['id'] if v[2] != 'Z'])]
                 for ids in idSets:
                     if ids:
@@ -1750,8 +1752,7 @@ class VTECEngine(VTECTableUtil):
 
             for active in activeVtecRecords:
                 if self.vtecRecordCompare(proposed, active, compare) and \
-                  active['act'] not in ['CAN', 'UPG', 'EXP'] and \
-                  not self._separateETNtrack(proposed, active):
+                  active['act'] not in ['CAN', 'UPG', 'EXP']:
 
                     #convective watch (special case, also compare etn)
                     if proposed['phen'] in ['SV', 'TO'] and \
@@ -1764,6 +1765,7 @@ class VTECEngine(VTECTableUtil):
                       proposed['endTime'] == active['endTime']:
                         proposed['act'] = 'CON'
                         proposed['etn'] = active['etn']
+                        proposed['issueTime'] = active['issueTime']
                     
                     # start times both before current time, end
                     # times the same, CON state
@@ -1772,6 +1774,7 @@ class VTECEngine(VTECTableUtil):
                       proposed['endTime'] == active['endTime']:
                         proposed['act'] = 'CON'
                         proposed['etn'] = active['etn']
+                        proposed['issueTime'] = active['issueTime']
 
                     # special case of vtecRecord ended already, don't
                     # assign 'EXT' even with overlap
@@ -1801,6 +1804,7 @@ class VTECEngine(VTECTableUtil):
                         if proposed['act'] == 'EXT':
                             active['conexted'] = 1
                             proposed['etn'] = active['etn']
+                            proposed['issueTime'] = active['issueTime']
                             
                             #save original time so we can later determine
                             #whether it is EXTENDED or SHORTENED
@@ -1967,8 +1971,7 @@ class VTECEngine(VTECTableUtil):
                 #first check for EXA, must check ALL records before
                 #deciding it isn't an EXA
                 for active in activeVtecRecords:
-                    if self.vtecRecordCompare(proposed, active, compare2) and \
-                      not self._separateETNtrack(proposed, active):
+                    if self.vtecRecordCompare(proposed, active, compare2):
                         if active['act'] not in ['CAN', 'UPG', 'EXP']:
 
                             #if times are identical, then we extended in area 
@@ -1978,6 +1981,7 @@ class VTECEngine(VTECTableUtil):
                                   proposed['etn'] == active['etn']:
                                     proposed['exaexb'] = 'EXA'
                                     proposed['active'] = active
+                                    proposed['issueTime'] = active['issueTime']
                                     break
 
                             #if start times are both in the past or
@@ -1990,6 +1994,7 @@ class VTECEngine(VTECTableUtil):
                                   proposed['etn'] == active['etn']:
                                     proposed['exaexb'] = 'EXA'
                                     proposed['active'] = active
+                                    proposed['issueTime'] = active['issueTime']
                                     break
 
                 if proposed.has_key('exaexb'):
@@ -2002,8 +2007,7 @@ class VTECEngine(VTECTableUtil):
                 #with time. Results in EXB
                 if proposed['act'] == '???':
                     for active in activeVtecRecords:
-                        if self.vtecRecordCompare(proposed, active, compare2): # and \
-                           #not self._separateETNtrack(proposed, active):
+                        if self.vtecRecordCompare(proposed, active, compare2):
                             if active['act'] not in ['CAN', 'UPG', 'EXP']:
                                 #if self._vtecRecordsOverlap(proposed, active) and
                                 if proposed['startTime'] <= active['endTime'] and \
@@ -2019,6 +2023,7 @@ class VTECEngine(VTECTableUtil):
                                               compare2) and self._vtecRecordsOverlap(p1, proposed):
                                                 proposed['exaexb'] = 'EXB'
                                                 proposed['active'] = active
+                                                proposed['issueTime'] = active['issueTime']
                                                 break
                                         break
 
@@ -2183,11 +2188,11 @@ class VTECEngine(VTECTableUtil):
             #vtecRecords with EXP, and after ending time
             if p['act'] == 'EXP' and self._time >= p['endTime']:
                 pIssueT = p.get('issueTime', self._time)
-                pIssueYear = self.gmtime_fromMS(pIssueT)[0]
+                pIssueYear = time.gmtime(pIssueT)[0]
                 for p1 in pTable:
                     #active vtecRecord with same phen/sig/etn
                     p1IssueT = p1.get('issueTime', self._time)
-                    p1IssueYear = self.gmtime_fromMS(p1IssueT)[0]
+                    p1IssueYear = time.gmtime(p1IssueT)[0]
                     if p1['act'] in ['CON','EXA','EXB','EXT'] and \
                       self.vtecRecordCompare(p, p1, compare) and \
                       p1IssueYear == pIssueYear:
@@ -2235,7 +2240,7 @@ class VTECEngine(VTECTableUtil):
 
             # use 00000000 or explicit times for the start time?  Use all
             # zeros for ongoing vtecRecords and for HY.S events.
-            if (p['act'] is 'NEW' or \
+            if (p['act'] == 'NEW' or \
               (p['act'] == 'EXT' and p['previousStart'] > self._time) or \
               (p['act'] == 'EXB' and p['previousStart'] > self._time) or \
               (p['startTime'] > self._time)) and p['key'] != 'HY.S':
@@ -2349,7 +2354,7 @@ class VTECEngine(VTECTableUtil):
         Returns the formatted string.
         ''' 
         if t and not self.untilFurtherNotice(t):
-            return time.strftime('%y%m%dT%H%MZ', self.gmtime_fromMS(t*1000))
+            return time.strftime('%y%m%dT%H%MZ', time.gmtime(t))
         else:
             return '000000T0000Z'
 
@@ -2581,14 +2586,14 @@ class VTECEngine(VTECTableUtil):
         byZones = self._organizeByZone(pTable)  
         compare = ['etn','phen','sig']
         errorLine = '**************************************************\n'
-        currentYear = self.gmtime_fromMS(self._time)[0]
+        currentYear = time.gmtime(self._time)[0]
         for key in byZones:
             for v in byZones[key]:
                 if (v['phen'], v['sig']) not in self._ncKeys:
                     continue   #only interested in checking national keys
                 if v['act'] in ['EXP','UPG','CAN']:
                     hissueTime = v.get('issueTime', 0)
-                    hissueYear = self.gmtime_fromMS(hissueTime)[0] #issueYear
+                    hissueYear = time.gmtime(hissueTime)[0] #issueYear
                     for v1 in byZones[key]:
                         if self.vtecRecordCompare(v, v1, compare) and \
                           v1['act'] in ['NEW','CON','EXA','EXT','EXB'] and \
@@ -2697,9 +2702,10 @@ class VTECEngine(VTECTableUtil):
         for id, hazards in byZones.iteritems():
             visited = []
             for p in hazards:
-                key = p['phen'], p['sig'], p['etn']
+                year = time.gmtime(p['issueTime'])[0]
+                key = p['phen'], p['sig'], p['etn'], year
                 if key in visited:
-                    estr = '%s.%s:%d' % key
+                    estr = '%s.%s:%d,%d' % key
                     if estr not in dups:
                         dups.append(estr)
                 else:
@@ -2762,6 +2768,13 @@ class VTECEngine(VTECTableUtil):
         Returns the analyzed list of vtecRecords representing the new
         set of records and hazards.
         '''
+
+        # set issueTime to current time. We use issueTime to indicate the
+        # initial issued time for the hazard.  We start with our current time,
+        # and as we match records with the active table we copy that time
+        # to this field.   This is just a temporary field.
+        for rec in pTable:
+            rec['issueTime'] = self._time
        
         # special code for HY.S
         pTable = self._handleHYS(pTable)
@@ -2868,10 +2881,6 @@ class VTECEngine(VTECTableUtil):
         if (combinableSegments):
             self._checkValidETNcw(pTable)
 
-        # set issueTime to current time
-        for rec in pTable:
-            rec['issueTime'] = self._time
-        
         # Return pTable, which is essentially analyzedTable at this point
         LogStream.logVerbose('Analyzed Records: ', self.printVtecRecords(pTable,
          combine=True))
@@ -2884,40 +2893,6 @@ class VTECEngine(VTECTableUtil):
         else:
             return False;
 
-    def _separateETNtrack(self, rec1, rec2):
-        '''Determine whether the two vtecRecords must follow a separate
-        set of ETNs and actions, even though the phens and sigs may be
-        the same.
-
-        Keyword Arguments:
-        rec1 -- vtecRecord format -- non-consolidated.
-        rec2 -- vtecRecord format -- non-consolidated.
-
-        Returns True if the two records should follow separate action and etn
-        tracks.
-        '''
-        # marine zones and non-marine zones for tpc phen/sigs follow their own
-        # sequence of ETNs and actions. This routine determines if separate
-        # ETNs/actions should occur between id1 and id2. Returns true if 
-        # separate ETN tracks are required - basically if id1 and id2 are one
-        # marine and the other not, and the phen/sigs are identical and are tpc
-        # phen/sigs. Also returns true if phen/sigs are not identical.
-        # returns false.  Only considers phen/sig/id.
-
-        ps1 = (rec1['phen'], rec1['sig'])
-        ps2 = (rec2['phen'], rec2['sig'])
-        # same phen/sig
-        if ps1 == ps2:
-            # tropical?
-            if ps1 in self._tpcKeys:
-                # one a marine zone, the other not?, that requires sepa track
-                return (self._isMarineZone(rec1['id']) != \
-                  self._isMarineZone(rec2['id']))
-            else:
-                return False   #same phen/sig, not tpc, so. non separate track
-        else:
-            return True
-        
     def untilFurtherNotice(self, time_sec):
         if time_sec >= sys.maxsize:
             return True

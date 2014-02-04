@@ -237,6 +237,59 @@ scripts = [
     "clearHazardsTable": 1,
     },
 
+    {
+    "commentary": "EXP test setup",
+    "name": "Hazard_FFA_13",
+    "drtTime": "20100101_0510",
+    "productType": "FFA",
+    "createGrids": [
+       (0, 3, "FA.A", ["FLZ049"], {'immediateCause': 'ER'}),
+       ],
+    "checkStrings": [
+                     "FLZ049-",
+                     "/X.NEW.KTBW.FA.A.0001.100101T0510Z-100101T0800Z/",
+                     "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/",
+                     ],
+    },
+
+    {
+    "commentary": "EXP test",
+    "name": "Hazard_FFA_14a",
+    "drtTime": "20100101_0740",
+    "productType": "FFA",
+    "decodeVTEC": 0,
+    "createGrids": [
+       ],
+    "checkStrings": [
+                     "FLZ049-",
+                     "/X.CAN.KTBW.FA.A.0001.000000T0000Z-100101T0800Z/",
+                     "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/",
+                     ],
+    },
+
+    {
+    "commentary": "EXP test",
+    "name": "Hazard_FFA_14b",
+    "drtTime": "20100101_0740",
+    "productType": "FFA",
+    "createGrids": [
+       (0, 3, "FA.A", ["FLZ049"], {'immediateCause': 'ER'}),
+       ],
+    "checkStrings": [
+                     "FLZ049-",
+                     "/X.EXP.KTBW.FA.A.0001.000000T0000Z-100101T0800Z/",
+                     "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/",
+                     ],
+    },
+
+    {
+    "commentary": "Deleting hazard grids.",
+    "name": "Hazard_FFA_15",
+    "productType": None,
+    "checkStrings": [],
+    "clearHazardsTable": 1,
+    },
+
     ]
 
        

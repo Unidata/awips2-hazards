@@ -218,7 +218,7 @@ class VTECTableUtil(object):
 
         return time.gmtime(time_ms / 1000)
 
-    def printTime(self, time_ms):
+    def printTime(self, time_sec):
         '''Prints out the time in ascii for string formatting operations.
 
         Keyword Arguments:
@@ -229,7 +229,8 @@ class VTECTableUtil(object):
         '''
         fmt = "{asciiTime:<25} {num:13d}"
 
-        if time_ms:
+        if time_sec:
+            time_ms = time_sec * 1000
             return fmt.format(num=int(time_ms),
               asciiTime=time.asctime(self.gmtime_fromMS(time_ms)))
         else:

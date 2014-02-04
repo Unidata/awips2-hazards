@@ -14,21 +14,33 @@
     @version 1.0
 '''
 
-from VTECEngineWrapper import VTECEngineWrapper
-from VTECTableIO import VTECTableIO
-import Logger as LS
-from HazardEvent import HazardEvent
-
 import copy
 import calendar
 import os
-import os.path
 import time
 import re
 import argparse
 import TestScript
 import collections
 import datetime
+import inspect
+
+# use updateSysPath module in ../python_Tests/ to bootstrap python paths
+import sys
+sourcePath = os.path.abspath(inspect.getsourcefile(lambda _: None))
+thisDirList = os.path.join(sourcePath.split("/")[:-1])
+pythonTestDirList = sourcePath.split("/")[:-2]
+pythonTestDirList.append("python_Tests")
+thisDir =os.path.join("/",*thisDirList)
+pythonTestDir = os.path.join("/",*pythonTestDirList)
+sys.path.append(pythonTestDir)
+from updateSysPath import updateSysPath
+updateSysPath(fromSibling="edexOsgi/com.raytheon.uf.tools.cli/impl/src")
+
+from VTECEngineWrapper import VTECEngineWrapper
+from VTECTableIO import VTECTableIO
+import Logger as LS
+from HazardEvent import HazardEvent
 
 # IMPORTANT TO HAVE ROUTINES RUNNING IN GMT0 TIME or the VTECEngine will fail.
 os.environ["TZ"] = "GMT0"
@@ -50,9 +62,7 @@ try:
 except:
     pass
 DBPATH="/tmp/"+user+"/vtecRecords.db"
-#DBPATH="/tmp/vtecRecords.db"
-#os.system("touch "+DBPATH)
-#os.chmod(DBPATH, 0666)
+
         
 class VTECTestHarness(object):
 
@@ -66,7 +76,8 @@ class VTECTestHarness(object):
         '''
         self._scriptName = scriptName
         self._scripts = scripts
-        self._io = VTECTableIO(DBPATH)        
+        self._io = VTECTableIO(DBPATH) 
+        self._eventNum = 0       
 
     def runTest(self):
         '''Runs the VTEC test.  Returns True/False depending upon success'''
@@ -136,7 +147,7 @@ class VTECTestHarness(object):
             # calculate the starting and ending times
             event.setStartTime(datetime.datetime.fromtimestamp(gridsStartTime + t1 * 3600))  # sec
             event.setEndTime(datetime.datetime.fromtimestamp(gridsStartTime + t2 * 3600))  # sec
-
+            
             # if an optional dictionary is declared in the test case, then
             # extract those values and make them keys in the EventDict.
             # For the hydro times, translate into milliseconds since epoch
@@ -460,7 +471,11 @@ def main():
 
         base = os.path.splitext(basename)[0]  # without extension
         vth = VTECTestHarness(base, tnamespace['testScript']())
-        status = vth.runTest()
+        try:
+             status = vth.runTest()
+        except Exception as s:
+             status = False
+             print "EXCEPTION: ", s                    
         if not status:
             errorCount += 1
 
@@ -470,6 +485,7 @@ def main():
     word = "ALL PASSED" if not errorCount else "FAILED {n} TESTS".format(n=errorCount)
     LS.logger.log(75, ("VTEC Test Harness Finished -- {w}".format(w=word)))
 
+    os.remove(os.path.join(os.getcwd(),"status.log"))
             
 if __name__ == '__main__':
     main()

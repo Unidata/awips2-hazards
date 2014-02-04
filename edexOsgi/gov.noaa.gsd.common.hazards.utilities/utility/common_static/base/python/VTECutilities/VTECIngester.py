@@ -146,20 +146,20 @@ class VTECIngester(VTECTableUtil):
         # years and event times overlap. Want to reassign ongoing events
         # from last year's issueTime to be 12/31/2359z, rather than the
         # real issuetime (which is this year's).
-        cyear = self.gmtime_fromMS(issueTime)[0]  #current year issuance time
+        cyear = time.gmtime(issueTime)[0]  #current year issuance time
         lastYearIssueTime = time.mktime((cyear-1, 12, 31, 23, 59, 
           0, -1, -1, -1))
         compare = ['phen', 'sig', 'officeid', 'etn']
         for newR in newRecords:
             for oldR in vtecRecords:
                 if self.vtecRecordCompare(oldR, newR, compare):
-                  oldYear = self.gmtime_fromMS(oldR['issueTime'])[0]
-                  newYear = self.gmtime_fromMS(newR['issueTime'])[0]
+                  oldYear = time.gmtime(oldR['issueTime'])[0]
+                  newYear = time.gmtime(newR['issueTime'])[0]
                   if oldYear < newYear and self._vtecRecordsOverlap(oldR, newR):
                       LogStream.logVerbose("Reset issuance time to last year:",
                         "\nNewRec: ", self.printEntry(newR),
                         "OldRec: ", self.printEntry(oldR))
-                      newR['issueTime'] = lastYearIssueTime*1000
+                      newR['issueTime'] = lastYearIssueTime
                       LogStream.logVerbose("Changed To:", self.printEntry(newR))
                   
 
@@ -168,7 +168,7 @@ class VTECIngester(VTECTableUtil):
         oldRecDict = {}
         years = []
         for newR in newRecords:
-            issueYear = self.gmtime_fromMS(newR['issueTime'])[0]
+            issueYear = time.gmtime(newR['issueTime'])[0]
             records = newRecDict.get(issueYear, [])
             records.append(newR)
             newRecDict[issueYear] = records
@@ -176,7 +176,7 @@ class VTECIngester(VTECTableUtil):
                 years.append(issueYear)
 
         for oldR in vtecRecords:
-            issueYear = self.gmtime_fromMS(oldR['issueTime'])[0]
+            issueYear = time.gmtime(oldR['issueTime'])[0]
             records = oldRecDict.get(issueYear, [])
             records.append(oldR)
             oldRecDict[issueYear] = records
