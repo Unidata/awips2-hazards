@@ -19,6 +19,10 @@ import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.eventbus.Subscribe;
@@ -115,14 +119,14 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                 String eventID = event.getEventID();
                 Long endTimeInMillis = event.getEndTime().getTime();
                 endTimeInMillis += 30 * TimeUtil.MILLIS_PER_HOUR;
-                Dict updatedMetadata = new Dict();
+                Map<String, Serializable> updatedMetadata = new HashMap<>();
                 updatedMetadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
                 updatedMetadata.put(HAZARD_EVENT_START_TIME, event
                         .getStartTime().getTime());
                 updatedMetadata.put(HAZARD_EVENT_END_TIME, endTimeInMillis);
                 HazardDetailAction action = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_TIME_RANGE,
-                        updatedMetadata.toJSONString());
+                        updatedMetadata);
                 eventBus.post(action);
                 break;
 

@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.viz.core.map.MapDescriptor;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: Mock {@link ISpatialView} used for testing.
@@ -60,7 +61,7 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void setSetting(String setting) {
+    public void setSettings(Settings settings) {
     }
 
     @Override

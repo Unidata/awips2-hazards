@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import java.io.Serializable;
+import java.util.Map;
+
 /**
  * This action is "fired" from the Hazard Information Dialog when its state
  * changes. Registered observers receive this object and act on it.
@@ -31,7 +34,7 @@ public class HazardDetailAction {
 
     private ActionType actionType;
 
-    private String jsonText;
+    private Map<String, Serializable> parameters;
 
     /*
      * Need to distinguish between Hazard Detail events which are user-initiated
@@ -44,14 +47,15 @@ public class HazardDetailAction {
         this.actionType = actionType;
     }
 
-    public HazardDetailAction(ActionType actionType, String jsonText) {
+    public HazardDetailAction(ActionType actionType,
+            Map<String, Serializable> parameters) {
         this.actionType = actionType;
-        this.jsonText = jsonText;
+        this.parameters = parameters;
     }
 
-    public HazardDetailAction(ActionType actionType, String jsonText,
-            Boolean isUserInitiated) {
-        this(actionType, jsonText);
+    public HazardDetailAction(ActionType actionType,
+            Map<String, Serializable> parameters, Boolean isUserInitiated) {
+        this(actionType, parameters);
         this.isUserInitiated = isUserInitiated;
 
     }
@@ -64,12 +68,12 @@ public class HazardDetailAction {
         return actionType;
     }
 
-    public void setJSONText(String jsonText) {
-        this.jsonText = jsonText;
+    public void setParameters(Map<String, Serializable> parameters) {
+        this.parameters = parameters;
     }
 
-    public String getJSONText() {
-        return jsonText;
+    public Map<String, Serializable> getParameters() {
+        return parameters;
     }
 
     /**

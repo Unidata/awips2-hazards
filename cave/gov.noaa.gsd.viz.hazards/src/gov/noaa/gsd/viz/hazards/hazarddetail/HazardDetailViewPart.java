@@ -50,8 +50,12 @@ import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -89,8 +93,6 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Widget;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
@@ -495,7 +497,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // in the current state, and the values be-
             // ing the hash table pairing that point's
             // field names and values.
-            Map<String, Map<String, Object>> state = Maps.newHashMap();
+            Map<String, Map<String, Object>> state = new HashMap<>();
 
             // Iterate through the lines, adding points
             // to the list.
@@ -506,7 +508,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // iterate through the columns, adding
                 // all these pairings to the table.
                 TableItem item = table.getItem(line);
-                Map<String, Object> map = Maps.newHashMap();
+                Map<String, Object> map = new HashMap<>();
                 String name = null;
                 for (int col = 0; col < table.getColumnCount(); col++) {
                     String columnIdentifier = (String) table.getColumn(col)
@@ -723,7 +725,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         protected final Set<Class<?>> getClassesOfState() {
-            Set<Class<?>> classes = Sets.newHashSet();
+            Set<Class<?>> classes = new HashSet<>();
             classes.add(Object.class);
             return classes;
         }
@@ -826,8 +828,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set of all time scale megawidgets currently in existence.
      */
-    private final Set<TimeScaleMegawidget> timeScaleMegawidgets = Sets
-            .newHashSet();
+    private final Set<TimeScaleMegawidget> timeScaleMegawidgets = new HashSet<>();
 
     /**
      * Current time provider.
@@ -859,98 +860,87 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * List of hazard category identifiers.
      */
-    private final List<String> categories = Lists.newArrayList();
+    private final List<String> categories = new ArrayList<>();
 
     /**
      * Hash table pairing categories with lists of hazard type identifiers.
      */
-    private final Map<String, List<String>> typesForCategories = Maps
-            .newHashMap();
+    private final Map<String, List<String>> typesForCategories = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with categories.
      */
-    private final Map<String, String> categoriesForTypes = Maps.newHashMap();
+    private final Map<String, String> categoriesForTypes = new HashMap<>();
 
     /**
      * Hash table pairing megawidget creation time parameter identifiers with
      * their corresponding values.
      */
-    private final Map<String, Object> megawidgetCreationParams = Maps
-            .newHashMap();
+    private final Map<String, Object> megawidgetCreationParams = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with lists of the associated megawidget
      * specifiers.
      */
-    private final Map<String, List<ISpecifier>> megawidgetsForTypes = Maps
-            .newHashMap();
+    private final Map<String, List<ISpecifier>> megawidgetsForTypes = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with lists of the associated megawidget
      * specifiers for the individual points of the hazard.
      */
-    private final Map<String, List<ISpecifier>> pointMegawidgetsForTypes = Maps
-            .newHashMap();
+    private final Map<String, List<ISpecifier>> pointMegawidgetsForTypes = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with metadata panels used by those types.
      */
-    private final Map<String, Composite> panelsForTypes = Maps.newHashMap();
+    private final Map<String, Composite> panelsForTypes = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * metadata megawidget identifiers with their associated megawidgets.
      */
-    private final Map<String, Map<String, IControl>> megawidgetsForIdsForTypes = Maps
-            .newHashMap();
+    private final Map<String, Map<String, IControl>> megawidgetsForIdsForTypes = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * point-specific metadata megawidget identifiers with their associated
      * megawidgets.
      */
-    private final Map<String, Map<String, IControl>> pointMegawidgetsForIdsForTypes = Maps
-            .newHashMap();
+    private final Map<String, Map<String, IControl>> pointMegawidgetsForIdsForTypes = new HashMap<>();
 
     /**
      * Hash table pairing hazard types with hash tables, the latter pairing
      * point-specific metadata state identifiers with their associated
      * megawidgets.
      */
-    private final Map<String, Map<String, IControl>> pointMegawidgetsForStateIdsForTypes = Maps
-            .newHashMap();
+    private final Map<String, Map<String, IControl>> pointMegawidgetsForStateIdsForTypes = new HashMap<>();
 
     /**
      * List of event dictionaries for the primary shape(s) in the events, each
      * dictionary being in the form of a hash table that maps identifier keys to
      * values that are to be used for various parameters of the hazard.
      */
-    private final List<Map<String, Object>> primaryParamValues = Lists
-            .newArrayList();
+    private final List<Map<String, Object>> primaryParamValues = new ArrayList<>();
 
     /**
      * List of lists of event dictionaries for the auxiliary shapes in the
      * events, if any, each of which is a hash table mapping identifier keys to
      * values that are to be used for various parameters of the hazard.
      */
-    private final List<List<Map<String, Object>>> auxiliaryParamValues = Lists
-            .newArrayList();
+    private final List<List<Map<String, Object>>> auxiliaryParamValues = new ArrayList<>();
 
     /**
      * List of lists of event dictionaries for the points in the events, if any,
      * each of which is a hash table mapping identifier keys to values that are
      * to be used for various parameters of the individual points of the hazard.
      */
-    private final List<List<Map<String, Object>>> pointsParamValues = Lists
-            .newArrayList();
+    private final List<List<Map<String, Object>>> pointsParamValues = new ArrayList<>();
 
     /**
      * Map of event identifiers displayed in the HID and lists of conflicting
      * events.
      */
-    private Map<String, Collection<IHazardEvent>> eventConflictMap = Maps
-            .newHashMap();
+    private Map<String, Collection<IHazardEvent>> eventConflictMap = new HashMap<>();
 
     /**
      * Propose button.
@@ -976,8 +966,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Map of hazard event identifiers to the scrolled composite origins; the
      * latter are recorded each time the scrolled composite is scrolled.
      */
-    private final Map<String, Point> scrollOriginsForEventIDs = Maps
-            .newHashMap();
+    private final Map<String, Point> scrollOriginsForEventIDs = new HashMap<>();
 
     /**
      * Flag indicating whether or not the scrolled composite is having its
@@ -1085,7 +1074,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // array will contain dictionaries which in turn hold
             // strings as one of their values naming the types; the
             // resulting list must then be alphabetized.
-            List<String> types = Lists.newArrayList();
+            List<String> types = new ArrayList<>();
             for (Object child : (List<?>) jsonItem
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN)) {
                 types.add((String) ((Map<?, ?>) child)
@@ -1128,12 +1117,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // considered to be the set in which it actually
             // belongs.
             Dict jsonItem = jsonHazardMegawidgets.getDynamicallyTypedValue(j);
-            List<String> types = Lists.newArrayList();
+            List<String> types = new ArrayList<>();
             for (Object child : (List<?>) jsonItem
                     .get(HazardConstants.HAZARD_INFO_METADATA_TYPES)) {
                 types.add((String) child);
             }
-            Set<String> typesSet = Sets.newHashSet();
+            Set<String> typesSet = new HashSet<>();
             for (String type : types) {
                 if (megawidgetsForTypes.containsKey(type) == false) {
                     typesSet.add(type);
@@ -1149,7 +1138,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
                 // Create the megawidget specifiers for the event
                 // type as a whole.
-                List<ISpecifier> megawidgetSpecifiers = Lists.newArrayList();
+                List<ISpecifier> megawidgetSpecifiers = new ArrayList<>();
                 List<Dict> objects = getJsonObjectList(jsonItem
                         .get(HazardConstants.HAZARD_INFO_METADATA_MEGAWIDGETS_LIST));
                 try {
@@ -1181,7 +1170,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 Object pointObject = jsonItem
                         .get(HazardConstants.HAZARD_INFO_METADATA_MEGAWIDGETS_POINTS_LIST);
                 if (pointObject != null) {
-                    megawidgetSpecifiers = Lists.newArrayList();
+                    megawidgetSpecifiers = new ArrayList<>();
                     objects = getJsonObjectList(pointObject);
                     Dict tableObject = new Dict();
                     tableObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -1400,7 +1389,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Dict scaleObject = new Dict();
             scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                     TIME_RANGE_IDENTIFIER);
-            Map<String, String> stateLabels = Maps.newHashMap();
+            Map<String, String> stateLabels = new HashMap<>();
             stateLabels.put(START_TIME_STATE, START_TIME_TEXT);
             stateLabels.put(END_TIME_STATE, END_TIME_TEXT);
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
@@ -1499,27 +1488,25 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         HAZARD_EVENT_TYPE, typeCombo.getText().split(" ")[0]);
                 primaryParamValues.get(visibleHazardIndex).put(
                         HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
-                Dict eventInfo = new Dict();
+
+                /**
+                 * TODO For now, just cast until we change the instance
+                 * variables to Map<String, Serializable>
+                 */
+                Map<String, Serializable> eventInfo = new HashMap<>();
                 eventInfo.put(
                         HAZARD_EVENT_IDENTIFIER,
-                        primaryParamValues.get(visibleHazardIndex).get(
-                                HAZARD_EVENT_IDENTIFIER));
+                        (Serializable) primaryParamValues.get(
+                                visibleHazardIndex)
+                                .get(HAZARD_EVENT_IDENTIFIER));
                 eventInfo.put(HAZARD_EVENT_CATEGORY, categoryCombo.getText());
                 eventInfo.put(HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
-                String jsonText = null;
-                try {
-                    jsonText = eventInfo.toJSONString();
-                } catch (Exception e) {
-                    statusHandler
-                            .error("HazardDetailViewPart.createPartControl(): conversion "
-                                    + "of event info to JSON string failed.", e);
-                }
 
                 // Send off the JSON to notify listeners of
                 // the change.
                 fireHIDAction(new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_TYPE,
-                        jsonText));
+                        eventInfo));
             }
         });
 
@@ -1673,19 +1660,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Put together an action to be sent along to indicate
         // that the appropriate key's value has changed for this
         // event, and send it off.
-        Dict eventInfo = new Dict();
+        Map<String, Serializable> eventInfo = new HashMap<>();
         eventInfo.put(HAZARD_EVENT_IDENTIFIER, eventID);
-        eventInfo.put(identifier, state);
-        String jsonText = null;
-        try {
-            jsonText = eventInfo.toJSONString();
-        } catch (Exception e) {
-            statusHandler.error(
-                    "HazardDetailViewPart.megawidgetStateChanged(): conversion "
-                            + "of event info to JSON string failed.", e);
-        }
+        eventInfo.put(identifier, (Serializable) state);
         fireHIDAction(new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_EVENT_METADATA, jsonText));
+                HazardDetailAction.ActionType.UPDATE_EVENT_METADATA, eventInfo));
     }
 
     /**
@@ -1714,8 +1693,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Parse the passed-in events and conflicts and
         // configure the megawidgets accordingly.
-        List<String> eventIDs = Lists.newArrayList();
-        List<String> types = Lists.newArrayList();
+        List<String> eventIDs = new ArrayList<>();
+        List<String> types = new ArrayList<>();
         try {
 
             // Determine whether the events should be
@@ -1830,12 +1809,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         }
                         if (listAsPoint) {
                             if (thisPointsParamValues == null) {
-                                thisPointsParamValues = Lists.newArrayList();
+                                thisPointsParamValues = new ArrayList<>();
                             }
                             thisPointsParamValues.add(auxiliary);
                         } else {
                             if (thisAuxiliaryParamValues == null) {
-                                thisAuxiliaryParamValues = Lists.newArrayList();
+                                thisAuxiliaryParamValues = new ArrayList<>();
                             }
                             thisAuxiliaryParamValues.add(auxiliary);
                         }
@@ -2395,8 +2374,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Iterate through the point megawidgets, setting
         // their states to match the states found in
         // the selected row of the table.
-        Set<IExplicitCommitStateful> megawidgetsNeedingCommit = Sets
-                .newHashSet();
+        Set<IExplicitCommitStateful> megawidgetsNeedingCommit = new HashSet<>();
         for (String identifier : megawidgetsForIds.keySet()) {
             if ((megawidgetsForIds.get(identifier) instanceof IStateful) == false) {
                 continue;
@@ -2620,7 +2598,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 CTabItem tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
                 tabItem.setText(AREA_DETAILS_TAB_TEXT);
                 Composite areaPage = new Composite(panel, SWT.NONE);
-                Map<String, IControl> megawidgetsForIds = Maps.newHashMap();
+                Map<String, IControl> megawidgetsForIds = new HashMap<>();
                 addMegawidgetsToPanel(megawidgetsForTypes.get(type), areaPage,
                         megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2632,9 +2610,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 tabItem = new CTabItem((CTabFolder) panel, SWT.NONE);
                 tabItem.setText(POINTS_DETAILS_TAB_TEXT);
                 Composite pointsPage = new Composite(panel, SWT.NONE);
-                megawidgetsForIds = Maps.newHashMap();
-                Map<String, IControl> megawidgetsForStateIds = Maps
-                        .newHashMap();
+                megawidgetsForIds = new HashMap<>();
+                Map<String, IControl> megawidgetsForStateIds = new HashMap<>();
                 addMegawidgetsToPanel(
                         pointMegawidgetSpecifiers,
                         pointsPage,
@@ -2662,7 +2639,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 // megawidgets.
                 panel = new Group(metadataContentPanel, SWT.NONE);
                 ((Group) panel).setText(DETAILS_SECTION_TEXT);
-                Map<String, IControl> megawidgetsForIds = Maps.newHashMap();
+                Map<String, IControl> megawidgetsForIds = new HashMap<>();
                 addMegawidgetsToPanel(megawidgetsForTypes.get(type), panel,
                         megawidgetsForIds, null,
                         primaryParamValues.get(visibleHazardIndex));
@@ -2826,29 +2803,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         // Generate a HID action and fire it off.
-        Dict eventInfo = new Dict();
+        Map<String, Serializable> eventInfo = new HashMap<>();
         eventInfo.put(
                 HAZARD_EVENT_IDENTIFIER,
-                primaryParamValues.get(visibleHazardIndex).get(
+                (Serializable) primaryParamValues.get(visibleHazardIndex).get(
                         HAZARD_EVENT_IDENTIFIER));
         eventInfo.put(
                 HAZARD_EVENT_START_TIME,
-                primaryParamValues.get(visibleHazardIndex).get(
+                (Serializable) primaryParamValues.get(visibleHazardIndex).get(
                         HAZARD_EVENT_START_TIME));
-        eventInfo.put(
-                HAZARD_EVENT_END_TIME,
-                primaryParamValues.get(visibleHazardIndex).get(
-                        HAZARD_EVENT_END_TIME));
-        String jsonText = null;
-        try {
-            jsonText = eventInfo.toJSONString();
-        } catch (Exception e) {
-            statusHandler.error(
-                    "HazardDetailViewPart.timeRangeChanged(): conversion "
-                            + "of event info to JSON string failed.", e);
-        }
+        eventInfo.put(HAZARD_EVENT_END_TIME, (Serializable) primaryParamValues
+                .get(visibleHazardIndex).get(HAZARD_EVENT_END_TIME));
+
         fireHIDAction(new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_TIME_RANGE, jsonText));
+                HazardDetailAction.ActionType.UPDATE_TIME_RANGE, eventInfo));
     }
 
     /**
@@ -2894,7 +2862,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // add entries to the other table pairing
         // them with their states, one entry per
         // state that each contains.
-        Set<IControl> megawidgets = Sets.newHashSet();
+        Set<IControl> megawidgets = new HashSet<>();
         for (ISpecifier megawidgetSpecifier : megawidgetSpecifiers) {
             IControl megawidget = null;
             try {
@@ -2906,7 +2874,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 + "event type metadata megawidget creation error.",
                                 e);
             }
-            Set<IControl> newMegawidgets = Sets.newHashSet();
+            Set<IControl> newMegawidgets = new HashSet<>();
             findAllDescendantMegawidgets(megawidget, newMegawidgets);
             recordNewMegawidgets(newMegawidgets, megawidgets,
                     megawidgetsForIds, megawidgetsForStateIds,
@@ -3029,9 +2997,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // value, adding a mapping for that state
             // identifier and default value to the
             // dictionary.
-            Set<String> identifiersGivenDefaultValues = Sets.newHashSet();
-            Set<IExplicitCommitStateful> megawidgetsNeedingCommit = Sets
-                    .newHashSet();
+            Set<String> identifiersGivenDefaultValues = new HashSet<>();
+            Set<IExplicitCommitStateful> megawidgetsNeedingCommit = new HashSet<>();
             for (String megawidgetIdentifier : megawidgetsForIds.keySet()) {
                 IControl megawidget = megawidgetsForIds
                         .get(megawidgetIdentifier);
@@ -3183,19 +3150,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // placed in the event dictionary, send off a
             // notification that these values changed.
             if (identifiersGivenDefaultValues.size() > 0) {
-                Dict eventInfo = new Dict();
-                eventInfo.put(HAZARD_EVENT_IDENTIFIER,
-                        paramValues.get(HAZARD_EVENT_IDENTIFIER));
+                Map<String, Serializable> eventInfo = new HashMap<>();
+                eventInfo
+                        .put(HAZARD_EVENT_IDENTIFIER,
+                                (Serializable) paramValues
+                                        .get(HAZARD_EVENT_IDENTIFIER));
                 for (String identifier : identifiersGivenDefaultValues) {
-                    eventInfo.put(identifier, paramValues.get(identifier));
-                }
-                String jsonText = null;
-                try {
-                    jsonText = eventInfo.toJSONString();
-                } catch (Exception e) {
-                    statusHandler
-                            .error("HazardDetailViewPart.setMegawidgetsStates(): conversion "
-                                    + "of event info to JSON string failed.", e);
+                    eventInfo.put(identifier,
+                            (Serializable) paramValues.get(identifier));
                 }
 
                 /*
@@ -3206,7 +3168,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                  */
                 hazardDetailView.fireAction(new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
-                        jsonText, false), true);
+                        eventInfo, false), true);
             }
         }
     }
@@ -3254,7 +3216,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @return List of JSON objects.
      */
     private List<Dict> getJsonObjectList(Object object) {
-        List<Dict> objects = Lists.newArrayList();
+        List<Dict> objects = new ArrayList<>();
         if (object instanceof Dict) {
             objects.add((Dict) object);
         } else {

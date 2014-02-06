@@ -9,7 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import java.io.Serializable;
+import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -55,10 +56,8 @@ public class ToolAction {
     /**
      * Auxiliary details text, if any.
      * 
-     * TODO This should probably be replaced with a Map<String, Serializable> or
-     * modify {@link Dict} to extend that map.
      */
-    private Dict aux;
+    private Map<String, Serializable> auxiliaryDetails;
 
     /**
      * List of recommender generated events, if any.
@@ -104,13 +103,14 @@ public class ToolAction {
      *            Identifier of the action that is occurring.
      * @param toolName
      * 
-     * @param aux
+     * @param auxiliarlyDetails
      *            Optional auxiliary details.
      */
-    public ToolAction(ToolActionEnum actionType, String toolName, Dict aux) {
+    public ToolAction(ToolActionEnum actionType, String toolName,
+            Map<String, Serializable> auxiliarlyDetails) {
         this.actionType = actionType;
         this.toolName = toolName;
-        this.aux = aux;
+        this.auxiliaryDetails = auxiliarlyDetails;
     }
 
     /**
@@ -178,8 +178,8 @@ public class ToolAction {
      * 
      * @return auxiliary details.
      */
-    public Dict getAuxiliaryDetails() {
-        return aux;
+    public Map<String, Serializable> getAuxiliaryDetails() {
+        return auxiliaryDetails;
     }
 
     /**

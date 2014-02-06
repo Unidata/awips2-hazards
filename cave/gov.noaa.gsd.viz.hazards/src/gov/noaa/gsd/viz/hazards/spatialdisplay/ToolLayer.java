@@ -7,11 +7,9 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
@@ -84,6 +82,7 @@ import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
 import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
@@ -349,16 +348,14 @@ public class ToolLayer extends
                 // that; otherwise, give the resource data the setting
                 // already in use by the app builder so that it will
                 // have it in case it is saved as part of a bundle.
-                String setting = ((ToolLayerResourceData) getResourceData())
-                        .getSetting();
-                if (setting != null) {
-                    ToolLayer.this.appBuilder.setCurrentSettings(JSONUtilities
-                            .settingsFromJSON(setting));
+                Settings settings = ((ToolLayerResourceData) getResourceData())
+                        .getSettings();
+                if (settings != null) {
+                    ToolLayer.this.appBuilder.setCurrentSettings(settings);
                 } else {
                     ((ToolLayerResourceData) getResourceData())
-                            .setSetting(new JSONConverter()
-                                    .toJson(ToolLayer.this.appBuilder
-                                            .getCurrentSettings()));
+                            .setSettings(ToolLayer.this.appBuilder
+                                    .getCurrentSettings());
                 }
             }
         };

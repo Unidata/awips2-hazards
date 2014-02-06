@@ -112,34 +112,42 @@ public class SessionConfigurationManager implements
 
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
 
-    private final ISessionNotificationSender notificationSender;
+    private ISessionNotificationSender notificationSender;
 
     private final JobPool loaderPool = new JobPool(
             "Loading Hazard Services Config", 1);
 
-    private final IPathManager pathManager;
+    private IPathManager pathManager;
 
     private List<ConfigLoader<Settings>> allSettings;
 
-    private final ConfigLoader<StartUpConfig> startUpConfig;
+    private ConfigLoader<StartUpConfig> startUpConfig;
 
-    private final ConfigLoader<HazardCategories> hazardCategories;
+    private ConfigLoader<HazardCategories> hazardCategories;
 
-    private final ConfigLoader<HazardMetaData> hazardMetaData;
+    private ConfigLoader<HazardMetaData> hazardMetaData;
 
-    private final ConfigLoader<ProductGeneratorTable> pgenTable;
+    private ConfigLoader<ProductGeneratorTable> pgenTable;
 
-    private final List<ConfigLoader<? extends IHazardsColorTable>> colorTables;
+    private List<ConfigLoader<? extends IHazardsColorTable>> colorTables;
 
-    private final ConfigLoader<HazardTypes> hazardTypes;
+    private ConfigLoader<HazardTypes> hazardTypes;
 
-    private final ConfigLoader<HazardAlertsConfig> alertsConfig;
+    private ConfigLoader<HazardAlertsConfig> alertsConfig;
 
-    private final ConfigLoader<SettingsConfig[]> settingsConfig;
+    private ConfigLoader<SettingsConfig[]> settingsConfig;
 
     private ObservedSettings settings;
 
     private String siteId;
+
+    /**
+     * For JAXB serialization.
+     */
+    @SuppressWarnings("unused")
+    private SessionConfigurationManager() {
+
+    }
 
     public SessionConfigurationManager(IPathManager pathManager,
             ISessionNotificationSender notificationSender) {

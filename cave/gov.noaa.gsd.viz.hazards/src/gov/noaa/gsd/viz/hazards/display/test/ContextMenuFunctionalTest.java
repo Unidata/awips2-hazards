@@ -12,14 +12,15 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.collect.Lists;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -124,8 +125,8 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
                  * Update the event to indicate that it was created using the
                  * draw-by-area tool.
                  */
-                Dict newEventAttributes = new Dict();
-                ArrayList<String> contextMenuList = Lists.newArrayList();
+                Map<String, Serializable> newEventAttributes = new HashMap<>();
+                ArrayList<String> contextMenuList = new ArrayList<>();
                 contextMenuList
                         .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
                 newEventAttributes.put(

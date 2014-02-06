@@ -38,28 +38,22 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorType
 import gov.noaa.gsd.viz.hazards.timer.TimerAction;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ArrayNode;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -207,8 +201,6 @@ public final class HazardServicesMessageHandler implements
     private final ISessionTimeManager sessionTimeManager;
 
     private final ISessionConfigurationManager sessionConfigurationManager;
-
-    private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     private final HazardServicesProductGenerationHandler productGeneratorHandler;
 
@@ -441,8 +433,9 @@ public final class HazardServicesMessageHandler implements
      * 
      * @throws VizException
      */
-    public void runTool(String toolName, Map<String, Serializable> spatialInfo,
-            Dict dialogInfo) {
+    private void runTool(String toolName,
+            Map<String, Serializable> spatialInfo,
+            Map<String, Serializable> dialogInfo) {
 
         ISessionManager sessionManager = appBuilder.getSessionManager();
         appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
@@ -489,7 +482,7 @@ public final class HazardServicesMessageHandler implements
                         .toString());
 
         sessionManager.getRecommenderEngine().runExecuteRecommender(toolName,
-                eventSet, spatialInfo, Utilities.asMap(dialogInfo),
+                eventSet, spatialInfo, dialogInfo,
                 getRecommenderListener(toolName));
 
         appBuilder.setCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
@@ -503,7 +496,7 @@ public final class HazardServicesMessageHandler implements
      */
     @Deprecated
     private HashMap<String, Serializable> buildStaticSettings() {
-        HashMap<String, Serializable> staticSettings = Maps.newHashMap();
+        HashMap<String, Serializable> staticSettings = new HashMap<>();
 
         staticSettings.put("defaultDuration", 1800000);
         staticSettings.put("defaultSiteID", "OAX");
@@ -836,16 +829,16 @@ public final class HazardServicesMessageHandler implements
      * Updates information for an event taking into consideration the
      * originator.
      * 
-     * @param jsonText
-     *            The json containing the portions of the event which are being
-     *            updated.
+     * @param map
+     *            The portions of the event which are being updated.
      * @param isUserInitiated
      *            Flag indicating whether or not the updated data are the result
      *            of a user-edit.
      * @return
      */
-    public void updateEventData(String jsonText, boolean isUserInitiated) {
-        _updateEventData(jsonText, isUserInitiated);
+    public void updateEventData(Map<String, Serializable> map,
+            boolean isUserInitiated) {
+        _updateEventData(map, isUserInitiated);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.EVENTS));
     }
@@ -857,19 +850,17 @@ public final class HazardServicesMessageHandler implements
      * @param jsonText
      *            Contains information regarding the event type.
      */
-    public void updateEventType(String jsonText) {
-        _updateEventData(jsonText, true);
+    public void updateEventType(Map<String, Serializable> map) {
+        _updateEventData(map, true);
         notifyModelEventsChanged();
     }
 
-    private void _updateEventData(String jsonText, Boolean isUserInitiated) {
-        JsonNode jnode = fromJson(jsonText, JsonNode.class);
-        IHazardEvent event = sessionEventManager.getEventById(jnode.get(
-                HazardConstants.HAZARD_EVENT_IDENTIFIER).getValueAsText());
+    private void _updateEventData(Map<String, Serializable> map,
+            Boolean isUserInitiated) {
+        IHazardEvent event = sessionEventManager.getEventById((String) map
+                .get(HazardConstants.HAZARD_EVENT_IDENTIFIER));
 
-        Iterator<String> fields = jnode.getFieldNames();
-        while (fields.hasNext()) {
-            String key = fields.next();
+        for (String key : map.keySet()) {
             if (HazardConstants.HAZARD_EVENT_IDENTIFIER.equals(key)) {
                 ;
             } else if (HAZARD_EVENT_FULL_TYPE.equals(key)) {
@@ -896,7 +887,7 @@ public final class HazardServicesMessageHandler implements
                     selection.add(event);
                     sessionEventManager.setSelectedEvents(selection);
                 }
-                String fullType = jnode.get(key).getValueAsText();
+                String fullType = (String) map.get(key);
                 if (!fullType.isEmpty()) {
                     String[] phenSig = fullType.split(" ")[0].split("\\.");
                     event.setPhenomenon(phenSig[0]);
@@ -937,7 +928,7 @@ public final class HazardServicesMessageHandler implements
                     selection.add(event);
                     sessionEventManager.setSelectedEvents(selection);
                 }
-                event.setStartTime(new Date(jnode.get(key).getLongValue()));
+                event.setStartTime(new Date((Long) map.get(key)));
             } else if (HAZARD_EVENT_END_TIME.equals(key)) {
                 if (!sessionEventManager.canChangeTimeRange(event)) {
                     event = new BaseHazardEvent(event);
@@ -947,14 +938,10 @@ public final class HazardServicesMessageHandler implements
                     selection.add(event);
                     sessionEventManager.setSelectedEvents(selection);
                 }
-                event.setEndTime(new Date(jnode.get(key).getLongValue()));
-            } else if (jnode.get(key).isArray()) {
-                ArrayNode arrayNode = (ArrayNode) jnode.get(key);
-                List<String> stringList = Lists.newArrayList();
-
-                for (int i = 0; i < arrayNode.size(); i++) {
-                    stringList.add(arrayNode.get(i).getValueAsText());
-                }
+                event.setEndTime(new Date((Long) map.get(key)));
+            } else if (map.get(key).getClass().equals(ArrayList.class)) {
+                @SuppressWarnings({ "unchecked" })
+                List<String> stringList = (List<String>) map.get(key);
 
                 /*
                  * Do no pass data as arrays. It is better to pass them as
@@ -965,24 +952,22 @@ public final class HazardServicesMessageHandler implements
                  * are not consistently handled. The type is not preserved.
                  */
                 event.addHazardAttribute(key, (Serializable) stringList);
-            } else if (jnode.get(key).isContainerNode()) {
-                throw new UnsupportedOperationException(
-                        "Support for container node not implemented yet.");
             } else {
-                JsonNode primitive = jnode.get(key);
-                if (primitive.isTextual()) {
-                    event.addHazardAttribute(key, primitive.getValueAsText());
-                } else if (primitive.isBoolean()) {
-                    event.addHazardAttribute(key, primitive.getBooleanValue());
-                } else if (primitive.isFloatingPointNumber()) {
-                    event.addHazardAttribute(key, primitive.getDoubleValue());
-                } else if (primitive.isNumber()) {
+                Object primitive = map.get(key);
+                if (primitive.getClass() == String.class) {
+                    event.addHazardAttribute(key, (String) primitive);
+                } else if (primitive.getClass() == Boolean.class) {
+                    event.addHazardAttribute(key, (Boolean) primitive);
+                } else if (primitive.getClass() == Float.class
+                        || primitive.getClass() == Double.class) {
+                    event.addHazardAttribute(key, (Double) primitive);
+                } else if (primitive instanceof Number) {
                     Object currentVal = event.getHazardAttribute(key);
                     if (currentVal instanceof Integer) {
-                        event.addHazardAttribute(key, primitive.getIntValue());
+                        event.addHazardAttribute(key, (Long) primitive);
                     } else {
                         event.addHazardAttribute(key,
-                                new Date(primitive.getLongValue()));
+                                new Date((Long) primitive));
                     }
                 } else {
                     throw new UnsupportedOperationException("Not implemented");
@@ -994,14 +979,6 @@ public final class HazardServicesMessageHandler implements
             ((ObservedHazardEvent) event).setModified(true);
         }
 
-    }
-
-    private <T> T fromJson(String str, Class<T> clazz) {
-        try {
-            return jsonObjectMapper.readValue(str, clazz);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**
@@ -1482,16 +1459,11 @@ public final class HazardServicesMessageHandler implements
 
         case RUN_TOOL:
             runTool(spatialDisplayAction.getToolName(),
-                    Utilities.asMap(spatialDisplayAction.getToolParameters()),
-                    null);
+                    spatialDisplayAction.getToolParameters(), null);
             break;
 
         case UPDATE_EVENT_METADATA:
-            /**
-             * TODO Change updateEventData to take in a POJO
-             */
-            updateEventData(spatialDisplayAction.getToolParameters()
-                    .toJSONString(), true);
+            updateEventData(spatialDisplayAction.getToolParameters(), true);
             break;
 
         case UNDO:
@@ -1558,11 +1530,10 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case CHECK_BOX: {
-            Dict eventInfo = new Dict();
+            Map<String, Serializable> eventInfo = new HashMap<>();
             eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
             eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
-            String jsonText = eventInfo.toJSONString();
-            updateEventData(jsonText, true);
+            updateEventData(eventInfo, true);
             break;
         }
 
@@ -1579,13 +1550,13 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case EVENT_TIME_RANGE_CHANGED: {
-            Dict eventInfo = new Dict();
+            Map<String, Serializable> eventInfo = new HashMap<>();
             eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
             eventInfo.put(HAZARD_EVENT_START_TIME,
                     Long.parseLong(consoleAction.getStartTime()));
             eventInfo.put(HAZARD_EVENT_END_TIME,
                     Long.parseLong(consoleAction.getEndTime()));
-            updateEventData(eventInfo.toJSONString(), true);
+            updateEventData(eventInfo, true);
             break;
         }
 
@@ -1639,16 +1610,15 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case UPDATE_TIME_RANGE:
-            updateEventData(hazardDetailAction.getJSONText(),
-
-            hazardDetailAction.getIsUserInitiated());
+            updateEventData(hazardDetailAction.getParameters(),
+                    hazardDetailAction.getIsUserInitiated());
             break;
 
         case UPDATE_EVENT_TYPE:
-            updateEventType(hazardDetailAction.getJSONText());
+            updateEventType(hazardDetailAction.getParameters());
             break;
         case UPDATE_EVENT_METADATA:
-            updateEventData(hazardDetailAction.getJSONText(),
+            updateEventData(hazardDetailAction.getParameters(),
                     hazardDetailAction.getIsUserInitiated());
             break;
 

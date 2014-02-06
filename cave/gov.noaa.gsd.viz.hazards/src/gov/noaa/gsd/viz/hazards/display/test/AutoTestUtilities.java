@@ -20,11 +20,13 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -195,11 +197,12 @@ public class AutoTestUtilities {
     }
 
     void assignEventType(String eventType, IHazardEvent selectedEvent) {
-        Dict dict = buildEventTypeSelection(selectedEvent, eventType);
+        Map<String, Serializable> eventTypeSelection = buildEventTypeSelection(
+                selectedEvent, eventType);
 
         HazardDetailAction hazardDetailAction = new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
-        hazardDetailAction.setJSONText(dict.toJSONString());
+        hazardDetailAction.setParameters(eventTypeSelection);
         appBuilder.getEventBus().post(hazardDetailAction);
     }
 
@@ -219,7 +222,7 @@ public class AutoTestUtilities {
     }
 
     Coordinate[] buildEventArea(Double centerX, Double centerY) {
-        List<Coordinate> result = Lists.newArrayList();
+        List<Coordinate> result = new ArrayList<>();
 
         result.add(buildPoint(centerX, centerY, -EVENT_BUILDER_OFFSET,
                 -EVENT_BUILDER_OFFSET));
@@ -239,16 +242,18 @@ public class AutoTestUtilities {
         return new Coordinate(centerX + xOffset, centerY + yOffset);
     }
 
-    Dict buildEventTypeSelection(IHazardEvent selectedEvent, String fullType) {
+    Map<String, Serializable> buildEventTypeSelection(
+            IHazardEvent selectedEvent, String fullType) {
         /*
-         * Build the JSON simulating a hazard type selection in the HID.
+         * Build a simulated hazard type selection in the HID.
          */
-        Dict dict = new Dict();
-        dict.put(HAZARD_EVENT_IDENTIFIER, selectedEvent.getEventID());
-        dict.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
+        Map<String, Serializable> hazardTypeSelection = new HashMap<>();
+        hazardTypeSelection.put(HAZARD_EVENT_IDENTIFIER,
+                selectedEvent.getEventID());
+        hazardTypeSelection.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
                 AutoTestUtilities.HYDROLOGY);
-        dict.put(HAZARD_EVENT_FULL_TYPE, fullType);
-        return dict;
+        hazardTypeSelection.put(HAZARD_EVENT_FULL_TYPE, fullType);
+        return hazardTypeSelection;
     }
 
     /**
@@ -285,7 +290,7 @@ public class AutoTestUtilities {
     }
 
     void runDamBreakRecommender(DamBreakUrgencyLevels urgencyLevel) {
-        Dict damBreakInfo = new Dict();
+        Map<String, Serializable> damBreakInfo = new HashMap<>();
         damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
         damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
         eventBus.post(new ToolAction(
@@ -310,7 +315,8 @@ public class AutoTestUtilities {
         eventBus.post(action);
     }
 
-    void updateSelectedEventAttributes(Dict updatedEventAttributes) {
+    void updateSelectedEventAttributes(
+            Map<String, Serializable> updatedEventAttributes) {
         IHazardEvent selectedEvent = getSelectedEvent();
         updatedEventAttributes.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
                 selectedEvent.getEventID());

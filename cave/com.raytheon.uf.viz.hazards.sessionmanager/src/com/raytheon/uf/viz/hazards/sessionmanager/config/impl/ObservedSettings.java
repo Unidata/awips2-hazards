@@ -64,7 +64,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 public class ObservedSettings extends Settings {
 
-    private final SessionConfigurationManager configManager;
+    private SessionConfigurationManager configManager;
+
+    /**
+     * For JAXB serialization.
+     */
+    @SuppressWarnings("unused")
+    private ObservedSettings() {
+
+    }
 
     public ObservedSettings(SessionConfigurationManager configManager,
             Settings other) {

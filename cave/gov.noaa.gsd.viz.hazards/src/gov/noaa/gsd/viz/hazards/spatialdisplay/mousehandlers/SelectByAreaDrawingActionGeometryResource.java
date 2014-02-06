@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Polygon;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Shape;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
@@ -16,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapRes
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -146,7 +146,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private Geometry selectedGeometry = null;
 
-        private List<Geometry> selectedGeoms = Lists.newArrayList();
+        private List<Geometry> selectedGeoms = new ArrayList<>();
 
         private Mode mode = Mode.CREATE;
 
@@ -270,7 +270,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                     mergedPolygons = TopologyPreservingSimplifier.simplify(
                             mergedPolygons, 0.0001);
-                    List<Shape> shapes = Lists.newArrayList();
+                    List<Shape> shapes = new ArrayList<>();
 
                     for (int i = 0; i < mergedPolygons.getNumGeometries(); ++i) {
                         Polygon polygon = new Polygon("", "true", "true",
@@ -282,7 +282,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     /*
                      * Clone the list of selected geometries.
                      */
-                    List<Geometry> copyGeometriesList = Lists.newArrayList();
+                    List<Geometry> copyGeometriesList = new ArrayList<>();
 
                     for (Geometry geometry : selectedGeoms) {
                         copyGeometriesList.add((Geometry) geometry.clone());
@@ -324,7 +324,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                     .getResourceData().getTable();
                             String geometryLegend = zoneDisplay
                                     .getResourceData().getMapName();
-                            Dict geoReferenceDict = new Dict();
+                            Map<String, Serializable> geoReferenceDict = new HashMap<>();
                             geoReferenceDict.put(
                                     HazardConstants.HAZARD_EVENT_IDENTIFIER,
                                     eventID);
@@ -334,8 +334,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                             geoReferenceDict.put(
                                     HazardConstants.GEOMETRY_MAP_NAME_KEY,
                                     geometryLegend);
-                            ArrayList<String> contextMenuList = Lists
-                                    .newArrayList();
+                            ArrayList<String> contextMenuList = new ArrayList<>();
                             contextMenuList
                                     .add(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
                             geoReferenceDict

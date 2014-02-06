@@ -14,8 +14,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE_DOT;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MODIFY_STORM_TRACK_TOOL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTID;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SPATIAL_INFO;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TRACK_POINTS;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -25,8 +23,11 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -103,12 +104,12 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     Map<String, Serializable> lastPoint = trackPoints
                             .get(trackPoints.size() - 1);
                     Long pointID = (Long) lastPoint.get(POINTID);
-                    Dict toolParameters = new Dict();
+                    Map<String, Serializable> toolParameters = new HashMap<>();
                     toolParameters.put(POINTID, pointID);
                     toolParameters.put(HAZARD_EVENT_IDENTIFIER, eventID);
                     toolParameters.put(HAZARD_EVENT_SHAPE_TYPE,
                             HAZARD_EVENT_SHAPE_TYPE_DOT);
-                    List<Double> point = Lists.newArrayList(-98.76, 40.29);
+                    ArrayList<Double> point = Lists.newArrayList(-98.76, 40.29);
                     toolParameters.put(SYMBOL_NEW_LAT_LON, point);
 
                     SpatialDisplayAction modifyAction = new SpatialDisplayAction(
@@ -150,19 +151,10 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                  * test that the dot appears. We'll start after the dot has been
                  * dragged.
                  */
-                Dict toolParameters = new Dict();
-                Dict pointsDict = new Dict();
-                toolParameters.put(SPATIAL_INFO, pointsDict);
-                List<Object> points = Lists.newArrayList();
-                pointsDict.put(POINTS, points);
-                List<Object> outerList = Lists.newArrayList();
-                points.add(outerList);
-                List<Double> xyLoc = Lists.newArrayList(41.22, -97.10);
-                Double zLoc = 1297137600.0;
-                outerList.add(xyLoc);
-                outerList.add(zLoc);
+                Map<String, Serializable> toolParameters = Utilities
+                        .buildStormStrackToolDraggedPointParameters(41.22,
+                                -97.10, 1297137600.0);
 
-                // step = Steps.RUN_TOOL;
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.RUN_TOOL,
                         STORM_TRACK_TOOL, toolParameters);

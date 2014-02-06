@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
@@ -20,7 +21,9 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
+import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -240,8 +243,8 @@ class ToolDialog extends BasicDialog {
      * 
      * @return Current state held by the dialog.
      */
-    public Dict getState() {
-        return valuesDict;
+    public Map<String, Serializable> getState() {
+        return Utilities.asMap(valuesDict);
 
     }
 

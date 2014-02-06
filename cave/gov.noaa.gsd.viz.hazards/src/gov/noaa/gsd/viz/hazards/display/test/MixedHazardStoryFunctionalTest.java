@@ -56,7 +56,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
@@ -157,7 +160,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
                 case RUN_FLOOD:
 
-                    Dict riverFloodInfo = new Dict();
+                    Map<String, Serializable> riverFloodInfo = new HashMap<>();
                     riverFloodInfo.put(FORECAST_CONFIDENCE_PERCENTAGE,
                             FORECAST_CONFIDENCE_VALUE);
                     riverFloodInfo.put(FORECAST_TYPE, SET_CONFIDENCE);
@@ -363,7 +366,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 checkOriginalProductsEnded();
                 checkReplacementEvents(HazardState.ISSUED.getValue());
                 checkEndedEventsGoneFromHid();
-                Dict metadata = new Dict();
+                Map<String, Serializable> metadata = new HashMap<>();
                 metadata.put(INCLUDE, SEV2);
                 this.step = Steps.CONTINUING_EVENTS;
                 event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
@@ -537,19 +540,18 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private void replaceEvent(Dict event, String eventType) {
         String eventID = event
                 .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
-        Dict metadata = new Dict();
+        Map<String, Serializable> metadata = new HashMap<>();
         metadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
         metadata.put(ISessionEventManager.ATTR_HAZARD_CATEGORY,
                 HYDROLOGY_SETTING);
         metadata.put(HAZARD_EVENT_FULL_TYPE, eventType);
 
         eventBus.post(new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_EVENT_TYPE, metadata
-                        .toJSONString()));
+                HazardDetailAction.ActionType.UPDATE_EVENT_TYPE, metadata));
     }
 
-    private void updateEvent(Dict event, Dict metadata) {
-        Dict allMetadata = new Dict();
+    private void updateEvent(Dict event, Map<String, Serializable> metadata) {
+        Map<String, Serializable> allMetadata = new HashMap<>();
         String eventID = event
                 .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
         allMetadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
@@ -559,7 +561,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
         eventBus.post(new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
-                allMetadata.toJSONString()));
+                allMetadata));
     }
 
     private void checkConsoleSelections() {

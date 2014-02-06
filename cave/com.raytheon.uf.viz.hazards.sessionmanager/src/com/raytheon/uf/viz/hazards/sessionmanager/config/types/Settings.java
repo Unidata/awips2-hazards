@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -46,6 +50,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * @author bsteffen
  * @version 1.0
  */
+@XmlRootElement(name = "HazardServicesSettings")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Settings {
 
     /**
@@ -94,7 +100,7 @@ public class Settings {
     private String displayName;
 
     /**
-     * A reasonable duration for new evetns.
+     * A reasonable duration for new events.
      */
     private Long defaultDuration;
 

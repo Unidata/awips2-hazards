@@ -98,9 +98,8 @@ public class SpatialPresenter extends
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
             useSettingZoomParameters();
         } else if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            Settings dset = configurationManager.getSettings();
-            String settingsAsJSON = jsonConverter.toJson(dset);
-            getView().setSetting(settingsAsJSON);
+            Settings settings = configurationManager.getSettings();
+            getView().setSettings(settings);
         } else if (changed.contains(HazardConstants.Element.CAVE_TIME)) {
             updateCaveSelectedTime();
         }

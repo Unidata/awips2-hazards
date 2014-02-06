@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlType;
+
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
@@ -38,6 +44,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * @author bsteffen
  * @version 1.0
  */
+@XmlType(name = "HazardServicesMapCenter")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class MapCenter {
 
     private double lat;
@@ -82,41 +90,12 @@ public class MapCenter {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        long temp;
-        temp = Double.doubleToLongBits(lat);
-        result = prime * result + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(lon);
-        result = prime * result + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(zoom);
-        result = prime * result + (int) (temp ^ (temp >>> 32));
-        return result;
+        return HashCodeBuilder.reflectionHashCode(this);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        MapCenter other = (MapCenter) obj;
-        if (Double.doubleToLongBits(lat) != Double.doubleToLongBits(other.lat)) {
-            return false;
-        }
-        if (Double.doubleToLongBits(lon) != Double.doubleToLongBits(other.lon)) {
-            return false;
-        }
-        if (Double.doubleToLongBits(zoom) != Double
-                .doubleToLongBits(other.zoom)) {
-            return false;
-        }
-        return true;
+        return EqualsBuilder.reflectionEquals(this, obj);
     }
 
     @Override

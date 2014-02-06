@@ -9,7 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import java.io.Serializable;
+import java.util.Map;
 
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 
@@ -62,7 +63,7 @@ public class SpatialDisplayAction {
 
     private String toolName;
 
-    private Dict toolParameters;
+    private Map<String, Serializable> toolParameters;
 
     private String eventID;
 
@@ -100,7 +101,7 @@ public class SpatialDisplayAction {
     }
 
     public SpatialDisplayAction(ActionType actionType, String toolName,
-            Dict toolParameters) {
+            Map<String, Serializable> toolParameters) {
         this.actionType = actionType;
         this.toolName = toolName;
         this.toolParameters = toolParameters;
@@ -210,11 +211,11 @@ public class SpatialDisplayAction {
         return toolName;
     }
 
-    public Dict getToolParameters() {
+    public Map<String, Serializable> getToolParameters() {
         return toolParameters;
     }
 
-    public void setToolParameters(Dict toolParameters) {
+    public void setToolParameters(Map<String, Serializable> toolParameters) {
         this.toolParameters = toolParameters;
     }
 

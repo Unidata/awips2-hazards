@@ -10,20 +10,19 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import org.apache.commons.lang.builder.EqualsBuilder;
+
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
-import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
-import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Description: Tool layer resource data, providing information about the Hazard
@@ -47,10 +46,10 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
     // Private Variables
 
     /**
-     * JSON string containing the setting currently in use.
+     * settings currently in use.
      */
     @XmlElement
-    private String setting;
+    private Settings settings;
 
     /**
      * Flag indicating whether or not this object has been brought into being
@@ -103,38 +102,13 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
     @Override
     public ToolLayer construct(LoadProperties loadProperties,
             IDescriptor descriptor) throws VizException {
-
-        // Determine if a Hazard Services viz resource already exists, and if
-        // so, just set its setting to match this resource's saved setting and
-        // return nothing; otherwise, create a new one.
-        ResourceList rscList = descriptor.getResourceList();
-        for (ResourcePair rp : rscList) {
-            AbstractVizResource<?, ?> rsc = rp.getResource();
-            if (rsc instanceof ToolLayer) {
-                if (setting != null) {
-                    ((ToolLayer) rsc).getAppBuilder().setCurrentSettings(
-                            JSONUtilities.settingsFromJSON(setting));
-                }
-                return null;
-            }
-        }
         return new ToolLayer(this, loadProperties,
                 instantiatedViaDeserialization, appBuilder);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if ((this == obj)
-                || ((obj != null) && (obj instanceof ToolLayerResourceData))) {
-            ToolLayerResourceData data = (ToolLayerResourceData) obj;
-            if ((setting != data.setting)
-                    && ((setting == null) || (data.setting == null) || (setting
-                            .equals(data.setting) == false))) {
-                return false;
-            }
-            return (instantiatedViaDeserialization == data.instantiatedViaDeserialization);
-        }
-        return false;
+        return EqualsBuilder.reflectionEquals(this, obj);
     }
 
     /**
@@ -147,24 +121,11 @@ public class ToolLayerResourceData extends GenericToolsResourceData<ToolLayer> {
         this.appBuilder = appBuilder;
     }
 
-    /**
-     * Get the setting.
-     * 
-     * @return JSON string containing the mapping of key-value pairs making up
-     *         the setting, or <code>null</code> if no setting has been set.
-     */
-    public String getSetting() {
-        return setting;
+    public Settings getSettings() {
+        return settings;
     }
 
-    /**
-     * Set the setting.
-     * 
-     * @param setting
-     *            JSON string containing the mapping of key-value pairs making
-     *            up the setting.
-     */
-    public void setSetting(String setting) {
-        this.setting = setting;
+    public void setSettings(Settings settings) {
+        this.settings = settings;
     }
 }

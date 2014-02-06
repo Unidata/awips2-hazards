@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -631,17 +632,10 @@ public class SpatialView implements
         removeGeometryDisplay();
     }
 
-    /**
-     * Set the setting.
-     * 
-     * @param setting
-     *            JSON string containing the mapping of key-value pairs making
-     *            up the setting.
-     */
     @Override
-    public void setSetting(String setting) {
+    public void setSettings(Settings settings) {
         ((ToolLayerResourceData) spatialDisplay.getResourceData())
-                .setSetting(setting);
+                .setSettings(settings);
     }
 
     @Override

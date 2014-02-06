@@ -19,6 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlType;
+
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
@@ -38,6 +44,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * @author bsteffen
  * @version 1.0
  */
+@XmlType(name = "HazardServicesSettingsTools")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Tool {
     private String toolName;
 
@@ -62,6 +70,16 @@ public class Tool {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return HashCodeBuilder.reflectionHashCode(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return EqualsBuilder.reflectionEquals(this, obj);
     }
 
 }

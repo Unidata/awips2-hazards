@@ -7,19 +7,20 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.POINTS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SPATIAL_INFO;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -29,7 +30,6 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.viz.core.localization.BundleScanner;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -63,11 +63,6 @@ public class Utilities {
     // Private Static Constants
 
     /**
-     * ID of plug-in containing the Hazard Services SessionManager code.
-     */
-    private static final String SESSION_MANAGER_PLUGIN = "gov.noaa.gsd.viz.hazards.sessionmanager";
-
-    /**
      * Weight of red luminance component of a color.
      */
     private static final float RED_LUMINANCE_WEIGHT = 0.299f;
@@ -92,44 +87,11 @@ public class Utilities {
         return cannedEventsAsJson;
     }
 
-    public static String getSessionManagerPlugin() {
-        return SESSION_MANAGER_PLUGIN;
-    }
-
-    public static String buildPythonUtilitiesPath() {
-        IPathManager pm = PathManagerFactory.getPathManager();
-        LocalizationContext context = pm.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile lfile = pm.getLocalizationFile(context, "python");
-        String result = lfile.getFile().getPath();
-        return result;
-    }
-
-    public static String buildPythonGeometryUtilitiesPath() {
-        IPathManager pm = PathManagerFactory.getPathManager();
-        LocalizationContext context = pm.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile lfile = pm.getLocalizationFile(context,
-                "python/events/utilities");
-        String result = lfile.getFile().getPath();
-        return result;
-    }
-
     public static String buildUtilitiesPath(String locPath) {
         IPathManager pm = PathManagerFactory.getPathManager();
         LocalizationContext context = pm.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
         LocalizationFile lfile = pm.getLocalizationFile(context, locPath);
-        String result = lfile.getFile().getPath();
-        return result;
-    }
-
-    public static String buildPythonEventUtilitiesPath() {
-        IPathManager pm = PathManagerFactory.getPathManager();
-        LocalizationContext context = pm.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile lfile = pm.getLocalizationFile(context,
-                "python/events");
         String result = lfile.getFile().getPath();
         return result;
     }
@@ -147,46 +109,6 @@ public class Utilities {
             Coordinate copy = (Coordinate) firstPoint.clone();
             coordinates.add(copy);
         }
-    }
-
-    public static List<String> buildPythonSourcePaths(String basePath)
-            throws IOException {
-        List<String> sourcePaths = Lists.newArrayList();
-
-        File srcPath = BundleScanner.searchInBundle(SESSION_MANAGER_PLUGIN,
-                "src", File.separator);
-        if (srcPath != null) {
-            sourcePaths.add(srcPath.getAbsolutePath());
-        }
-
-        // NOT SURE THIS IS USED, BUT WILL KEEP IT IN
-        IPathManager manager = PathManagerFactory.getPathManager();
-        LocalizationContext context = manager.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        sourcePaths.add(manager
-                .getLocalizationFile(context,
-                        "python" + File.separator + "events").getFile()
-                .getAbsolutePath());
-        sourcePaths
-                .add(manager
-                        .getLocalizationFile(
-                                context,
-                                "python" + File.separator + "events"
-                                        + File.separator + "recommenders"
-                                        + File.separator + "utilities")
-                        .getFile().getAbsolutePath());
-        sourcePaths.add(manager.getLocalizationFile(context, "python")
-                .getFile().getAbsolutePath());
-
-        /**
-         * Optional path entries such as python debugger
-         */
-        String[] pathEntries = System.getenv("PYTHONPATH").split(":");
-        for (String pathEntry : pathEntries) {
-            sourcePaths.add(pathEntry);
-        }
-
-        return sourcePaths;
     }
 
     /**
@@ -217,7 +139,7 @@ public class Utilities {
 
     public static List<String> buildPythonPath() {
 
-        List<String> sourcePaths = Lists.newArrayList();
+        List<String> sourcePaths = new ArrayList<>();
 
         for (String locPath : pythonLocalizationDirectories) {
             String path = Utilities.buildUtilitiesPath(locPath);
@@ -249,7 +171,7 @@ public class Utilities {
         if (runData == null) {
             return null;
         }
-        HashMap<String, Serializable> result = Maps.newHashMap();
+        HashMap<String, Serializable> result = new HashMap<>();
         for (Entry<String, Object> entry : runData.entrySet()) {
             Object val = entry.getValue();
             if (val instanceof Dict) {
@@ -263,5 +185,21 @@ public class Utilities {
             }
         }
         return result;
+    }
+
+    public static Map<String, Serializable> buildStormStrackToolDraggedPointParameters(
+            double yloc, double xloc, double selectedTime) {
+        Map<String, Serializable> toolParameters = new HashMap<>();
+        HashMap<String, Serializable> pointsDict = new HashMap<>();
+        toolParameters.put(SPATIAL_INFO, pointsDict);
+        ArrayList<Serializable> points = new ArrayList<>();
+        pointsDict.put(POINTS, points);
+        ArrayList<Serializable> outerList = new ArrayList<>();
+        points.add(outerList);
+        ArrayList<Double> xyLoc = Lists.newArrayList(yloc, xloc);
+        Double zLoc = selectedTime;
+        outerList.add(xyLoc);
+        outerList.add(zLoc);
+        return toolParameters;
     }
 }

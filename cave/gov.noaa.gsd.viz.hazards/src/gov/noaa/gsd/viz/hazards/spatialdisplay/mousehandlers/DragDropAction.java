@@ -8,12 +8,14 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
+
+import java.io.Serializable;
+import java.util.Map;
 
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -83,12 +85,14 @@ public class DragDropAction extends NonDrawingAction {
                         .getTime();
 
                 selectedTime /= 1000;
-                String json = JSONUtilities.createDragDropPointJSON(coord.y,
-                        coord.x, selectedTime);
+
+                Map<String, Serializable> toolParameters = Utilities
+                        .buildStormStrackToolDraggedPointParameters(coord.y,
+                                coord.x, selectedTime);
 
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.RUN_TOOL, toolName,
-                        Dict.getInstance(json));
+                        toolParameters);
                 getSpatialPresenter().fireAction(action);
                 getSpatialPresenter().getView().drawingActionComplete();
 

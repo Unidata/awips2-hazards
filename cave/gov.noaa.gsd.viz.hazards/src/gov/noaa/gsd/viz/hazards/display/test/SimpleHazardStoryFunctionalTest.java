@@ -29,15 +29,15 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
+import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -140,13 +140,13 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
                 assertTrue(selectedEvent.getEventID().length() > 0);
 
-                Dict dict = autoTestUtilities.buildEventTypeSelection(
-                        selectedEvent,
-                        AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
+                Map<String, Serializable> eventTypeSelection = autoTestUtilities
+                        .buildEventTypeSelection(selectedEvent,
+                                AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
 
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
-                hazardDetailAction.setJSONText(dict.toJSONString());
+                hazardDetailAction.setParameters(eventTypeSelection);
                 eventBus.post(hazardDetailAction);
                 break;
 
@@ -282,17 +282,18 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 assertTrue(selectedEvent.getEventID().length() > 0);
 
                 /*
-                 * Build the JSON simulating a hazard type selection in the HID.
+                 * Build a map simulating a hazard type selection in the HID.
                  */
-                Dict dict = new Dict();
-                dict.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                Map<String, Serializable> hazardTypeSelection = new HashMap<>();
+                hazardTypeSelection.put(
+                        HazardConstants.HAZARD_EVENT_IDENTIFIER,
                         selectedEvent.getEventID());
-                dict.put(HazardConstants.HAZARD_EVENT_FULL_TYPE,
+                hazardTypeSelection.put(HazardConstants.HAZARD_EVENT_FULL_TYPE,
                         AREAL_FLOOD_WARNING_FULLTYPE);
 
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
-                hazardDetailAction.setJSONText(dict.toJSONString());
+                hazardDetailAction.setParameters(hazardTypeSelection);
                 eventBus.post(hazardDetailAction);
             } else if (step == Steps.PREVIEW_AREAL_FLOOD_WARNING) {
                 checkArealFloodWarningPreview();
@@ -495,7 +496,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         assertEquals(hazards.size(), 2);
 
-        Map<String, String> hazardStateMap = Maps.newHashMap();
+        Map<String, String> hazardStateMap = new HashMap<>();
 
         /*
          * There should be one issued (the FA.W) and there should be one ended
@@ -533,7 +534,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         assertEquals(hazards.size(), 2);
 
-        Map<String, String> hazardStateMap = Maps.newHashMap();
+        Map<String, String> hazardStateMap = new HashMap<>();
 
         /*
          * There should be one issued (the FA.W) and there should be one ended
@@ -571,7 +572,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         assertEquals(hazards.size(), 2);
 
-        Map<String, String> hazardStateMap = Maps.newHashMap();
+        Map<String, String> hazardStateMap = new HashMap<>();
 
         /*
          * There should be one issued (the FA.W) and there should be one ended

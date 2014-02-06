@@ -12,13 +12,14 @@ package gov.noaa.gsd.viz.hazards.display;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayer;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ToolLayerResourceData;
 
+import java.util.List;
+
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
-import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
@@ -53,30 +54,24 @@ public class HazardServicesAction extends AbstractMapTool {
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
         super.execute(event);
-
-        // Determine if a Hazard Services viz resource already exists, and if
-        // so, reuse it; otherwise, create a new one.
-        IDescriptor desc = editor.getActiveDisplayPane().getDescriptor();
-        ResourceList rscList = desc.getResourceList();
-        ToolLayer toolLayer = null;
-        for (ResourcePair rp : rscList) {
-            AbstractVizResource<?, ?> rsc = rp.getResource();
-            if (rsc instanceof ToolLayer) {
-                toolLayer = (ToolLayer) rsc;
-                break;
-            }
-        }
-        if (toolLayer == null) {
+        ResourceList rscList = editor.getActiveDisplayPane().getDescriptor()
+                .getResourceList();
+        List<AbstractVizResource<?, ?>> existingToolLayers = rscList
+                .getResourcesByType(ToolLayer.class);
+        if (existingToolLayers.isEmpty()) {
             try {
+                IDescriptor desc = editor.getActiveDisplayPane()
+                        .getDescriptor();
                 ToolLayerResourceData toolLayerResourceData = new ToolLayerResourceData();
-                toolLayer = toolLayerResourceData.construct(
-                        new LoadProperties(), desc);
+                toolLayerResourceData.construct(new LoadProperties(), desc);
             } catch (VizException e1) {
                 statusHandler.error("Error creating spatial display", e1);
             }
         } else {
-            toolLayer.getAppBuilder().ensureViewsVisible();
+            ((ToolLayer) existingToolLayers.get(0)).getAppBuilder()
+                    .ensureViewsVisible();
         }
         return null;
+
     }
 }

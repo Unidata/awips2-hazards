@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 import java.util.Date;
 
 import com.raytheon.uf.viz.core.map.MapDescriptor;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -56,13 +57,11 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             MouseHandlerFactory mouseFactory);
 
     /**
-     * Set the setting.
+     * Set the settings.
      * 
-     * @param setting
-     *            JSON string containing the mapping of key-value pairs making
-     *            up the setting.
+     * @param settings
      */
-    public void setSetting(String setting);
+    public void setSettings(Settings settings);
 
     /**
      * Draw events on the view.
