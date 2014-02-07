@@ -121,13 +121,13 @@ class Recommender(RecommenderTemplate.Recommender):
         if hazardGeometry is None:
             return None
 
-        significance = "WATCH"
+        significance = "A"
         subType = None
 
         urgencyLevel = dialogDict["urgencyLevel"]
         
         if "Failed" in urgencyLevel or "Imminent" in urgencyLevel:
-            significance = "WARNING"
+            significance = "W"
             subType = "NonConvective"
             
         staticSettings = sessionDict["staticSettings"]
