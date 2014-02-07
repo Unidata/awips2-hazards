@@ -13,12 +13,10 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.C
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.END_SELECTED_HAZARDS;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GENERATED_PRODUCTS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SETS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
@@ -58,17 +56,18 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.math.NumberUtils;
 
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of the mixed hazard story.
@@ -84,6 +83,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
+ * Feb 07, 2014 2890       bkowal       Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -322,7 +322,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
 
         try {
             Dict event;
@@ -353,28 +354,12 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case REPLACEMENT_PREVIEW_FIRST_PRODUCT:
-                step = Steps.REPLACEMENT_PREVIEW_SECOND_PRODUCT;
-                break;
-
-            case REPLACEMENT_PREVIEW_SECOND_PRODUCT:
-                step = Steps.REPLACEMENT_PREVIEW_THIRD_PRODUCT;
-                break;
-
-            case REPLACEMENT_PREVIEW_THIRD_PRODUCT:
                 checkReplacementPreview();
                 step = Steps.REPLACEMENT_ISSUE_FIRST_PRODUCT;
                 issueEvent();
                 break;
 
             case REPLACEMENT_ISSUE_FIRST_PRODUCT:
-                step = Steps.REPLACEMENT_ISSUE_SECOND_PRODUCT;
-                break;
-
-            case REPLACEMENT_ISSUE_SECOND_PRODUCT:
-                step = Steps.REPLACEMENT_ISSUE_THIRD_PRODUCT;
-                break;
-
-            case REPLACEMENT_ISSUE_THIRD_PRODUCT:
                 checkOriginalProductsEnded();
                 checkReplacementEvents(HazardState.ISSUED.getValue());
                 checkEndedEventsGoneFromHid();
@@ -386,40 +371,24 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case CONTINUED_PREVIEW_FIRST_PRODUCT:
-                step = Steps.CONTINUED_PREVIEW_SECOND_PRODUCT;
-                break;
-
-            case CONTINUED_PREVIEW_SECOND_PRODUCT:
                 checkContinuedPreview();
                 step = Steps.CONTINUED_ISSUE_FIRST_PRODUCT;
                 issueEvent();
                 break;
 
             case CONTINUED_ISSUE_FIRST_PRODUCT:
-                step = Steps.CONTINUED_ISSUE_SECOND_PRODUCT;
-                break;
-
-            case CONTINUED_ISSUE_SECOND_PRODUCT:
                 checkReplacementEvents(HazardState.ISSUED.getValue());
                 step = Steps.REMOVING_ENDED_EVENTS;
                 postContextMenuEvent(CONTEXT_MENU_END);
                 break;
 
             case ENDED_PREVIEW_FIRST_PRODUCT:
-                step = Steps.ENDED_PREVIEW_SECOND_PRODUCT;
-                break;
-
-            case ENDED_PREVIEW_SECOND_PRODUCT:
                 checkEndedPreview();
                 step = Steps.ENDED_ISSUE_FIRST_PRODUCT;
                 issueEvent();
                 break;
 
             case ENDED_ISSUE_FIRST_PRODUCT:
-                step = Steps.ENDED_ISSUE_SECOND_PRODUCT;
-                break;
-
-            case ENDED_ISSUE_SECOND_PRODUCT:
                 checkReplacementEvents(HazardState.ENDED.getValue());
                 step = Steps.TEST_ENDED;
                 testSuccess();
@@ -481,41 +450,37 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkSelectionPreview() {
-        Dict productInfo = mockProductEditorView.getProductInfo();
-        List<?> generatedProducts = (ArrayList<?>) productInfo
-                .get(GENERATED_PRODUCTS);
-        assertEquals(generatedProducts.size(), 2);
-        Dict productCollection0 = (Dict) generatedProducts.get(0);
-        String productId = productCollection0
-                .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
-        assertEquals(productId, FLOOD_WATCH_PRODUCT_ID);
-        Dict products = productCollection0
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy
-                .contains(NEW_VTEC_STRING + "." + FLOOD_WATCH_PHEN_SIG));
-        assertTrue(legacy.contains(FLOOD_WATCH));
-        String xml = products
-                .getDynamicallyTypedValue(ProductConstants.XML_PRODUCT_KEY);
-        assertTrue(xml.contains(FLOOD_WATCH));
-        String cap = products
-                .getDynamicallyTypedValue(ProductConstants.CAP_PRODUCT_KEY);
-        assertTrue(cap.contains(FLOOD_WATCH));
+        GeneratedProductList generatedProductList = mockProductEditorView
+                .getGeneratedProductList();
+        assertEquals(generatedProductList.size(), 2);
 
-        Dict productCollection1 = (Dict) generatedProducts.get(1);
+        IGeneratedProduct generatedProduct0 = generatedProductList
+                .get(NumberUtils.INTEGER_ZERO);
+        assertEquals(generatedProduct0.getProductID(), FLOOD_WATCH_PRODUCT_ID);
+        final String legacy0 = generatedProduct0.getEntries()
+                .get(ProductConstants.ASCII_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(legacy0.contains(NEW_VTEC_STRING + "."
+                + FLOOD_WATCH_PHEN_SIG));
+        assertTrue(legacy0.contains(FLOOD_WATCH));
+        final String xml0 = generatedProduct0.getEntries()
+                .get(ProductConstants.XML_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(xml0.contains(FLOOD_WATCH));
+        final String cap0 = generatedProduct0.getEntries()
+                .get(ProductConstants.CAP_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(cap0.contains(FLOOD_WATCH));
 
-        productId = productCollection1
-                .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
-        assertEquals(productId, FLOOD_WATCH_PRODUCT_ID);
-        products = productCollection1
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-        legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains(NEW_VTEC_STRING + "."
+        IGeneratedProduct generatedProduct1 = generatedProductList
+                .get(NumberUtils.INTEGER_ONE);
+        assertEquals(generatedProduct1.getProductID(), FLOOD_WATCH_PRODUCT_ID);
+        final String legacy1 = generatedProduct1.getEntries()
+                .get(ProductConstants.ASCII_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(legacy1.contains(NEW_VTEC_STRING + "."
                 + FLASH_FLOOD_WATCH_PHEN_SIG));
-        assertTrue(legacy.contains(FLASH_FLOOD_WATCH));
-
+        assertTrue(legacy1.contains(FLASH_FLOOD_WATCH));
     }
 
     private void checkFirstSelectionIssue() {
@@ -539,7 +504,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 .productsFromEditorView(mockProductEditorView);
         String legacy = products
                 .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains("REPLACES"));
+        assertTrue(legacy.contains("REPLACED"));
         assertTrue(legacy.contains("FLOOD WATCH"));
 
     }
@@ -562,20 +527,10 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     }
 
-    @SuppressWarnings("unchecked")
     private void issueEvent() {
-        ProductEditorAction action = new ProductEditorAction(
-                HazardAction.ISSUE.getValue());
-        List<Dict> hazardEventSetsList = mockProductEditorView
-                .getHazardEventSetsList();
-        List<Dict> generatedProductsDictList = AutoTestUtilities
-                .createGeneratedProductsDictList(mockProductEditorView
-                        .getGeneratedProductList());
-        Dict returnDict = new Dict();
-        returnDict.put(GENERATED_PRODUCTS, generatedProductsDictList);
-        returnDict.put(HAZARD_EVENT_SETS, hazardEventSetsList);
-
-        action.setJSONText(returnDict.toJSONString());
+        ProductEditorAction action = new ProductEditorAction(HazardAction.ISSUE);
+        action.setGeneratedProductsList(mockProductEditorView
+                .getGeneratedProductsList());
         eventBus.post(action);
     }
 

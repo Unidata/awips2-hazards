@@ -10,14 +10,12 @@
 package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.Collections;
 import java.util.List;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
@@ -32,6 +30,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Mar 01, 2013            Bryon.Lawrence      Initial creation
  * Jul 15, 2013     585    Chris.Golden        Changed to use new version of IView.
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
+ * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -39,11 +38,6 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  */
 public class TestProductEditorView implements
         IProductEditorView<Object, RCPMainUserInterfaceElement> {
-
-    /**
-     * Product information passed into the product staging dialog.
-     */
-    String productStagingInfo = null;
 
     /**
      * Dismiss command invocation handler.
@@ -153,13 +147,9 @@ public class TestProductEditorView implements
     public void initialize() {
     }
 
-    /**
-     * @param
-     * @return
-     */
     @Override
-    public boolean showProductEditorDetail(String productInfo) {
-        this.productStagingInfo = productInfo;
+    public boolean showProductEditorDetail(
+            List<GeneratedProductList> generatedProductsList) {
         return true;
     }
 
@@ -178,15 +168,6 @@ public class TestProductEditorView implements
     @Override
     public GeneratedProductList getGeneratedProductList() {
         return new GeneratedProductList();
-    }
-
-    /**
-     * @param
-     * @return
-     */
-    @Override
-    public List<Dict> getHazardEventSetsList() {
-        return Lists.newArrayList();
     }
 
     /**
@@ -225,6 +206,11 @@ public class TestProductEditorView implements
      */
     @Override
     public void openDialog() {
+    }
+
+    @Override
+    public List<GeneratedProductList> getGeneratedProductsList() {
+        return null;
     }
 
 }

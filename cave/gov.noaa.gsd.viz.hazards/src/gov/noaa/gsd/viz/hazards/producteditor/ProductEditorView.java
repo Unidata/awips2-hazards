@@ -10,22 +10,16 @@
 package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -44,6 +38,7 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
  * Feb 19, 2013            Bryon.Lawrence    Converted MVP architecture.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Sep 19, 2013     2046    mnash           Update for product generation.
+ * Feb 07, 2014  2890      bkowal       Product Generation JSON refactor.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -53,10 +48,6 @@ public final class ProductEditorView implements
         IProductEditorView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
-
-    private List<Dict> hazardEventSets;
-
-    private List<Dict> generatedProducts;
 
     /**
      * Logging mechanism.
@@ -71,6 +62,8 @@ public final class ProductEditorView implements
      * Product editor dialog.
      */
     private ProductGenerationDialog productGenerationDialog = null;
+
+    private List<GeneratedProductList> generatedProductsList;
 
     // private ProductEditorDialog productEditorDialog = null;
 
@@ -107,93 +100,30 @@ public final class ProductEditorView implements
     }
 
     @Override
-    public boolean showProductEditorDetail(String productInfo) {
-        Dict productDict = Dict.getInstance(productInfo);
-        generatedProducts = productDict
-                .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
-        hazardEventSets = productDict
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
+    public boolean showProductEditorDetail(
+            List<GeneratedProductList> generatedProductsList) {
+        this.generatedProductsList = generatedProductsList;
+        productGenerationDialog = new ProductGenerationDialog(PlatformUI
+                .getWorkbench().getActiveWorkbenchWindow().getShell());
+        GeneratedProductList productsToDisplay = new GeneratedProductList();
+        Map<String, GeneratorInfo> generatorInformationMap = new HashMap<String, GeneratorInfo>();
+        for (GeneratedProductList productList : generatedProductsList) {
+            final String productGeneratorName = productList.getProductInfo();
 
-        if ("".equals(productInfo) == false) {
-            productGenerationDialog = new ProductGenerationDialog(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell());
-            // FIXME TODO XXX this is a temporary change, will be OBE by JSON
-            // removal.
-            GeneratedProductList products = new GeneratedProductList();
-            List<LinkedHashMap<String, Serializable>> dataList = new ArrayList<LinkedHashMap<String, Serializable>>();
-            int counter = 0;
-            Map<String, GeneratorInfo> generatorInformationMap = new HashMap<String, GeneratorInfo>();
-            if (generatedProducts != null) {
-                for (Dict d : generatedProducts) {
-                    Dict val = (Dict) d.get("products");
-                    GeneratedProduct product = new GeneratedProduct(
-                            (String) d.get("productID"));
-                    for (String format : val.keySet()) {
-                        List<Object> text = new ArrayList<Object>();
-                        text.add(val.get(format));
-                        product.addEntry(format, text);
-                    }
-
-                    product.setEditableEntries((LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>) d
-                            .get("editableEntries"));
-                    product.setData(createDataFromDict((Dict) d.get("data")));
-                    products.add(product);
-
-                    String productGeneratorName = String.valueOf(d
-                            .get("productGeneratorName"));
-                    GeneratorInfo generationInfo = generatorInformationMap
-                            .get(productGeneratorName);
-                    if (generationInfo == null) {
-                        generationInfo = new GeneratorInfo(
-                                productGeneratorName, counter);
-                    } else {
-                        generationInfo.increment();
-                    }
-                    generatorInformationMap.put(productGeneratorName,
-                            generationInfo);
-                }
+            GeneratorInfo generationInfo = new GeneratorInfo(
+                    productGeneratorName, 0);
+            for (int i = 1; i < productList.size(); i++) {
+                generationInfo.increment();
             }
-
-            productGenerationDialog
-                    .setGeneratorInformationMap(generatorInformationMap);
-            productGenerationDialog.setProducts(products);
-
-            return true;
+            generatorInformationMap.put(productGeneratorName, generationInfo);
+            productsToDisplay.addAll(productList);
         }
 
-        return false;
-    }
+        productGenerationDialog
+                .setGeneratorInformationMap(generatorInformationMap);
+        productGenerationDialog.setProducts(productsToDisplay);
 
-    /*
-     * This is a helper method that should be removed as part of the JSON
-     * refactor.
-     */
-    @Deprecated
-    private LinkedHashMap<String, Serializable> createDataFromDict(Dict dict) {
-        LinkedHashMap<String, Serializable> linkedHashMap = new LinkedHashMap<String, Serializable>();
-        for (String key : dict.keySet()) {
-            Object value = dict.get(key);
-            value.getClass();
-            Serializable serializable = null;
-            if (value instanceof Dict) {
-                serializable = createDataFromDict((Dict) value);
-            } else if (value instanceof List) {
-                ArrayList<Serializable> list = new ArrayList<Serializable>();
-                for (Object item : (List) value) {
-                    if (item instanceof Dict) {
-                        list.add(createDataFromDict((Dict) item));
-                    } else {
-                        list.add((Serializable) item);
-                    }
-                }
-                serializable = list;
-            } else {
-                serializable = (Serializable) value;
-            }
-
-            linkedHashMap.put(key, serializable);
-        }
-        return linkedHashMap;
+        return true;
     }
 
     @Override
@@ -209,13 +139,18 @@ public final class ProductEditorView implements
     }
 
     @Override
-    public GeneratedProductList getGeneratedProductList() {
-        return productGenerationDialog.getGeneratedProducts();
+    public List<GeneratedProductList> getGeneratedProductsList() {
+        return generatedProductsList;
+    }
+
+    public void setGeneratedProductsList(
+            List<GeneratedProductList> generatedProductsList) {
+        this.generatedProductsList = generatedProductsList;
     }
 
     @Override
-    public List<Dict> getHazardEventSetsList() {
-        return hazardEventSets;
+    public GeneratedProductList getGeneratedProductList() {
+        return productGenerationDialog.getGeneratedProducts();
     }
 
     @Override

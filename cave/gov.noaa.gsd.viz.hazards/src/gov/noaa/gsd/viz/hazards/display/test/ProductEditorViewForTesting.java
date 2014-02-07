@@ -9,18 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
@@ -32,6 +27,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
+ * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -41,11 +37,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 @SuppressWarnings("rawtypes")
 public class ProductEditorViewForTesting implements IProductEditorView {
 
-    private String productInfo;
-
     private GeneratedProductList generatedProducts;
 
-    private List<Dict> hazardEventSets;
+    private List<GeneratedProductList> generatedProductsList;
 
     @Override
     public void dispose() {
@@ -61,45 +55,12 @@ public class ProductEditorViewForTesting implements IProductEditorView {
     }
 
     @Override
-    public boolean showProductEditorDetail(String productInfo) {
-        Dict productDict = Dict.getInstance(productInfo);
-        this.productInfo = productInfo;
-        /*
-         * This block of code will need to be updated/removed as part of the JSON refactor.
-         */
-        List<Dict> generatedProductsList = productDict
-                .getDynamicallyTypedValue(HazardConstants.GENERATED_PRODUCTS);
-        generatedProducts = new GeneratedProductList();
-        if (generatedProductsList != null) {
-            for (Dict d : generatedProductsList) {
-                Dict val = (Dict) d.get("products");
-                GeneratedProduct product = new GeneratedProduct(
-                        (String) d.get("productID"));
-                for (String format : val.keySet()) {
-                    List<Object> text = new ArrayList<Object>();
-                    text.add(val.get(format));
-                    product.addEntry(format, text);
-                }
-                generatedProducts.add(product);
-            }
-        }
-        this.hazardEventSets = productDict
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_SETS);
-        return true;
-    }
-
-    @Override
     public void closeProductEditorDialog() {
     }
 
     @Override
     public GeneratedProductList getGeneratedProductList() {
         return generatedProducts;
-    }
-
-    @Override
-    public List getHazardEventSetsList() {
-        return hazardEventSets;
     }
 
     @Override
@@ -142,12 +103,25 @@ public class ProductEditorViewForTesting implements IProductEditorView {
     public void openDialog() {
     }
 
-    public Dict getProductInfo() {
-        return Dict.getInstance(productInfo);
-    }
-
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public List<GeneratedProductList> getGeneratedProductsList() {
+        return this.generatedProductsList;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public boolean showProductEditorDetail(List generatedProductsList) {
+        this.generatedProductsList = generatedProductsList;
+        this.generatedProducts = new GeneratedProductList();
+        for (GeneratedProductList productList : this.generatedProductsList) {
+            this.generatedProducts.addAll(productList);
+        }
+
+        return true;
     }
 }

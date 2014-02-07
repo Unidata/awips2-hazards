@@ -27,7 +27,8 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.viz.localization;bundle-version="1.12.1174",
  org.apache.commons.io;bundle-version="2.4.0",
  com.raytheon.uf.viz.hazards.sessionmanager;bundle-version="1.0.0",
- com.raytheon.uf.viz.recommenders;bundle-version="1.0.0"
+ com.raytheon.uf.viz.recommenders;bundle-version="1.0.0",
+ com.raytheon.uf.common.hazards.productgen;bundle-version="1.0.0"
 Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.console,

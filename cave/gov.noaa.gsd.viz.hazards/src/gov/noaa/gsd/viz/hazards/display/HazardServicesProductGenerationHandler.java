@@ -9,41 +9,37 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.DeprecatedChoice;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.DeprecatedField;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.GeneratedProduct;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.HazardEventSet;
-import gov.noaa.gsd.viz.hazards.display.deprecated.ProductGenerationResult.StagingInfo;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 
 /**
@@ -64,6 +60,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  * Dec 3, 2013   1472      bkowal      subtype field is now subType
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - Update for move of JSONConverter
+ * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -81,25 +78,20 @@ class HazardServicesProductGenerationHandler {
 
     private final ISessionManager sessionManager;
 
-    private int numProducts = 0;
-
-    private boolean issue;
-
-    private final JSONConverter jsonConverter;
-
-    // The product editor presenter doesn't handle async multiple generations
-    // very well so this code must accumulate products.
-    private ProductGenerationResult generatedProducts = null;
-
     private final ISessionProductManager productManager;
+
+    private Map<String, ProductGenerationAuditor> productGenerationAuditManager;
+
+    private final EventBus eventBus;
 
     HazardServicesProductGenerationHandler(ISessionManager sessionManager,
             EventBus eventBus) {
         this.sessionManager = sessionManager;
         this.productManager = sessionManager.getProductManager();
-        this.jsonConverter = new JSONConverter();
-        eventBus.register(this);
+        this.eventBus = eventBus;
+        this.productGenerationAuditManager = new HashMap<String, ProductGenerationAuditor>();
 
+        this.eventBus.register(this);
     }
 
     boolean productGenerationRequired() {
@@ -118,19 +110,12 @@ class HazardServicesProductGenerationHandler {
         return result;
     }
 
-    void generateProducts(boolean issue) {
+    public void generateProducts(boolean issue) {
         ISessionProductManager productManager = sessionManager
                 .getProductManager();
         Collection<ProductInformation> products = productManager
                 .getSelectedProducts();
-        generatedProducts = new ProductGenerationResult();
-        numProducts = products.size();
-        this.issue = issue;
-        boolean confirm = true;
-        for (ProductInformation info : products) {
-            productManager.generate(info, issue, confirm);
-            confirm = false;
-        }
+        this.runProductGeneration(products, issue);
     }
 
     /**
@@ -138,7 +123,7 @@ class HazardServicesProductGenerationHandler {
      * presenters have been refactored to accept {@link ISessionManager}s
      * instead of {@link IHazardServicesModel}
      */
-    ProductStagingInfo buildProductStagingInfo() {
+    public ProductStagingInfo buildProductStagingInfo() {
         Collection<ProductInformation> products = productManager
                 .getSelectedProducts();
 
@@ -207,59 +192,42 @@ class HazardServicesProductGenerationHandler {
      * @param hazardEventSets
      * 
      */
-    void createProductsFromHazardEventSets(boolean issue, String hazardEventSets) {
-        Collection<ProductInformation> products = productManager
+    public void createProductsFromHazardEventSets(boolean issue,
+            List<GeneratedProductList> generatedProductsList) {
+        Collection<ProductInformation> selectedProducts = productManager
                 .getSelectedProducts();
-        ProductGenerationResult result = jsonConverter.fromJson(
-                hazardEventSets, ProductGenerationResult.class);
-        generatedProducts = new ProductGenerationResult();
-        numProducts = result.getHazardEventSets().length;
-        this.issue = issue;
-        boolean confirm = true;
-        for (HazardEventSet set : result.getHazardEventSets()) {
-            ProductInformation info = null;
-            for (ProductInformation testInfo : products) {
-                if (set.getProductGeneratorName().equals(
-                        testInfo.getProductGeneratorName())) {
-                    info = testInfo;
+        ProductInformation productInformation = null;
+
+        Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
+
+        for (GeneratedProductList productList : generatedProductsList) {
+            for (ProductInformation selectedProductInformation : selectedProducts) {
+                if (productList.getProductInfo().equals(
+                        selectedProductInformation.getProductGeneratorName())) {
+                    productInformation = selectedProductInformation;
                     break;
                 }
             }
+
             Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
-            String[] events = set.getStagingInfo().getValueDict()
-                    .get("eventIDs");
-            for (String eventID : events) {
-                for (IHazardEvent event : info.getProductEvents()) {
-                    if (event.getEventID().equals(eventID)) {
-                        selectedEvents.add(event);
-                        break;
-                    }
-                }
-                for (IHazardEvent event : info.getPossibleProductEvents()) {
-                    if (event.getEventID().equals(eventID)) {
-                        selectedEvents.add(event);
-                        break;
-                    }
-                }
+            for (IEvent event : productList.getEventSet()) {
+                selectedEvents.add((IHazardEvent) event);
             }
-            info.setProductEvents(selectedEvents);
-            productManager.generate(info, issue, confirm);
-            confirm = false;
+
+            productInformation.setProductEvents(selectedEvents);
+            productsToGenerate.add(productInformation);
         }
+
+        this.runProductGeneration(productsToGenerate, issue);
     }
 
-    /**
-     * TODO Replace use of {@link ProductGenerationResult} after Product Editor
-     * Dialog is refactored.
-     */
     public void createProductsFromProductStagingInfo(boolean issue,
             ProductStagingInfo productStagingInfo) {
         Collection<ProductInformation> products = productManager
                 .getSelectedProducts();
-        generatedProducts = new ProductGenerationResult();
-        numProducts = productStagingInfo.numProducts();
-        this.issue = issue;
-        boolean confirm = true;
+
+        Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
+
         for (Product stagedProduct : productStagingInfo.getProducts()) {
             for (ProductInformation product : products) {
                 if (stagedProduct.getProductGenerator().equals(
@@ -282,127 +250,94 @@ class HazardServicesProductGenerationHandler {
                         }
                     }
                     product.setProductEvents(selectedEvents);
-                    productManager.generate(product, issue, confirm);
-                    confirm = false;
+                    productsToGenerate.add(product);
                 }
             }
+        }
+        this.runProductGeneration(productsToGenerate, issue);
+    }
 
+    private void runProductGeneration(
+            Collection<ProductInformation> productInformationRecords,
+            boolean issue) {
+        boolean confirm = issue;
+
+        /*
+         * Build an audit trail to keep track of the products that have been /
+         * will need to be generated.
+         */
+        synchronized (this.productGenerationAuditManager) {
+            final String productGenerationTrackingID = UUID.randomUUID()
+                    .toString();
+            ProductGenerationAuditor productGenerationAuditor = new ProductGenerationAuditor(
+                    issue, productGenerationTrackingID);
+            for (ProductInformation productInformation : productInformationRecords) {
+                productInformation.setGenerationID(productGenerationTrackingID);
+                productGenerationAuditor
+                        .addProductToBeGenerated(productInformation);
+            }
+            this.productGenerationAuditManager.put(productGenerationTrackingID,
+                    productGenerationAuditor);
+        }
+
+        for (ProductInformation productInformation : productInformationRecords) {
+            this.productManager.generate(productInformation, issue, confirm);
+            confirm = false;
         }
     }
 
-    /**
-     * Handle the generated products from an asynchronous run of a product
-     * generator Collect the results for the list of product generators run When
-     * all are collected, issue or display them
-     * 
-     * @param productGeneratorName
-     *            -- name of product generator
-     * @param generatedProductsList
-     *            -- list of IGeneratedProduct Java object
-     * 
-     */
-    String handleProductGeneratorResult(String productGeneratorName,
-            GeneratedProductList generatedProductsList) {
-        numProducts -= 1;
-
-        Collection<IHazardEvent> selectedEvents = sessionManager
-                .getEventManager().getSelectedEvents();
-
-        ProductGenerationResult result = generatedProducts;
-        result.setReturnType(HazardConstants.GENERATED_PRODUCTS);
-        List<GeneratedProduct> products = new ArrayList<GeneratedProduct>();
-        for (IGeneratedProduct product : generatedProductsList) {
-            GeneratedProduct genProduct = new GeneratedProduct();
-            genProduct.setProductID(product.getProductID());
-            for (String formatKey : product.getEntries().keySet()) {
-                genProduct.addProduct(formatKey, product.getEntry(formatKey)
-                        .get(0).toString());
+    @Subscribe
+    public void auditProductGeneration(ProductGenerated generated) {
+        ProductGenerationAuditor productGenerationAuditor = null;
+        ProductInformation productInformation = generated
+                .getProductInformation();
+        final String generationID = productInformation.getGenerationID();
+        final GeneratedProductList generatedProducts = productInformation
+                .getProducts();
+        synchronized (this.productGenerationAuditManager) {
+            if (this.productGenerationAuditManager.get(generationID)
+                    .productGenerated(generatedProducts, productInformation) == false) {
+                return;
             }
-            genProduct.setProductGeneratorName(productGeneratorName);
-            genProduct.setData(product.getData());
 
-            genProduct.setEditableEntries(product.getEditableEntries());
-            products.add(genProduct);
-        }
-        if (products.isEmpty()) {
-            GeneratedProduct genProduct = new GeneratedProduct();
-            genProduct.setProductID("EMPTY");
-            genProduct
-                    .addProduct("EMPTY",
-                            " EMPTY PRODUCT!  PLEASE MAKE SURE HAZARD(S) ARE WITHIN YOUR SITE CWA. ");
-            products.add(genProduct);
-        }
-        if (result.getGeneratedProducts() != null) {
-            products.addAll(Arrays.asList(result.getGeneratedProducts()));
-        }
-        result.setGeneratedProducts(products.toArray(new GeneratedProduct[0]));
-        DeprecatedField field = new DeprecatedField();
-        field.setLines(selectedEvents.size());
-        List<DeprecatedChoice> choices = new ArrayList<DeprecatedChoice>();
-        List<String> eventIDs = new ArrayList<String>();
-        for (IHazardEvent event : selectedEvents) {
-            DeprecatedChoice choice = new DeprecatedChoice();
-            StringBuilder eventDisplayString = new StringBuilder(
-                    event.getEventID());
-            if (event.getPhenomenon() != null) {
-                eventDisplayString.append(" ");
-                eventDisplayString.append(event.getPhenomenon());
-                if (event.getSignificance() != null) {
-                    eventDisplayString.append(".");
-                    eventDisplayString.append(event.getSignificance());
-                    if (event.getSubType() != null) {
-                        eventDisplayString.append(".");
-                        eventDisplayString.append(event.getSubType());
-                    }
-                }
-            }
-            choice.setDisplayString(eventDisplayString.toString());
-            choice.setIdentifier(event.getEventID());
-            choices.add(choice);
-            eventIDs.add(event.getEventID());
-        }
-        if (issue) {
-            result = new ProductGenerationResult();
-            result.setReturnType(null);
-            return jsonConverter.toJson(result);
-        }
-        field.setChoices(choices.toArray(new DeprecatedChoice[0]));
-        field.setFieldName("eventIDs");
-        field.setFieldType(CHECK_LIST_FIELD_TYPE);
-        field.setLabel(COMBINE_MESSAGE);
-        StagingInfo stagingInfo = new StagingInfo();
-        stagingInfo.setFields(new DeprecatedField[] { field });
-        Map<String, String[]> valueDict = new HashMap<String, String[]>();
-        valueDict.put("eventIDs", eventIDs.toArray(new String[0]));
-        stagingInfo.setValueDict(valueDict);
-        HazardEventSet hes = new HazardEventSet();
-        hes.setStagingInfo(stagingInfo);
-        hes.setProductGeneratorName(productGeneratorName);
-        hes.setDialogInfo(new HashMap<String, String>());
-        List<HazardEventSet> sets = new ArrayList<HazardEventSet>();
-        sets.add(hes);
-        if (result.getHazardEventSets() != null) {
-            sets.addAll(Arrays.asList(result.getHazardEventSets()));
-        }
-        result.setHazardEventSets(sets.toArray(new HazardEventSet[0]));
-        if (numProducts > 0) {
-            return null;
+            productGenerationAuditor = this.productGenerationAuditManager
+                    .remove(generationID);
         }
 
-        return jsonConverter.toJson(result);
+        this.publishGenerationCompletion(productGenerationAuditor);
     }
 
     @Subscribe
     public void handleProductGeneratorResult(ProductFailed failed) {
+        ProductGenerationAuditor productGenerationAuditor = null;
+        ProductInformation productInformation = failed.getProductInformation();
+        final String generationID = productInformation.getGenerationID();
+        synchronized (this.productGenerationAuditManager) {
+            if (this.productGenerationAuditManager.get(generationID)
+                    .productGenerationFailure(productInformation) == false) {
+                return;
+            }
+
+            productGenerationAuditor = this.productGenerationAuditManager
+                    .remove(generationID);
+        }
+
+        this.publishGenerationCompletion(productGenerationAuditor);
         statusHandler.error("Product Generator "
                 + failed.getProductInformation().getProductGeneratorName()
                 + " failed.");
+    }
 
+    private void publishGenerationCompletion(
+            ProductGenerationAuditor productGenerationAuditor) {
+        IProductGenerationComplete productGenerationComplete = new ProductGenerationComplete(
+                productGenerationAuditor.isIssue(),
+                productGenerationAuditor.getGeneratedProducts());
+        this.eventBus.post(productGenerationComplete);
     }
 
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
-
 }

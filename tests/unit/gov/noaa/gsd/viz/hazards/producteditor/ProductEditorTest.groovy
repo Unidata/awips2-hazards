@@ -12,12 +12,14 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction
 import spock.lang.*
 
 import com.google.common.eventbus.EventBus
 import com.google.common.eventbus.Subscribe
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
 
 /**
  * Description: Tests the product display dialog. Simulates 
@@ -31,10 +33,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
  * ------------ ---------- ----------- --------------------------
  * Mar 06, 2012            bryon.lawrence      Initial creation
  * Jul 15, 2013     585    Chris.Golden        Changed to use non-singleton event bus.
- * 
- * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - elimination of IHazardsIF now requires a non-null 
  *                                                            sessionManager sent to presenter constructor
+ * Feb 07, 2014 2890       bkowal       Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -42,7 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
  * @version 1.0
  */
 class ProductEditorTest extends spock.lang.Specification {
-    @Shared String testProductJSONString = "{generatedProducts:[A,B,C], hazardEventSets:[D,E,F]}"
+    @Shared GeneratedProductList generatedProductList
     @Shared Object[] forecastGroup
     @Shared TestProductEditorView testView;
     @Shared EventBus eventBus;
@@ -56,6 +57,9 @@ class ProductEditorTest extends spock.lang.Specification {
      * @return
      */
     def setupSpec() {
+        generatedProductList = new GeneratedProductList();
+        generatedProductList.setProductInfo('Test')
+        
         testView = new TestProductEditorView();
         eventBus = new EventBus();
         eventBus.register(this);
@@ -73,7 +77,7 @@ class ProductEditorTest extends spock.lang.Specification {
     def "Issue Button Pressed"() {
 
         ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
-        presenter.showProductEditorDetail(testProductJSONString);
+        presenter.showProductEditorDetail(generatedProductList);
 
         when:"The user presses the issue button"
 
@@ -85,7 +89,7 @@ class ProductEditorTest extends spock.lang.Specification {
 
         and: "The action should be an Issue action"
 
-        this.action.getAction() == "Issue"
+        this.action.getHazardAction() == HazardAction.ISSUE
     }
 
     /**
@@ -98,19 +102,13 @@ class ProductEditorTest extends spock.lang.Specification {
     def "Dismiss Button Pressed" (){
 
         ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
-        presenter.showProductEditorDetail(testProductJSONString);
+        presenter.showProductEditorDetail(generatedProductList);
 
         when:"The user presses the dismiss button"
 
         testView.dismissButtonPressed();
 
-        then: "The action sent over the event bus should not be null"
-
-        this.action != null
-
-        and: "The action should be an Issue action"
-
-        this.action.getAction() == "Dismiss"
+        then: "The dialog will close"
     }
 
     /**
@@ -121,19 +119,13 @@ class ProductEditorTest extends spock.lang.Specification {
     def "Shell Closed" (){
 
         ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
-        presenter.showProductEditorDetail(testProductJSONString);
+        presenter.showProductEditorDetail(generatedProductList);
 
         when:"The user closes the shell"
 
         testView.shellClosed();
 
-        then: "The action sent over the event bus should not be null"
-
-        this.action != null
-
-        and: "The action should be an Issue action"
-
-        this.action.getAction() == "Dismiss"
+        then: "The dialog will close"
     }
 
 

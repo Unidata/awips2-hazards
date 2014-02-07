@@ -33,7 +33,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of the product staging dialog.
@@ -45,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013    2182       daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using renamed utility
+ * Jan 10, 2014  2890      bkowal      Now subscribes to a notification that
+ *                                     indicates all product generation is complete.
  * 
  * </pre>
  * 
@@ -128,7 +130,8 @@ public class ProductStagingDialogTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
         ProductStagingInfo productStagingInfo = mockProductStagingView
                 .getProductStagingInfo();
         assertEquals(productStagingInfo.getProducts().size(), 1);
@@ -141,7 +144,9 @@ public class ProductStagingDialogTest extends FunctionalTest {
         assertEquals(choices.size(), 2);
         checkChoice(choices.get(0));
         checkChoice(choices.get(1));
-        GeneratedProductList products = generated.getProducts();
+        assertEquals(productGenerationComplete.getGeneratedProducts().size(), 1);
+        GeneratedProductList products = productGenerationComplete
+                .getGeneratedProducts().get(0);
         assertEquals(products.size(), 1);
         IGeneratedProduct generatedProduct = products.get(0);
         assertTrue(generatedProduct.getProductID().equals(

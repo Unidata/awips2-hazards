@@ -7,11 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import java.util.List;
+
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-
-import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
@@ -27,6 +26,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
  * Sep 19, 2013 2046       mnash        Update for product generation.
  * Jan  7, 2013 2367       jsanchez     Used GeneratedProductList.
+ * Feb 7, 2014  2890       bkowal      Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -42,16 +42,8 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void initialize();
 
-    /**
-     * Open the product editor dialog.
-     * 
-     * @param productInfo
-     *            Product Information to display in the product editor view.
-     *            This is represented as a JSON string.
-     * @return true or false indicating whether or not the dialog was opened.
-     * 
-     */
-    public boolean showProductEditorDetail(String productInfo);
+    public boolean showProductEditorDetail(
+            List<GeneratedProductList> generatedProductsList);
 
     /**
      * Close the product editor dialog.
@@ -65,12 +57,7 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public GeneratedProductList getGeneratedProductList();
 
-    /**
-     * Get the hazard event set list.
-     * 
-     * @return Hazard event set list.
-     */
-    public List<Dict> getHazardEventSetsList();
+    public List<GeneratedProductList> getGeneratedProductsList();
 
     /**
      * Get the command invoker associated with the dialog's issue button.

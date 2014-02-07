@@ -9,10 +9,8 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -20,7 +18,6 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 
 /**
@@ -41,6 +38,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Feb 07, 2014 2890       bkowal         Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -82,16 +80,11 @@ public class ProductEditorPresenter extends
         // No action.
     }
 
-    /**
-     * Show a view of the product editor.
-     * 
-     * @param productInfo
-     *            Product information in as a JSON string.
-     */
-    public final void showProductEditorDetail(String productInfo) {
-        getView().showProductEditorDetail(productInfo);
-        bind();
-        getView().openDialog();
+    public final void showProductEditorDetail(
+            List<GeneratedProductList> generatedProductsList) {
+        this.getView().showProductEditorDetail(generatedProductsList);
+        this.bind();
+        this.getView().openDialog();
     }
 
     // Protected Methods
@@ -127,19 +120,10 @@ public class ProductEditorPresenter extends
                     @Override
                     public void commandInvoked(String command) {
                         ProductEditorAction action = new ProductEditorAction(
-                                HazardAction.ISSUE.getValue());
+                                HazardAction.ISSUE);
 
-                        List<Dict> hazardEventSetsList = getView()
-                                .getHazardEventSetsList();
-                        List<Dict> generatedProductsDictList = createGeneratedProductsDictList(getView()
-                                .getGeneratedProductList());
-                        Dict returnDict = new Dict();
-                        returnDict.put(HazardConstants.GENERATED_PRODUCTS,
-                                generatedProductsDictList);
-                        returnDict.put(HazardConstants.HAZARD_EVENT_SETS,
-                                hazardEventSetsList);
-
-                        action.setJSONText(returnDict.toJSONString());
+                        action.setGeneratedProductsList(getView()
+                                .getGeneratedProductsList());
                         ProductEditorPresenter.this.fireAction(action);
                         getView().closeProductEditorDialog();
                     }
@@ -150,22 +134,7 @@ public class ProductEditorPresenter extends
 
                     @Override
                     public void commandInvoked(String command) {
-                        ProductEditorAction action = new ProductEditorAction(
-                                "Dismiss");
-
-                        List<Dict> hazardEventSetsList = getView()
-                                .getHazardEventSetsList();
-                        List<Dict> generatedProductsDictList = createGeneratedProductsDictList(getView()
-                                .getGeneratedProductList());
-                        Dict returnDict = new Dict();
-                        returnDict.put(HazardConstants.GENERATED_PRODUCTS,
-                                generatedProductsDictList);
-                        returnDict.put(HazardConstants.HAZARD_EVENT_SETS,
-                                hazardEventSetsList);
-
-                        action.setJSONText(returnDict.toJSONString());
-                        ProductEditorPresenter.this.fireAction(action);
-                        getView().closeProductEditorDialog();
+                        dismissProductEditor();
                     }
                 });
 
@@ -173,40 +142,12 @@ public class ProductEditorPresenter extends
                 new ICommandInvocationHandler() {
                     @Override
                     public void commandInvoked(String command) {
-                        ProductEditorPresenter.this
-                                .fireAction(new ProductEditorAction("Dismiss"));
-                        getView().closeProductEditorDialog();
-
+                        dismissProductEditor();
                     }
                 });
     }
 
-    /*
-     * This is a helper method to convert a GeneratedProductList to a
-     * List<Dict>. This method will go away as part of the JSON refactor.
-     */
-    @Deprecated
-    private static List<Dict> createGeneratedProductsDictList(
-            GeneratedProductList generatedProducts) {
-        List<Dict> generatedProductsDictList = new ArrayList<Dict>();
-        if (generatedProducts != null) {
-
-            for (IGeneratedProduct generatedProduct : generatedProducts) {
-                Dict d = new Dict();
-                String productID = generatedProduct.getProductID();
-                d.put("productID", productID);
-                Dict val = new Dict();
-                for (String format : generatedProduct.getEntries().keySet()) {
-                    val.put(format, generatedProduct.getEntries().get(format)
-                            .get(0));
-                }
-
-                d.put("products", val);
-                generatedProductsDictList.add(d);
-            }
-        }
-
-        return generatedProductsDictList;
+    private void dismissProductEditor() {
+        getView().closeProductEditorDialog();
     }
-
 }

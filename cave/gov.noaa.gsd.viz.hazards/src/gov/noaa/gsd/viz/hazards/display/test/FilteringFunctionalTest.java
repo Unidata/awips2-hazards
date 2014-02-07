@@ -26,7 +26,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of event filtering.
@@ -37,6 +37,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov      Initial creation
+ * Jan 10, 2014 2890       bkowal      Now subscribes to a notification indicating
+ *                                     that all product generation is complete.
  * 
  * </pre>
  * 
@@ -160,7 +162,8 @@ public class FilteringFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
 
         Settings currentSettings = appBuilder.getCurrentSettings();
         savedCurrentSettings = new Settings(currentSettings);

@@ -9,6 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import java.util.List;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
  * Action class "fired" from the Product Editor. Registered observers receive
@@ -19,44 +23,45 @@ package gov.noaa.gsd.viz.hazards.display.action;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
+ * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
  * 
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
 public class ProductEditorAction {
-    private String action;
+    private HazardAction hazardAction;
 
-    private String jsonText;
+    private List<GeneratedProductList> generatedProductsList;
 
     private String eventID;
 
-    public ProductEditorAction(String action) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
+    public ProductEditorAction(HazardAction hazardAction) {
+        this.hazardAction = hazardAction;
     }
 
-    public ProductEditorAction(String action, String ID, String jsonText) {
-        // TODO Auto-generated constructor stub
-        this.action = action;
-        this.jsonText = jsonText;
+    public ProductEditorAction(HazardAction hazardAction, String ID,
+            List<GeneratedProductList> generatedProductsList) {
+        this.hazardAction = hazardAction;
+        this.generatedProductsList = generatedProductsList;
         this.eventID = ID;
     }
 
-    public void setAction(String action) {
-        this.action = action;
+    public HazardAction getHazardAction() {
+        return hazardAction;
     }
 
-    public String getAction() {
-        return action;
+    public void setHazardAction(HazardAction hazardAction) {
+        this.hazardAction = hazardAction;
     }
 
-    public void setJSONText(String jsonText) {
-        this.jsonText = jsonText;
+    public List<GeneratedProductList> getGeneratedProductsList() {
+        return generatedProductsList;
     }
 
-    public String getJSONText() {
-        return jsonText;
+    public void setGeneratedProductsList(
+            List<GeneratedProductList> generatedProductsList) {
+        this.generatedProductsList = generatedProductsList;
     }
 
     public void setEventID(String ID) {
@@ -66,5 +71,4 @@ public class ProductEditorAction {
     public String getEventID() {
         return eventID;
     }
-
 }

@@ -25,7 +25,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of changing the end time of an event.
@@ -36,6 +36,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Initial creation
+ * Jan 10, 2014 2890       bkowal      Now subscribes to a notification indicating
+ *                                     that all product generation is complete.
  * 
  * </pre>
  * 
@@ -103,7 +105,8 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
         try {
             switch (step) {
 

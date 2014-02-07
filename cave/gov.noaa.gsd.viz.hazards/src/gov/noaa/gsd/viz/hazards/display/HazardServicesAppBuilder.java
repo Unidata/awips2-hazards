@@ -63,6 +63,7 @@ import org.eclipse.ui.PlatformUI;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -126,6 +127,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             change that would occur would cause the old
  *                                             H.S. to try to react when it was already
  *                                             closing, leading to null pointer exceptions.
+ * Feb 7, 2014  2890       bkowal              Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -773,14 +775,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 productStagingInfo);
     }
 
-    /**
-     * Display the product editor dialog with the specified product info.
-     * 
-     * @param productInfo
-     *            JSON string containing the product information.
-     */
-    public void showProductEditorView(String productInfo) {
-        productEditorPresenter.showProductEditorDetail(productInfo);
+    public void showProductEditorView(
+            List<GeneratedProductList> generatedProductsList) {
+        this.productEditorPresenter
+                .showProductEditorDetail(generatedProductsList);
     }
 
     /**

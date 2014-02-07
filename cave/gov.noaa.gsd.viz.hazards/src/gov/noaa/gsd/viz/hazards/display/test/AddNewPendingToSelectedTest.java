@@ -28,7 +28,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
  * Description: {@link FunctionalTest} of the "Add Pending to Selected"
@@ -41,6 +41,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 15, 2013    2166       daniel.s.schaffer@noaa.gov      Initial creation
+ * Jan 10, 2014 2890       bkowal      Now subscribes to a notification indicating
+ *                                     that all product generation is complete.
  * 
  * </pre>
  * 
@@ -178,8 +180,11 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
-        EventSet<IEvent> eventSet = generated.getProducts().getEventSet();
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
+        assertEquals(productGenerationComplete.getGeneratedProducts().size(), 1);
+        EventSet<IEvent> eventSet = productGenerationComplete
+                .getGeneratedProducts().get(0).getEventSet();
         assertEquals(eventSet.size(), 3);
         step = Steps.TEAR_DOWN;
         autoTestUtilities

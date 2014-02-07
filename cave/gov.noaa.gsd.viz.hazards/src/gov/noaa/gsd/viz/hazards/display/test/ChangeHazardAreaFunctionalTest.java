@@ -24,7 +24,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -40,6 +40,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
+ * Jan 10, 2014  2890      bkowal      Now subscribes to a notification indicating that
+ *                                     all product generation is complete.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -120,7 +122,8 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     }
 
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
         try {
             switch (step) {
 

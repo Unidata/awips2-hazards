@@ -29,19 +29,22 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.math.NumberUtils;
 
 import com.google.common.collect.Maps;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -60,6 +63,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Oct 29, 2013 2166       blawrenc    Fleshed out this test.
  * Nov  04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Feb 07, 2013 2890       bkowal      Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -87,13 +91,6 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * The current step being tested.
      */
     private Steps step;
-
-    /**
-     * Keeps track of how many products have been generated. This ensures that
-     * this test does not try to query the product editor contents until all
-     * products have been created.
-     */
-    private static int numProducts = 0;
 
     public SimpleHazardStoryFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -259,7 +256,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
+    public void handleProductGeneratorResult(
+            final IProductGenerationComplete productGenerationComplete) {
         try {
 
             if (step.equals(Steps.PREVIEW_AREAL_FLOOD_WATCH)) {
@@ -297,19 +295,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 hazardDetailAction.setJSONText(dict.toJSONString());
                 eventBus.post(hazardDetailAction);
             } else if (step == Steps.PREVIEW_AREAL_FLOOD_WARNING) {
-                /*
-                 * Need to ignore the first pass through here. Do not query the
-                 * produce editor until all products are generated, and they are
-                 * generated one at a time.
-                 */
-                numProducts++;
-
-                if (numProducts == 2) {
-                    numProducts = 0;
-                    checkArealFloodWarningPreview();
-                    step = Steps.ISSUE_AREAL_FLOOD_WARNING;
-                    autoTestUtilities.issueEvent();
-                }
+                checkArealFloodWarningPreview();
+                step = Steps.ISSUE_AREAL_FLOOD_WARNING;
+                autoTestUtilities.issueEvent();
             } else if (step == Steps.ISSUE_AREAL_FLOOD_WARNING) {
 
                 /*
@@ -319,18 +307,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 step = Steps.PREVIEW_FOLLOW_UP_STATEMENT;
                 autoTestUtilities.previewEvent();
             } else if (step == Steps.PREVIEW_FOLLOW_UP_STATEMENT) {
-                /*
-                 * Need to ignore the first pass through here. For some reason
-                 * this is just the FLW product the first time through...
-                 */
-                numProducts++;
-
-                if (numProducts == 2) {
-                    numProducts = 0;
-                    checkFollowUpStatementPreview();
-                    step = Steps.ISSUE_FOLLOW_UP_STATEMENT;
-                    autoTestUtilities.issueEvent();
-                }
+                checkFollowUpStatementPreview();
+                step = Steps.ISSUE_FOLLOW_UP_STATEMENT;
+                autoTestUtilities.issueEvent();
             } else if (step == Steps.ISSUE_FOLLOW_UP_STATEMENT) {
 
                 /*
@@ -367,26 +346,26 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkArealFloodWatchPreview() {
-        Dict productInfo = mockProductEditorView.getProductInfo();
-        List<?> generatedProducts = (ArrayList<?>) productInfo
-                .get(HazardConstants.GENERATED_PRODUCTS);
-        assertEquals(generatedProducts.size(), 1);
-        Dict generatedProduct = (Dict) generatedProducts.get(0);
-        String productId = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
-        assertEquals(productId, FLOOD_WATCH_PRODUCT_ID);
-        Dict products = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
-        assertTrue(legacy.contains(NEW_VTEC_STRING));
-        assertTrue(legacy.contains(AREAL_FLOOD_WATCH));
-        String xml = products
-                .getDynamicallyTypedValue(ProductConstants.XML_PRODUCT_KEY);
-        assertTrue(xml.contains(AREAL_FLOOD_WATCH));
-        String cap = products
-                .getDynamicallyTypedValue(ProductConstants.CAP_PRODUCT_KEY);
-        assertTrue(cap.contains(AREAL_FLOOD_WATCH));
+        GeneratedProductList generatedProductList = mockProductEditorView
+                .getGeneratedProductList();
+        assertEquals(generatedProductList.size(), 1);
+
+        IGeneratedProduct generatedProduct0 = generatedProductList
+                .get(NumberUtils.INTEGER_ZERO);
+        assertEquals(generatedProduct0.getProductID(), FLOOD_WATCH_PRODUCT_ID);
+        final String legacy0 = generatedProduct0.getEntries()
+                .get(ProductConstants.ASCII_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(legacy0.contains(NEW_VTEC_STRING));
+        assertTrue(legacy0.contains(AREAL_FLOOD_WATCH));
+        final String xml0 = generatedProduct0.getEntries()
+                .get(ProductConstants.XML_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(xml0.contains(AREAL_FLOOD_WATCH));
+        final String cap0 = generatedProduct0.getEntries()
+                .get(ProductConstants.CAP_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
+        assertTrue(cap0.contains(AREAL_FLOOD_WATCH));
     }
 
     /**
@@ -396,35 +375,32 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkArealFloodWarningPreview() {
-        Dict productInfo = mockProductEditorView.getProductInfo();
-        @SuppressWarnings("unchecked")
-        List<Dict> generatedProducts = (List<Dict>) productInfo
-                .get(HazardConstants.GENERATED_PRODUCTS);
-        assertEquals(generatedProducts.size(), 2);
+        GeneratedProductList generatedProductList = mockProductEditorView
+                .getGeneratedProductList();
+        assertEquals(generatedProductList.size(), 2);
 
-        for (Dict generatedProduct : generatedProducts) {
+        for (IGeneratedProduct generatedProduct : generatedProductList) {
 
-            String productId = generatedProduct
-                    .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
+            String productID = generatedProduct.getProductID();
 
-            if (productId.equals(FLOOD_WATCH_PRODUCT_ID)) {
-                Dict products = generatedProduct
-                        .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-                String legacy = products
-                        .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+            if (productID.equals(FLOOD_WATCH_PRODUCT_ID)) {
+                final String legacy = generatedProduct.getEntries()
+                        .get(ProductConstants.ASCII_PRODUCT_KEY)
+                        .get(NumberUtils.INTEGER_ZERO).toString();
                 assertTrue(legacy.contains(CAN_VTEC_STRING));
-            } else if (productId.equals(FLOOD_WARNING_PRODUCT_ID)) {
-                Dict products = generatedProduct
-                        .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-                String legacy = products
-                        .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+            } else if (productID.equals(FLOOD_WARNING_PRODUCT_ID)) {
+                final String legacy = generatedProduct.getEntries()
+                        .get(ProductConstants.ASCII_PRODUCT_KEY)
+                        .get(NumberUtils.INTEGER_ZERO).toString();
                 assertTrue(legacy.contains(NEW_VTEC_STRING));
                 assertTrue(legacy.contains(AREAL_FLOOD_WARNING));
-                String xml = products
-                        .getDynamicallyTypedValue(ProductConstants.XML_PRODUCT_KEY);
+                final String xml = generatedProduct.getEntries()
+                        .get(ProductConstants.XML_PRODUCT_KEY)
+                        .get(NumberUtils.INTEGER_ZERO).toString();
                 assertTrue(xml.contains(AREAL_FLOOD_WARNING));
-                String cap = products
-                        .getDynamicallyTypedValue(ProductConstants.CAP_PRODUCT_KEY);
+                final String cap = generatedProduct.getEntries()
+                        .get(ProductConstants.CAP_PRODUCT_KEY)
+                        .get(NumberUtils.INTEGER_ZERO).toString();
                 assertTrue(cap.contains(AREAL_FLOOD_WARNING));
 
             } else {
@@ -444,17 +420,24 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkFollowUpStatementPreview() {
-        Dict productInfo = mockProductEditorView.getProductInfo();
-        List<?> generatedProducts = (ArrayList<?>) productInfo
-                .get(HazardConstants.GENERATED_PRODUCTS);
-        Dict generatedProduct = (Dict) generatedProducts.get(0);
-        String productId = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
-        assertEquals(productId, FLOOD_STATEMENT_PRODUCT_ID);
-        Dict products = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+        GeneratedProductList generatedProductList = mockProductEditorView
+                .getGeneratedProductList();
+        assertTrue(generatedProductList.size() >= NumberUtils.INTEGER_ONE);
+
+        Map<String, IGeneratedProduct> generatedProductMap = new HashMap<String, IGeneratedProduct>();
+        for (IGeneratedProduct generatedProduct : generatedProductList) {
+            generatedProductMap.put(generatedProduct.getProductID(),
+                    generatedProduct);
+        }
+
+        assertTrue(generatedProductMap.containsKey(FLOOD_STATEMENT_PRODUCT_ID));
+        IGeneratedProduct generatedProduct = generatedProductMap
+                .get(FLOOD_STATEMENT_PRODUCT_ID);
+        assertEquals(generatedProduct.getProductID(),
+                FLOOD_STATEMENT_PRODUCT_ID);
+        final String legacy = generatedProduct.getEntries()
+                .get(ProductConstants.ASCII_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
         assertTrue(legacy.contains(CON_VTEC_STRING));
     }
 
@@ -466,17 +449,17 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkCancellationStatementPreview() {
-        Dict productInfo = mockProductEditorView.getProductInfo();
-        List<?> generatedProducts = (ArrayList<?>) productInfo
-                .get(HazardConstants.GENERATED_PRODUCTS);
-        Dict generatedProduct = (Dict) generatedProducts.get(0);
-        String productId = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCT_ID);
-        assertEquals(productId, FLOOD_STATEMENT_PRODUCT_ID);
-        Dict products = generatedProduct
-                .getDynamicallyTypedValue(ProductConstants.PRODUCTS);
-        String legacy = products
-                .getDynamicallyTypedValue(ProductConstants.ASCII_PRODUCT_KEY);
+        GeneratedProductList generatedProductList = mockProductEditorView
+                .getGeneratedProductList();
+        assertEquals(generatedProductList.size(), 1);
+
+        IGeneratedProduct generatedProduct = generatedProductList
+                .get(NumberUtils.INTEGER_ZERO);
+        assertEquals(generatedProduct.getProductID(),
+                FLOOD_STATEMENT_PRODUCT_ID);
+        final String legacy = generatedProduct.getEntries()
+                .get(ProductConstants.ASCII_PRODUCT_KEY)
+                .get(NumberUtils.INTEGER_ZERO).toString();
         assertTrue(legacy.contains(CAN_VTEC_STRING));
     }
 
@@ -535,7 +518,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WATCH_PHEN_SIG),
                 HazardConstants.HazardState.ENDED.getValue());
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WARNING_PHEN_SIG),
-                HazardConstants.HazardState.PENDING.getValue());
+                HazardConstants.HazardState.ISSUED.getValue());
     }
 
     /**

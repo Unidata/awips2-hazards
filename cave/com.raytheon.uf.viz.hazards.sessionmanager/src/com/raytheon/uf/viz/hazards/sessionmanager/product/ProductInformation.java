@@ -37,6 +37,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * ------------ ---------- ----------- --------------------------
  * Jun 24, 2013 1257       bsteffen    Initial creation
  * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
+ * Jan 10, 2014 2890       bkowal      Added an identifier to associate a
+ *                                     ProductInformation with a product generation
+ *                                     request.       
  * 
  * </pre>
  * 
@@ -60,6 +63,8 @@ public class ProductInformation {
     private GeneratedProductList products;
 
     private Throwable error;
+
+    private String generationID;
 
     public String getProductGeneratorName() {
         return productGeneratorName;
@@ -125,4 +130,11 @@ public class ProductInformation {
         this.error = error;
     }
 
+    public String getGenerationID() {
+        return generationID;
+    }
+
+    public void setGenerationID(String generationID) {
+        this.generationID = generationID;
+    }
 }

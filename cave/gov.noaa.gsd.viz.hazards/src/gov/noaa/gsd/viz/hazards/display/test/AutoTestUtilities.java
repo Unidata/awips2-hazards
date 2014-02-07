@@ -50,6 +50,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Added some utilities
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added code for test of settings-based filtering
+ * Feb 07, 2014 2890        bkowal     Product Generation JSON refactor.
  * 
  * </pre>
  * 
@@ -267,7 +268,6 @@ public class AutoTestUtilities {
                 HazardDetailAction.ActionType.PREVIEW));
     }
 
-    @SuppressWarnings("unchecked")
     Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
         GeneratedProductList generatedProducts = editorView
                 .getGeneratedProductList();

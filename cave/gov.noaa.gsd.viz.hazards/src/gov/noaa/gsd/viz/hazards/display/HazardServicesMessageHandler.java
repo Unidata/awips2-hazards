@@ -66,13 +66,13 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardComponent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -91,7 +91,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -152,6 +152,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            point values to be interpreted
  *                                            as long integers when doing
  *                                            conversions to/from JSON.
+ * Feb 07, 2014  2890      bkowal             Product Generation JSON refactor.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -550,30 +551,16 @@ public final class HazardServicesMessageHandler implements
 
     }
 
-    public void handleProductGeneratorResult(String productGeneratorName,
-            final GeneratedProductList productList) {
-
-        String resultJSON = productGeneratorHandler
-                .handleProductGeneratorResult(productGeneratorName, productList);
-
-        if (resultJSON != null) {
-
-            Dict resultDict = Dict.getInstance(resultJSON);
-            String returnType = (String) resultDict.get(RETURN_TYPE);
-
-            if (returnType == null) {
-                /*
-                 * Need to make sure that the hazard services views are updated
-                 * to reflect new hazard state.
-                 */
-                notifyModelEventsChanged();
-                return;
-            }
-
-            // Preview the products
-            appBuilder.showProductEditorView(resultJSON);
+    @Subscribe
+    public void handleProductGenerationCompletion(
+            IProductGenerationComplete productGenerationComplete) {
+        if (productGenerationComplete.isIssued()) {
+            this.notifyModelEventsChanged();
+            return;
         }
 
+        appBuilder.showProductEditorView(productGenerationComplete
+                .getGeneratedProducts());
     }
 
     /**
@@ -1221,23 +1208,17 @@ public final class HazardServicesMessageHandler implements
      *            enumeration).
      */
     public void handleProductDisplayAction(ProductEditorAction action) {
-        String productDisplayAction = action.getAction();
-        String productDisplayJSON = action.getJSONText();
-
-        if (productDisplayAction.equals(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeSelectedEventsToProposedState();
-        } else if (productDisplayAction
-                .equals(HazardConstants.CONTEXT_MENU_ISSUE)) {
-            if (continueIfThereAreHazardConflicts()) {
-
+        if (action.getHazardAction() == HazardAction.PROPOSE) {
+            this.changeSelectedEventsToProposedState();
+        } else if (action.getHazardAction() == HazardAction.ISSUE) {
+            if (this.continueIfThereAreHazardConflicts()) {
                 productGeneratorHandler.createProductsFromHazardEventSets(true,
-                        productDisplayJSON);
+                        action.getGeneratedProductsList());
                 notifyModelEventsChanged();
             }
         }
 
         appBuilder.closeProductEditorView();
-
     }
 
     /**
@@ -1790,14 +1771,6 @@ public final class HazardServicesMessageHandler implements
             break;
         }
 
-    }
-
-    @Subscribe
-    public void handleProductGeneratorResult(ProductGenerated generated) {
-        String productGeneratorName = generated.getProductInformation()
-                .getProductGeneratorName();
-        GeneratedProductList products = generated.getProducts();
-        handleProductGeneratorResult(productGeneratorName, products);
     }
 
     @Subscribe

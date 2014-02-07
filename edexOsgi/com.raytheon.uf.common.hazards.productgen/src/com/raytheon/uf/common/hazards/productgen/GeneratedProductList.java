@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 29, 2013  2266      jsanchez     Initial creation
+ * Feb 07, 2014  2890      bkowal      Fix serializable warning.
  * 
  * </pre>
  * 
@@ -43,6 +44,8 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  */
 
 public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
+
+    private static final long serialVersionUID = -2395834336533109701L;
 
     private String productInfo;
 
