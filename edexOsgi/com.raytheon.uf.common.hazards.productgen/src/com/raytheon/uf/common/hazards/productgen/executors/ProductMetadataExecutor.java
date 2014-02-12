@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.executors;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
@@ -41,7 +42,7 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  */
 
 public class ProductMetadataExecutor extends
-        AbstractProductExecutor<Map<String, String>> {
+        AbstractProductExecutor<Map<String, Serializable>> {
 
     /** Name of the product generator */
     private String product;
@@ -51,7 +52,7 @@ public class ProductMetadataExecutor extends
     }
 
     @Override
-    public Map<String, String> execute(ProductScript script) {
+    public Map<String, Serializable> execute(ProductScript script) {
         return script.getScriptMetadata(product);
     }
 

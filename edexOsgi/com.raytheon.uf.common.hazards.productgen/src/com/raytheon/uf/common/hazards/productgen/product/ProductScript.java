@@ -211,7 +211,7 @@ public class ProductScript extends PythonScriptController {
      * @param product
      * @return
      */
-    public Map<String, String> getDialogInfo(String product) {
+    public Map<String, Serializable> getDialogInfo(String product) {
         return getInfo(product, GET_DIALOG_INFO);
     }
 
@@ -221,7 +221,7 @@ public class ProductScript extends PythonScriptController {
      * @param product
      * @return
      */
-    public Map<String, String> getScriptMetadata(String product) {
+    public Map<String, Serializable> getScriptMetadata(String product) {
         return getInfo(product, GET_SCRIPT_METADATA);
     }
 
@@ -235,16 +235,18 @@ public class ProductScript extends PythonScriptController {
      * @return
      */
     @SuppressWarnings("unchecked")
-    private Map<String, String> getInfo(String moduleName, String methodName) {
+    private Map<String, Serializable> getInfo(String moduleName,
+            String methodName) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(moduleName));
-        Map<String, String> retVal = null;
+        Map<String, Serializable> retVal = null;
         try {
             if (!isInstantiated(moduleName)) {
                 instantiatePythonScript(moduleName);
             }
 
-            retVal = (Map<String, String>) execute(methodName, INTERFACE, args);
+            retVal = (Map<String, Serializable>) execute(methodName, INTERFACE,
+                    args);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR, "Unable to get info from "
                     + methodName, e);

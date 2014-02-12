@@ -126,10 +126,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     @Override
-    public Map<String, String> getDialogInfo(String product) {
-        IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductDialogInfoExecutor(
+    public Map<String, Serializable> getDialogInfo(String product) {
+        IPythonExecutor<ProductScript, Map<String, Serializable>> executor = new ProductDialogInfoExecutor(
                 product);
-        Map<String, String> retVal = null;
+        Map<String, Serializable> retVal = null;
         try {
             retVal = coordinator.submitSyncJob(executor);
         } catch (Exception e) {
@@ -140,10 +140,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     }
 
     @Override
-    public Map<String, String> getMetadata(String product) {
-        IPythonExecutor<ProductScript, Map<String, String>> executor = new ProductMetadataExecutor(
+    public Map<String, Serializable> getMetadata(String product) {
+        IPythonExecutor<ProductScript, Map<String, Serializable>> executor = new ProductMetadataExecutor(
                 product);
-        Map<String, String> retVal = null;
+        Map<String, Serializable> retVal = null;
         try {
             retVal = coordinator.submitSyncJob(executor);
         } catch (Exception e) {

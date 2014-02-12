@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.executors;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
@@ -41,14 +42,14 @@ import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
  */
 
 public class ProductDialogInfoExecutor extends
-        AbstractProductExecutor<Map<String, String>> {
+        AbstractProductExecutor<Map<String, Serializable>> {
 
     public ProductDialogInfoExecutor(String product) {
         this.product = product;
     }
 
     @Override
-    public Map<String, String> execute(ProductScript script) {
+    public Map<String, Serializable> execute(ProductScript script) {
         return script.getDialogInfo(product);
     }
 

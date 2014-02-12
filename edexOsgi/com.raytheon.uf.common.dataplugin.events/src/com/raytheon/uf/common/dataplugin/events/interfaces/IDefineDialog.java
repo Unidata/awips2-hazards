@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.interfaces;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -40,5 +41,5 @@ import java.util.Map;
 
 public interface IDefineDialog {
 
-    public Map<String, String> getDialogInfo(String moduleName);
+    public Map<String, Serializable> getDialogInfo(String moduleName);
 }

@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.interfaces;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -40,5 +41,5 @@ import java.util.Map;
 
 public interface IProvideMetadata {
 
-    public Map<String, String> getMetadata(String moduleName);
+    public Map<String, Serializable> getMetadata(String moduleName);
 }
