@@ -52,6 +52,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 29, 2013 2277       jsanchez     Initial creation
+ * Feb 11, 2014 2755       bkowal       Fix invalid array access issue
  * 
  * </pre>
  * 
@@ -508,7 +509,7 @@ public class DiscreteGridSliceUtil {
             DiscreteGridSlice slice = (DiscreteGridSlice) record
                     .getMessageData();
             DiscreteKey[] sliceKeys = slice.getKeys();
-            if (sliceKeys.length > 0) {
+            if (sliceKeys.length > 1) {
                 List<String> keys = slice.getKeys()[1].getSubKeys();
                 if (keys.size() == 1 && keys.contains(phenSigToRemove)) {
                     // just delete the individual grid can return from here

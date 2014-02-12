@@ -31,6 +31,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
  * Allows for warning compatibility with interoperability. Creates IHazardEvent
@@ -43,6 +46,8 @@ import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013            mnash     Initial creation
+ * Jan 15, 2014 2755       bkowal      Exception handling for failed hazard event
+ *                                     id generation.
  * 
  * </pre>
  * 
@@ -51,6 +56,9 @@ import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
  */
 
 public class WarningHazardsCreator {
+
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(WarningHazardsCreator.class);
 
     public void createHazards(List<PluginDataObject> objects) {
         if (objects.isEmpty() == false) {
@@ -71,9 +79,20 @@ public class WarningHazardsCreator {
                 }
                 IHazardEvent event = manager.createEvent();
 
-                String value = HazardEventUtilities.determineEtn(
-                        record.getXxxid(), record.getAct(), record.getEtn(),
-                        manager);
+                String value = null;
+                try {
+                    value = HazardEventUtilities.determineEtn(
+                            record.getXxxid(), record.getAct(),
+                            record.getEtn(), manager);
+                } catch (Exception e) {
+                    statusHandler.handle(Priority.PROBLEM,
+                            "Failed to generate Hazard Event ID!", e);
+                    /*
+                     * TODO: previously exceptions were ignored - should this
+                     * record be skipped when an event id cannot be generated?
+                     * should the entire process be halted?
+                     */
+                }
                 event.setEventID(value);
                 event.setEndTime(record.getEndTime().getTime());
                 event.setStartTime(record.getStartTime().getTime());
@@ -82,8 +101,8 @@ public class WarningHazardsCreator {
                 event.setPhenomenon(record.getPhen());
                 event.setSignificance(record.getSig());
                 event.setSiteID(record.getXxxid());
-                event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, record
-                        .getPurgeTime().getTime().getTime());
+                event.addHazardAttribute(HazardConstants.EXPIRATION_TIME,
+                        record.getPurgeTime().getTime().getTime());
                 event.addHazardAttribute(HazardConstants.ETNS,
                         "[" + record.getEtn() + "]");
                 event.setHazardMode(HazardConstants

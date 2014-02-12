@@ -115,6 +115,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                     events back to PENDING.
  * 
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
+ * Jan 14, 2014 2755       bkowal      No longer create new Event IDs for events that
+ *                                     are created EDEX-side for interoperability purposes.
  * 
  * </pre>
  * 
@@ -181,6 +183,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
     private final Map<String, TimerTask> expirationTasks = new ConcurrentHashMap<String, TimerTask>();
 
     private ISimulatedTimeChangeListener timeListener;
+
+    // TODO: will be standardized when usage has been refined in Phase II of
+    // GFE interoperability modifications.
+    private static final String HAZARD_ATTRIBUTE_INTEROPERABILITY = "interoperability";
 
     /*
      * The messenger for displaying questions and warnings to the user and
@@ -336,8 +342,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
             }
         }
 
-        if (event.getState() == null || event.getState() == HazardState.PENDING
-                || event.getState() == HazardState.POTENTIAL) {
+        // verify that the hazard was not created server-side to fulfill
+        // interoperability requirements
+        if ((event.getState() == null
+                || event.getState() == HazardState.PENDING || event.getState() == HazardState.POTENTIAL)
+                && event.getHazardAttributes().containsKey(
+                        HAZARD_ATTRIBUTE_INTEROPERABILITY) == false) {
 
             /*
              * Can only add geometry to selected if the hazard type is empty.

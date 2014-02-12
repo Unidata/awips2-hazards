@@ -40,5 +40,13 @@
                 </doCatch>
             </doTry>
 		</route>
+		
+		<route id="gfeNotifyHazard">
+			<from uri="jms-generic:topic:edex.alerts.gfe"/>
+			<doTry>
+				<bean ref="serializationUtil" method="transformFromThrift"/>
+				<bean ref="hazardEventHandler" method="handleGridNotification" />
+			</doTry>
+		</route>
 	</camelContext>
 </beans>

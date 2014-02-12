@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.hibernate.Criteria;
 import org.hibernate.criterion.Conjunction;
+import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.Disjunction;
 import org.hibernate.criterion.Restrictions;
 
@@ -58,13 +58,13 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 8, 2012            mnash     Initial creation
- * <<<<<<< HEAD
  * Oct 30, 2013 #1472     bkowal    Updated the phensig retrieval to use disjunctions
  *                                  and conjunctions instead of nested OR and AND
  *                                  statements.
- * =======
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * >>>>>>> Issue #2182.
+ * Jan 14, 2014 2755     bkowal     Updated to use DetachedCriteria when selecting
+ *                                  events so that the returned events will not
+ *                                  be associated with an open session.
  * 
  * </pre>
  * 
@@ -152,8 +152,8 @@ public class DatabaseEventManager implements
     @Override
     public Map<String, HazardHistoryList> retrieve(
             Map<String, List<Object>> filters) {
-        Criteria criteria = dao.getSessionFactory().openSession()
-                .createCriteria(PracticeHazardEvent.class);
+        DetachedCriteria criteria = DetachedCriteria
+                .forClass(PracticeHazardEvent.class);
 
         List<String> keys = new ArrayList<String>();
         // get the fields in the primary key, as they have a slightly different
@@ -273,7 +273,8 @@ public class DatabaseEventManager implements
                 }
             }
         }
-        List<PracticeHazardEvent> events = criteria.list();
+        List<PracticeHazardEvent> events = dao.getHibernateTemplate()
+                .findByCriteria(criteria);
         Map<String, HazardHistoryList> mapEvents = new HashMap<String, HazardHistoryList>();
 
         // group them for use later

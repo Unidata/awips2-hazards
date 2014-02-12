@@ -11,4 +11,5 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.warning;bundle-version="1.12.1
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.dataquery;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174"
+ com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174",
+ com.raytheon.uf.common.status;bundle-version="1.12.1174"

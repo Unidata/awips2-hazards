@@ -48,6 +48,8 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Oct 22, 2013 1463       blawrenc   Added methods to retrieve
  *                                    map geometries which 
  *                                    intersect hazard geometries.
+ * Jan 14, 2014 2755       bkowal      Created a utility method for
+ *                                     generating new Event IDs
  * Feb 02, 2014 2536       blawrenc   Moved geometry classes to a viz side class.
  * 
  * 
@@ -143,7 +145,7 @@ public class HazardEventUtilities {
     }
 
     public static String determineEtn(String site, String action, String etn,
-            IHazardEventManager manager) {
+            IHazardEventManager manager) throws Exception {
         // make a request for the hazard event id from the cluster task
         // table
         HazardEventIdRequest request = new HazardEventIdRequest();
@@ -170,12 +172,19 @@ public class HazardEventUtilities {
             }
         }
         if ("NEW".equals(action) || createNew) {
-            try {
-                value = RequestRouter.route(request).toString();
-            } catch (Exception e) {
-                throw new RuntimeException(
-                        "Unable to make request for hazard event id", e);
-            }
+            value = generateEventID(site);
+        }
+        return value;
+    }
+
+    public static String generateEventID(String site) throws Exception {
+        HazardEventIdRequest request = new HazardEventIdRequest();
+        request.setSiteId(site);
+        String value = "";
+        try {
+            value = RequestRouter.route(request).toString();
+        } catch (Exception e) {
+            throw new Exception("Unable to make request for hazard event id", e);
         }
         return value;
     }
