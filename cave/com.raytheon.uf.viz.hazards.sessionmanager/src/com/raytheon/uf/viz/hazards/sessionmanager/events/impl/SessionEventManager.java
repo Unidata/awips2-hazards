@@ -66,7 +66,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -217,7 +217,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     @Subscribe
-    public void settingsLoaded(SettingsLoaded notification) {
+    public void settingsModified(SettingsModified notification) {
         loadEventsForSettings(notification.getSettings());
     }
 
