@@ -26,7 +26,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -200,6 +199,12 @@ class HazardServicesProductGenerationHandler {
 
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
 
+        List<String> selectedEventIDs = new ArrayList<>();
+        for (IHazardEvent selectedEvent : this.sessionManager.getEventManager()
+                .getSelectedEvents()) {
+            selectedEventIDs.add(selectedEvent.getEventID());
+        }
+
         for (GeneratedProductList productList : generatedProductsList) {
             for (ProductInformation selectedProductInformation : selectedProducts) {
                 if (productList.getProductInfo().equals(
@@ -210,8 +215,17 @@ class HazardServicesProductGenerationHandler {
             }
 
             Set<IHazardEvent> selectedEvents = new HashSet<IHazardEvent>();
-            for (IEvent event : productList.getEventSet()) {
-                selectedEvents.add((IHazardEvent) event);
+            for (IHazardEvent hazardEvent : productInformation
+                    .getProductEvents()) {
+                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
+                    selectedEvents.add(hazardEvent);
+                }
+            }
+            for (IHazardEvent hazardEvent : productInformation
+                    .getPossibleProductEvents()) {
+                if (selectedEventIDs.contains(hazardEvent.getEventID())) {
+                    selectedEvents.add(hazardEvent);
+                }
             }
 
             productInformation.setProductEvents(selectedEvents);
