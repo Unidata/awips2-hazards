@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.hibernate.criterion.Conjunction;
+import org.hibernate.criterion.CriteriaSpecification;
 import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.Disjunction;
 import org.hibernate.criterion.Restrictions;
@@ -273,6 +274,7 @@ public class DatabaseEventManager implements
                 }
             }
         }
+        criteria.setResultTransformer(CriteriaSpecification.DISTINCT_ROOT_ENTITY);
         List<PracticeHazardEvent> events = dao.getHibernateTemplate()
                 .findByCriteria(criteria);
         Map<String, HazardHistoryList> mapEvents = new HashMap<String, HazardHistoryList>();
