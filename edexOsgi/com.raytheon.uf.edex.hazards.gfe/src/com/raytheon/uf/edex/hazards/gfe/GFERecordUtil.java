@@ -37,10 +37,14 @@ import com.raytheon.uf.common.dataplugin.gfe.db.objects.TimeConstraints;
 import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
 import com.raytheon.uf.common.dataplugin.gfe.grid.Grid2DBit;
 import com.raytheon.uf.common.dataplugin.gfe.grid.Grid2DByte;
+import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData;
+import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceID;
+import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData.CoordinateType;
 import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
 import com.raytheon.uf.common.dataplugin.gfe.util.GfeUtil;
 import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.time.TimeRange;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
 /**
@@ -53,6 +57,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 27, 2013 2277       jsanchez     Initial creation
+ * Feb 18, 2014 2877       bkowal       Added a utility method to convert
+ *                                      a hazard geometry to a gfe geometry.
  * 
  * </pre>
  * 
@@ -150,5 +156,18 @@ public class GFERecordUtil {
         record.setMessageData(gridSlice);
 
         return record;
+    }
+
+    public static MultiPolygon translateHazardPolygonToGfe(
+            GridLocation gridLocation, Coordinate[] coordinates)
+            throws TransformException {
+        MultiPolygon polygon = GfeUtil.createPolygon(coordinates);
+        polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
+                .getTransformFromLatLon(PixelOrientation.CENTER, gridLocation));
+        Grid2DBit grid2DBit = GfeUtil.filledBitArray(polygon, gridLocation);
+        ReferenceData referenceData = new ReferenceData(gridLocation,
+                new ReferenceID("temp"), grid2DBit);
+
+        return referenceData.getPolygons(CoordinateType.LATLON);
     }
 }

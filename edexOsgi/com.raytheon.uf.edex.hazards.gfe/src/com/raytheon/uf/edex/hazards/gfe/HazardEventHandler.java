@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.Iterator;
 
+import org.opengis.referencing.operation.TransformException;
 import org.springframework.util.StringUtils;
 
 import com.raytheon.edex.site.SiteUtil;
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
+import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridLocation;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridParmInfo;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.ParmID;
 import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
@@ -78,6 +80,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Sep 27, 2013 2277       jsanchez     Initial creation
  * Jan 14, 2014 2755       bkowal       Updated for GFE interoperability. Will
  *                                      now listen for GFE grid updates.
+ * Feb 18, 2014 2877       bkowal       Interoperability improvements. Prevent
+ *                                      unnecessary iterations initiated by
+ *                                      CAVE.
  * 
  * </pre>
  * 
@@ -117,19 +122,11 @@ public class HazardEventHandler {
     // GFE interoperability modifications.
     private static final String HAZARD_ATTRIBUTE_INTEROPERABILITY = "interoperability";
 
-    /*
-     * TODO: this is only a temporary implementation for the time being for the
-     * automated tests. When the remaining changes for GFE interoperability are
-     * completed, alternate solutions may be implemented.
-     */
-    private List<String> updatedHazardIDs;
-
     /**
      * Constructor.
      */
     private HazardEventHandler() {
         gridParmInfoMap = new HashMap<String, GridParmInfo>();
-        this.updatedHazardIDs = new ArrayList<String>();
     }
 
     /**
@@ -187,9 +184,6 @@ public class HazardEventHandler {
             if (convert
                     && hazardEvent.getHazardAttributes().containsKey(
                             HAZARD_ATTRIBUTE_INTEROPERABILITY) == false) {
-                synchronized (this.updatedHazardIDs) {
-                    this.updatedHazardIDs.add(hazardEvent.getEventID());
-                }
                 /*
                  * if the hazard includes the INTEROPERABILITY attribute, it was
                  * created from a grid; so, the grid that would normally be
@@ -307,7 +301,10 @@ public class HazardEventHandler {
                 Map<String, HazardHistoryList> events = hazardEventManager
                         .getEventsByFilter(builder.getQuery());
 
+                GridLocation gridLocation = discreteGridSlice.getGridParmInfo()
+                        .getGridLoc();
                 IHazardEvent hazardEvent = null;
+                MultiPolygon gfeMultiPolygon = null;
                 boolean update = false;
                 boolean newHazard = false;
                 if (events.isEmpty()) {
@@ -364,20 +361,34 @@ public class HazardEventHandler {
                             HAZARD_ATTRIBUTE_INTEROPERABILITY, true);
                 } else {
                     // update the hazard that was retrieved.
-
-                    hazardEvent = events.entrySet().iterator().next()
-                            .getValue().get(0);
-                    boolean originator = false;
-                    synchronized (this.updatedHazardIDs) {
-                        if (this.updatedHazardIDs.contains(hazardEvent
-                                .getEventID())) {
-                            this.updatedHazardIDs.remove(hazardEvent
-                                    .getEventID());
-                            originator = true;
-                        }
+                    int hazardsCount = events.entrySet().size();
+                    if (hazardsCount == 1) {
+                        hazardEvent = events.entrySet().iterator().next()
+                                .getValue().get(0);
+                    } else {
+                        /*
+                         * TODO: handle multiple hazards of the same type ->
+                         * mapped to one grid scenarios. (See DR #2999)
+                         * 
+                         * For now, the retrieval of only the first hazard even
+                         * we know there is more than one is just a placeholder.
+                         */
+                        hazardEvent = events.entrySet().iterator().next()
+                                .getValue().get(0);
                     }
-                    if (originator) {
-                        return;
+
+                    /*
+                     * Interpret the hazard geometry the same way that GFE
+                     * interprets it.
+                     */
+                    try {
+                        gfeMultiPolygon = GFERecordUtil
+                                .translateHazardPolygonToGfe(gridLocation,
+                                        hazardEvent.getGeometry()
+                                                .getCoordinates());
+                    } catch (TransformException e) {
+                        statusHandler.handle(Priority.PROBLEM,
+                                e.getLocalizedMessage(), e);
                     }
                 }
 
@@ -403,16 +414,22 @@ public class HazardEventHandler {
                 Grid2DBit grid2DBit = this
                         .mergeGridDataStructures(gridsToProcessMap
                                 .get(discreteKey));
-                ReferenceData referenceData = new ReferenceData(
-                        discreteGridSlice.getGridParmInfo().getGridLoc(),
+                ReferenceData referenceData = new ReferenceData(gridLocation,
                         new ReferenceID("temp"), grid2DBit);
                 MultiPolygon multiPolygon = referenceData
                         .getPolygons(CoordinateType.LATLON);
                 if (hazardEvent.getGeometry() == null) {
                     hazardEvent.setGeometry(multiPolygon);
-                } else if (hazardEvent.getGeometry().equalsExact(multiPolygon) == false) {
-                    hazardEvent.setGeometry(multiPolygon);
-                    update = true;
+                } else {
+                    /*
+                     * Determine if the GFE geometry has changed. If the hazard
+                     * geometry changes, the other code should handle updating
+                     * the GFE grid.
+                     */
+                    if (multiPolygon.contains(gfeMultiPolygon) == false) {
+                        hazardEvent.setGeometry(multiPolygon);
+                        update = true;
+                    }
                 }
 
                 if (newHazard) {

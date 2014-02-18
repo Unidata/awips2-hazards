@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -53,6 +54,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * ------------ ---------- ----------- --------------------------
  * Aug 29, 2013 2277       jsanchez     Initial creation
  * Feb 11, 2014 2755       bkowal       Fix invalid array access issue
+ * Feb 18, 2014 2877       bkowal       Improved the way grids are constructed
+ *                                      based on discrete keys.
  * 
  * </pre>
  * 
@@ -310,7 +313,7 @@ public class DiscreteGridSliceUtil {
             // perform merge
             GFERecord record = new GFERecord(gridParmInfo.getParmID(),
                     timeRange);
-
+            Map<String, Grid2DByte> gridArchiveMap = new HashMap<String, Grid2DByte>();
             Grid2DByte grid2DByte = null;
             List<String> uniqueKeys = new ArrayList<String>();
             uniqueKeys.add(DK_NONE);
@@ -321,33 +324,84 @@ public class DiscreteGridSliceUtil {
                 DiscreteKey discreteKey = discreteGridSlice.getKeys()[1];
                 String addHaz = discreteKey.getSubKeys().get(0);
                 Grid2DByte byteGrid = discreteGridSlice.getDiscreteGrid();
+                gridArchiveMap.put(addHaz, byteGrid);
 
                 String newKey = null;
-                for (String uKey : uniqueKeys) {
-                    // Figure out what the new key is
-                    newKey = makeNewKey(uKey, addHaz);
+                /* clone the unique keys */
+                List<String> iterativeKeys = new LinkedList<String>(uniqueKeys);
+                for (String uKey : iterativeKeys) {
+                    newKey = addHaz;
 
                     if (grid2DByte == null) {
                         grid2DByte = byteGrid;
                     } else {
-                        // Find the index number for the old key
-                        int oldIndex = uniqueKeys.indexOf(uKey);
+                        if (uKey.equals(DK_NONE)) {
+                            continue;
+                        }
 
-                        // Find the index number for the new key (newKey is
-                        // added if not in hazKey)
-                        int newIndex = uniqueKeys.size();
+                        if (gridOverlap(byteGrid, gridArchiveMap.get(uKey))
+                                && newKey.equals(uKey) == false) {
+                            /* get the overlap region grid */
+                            Grid2DByte overlapGrid = getOverlapRegion(byteGrid,
+                                    gridArchiveMap.get(uKey));
 
-                        // calculate the mask - intersection of mask and
-                        // oldIndex values
-                        // editMask = (byteGrid==oldIndex) & mask
-                        int rows = grid2DByte.getYdim();
-                        int cols = grid2DByte.getXdim();
-                        for (int col = 0; col < cols; col++) {
-                            for (int row = 0; row < rows; row++) {
-                                if (byteGrid.get(col, row) == 1
-                                        && grid2DByte.get(col, row) == oldIndex) {
-                                    // poke in the new values
-                                    grid2DByte.set(col, row, newIndex);
+                            String overlapKey = makeNewKey(uKey, addHaz);
+                            gridArchiveMap.put(overlapKey, overlapGrid);
+
+                            // Find the index number for the new key (newKey is
+                            // added if not in hazKey)
+                            int newIndex = uniqueKeys.size();
+
+                            // add the new values to the grid
+                            int rows = overlapGrid.getYdim();
+                            int cols = overlapGrid.getXdim();
+                            for (int col = 0; col < cols; col++) {
+                                for (int row = 0; row < rows; row++) {
+                                    if (overlapGrid.get(col, row) == 1) {
+                                        // poke in the new values
+                                        grid2DByte.set(col, row, newIndex);
+                                    }
+                                }
+                            }
+
+                            uniqueKeys.add(overlapKey);
+                            ++newIndex;
+
+                            /* is there an area without any overlap? */
+                            boolean onlyOverlap = true;
+
+                            for (int col = 0; col < cols; col++) {
+                                for (int row = 0; row < rows; row++) {
+                                    if (overlapGrid.get(col, row) != 1
+                                            && byteGrid.get(col, row) == 1) {
+
+                                        grid2DByte.set(col, row, newIndex);
+                                        onlyOverlap = false;
+                                    }
+                                }
+                            }
+
+                            if (onlyOverlap) {
+                                newKey = null;
+                            }
+                        } else {
+                            int newIndex = uniqueKeys.size();
+                            if (uniqueKeys.contains(newKey)) {
+                                /*
+                                 * In this case, we are merging grids; however,
+                                 * we are merging grids with the same identifier.
+                                 */
+                                newIndex = uniqueKeys.indexOf(newKey);
+                                newKey = null; // key is already in the list
+                            }
+
+                            int rows = grid2DByte.getYdim();
+                            int cols = grid2DByte.getXdim();
+                            for (int col = 0; col < cols; col++) {
+                                for (int row = 0; row < rows; row++) {
+                                    if (byteGrid.get(col, row) == 1) {
+                                        grid2DByte.set(col, row, newIndex);
+                                    }
                                 }
                             }
                         }
@@ -382,6 +436,37 @@ public class DiscreteGridSliceUtil {
         }
 
         return newRecords;
+    }
+
+    private static boolean gridOverlap(Grid2DByte gridA, Grid2DByte gridB) {
+        int rows = gridA.getYdim();
+        int cols = gridA.getXdim();
+        for (int col = 0; col < cols; col++) {
+            for (int row = 0; row < rows; row++) {
+                if (gridA.get(col, row) == 1 && gridB.get(col, row) == 1) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static Grid2DByte getOverlapRegion(Grid2DByte gridA,
+            Grid2DByte gridB) {
+        int rows = gridA.getYdim();
+        int cols = gridA.getXdim();
+
+        Grid2DByte newGrid = new Grid2DByte(cols, rows);
+        for (int col = 0; col < cols; col++) {
+            for (int row = 0; row < rows; row++) {
+                if (gridA.get(col, row) == 1 && gridB.get(col, row) == 1) {
+                    newGrid.set(col, row, 1);
+                }
+            }
+        }
+
+        return newGrid;
     }
 
     /*
