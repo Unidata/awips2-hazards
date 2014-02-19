@@ -71,6 +71,11 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2013 2461       bkowal      Initial creation
  * Nov 25, 2013 2461       bkowal      Refactor
+ * Feb 19, 2014 3018       bkowal      Ensure that unusable localization levels
+ *                                     are disabled in the sub-menu. Ensure that
+ *                                     files are not temporarily overwritten when
+ *                                     the save to localization fails.
+ *                                     
  * 
  * </pre>
  * 
@@ -83,9 +88,9 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
             .getHandler(CopyPythonClassesAction.class);
 
     private static final String MENU_TEXT = "Create Override File ...";
-    
+
     private static final String PY_CLASS_PLACEHOLDER = "    pass";
-    
+
     private static final String PY_CLASS_PATTERN_STRING = "^class[ \t].+:";
 
     private static final Pattern PY_CLASS_PATTERN = Pattern
@@ -171,8 +176,25 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
             newFile.addFileUpdatedObserver(observer);
             newFile.save();
         } catch (LocalizationOpFailedException e) {
+            this.restoreOldFile();
             statusHandler.handle(Priority.ERROR,
                     "Unable to save file to localization", e);
+        }
+    }
+
+    private void restoreOldFile() {
+        try {
+            /* Replace the "new" file with the old file. */
+            FileUtils.moveFile(this.file.getFile(), this.newFile.getFile());
+        } catch (IOException e) {
+            /*
+             * If the replacement fails, a simple open and close of the file
+             * will restore the old file.
+             */
+            statusHandler.handle(Priority.ERROR,
+                    "Failed to restore the original localization file: "
+                            + this.file.getName()
+                            + ". Please close and re-open the file.", e);
         }
     }
 
@@ -227,11 +249,26 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
      * @return
      */
     protected boolean isLevelEnabled(LocalizationLevel level) {
-        if (this.file.isProtected()) {
+        boolean enabled = true;
+        /*
+         * This is based on the isLevelEnabled method in AbstractToAction
+         * because we cannot directly invoke the method due to access
+         * restrictions on the plugin containing the AbstractToAction class.
+         */
+        if (level == this.file.getContext().getLocalizationLevel()) {
+            String fileCtxName = this.file.getContext().getContextName();
+            String levelCtxName = LocalizationManager.getContextName(level);
+            if ((fileCtxName == null && levelCtxName == null)
+                    || (fileCtxName != null && fileCtxName.equals(levelCtxName))) {
+                // same context name
+                enabled = false;
+            }
+        }
+        if (enabled && this.file.isProtected()) {
             return file.getProtectedLevel().compareTo(level) >= 0;
         }
 
-        return true;
+        return enabled;
     }
 
     @Override
