@@ -88,11 +88,22 @@ class Recommender(RecommenderTemplate.Recommender):
         levelFieldDict["incrementDelta"] = 10
         levelFieldDict["showScale"] = True
         
-        fieldDicts = [choiceFieldDict, levelFieldDict]
+        includeNonFloodPointDict = {}
+        includeNonFloodPointDict["fieldType"] = "CheckBoxes"
+        includeNonFloodPointDict["fieldName"] = "includeNonFloodPoints"
+        includeNonFloodPointDict["choices"] = [    
+                     {"identifier":"includeNonFloodPoints", "displayString": "Include Non-Flood Points"},
+                     ]
+        includeNonFloodPointDict["enable"] = False
+        includeNonFloodPointDict["values"] = []
+
+        
+        fieldDicts = [choiceFieldDict, levelFieldDict, includeNonFloodPointDict]
         dialogDict["fields"] = fieldDicts
 
         valueDict = {"forecastType":"Set confidence:", "forecastConfidencePercentage":50}
         dialogDict["valueDict"] = valueDict
+        
 
         # Define the side effects script used to make the megawidgets
         # affect one another (in this case, radio button selection
@@ -101,11 +112,16 @@ class Recommender(RecommenderTemplate.Recommender):
 def applySideEffects(triggerIdentifier, mutableProperties):
    if triggerIdentifier == "forecastType":
       if mutableProperties["forecastType"]["values"]["forecastType"] == "Watch":
-         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 50 } } }
+         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 50 } }, "includeNonFloodPoints":{"enable":False, "values":{"includeNonFloodPoints":[]} } }
       elif mutableProperties["forecastType"]["values"]["forecastType"] == "Warning":
-         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 80 } } }
+         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 80 } }, "includeNonFloodPoints":{"enable":True } }
       else:
          return { "forecastConfidencePercentage": { "enable": True } }
+   elif triggerIdentifier == "forecastConfidencePercentage":
+      if mutableProperties["forecastConfidencePercentage"]["values"]["forecastConfidencePercentage"] >= 80:
+         return {"includeNonFloodPoints":{"enable": True } }
+      else:
+         return {"includeNonFloodPoints":{"enable": False, "values":{"includeNonFloodPoints":[] } } }
    else:
       return None
 """

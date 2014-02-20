@@ -240,7 +240,8 @@ public class RiverFloodRecommenderOMHN1Test {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getFloodDictList(true);
+        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(true,
+                false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation

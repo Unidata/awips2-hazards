@@ -101,6 +101,8 @@ public class DeprecatedEvent {
 
     private String pointID;
 
+    private String streamName;
+
     private DeprecatedShape[] shapes;
 
     private String backupSiteID;
@@ -167,6 +169,8 @@ public class DeprecatedEvent {
 
         eventID = event.getEventID();
         pointID = (String) event.getHazardAttribute(HazardConstants.POINTID);
+        streamName = (String) event
+                .getHazardAttribute(HazardConstants.STREAM_NAME);
         startTime = event.getStartTime().getTime();
         endTime = event.getEndTime().getTime();
         if (event.getIssueTime() != null) {
@@ -542,6 +546,9 @@ public class DeprecatedEvent {
         if (pointID != null) {
             event.addHazardAttribute(HazardConstants.POINTID, pointID);
         }
+        if (streamName != null) {
+            event.addHazardAttribute(HazardConstants.STREAM_NAME, streamName);
+        }
         if (startTime != null) {
             event.setStartTime(new Date(startTime));
         }
@@ -632,6 +639,21 @@ public class DeprecatedEvent {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    /**
+     * @return the streamName
+     */
+    public String getStreamName() {
+        return streamName;
+    }
+
+    /**
+     * @param streamName
+     *            the streamName to set
+     */
+    public void setStreamName(String streamName) {
+        this.streamName = streamName;
     }
 
 }

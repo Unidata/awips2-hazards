@@ -239,6 +239,31 @@ public final class HazardConstants {
     public static final String FLOOD_IMMEDIATE_CAUSE = "Flood Immediate Cause";
 
     /*
+     * The following are used to identify attributes which are returned from
+     * River Flood Recommender
+     */
+
+    public static final String FLOOD_STAGE = "floodStage";
+
+    public static final String FLOOD_SEVERITY_CATEGORY = "floodSeverity";
+
+    public static final String FLOOD_RECORD = "floodRecord";
+
+    public static final String ACTION_STAGE = "actionStage";
+
+    public static final String CREST_STAGE = "crestStage";
+
+    public static final String CURRENT_STAGE = "currentStage";
+
+    public static final String CURRENT_STAGE_TIME = "currentStageTime";
+
+    public static final String IMMEDIATE_CAUSE = "immediateCause";
+
+    public static final String RIVER_POINT_NAME = "name";
+
+    public static final String RIVER_POINT_ID = "id";
+
+    /*
      * The following are used for any further filters that are required using
      * the getEventsByFilter() method, as well as defining the fields in both
      * the database implementation and the registry implementation
@@ -267,6 +292,8 @@ public final class HazardConstants {
     public static final String CREST = "crest";
 
     public static final String FALL_BELOW = "fallBelow";
+
+    public static final String STREAM_NAME = "streamName";
 
     /**
      * Event identifier key

@@ -53,6 +53,22 @@ public class RiverProFloodRecommender {
     private static final int WARNING_THRESHOLD = 80;
 
     /**
+     * Probabilistic threshold for watch/warning basis.
+     */
+    private static final String FORCAST_CONFIDENCE_PERCENTAGE = "forecastConfidencePercentage";
+
+    /**
+     * Flag indicating whether or not to include non-flood points in the
+     * recommendation.
+     */
+    private static final String INCLUDE_NONFLOOD_POINTS = "includeNonFloodPoints";
+
+    /**
+     * Represents the first character of a river flow PE.
+     */
+    private static final char RIVER_FLOW_CHARACTER = 'Q';
+
+    /**
      * List of river forecast points.
      */
     private List<RiverForecastPoint> forecastPointList = null;
@@ -187,11 +203,11 @@ public class RiverProFloodRecommender {
      * previous events.
      */
     private void loadPreviousEventInfo() {
-        Map<String, Object> eventDict = null;
+        Map<String, Object> eventMap = null;
 
         for (RiverForecastPoint forecastPoint : forecastPointList) {
             HydroEvent hazardEvent = new HydroEvent(forecastPoint,
-                    hazardSettings, eventDict, floodDAO);
+                    hazardSettings, eventMap, floodDAO);
             hydroEventList.add(hazardEvent);
         }
 
@@ -381,8 +397,10 @@ public class RiverProFloodRecommender {
                     if ((previousEndTime != null)
                             && (previousEndTime.getTime() > (systemTime
                                     .getTime() - HydroEvent.END_TIME_WITHIN))
-                            && (!vtecaction.getAction().equals("CAN"))
-                            && (!vtecaction.getAction().equals("EXP"))) {
+                            && (!vtecaction.getAction().equals(
+                                    HazardConstants.CANCEL_ACTION))
+                            && (!vtecaction.getAction().equals(
+                                    HazardConstants.EXPIRE_ACTION))) {
                         hydroEvent
                                 .setRecommendationReason(HydroEventReason.FLS_EXPIRED_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.FLS);
@@ -549,20 +567,23 @@ public class RiverProFloodRecommender {
     }
 
     /**
-     * Builds a JSON string containing a list of the recommended river flood
-     * hazards.
+     * Builds a set of the recommended river flood hazards.
      * 
-     * @param
-     * @return
+     * @param dialogInputMap
+     *            A map containing information from the tool dialog.
+     * @return A set of recommended potential river flood hazards
      */
+    @SuppressWarnings("unchecked")
     private EventSet<IHazardEvent> createHazards(
             Map<String, Object> dialogInputMap) {
         boolean isWarning = false;
+        boolean includeNonFloodPoints = false;
+
         /*
          * Check the runData for a forecast confidence percentage.
          */
         Number percentageNumber = (Number) dialogInputMap
-                .get("forecastConfidencePercentage");
+                .get(FORCAST_CONFIDENCE_PERCENTAGE);
 
         if (percentageNumber != null) {
             int percentage = percentageNumber.intValue();
@@ -572,187 +593,299 @@ public class RiverProFloodRecommender {
             }
         }
 
-        EventSet<IHazardEvent> listOfPotentialEventDicts = getFloodDictList(isWarning);
+        if (dialogInputMap.containsKey(INCLUDE_NONFLOOD_POINTS)
+                && ((List<String>) dialogInputMap.get(INCLUDE_NONFLOOD_POINTS))
+                        .size() > 0) {
+            includeNonFloodPoints = true;
+        }
 
-        return listOfPotentialEventDicts;
+        EventSet<IHazardEvent> potentialHazardEventSet = getPotentialRiverHazards(
+                isWarning, includeNonFloodPoints);
+
+        return potentialHazardEventSet;
     }
 
     /**
-     * Builds a list of hazard recommendations based on the output from the
-     * river flood recommender.
+     * Builds a set of hazard recommendations based on the output from the river
+     * flood recommender.
      * 
      * @param isWarning
      *            true - create FL.W hazards, false - create FL.A hazards
-     * @return A list of recommended hazards.
+     * @param includeNonFloodPoints
+     *            true - include nonFloodPoints in a recommendation if at least
+     *            one point in the group is flooding. false - include only flood
+     *            points.
+     * @return A set of recommended hazards.
      */
-    public EventSet<IHazardEvent> getFloodDictList(boolean isWarning) {
-        EventSet<IHazardEvent> listOfPotentialEventDicts = new EventSet<IHazardEvent>();
+    public EventSet<IHazardEvent> getPotentialRiverHazards(boolean isWarning,
+            boolean includeNonFloodPoints) {
+        EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<IHazardEvent>();
 
         for (RiverForecastGroup riverGroup : riverGroupList) {
-            for (RiverForecastPoint riverForecastPoint : riverGroup
-                    .getForecastPointList()) {
-                if (riverForecastPoint.isIncludedInRecommendation()) {
-                    /*
-                     * Retrieve the reach information for this forecast point
-                     */
-                    Map<String, Serializable> hazardAttributes = new HashMap<String, Serializable>();
+            if (riverGroup.isIncludedInRecommendation()) {
+                for (RiverForecastPoint riverForecastPoint : riverGroup
+                        .getForecastPointList()) {
+                    if (riverForecastPoint.isIncludedInRecommendation()
+                            || includeNonFloodPoints) {
 
-                    IHazardEvent pointEventDict = new BaseHazardEvent();
-                    pointEventDict.setEventID("");
-                    pointEventDict.setState(HazardState.POTENTIAL);
-                    pointEventDict.setPhenomenon("FL");
+                        Map<String, Serializable> hazardAttributes = new HashMap<String, Serializable>();
+                        IHazardEvent riverHazard = new BaseHazardEvent();
+                        potentialRiverEventSet.add(riverHazard);
+                        riverHazard.setEventID("");
+                        riverHazard.setState(HazardState.POTENTIAL);
 
-                    if (isWarning) {
+                        hazardAttributes.put(HazardConstants.POINTID,
+                                riverForecastPoint.getId());
+                        hazardAttributes.put(HazardConstants.STREAM_NAME,
+                                riverForecastPoint.getStream());
 
-                        pointEventDict.setSignificance("W");
-                    } else {
-                        pointEventDict.setSignificance("A");
+                        hazardAttributes.put(HazardConstants.FLOOD_STAGE,
+                                riverForecastPoint.getFloodStage());
+                        hazardAttributes.put(HazardConstants.ACTION_STAGE,
+                                riverForecastPoint.getActionStage());
 
-                    }
+                        double currentStage = riverForecastPoint
+                                .getCurrentObservation().getValue();
 
-                    listOfPotentialEventDicts.add(pointEventDict);
+                        hazardAttributes.put(HazardConstants.CURRENT_STAGE,
+                                currentStage);
 
-                    hazardAttributes.put("pointID", riverForecastPoint.getId());
+                        long currentStageTime = riverForecastPoint
+                                .getCurrentObservation().getValidTime();
+                        hazardAttributes.put(
+                                HazardConstants.CURRENT_STAGE_TIME,
+                                currentStageTime);
 
-                    hazardAttributes.put("floodStage",
-                            riverForecastPoint.getFloodStage());
-                    hazardAttributes.put("actionStage",
-                            riverForecastPoint.getActionStage());
+                        if (riverForecastPoint.isIncludedInRecommendation()) {
+                            buildFloodAttributes(isWarning, riverForecastPoint,
+                                    hazardAttributes, riverHazard);
 
-                    double currentStage = riverForecastPoint
-                            .getCurrentObservation().getValue();
-
-                    hazardAttributes.put("currentStage", currentStage);
-
-                    long currentStageTime = riverForecastPoint
-                            .getCurrentObservation().getValidTime();
-                    hazardAttributes.put("currentStageTime", currentStageTime);
-
-                    Date riseAbove = riverForecastPoint.getRiseAboveTime();
-
-                    if ((riseAbove != null) && (riseAbove.getTime() > 0)) {
-                        if (isWarning) {
-                            hazardAttributes.put("riseAbove",
-                                    riseAbove.getTime());
                         } else {
-                            hazardAttributes.put("riseAbove", 0);
-                        }
-                        pointEventDict.setStartTime(riseAbove);
-                    } else {
-                        hazardAttributes.put("riseAbove", 0);
-                        pointEventDict.setStartTime(floodDAO.getSystemTime());
-                    }
-
-                    Date maxObservedForecastCrestDate = riverForecastPoint
-                            .getMaximumObservedForecastTime();
-
-                    if (maxObservedForecastCrestDate != null && isWarning) {
-                        hazardAttributes.put("crest",
-                                maxObservedForecastCrestDate.getTime());
-                        hazardAttributes.put("crestStage", riverForecastPoint
-                                .getMaximumObservedForecastValue());
-                    } else {
-                        hazardAttributes.put("crest", 0);
-                        hazardAttributes.put("crestStage", 0);
-                    }
-
-                    Date fallBelow = riverForecastPoint.getFallBelowTime();
-
-                    if (fallBelow != null) {
-                        if (isWarning) {
-                            hazardAttributes.put("fallBelow",
-                                    fallBelow.getTime());
-                        } else {
-                            hazardAttributes.put("fallBelow", 0);
+                            buildNonFloodAttributes(riverForecastPoint,
+                                    hazardAttributes, riverHazard);
                         }
 
-                        /*
-                         * Need to consider the shift ahead hours here...
-                         */
-                        Date virtualEndTime = riverForecastPoint
-                                .getVirtualFallBelowTime(true);
-                        pointEventDict.setEndTime(virtualEndTime);
-                    } else {
-                        hazardAttributes.put("fallBelow", 0);
-                        Calendar cal = Calendar.getInstance();
-                        cal.setTime(pointEventDict.getStartTime());
-                        cal.add(Calendar.HOUR,
-                                hazardSettings.getFlwExpirationHours());
-                        pointEventDict.setEndTime(cal.getTime());
+                        hazardAttributes.put(HazardConstants.CREATION_TIME,
+                                Calendar.getInstance().getTime().getTime());
+                        riverHazard.setIssueTime(Calendar.getInstance()
+                                .getTime());
+
+                        List<Double> pointCoords = Lists.newArrayList();
+                        Coordinate pointLocation = riverForecastPoint
+                                .getLocation();
+                        pointCoords.add(pointLocation.x);
+                        pointCoords.add(pointLocation.y);
+
+                        Map<String, Serializable> forecastPointAttributes = Maps
+                                .newHashMap();
+                        forecastPointAttributes.put(HazardConstants.POINT_TYPE,
+                                (Serializable) pointCoords);
+                        forecastPointAttributes.put(
+                                HazardConstants.RIVER_POINT_ID,
+                                riverForecastPoint.getId());
+                        forecastPointAttributes.put(
+                                HazardConstants.RIVER_POINT_NAME,
+                                riverForecastPoint.getName());
+                        hazardAttributes.put(HazardConstants.FORECAST_POINT,
+                                (Serializable) forecastPointAttributes);
+
+                        riverHazard.setHazardAttributes(hazardAttributes);
                     }
 
-                    // Default to excessive rainfall.
-                    hazardAttributes.put("immediateCause", "ER");
-
-                    // Define flood record
-                    int floodCategory = riverForecastPoint
-                            .getMaximumObservedForecastCategory();
-
-                    if (floodCategory > RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                            .getRank()) {
-                        floodCategory = RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
-                                .getRank();
-                    }
-
-                    if (isWarning) {
-                        /*
-                         * This needs work...
-                         */
-                        String recordStatus = retrieveFloodRecord(
-                                hazardSettings, riverForecastPoint);
-                        hazardAttributes.put("floodRecord", recordStatus);
-                    } else {
-                        hazardAttributes.put("floodRecord", "OO");
-                    }
-
-                    /*
-                     * Need to translate the flood category to a string value.
-                     */
-                    if (isWarning) {
-                        if (floodCategory == RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
-                                .getRank()) {
-                            hazardAttributes.put("floodSeverity", "N");
-                        } else {
-                            hazardAttributes.put("floodSeverity",
-                                    Integer.toString(floodCategory));
-                        }
-                    } else {
-                        hazardAttributes.put("floodSeverity", "0");
-                    }
-
-                    hazardAttributes.put("creationTime", Calendar.getInstance()
-                            .getTime().getTime());
-                    pointEventDict.setIssueTime(Calendar.getInstance()
-                            .getTime());
-
-                    // Point shape specific information
-                    // Circle pointObject = new Circle("",
-                    // riverForecastPoint.getId(),
-                    // riverForecastPoint.getName(), "true", "true",
-                    // "true", "", riverForecastPoint.getLocation());
-                    // pointEventDict.addShape(pointObject);
-                    List<Double> pointCoords = Lists.newArrayList();
-                    Coordinate pointLocation = riverForecastPoint.getLocation();
-                    pointCoords.add(pointLocation.x);
-                    pointCoords.add(pointLocation.y);
-
-                    Map<String, Serializable> forecastPointAttributes = Maps
-                            .newHashMap();
-                    forecastPointAttributes.put("point",
-                            (Serializable) pointCoords);
-                    forecastPointAttributes.put("id",
-                            riverForecastPoint.getId());
-                    forecastPointAttributes.put("name",
-                            riverForecastPoint.getName());
-                    hazardAttributes.put("forecastPoint",
-                            (Serializable) forecastPointAttributes);
-
-                    pointEventDict.setHazardAttributes(hazardAttributes);
                 }
             }
         }
 
-        return listOfPotentialEventDicts;
+        return potentialRiverEventSet;
+    }
+
+    /**
+     * Creates the attributes defining a river flood watch or a river flood
+     * warning.
+     * 
+     * @param isWarning
+     *            true - this is a warning, false - this is a watch
+     * @param riverForecastPoint
+     *            The river forecast point to build the watch or warning
+     *            attributes for
+     * @param hazardAttributes
+     *            The attributes of the hazard
+     * @param riverHazardEvent
+     *            The hazard event representing the river point
+     * @return
+     */
+    private void buildFloodAttributes(boolean isWarning,
+            RiverForecastPoint riverForecastPoint,
+            Map<String, Serializable> hazardAttributes,
+            IHazardEvent riverHazardEvent) {
+        /*
+         * Retrieve the reach information for this forecast point
+         */
+        riverHazardEvent.setPhenomenon("FL");
+
+        if (isWarning) {
+
+            riverHazardEvent
+                    .setSignificance(HazardConstants.Significance.WARNING
+                            .getAbbreviation());
+        } else {
+            riverHazardEvent.setSignificance(HazardConstants.Significance.WATCH
+                    .getAbbreviation());
+
+        }
+
+        Date riseAbove = riverForecastPoint.getRiseAboveTime();
+
+        if ((riseAbove != null) && (riseAbove.getTime() > 0)) {
+            if (isWarning) {
+                hazardAttributes.put(HazardConstants.RISE_ABOVE,
+                        riseAbove.getTime());
+            } else {
+                hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+            }
+            riverHazardEvent.setStartTime(riseAbove);
+        } else {
+            hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+            riverHazardEvent.setStartTime(floodDAO.getSystemTime());
+        }
+
+        Date maxObservedForecastCrestDate = riverForecastPoint
+                .getMaximumObservedForecastTime();
+
+        if (maxObservedForecastCrestDate != null && isWarning) {
+            hazardAttributes.put(HazardConstants.CREST,
+                    maxObservedForecastCrestDate.getTime());
+            hazardAttributes.put(HazardConstants.CREST_STAGE,
+                    riverForecastPoint.getMaximumObservedForecastValue());
+        } else {
+            hazardAttributes.put(HazardConstants.CREST, 0);
+            hazardAttributes.put(HazardConstants.CREST_STAGE, 0);
+        }
+
+        Date fallBelow = riverForecastPoint.getFallBelowTime();
+
+        if (fallBelow != null) {
+            if (isWarning) {
+                hazardAttributes.put(HazardConstants.FALL_BELOW,
+                        fallBelow.getTime());
+            } else {
+                hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
+            }
+
+            /*
+             * Need to consider the shift ahead hours here...
+             */
+            Date virtualEndTime = riverForecastPoint
+                    .getVirtualFallBelowTime(true);
+            riverHazardEvent.setEndTime(virtualEndTime);
+        } else {
+            hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(riverHazardEvent.getStartTime());
+            cal.add(Calendar.HOUR, hazardSettings.getFlwExpirationHours());
+            riverHazardEvent.setEndTime(cal.getTime());
+        }
+
+        // Default to excessive rainfall.
+        hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
+                FloodRecommenderConstants.ImmediateCause.EXCESSIVE_RAINFALL
+                        .getValue());
+
+        // Define flood record
+        int floodCategory = Math.min(riverForecastPoint
+                .getMaximumObservedForecastCategory(),
+                RiverForecastPoint.HydroFloodCategories.MAJOR_FLOOD_CATEGORY
+                        .getRank());
+
+        if (isWarning) {
+            String recordStatus = retrieveFloodRecord(hazardSettings,
+                    riverForecastPoint);
+            hazardAttributes.put(HazardConstants.FLOOD_RECORD, recordStatus);
+        } else {
+            hazardAttributes
+                    .put(HazardConstants.FLOOD_RECORD,
+                            FloodRecommenderConstants.FloodRecordStatus.AREAL_POINT_FLASH_FLOOD
+                                    .getValue());
+        }
+
+        /*
+         * Need to translate the flood category to a string value.
+         */
+        if (isWarning) {
+            if (floodCategory == RiverForecastPoint.HydroFloodCategories.NULL_CATEGORY
+                    .getRank()) {
+                hazardAttributes
+                        .put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                                FloodRecommenderConstants.FloodSeverity.NONE
+                                        .getValue());
+            } else {
+                hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                        Integer.toString(floodCategory));
+            }
+        } else {
+            hazardAttributes
+                    .put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                            FloodRecommenderConstants.FloodSeverity.AREAL_OR_FLASH_FLOOD
+                                    .getValue());
+        }
+    }
+
+    /**
+     * Creates the attributes defining a river statement.
+     * 
+     * @param riverForecastPoint
+     *            The river forecast point to build the statement attributes for
+     * @param hazardAttributes
+     *            The attributes of the hazard
+     * @param pointHazardEvent
+     *            The hazard event representing the river point
+     * @return
+     */
+    private void buildNonFloodAttributes(RiverForecastPoint riverForecastPoint,
+            Map<String, Serializable> hazardAttributes,
+            IHazardEvent pointHazardEvent) {
+        /*
+         * Retrieve the reach information for this forecast point
+         */
+        pointHazardEvent.setPhenomenon("HY");
+        pointHazardEvent.setSignificance("S");
+
+        hazardAttributes.put(HazardConstants.POINTID,
+                riverForecastPoint.getId());
+        hazardAttributes.put(HazardConstants.STREAM_NAME,
+                riverForecastPoint.getStream());
+
+        hazardAttributes.put(HazardConstants.FLOOD_STAGE,
+                riverForecastPoint.getFloodStage());
+        hazardAttributes.put(HazardConstants.ACTION_STAGE,
+                riverForecastPoint.getActionStage());
+
+        hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+
+        hazardAttributes.put(HazardConstants.CREST, 0);
+
+        hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
+
+        pointHazardEvent.setStartTime(floodDAO.getSystemTime());
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(pointHazardEvent.getStartTime());
+        cal.add(Calendar.HOUR, hazardSettings.getFlwExpirationHours());
+        pointHazardEvent.setEndTime(cal.getTime());
+
+        /*
+         * Default to unknown cause.
+         */
+        hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
+                FloodRecommenderConstants.ImmediateCause.UNKNOWN.getValue());
+
+        hazardAttributes
+                .put(HazardConstants.FLOOD_RECORD,
+                        FloodRecommenderConstants.FloodRecordStatus.AREAL_POINT_FLASH_FLOOD
+                                .getValue());
+
+        hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
+                FloodRecommenderConstants.FloodSeverity.NONE.getValue());
     }
 
     /**
@@ -793,19 +926,22 @@ public class RiverProFloodRecommender {
 
         if (crestValue != RiverForecastPoint.MISSINGVAL
                 && recordValue != RiverForecastPoint.MISSINGVAL) {
-            if (pe.charAt(0) == 'Q') {
+            if (pe.charAt(0) == RIVER_FLOW_CHARACTER) {
                 threshold = settings.getVtecRecordFlowOffset();
             } else {
                 threshold = settings.getVtecRecordStageOffset();
             }
 
             if (crestValue >= (recordValue - threshold)) {
-                recordString = "NR";
+                recordString = FloodRecommenderConstants.FloodRecordStatus.NEAR_RECORD_FLOOD_OR_RECORD_FLOOD_EXPECTED
+                        .getValue();
             } else {
-                recordString = "NO";
+                recordString = FloodRecommenderConstants.FloodRecordStatus.RECORD_FLOOD_NOT_EXPECTED
+                        .getValue();
             }
         } else {
-            recordString = "UU";
+            recordString = FloodRecommenderConstants.FloodRecordStatus.NO_PERIOD_OF_RECORD
+                    .getValue();
         }
 
         return recordString;

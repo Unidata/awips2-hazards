@@ -1092,8 +1092,13 @@ columns = [
                      },
                      {
                       "displayString": "Description"
+                     },
+                     {
+                      "displayString": "Point ID"
+                     },
+                     {
+                      "displayString": "Stream"
                      }
-
             ]
 
 baseLayers = [ 

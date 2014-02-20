@@ -179,7 +179,17 @@ Flood = {
             "sortDir": "none", 
             "fieldName": "alert", 
             "type": "countdown"
-        }
+        },
+        "Point ID": {
+            "sortDir": "none", 
+            "fieldName": "pointID", 
+            "type": "string"
+        },
+        "Stream": {
+            "sortDir": "none", 
+            "fieldName": "streamName", 
+            "type": "string"
+        },
     }, 
     "toolbarTools": [
         {

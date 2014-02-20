@@ -636,7 +636,7 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
 
         then: "One hazard should be recommended"
 
-        Set<IHazardEvent> resultSet = recommender.getFloodDictList true
+        Set<IHazardEvent> resultSet = recommender.getPotentialRiverHazards(true, false)
         resultSet.size() == 1
 
         and: "There should be no rise above time"
