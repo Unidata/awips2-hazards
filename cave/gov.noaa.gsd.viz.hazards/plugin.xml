@@ -138,7 +138,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.productgen.localization.CopyPythonClassesAdapter"
+            localizationAdapter="com.raytheon.uf.viz.productgen.localization.MetadataAdapter"
             name="Hazard Meta Data"
             recursive="true"
             value="hazardServices/hazardMetaData">
