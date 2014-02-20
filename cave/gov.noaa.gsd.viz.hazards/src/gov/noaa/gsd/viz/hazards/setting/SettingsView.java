@@ -529,6 +529,11 @@ public class SettingsView implements
     @Override
     public final void showSettingDetail(SettingsConfig settingsConfig,
             Settings settings) {
+        if (settingDialog != null) {
+            settingDialog.open();
+            return;
+        }
+
         // Get the parameters for the settings view.
         DictList fields = DictList.getInstance(jsonConverter
                 .toJson(new SettingsConfig[] { settingsConfig }));

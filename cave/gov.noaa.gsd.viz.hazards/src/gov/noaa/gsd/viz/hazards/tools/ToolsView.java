@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -28,6 +29,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
@@ -284,6 +286,17 @@ public class ToolsView implements
     @Override
     public final void showToolParameterGatherer(String toolName,
             String jsonParams) {
+        if (toolDialog != null) {
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageDialog.openInformation(shell, "Hazard Services",
+                    "Another tool dialog is already showing. In order to "
+                            + "start a tool, first allow the other tool "
+                            + "to complete its execution, or dismiss its "
+                            + "dialog.");
+            toolDialog.open();
+            return;
+        }
         toolDialog = new ToolDialog(presenter, PlatformUI.getWorkbench()
                 .getActiveWorkbenchWindow().getShell(), toolName, jsonParams);
         toolDialog.open();
