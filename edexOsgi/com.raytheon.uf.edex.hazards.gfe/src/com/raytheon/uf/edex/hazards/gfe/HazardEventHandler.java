@@ -64,6 +64,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
 /**
@@ -83,6 +84,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Feb 18, 2014 2877       bkowal       Interoperability improvements. Prevent
  *                                      unnecessary iterations initiated by
  *                                      CAVE.
+ * Feb 20, 2014 2999       bkowal       Additional Interoperability improvements.
+ *                                      Handle the cases when multiple hazards
+ *                                      are associated with a single gfe grid.
  * 
  * </pre>
  * 
@@ -303,78 +307,66 @@ public class HazardEventHandler {
 
                 GridLocation gridLocation = discreteGridSlice.getGridParmInfo()
                         .getGridLoc();
-                IHazardEvent hazardEvent = null;
-                MultiPolygon gfeMultiPolygon = null;
-                boolean update = false;
-                boolean newHazard = false;
-                if (events.isEmpty()) {
-                    // no hazard to update; create a new hazard.
 
-                    hazardEvent = hazardEventManager.createEvent();
-                    newHazard = true;
-                    // generate an id
-                    try {
-                        hazardEvent.setEventID(HazardEventUtilities
-                                .generateEventID(siteID));
-                    } catch (Exception e) {
+                /* Polygons */
+                MultiPolygon hazardMultiPolygon = null;
+                Geometry gfeMultiPolygon = null;
+                Grid2DBit grid2DBit = this
+                        .mergeGridDataStructures(gridsToProcessMap
+                                .get(discreteKey));
+                ReferenceData referenceData = new ReferenceData(gridLocation,
+                        new ReferenceID("temp"), grid2DBit);
+                hazardMultiPolygon = referenceData
+                        .getPolygons(CoordinateType.LATLON);
+
+                /*
+                 * Track the hazards that may be updated and the hazards that
+                 * will definitely be updated.
+                 */
+                List<IHazardEvent> updateCandidates = new ArrayList<>();
+                List<IHazardEvent> hazardsToUpdate = new ArrayList<>();
+
+                /* Track the hazards that will be created. */
+                List<IHazardEvent> hazardsToCreate = new ArrayList<>();
+
+                /* Initialize the hazard state. */
+                HazardState hazardState = HazardState.PENDING;
+
+                if (events.isEmpty()) {
+                    // no hazard(s) to update; create a new hazard.
+
+                    IHazardEvent hazardEvent = this.createNewHazard(
+                            hazardEventManager, hazardState, startDate,
+                            endDate, siteID, hazardType, hazardMultiPolygon);
+                    if (hazardEvent == null) {
                         statusHandler.handle(Priority.PROBLEM,
-                                "Failed to generate Hazard Event ID!", e);
+                                "Hazard creation failed!");
                         return;
                     }
-                    // initially set the state to PENDING
-                    hazardEvent.setState(HazardState.PENDING);
 
-                    // start time
-                    hazardEvent.setStartTime(startDate);
-
-                    // end time
-                    hazardEvent.setEndTime(endDate);
-
-                    // site id
-                    hazardEvent.setSiteID(siteID);
-
-                    // phenomenon & significance (possibly subtype)
-                    String[] hazardTypeComponents = StringUtils.split(
-                            hazardType, ".");
-                    if (hazardTypeComponents.length < 2) {
-                        // invalid hazard type; does not include at least both
-                        // a phenomenon and a significance.
-                        continue;
-                    }
-
-                    String phenomenon = hazardTypeComponents[0];
-                    hazardEvent.setPhenomenon(phenomenon);
-                    String significance = hazardTypeComponents[1];
-                    hazardEvent.setSignificance(significance);
-                    // is there a subtype?
-                    if (hazardTypeComponents.length == 3) {
-                        String subtype = hazardTypeComponents[2];
-                        hazardEvent.setSubType(subtype);
-                    }
-
-                    // set the interoperability flag
-                    // for now we will just use a generic boolean; however,
-                    // additional metadata will be stored in this field in the
-                    // next
-                    // phase of GFE interoperability changes.
-                    hazardEvent.addHazardAttribute(
-                            HAZARD_ATTRIBUTE_INTEROPERABILITY, true);
+                    hazardsToCreate.add(hazardEvent);
                 } else {
+                    Geometry hazardGeometry = null;
+
                     // update the hazard that was retrieved.
                     int hazardsCount = events.entrySet().size();
                     if (hazardsCount == 1) {
-                        hazardEvent = events.entrySet().iterator().next()
-                                .getValue().get(0);
+                        IHazardEvent hazardEvent = events.entrySet().iterator()
+                                .next().getValue().get(0);
+                        hazardGeometry = hazardEvent.getGeometry();
+                        updateCandidates.add(hazardEvent);
                     } else {
-                        /*
-                         * TODO: handle multiple hazards of the same type ->
-                         * mapped to one grid scenarios. (See DR #2999)
-                         * 
-                         * For now, the retrieval of only the first hazard even
-                         * we know there is more than one is just a placeholder.
-                         */
-                        hazardEvent = events.entrySet().iterator().next()
-                                .getValue().get(0);
+                        for (String hazardEventID : events.keySet()) {
+                            IHazardEvent hazardEvent = events
+                                    .get(hazardEventID).get(0);
+                            if (hazardGeometry == null) {
+                                hazardGeometry = hazardEvent.getGeometry();
+                            } else {
+                                hazardGeometry = hazardGeometry
+                                        .union(hazardEvent.getGeometry());
+                            }
+                            updateCandidates.add(hazardEvent);
+                        }
                     }
 
                     /*
@@ -384,68 +376,155 @@ public class HazardEventHandler {
                     try {
                         gfeMultiPolygon = GFERecordUtil
                                 .translateHazardPolygonToGfe(gridLocation,
-                                        hazardEvent.getGeometry()
-                                                .getCoordinates());
+                                        hazardGeometry);
                     } catch (TransformException e) {
                         statusHandler.handle(Priority.PROBLEM,
                                 e.getLocalizedMessage(), e);
                     }
                 }
 
-                // if the hazard is in pending and has been
-                // submitted, update the state, issue time, and mode (for now).
-                if (hazardEvent.getState() == HazardState.PENDING
-                        && discreteGridSlice
-                                .getGridDataHistory()
-                                .get(discreteGridSlice.getGridDataHistory()
-                                        .size() - 1).getPublishTime() != null) {
-                    hazardEvent.setState(HazardState.PROPOSED);
+                // determine if the grid has been published.
+                if (discreteGridSlice.getGridDataHistory()
+                        .get(discreteGridSlice.getGridDataHistory().size() - 1)
+                        .getPublishTime() != null) {
+                    // set every hazard that will be updated in the pending
+                    // state to proposed
 
-                    // we will also set the ProductClass and issue time now that
-                    // the
-                    // state has been set to PROPOSED.
-                    hazardEvent.setIssueTime(new Date());
-
-                    hazardEvent.setHazardMode(this
-                            .determineProductClass(parmID));
-                    update = true;
-                }
-
-                Grid2DBit grid2DBit = this
-                        .mergeGridDataStructures(gridsToProcessMap
-                                .get(discreteKey));
-                ReferenceData referenceData = new ReferenceData(gridLocation,
-                        new ReferenceID("temp"), grid2DBit);
-                MultiPolygon multiPolygon = referenceData
-                        .getPolygons(CoordinateType.LATLON);
-                if (hazardEvent.getGeometry() == null) {
-                    hazardEvent.setGeometry(multiPolygon);
-                } else {
                     /*
-                     * Determine if the GFE geometry has changed. If the hazard
-                     * geometry changes, the other code should handle updating
-                     * the GFE grid.
+                     * update the state that is used for hazard creation just in
+                     * case new hazards need to be created based on the current
+                     * grid.
                      */
-                    if (multiPolygon.contains(gfeMultiPolygon) == false) {
-                        hazardEvent.setGeometry(multiPolygon);
-                        update = true;
+                    hazardState = HazardState.PROPOSED;
+
+                    // for now this is the only update that will be made to
+                    // a hazard based on requirements - so, a list will be
+                    // sufficient to track the hazards that need to be
+                    // updated.
+                    for (IHazardEvent updateCandidateHazardEvent : updateCandidates) {
+                        Date issueTime = new Date();
+
+                        if (updateCandidateHazardEvent.getState() == HazardState.PENDING) {
+                            updateCandidateHazardEvent
+                                    .setState(HazardState.PROPOSED);
+
+                            /*
+                             * presently we are setting the issue time and
+                             * ProductClass based on an initial review of how
+                             * hazards are stored in the database when they are
+                             * created and proposed directly from hazard
+                             * services.
+                             */
+                            updateCandidateHazardEvent
+                                    .setState(HazardState.PROPOSED);
+
+                            updateCandidateHazardEvent.setIssueTime(issueTime);
+
+                            updateCandidateHazardEvent.setHazardMode(this
+                                    .determineProductClass(parmID));
+
+                            hazardsToUpdate.add(updateCandidateHazardEvent);
+                        }
                     }
                 }
 
-                if (newHazard) {
-                    hazardEventManager.storeEvent(hazardEvent);
-                    statusHandler.info("Created hazard "
-                            + hazardEvent.getEventID());
-                } else if (update) {
-                    hazardEventManager.updateEvent(hazardEvent);
-                    statusHandler.info("Updated hazard "
-                            + hazardEvent.getEventID());
-                } else {
-                    statusHandler.info("No action has been taken for hazard "
-                            + hazardEvent.getEventID());
+                /*
+                 * Determine if there is a geometric region that is not
+                 * associated with any of the existing hazards yet.
+                 */
+                if (gfeMultiPolygon != null) {
+                    Geometry noHazardAssociation = hazardMultiPolygon
+                            .difference(gfeMultiPolygon);
+                    if (noHazardAssociation.isEmpty() == false) {
+                        /*
+                         * Create a new hazard for this region. At this point,
+                         * this is the only option because there is no easy way
+                         * to determine which part of the grid a hazard is
+                         * associated with. So, it will not be possible to
+                         * determine if a hazard geometry does not completely
+                         * match the grid region that it is associated with.
+                         */
+                        IHazardEvent hazardEvent = this.createNewHazard(
+                                hazardEventManager, hazardState, startDate,
+                                endDate, siteID, hazardType,
+                                noHazardAssociation);
+                        if (hazardEvent == null) {
+                            statusHandler.handle(Priority.PROBLEM,
+                                    "Hazard creation failed!");
+                            return;
+                        }
+
+                        hazardsToCreate.add(hazardEvent);
+                    }
+                }
+
+                if (hazardsToUpdate.isEmpty() == false) {
+                    hazardEventManager.updateEvents(hazardsToUpdate);
+                }
+                if (hazardsToCreate.isEmpty() == false) {
+                    hazardEventManager.storeEvents(hazardsToCreate);
                 }
             }
         }
+    }
+
+    private IHazardEvent createNewHazard(HazardEventManager hazardEventManager,
+            HazardState hazardState, Date startDate, Date endDate,
+            String siteID, String hazardType, Geometry hazardMultiPolygon) {
+        IHazardEvent hazardEvent = hazardEventManager.createEvent();
+
+        try {
+            hazardEvent
+                    .setEventID(HazardEventUtilities.generateEventID(siteID));
+        } catch (Exception e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Hazard ID generation failed.", e);
+            return null;
+        }
+
+        // initially set the state to PENDING
+        hazardEvent.setState(hazardState);
+
+        // start time
+        hazardEvent.setStartTime(startDate);
+
+        // end time
+        hazardEvent.setEndTime(endDate);
+
+        // site id
+        hazardEvent.setSiteID(siteID);
+
+        // geometry
+        hazardEvent.setGeometry(hazardMultiPolygon);
+
+        // phenomenon & significance (possibly subtype)
+        String[] hazardTypeComponents = StringUtils.split(hazardType, ".");
+        if (hazardTypeComponents.length < 2) {
+            // invalid hazard type; does not include at least both
+            // a phenomenon and a significance.
+            statusHandler.handle(Priority.ERROR,
+                    "Invalid hazard type encountered: " + hazardType);
+            return null;
+        }
+
+        String phenomenon = hazardTypeComponents[0];
+        hazardEvent.setPhenomenon(phenomenon);
+        String significance = hazardTypeComponents[1];
+        hazardEvent.setSignificance(significance);
+        // is there a subtype?
+        if (hazardTypeComponents.length == 3) {
+            String subtype = hazardTypeComponents[2];
+            hazardEvent.setSubType(subtype);
+        }
+
+        // set the interoperability flag
+        // for now we will just use a generic boolean; however,
+        // additional metadata will be stored in this field in the
+        // next
+        // phase of GFE interoperability changes.
+        hazardEvent.addHazardAttribute(HAZARD_ATTRIBUTE_INTEROPERABILITY, true);
+
+        return hazardEvent;
     }
 
     private Grid2DBit mergeGridDataStructures(List<Grid2DBit> grids) {

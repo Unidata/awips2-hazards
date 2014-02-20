@@ -44,7 +44,7 @@ import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
 import com.raytheon.uf.common.dataplugin.gfe.util.GfeUtil;
 import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.time.TimeRange;
-import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
 /**
@@ -59,6 +59,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Sep 27, 2013 2277       jsanchez     Initial creation
  * Feb 18, 2014 2877       bkowal       Added a utility method to convert
  *                                      a hazard geometry to a gfe geometry.
+ * Feb 20, 2014 2999       bkowal       Handle geometries consisting of multiple
+ *                                      polygons correctly when converting a
+ *                                      geometry to a 'gfe geometry'
  * 
  * </pre>
  * 
@@ -158,16 +161,34 @@ public class GFERecordUtil {
         return record;
     }
 
-    public static MultiPolygon translateHazardPolygonToGfe(
-            GridLocation gridLocation, Coordinate[] coordinates)
+    public static Geometry translateHazardPolygonToGfe(
+            GridLocation gridLocation, Geometry geometry)
             throws TransformException {
-        MultiPolygon polygon = GfeUtil.createPolygon(coordinates);
-        polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
-                .getTransformFromLatLon(PixelOrientation.CENTER, gridLocation));
-        Grid2DBit grid2DBit = GfeUtil.filledBitArray(polygon, gridLocation);
-        ReferenceData referenceData = new ReferenceData(gridLocation,
-                new ReferenceID("temp"), grid2DBit);
+        Geometry gfePolygon = null;
 
-        return referenceData.getPolygons(CoordinateType.LATLON);
+        if (geometry.getNumGeometries() == 1) {
+            MultiPolygon polygon = GfeUtil.createPolygon(geometry
+                    .getCoordinates());
+            polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
+                    .getTransformFromLatLon(PixelOrientation.CENTER,
+                            gridLocation));
+            Grid2DBit grid2DBit = GfeUtil.filledBitArray(polygon, gridLocation);
+            ReferenceData referenceData = new ReferenceData(gridLocation,
+                    new ReferenceID("temp"), grid2DBit);
+
+            gfePolygon = referenceData.getPolygons(CoordinateType.LATLON);
+        } else {
+            for (int i = 0; i < geometry.getNumGeometries(); i++) {
+                Geometry multiPolygon = translateHazardPolygonToGfe(
+                        gridLocation, geometry.getGeometryN(i));
+                if (gfePolygon == null) {
+                    gfePolygon = multiPolygon;
+                } else {
+                    gfePolygon = gfePolygon.union(multiPolygon);
+                }
+            }
+        }
+
+        return gfePolygon;
     }
 }
