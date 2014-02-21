@@ -18,7 +18,6 @@
 
 import json, os, cPickle, time, fcntl, random, stat
 import Logger as LogStream
-import defaultConfig as defaultConfig
 from PathManager import PathManager
        
 class DatabaseStorage:
@@ -27,10 +26,7 @@ class DatabaseStorage:
         # Build the path to the database files.
         # These files live in the same directory as this module.
         self._localizationPath = 'gfe/userPython/'
-        self._readOnlyDbPath = self.buildDatabasePath()
         self._dbPath = self.getUserPath("HazardServices")
-        self._cannedDataPath = self.getCannedDataPath()
-        self._cannedEventsFileName = self._cannedDataPath + "cannedEvents"
         self._vtecRecordsFileName = self._dbPath + "vtecRecords.json"
         self._vtecRecordsLockName = self._dbPath + "vtecRecords.lock"
         self._vtecRecordsLockFD = None
@@ -46,49 +42,16 @@ class DatabaseStorage:
         lf = pathMgr.getLocalizationFile(str(self._localizationPath), 'CAVE_STATIC', 'USER')
         fullpath = lf.getPath()
         return fullpath + "/"
-
-    def getCannedDataPath(self):
-        """
-        Builds the path to the canned hazards file.
-        When the user presses the reset option in the
-        Hazard Services Console, the contents of the hazards
-        database are replaces with the events contained in this
-        file.
-        
-        @return The path to the canned events json file (in localization)
-                or None if the file does not exist.
-        """
-        from com.raytheon.uf.common.localization import PathManagerFactory
-        pathMgr = PathManagerFactory.getPathManager()
-        path = 'python/dataStorage'
-        fullpath = pathMgr.getStaticFile(path).getPath()
-        return fullpath + "/"
-
-    def buildDatabasePath(self):
-        path = defaultConfig.__file__
-        pos = path.rfind("dataStorage")
-        path = path[0:pos]        
-        return path + "dataStorage/"
         
     def getData(self, criteria):        
         info = json.loads(criteria)
         dataType = info.get("dataType")
 
-        if dataType in ['config', 'hazardInfoConfig', 'hazardInfoOptions',
-                        'viewDefConfig', 'viewConfig', 'viewDefaultValues', 'alertConfig',
-                        'hazardInstanceAlertConfig']:
-            return self.getConfigData(dataType, info)
-                
-        elif dataType == "alerts":
+        if dataType == "alerts":
             return self.getAlertValues()
 
         elif dataType == 'events':
             return self.getEvents(dataType, info)
-
-        elif dataType == 'cannedEvents':
-            # We are handling this in a special way and it does
-            # NOT return JSON.
-            return []
         
         elif dataType in ["vtecRecords", "testVtecRecords"]:
             return self.getVtecRecords(dataType, info)
@@ -158,20 +121,6 @@ class DatabaseStorage:
     def resetVtecDatabase(self):
         self.writeVtecDatabase("vtecRecords", [])
              
-    def getConfigData(self, dataType, info):
-        returnDict = eval('defaultConfig.' + dataType)
-
-        try:
-            # Override config info from local ihisConfig
-            import database.ihisConfig as ihisConfig
-            ihisConfigDict = eval("ihisConfig." + dataType)
-
-            for key in ihisConfigDict:
-                returnDict[key] = ihisConfigDict[key]
-        except:
-            pass
-        return json.dumps(returnDict)
-    
     def getAlertValues(self):
         result = self.getLocalData(self._dbPath+"alerts", "Not used")
         return json.dumps(result)
@@ -277,10 +226,6 @@ class DatabaseStorage:
         fcntl.lockf(lockFD.fileno(), fcntl.LOCK_UN)
         t2 = time.time()
         lockFD.close()    
-    
-    def getColorTable(self, type):
-        colorTable_dir = self._readOnlyDbPath + "ColorTable." + type
-        return open(colorTable_dir, "r")
         
     def newSeqNum(self):
         try:             #Check if last sequence number file exists, then open and edit

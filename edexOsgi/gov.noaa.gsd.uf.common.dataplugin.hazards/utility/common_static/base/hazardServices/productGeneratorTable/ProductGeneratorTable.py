@@ -102,7 +102,6 @@ ProductGeneratorTable = {
             "allowedHazards": [
             ('HU.A','Hurricane'),
             ('HU.W','Hurricane'),
-            ('HU.S','Hurricane'),
             ('TY.A','Typhoon'),
             ('TY.W','Typhoon'),
             ('TR.A','Tropical'),
@@ -182,7 +181,6 @@ ProductGeneratorTable = {
             ('LS.W', 'CoastalFlood'),     # LAKESHORE FLOOD WARNING
             ('LS.Y', 'CoastalFlood'),     # LAKESHORE FLOOD ADVISORY
             ('LS.A', 'CoastalFlood'),     # LAKESHORE FLOOD WATCH
-            ('LS.S', 'CoastalFloodStatement'),     # LAKESHORE FLOOD STATEMENT
             ('SU.W', 'HighSurf'),         # HIGH SURF WARNING
             ('SU.Y', 'HighSurf'),         # HIGH SURF ADVISORY
             ],

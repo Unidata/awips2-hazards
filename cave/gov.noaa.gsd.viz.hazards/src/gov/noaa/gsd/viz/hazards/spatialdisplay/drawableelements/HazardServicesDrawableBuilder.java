@@ -450,7 +450,8 @@ public class HazardServicesDrawableBuilder {
                 Long pointID = (Long) shape.get(HazardConstants.POINTID);
                 Date pointDate = new Date(pointID);
                 Color[] colors;
-                if (pointDate.equals(currentFrame.getRefTime())) {
+                if (currentFrame != null
+                        && pointDate.equals(currentFrame.getRefTime())) {
                     colors = new Color[] { Color.WHITE, Color.WHITE };
                 } else {
                     colors = new Color[] { Color.GRAY, Color.GRAY };

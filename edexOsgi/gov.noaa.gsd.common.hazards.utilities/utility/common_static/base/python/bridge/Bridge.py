@@ -1,4 +1,4 @@
-"""
+'''
  The bridge provides a common interface to the recommender 
  and product generation frameworks as well as to the hazard 
  services database and localization files. 
@@ -29,7 +29,7 @@
  August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
                                       This is not used.
  January 29 2013  2882   bkowal       Eliminated Python Script Adapter
-"""
+'''
 
 
 import ast, types, time, traceback
@@ -40,6 +40,7 @@ from HazardServicesConfig import HazardServicesConfig
 from HazardMetaData import HazardMetaData
 from HazardConstants import *
 from LocalizationInterface import LocalizationInterface
+from PythonOverrider import importModule
 import collections
 
 try:
@@ -53,14 +54,16 @@ except:
     print tbData
 
 class Bridge:
-
-    def __init__(self, eventBus=None):                       
-        self.eventBus = eventBus
+    #
+    # Localization path to HazardTypes.py
+    hazardTypesPath = 'hazardServices/hazardTypes/HazardTypes.py'
+    
+    def __init__(self):                       
         self.DatabaseStorage = DatabaseStorage.DatabaseStorage()
         
-        self.logger = logging.getLogger("Bridge")
+        self.logger = logging.getLogger('Bridge')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
-            "gov.noaa.gsd.common.utilities", "Bridge", level=logging.INFO))
+            'gov.noaa.gsd.common.utilities', 'Bridge', level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
         
         # The try/catch block is needed because when this module is used from python-only
@@ -78,7 +81,7 @@ class Bridge:
     ### External Interface methods
         
     def setHazardEventManager(self, hazardEventManager):
-        """
+        '''
         Sets the object which manages the storage and 
         retrieval of hazard event information. The implementation
         of the hazard event manager determines how the
@@ -86,51 +89,16 @@ class Bridge:
         
         @param hazardEventManager:  The hazard event manager object.
                                     Implements IHazardEventManager interface. 
-        """
+        '''
         self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)
-                
-    def handleRecommenderResult(self, toolID, eventList, enclosed=True):
-        Adapter.setEnclosed(enclosed)
-        return JUtil.javaObjToPyVal(eventList, Adapter.eventConverter)   
-    
-    def handleProductGeneratorResult(self, toolID, eventSet, enclosed=True):
-        Adapter.setEnclosed(enclosed)
-        iterator = eventSet.iterator()
-        eventDicts = []
-        while iterator.hasNext():
-            eventDicts.append(JUtil.javaObjToPyVal(iterator.next(), Adapter.eventConverter))
-        generatedProductList = eventSet.getAttribute('generatedProducts')  
-        generatedProducts = JUtil.javaObjToPyVal(generatedProductList, Adapter.generatedProductConverter)
-        return generatedProducts, eventDicts    
-    
-    def getTools(self, criteria):
-        """
-        Retrieve a set of tools that meet the given criteria.
-        @param criteria: A JSON string containing a filter for selecting
-                         a set of tools.
-        @return: A JSON string containing a set of tools.
-        """
-        pass  
-    
-    def executeMethod(self, modulePackage, moduleName, methodName, classArgs=None, methodArgs=None):
-        """
-        Runs a method and returns its results.
-        @param modulePackage:  The package of the module the method resides in
-        @param moduleName: The name of the module the method resides in
-        @param methodName: The name of the method to run
-        @param classArgs:  Arguments required to build the module.
-        @param methodArgs: Arguments required by the method
-        @return: The results of running the method.
-        """
-        return self.executiveService.executeMethod(modulePackage, moduleName, methodName, classArgs, methodArgs)
                 
     # Data interfaces -- Access to data in the NationalDatabase, AWIPS II, or external source
     def putData(self, criteria):
-        """
+        '''
         Persist data in an external source.
         @param criteria: dataType, plus data
-        """
-        info = json.loads(criteria, "UTF-8")
+        '''
+        info = json.loads(criteria, 'UTF-8')
         dataType = info.get(DATA_TYPE_KEY)
         if dataType == EVENTS_DATA:
             hazardDicts = info.get(EVENTDICTS_KEY)
@@ -151,13 +119,13 @@ class Bridge:
 
     # This is a general routine for restricting the set of data returned
     # based on the criteria.  If the object is a dict at the top level,
-    # selecting individual members to keep can be done with a "keys" entry,
+    # selecting individual members to keep can be done with a 'keys' entry,
     # which can be a single key or a list of keys to return.  If the object
     # is either a list or dict at the top level, but the members are dict
-    # objects, then which members to keep can be done using a "filter" entry,
+    # objects, then which members to keep can be done using a 'filter' entry,
     # which must be a dict object.  To be included the member objects must
-    # have the same value for each entry in the "filter".  Also, if the members
-    # are dict objects, then the "fields" entry is a key or list of keys
+    # have the same value for each entry in the 'filter'.  Also, if the members
+    # are dict objects, then the 'fields' entry is a key or list of keys
     # to retain entries for in the members.
     def returnFilteredData(self, data, criteria) :
 
@@ -180,7 +148,7 @@ class Bridge:
 
         # Case of data being a dict object at the top level.
         if isinstance(data, dict) :
-            keylist = criteria.get("keys")
+            keylist = criteria.get('keys')
             if isinstance(keylist, str) or isinstance(keylist, unicode) :
                 keylist = [ str(keylist) ]
             elif not isinstance(fields, list) :
@@ -254,12 +222,12 @@ class Bridge:
             
 
     def getData(self, criteria):
-        """
+        '''
         Retrieve data from an external source.
         @param criteria: Defines the filter (and perhaps routing information)
                          for retrieving the data.
         @return: The requested data.
-        """
+        '''
         info = json.loads(criteria, object_pairs_hook=collections.OrderedDict)
         dataType = info.get(DATA_TYPE_KEY)
         if dataType in [SETTINGS_DATA, HAZARD_TYPES_DATA, HAZARD_CATEGORIES_DATA, \
@@ -285,15 +253,15 @@ class Bridge:
         elif dataType in [AREA_DICTIONARY_DATA, CITY_LOCATION_DATA, SITE_INFO_DATA] :
             repoEntry = self.caveEdexRepo.get(dataType)
             if repoEntry == None :
-                oneLI = LocalizationInterface("")
+                oneLI = LocalizationInterface('')
                 if dataType == SITE_INFO_DATA :
                     repoEntry = oneLI.getLocData( \
-                        "textproducts/library/SiteInfo.py", "EDEX", "", "")
+                        'textproducts/library/SiteInfo.py', 'EDEX', '', '')
                 else :
                     repoEntry = oneLI.getLocData(
-                        self.textUtilityRoot+str(dataType)+".py", "CAVE", "", "")
+                        self.textUtilityRoot+str(dataType)+'.py', 'CAVE', '', '')
                 if repoEntry == None :
-                    msg = "No data at all for type "+dataType
+                    msg = 'No data at all for type '+dataType
                     self.logger.error(msg)
                     repoEntry = {}
                 self.caveEdexRepo[dataType] = repoEntry
@@ -316,34 +284,19 @@ class Bridge:
                    gfeAccessor.getGridDataForSelectedTime(selectedTimeMS)
             return gridDataArray 
     
-    def deleteData(self, criteria):
-        """
-        Remove (unpersist) data from an external source.
-        @param criteria: Defines the filter (and perhaps routing information)
-                         for deleting the data.
-        """
-        pass
-    
-    def newSeqNum(self):
-        """
-        Generates a new, unique event ID taking into
-        consideration existing ids.
-        """
-        return self.DatabaseStorage.newSeqNum()
-
 ###################################################################################
     ###  Helper methods
     
  
     def getHazards(self, settingsObject):
-        """
+        '''
         Directly calls the DatabaseStorage to get hazards. 
         All of the hazardCategory and returnType==kml section 
         can likely be removed, as we no longer use kml files 
         for hazards
         @param settingsObject: The currently selected Hazard Services Settings
         @return: A list of events for the given settings. 
-        """
+        '''
 
         hazardFilter = {}
         if type(settingsObject) in [types.DictType, collections.OrderedDict]:
@@ -362,11 +315,11 @@ class Bridge:
         return self.getEvents(criteria)
     
     def getEvents(self, info):
-        """
+        '''
         Retrieves events based on the filter passed in.
         @param info: The criteria to use to filter events.
         @return: The events  
-        """
+        '''
     
         filter = info.get(FILTER_KEY)
 
@@ -395,38 +348,15 @@ class Bridge:
     def addCriterium(self, settings, key, filters):
         if settings.has_key(key):
             filters[key] = settings[key]
-    
-    # May eventually implement an "undo" capability   
-    def reset(self, criteria):
-        # Reset to canned hazards or settings
-        # When the setting is reloaded, the canned will be accessed
-        info = json.loads(criteria)
-        dataType = info.get(DATA_TYPE_KEY)
-        if dataType == EVENTS_DATA:
-            criteria = {
-                    DATA_TYPE_KEY: CANNED_EVENT_DATA,
-                    }
-            eventDicts = self.DatabaseStorage.getData(json.dumps(criteria))
-            self.hazardEventPythonAdapter.removeAllEvents()
-            self.writeEventDB(eventDicts)
-            # Also reset the VTEC database
-            criteria = {
-                        DATA_TYPE_KEY:VTEC_RECORDS_DATA,
-                        'vtecDicts': []
-                        }
-            self.DatabaseStorage.putData(json.dumps(criteria))
-        else:
-            self.DatabaseStorage.reset(criteria)
-        return "Complete"
 
     def putHazards(self, hazardDicts, productCategory, site4id,
       currentTime=None, mergedRecords='separate', limitRecordTypeTo=None,
-      format='xml', path=""):
-        """
+      format='xml', path=''):
+        '''
         Stores hazard database information.  HazardDicts is a list of dictionaries
         describing current hazards.  ProductCategory is the product type, e.g.,
         WSW, and site4id is the 4-letter site id, such as KSLC.  
-        """
+        '''
         #self._formatHeaders(format)
       
         # convert strings back into objects
@@ -434,14 +364,14 @@ class Bridge:
             exec('hazardDicts=' + hazardDicts)
         if currentTime is not None:
             currentTime = float(currentTime)
-        if limitRecordTypeTo == "None":
+        if limitRecordTypeTo == 'None':
             limitRecordTypeTo = None
 
         # store all of the hazardDicts into the hazardDatabase. This will
         # overwrite ones with the same hazardSequence number (which is what
         # we want).
         
-        # "store" functionality copied from HazardMergerPurger
+        # 'store' functionality copied from HazardMergerPurger
         if type(hazardDicts) is list:
             hazardDicts_dict = self._convertToDict(hazardDicts)
             
@@ -457,15 +387,15 @@ class Bridge:
         records = self._purgeOldRecords(records)
 
         # write out the information back to disk
-        return json.dumps({DATA_TYPE_KEY:EVENTS_DATA, EVENTDICTS_KEY: records, "unlock": "True"})
+        return json.dumps({DATA_TYPE_KEY:EVENTS_DATA, EVENTDICTS_KEY: records, 'unlock': 'True'})
     
     def _convertToDict(self, listRecords):
-        """ 
+        ''' 
         Converts the list into a dictionary of records.  This assumes that the
-        the eventID becomes the "key" and it also exists in the 
-        value member of the input dictionary.  If the "key" is not present,
+        the eventID becomes the 'key' and it also exists in the 
+        value member of the input dictionary.  If the 'key' is not present,
         the error is silently ignored.
-        """
+        '''
         retDict = {}
         for rec in listRecords:
             key = rec.get(EVENT_ID, None)
@@ -474,15 +404,15 @@ class Bridge:
         return retDict
 
     def _purgeOldRecords(self, records, purgeTimeWindow=3*3600):
-        """
+        '''
         The purgeOldRecords function deletes records from the dictionary that
-        are "old" and "obsolete".  Old is defined as records where the
+        are 'old' and 'obsolete'.  Old is defined as records where the
         current time is past the ending time of a hazard (plus a buffer
         window defined as purgeTimeWindow in seconds).  Returns the 
         filtered set of records.  
         Note: since records is a dictionary, it may get changed within this 
         routine.  Records without the 'endTime' will remain in the dictionary.
-        """
+        '''
         currentTime = time.time()
         keys = records.keys()
         for key in keys:
@@ -491,16 +421,29 @@ class Bridge:
                 del records[key]   #delete the record
         return records
 
-    def getColorTable(self, type='json'):
-        """
-        Returns a table of colors associated with hazard types.
-        @param type: The format of the color table file
-                     can be json or xml.
-        """
-        return self.DatabaseStorage.getColorTable(type) 
-    
+    def getHazardTypes(self, hazardType=None):
+        '''
+        Returns hazard type meta information.
+        @param hazardType: The hazard type to retrieve meta information for.
+                           If this is not provided, then the entire Hazard Types
+                           table is returned. 
+        @return: The dictionary of hazard types or a specific hazard type entry 
+        '''
+        
+        try:
+           result = importModule(self.hazardTypesPath) 
+           hazardTypes = result.HazardTypes
+        except:
+           traceback.print_exc()
+           return
+        
+        if hazardType is not None:           
+            return hazardTypes.get(hazardType)
+        else:
+            return hazardTypes
+        
     def flush(self):
-        """ Flush the print buffer """
+        ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
     
     

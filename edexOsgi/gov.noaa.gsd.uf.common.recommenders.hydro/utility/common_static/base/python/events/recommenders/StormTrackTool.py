@@ -12,6 +12,7 @@ import time
 import math
 from PointTrack import *
 from GeneralConstants import *
+from Bridge import Bridge
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -71,26 +72,43 @@ class Recommender(RecommenderTemplate.Recommender):
             tryIndex = tryIndex+1
         return closestIndex
 
-    def getInitialEventDuration(self, staticSettings) :
+    def getInitialEventDuration(self, phenSig, subType) :
         '''
         @summary: Focal points can customize this method to change the initial
                   duration of the event.
-        @param staticSettings: "staticSettings" member of session attributes.
+        @param phenSig: The phenomenon and significance of an event, e.g. FF.W 
+        @param subType:  The subtype of an event, e.g. Convective. May be None or an
+                         empty string.
         @return: Initial length of Hazard Event.
         '''
+        if subType is not None and len(subType) > 0:          
+            hazardType = phenSig + "." + subType
+        else:
+            hazardType = phenSig    
+
+        bridge = Bridge()
+        hazardTypeEntry = bridge.getHazardTypes(hazardType)
+        
+        if hazardTypeEntry is not None:
+           initialDuration = hazardTypeEntry.get("defaultDuration", MILLIS_PER_HOUR)
+           
+           if initialDuration > 3 * MILLIS_PER_HOUR :
+              initialDuration = 3 * MILLIS_PER_HOUR
+
+        else:
+           initialDuration = 3 * MILLIS_PER_HOUR
+           
+        
         # Use the default duration for the current setting, but also assume it
         # does not make much sense for an event associated with a tracked
         # object to last more than three hours.
-        initialDuration = staticSettings.get("defaultDuration", MILLIS_PER_HOUR)
-        if initialDuration > 3 * MILLIS_PER_HOUR :
-            initialDuration = 3 * MILLIS_PER_HOUR
         return initialDuration
 
     def getInitialWxEventMovement(self, duration) :
         '''
         @summary: Focal points can customize this method to change the initial
                   motion of the weather event.
-        @param duration: "staticSettings" member of session attributes.
+        @param duration: Duration of event
         @return: A dictionary containing the "speed" and "bearing".
         '''
         # For now default the initial motion and bearing.  The longer the
@@ -101,11 +119,11 @@ class Recommender(RecommenderTemplate.Recommender):
         motion["bearing"] = 225  # from SW
         return motion
 
-    def initializeTypeOfEvent(self, staticSettings) :
+    def initializeTypeOfEvent(self, sessionAttributes) :
         '''
         @summary: Focal points can customize this method to change the initial
                   phenomena, significance, subtype, and phensig.
-        @param staticSettings: "staticSettings" member of session attributes.
+        @param sessionAttributes: session attributes.
         @return: A tuple containing the phenomena, significance, subtype,
                  and phensig.
         '''
@@ -129,11 +147,15 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: updated session attributes.
         '''
 
-        staticSettings = sessionAttributes["staticSettings"]
-
+        # Call method that initializes the phenomena, significance, and subtype
+        # for hazard. This is a reasonable thing for a focal point to customize.
+        ( phenomena, significance, subType, phenSig ) = \
+                 self.initializeTypeOfEvent(sessionAttributes)
+        
+        
         # Call method that sets the initial event duration in milliseconds.
         # This is a reasonable thing for a focal point to customize.
-        initialDuration = self.getInitialEventDuration(staticSettings)
+        initialDuration = self.getInitialEventDuration(phenSig, subType)
 
         # Pull the rest of the time info we need out of the session info.
         framesInfo = sessionAttributes.get("framesInfo")
@@ -232,10 +254,6 @@ class Recommender(RecommenderTemplate.Recommender):
         #polygonShape["points"] = hazardPolygon
         #shapeList.append(polygonShape)
 
-        # Call method that initializes the phenomena, significance, and subtype
-        # for hazard. This is a reasonable thing for a focal point to customize.
-        ( phenomena, significance, subType, phenSig ) = \
-                 self.initializeTypeOfEvent(staticSettings)
 
         # Finalize our set of output attributes.
         resultDict = {}
@@ -257,7 +275,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # attributes, which the parent method execute() will delete. This way,
         # the correctness of this information can be evaluated in unit tests.
         forJavaObj = {}
-        forJavaObj["SiteID"] = staticSettings["defaultSiteID"]
+        forJavaObj["SiteID"] = sessionAttributes["siteID"]
         forJavaObj["currentTime"] = currentTime
         forJavaObj["startTime"] = startTime
         forJavaObj["endTime"] = endTime

@@ -10,21 +10,6 @@ TOR = {
         "SV.W", 
         "EW.W"
     ], 
-    "defaultBaseLayer": "Google Hybrid", 
-    "hazardsFilter": "TOR", 
-    "radar": "true", 
-    "defaultVectorLayers": [], 
-    "controlLayers": [
-        "Hazards", 
-        "LandScan Population", 
-        "CO Gov", 
-        "CO Airports", 
-        "USA WFO Locations", 
-        "USA EM State Offices", 
-        "CO EOC Offices"
-    ], 
-    "caveSettings": "True", 
-    "pointHazardShape": "triangle", 
     "hazardCategoriesAndTypes": [
         {
             "displayString": "Convective", 
@@ -35,12 +20,7 @@ TOR = {
             ]
         }
     ], 
-    "draggedTrackPointShape": "star", 
-    "defaultControlLayers": [
-        "Hazards"
-    ], 
     "defaultTimeDisplayDuration": 14400000, 
-    "trackPointShape": "circle", 
     "maxDuration": 90, 
     "durationIncrement": 1, 
     "mapCenter": {
@@ -49,13 +29,6 @@ TOR = {
         "zoom": 7
     }, 
     "defaultSiteID": "OAX", 
-    "temporalCounts": {
-        "distance": 12, 
-        "step": 2000, 
-        "panDistance": 7200000, 
-        "loopCount": 0, 
-        "increment": 300000
-    }, 
     "defaultCategory": "Convective", 
     "visibleSites": [
         "BOU", 
@@ -70,7 +43,6 @@ TOR = {
         "Start Time", 
         "End Time"
     ], 
-    "defaultImageLayers": [], 
     "visibleStates": [
         "potential",
         "proposed",
@@ -170,6 +142,5 @@ TOR = {
             "toolName": "StormTrackTool", 
             "displayName": "Storm Track"
         }
-    ], 
-    "defaultHazardCategory": "shortFused"
+    ] 
 }

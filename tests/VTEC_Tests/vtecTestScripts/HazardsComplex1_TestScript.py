@@ -151,18 +151,6 @@ scripts = [
          ],
     },
     {
-    "name": "Hazards11",
-    "productType": "CFW",
-    "commentary": "Generating a LS.S in one zone, to generate NEW vtec.",
-    "createGrids": [
-        (20, 28, "LS.S", ["FLZ039"]),
-        ],
-    "checkStrings": [
-                  "FLZ039-",
-                  "/O.NEW.KTBW.LS.S.0001.100101T2000Z-100102T0400Z/",
-                  ],
-    },
-    {
     "name": "HazardsCleanup",
     "commentary": "Cleanup of hazards grids and hazard table",
     "productType": None,

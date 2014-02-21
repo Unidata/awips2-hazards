@@ -84,7 +84,6 @@ class Recommender(RecommenderTemplate.Recommender):
         definedSpatialInfo() routine
         @return: updated session attributes.
         '''
-        staticSettings = sessionAttributes["staticSettings"]
         eventDict = eventAttributes
         modifyDict = spatialInputMap
 

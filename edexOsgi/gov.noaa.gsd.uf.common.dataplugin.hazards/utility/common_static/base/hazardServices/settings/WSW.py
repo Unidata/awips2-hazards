@@ -9,20 +9,6 @@ WSW = {
         "WS.W", 
         "BZ.W"
     ], 
-    "hazardsFilter": "WSW", 
-    "radar": "true", 
-    "defaultBaseLayer": "Google Hybrid", 
-    "controlLayers": [
-        "Hazards", 
-        "LandScan Population", 
-        "CO Gov", 
-        "CO Airports", 
-        "USA WFO Locations", 
-        "USA EM State Offices", 
-        "CO EOC Offices"
-    ], 
-    "caveSettings": "True", 
-    "pointHazardShape": "triangle", 
     "hazardCategoriesAndTypes": [
         {
             "displayString": "Winter Weather", 
@@ -32,26 +18,13 @@ WSW = {
             ]
         }
     ], 
-    "draggedTrackPointShape": "star", 
-    "defaultControlLayers": [
-        "Hazards"
-    ], 
     "defaultTimeDisplayDuration": 86400000, 
-    "trackPointShape": "circle", 
     "maxDuration": 3600, 
     "durationIncrement": 60, 
     "mapCenter": {
         "lat": 41.06, 
         "lon": -95.91, 
         "zoom": 7
-    }, 
-    "defaultSiteID": "OAX", 
-    "temporalCounts": {
-        "distance": 12, 
-        "step": 2000, 
-        "panDistance": 14400000, 
-        "loopCount": 0, 
-        "increment": 600000
     }, 
     "defaultCategory": "Winter Weather", 
     "visibleSites": [
@@ -66,9 +39,6 @@ WSW = {
         "Time Remaining",
         "Start Time", 
         "End Time"
-    ], 
-    "defaultImageLayers": [
-        "snowAccumulation"
     ], 
     "visibleStates": [
         "potential",
@@ -165,6 +135,5 @@ WSW = {
         }
     },          
     "toolbarTools": [
-    ], 
-    "defaultHazardCategory": "longFused"
+    ] 
 }

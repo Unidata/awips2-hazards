@@ -3,9 +3,6 @@ Flood = {
     "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
                         "com.raytheon.viz.mpe.ui.MPEPerspective"],
     "displayName": "Canned Flood", 
-    "hidHazardCategories": [
-        "Hydrology"
-    ], 
     "visibleTypes": [
         "FF.A", 
         "FF.W.Convective", 
@@ -17,23 +14,6 @@ Flood = {
         "FL.A", 
         "FL.W"
     ], 
-    "defaultBaseLayer": "Google Physical", 
-    "hazardsFilter": "Flood", 
-    "radar": "true", 
-    "defaultVectorLayers": [
-        "riverPoints"
-    ], 
-    "controlLayers": [
-        "Hazards", 
-        "LandScan Population", 
-        "CO Gov", 
-        "CO Airports", 
-        "USA WFO Locations", 
-        "USA EM State Offices", 
-        "CO EOC Offices"
-    ], 
-    "caveSettings": "True", 
-    "pointHazardShape": "triangle", 
     "hazardCategoriesAndTypes": [
         {
             "displayString": "Hydrology", 
@@ -50,28 +30,14 @@ Flood = {
             ]
         }
     ], 
-    "draggedTrackPointShape": "star", 
-    "defaultControlLayers": [
-        "Hazards"
-    ], 
+    "hazardsFilter" : "Flood",     
     "defaultTimeDisplayDuration": 172800000, 
-    "trackPointShape": "circle", 
-    "maxDuration": 7260, 
-    "durationIncrement": 60, 
+    "defaultCategory" : "Hydrology",
     "mapCenter": {
         "lat": 41.06, 
         "lon": -95.91, 
         "zoom": 7
     }, 
-    "defaultSiteID": "OAX", 
-    "temporalCounts": {
-        "distance": 12, 
-        "step": 2000, 
-        "panDistance": 14400000, 
-        "loopCount": 0, 
-        "increment": 600000
-    }, 
-    "defaultCategory": "Hydrology", 
     "visibleSites": [
         "BOU", 
         "OAX"
@@ -85,7 +51,6 @@ Flood = {
         "Start Time", 
         "End Time"
     ], 
-    "defaultImageLayers": [], 
     "visibleStates": [
         "potential",
         "proposed",
@@ -208,6 +173,5 @@ Flood = {
             "toolName": "StormTrackTool", 
             "displayName": "Storm Track"
         }
-    ], 
-    "defaultHazardCategory": "hydro"
+    ]
 }

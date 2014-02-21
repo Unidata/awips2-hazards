@@ -439,7 +439,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if ratio >= 1.0:
                     hazardEvent = EventFactory.createEvent()
                     hazardEvent.setEventID('')
-                    hazardEvent.setSiteID(SITE_KEY)
+                    hazardEvent.setSiteID(self.sessionAttributes.get('siteID'))
                     hazardEvent.setHazardState(POTENTIAL_TYPE)
                     hazardEvent.setPhenomenon(FFW_PHENOMENON)
                     hazardEvent.setSignificance(FFW_SIGNIFICANCE)

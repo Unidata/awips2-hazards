@@ -130,13 +130,12 @@ class Recommender(RecommenderTemplate.Recommender):
             significance = "W"
             subType = "NonConvective"
             
-        staticSettings = sessionDict["staticSettings"]
         currentTime = long(sessionDict["currentTime"])
         startTime = currentTime
         endTime = startTime + self.DEFAULT_FFW_DURATION_IN_MS
         
         hazardEvent.setEventID("")
-        hazardEvent.setSiteID(str(staticSettings["defaultSiteID"]))
+        hazardEvent.setSiteID(str(sessionDict["siteID"]))
         hazardEvent.setHazardState("PENDING")
         hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("FF")

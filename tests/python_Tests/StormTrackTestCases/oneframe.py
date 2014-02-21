@@ -2,10 +2,6 @@ InputTestCaseData = { \
 "caseDesc" : "Single frame test",
 "sessionAttributes" :
 {
-    "staticSettings": {
-        "defaultDuration": 1800000, 
-        "defaultSiteID": "OAX"
-    }, 
     "framesInfo": {
         "frameTimeList": [
             1297137600000
@@ -14,7 +10,8 @@ InputTestCaseData = { \
         "currentFrame": "2011-02-08 04:00:00.0", 
         "frameCount": 1
     }, 
-    "currentTime": 1297137600000
+    "currentTime": 1297137600000,
+    "siteID" : "OAX"
 },
 "spatialInputMap" :
 {
@@ -34,77 +31,77 @@ InputTestCaseData = { \
 
 TestCaseResults = \
 {
-    "pivots": [
-        0
-    ], 
+   "creationTime": 1297137600000, 
+    "endTime": 1297141200000, 
     "forJavaObj": {
+        "SiteID": "OAX", 
         "currentTime": 1297137600000, 
-        "track": [
-            [
-                -95.81677274717461, 
-                41.928390087208854
-            ], 
-            [
-                -95.65816823041222, 
-                42.04606185924833
-            ]
-        ], 
+        "endTime": 1297141200000, 
         "hazardPolygon": [
             [
-                -95.6577709389584, 
-                42.205065594171856
+                -95.6576, 
+                42.2368
             ], 
             [
-                -95.44405398078004, 
-                42.045568286347866
+                -95.4012, 
+                42.0454
             ], 
             [
-                -95.81677264204296, 
-                41.80118686615204
+                -95.8167, 
+                41.8011
             ], 
             [
-                -95.98774906334067, 
-                41.928263345301275
+                -95.9877, 
+                41.9282
             ]
         ], 
         "phenomena": "FF", 
-        "subType": "Convective", 
-        "SiteID": "OAX", 
-        "startTime": 1297137600000, 
         "significance": "W", 
-        "endTime": 1297139400000
+        "startTime": 1297137600000, 
+        "subType": "Convective", 
+        "track": [
+            [
+                -95.8167, 
+                41.9283
+            ], 
+            [
+                -95.6581, 
+                42.046
+            ]
+        ]
     }, 
-    "trackPoints": [
-        {
-            "pointType": "tracking", 
-            "pointID": 1297137600000, 
-            "shapeType": "point", 
-            "point": [
-                -95.81677274717461, 
-                41.928390087208854
-            ]
-        }, 
-        {
-            "pointType": "tracking", 
-            "pointID": 1297139400000, 
-            "shapeType": "point", 
-            "point": [
-                -95.65816823041222, 
-                42.04606185924833
-            ]
-        }
-    ], 
+    "modifyCallbackToolName": "ModifyStormTrackTool", 
     "pivotTimes": [
         1297137600000
     ], 
+    "pivots": [
+        0
+    ], 
+    "startTime": 1297137600000, 
+    "state": "pending", 
     "stormMotion": {
         "bearing": 225, 
-        "speed": 20
+        "speed": 10
     }, 
-    "creationTime": 1297137600000, 
-    "modifyCallbackToolName": "ModifyStormTrackTool", 
-    "state": "pending", 
-    "startTime": 1297137600000, 
-    "endTime": 1297139400000, 
+    "trackPoints": [
+        {
+            "point": [
+                -95.8167, 
+                41.9283
+            ], 
+            "pointID": 1297137600000, 
+            "pointType": "tracking", 
+            "shapeType": "point"
+        }, 
+        {
+            "point": [
+                -95.6581, 
+                42.046
+            ], 
+            "pointID": 1297141200000, 
+            "pointType": "tracking", 
+            "shapeType": "point"
+        }
+    ], 
     "type": "FF.W"
 }

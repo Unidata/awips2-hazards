@@ -2,10 +2,6 @@ InputTestCaseData = { \
 "caseDesc" : "Dam failed case",
 "sessionDict" :
 {
-    "staticSettings": {
-        "defaultDuration": 1800000, 
-        "defaultSiteID": "OAX"
-    }, 
     "framesInfo": {
         "frameTimeList": [
             1297127700000, 
@@ -25,7 +21,8 @@ InputTestCaseData = { \
         "currentFrame": "2011-02-08 04:00:00.0", 
         "frameCount": 12
     }, 
-    "currentTime": 1297137600000
+    "currentTime": 1297137600000,
+    "siteID" : "OAX"
 },
 "dialogDict" :
 {

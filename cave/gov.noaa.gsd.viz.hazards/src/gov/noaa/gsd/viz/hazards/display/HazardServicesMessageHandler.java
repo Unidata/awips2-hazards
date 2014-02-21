@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -470,8 +471,6 @@ public final class HazardServicesMessageHandler implements
         eventSet.addAttribute("framesInfo",
                 (Serializable) Utilities.asMap(frameInfo));
 
-        HashMap<String, Serializable> staticSettings = buildStaticSettings();
-        eventSet.addAttribute(HazardConstants.STATIC_SETTINGS, staticSettings);
         eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
                 .getConfigurationManager().getSiteID());
         eventSet.addAttribute(
@@ -489,18 +488,6 @@ public final class HazardServicesMessageHandler implements
 
         notifyModelEventsChanged();
 
-    }
-
-    /**
-     * TODO Get this from the session manager somehow.
-     */
-    @Deprecated
-    private HashMap<String, Serializable> buildStaticSettings() {
-        HashMap<String, Serializable> staticSettings = new HashMap<>();
-
-        staticSettings.put("defaultDuration", 1800000);
-        staticSettings.put("defaultSiteID", "OAX");
-        return staticSettings;
     }
 
     private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(

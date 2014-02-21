@@ -68,7 +68,7 @@ scripts = [
     "commentary": "Single FA.Y expire",
     "name": "FAY_1d",
     "decodeVTEC": 0,   # don't store the vtec results
-    "drtTime": "20150501_0125",
+    "drtTime": "20150501_0140",
     "productType": "FLW_FLS",
     "createGrids": [
        (0, 1.75, "FA.Y", ["FLC049"], {'eventID': 25,

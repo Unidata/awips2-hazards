@@ -454,7 +454,9 @@ def defaultRecommenderSetup(fileFromModule) :
         return
     specificTestModuleName = fileFromModule
     baselinePaths = [ "edexOsgi/com.raytheon.uf.tools.cli/impl/src", \
-                      "pythonPackages/ufpy" ]
+                      "pythonPackages/ufpy",
+                      "edexOsgi/com.raytheon.uf.common.localization.python/utility"+ \
+                      "/common_static/base/python" ]
     updateSysPath(fromSibling=baselinePaths)
     frameworkSetUpDone = True
 

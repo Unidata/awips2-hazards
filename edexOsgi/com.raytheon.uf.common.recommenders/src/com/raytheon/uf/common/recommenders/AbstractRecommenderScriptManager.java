@@ -222,6 +222,9 @@ public abstract class AbstractRecommenderScriptManager extends
         String geoUtilPath = FileUtil.join(pythonPath, "geoUtilities");
         String genUtilPath = FileUtil.join(pythonPath, "generalUtilities");
         String logUtilPath = FileUtil.join(pythonPath, "logUtilities");
+        String localizationUtilitiesPath = FileUtil.join(pythonPath,
+                "localizationUtilities");
+        String dataStoragePath = FileUtil.join(pythonPath, "dataStorage");
 
         /*
          * This is so we can access CommHandler.py, Util.py, and UEConfig.py.
@@ -235,7 +238,7 @@ public abstract class AbstractRecommenderScriptManager extends
                 recommenderSitePath, recommenderDirPath, dataAccessPath,
                 dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
                 trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
-                fxaBinPath);
+                fxaBinPath, localizationUtilitiesPath, dataStoragePath);
         return includePath;
     }
 
