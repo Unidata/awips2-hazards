@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,7 +40,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Nov  5, 2013 2266       jsanchez    Used GeneratedProductList.
  * Jan 10, 2014 2890       bkowal      Added an identifier to associate a
  *                                     ProductInformation with a product generation
- *                                     request.       
+ *                                     request.
  * 
  * </pre>
  * 
@@ -54,9 +55,9 @@ public class ProductInformation {
 
     private Set<IHazardEvent> possibleProductEvents;
 
-    private Map<String, String> dialogInfo;
+    private Map<String, Serializable> dialogInfo;
 
-    private Map<String, String> dialogSelections;
+    private Map<String, Serializable> dialogSelections;
 
     private String[] formats;
 
@@ -90,19 +91,19 @@ public class ProductInformation {
         this.possibleProductEvents = possibleProductEvents;
     }
 
-    public Map<String, String> getDialogInfo() {
+    public Map<String, Serializable> getDialogInfo() {
         return dialogInfo;
     }
 
-    public void setDialogInfo(Map<String, String> dialogInfo) {
+    public void setDialogInfo(Map<String, Serializable> dialogInfo) {
         this.dialogInfo = dialogInfo;
     }
 
-    public Map<String, String> getDialogSelections() {
+    public Map<String, Serializable> getDialogSelections() {
         return dialogSelections;
     }
 
-    public void setDialogSelections(Map<String, String> dialogSelections) {
+    public void setDialogSelections(Map<String, Serializable> dialogSelections) {
         this.dialogSelections = dialogSelections;
     }
 

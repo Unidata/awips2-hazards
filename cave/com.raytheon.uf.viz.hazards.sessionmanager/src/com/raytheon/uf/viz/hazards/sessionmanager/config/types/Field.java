@@ -58,6 +58,12 @@ public class Field {
 
     private String label;
 
+    private Integer maxChars;
+
+    private Integer visibleChars;
+
+    private Boolean expandHorizontally;
+
     private List<Field> fields = Lists.newArrayList();
 
     private Integer leftMargin;
@@ -190,6 +196,30 @@ public class Field {
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
+    }
+
+    public Integer getMaxChars() {
+        return maxChars;
+    }
+
+    public void setMaxChars(Integer maxChars) {
+        this.maxChars = maxChars;
+    }
+
+    public Integer getVisibleChars() {
+        return visibleChars;
+    }
+
+    public void setVisibleChars(Integer visibleChars) {
+        this.visibleChars = visibleChars;
+    }
+
+    public Boolean getExpandHorizontally() {
+        return expandHorizontally;
+    }
+
+    public void setExpandHorizontally(Boolean expandHorizontally) {
+        this.expandHorizontally = expandHorizontally;
     }
 
 }

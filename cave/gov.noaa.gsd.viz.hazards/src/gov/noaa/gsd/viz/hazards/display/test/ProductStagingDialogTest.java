@@ -138,8 +138,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
         Product product = productStagingInfo.getProducts().get(0);
         assertEquals(product.getSelectedEventIDs().size(), 1);
         List<Field> fields = product.getFields();
-        assertEquals(fields.size(), 1);
-        Field field = fields.get(0);
+        Field field = fields.get(0).getFields().get(0);
         List<Choice> choices = field.getChoices();
         assertEquals(choices.size(), 2);
         checkChoice(choices.get(0));

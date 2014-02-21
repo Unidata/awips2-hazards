@@ -74,22 +74,20 @@ public class ProductStagingPresenter extends
                 ProductStagingInfo productStagingInfo = getView()
                         .getProductStagingInfo();
 
-                /*
-                 * TODO Right now there are no cases with more than one product.
-                 * This will have to be refactored when that case comes up.
-                 */
-                ProductStagingInfo.Product product = productStagingInfo
-                        .getProducts().get(0);
-
-                List<String> eventIds = product.getSelectedEventIDs();
-                Collection<IHazardEvent> events = getSessionManager()
-                        .getEventManager().getEvents();
                 Collection<IHazardEvent> selectedEvents = Lists.newArrayList();
-                for (IHazardEvent eve : events) {
-                    if (eventIds.contains(eve.getEventID())) {
-                        eve.addHazardAttribute(
-                                HazardConstants.HAZARD_EVENT_SELECTED, true);
-                        selectedEvents.add(eve);
+                for (ProductStagingInfo.Product product : productStagingInfo
+                        .getProducts()) {
+
+                    List<String> eventIds = product.getSelectedEventIDs();
+                    Collection<IHazardEvent> events = getSessionManager()
+                            .getEventManager().getEvents();
+
+                    for (IHazardEvent eve : events) {
+                        if (eventIds.contains(eve.getEventID())) {
+                            eve.addHazardAttribute(
+                                    HazardConstants.HAZARD_EVENT_SELECTED, true);
+                            selectedEvents.add(eve);
+                        }
                     }
                 }
                 getSessionManager().getEventManager().setSelectedEvents(

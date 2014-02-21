@@ -12,7 +12,11 @@ package gov.noaa.gsd.viz.hazards.display;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -57,9 +61,11 @@ public class ProductStagingInfo {
 
         private final String productGenerator;
 
-        private final List<Field> fields = Lists.newArrayList();
+        private final List<Field> fields = new ArrayList<>();
 
-        private List<String> selectedEventIDs = Lists.newArrayList();
+        private List<String> selectedEventIDs = new ArrayList<>();
+
+        private Map<String, Serializable> dialogSelections = new HashMap<>();
 
         Product(String productGenerator) {
             this.productGenerator = productGenerator;
@@ -100,8 +106,17 @@ public class ProductStagingInfo {
             return ToStringBuilder.reflectionToString(this);
         }
 
-        public void updateSelectedEventIDs(List<String> selectedEventIDs) {
+        public void setSelectedEventIDs(List<String> selectedEventIDs) {
             this.selectedEventIDs = selectedEventIDs;
+        }
+
+        public Map<String, Serializable> getDialogSelections() {
+            return dialogSelections;
+        }
+
+        public void setDialogSelections(
+                Map<String, Serializable> dialogSelections) {
+            this.dialogSelections = dialogSelections;
         }
 
     }

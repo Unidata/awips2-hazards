@@ -468,6 +468,20 @@ public final class HazardConstants {
 
     public static final String HAZARD_EVENT_IDS = "eventIDs";
 
+    public static final String FIELDS = "fields";
+
+    public static final String LABEL = "label";
+
+    public static final String FIELD_NAME = "fieldName";
+
+    public static final String VISIBLE_CHARS = "visibleChars";
+
+    public static final String MAX_CHARS = "maxChars";
+
+    public static final String FIELD_TYPE = "fieldType";
+
+    public static final String EXPAND_HORIZONTALLY = "expandHorizontally";
+
     /*
      * The following are related to hazard geometries and their supporting meta
      * information.

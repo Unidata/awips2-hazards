@@ -41,34 +41,38 @@ class Product(Legacy_ProductGenerator.Product):
         """
         @return: dialog definition to solicit user input before running tool
         """  
-        return {}
          #  Here is an example of a dialog definition which you could use
          #  as a starting point if you want to add information to be
          #  solicited from the user:
 
-#        overviewHeadlineDict = {}
-#        overviewHeadlineDict["fieldName"] = "overviewHeadline"
-#        overviewHeadlineDict["label"] = "Overview Headline"
-#        overviewHeadlineDict["fieldType"] = "Text"
-#        overviewHeadlineDict["maxChars"] = 200
-#        overviewHeadlineDict["visibleChars"] = 50
-#        overviewHeadlineDict["expandHorizontally"] = 1
-#
-#        overviewFieldDict = {}
-#        overviewFieldDict["fieldName"] = "overview"
-#        overviewFieldDict["label"] = "Overview"
-#        overviewFieldDict["fieldType"] = "Text"
-#        overviewFieldDict["maxChars"] = 200
-#        overviewFieldDict["visibleChars"] = 50
-#        overviewFieldDict["expandHorizontally"] = 1        
-#        
-#        dialogDict = {}
-#        fieldDicts = [overviewHeadlineDict, overviewFieldDict]
-#        dialogDict["fields"] = fieldDicts
-#        
-#        valueDict = {"overviewHeadline": "Enter overview headline here.", "overview":"Enter overview here."}
-#        dialogDict["valueDict"] = valueDict        
-#        return dialogDict
+        overviewHeadlineDict = {}
+        overviewHeadlineDict["fieldName"] = "overviewHeadline"
+        overviewHeadlineDict["label"] = "Overview Headline"
+        overviewHeadlineDict["fieldType"] = "Text"
+        overviewHeadlineDict["maxChars"] = 200
+        overviewHeadlineDict["visibleChars"] = 50
+        overviewHeadlineDict["expandHorizontally"] = False
+
+        overviewFieldDict = {}
+        overviewFieldDict["fieldName"] = "overview"
+        overviewFieldDict["label"] = "Overview"
+        overviewFieldDict["fieldType"] = "Text"
+        overviewFieldDict["maxChars"] = 200
+        overviewFieldDict["visibleChars"] = 50
+        overviewFieldDict["expandHorizontally"] = False        
+        
+        dialogDict = {}
+        fieldDicts = [overviewHeadlineDict, overviewFieldDict]
+        dialogDict["fields"] = fieldDicts
+        
+        valueDict = {"overviewHeadline": "Enter overview headline here.", "overview":"Enter overview here."}
+        dialogDict["values"] = valueDict        
+
+	# TODO Not ready to actually move this into repo.
+	# If you want to test the dialogInfo, comment this and uncomment 
+	# the next.
+	return {}
+        # return dialogDict
                 
     def execute(self, eventSet, dialogInputMap):          
         '''

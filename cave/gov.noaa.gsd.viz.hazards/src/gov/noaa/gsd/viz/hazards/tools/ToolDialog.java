@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -295,7 +296,7 @@ class ToolDialog extends BasicDialog {
 
         // Get the list of megawidget specifiers from the para-
         // meters.
-        Object megawidgetSpecifiersObj = dialogDict.get("fields");
+        Object megawidgetSpecifiersObj = dialogDict.get(HazardConstants.FIELDS);
         DictList megawidgetSpecifiers = null;
         if (megawidgetSpecifiersObj == null) {
             statusHandler.warn("ToolDialog.createDialogArea(): Warning: "

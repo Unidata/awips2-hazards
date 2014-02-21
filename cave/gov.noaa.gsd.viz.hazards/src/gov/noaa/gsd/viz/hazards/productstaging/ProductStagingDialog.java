@@ -13,12 +13,13 @@ import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -26,12 +27,10 @@ import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -78,19 +77,9 @@ class ProductStagingDialog extends BasicDialog {
     private static final String DIALOG_TITLE = "Product Staging";
 
     /**
-     * Tab text prefix.
-     */
-    private static final String TAB_TEXT_PREFIX = "Product : ";
-
-    /**
      * OK button text.
      */
     private static final String OK_BUTTON_TEXT = "Continue...";
-
-    /**
-     * Events section text.
-     */
-    private static final String EVENTS_SECTION_TEXT = "Events";
 
     /**
      * Logging mechanism.
@@ -147,7 +136,7 @@ class ProductStagingDialog extends BasicDialog {
 
         // Public Constructors
 
-        private final Product product;
+        private final Product stagingProduct;
 
         /**
          * Construct a standard instance.
@@ -166,16 +155,16 @@ class ProductStagingDialog extends BasicDialog {
          *            <code>specifiers</code> should have an entry in this
          *            dictionary, mapping the specifier's identifier to the
          *            value that the megawidget will take on.
-         * @param product
+         * @param stagingProduct
          * @throws MegawidgetException
          *             If one of the megawidget specifiers is invalid, or if an
          *             error occurs while creating or initializing one of the
          *             megawidgets.
          */
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
-                Dict state, Product product) throws MegawidgetException {
+                Dict state, Product stagingProduct) throws MegawidgetException {
             super(parent, specifiers, state, 0L, 0L, 0L, 0L, null);
-            this.product = product;
+            this.stagingProduct = stagingProduct;
         }
 
         // Protected Methods
@@ -189,9 +178,15 @@ class ProductStagingDialog extends BasicDialog {
 
         @Override
         protected final void stateElementChanged(String identifier, Object state) {
-            @SuppressWarnings("unchecked")
-            List<String> selectedEventIDs = (ArrayList<String>) state;
-            product.updateSelectedEventIDs(selectedEventIDs);
+            if (identifier.equals(HazardConstants.HAZARD_EVENT_IDS)) {
+                @SuppressWarnings("unchecked")
+                List<String> selectedEventIDs = (ArrayList<String>) state;
+                stagingProduct.setSelectedEventIDs(selectedEventIDs);
+            } else {
+                Map<String, Serializable> dialogSelections = stagingProduct
+                        .getDialogSelections();
+                dialogSelections.put(identifier, (String) state);
+            }
         }
     }
 
@@ -274,10 +269,13 @@ class ProductStagingDialog extends BasicDialog {
                 .getProducts();
         for (ProductStagingInfo.Product product : products) {
 
-            CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
-            tabItem.setText(TAB_TEXT_PREFIX + product.getProductGenerator());
-            Control control = createTabFolderPage(tabFolder, product);
-            tabItem.setControl(control);
+            if (product.getFields().size() > 0
+                    || product.getDialogSelections().size() > 0) {
+                CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
+                tabItem.setText(product.getProductGenerator());
+                Control control = createTabFolderPage(tabFolder, product);
+                tabItem.setControl(control);
+            }
         }
         return top;
     }
@@ -323,13 +321,7 @@ class ProductStagingDialog extends BasicDialog {
         tabLayout.marginWidth = 3;
         tabFolderPage.setLayout(tabLayout);
 
-        // Create the user-configurable portions of the dialog.
-        try {
-            createStagingInfoComposite(tabFolderPage, product);
-        } catch (MegawidgetSpecificationException e) {
-            statusHandler.error("ProductStagingDialog."
-                    + "createTabFolderPage(): Megawidget creation error.", e);
-        }
+        stagingMegawidgetManager = buildMegawidgets(tabFolderPage, product);
 
         // Configure the scrolled composite.
         scrolledComposite.setContent(tabFolderPage);
@@ -339,26 +331,6 @@ class ProductStagingDialog extends BasicDialog {
         scrolledComposite.setMinHeight(tabFolderPage.computeSize(SWT.DEFAULT,
                 SWT.DEFAULT).y);
         return scrolledComposite;
-    }
-
-    /**
-     * Build staging-specific megawidgets for the product display dialog.
-     * 
-     * @param tabPage
-     *            Page in which to create the composite.
-     * @param product
-     *            Product information for this tab page.
-     * @throws MegawidgetSpecificationException
-     *             An exception encountered while building megawidgets.
-     */
-    private void createStagingInfoComposite(Composite tabPage, Product product)
-            throws MegawidgetSpecificationException {
-        Group fieldsGroup = new Group(tabPage, SWT.NONE);
-        fieldsGroup.setText(EVENTS_SECTION_TEXT);
-        fieldsGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-                false));
-        stagingMegawidgetManager = buildMegawidgets(fieldsGroup, product);
-
     }
 
     /**

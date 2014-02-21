@@ -30,6 +30,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -209,10 +210,10 @@ public class SessionProductManager implements ISessionProductManager {
                 info.setProductGeneratorName(entry.getKey());
                 info.setProductEvents(productEvents);
                 info.setPossibleProductEvents(possibleProductEvents);
-                // TODO actually get dialog info. Currently getting the dialog
-                // info breaks the Replace Watch with Warning Story.
-                // info.setDialogInfo(productGen.getDialogInfo(entry.getKey()));
-                info.setDialogInfo(Collections.<String, String> emptyMap());
+                Map<String, Serializable> dialogInfo = productGen
+                        .getDialogInfo(entry.getKey());
+
+                info.setDialogInfo(dialogInfo);
                 info.setFormats(getProductFormats());
                 result.add(info);
             }
@@ -358,7 +359,7 @@ public class SessionProductManager implements ISessionProductManager {
             events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
 
             if (information.getDialogSelections() != null) {
-                for (Entry<String, String> entry : information
+                for (Entry<String, Serializable> entry : information
                         .getDialogSelections().entrySet()) {
                     events.addAttribute(entry.getKey(), entry.getValue());
                 }
@@ -423,11 +424,8 @@ public class SessionProductManager implements ISessionProductManager {
             String[] formats = information.getFormats();
             IPythonJobListener<GeneratedProductList> listener = new JobListener(
                     issue, notificationSender, information);
-            /*
-             * TODO The third parameter is for passing in dialogInfo. Until it's
-             * determined null will be currently be passed in.
-             */
-            productGen.generate(product, events, null, formats, listener);
+            productGen.generate(product, events,
+                    information.getDialogSelections(), formats, listener);
         }
     }
 
