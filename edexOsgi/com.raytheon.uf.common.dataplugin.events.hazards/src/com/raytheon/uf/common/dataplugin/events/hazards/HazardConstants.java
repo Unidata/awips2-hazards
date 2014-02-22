@@ -460,6 +460,8 @@ public final class HazardConstants {
 
     public static final String REPLACES = "replaces";
 
+    public static final String REPLACED_BY = "replacedBy";
+
     public static final String GENERATED_PRODUCTS = "generatedProducts";
 
     public static final String HAZARD_EVENT_SETS = "hazardEventSets";

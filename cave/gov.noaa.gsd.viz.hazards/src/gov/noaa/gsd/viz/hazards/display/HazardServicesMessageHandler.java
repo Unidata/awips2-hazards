@@ -17,6 +17,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
@@ -44,7 +46,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -877,13 +878,36 @@ public final class HazardServicesMessageHandler implements
                 String fullType = (String) map.get(key);
                 if (!fullType.isEmpty()) {
                     String[] phenSig = fullType.split(" ")[0].split("\\.");
+
+                    String subType = null;
+
+                    if (phenSig.length > 2) {
+                        subType = phenSig[2];
+                    }
+
+                    /*
+                     * This is tricky, but in replace-by operations you need to
+                     * make sure that modifications to the old event are
+                     * completed before modifications to the new event. This
+                     * puts the new event at the top of the modification queue
+                     * which ultimately controls things like which event tab
+                     * gets focus in the HID.
+                     */
+                    if (oldEvent != null) {
+                        IHazardEvent tempEvent = new BaseHazardEvent();
+                        tempEvent.setPhenomenon(phenSig[0]);
+                        tempEvent.setSignificance(phenSig[1]);
+                        tempEvent.setSubType(subType);
+                        oldEvent.addHazardAttribute(REPLACED_BY,
+                                sessionConfigurationManager
+                                        .getHeadline(tempEvent));
+                        oldEvent.addHazardAttribute(PREVIEW_STATE,
+                                HazardConstants.HazardState.ENDED.getValue());
+                    }
+
                     event.setPhenomenon(phenSig[0]);
                     event.setSignificance(phenSig[1]);
-                    if (phenSig.length > 2) {
-                        event.setSubType(phenSig[2]);
-                    } else {
-                        event.setSubType(null);
-                    }
+                    event.setSubType(subType);
 
                     /*
                      * Make sure the updated hazard type is a part of the
@@ -900,12 +924,6 @@ public final class HazardServicesMessageHandler implements
                     event.setSubType(null);
                 }
 
-                if (oldEvent != null) {
-                    oldEvent.addHazardAttribute("replacedBy",
-                            sessionConfigurationManager.getHeadline(event));
-                    oldEvent.addHazardAttribute("previewState",
-                            HazardConstants.HazardState.ENDED.getValue());
-                }
             } else if (HAZARD_EVENT_START_TIME.equals(key)) {
                 if (!sessionEventManager.canChangeTimeRange(event)) {
                     event = new BaseHazardEvent(event);
@@ -945,16 +963,21 @@ public final class HazardServicesMessageHandler implements
                     event.addHazardAttribute(key, (String) primitive);
                 } else if (primitive.getClass() == Boolean.class) {
                     event.addHazardAttribute(key, (Boolean) primitive);
-                } else if (primitive.getClass() == Float.class
-                        || primitive.getClass() == Double.class) {
+                } else if (primitive.getClass() == Float.class) {
+                    event.addHazardAttribute(key, (Float) primitive);
+                } else if (primitive.getClass() == Double.class) {
                     event.addHazardAttribute(key, (Double) primitive);
                 } else if (primitive instanceof Number) {
                     Object currentVal = event.getHazardAttribute(key);
                     if (currentVal instanceof Integer) {
-                        event.addHazardAttribute(key, (Long) primitive);
-                    } else {
                         event.addHazardAttribute(key,
-                                new Date((Long) primitive));
+                                ((Number) primitive).intValue());
+                    } else if (currentVal instanceof Long) {
+                        event.addHazardAttribute(key,
+                                ((Number) primitive).longValue());
+                    } else {
+                        event.addHazardAttribute(key, new Date(
+                                ((Number) primitive).longValue()));
                     }
                 } else {
                     throw new UnsupportedOperationException("Not implemented");
