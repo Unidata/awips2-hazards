@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display.action;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+
 /**
  * Represents an action originating from the settings view.
  * 
@@ -17,12 +19,13 @@ package gov.noaa.gsd.viz.hazards.display.action;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 09, 2014            daniel.s.schaffer@noaa.gov      Initial induction into repo
+ * Feb 19, 2014 2915       bkowal      JSON settings re-factor.
  * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  */
-public class StaticSettingsAction {
+public class StaticSettingsAction extends AbstractSettingsAction {
 
     public enum ActionType {
         NEW, SETTINGS_MODIFIED, SETTINGS_CHOSEN, SAVE, SAVE_AS, DIALOG, REVERT
@@ -30,22 +33,29 @@ public class StaticSettingsAction {
 
     private final ActionType actionType;
 
-    private String detail;
+    private String settingID;
 
     public StaticSettingsAction(ActionType actionType) {
+        super(null);
         this.actionType = actionType;
     }
 
-    public StaticSettingsAction(ActionType actionType, String detail) {
-        this(actionType);
-        this.detail = detail;
+    public StaticSettingsAction(ActionType actionType, Settings settings) {
+        super(settings);
+        this.actionType = actionType;
+    }
+
+    public StaticSettingsAction(ActionType actionType, String settingID) {
+        super(null);
+        this.actionType = actionType;
+        this.settingID = settingID;
     }
 
     public ActionType getActionType() {
         return actionType;
     }
 
-    public String getDetail() {
-        return detail;
+    public String getSettingID() {
+        return settingID;
     }
 }

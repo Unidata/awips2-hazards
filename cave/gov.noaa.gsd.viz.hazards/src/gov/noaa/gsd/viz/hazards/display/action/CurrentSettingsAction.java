@@ -19,21 +19,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 09, 2014            daniel.s.schaffer@noaa.gov      Initial creation
+ * Feb 19, 2014 2915       bkowal      Settings Action standardization
  * 
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  */
-public class CurrentSettingsAction {
-
-    private final Settings settings;
+public class CurrentSettingsAction extends AbstractSettingsAction {
 
     public CurrentSettingsAction(Settings settings) {
-        this.settings = settings;
+        super(settings);
     }
-
-    public Settings getSettings() {
-        return settings;
-    }
-
 }

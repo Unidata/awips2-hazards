@@ -31,7 +31,6 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.JSONUtilities;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
@@ -149,6 +148,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            as long integers when doing
  *                                            conversions to/from JSON.
  * Feb 07, 2014  2890      bkowal             Product Generation JSON refactor.
+ * Feb 19, 2014  2915      bkowal             JSON settings re-factor
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1692,12 +1692,11 @@ public final class HazardServicesMessageHandler implements
         switch (settingsAction.getActionType()) {
 
         case SETTINGS_MODIFIED:
-            changeCurrentSettings(JSONUtilities.settingsFromJSON(settingsAction
-                    .getDetail()));
+            changeCurrentSettings(settingsAction.getSettings());
             break;
 
         case SETTINGS_CHOSEN:
-            changeSetting(settingsAction.getDetail(), true);
+            changeSetting(settingsAction.getSettingID(), true);
             break;
 
         default:

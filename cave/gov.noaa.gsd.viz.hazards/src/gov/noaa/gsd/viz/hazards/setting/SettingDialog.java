@@ -11,14 +11,15 @@ package gov.noaa.gsd.viz.hazards.setting;
 
 import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
@@ -38,6 +39,9 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 
 /**
  * Setting dialog, a dialog allowing the user to create or modify settings.
@@ -52,6 +56,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Nov 29, 2013   2380     daniel.s.schaffer@noaa.gov Minor cleanup
  * Dec 16, 2013   2545     Chris.Golden    Added current time provider for megawidget
  *                                         use.
+ * Feb 19, 2014   2915     bkowal          JSON settings re-factor
  * 
  * </pre>
  * 
@@ -72,12 +77,6 @@ class SettingDialog extends BasicDialog {
      * Dialog title prefix.
      */
     private static final String DIALOG_TITLE_PREFIX = "Settings: ";
-
-    /**
-     * Key into a setting dictionary where the displayable name of the setting
-     * is found as a value.
-     */
-    private static final String DISPLAY_NAME = "displayName";
 
     /**
      * File menu text.
@@ -117,7 +116,7 @@ class SettingDialog extends BasicDialog {
                 @Override
                 public void run() {
                     fireAction(new StaticSettingsAction(
-                            StaticSettingsAction.ActionType.SAVE, getState()));
+                            StaticSettingsAction.ActionType.SAVE, values));
                 }
             },
             new Runnable() {
@@ -135,14 +134,15 @@ class SettingDialog extends BasicDialog {
                             "Hazard Services", "Enter the new setting name: ",
                             "", validator);
                     if (inputDialog.open() == InputDialog.OK) {
-                        values.put(DISPLAY_NAME, inputDialog.getValue());
+                        values.setDisplayName(inputDialog.getValue());
                         setDialogName(getShell());
                         fireAction(new StaticSettingsAction(
-                                StaticSettingsAction.ActionType.SAVE_AS, getState()));
+                                StaticSettingsAction.ActionType.SAVE_AS, values));
                     }
                 }
-            }, new StaticSettingsAction(StaticSettingsAction.ActionType.DIALOG), null,
-            "Close");
+            },
+            new StaticSettingsAction(StaticSettingsAction.ActionType.DIALOG),
+            null, "Close");
 
     /**
      * Edit menu item actions; each is either a <code>SettingsAction</code>,
@@ -164,12 +164,12 @@ class SettingDialog extends BasicDialog {
     /**
      * Fields dictionary, used to hold the dialog's fields.
      */
-    private final DictList fields;
+    private final SettingsConfig fields;
 
     /**
      * Values dictionary, used to hold the dialog's widgets' values.
      */
-    private Dict values;
+    private Settings values;
 
     /**
      * Current time provider.
@@ -222,7 +222,7 @@ class SettingDialog extends BasicDialog {
      *            as a dictionary, one entry for each field identifier.
      */
     public SettingDialog(SettingsPresenter presenter, Shell parent,
-            DictList fields, Dict values) {
+            SettingsConfig fields, Settings values) {
         super(parent);
         this.presenter = presenter;
         this.fields = fields;
@@ -235,33 +235,6 @@ class SettingDialog extends BasicDialog {
     // Public Methods
 
     /**
-     * Get the current state held by the dialog in the form a JSON string. The
-     * current state is specified as a dictionary that pairs field name keys
-     * with those fields' values.
-     * 
-     * @return Current state held by the dialog as a JSON string.
-     */
-    public String getState() {
-
-        // Special case: A translation has to be made between the hazard
-        // categories and types tree structure that the user is creating as
-        // state, and the old hazard categories list and hazard types list.
-        // This should be removed if we can get rid of the visibleTypes
-        // and hidHazardCategories lists in the dynamic setting.
-        SettingsView.translateHazardCategoriesAndTypesToOldLists(values);
-
-        // Translate the state into a string.
-        try {
-            return values.toJSONString();
-        } catch (Exception e) {
-            statusHandler
-                    .error("SettingDialog.getState(): Error: Could not serialize JSON.",
-                            e);
-            return null;
-        }
-    }
-
-    /**
      * Set the current state held by the dialog to equal the values given by the
      * specified dictionary pairing field name keys with those fields' values.
      * This may only be called once the dialog has been opened.
@@ -269,13 +242,17 @@ class SettingDialog extends BasicDialog {
      * @param newValues
      *            Dictionary of new values to be held by the dialog.
      */
-    public void setState(Dict newValues) {
-        values = newValues;
+    public void setState(Settings settings) {
+        values = settings;
         try {
-            megawidgetManager.setState(newValues);
+            megawidgetManager.setState(MegawidgetSettingsConversionUtils
+                    .settingsPOJOToMap(settings));
         } catch (MegawidgetStateException e) {
             statusHandler.error("SettingDialog.setState(): Error: Failed to "
                     + "accept new setting parameters.", e);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to convert the Current Settings to a Java Map!", e);
         }
     }
 
@@ -321,13 +298,16 @@ class SettingDialog extends BasicDialog {
         // the command invocation response method is empty. State
         // changes cause the entire setting definition to be sent as
         // part of a settings change action.
-        List<Dict> fieldsList = Lists.newArrayList();
-        for (Object field : fields) {
-            fieldsList.add((Dict) field);
-        }
         try {
-            megawidgetManager = new MegawidgetManager(top, fieldsList, values,
-                    0L, 0L, 0L, 0L, currentTimeProvider) {
+            // convert the SettingsConfig POJO to a Map.
+            List<Map<String, Object>> listForMegawidget = new ArrayList<Map<String, Object>>();
+            listForMegawidget.add(MegawidgetSettingsConversionUtils
+                    .settingsConfigPOJOToMap(this.fields));
+
+            megawidgetManager = new MegawidgetManager(top, listForMegawidget,
+                    MegawidgetSettingsConversionUtils
+                            .settingsPOJOToMap(this.values), 0L, 0L, 0L, 0L,
+                    currentTimeProvider) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {
@@ -338,9 +318,13 @@ class SettingDialog extends BasicDialog {
                 @Override
                 protected void stateElementChanged(String identifier,
                         Object state) {
+
+                    values = MegawidgetSettingsConversionUtils
+                            .updateSettingsUsingMap(values, this.getState());
+
                     fireAction(new StaticSettingsAction(
                             StaticSettingsAction.ActionType.SETTINGS_MODIFIED,
-                            SettingDialog.this.getState()));
+                            values));
                 }
             };
         } catch (MegawidgetException e) {
@@ -348,6 +332,9 @@ class SettingDialog extends BasicDialog {
                     .error("SettingDialog.createDialogArea(): Unable to create "
                             + "megawidget manager due to megawidget construction problem.",
                             e);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Failed to convert the Current Settings to a Java Map!", e);
         }
 
         // Return the created client area.
@@ -378,8 +365,7 @@ class SettingDialog extends BasicDialog {
      *            Shell for which title text is to be set.
      */
     private void setDialogName(Shell shell) {
-        String settingName = values.getDynamicallyTypedValue(DISPLAY_NAME);
-        shell.setText(DIALOG_TITLE_PREFIX + settingName);
+        shell.setText(DIALOG_TITLE_PREFIX + this.values.getDisplayName());
     }
 
     /**

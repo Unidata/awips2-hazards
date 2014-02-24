@@ -37,6 +37,7 @@ Bundle-ActivationPolicy: lazy
 Export-Package: com.raytheon.uf.viz.hazards.sessionmanager,
  com.raytheon.uf.viz.hazards.sessionmanager.alerts,
  com.raytheon.uf.viz.hazards.sessionmanager.config,
+ com.raytheon.uf.viz.hazards.sessionmanager.config.impl,
  com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types,
  com.raytheon.uf.viz.hazards.sessionmanager.config.types,
  com.raytheon.uf.viz.hazards.sessionmanager.events,

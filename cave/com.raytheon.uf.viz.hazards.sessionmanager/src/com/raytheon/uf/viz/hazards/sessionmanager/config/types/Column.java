@@ -38,6 +38,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 17, 2013 1257       bsteffen    Initial creation
+ * Feb 19, 2014 2915       bkowal      Remove unused constructors.
  * 
  * </pre>
  * 
@@ -67,15 +68,6 @@ public class Column {
 
     public Column(String type, String fieldName, String sortDir) {
         this(null, type, fieldName, null, sortDir);
-    }
-
-    public Column(Integer width, String type, String fieldName, String sortDir) {
-        this(width, type, fieldName, null, sortDir);
-    }
-
-    public Column(String type, String fieldName, String hintTextFieldName,
-            String sortDir) {
-        this(null, type, fieldName, hintTextFieldName, sortDir);
     }
 
     public Column(Integer width, String type, String fieldName,

@@ -12,18 +12,19 @@ package gov.noaa.gsd.viz.hazards.setting;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
+import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Nov 04, 2013    2336    Chris.Golden      Changed to work with new megawidget
  *                                           class names.
  * Nov 29, 2013    2380    daniel.s.schaffer@noaa.gov Minor cleanup
+ * Feb 19, 2014    2915    bkowal            JSON settings re-factor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -98,8 +100,6 @@ public class SettingsView implements
      * Filters toolbar menu button text.
      */
     private static final String FILTERS_TOOLBAR_BUTTON_TEXT = "Filters";
-
-    private final JSONConverter jsonConverter = new JSONConverter();
 
     /**
      * Logging mechanism.
@@ -286,13 +286,11 @@ public class SettingsView implements
             // If the menu has not yet been created, create it now.
             if (menu == null) {
                 menu = new Menu(parent);
-                List<Dict> fieldsList = Lists.newArrayList();
-                for (Object field : filterMegawidgetSpecifiers) {
-                    fieldsList.add((Dict) field);
-                }
                 try {
-                    megawidgetManager = new MegawidgetManager(menu, fieldsList,
-                            settingsAsDict()) {
+                    megawidgetManager = new MegawidgetManager(menu,
+                            filterMapList,
+                            MegawidgetSettingsConversionUtils
+                                    .settingsPOJOToMap(currentSettings)) {
                         @Override
                         protected void commandInvoked(String identifier,
                                 String extraCallback) {
@@ -304,20 +302,9 @@ public class SettingsView implements
                         protected void stateElementChanged(String identifier,
                                 Object state) {
 
-                            // Special case: A translation has to be made
-                            // between the hazard categories and types tree
-                            // structure that the user is creating as state,
-                            // and the old hazard categories list and hazard
-                            // types list. This should be removed if we can get
-                            // rid of the visibleTypes and hidHazardCategories
-                            // lists in the current setting.
-                            Dict settingsAsDict = (Dict) getState();
-                            translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
-                            Settings updatedSettings = jsonConverter.fromJson(
-                                    settingsAsDict.toJSONString(),
-                                    Settings.class);
-                            SettingsView.this.currentSettings
-                                    .apply(updatedSettings);
+                            currentSettings = MegawidgetSettingsConversionUtils
+                                    .updateSettingsUsingMap(currentSettings,
+                                            this.getState());
 
                             // Forward the current setting change to the
                             // presenter.
@@ -338,6 +325,10 @@ public class SettingsView implements
                             .error("SettingsView.FiltersPulldownAction.doGetMenu(): Unable to create "
                                     + "megawidget manager due to megawidget construction problem.",
                                     e);
+                } catch (Exception e) {
+                    statusHandler
+                            .error("Failed to convert the Current Settings to a Java Map!",
+                                    e);
                 }
             }
 
@@ -345,12 +336,18 @@ public class SettingsView implements
             // states.
             if (filtersChanged) {
                 try {
-                    megawidgetManager.setState(settingsAsDict());
+                    megawidgetManager
+                            .setState(MegawidgetSettingsConversionUtils
+                                    .settingsPOJOToMap(currentSettings));
                 } catch (MegawidgetStateException e) {
                     statusHandler.error(
                             "SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
                                     + "accept new current setting parameters.",
                             e);
+                } catch (Exception e) {
+                    statusHandler
+                            .error("Failed to convert the Current Settings to a Java Map!",
+                                    e);
                 }
                 filtersChanged = false;
             }
@@ -378,10 +375,7 @@ public class SettingsView implements
     private final Map<String, String> settingIdentifiersForNames = Maps
             .newHashMap();
 
-    /**
-     * List of filter menu-based megawidget specifiers.
-     */
-    private DictList filterMegawidgetSpecifiers = null;
+    private List<Map<String, Object>> filterMapList;
 
     /**
      * Current settings.
@@ -482,8 +476,15 @@ public class SettingsView implements
             List<Settings> settings, Field[] fields, Settings currentSettings) {
         this.presenter = presenter;
         setSettings(settings);
-        setFilterMegawidgets(fields);
         setCurrentSettings(currentSettings);
+
+        this.filterMapList = new ArrayList<Map<String, Object>>();
+        try {
+            this.filterMapList = MegawidgetSettingsConversionUtils
+                    .buildFieldMapList(fields);
+        } catch (Exception e) {
+            statusHandler.error("Failed to build a list of Map fields!", e);
+        }
     }
 
     /**
@@ -534,12 +535,9 @@ public class SettingsView implements
             return;
         }
 
-        // Get the parameters for the settings view.
-        DictList fields = DictList.getInstance(jsonConverter
-                .toJson(new SettingsConfig[] { settingsConfig }));
-        Dict values = Dict.getInstance(jsonConverter.toJson(settings));
         settingDialog = new SettingDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), fields, values);
+                .getActiveWorkbenchWindow().getShell(), settingsConfig,
+                settings);
         settingDialog.open();
         settingDialog.getShell().addDisposeListener(dialogDisposeListener);
     }
@@ -582,25 +580,7 @@ public class SettingsView implements
             filtersPulldownAction.filtersChanged();
         }
         if (settingDialog != null) {
-            settingDialog.setState(settingsAsDict());
+            settingDialog.setState(currentSettings);
         }
     }
-
-    private Dict settingsAsDict() {
-        return Dict.getInstance(jsonConverter.toJson(currentSettings));
-    }
-
-    // Private Methods
-
-    /**
-     * Set the filter megawidgets to those specified.
-     * 
-     * @param fields
-     *            filter megawidgets.
-     */
-    private void setFilterMegawidgets(Field[] fields) {
-        filterMegawidgetSpecifiers = DictList.getInstance(jsonConverter
-                .toJson(fields));
-    }
-
 }
