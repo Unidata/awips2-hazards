@@ -116,12 +116,12 @@ TOR = {
             "sortDir": "none"
         }, 
         "ETNs": {
-            "type": "number", 
+            "type": "string", 
             "fieldName": "etns", 
             "sortDir": "none"
         }, 
         "PILs": {
-            "type": "number", 
+            "type": "string", 
             "fieldName": "pils", 
             "sortDir": "none"
         }, 

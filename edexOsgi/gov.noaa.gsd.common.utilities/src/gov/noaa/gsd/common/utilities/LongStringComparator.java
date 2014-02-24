@@ -43,8 +43,12 @@ public class LongStringComparator implements Comparator<String> {
      */
     @Override
     public int compare(String o1, String o2) {
-        Long value1 = Long.valueOf(o1);
-        Long value2 = Long.valueOf(o2);
-        return value1.compareTo(value2);
+        if (o1.equals("") || o2.equals("")) {
+            return o1.compareTo(o2);
+        } else {
+            Long value1 = Long.valueOf(o1);
+            Long value2 = Long.valueOf(o2);
+            return value1.compareTo(value2);
+        }
     }
 }
