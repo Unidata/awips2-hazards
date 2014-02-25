@@ -97,13 +97,15 @@ class VTECEngineWrapper(object):
         self.bridge = bridge
         if self.bridge is not None:
             if self.vtecProduct:
-                vtecRecords = json.loads(self.bridge.getData(json.dumps({"dataType":self.vtecRecordType})))
+                vtecRecords = json.loads(self.bridge.getVtecRecords(self.vtecRecordType))
             else:
-                vtecRecords = []                
+                vtecRecords = [] 
+            
+            # hazard types has already been refactored in another code review
             # Hazard Types
             self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
             # ProductGeneratorTable
-            ProductGeneratorTable = json.loads(self.bridge.getData('{"dataType":"productGeneratorTable"}'))
+            ProductGeneratorTable = json.loads(self.bridge.getProductGeneratorTable())
         else: # Testing
             self._io = VTECTableIO(DBPATH)    # access the routines to read/write
             vtecRecords = self._io.readVtecRecords()  # read the current records

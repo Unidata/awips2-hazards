@@ -62,17 +62,14 @@ class Product(ProductTemplate.Product):
         self._vtecEngine = None
         self._productCategory = ''
 
+        # hazard types has already been refactored in another code review 
         self._hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
-        #self._hazardTypes = HazardServicesConfig("hazardTypes").getConfigFileData("HazardTypes") or {}
         
-        criteria = {'dataType' : 'AreaDictionary'}
-        self._areaDictionary = json.loads(self.bridge.getData(json.dumps(criteria)))
+        self._areaDictionary = self.bridge.getAreaDictionary()
 
-        criteria = {'dataType' : 'CityLocation'}
-        self._cityLocation = json.loads(self.bridge.getData(json.dumps(criteria)))
-        criteria = {'dataType' : 'SiteInfo'}
+        self._cityLocation = self.bridge.getCityLocation()
 
-        self._siteInfo = json.loads(self.bridge.getData(json.dumps(criteria)))
+        self._siteInfo = self.bridge.getSiteInfo()
         self._cta = CallToActions()
         
         self._tpc = TextProductCommon()

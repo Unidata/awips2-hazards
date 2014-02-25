@@ -28,11 +28,13 @@
                                       set from product generators
  August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
                                       This is not used.
- January 29 2013  2882   bkowal       Eliminated Python Script Adapter
-'''
+ January 29 2013  2882   bkowal      Eliminated Python Script Adapter
+ February 14, 2014 2979  bkowal      Created, separate named methods with
+                                     specific parameters for retrieving 
+                                     different types of hazard information.
+''' 
 
-
-import ast, types, time, traceback
+import ast, types, time, traceback, os
 import DatabaseStorage
 import json
 
@@ -42,6 +44,27 @@ from HazardConstants import *
 from LocalizationInterface import LocalizationInterface
 from PythonOverrider import importModule
 import collections
+# TODO: remove the traceback import when the deprecated function is removed
+import traceback
+
+# TODO: several of the putData functions supported filters. However,
+# nothing in the current system was using the filters. A per data type
+# filter capability can be implemented when it is needed.
+
+# TODO: remove this function and all uses of it after the bridge.py
+# re-factor is complete
+def deprecated(func):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emmitted
+    when the function is used."""
+    def newFunc(*args, **kwargs):        
+        print 'Call to deprecated function %s.' % func.__name__
+        traceback.print_stack()
+        return func(*args, **kwargs)
+    newFunc.__name__ = func.__name__
+    newFunc.__doc__ = func.__doc__
+    newFunc.__dict__.update(func.__dict__)
+    return newFunc
 
 try:
     import HazardEventPythonAdapter as Adapter
@@ -90,9 +113,10 @@ class Bridge:
         @param hazardEventManager:  The hazard event manager object.
                                     Implements IHazardEventManager interface. 
         '''
-        self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)
-                
+        self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)  
+    
     # Data interfaces -- Access to data in the NationalDatabase, AWIPS II, or external source
+    #@deprecated
     def putData(self, criteria):
         '''
         Persist data in an external source.
@@ -219,8 +243,76 @@ class Bridge:
             if len(newentry) > 0 :
                 retData.append(newentry)
         return retData
+    
+    def getCityLocation(self, filter=None):
+        cityLocation = self.caveEdexRepo.get('CityLocation')
+        if cityLocation:
+            return cityLocation
+        
+        cityLocation = self._getLocalizationData('CityLocation.py', self.textUtilityRoot, 'CAVE_STATIC')
+        if cityLocation is None:
+            msg = 'No data at all for type: CityLocation'
+            self.logger.error(msg)
+            return None
+         
+        self.caveEdexRepo['CityLocation'] = cityLocation.CityLocation    
+        return cityLocation.CityLocation
+    
+    def getAreaDictionary(self, filter=None):
+        areaDictionary = self.caveEdexRepo.get('AreaDictionary')
+        if areaDictionary:
+            return areaDictionary
+        
+        areaDictionary = self._getLocalizationData('AreaDictionary.py', self.textUtilityRoot, 'CAVE_STATIC')
+        if areaDictionary is None:
+            msg = 'No data at all for type: AreaDictionary'
+            self.logger.error(msg)
+            return None
             
+        self.caveEdexRepo['AreaDictionary'] = areaDictionary.AreaDictionary
+        return areaDictionary.AreaDictionary
+    
+    def getSiteInfo(self, filter=None):
+        siteInfo = self.caveEdexRepo.get('SiteInfo')
+        if siteInfo:
+            return siteInfo
+        
+        siteInfo = self._getLocalizationData('SiteCFG.py', self.textUtilityRoot, 'CAVE_STATIC')
+        if siteInfo is None:
+            msg = 'No data at all for type: SiteInfo'
+            self.logger.error(msg)
+            return None        
+           
+        self.caveEdexRepo['SiteInfo'] = siteInfo.SiteInfo
+        return siteInfo.SiteInfo
+    
+    def getHazardMetaData(self, phenomenon, significance, subType):
+        return HazardMetaData.getMetaData( \
+            HAZARD_METADATA, phenomenon, significance, subType)
+        
+    def getVtecRecords(self, vtecRecordType, filter=None):
+        self.DatabaseStorage.lockVtecDatabase()
+        
+        dictTable = self.DatabaseStorage.readVtecDatabase(vtecRecordType)
+        
+        # TODO: potentially add an option to keep the database locked.
+        # Currently, not used anywhere in the current implementation.
+        self.DatabaseStorage.unlockVtecDatabase()
+        
+        # Not sure what this datatype looks like yet.
+        return json.dumps(dictTable)
+    
+    def getProductGeneratorTable(self, filter=None):
+        hazardServicesConfig = HazardServicesConfig('productGeneratorTable')
+        rawOut = hazardServicesConfig.getConfigData({}) or {}
+        return json.dumps(rawOut)        
+        
+    def _getLocalizationData(self, fileName, directoryPath, locType):
+        fullLocalizationPath = os.path.join(directoryPath, fileName)
+        
+        return importModule(fullLocalizationPath, locType)    
 
+    #@deprecated
     def getData(self, criteria):
         '''
         Retrieve data from an external source.
