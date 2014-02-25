@@ -381,17 +381,35 @@ public class HazardServicesDrawableBuilder {
         return result;
     }
 
-    public List<AbstractDrawableComponent> buildhazardAreas(
-            ToolLayer toolLayer, IHazardEvent hazardEvent, Layer activeLayer,
+    /**
+     * Creates the hatched areas associated with the hazard events. Also,
+     * creates the hatched area annotations (the "Ws")
+     * 
+     * @param toolLayer
+     *            Reference to the Spatial Display tool Layer
+     * @param hazardEvent
+     *            The hazard event to build the hatched areas for
+     * @param activeLayer
+     *            The PGEN active layer
+     * @param hatchedAreas
+     *            A list representing the hazard's hatched area.
+     * @param hatchedAreaAnnotations
+     *            A list representing the hatched area annotations (the "W's"
+     *            associated with short-fused hazards).
+     * @param drawHazardHatchArea
+     *            Flag indicating whether or not hatched areas should be
+     *            displayed.
+     * @return
+     */
+    public void buildhazardAreas(ToolLayer toolLayer, IHazardEvent hazardEvent,
+            Layer activeLayer, List<AbstractDrawableComponent> hatchedAreas,
+            List<AbstractDrawableComponent> hatchedAreaAnnotations,
             boolean drawHazardHatchArea) {
 
-        List<AbstractDrawableComponent> result = Lists.newArrayList();
-
         if (drawHazardHatchArea) {
-            addHazardHatchArea(toolLayer, hazardEvent, activeLayer, result);
+            addHazardHatchArea(toolLayer, hazardEvent, activeLayer,
+                    hatchedAreas, hatchedAreaAnnotations);
         }
-
-        return result;
     }
 
     public static boolean forModifyingStormTrack(IHazardEvent hazardEvent) {
@@ -580,17 +598,24 @@ public class HazardServicesDrawableBuilder {
     }
 
     /**
-     * Builds a hazard area drawable for the provided hazard event.
+     * Builds hatched areas for a hazard event.
      * 
      * @param toolLayer
+     *            The Hazard Services Spatial Display
      * @param hazardEvent
+     *            The hazard event to build hazard areas for
      * @param activeLayer
-     * @param drawableComponents
+     *            The PGEN active layer
+     * @param hatchedAreas
+     *            A list of hatched areas
+     * @param hatchedAreaAnnotations
+     *            A list of hatched area annotations
      * @return
      */
     private void addHazardHatchArea(ToolLayer toolLayer,
             IHazardEvent hazardEvent, Layer activeLayer,
-            List<AbstractDrawableComponent> drawableComponents) {
+            List<AbstractDrawableComponent> hatchedAreas,
+            List<AbstractDrawableComponent> hatchedAreaAnnotations) {
         AbstractDrawableComponent drawableComponent;
 
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
@@ -625,7 +650,7 @@ public class HazardServicesDrawableBuilder {
                     if (!(geometry instanceof Puntal)) {
                         drawableComponent = buildPolygon(hazardEvent, geometry,
                                 activeLayer);
-                        drawableComponents.add(drawableComponent);
+                        hatchedAreas.add(drawableComponent);
                     }
                 }
             }
@@ -651,7 +676,7 @@ public class HazardServicesDrawableBuilder {
                             centroid,
                             activeLayer,
                             HazardConstants.COUNTY_INCLUDED_IN_HAZARD_ANNOTATION);
-                    drawableComponents.add(textComponent);
+                    hatchedAreaAnnotations.add(textComponent);
                 }
             }
 

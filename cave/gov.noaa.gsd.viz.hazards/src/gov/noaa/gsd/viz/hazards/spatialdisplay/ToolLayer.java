@@ -13,6 +13,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesDrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesLine;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesPolygon;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesSymbol;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.HazardServicesText;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
@@ -38,12 +39,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -53,10 +56,10 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -72,7 +75,9 @@ import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
 import com.raytheon.uf.viz.core.PixelExtent;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
+import com.raytheon.uf.viz.core.drawables.IShadedShape;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
@@ -88,6 +93,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryMod
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
+import com.raytheon.viz.core.rsc.jts.JTSCompiler;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
@@ -153,6 +159,8 @@ public class ToolLayer extends
             .getHandler(ToolLayer.class);
 
     public static final String DEFAULT_NAME = "Hazard Services";
+
+    public static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
 
     public static final double VERTEX_CIRCLE_RADIUS = 2;
 
@@ -261,7 +269,7 @@ public class ToolLayer extends
      * pixels. This recomputed once per change in selected hazard for
      * efficiency.
      */
-    private final ArrayList<double[]> handleBarPoints = Lists.newArrayList();
+    private final List<double[]> handleBarPoints = new ArrayList<>();
 
     /*
      * Contains a map in which each entry contains a unique identifier and a
@@ -270,6 +278,25 @@ public class ToolLayer extends
      * when they should not be displayed anymore.
      */
     private final Map<String, List<AbstractDrawableComponent>> persistentShapeMap;
+
+    /*
+     * A list of drawables representing the hatched areas associated with hazard
+     * events.
+     */
+    private final List<AbstractDrawableComponent> hatchedAreas;
+
+    /*
+     * Flag indicating whether or not the hatched areas should be redrawn.
+     */
+    private boolean redrawHatchedAreas = false;
+
+    /*
+     * A list of drawables representing the annotations associated with hazard
+     * hatch areas.
+     */
+    private final List<AbstractDrawableComponent> hatchedAreaAnnotations;
+
+    private IShadedShape hatchedAreaShadedShape;
 
     /**
      * Constructor.
@@ -307,15 +334,17 @@ public class ToolLayer extends
             SimulatedTime.getSystemTime().setTime(simulatedDate.getTime());
         }
 
-        displayMap = Maps.newConcurrentMap();
-        elSelected = Lists.newArrayList();
+        displayMap = new ConcurrentHashMap<>();
+        elSelected = new ArrayList<>();
         geoFactory = new GeometryFactory();
 
         dataManager = new ToolLayerDataManager();
-        persistentShapeMap = Maps.newHashMap();
+        persistentShapeMap = new HashMap<>();
+        hatchedAreas = new ArrayList<>();
+        hatchedAreaAnnotations = new ArrayList<>();
 
-        dataTimes = Lists.newArrayList();
-        selectedEventIDs = Lists.newArrayList();
+        dataTimes = new ArrayList<>();
+        selectedEventIDs = new ArrayList<>();
 
         /**
          * 
@@ -434,7 +463,8 @@ public class ToolLayer extends
     public void drawEventAreas(boolean clearAllEvents,
             boolean toggleAutoHazardChecking, boolean areHatchedAreasDisplayed) {
 
-        List<AbstractDrawableComponent> hatchedAreas = Lists.newArrayList();
+        hatchedAreas.clear();
+        hatchedAreaAnnotations.clear();
 
         /**
          * TODO For reasons that are not clear to Chris Golden and Dan Schaffer,
@@ -505,9 +535,10 @@ public class ToolLayer extends
                             areHatchedAreasDisplayed);
 
             if (areHatchedAreasDisplayed && isSelected) {
-                hatchedAreas.addAll(drawableBuilder.buildhazardAreas(this,
-                        hazardEvent, getActiveLayer(), isSelected
-                                && areHatchedAreasDisplayed));
+                redrawHatchedAreas = true;
+                drawableBuilder.buildhazardAreas(this, hazardEvent,
+                        getActiveLayer(), hatchedAreas, hatchedAreaAnnotations,
+                        isSelected && areHatchedAreasDisplayed);
             }
 
             Boolean isPersistent = (Boolean) hazardEvent
@@ -518,8 +549,9 @@ public class ToolLayer extends
 
         List<AbstractDrawableComponent> drawables = dataManager
                 .getActiveLayer().getDrawables();
-        hatchedAreas.addAll(drawables);
-        setObjects(hatchedAreas);
+
+        hatchedAreaAnnotations.addAll(drawables);
+        setObjects(hatchedAreaAnnotations);
         issueRefresh();
     }
 
@@ -733,6 +765,11 @@ public class ToolLayer extends
         if (perspectiveChanging == false) {
             fireSpatialDisplayDisposedActionOccurred();
         }
+
+        if (hatchedAreaShadedShape != null) {
+            hatchedAreaShadedShape.dispose();
+        }
+
     }
 
     /**
@@ -1241,8 +1278,7 @@ public class ToolLayer extends
         Geometry clickPointWithSlop = clickPoint
                 .buffer(getTranslatedHitTestSlopDistance(point, x, y));
 
-        List<AbstractDrawableComponent> containingSymbolsList = Lists
-                .newArrayList();
+        List<AbstractDrawableComponent> containingSymbolsList = new ArrayList<>();
 
         while (iterator.hasNext()) {
             AbstractDrawableComponent comp = iterator.next();
@@ -1564,6 +1600,75 @@ public class ToolLayer extends
     }
 
     /**
+     * Draw the hatched areas associated with the hazard events. This is done
+     * using shaded shapes to increase redrawing performance during zoom and pan
+     * operations.
+     * 
+     * @param target
+     *            The target to draw on
+     * @param paintProps
+     *            Describes how drawables appear on the target.
+     * @return
+     */
+    private void drawHatchedAreas(IGraphicsTarget target,
+            PaintProperties paintProps) {
+        /*
+         * Draw shaded geometries...
+         */
+        if (hatchedAreas.size() > 0) {
+
+            /*
+             * Only recreate the hatched areas if they have changed.
+             */
+            if (redrawHatchedAreas) {
+                redrawHatchedAreas = false;
+
+                if (hatchedAreaShadedShape != null) {
+                    hatchedAreaShadedShape.dispose();
+                }
+
+                hatchedAreaShadedShape = target.createShadedShape(false,
+                        descriptor.getGridGeometry(), true);
+                JTSCompiler groupCompiler = new JTSCompiler(
+                        hatchedAreaShadedShape, null, descriptor);
+
+                try {
+                    for (AbstractDrawableComponent hatchedArea : hatchedAreas) {
+                        if (hatchedArea.getClass() == HazardServicesPolygon.class) {
+                            HazardServicesPolygon hazardServicesPolygon = (HazardServicesPolygon) hatchedArea;
+                            Color[] colors = hazardServicesPolygon.getColors();
+                            Color fillColor = colors[0];
+                            groupCompiler.handle(
+                                    (Geometry) hazardServicesPolygon
+                                            .getGeometry().clone(),
+                                    new RGB(fillColor.getRed(), fillColor
+                                            .getGreen(), fillColor.getBlue()));
+                        }
+                    }
+
+                    hatchedAreaShadedShape.compile();
+
+                    hatchedAreaShadedShape.setFillPattern(FillPatterns
+                            .getGLPattern(GL_PATTERN_VERTICAL_DOTTED));
+
+                } catch (VizException e) {
+                    statusHandler.error("Error compiling hazard hatched areas",
+                            e);
+                }
+
+            }
+
+            try {
+                target.drawShadedShape(hatchedAreaShadedShape,
+                        paintProps.getAlpha());
+            } catch (VizException e) {
+                statusHandler.error("Error drawing hazard hatched areas", e);
+            }
+
+        }
+    }
+
+    /**
      * Sets flag indicating whether or not to draw handle bars.
      * 
      * @param drawSelectedHandleBars
@@ -1616,10 +1721,14 @@ public class ToolLayer extends
             AbstractMovableToolLayer.SelectionStatus status)
             throws VizException {
 
-        // Draw the IHIS event
+        /*
+         * Draw the hazard event
+         */
         drawProduct(target, paintProps, object);
 
-        // If there is a selected polygon
+        /*
+         * Draw the selected polygon
+         */
         if (selectedHazardIHISLayer != null) {
             drawSelected(target, paintProps);
         }
@@ -1659,7 +1768,15 @@ public class ToolLayer extends
     @Override
     protected void paintInternal(IGraphicsTarget target,
             PaintProperties paintProps) throws VizException {
-        // Retrieve the a PGEN DisplayElementFactory
+
+        /*
+         * Paint shaded shapes for hatched areas
+         */
+        drawHatchedAreas(target, paintProps);
+
+        /*
+         * Retrieve the a PGEN DisplayElementFactory
+         */
         DisplayElementFactory df = new DisplayElementFactory(target, descriptor);
 
         if (ghost != null) {
