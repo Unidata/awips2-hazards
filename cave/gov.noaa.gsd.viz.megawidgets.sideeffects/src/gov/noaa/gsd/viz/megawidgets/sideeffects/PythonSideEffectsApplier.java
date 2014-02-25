@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,17 +35,19 @@ import com.raytheon.uf.common.status.UFStatus;
  * just prior to the closing of the application).
  * <p>
  * When created, instances of this class take the path of a Python script to be
- * executed. This script must contain the definition of a method called <code>
- * applySideEffects()</code> that takes two parameters, the first being a string
- * holding the identifier of the megawidget that whose invocation is causing
- * side effects to be applied, and the second being a dictionary mapping
- * megawidget identifiers to sub-dictionaries holding their mutable properties,
- * with each sub-dictionary mapping the property names to their current values.
- * This method must return either <code>None</code>, or else a dictionary
- * identical in structure to the one passed in as a parameter, but with mappings
- * only for those megawidgets whose mutable properties have been changed as a
- * side effect, and with the sub-dictionaries likewise holding only mappings for
- * the specific properties that have been changed.
+ * executed. This script must contain the definition of a method called
+ * {@link #applySideEffects(Collection, Map, boolean)} that takes two
+ * parameters, the first being a list of strings holding the identifiers of the
+ * megawidgets whose invocations are causing side effects to be applied (or
+ * <code>None
+ * </code> if the megawidgets are being initialized), and the second being a
+ * dictionary mapping megawidget identifiers to sub-dictionaries holding their
+ * mutable properties, with each sub-dictionary mapping the property names to
+ * their current values. This method must return either <code>None</code>, or
+ * else a dictionary identical in structure to the one passed in as a parameter,
+ * but with mappings only for those megawidgets whose mutable properties have
+ * been changed as a side effect, and with the sub-dictionaries likewise holding
+ * only mappings for the specific properties that have been changed.
  * <p>
  * The file holding the script must not disappear or be modified for the life of
  * the side effects applier instance that is using it. No guarantees are made as
@@ -52,10 +55,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * written with the assumption that only the <code>applySideEffects()</code>
  * method will be guaranteed to be run each time side effects are to be applied.
  * <p>
- * <strong>Note</code>: The <code>initialize()</code> and <code>
- * prepareForShutdown()</code> static methods are thread-safe; multiple threads
- * may call these class-scoped methods without danger. Additionally, calls to
- * <code>applySideEffects()</code> are also thread safe, as they are
+ * <strong>Note</code>: The {@link #initialize()} and
+ * {@link #prepareForShutDown()} static methods are thread-safe; multiple
+ * threads may call these class-scoped methods without danger. Additionally,
+ * calls to <code>applySideEffects()</code> are also thread safe, as they are
  * synchronized at the class (not merely object) level.
  * 
  * <pre>
@@ -73,6 +76,10 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           latter equal or exceed the number of
  *                                           the former. Also added synchronization
  *                                           for thread safety.
+ * Feb 14, 2014    2161    Chris.Golden      Updated Javadoc comments, and changed
+ *                                           to work with change to interface (i.e.
+ *                                           multiple trigger identifiers being
+ *                                           supplied as a string).
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,9 +95,9 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
     private static final String INITIALIZE = "import json; import inspect";
 
     /**
-     * Name of the Python method that calls the instance's script's <code>
-     * applySideEffects()</code> Python method, and returns the result as a JSON
-     * string.
+     * Name of the Python method that calls the instance's script's
+     * <code>applySideEffects()</code> Python method, and returns the result as
+     * a JSON string.
      */
     private static final String NAME_APPLY_SIDE_EFFECTS_WRAPPER = "_applySideEffectsWrapper";
 
@@ -203,22 +210,22 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Single Jep instance, shared between the instances of this class. It is
-     * created by <code>initialize()</code> and disposed of via <code>
-     * prepareForShutDown()</code>.
+     * created by {@link #initialize()} and disposed of via
+     * {@link #prepareForShutDown()}.
      */
     private static Jep jep;
 
     /**
-     * Gson converter. As with <code>jep</code>, it is created by <code>
-     * initialize()</code> and disposed of via <code>prepareForShutDown()
-     * </code>.
+     * Gson converter. As with {@link #jep}, it is created by
+     * {@link #initialize()} and disposed of via {@link #prepareForShutDown()}.
      */
     private static Gson gson;
 
     /**
-     * Last instance to have had its <code>applySideEffects()</code> method
-     * invoked, or <code>null</code> if no instance has had this method called,
-     * or if the last such instance has been disposed of.
+     * Last instance to have had its
+     * {@link #applySideEffects(Collection, Map, boolean)} method invoked, or
+     * <code>null</code> if no instance has had this method called, or if the
+     * last such instance has been disposed of.
      */
     private static WeakReference<PythonSideEffectsApplier> lastApplier = null;
 
@@ -231,14 +238,14 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Path for the script that is run by the side effects applier prior to
-     * application of side effects. Either this or <code>script</code> will be
+     * application of side effects. Either this or {@link #script} will be
      * <code>null</code>; whichever is not <code>null</code> is used.
      */
     private final String scriptPath;
 
     /**
      * Script that is run by the side effects applier prior to application of
-     * side effects. Either this or <code>scriptPath</code> will be <code>
+     * side effects. Either this or {@link #scriptPath} will be <code>
      * null</code>; whichever is not <code>null</code> is used.
      */
     private final String script;
@@ -298,9 +305,9 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      *            applySideEffects()</code> method used by this instance to
      *            apply side effects.
      * @throws IllegalStateException
-     *             If <code>initialize()</code> has not been invoked already, or
-     *             if <code>prepareForShutdown()</code> has been invoked since
-     *             the last invocation of <code>initialize()</code>.
+     *             If {@link #initialize()} has not been invoked already, or if
+     *             {@link #prepareForShutDown()} has been invoked since the last
+     *             invocation of <code>initialize()</code>.
      * @throws NullPointerException
      *             If <code>scriptPath</code> is <code>null</code>.
      * @throws IOException
@@ -320,9 +327,9 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      *            Python script that defines the <code>applySideEffects()
      *            </code> method used by this instance to apply side effects.
      * @throws IllegalStateException
-     *             If <code>initialize()</code> has not been invoked already, or
-     *             if <code>prepareForShutdown()</code> has been invoked since
-     *             the last invocation of <code>initialize()</code>.
+     *             If {@link #initialize()} has not been invoked already, or if
+     *             {@link #prepareForShutDown()} has been invoked since the last
+     *             invocation of <code>initialize()</code>.
      */
     public PythonSideEffectsApplier(String script) {
         ensureClassInitialized();
@@ -339,7 +346,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      */
     @Override
     public Map<String, Map<String, Object>> applySideEffects(
-            String triggerIdentifier,
+            Collection<String> triggerIdentifiers,
             Map<String, Map<String, Object>> mutableProperties,
             boolean propertiesMayHaveChanged) {
         synchronized (PythonSideEffectsApplier.class) {
@@ -356,15 +363,12 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             sideEffectsBeingApplied = true;
 
             // If this method has not been run by any instance of this class
-            // since
-            // initialization, or if the last instance that ran it is not the
-            // same
-            // as this instance, perform a Jep context switch.
+            // since initialization, or if the last instance that ran it is not
+            // the same as this instance, perform a Jep context switch.
             if ((lastApplier == null) || (lastApplier.get() != this)) {
 
                 // Remember that this instance is the last to have had this
-                // method
-                // invoked.
+                // method invoked.
                 lastApplier = new WeakReference<PythonSideEffectsApplier>(this);
 
                 // Clean up to prepare for the context switch.
@@ -444,8 +448,11 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             // Invoke the side effects wrapper and get the result.
             Map<String, Map<String, Object>> resultMap = null;
             try {
-                Object result = jep.invoke(NAME_APPLY_SIDE_EFFECTS_WRAPPER,
-                        triggerIdentifier, gson.toJson(mutableProperties),
+                Object result = jep.invoke(
+                        NAME_APPLY_SIDE_EFFECTS_WRAPPER,
+                        (triggerIdentifiers == null ? null : gson
+                                .toJson(triggerIdentifiers)), gson
+                                .toJson(mutableProperties),
                         propertiesMayHaveChanged);
                 if (result != null) {
                     Type type = new TypeToken<HashMap<String, HashMap<String, Object>>>() {
@@ -462,11 +469,10 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                                 e);
             }
 
-            // Reset the application-occurring flag and return the result, which
-            // is either null if the side effects did not affect the
-            // megawidgets,
-            // or a map of megawidget identifiers to maps of mutable properties
-            // that have changed.
+            // Reset the application-occurring flag and return the result,
+            // which is either null if the side effects did not affect the
+            // megawidgets or a map of megawidget identifiers to maps of
+            // mutable properties that have changed.
             sideEffectsBeingApplied = false;
             return resultMap;
         }

@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
@@ -34,8 +35,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
 /**
- * Hazard detail view, an implementation of <code>IHazardDetailView</code> that
- * provides an SWT-based view.
+ * Hazard detail view, providing an an SWT-based view of hazard details.
  * 
  * <pre>
  * 
@@ -55,6 +55,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
  * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
+ * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the view
+ *                                           during initialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -122,6 +125,14 @@ public class HazardDetailView extends
      * Maximum visible time to be shown in the time megawidgets.
      */
     private long maxVisibleTime = 0L;
+
+    /**
+     * Set of identifiers of events that allow "until further notice" mode to be
+     * toggled. The set is kept up to date elsewhere, so it always indicates
+     * which events have this property. It is unmodifiable by the hazard detail
+     * view.
+     */
+    private Set<String> eventIdentifiersAllowingUntilFurtherNotice;
 
     /**
      * View part listener.
@@ -280,26 +291,11 @@ public class HazardDetailView extends
 
     // Public Methods
 
-    /**
-     * Initialize the view.
-     * 
-     * @param presenter
-     *            Presenter managing this view.
-     * @param jsonGeneralWidgets
-     *            JSON string holding a dictionary that specifies the general
-     *            widgets for the dialog.
-     * @param jsonMetadataWidgets
-     *            JSON string holding a list of dictionaries specifying
-     *            megawidgets for the metadata specific to each hazard type.
-     * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
-     * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
-     */
     @Override
     public final void initialize(HazardDetailPresenter presenter,
             String jsonGeneralWidgets, String jsonMetadataWidgets,
-            long minVisibleTime, long maxVisibleTime) {
+            long minVisibleTime, long maxVisibleTime,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice) {
         this.presenter = presenter;
         this.jsonGeneralWidgets = jsonGeneralWidgets;
         this.jsonMetadataWidgets = jsonMetadataWidgets;
@@ -309,6 +305,7 @@ public class HazardDetailView extends
             this.maxVisibleTime = this.minVisibleTime
                     + TimeUnit.DAYS.toMillis(1);
         }
+        this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
 
         // Execute manipulation of the view part immediately, or delay such
         // execution until the view part is created if it has not yet been
@@ -328,17 +325,6 @@ public class HazardDetailView extends
         });
     }
 
-    /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return List of contributions; this may be empty if none are to be made.
-     */
     @Override
     public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
@@ -366,25 +352,6 @@ public class HazardDetailView extends
         return Collections.emptyList();
     }
 
-    /**
-     * Show the hazard detail subview.
-     * 
-     * @param eventValuesList
-     *            List of dictionaries, each holding key-value pairs that
-     *            specify a hazard event.
-     * @param topEventID
-     *            Identifier for the hazard event that should be foregrounded
-     *            with respect to other hazard events; must be one of the
-     *            identifiers in the hazard events of
-     *            <code>eventValuesList</code>.
-     * @param force
-     *            Flag indicating whether or not to force the showing of the
-     *            subview. This may be used as a hint by views if they are
-     *            considering not showing the subview for whatever reason.
-     * @param eventConflictMap
-     *            Map of selected events and lists of corresponding conflicting
-     *            events.
-     */
     @Override
     public final void showHazardDetail(final DictList eventValuesList,
             final String topEventID,
@@ -451,20 +418,6 @@ public class HazardDetailView extends
         });
     }
 
-    /**
-     * Update the hazard detail subview, if it is showing.
-     * 
-     * @param eventValuesList
-     *            List of dictionaries, each holding key-value pairs that
-     *            specify a hazard event.
-     * @param topEventID
-     *            Identifier for the hazard event that should be foregrounded
-     *            with respect to other hazard events; must be one of the
-     *            identifiers in the hazard events of
-     *            <code>eventValuesList</code>.
-     * @param eventConflictMap
-     *            Map of events and corresponding lists of conflicting events.
-     */
     @Override
     public final void updateHazardDetail(DictList eventValuesList,
             String topEventID,
@@ -498,14 +451,6 @@ public class HazardDetailView extends
         }
     }
 
-    /**
-     * Hide the hazard detail subview.
-     * 
-     * @param force
-     *            Flag indicating whether or not to force the hiding of the
-     *            subview. This may be used as a hint by views if they are
-     *            considering not hiding the subview for whatever reason.
-     */
     @Override
     public final void hideHazardDetail(boolean force) {
 
@@ -532,14 +477,6 @@ public class HazardDetailView extends
         }
     }
 
-    /**
-     * Set the visible time range.
-     * 
-     * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
-     * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
-     */
     @Override
     public final void setVisibleTimeRange(long minVisibleTime,
             long maxVisibleTime) {
@@ -579,7 +516,8 @@ public class HazardDetailView extends
      */
     private void initializeViewPart() {
         getViewPart().initialize(this, jsonGeneralWidgets, jsonMetadataWidgets,
-                minVisibleTime, maxVisibleTime);
+                minVisibleTime, maxVisibleTime,
+                eventIdentifiersAllowingUntilFurtherNotice);
     }
 
     /**

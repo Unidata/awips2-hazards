@@ -47,6 +47,12 @@ import com.google.common.collect.Range;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 16, 2013    2545    Chris.Golden      Initial creation
+ * Feb 08, 2014    2161    Chris.Golden      Added ability to display custom strings
+ *                                           in place of date-time values. Also
+ *                                           forced the minimum width to be large
+ *                                           enough for each component to display
+ *                                           date-time values. Also corrected
+ *                                           Javadoc.
  * </pre>
  * 
  * @author Chris.Golden
@@ -92,6 +98,16 @@ public class DateTimeComponent {
      */
     private static final String TIME_FORMAT = "HH:mm";
 
+    /**
+     * Longest date text that could be displayed.
+     */
+    private static final String LONGEST_DATE_TEXT = "00-May-0000";
+
+    /**
+     * Longest time text that could be displayed.
+     */
+    private static final String LONGEST_TIME_TEXT = "00:00";
+
     // Private Classes
 
     /**
@@ -125,7 +141,6 @@ public class DateTimeComponent {
 
         @Override
         public void setBackground(Color color) {
-            super.setBackground(color);
             text.getControl().setBackground(color);
         }
 
@@ -203,6 +218,28 @@ public class DateTimeComponent {
             return getCalendarInstance(null);
         }
 
+        @Override
+        public void setSelection(Date selection) {
+            super.setSelection(selection);
+            if (selection == null) {
+                text.getControl().clearSelection();
+            }
+        }
+
+        /**
+         * Set the spinner component's enabled state.
+         * 
+         * @param enable
+         *            Flag indicating whether or not the spinner component
+         *            should be enabled.
+         */
+        public void setSpinnerEnabled(boolean enable) {
+            Control spinner = getSpinner();
+            if (spinner != null) {
+                spinner.setEnabled(enable);
+            }
+        }
+
         // Protected Methods
 
         @Override
@@ -249,8 +286,8 @@ public class DateTimeComponent {
     private long state;
 
     /**
-     * Current delta between <code>state</code> and the value equivalent to
-     * midnight on the same day as <code>state</code>, in milliseconds.
+     * Current delta between {@link #state} and the value equivalent to midnight
+     * on the same day as {@link #state}, in milliseconds.
      */
     private long stateDeltaSinceMidnight;
 
@@ -262,7 +299,7 @@ public class DateTimeComponent {
 
     /**
      * Last value that the state change listener knows about; this is used only
-     * if <code>onlySendEndStateChanges</code> is true.
+     * if {@link #onlySendEndStateChanges} is true.
      */
     private long lastForwardedState;
 
@@ -343,6 +380,8 @@ public class DateTimeComponent {
      * @param grabExcessHorizontalSpace
      *            Flag indicating whether or not the component's widgets should
      *            grab excess horizontal space.
+     * @param verticalIndent
+     *            Vertical indent to be applied.
      * @param onlySendEndStateChanges
      *            Flag indicating whether or not only end state changes should
      *            be sent along as notifications.
@@ -351,8 +390,8 @@ public class DateTimeComponent {
      */
     public DateTimeComponent(String identifier, Composite parent, String text,
             IControlSpecifier specifier, long startingValue,
-            boolean grabExcessHorizontalSpace, boolean onlySendEndStateChanges,
-            IDateTimeComponentHolder holder) {
+            boolean grabExcessHorizontalSpace, int verticalIndent,
+            boolean onlySendEndStateChanges, IDateTimeComponentHolder holder) {
         this.identifier = identifier;
         this.holder = holder;
         lastForwardedState = state = startingValue;
@@ -371,7 +410,9 @@ public class DateTimeComponent {
         // is used).
         Composite panel = UiBuilder.buildComposite(parent, 3, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
-        ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = grabExcessHorizontalSpace;
+        GridData panelLayoutData = (GridData) panel.getLayoutData();
+        panelLayoutData.grabExcessHorizontalSpace = grabExcessHorizontalSpace;
+        panelLayoutData.verticalIndent = verticalIndent;
         GridLayout layout = (GridLayout) panel.getLayout();
         int spacingAfterLabel = layout.horizontalSpacing;
         layout.horizontalSpacing = 0;
@@ -384,8 +425,14 @@ public class DateTimeComponent {
         synchronizeTimestampTrackersToState();
         this.onlySendEndStateChanges = onlySendEndStateChanges;
 
-        // Create the date selector.
+        // Create the date selector, calculating the min-
+        // imum width required for it to ensure that it
+        // stays at least that wide regardless of what
+        // text is displayed by it.
         date = new DateTime(panel, CDT.BORDER | CDT.DROP_DOWN | CDT.TAB_FIELDS);
+        date.setNullText(LONGEST_DATE_TEXT);
+        date.setSelection(null);
+        int dateWidth = date.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
         date.setNullText(NULL_DATE_TEXT);
         date.setPattern(DATE_FORMAT);
         date.setTimeZone(TIME_ZONE);
@@ -395,13 +442,21 @@ public class DateTimeComponent {
         // Place the date selector in the panel's grid.
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
+        gridData.minimumWidth = dateWidth;
+        gridData.widthHint = dateWidth;
         if (label != null) {
             gridData.horizontalIndent = spacingAfterLabel;
         }
         date.setLayoutData(gridData);
 
-        // Create the time selector.
+        // Create the time selector; as with the date
+        // selector, the minimum width is calculated
+        // and applied so that it stays at least that
+        // wide.
         time = new DateTime(panel, CDT.BORDER | CDT.SPINNER | CDT.TAB_FIELDS);
+        time.setNullText(LONGEST_TIME_TEXT);
+        time.setSelection(null);
+        int timeWidth = time.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
         time.setNullText(NULL_TIME_TEXT);
         time.setPattern(TIME_FORMAT);
         time.setTimeZone(TIME_ZONE);
@@ -410,6 +465,8 @@ public class DateTimeComponent {
 
         // Place the time selector in the panel's grid.
         gridData = new GridData(SWT.FILL, SWT.CENTER, false, false);
+        gridData.minimumWidth = timeWidth;
+        gridData.widthHint = timeWidth;
         time.setLayoutData(gridData);
 
         // If only ending state changes are to result
@@ -496,6 +553,17 @@ public class DateTimeComponent {
         return label;
     }
 
+    /**
+     * Set the height of the component.
+     * 
+     * @param height
+     *            Height in pixels of the component. The component widgets will
+     *            be vertically centered within this height.
+     */
+    public void setHeight(int height) {
+        ((GridData) label.getParent().getLayoutData()).minimumHeight = height;
+    }
+
     // Protected Methods
 
     /**
@@ -536,6 +604,32 @@ public class DateTimeComponent {
         Color color = helper.getBackgroundColor(editable, date, label);
         date.setBackground(color);
         time.setBackground(color);
+        time.setSpinnerEnabled(editable);
+    }
+
+    /**
+     * Set the null text to that specified.
+     * 
+     * @param text
+     *            Text to be displayed in both fields when the state is
+     *            <code>null</code>.
+     */
+    public void setNullText(String text) {
+        date.setNullText(text);
+        time.setNullText(text);
+    }
+
+    /**
+     * Set the flag indicating whether or not null text should currently be
+     * displayed.
+     * 
+     * @param show
+     *            Flag indicating whether or not null text should currently be
+     *            displayed.
+     */
+    public void setShowNullText(boolean show) {
+        date.setSelection(show ? null : dateTimestamp);
+        time.setSelection(show ? null : timeTimestamp);
     }
 
     /**

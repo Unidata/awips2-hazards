@@ -9,8 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,9 +29,6 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Choices tree megawidget, allowing the selection of zero or more choices in a
@@ -53,6 +52,8 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
+ *                                           to new JDK 1.7 features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -69,8 +70,8 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(HierarchicalBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                HierarchicalBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -115,7 +116,7 @@ public class HierarchicalChoicesTreeMegawidget extends
 
     /**
      * Last position of the vertical scrollbar. This is used whenever the
-     * choices are being changed via <code>setChoices()</code> or one of the
+     * choices are being changed via {@link #setChoices(Object)} or one of the
      * mutable property manipulation methods, in order to keep a similar visual
      * state to what came before.
      */
@@ -128,11 +129,11 @@ public class HierarchicalChoicesTreeMegawidget extends
      * hierarchy of the identifiers. Thus, if the last selected node had the
      * identifier "bar" and was the child of a parent node "foo", the list would
      * contain two elements, "foo" and "bar", respectively. This list is used
-     * whenever the choices are being changed via <code>setChoices()</code> or
+     * whenever the choices are being changed via {@link #setChoices(Object)} or
      * one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
-    private final List<String> selectedNodeIdentifiers = Lists.newArrayList();
+    private final List<String> selectedNodeIdentifiers = new ArrayList<>();
 
     /**
      * Map of choice identifiers that were last found to be expanded to
@@ -141,7 +142,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      * The value in each mapping may also be <code>null</code>, which simply
      * means that while the parent choice identifier was found to be expanded,
      * none of its children were. This map is used whenever the choices are
-     * being changed via <code>setChoices()</code> or one of the mutable
+     * being changed via {@link #setChoices(Object)} or one of the mutable
      * property manipulation methods, in order to keep a similar visual state to
      * what came before.
      */
@@ -448,9 +449,9 @@ public class HierarchicalChoicesTreeMegawidget extends
      * Clear the selection of all items in the specified tree.
      * 
      * @param tree
-     *            Tree (if the parameter is of type <code> Tree</code>) or tree
-     *            item (if of type <code>TreeItem</code>) to have the selection
-     *            state of all its items cleared.
+     *            Tree (if the parameter is of type {@link Tree}) or tree item
+     *            (if of type {@link TreeItem}) to have the selection state of
+     *            all its items cleared.
      */
     private void clearSelection(Widget tree) {
 
@@ -478,11 +479,10 @@ public class HierarchicalChoicesTreeMegawidget extends
      * according to the given state.
      * 
      * @param tree
-     *            Tree (if the parameter is of type <code>Tree</code>) or tree
-     *            item (if of type <code>TreeItem</code>) to have the selection
-     *            state of its items checked. It is assumed that this tree has
-     *            had all its items' selection states cleared prior to this
-     *            invocation.
+     *            Tree (if the parameter is of type {@link Tree}) or tree item
+     *            (if of type {@link TreeItem}) to have the selection state of
+     *            its items checked. It is assumed that this tree has had all
+     *            its items' selection states cleared prior to this invocation.
      * @param state
      *            State hierarchy containing all items to be checked or
      *            half-checked. It is assumed that this hierarchy has been
@@ -531,7 +531,7 @@ public class HierarchicalChoicesTreeMegawidget extends
     /**
      * Set the checked state for all the specified items to the specified value.
      * 
-     * @param treeItems
+     * @param items
      *            Items to have their checked states set.
      * @param checked
      *            Flag indicating whether or not the items should be checked.
@@ -550,8 +550,8 @@ public class HierarchicalChoicesTreeMegawidget extends
      * Turn the specified state hierarchy into a tree item hierarchy.
      * 
      * @param parent
-     *            Parent tree (if the parameter is of type <code>Tree</code>) or
-     *            tree item (if the parameter is of type <code>TreeItem</code).
+     *            Parent tree (if the parameter is of type {@link Tree}) or tree
+     *            item (if the parameter is of type {@link TreeItem}).
      * @param tree
      *            State hierarchy to be converted.
      * @param expandedMap
@@ -609,8 +609,8 @@ public class HierarchicalChoicesTreeMegawidget extends
      * Turn the specified tree or tree item into a state hierarchy.
      * 
      * @param tree
-     *            Tree to be converted; must be a <code>Tree</code> or a
-     *            <code>TreeItem</code>.
+     *            Tree to be converted; must be a {@link Tree} or a
+     *            {@link TreeItem}.
      * @return State hierarchy resulting from the conversion.
      */
     private List<Object> convertTreeToState(Widget tree) {
@@ -627,7 +627,7 @@ public class HierarchicalChoicesTreeMegawidget extends
         // one that is checked or grayed to the state
         // hierarchy, as well as any descendants that are
         // checked or grayed.
-        List<Object> children = Lists.newArrayList();
+        List<Object> children = new ArrayList<>();
         for (TreeItem item : items) {
             if ((item.getChecked() == false) && (item.getGrayed() == false)) {
                 continue;
@@ -635,7 +635,7 @@ public class HierarchicalChoicesTreeMegawidget extends
             if (item.getItemCount() == 0) {
                 children.add(item.getData());
             } else {
-                Map<String, Object> node = Maps.newHashMap();
+                Map<String, Object> node = new HashMap<>();
                 node.put(HierarchicalChoicesTreeSpecifier.CHOICE_NAME,
                         item.getText());
                 node.put(HierarchicalChoicesTreeSpecifier.CHOICE_IDENTIFIER,
@@ -652,8 +652,8 @@ public class HierarchicalChoicesTreeMegawidget extends
      * Create the specified tree item.
      * 
      * @param parent
-     *            Parent tree (if the parameter is of type <code>Tree</code>) or
-     *            tree item (if the parameter is of type <code>TreeItem</code).
+     *            Parent tree (if the parameter is of type {@link Tree}) or tree
+     *            item (if the parameter is of type {@link TreeItem}).
      * @param name
      *            Choice name.
      * @param identifier
@@ -677,7 +677,7 @@ public class HierarchicalChoicesTreeMegawidget extends
      * @param tree
      *            Tree to have its non-leaf items update their checked/grayed
      *            states to reflect the states of the leaves; must be a
-     *            <code>Tree</code> or a <code>TreeItem</code>.
+     *            {@link Tree} or a {@link TreeItem}.
      */
     private void updateNonLeafStates(Widget tree) {
 

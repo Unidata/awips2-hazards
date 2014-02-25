@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,9 @@ import com.google.common.collect.ImmutableList;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of
+ *                                           collections instead of only
+ *                                           lists for the state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,9 +45,9 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
      * Possible megawidget state values parameter name; a megawidget must
      * include an array of one or more choices associated with this name. Each
      * such choice may be either a string, meaning that the string value is used
-     * as the choice's name, or else a <code>Map</code> holding an entry for
-     * <code>CHOICE_NAME</code> and, optionally, an entry for <code>
-     * CHOICE_IDENTIFIER</code>. Subclasses may have additional required or
+     * as the choice's name, or else a {@link Map} holding an entry for
+     * {@link #CHOICE_NAME} and, optionally, an entry for
+     * {@link #CHOICE_IDENTIFIER}. Subclasses may have additional required or
      * optional entries in the map. Regardless, a given string must occur at
      * most once as a choice name.
      */
@@ -51,10 +55,10 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
 
     /**
      * Choice identifier parameter name; each choice in the array of choices
-     * associated with <code>MEGAWIDGET_VALUE_CHOICES</code> that is a map may
+     * associated with {@link #MEGAWIDGET_VALUE_CHOICES} that is a map may
      * contain a reference to a string associated with this name. The string
-     * serves as the identifier of the choice. If not provided, the <code>
-     * CHOICE_NAME</code> is used as its identifier instead. Each identifier
+     * serves as the identifier of the choice. If not provided, the
+     * {@link #CHOICE_NAME} is used as its identifier instead. Each identifier
      * must be unique in the set of all choice identifiers.
      */
     public static final String CHOICE_IDENTIFIER = "identifier";
@@ -107,8 +111,8 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
 
     /**
      * Get the list of choices associated with this specifier. The returned list
-     * is identical in structure to that provided to the specifier as the <code>
-     * MEGAWIDGET_VALUE_CHOICES</code> parameter.
+     * is identical in structure to that provided to the specifier as the
+     * {@link #MEGAWIDGET_VALUE_CHOICES} parameter.
      * 
      * @return List of choices; this list is not modifiable.
      */
@@ -128,14 +132,14 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
      * 
      * @param node1
      *            Node to be checked to see if it is a subset of the other node.
-     *            This must be either a <code>String</code> giving an identifier
-     *            or else a <code>Map</code>, with the latter holding the usual
-     *            elements for a choice element map.
+     *            This must be either a {@link String} giving an identifier or
+     *            else a {@link Map}, with the latter holding the usual elements
+     *            for a choice element map.
      * @param node2
      *            Node to be checked to see if it is a superset of the other
-     *            node. This must be either a <code>String</code> giving an
-     *            identifier or else a <code>Map</code>, with the latter holding
-     *            the usual elements for a choice element map.
+     *            node. This must be either a {@link String} giving an
+     *            identifier or else a {@link Map}, with the latter holding the
+     *            usual elements for a choice element map.
      * @return True if the first node is a subset of the second, false
      *         otherwise.
      */
@@ -154,7 +158,7 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
      * @return True if the first choices list is a subset of the second, false
      *         otherwise.
      */
-    protected final boolean isSubset(List<?> list1, List<?> list2) {
+    protected final boolean isSubset(Collection<?> list1, List<?> list2) {
 
         // If the subset is null, it is indeed a subset.
         if (list1 == null) {

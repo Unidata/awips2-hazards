@@ -57,7 +57,9 @@ import org.eclipse.swt.widgets.ToolTip;
  * changed either programmatically or via user interaction. Each thumb value is
  * either termed constrained, meaning that it is constrained by the values of
  * adjacent constrained thumbs, or free, meaning that it is not constrained by
- * other thumbs in any way.
+ * other thumbs in any way. Each thumb of either type may be editable or
+ * read-only at any given time; if in the latter state, that thumb may not be
+ * moved via user interaction.
  * <p>
  * Colors may be assigned to the marked values, to the ranges between the marked
  * values, and to the ranges in between the thumb values. Subclasses should
@@ -93,6 +95,11 @@ import org.eclipse.swt.widgets.ToolTip;
  *                                           (caused by ongoing drags) as
  *                                           opposed to the end of a GUI
  *                                           change (end of a drag).
+ * Jan 28, 2014    2161    Chris.Golden      Added ability to render each
+ *                                           thumb editable or read-only
+ *                                           individuallly, instead of
+ *                                           controlling editability at a
+ *                                           coarser widget level.
  * </pre>
  * 
  * @author Chris.Golden
@@ -203,11 +210,6 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         // Public Methods
 
-        /**
-         * Get the text description of this type.
-         * 
-         * @return Text description of this type.
-         */
         @Override
         public String toString() {
             return description;
@@ -251,14 +253,6 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         // Public Methods
 
-        /**
-         * Determine whether or not this thumb specifier is equal to the given
-         * thumb specifier.
-         * 
-         * @param other
-         *            Other thumb specifier.
-         * @return True if the two are equal, false otherwise.
-         */
         @Override
         public boolean equals(Object other) {
             return ((other != null) && (other instanceof ThumbSpecifier)
@@ -267,11 +261,6 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     // Private Variables
-
-    /**
-     * Flag indicating whether or not the widget is currently editable.
-     */
-    private boolean editable = true;
 
     /**
      * Minimum possible value.
@@ -299,13 +288,19 @@ public abstract class MultiValueLinearControl extends Canvas {
     private final List<Long> constrainedThumbValues = new ArrayList<Long>();
 
     /**
+     * List of flags indicating whether or not the constrained thumbs are
+     * editable. Each index holds the flag for the thumb value at the
+     * corresponding index from {@link #constrainedThumbValues}.
+     */
+    private final List<Boolean> constrainedThumbValuesEditable = new ArrayList<Boolean>();
+
+    /**
      * List of minimum values that constrained thumbs can have, based upon the
      * snap value calculator (if any), the minimum thumb gap, and the minimum
      * allowable value. Each index holds the minimum value that the thumb value
-     * at the corresponding index from <code>
-     * constrainedThumbValues</code> can have. Note that these minimum values
-     * are only used to determine values when constrained thumb values are
-     * changed via user-GUI interaction.
+     * at the corresponding index from {@link #constrainedThumbValues} can have.
+     * Note that these minimum values are only used to determine values when
+     * constrained thumb values are changed via user-GUI interaction.
      */
     private final List<Long> minConstrainedThumbValues = new ArrayList<Long>();
 
@@ -313,10 +308,9 @@ public abstract class MultiValueLinearControl extends Canvas {
      * List of maximum values that constrained thumbs can have, based upon the
      * snap value calculator (if any), the minimum thumb gap, and the maximum
      * allowable value. Each index holds the maximum value that the thumb value
-     * at the corresponding index from <code>
-     * constrainedThumbValues</code> can have. Note that these maximum values
-     * are only used to determine values when constrained thumb values are
-     * changed via user-GUI interaction.
+     * at the corresponding index from {@link #constrainedThumbValues} can have.
+     * Note that these maximum values are only used to determine values when
+     * constrained thumb values are changed via user-GUI interaction.
      */
     private final List<Long> maxConstrainedThumbValues = new ArrayList<Long>();
 
@@ -324,6 +318,13 @@ public abstract class MultiValueLinearControl extends Canvas {
      * List of free thumb values.
      */
     private final List<Long> freeThumbValues = new ArrayList<Long>();
+
+    /**
+     * List of flags indicating whether or not the free thumbs are editable.
+     * Each index holds the flag for the thumb value at the corresponding index
+     * from {@link #freeThumbValues}.
+     */
+    private final List<Boolean> freeThumbValuesEditable = new ArrayList<Boolean>();
 
     /**
      * List of constrained marked values.
@@ -343,7 +344,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     /**
      * List of colors to be used in some capacity to display constrained marked
      * values; the color at each index corresponds to the marked value at the
-     * same index in <code>constrainedMarkedValues</code>. If a color is
+     * same index in {@link #constrainedMarkedValues}. If a color is
      * <code>null</code>, a default color is used for that marked value.
      */
     private final List<Color> constrainedMarkedValueColors = new ArrayList<Color>();
@@ -351,8 +352,8 @@ public abstract class MultiValueLinearControl extends Canvas {
     /**
      * List of colors to be used in some capacity to display free marked values;
      * the color at each index corresponds to the marked value at the same index
-     * in <code>freeMarkedValues</code>. If a color is <code>null</code>, a
-     * default color is used for that marked value.
+     * in {@link #freeMarkedValues}. If a color is <code>null</code>, a default
+     * color is used for that marked value.
      */
     private final List<Color> freeMarkedValueColors = new ArrayList<Color>();
 
@@ -376,9 +377,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * between the left end of the widget and the first constrained thumb; the
      * second for the range between the first and second constrained thumbs (or
      * the first constrained thumb and the end, if only one constrained thumb is
-     * in use), etc. A value of <code>
-     * null</code> at an index means that there is no color to be drawn for that
-     * range.
+     * in use), etc. A value of <code>null</code> at an index means that there
+     * is no color to be drawn for that range.
      */
     private final List<Color> constrainedThumbRangeColors = new ArrayList<Color>();
 
@@ -406,9 +406,9 @@ public abstract class MultiValueLinearControl extends Canvas {
     private IMultiValueTooltipTextProvider tooltipTextProvider = null;
 
     /**
-     * Tooltip to be used if the <code>tooltipTextProvider</code> yields a non-
-     * <code>null</code> text string when invoked. If the provider is
-     * <code>null</code>, this will be as well.
+     * Tooltip to be used if the {@link #tooltipTextProvider} yields a text
+     * string (not <code>null</code>) when invoked. If the provider is <code>
+     * null</code>, this will be as well.
      */
     private ToolTip tooltip;
 
@@ -494,8 +494,7 @@ public abstract class MultiValueLinearControl extends Canvas {
 
     /**
      * Flag indicating whether or not the viewport was actually dragged;
-     * meaningless unless <code>mayBeDraggingViewport</code> is <code>
-     * true</code>.
+     * meaningless unless {@link #mayBeDraggingViewport} is true.
      */
     private boolean viewportWasActuallyDragged = false;
 
@@ -519,11 +518,17 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     private final ValueType[] markTypeDrawingOrder = new ValueType[2];
 
+    /**
+     * Flag indicating whether or not a determination of which thumb is active
+     * has been scheduled to occur later.
+     */
+    private boolean determinationOfActiveThumbScheduled = false;
+
     // Public Constructors
 
     /**
-     * Construct a standard instance with a resize behavior of <code>
-     * ResizeBehavior.CHANGE_PIXELS_PER_VALUE_UNIT</code>.
+     * Construct a standard instance with a resize behavior of
+     * {@link ResizeBehavior#CHANGE_PIXELS_PER_VALUE_UNIT}.
      * 
      * @param parent
      *            Parent of this widget.
@@ -587,9 +592,9 @@ public abstract class MultiValueLinearControl extends Canvas {
 
     /**
      * Remove the specified multi-value linear control listener; if the latter
-     * was registered previously via <code>
-     * addMultiValueLinearControlListener()</code>, it will no longer be
-     * notified of value and visible value range changes.
+     * was registered previously via
+     * {@link #addMultiValueLinearControlListener(IMultiValueLinearControlListener)}
+     * it will no longer be notified of value and visible value range changes.
      * 
      * @param listener
      *            Listener to be removed.
@@ -600,37 +605,19 @@ public abstract class MultiValueLinearControl extends Canvas {
         return listeners.remove(listener);
     }
 
-    /**
-     * Determine whether or not the widget is currently editable. An editable
-     * widget behaves normally; an uneditable widget looks the same as an
-     * editable one, but acts as if disabled in that it does not allow the user
-     * to modify its values via the GUI.
-     * 
-     * @return True if the widget is editable, false otherwise.
-     */
-    public final boolean isEditable() {
-        return editable;
-    }
-
-    /**
-     * Set the widget editability to the value specified.
-     * 
-     * @param editable
-     *            New editability flag.
-     */
-    public final void setEditable(boolean editable) {
-        this.editable = editable;
-    }
-
-    /**
-     * Set the widget enabled state to the value specified.
-     * 
-     * @param enable
-     *            New enabled state.
-     */
     @Override
     public final void setEnabled(boolean enable) {
         super.setEnabled(enable);
+
+        // End any drag of a thumb.
+        if ((enable == false) && (draggingThumb != null)) {
+            thumbDragEnded(null);
+        }
+
+        // Ensure that the correct thumb is active.
+        determineActiveThumb();
+
+        // Perform any superclass-specific tasks.
         widgetEnabledStateChanged();
     }
 
@@ -757,6 +744,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setConstrainedMarkedValueDrawnAboveFree(boolean value) {
         constrainedMarksDrawnAboveFree = value;
         determineMarkTypeOrder();
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -853,6 +841,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         correctFreeThumbValues();
         correctConstrainedMarkedValues();
         correctFreeMarkedValues();
+
+        // Make sure that the right thumb, if any, is active.
+        scheduleDetermineActiveThumbIfEnabled();
     }
 
     /**
@@ -935,7 +926,8 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
-     * Set the value of the specified constrained thumb.
+     * Set the value of the specified constrained thumb, leaving its editability
+     * unchanged.
      * 
      * @param index
      *            Index of the constrained thumb for which the value is to be
@@ -966,19 +958,23 @@ public abstract class MultiValueLinearControl extends Canvas {
         } else {
             constrainedThumbValueChanged(index, value,
                     ChangeSource.METHOD_INVOCATION);
+            if (areAllConstrainedValuesEditable() == false) {
+                calculateConstrainedThumbValueBounds();
+            }
             return true;
         }
     }
 
     /**
-     * Set the values for all constrained thumbs.
+     * Set the values for all constrained thumbs. Any new thumbs created as a
+     * result are assumed to be editable.
      * 
      * @param values
      *            Array of values, one per constrained thumb. The number of
      *            constrained thumbs may be changed via this method, unlike the
-     *            single-value-setting method <code>
-     *            setConstrainedThumbValue()</code>. The values must be in
-     *            increasing order.
+     *            single-value-setting method
+     *            {@link #setConstrainedThumbValue(int, long)}. The values must
+     *            be in increasing order.
      * @return True if the values were set successfully, otherwise false. The
      *         latter occurs if the new values would be too close to one
      *         another.
@@ -1007,18 +1003,64 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         // Determine whether the value minimum and maximum boundaries
         // need recalculating once these new values are set.
-        boolean recalculateBoundaries = (values.length != constrainedThumbValues
-                .size());
+        boolean recalculateBoundaries = ((values.length != constrainedThumbValues
+                .size()) || (areAllConstrainedValuesEditable() == false));
 
         // Change the values.
         constrainedThumbValuesChanged(values, ChangeSource.METHOD_INVOCATION);
 
         // Recalculate the thumb value minimum and maximum boundaries
-        // if necessary, and return success.
+        // if necessary.
         if (recalculateBoundaries) {
             calculateConstrainedThumbValueBounds();
         }
+
+        // Determine the active thumb, and return success.
+        scheduleDetermineActiveThumbIfEnabled();
         return true;
+    }
+
+    /**
+     * Determine whether the specified constrained thumb is editable.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which to check editability.
+     * @return True if the specified thumb is editable, false otherwise.
+     */
+    public final boolean isConstrainedThumbEditable(int index) {
+        return constrainedThumbValuesEditable.get(index);
+    }
+
+    /**
+     * Set the editability of the specified constrained thumb.
+     * 
+     * @param index
+     *            Index of the constrained thumb for which the editability is to
+     *            be set; must specify an index of an existing thumb.
+     * @param editable
+     *            New editability.
+     */
+    public final void setConstrainedThumbEditable(int index, boolean editable) {
+
+        // Remember the new flag value, or do nothing if the new value
+        // is the same as the current one.
+        if (editable == constrainedThumbValuesEditable.get(index)) {
+            return;
+        }
+        constrainedThumbValuesEditable.set(index, editable);
+
+        // If a thumb being dragged is now uneditable, end the drag.
+        if ((editable == false) && (draggingThumb != null)
+                && (draggingThumb.type == ValueType.CONSTRAINED)
+                && (draggingThumb.index == index)) {
+            thumbDragEnded(null);
+        }
+
+        // Ensure that the correct thumb is active.
+        scheduleDetermineActiveThumbIfEnabled();
+
+        // Recalculate the thumb value minimum and maximum boundaries.
+        calculateConstrainedThumbValueBounds();
     }
 
     /**
@@ -1042,7 +1084,8 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
-     * Set the value of the specified free thumb.
+     * Set the value of the specified free thumb, leaving its editability
+     * unchanged.
      * 
      * @param index
      *            Index of the free thumb for which the value is to be set; must
@@ -1062,12 +1105,14 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
-     * Set the values for all free thumbs.
+     * Set the values for all free thumbs. Any new thumbs created as a result
+     * are assumed to be editable.
      * 
      * @param values
      *            Array of values, one per free thumb. The number of free thumbs
      *            may be changed via this method, unlike the
-     *            single-value-setting method <code>setFreeThumbValue()</code>.
+     *            single-value-setting method
+     *            {@link #setFreeThumbValue(int, long)}.
      */
     public final void setFreeThumbValues(long... values) {
 
@@ -1079,8 +1124,51 @@ public abstract class MultiValueLinearControl extends Canvas {
             }
         }
 
-        // Change the values and return success.
+        // Change the values.
         freeThumbValuesChanged(values, ChangeSource.METHOD_INVOCATION);
+
+        // Determine the active thumb.
+        scheduleDetermineActiveThumbIfEnabled();
+    }
+
+    /**
+     * Determine whether the specified free thumb is editable.
+     * 
+     * @param index
+     *            Index of the free thumb for which to check editability.
+     * @return True if the specified thumb is editable, false otherwise.
+     */
+    public final boolean isFreeThumbEditable(int index) {
+        return freeThumbValuesEditable.get(index);
+    }
+
+    /**
+     * Set the editability of the specified free thumb.
+     * 
+     * @param index
+     *            Index of the free thumb for which the editability is to be
+     *            set; must specify an index of an existing thumb.
+     * @param editable
+     *            New editability.
+     */
+    public final void setFreeThumbEditable(int index, boolean editable) {
+
+        // Remember the new flag value, or do nothing if the new value
+        // is the same as the current one.
+        if (editable == freeThumbValuesEditable.get(index)) {
+            return;
+        }
+        freeThumbValuesEditable.set(index, editable);
+
+        // If a thumb being dragged is now uneditable, end the drag.
+        if ((editable == false) && (draggingThumb != null)
+                && (draggingThumb.type == ValueType.FREE)
+                && (draggingThumb.index == index)) {
+            thumbDragEnded(null);
+        }
+
+        // Ensure that the correct thumb is active.
+        scheduleDetermineActiveThumbIfEnabled();
     }
 
     /**
@@ -1136,8 +1224,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @param values
      *            Array of constrained marked values. The number of constrained
      *            marked values may be changed via this method, which is not
-     *            true for <code>setConstrainedMarkedValue()</code>. The values
-     *            must be in increasing order.
+     *            true for {@link #setConstrainedMarkedValue(int, long)}. The
+     *            values must be in increasing order.
      * @return True if the constrained marked values were set successfully,
      *         otherwise false.
      */
@@ -1206,7 +1294,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @param values
      *            Array of free marked values. The number of free marked values
      *            may be changed via this method, which is not the case with
-     *            <code>setFreeMarkedValue()</code>.
+     *            {@link #setFreeMarkedValue(int, long)}.
      */
     public final void setFreeMarkedValues(long... values) {
         for (long value : values) {
@@ -1261,6 +1349,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             // Ensure that the thumb values are far enough apart
             // given the new delta.
             correctConstrainedThumbValues();
+
+            // Determine the active thumb, and return success.
+            scheduleDetermineActiveThumbIfEnabled();
             return true;
         }
     }
@@ -1500,28 +1591,11 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         // Recalculate the preferred size.
         computePreferredSize(true);
+
+        // Determine the active thumb.
+        scheduleDetermineActiveThumbIfEnabled();
     }
 
-    /**
-     * Compute the size of this widget, given the specified constraints. This
-     * implementation assumes that the preferred width is used if
-     * <code>wHint</code> is <code>SWT.DEFAULT</code>, and that the preferred
-     * height is used if <code>hHint</code> is <code>
-     * SWT.DEFAULT</code>.
-     * 
-     * @param wHint
-     *            Width hint; must be the width in pixels that the size is being
-     *            computed for, or <code>SWT.DFEAULT
-     *                </code> if the default preferred width is required.
-     * @param hHint
-     *            Height hint; must be the height in pixels that the size is
-     *            being computed for, or <code>SWT.DFEAULT
-     *                </code> if the default preferred height is required.
-     * @param changed
-     *            Flag indicating whether or not the widget's contents have
-     *            changed; ignored for this implementation.
-     * @return X and Y dimensions indicating size.
-     */
     @Override
     public final Point computeSize(int wHint, int hHint, boolean changed) {
 
@@ -1533,32 +1607,12 @@ public abstract class MultiValueLinearControl extends Canvas {
                 (hHint == SWT.DEFAULT ? preferredHeight : hHint));
     }
 
-    /**
-     * Calculate the bounding rectangle required by the widget, given its
-     * insets, in order to allow for the specified client area.
-     * 
-     * @param x
-     *            X coordinate of client area.
-     * @param y
-     *            Y coordinate of client area.
-     * @param width
-     *            Width of client area.
-     * @param height
-     *            Height of client area.
-     * @return Bounding rectangle required by the widget to accommodate the
-     *         specified client area and the current insets.
-     */
     @Override
     public final Rectangle computeTrim(int x, int y, int width, int height) {
         return new Rectangle(x - leftInset, y - topInset, width + leftInset
                 + rightInset, height + topInset + bottomInset);
     }
 
-    /**
-     * Get the client area rectangle.
-     * 
-     * @return Client area rectangle.
-     */
     @Override
     public final Rectangle getClientArea() {
         Rectangle bounds = getBounds();
@@ -1579,13 +1633,13 @@ public abstract class MultiValueLinearControl extends Canvas {
     /**
      * Calculate the preferred size of the widget. This method, if it
      * (re)calculates the preferred width and height, must save the calculated
-     * values using <code>setPreferredSize()</code>.
+     * values using {@link #setPreferredSize(int, int)}.
      * <p>
      * This method must be called by any other methods that may result in the
-     * changing of the preferred size. It may also be called with a
-     * <code>force</code> parameter of <code>false</code> in order to ensure
-     * that the preferred width and height have been calculated, for example,
-     * from within the <code>paintControl</code> method.
+     * changing of the preferred size. It may also be called with a <code>
+     * force</code> parameter of false in order to ensure that the preferred
+     * width and height have been calculated, for example, from within the
+     * {@link #paintControl(PaintEvent)} method.
      * 
      * @param force
      *            Flag indicating whether or not the preferred size should be
@@ -1602,15 +1656,23 @@ public abstract class MultiValueLinearControl extends Canvas {
     protected abstract void paintControl(PaintEvent e);
 
     /**
-     * Determine which thumb the specified mouse event occurred within the
+     * Determine which editable thumb the specified coordinates are within the
      * bounds of, if any.
+     * <p>
+     * Implementations must use {@link #isConstrainedThumbEditable(int)} and
+     * {@link #isFreeThumbEditable(int)} to ensure that any thumb specifier
+     * returned is indeed editable.
      * 
-     * @param e
-     *            Mouse event.
-     * @return Specifier of the thumb over which the event occurred, or
-     *         <code>null</code> if the event did not occur over a thumb.
+     * @param x
+     *            X coordinate, relative to the widget.
+     * @param y
+     *            Y coordinate, relative to the widget.
+     * @return Specifier of the editable thumb within which the coordinate
+     *         exists, or <code>null</code> if the coordinate is not within a
+     *         thumb.
      */
-    protected abstract ThumbSpecifier getThumbForMouseEvent(MouseEvent e);
+    protected abstract ThumbSpecifier getEditableThumbForCoordinates(int x,
+            int y);
 
     /**
      * Handle the specified unused mouse release event. This particular
@@ -1642,7 +1704,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      * subclasses should also invoke it whenever any other property of their
      * widgets change that would affect this boundary.
      * <p>
-     * Implementations should call <code>setTooltipBounds()</code> when new
+     * Implementations should call {@link #setTooltipBounds(Rectangle)} when new
      * tooltip bounds have been calculated by this method.
      */
     protected abstract void tooltipBoundsChanged();
@@ -1775,7 +1837,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     /**
      * Set the bounds within which a mouse hover over a value may generate a
      * tooltip. This should be called by subclasses' implementations of
-     * <code>tooltipBoundsChanged()</code> to set the new bounds.
+     * {@link #tooltipBoundsChanged()} to set the new bounds.
      * 
      * @param tooltipBounds
      *            New bounds for tooltips.
@@ -1874,7 +1936,7 @@ public abstract class MultiValueLinearControl extends Canvas {
 
     /**
      * Set the preferred width and height; this should be called by the
-     * subclass's implementation of <code>computePreferredSize() </code> to
+     * subclass's implementation of {@link #computePreferredSize(boolean)} to
      * store the dimensions preferred given no constraints.
      * 
      * @param preferredWidth
@@ -2041,6 +2103,44 @@ public abstract class MultiValueLinearControl extends Canvas {
         return lastHeight;
     }
 
+    /**
+     * Schedule a determination of the currently active thumb to occur after
+     * current events have been processed if the mouse is positioned over the
+     * widget and if the widget is active. If the determination is being
+     * requested by a process that should occur quickly, this method is
+     * preferable to {@link #determineActiveThumbIfEnabled()}.
+     */
+    protected final void scheduleDetermineActiveThumbIfEnabled() {
+
+        // If the requested determination is already scheduled or the widget
+        // is disabled, do nothing.
+        if (determinationOfActiveThumbScheduled || (isEnabled() == false)) {
+            return;
+        }
+
+        // Schedule a determination to be made after other events are processed.
+        determinationOfActiveThumbScheduled = true;
+        getDisplay().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                determineActiveThumbIfEnabled();
+            }
+        });
+    }
+
+    /**
+     * Determine the currently active thumb if the mouse is positioned over the
+     * widget and if the widget is active. This method should not be used if the
+     * caller requires a quick execution; in that case, use of
+     * {@link #scheduleDetermineActiveThumbIfEnabled()} is preferable.
+     */
+    protected final void determineActiveThumbIfEnabled() {
+        determinationOfActiveThumbScheduled = false;
+        if ((isDisposed() == false) && isEnabled()) {
+            determineActiveThumb();
+        }
+    }
+
     // Private Methods
 
     /**
@@ -2106,7 +2206,7 @@ public abstract class MultiValueLinearControl extends Canvas {
 
             @Override
             public void mouseDown(MouseEvent e) {
-                if ((e.button == 1) && isEnabled() && isEditable()) {
+                if ((e.button == 1) && isEnabled()) {
                     mousePressOverWidget(e);
                 } else if ((tooltip != null) && tooltip.isVisible()) {
                     tooltip.setVisible(false);
@@ -2119,10 +2219,10 @@ public abstract class MultiValueLinearControl extends Canvas {
                     thumbDragEnded(e);
                 } else if (viewportWasActuallyDragged) {
                     viewportDragEnded(e);
-                } else if ((e.button == 1) && isEnabled() && isEditable()) {
+                } else if ((e.button == 1) && isEnabled()) {
                     mayBeDraggingViewport = false;
                     handleUnusedMouseRelease(e);
-                    mouseOverWidget(e);
+                    mouseOverWidget(e.x, e.y);
                 }
             }
         });
@@ -2134,7 +2234,7 @@ public abstract class MultiValueLinearControl extends Canvas {
                 } else if (mayBeDraggingViewport) {
                     viewportDragged(e.x, false);
                 } else if (isEnabled()) {
-                    mouseOverWidget(e);
+                    mouseOverWidget(e.x, e.y);
                 }
             }
         });
@@ -2142,7 +2242,7 @@ public abstract class MultiValueLinearControl extends Canvas {
             @Override
             public void mouseEnter(MouseEvent e) {
                 if (isEnabled()) {
-                    mouseOverWidget(e);
+                    mouseOverWidget(e.x, e.y);
                 }
             }
 
@@ -2207,10 +2307,13 @@ public abstract class MultiValueLinearControl extends Canvas {
         // Recalculate the tooltip bounds.
         tooltipBoundsChanged();
 
-        // If the value range was calculated above, commit the change.
+        // If the value range was calculated above, commit the change;
+        // otherwise, determine the active thumb.
         if (lowerValue != -1L) {
             visibleValueRangeChanged(lowerValue, upperValue,
                     ChangeSource.RESIZE);
+        } else {
+            scheduleDetermineActiveThumbIfEnabled();
         }
     }
 
@@ -2226,9 +2329,10 @@ public abstract class MultiValueLinearControl extends Canvas {
         // dragged.
         viewportWasActuallyDragged = false;
 
-        // Get the thumb over which the mouse event occurred,
+        // Get the editable thumb over which the mouse event occurred,
         // if any.
-        ThumbSpecifier newDraggingThumb = getThumbForMouseEvent(e);
+        ThumbSpecifier newDraggingThumb = getEditableThumbForCoordinates(e.x,
+                e.y);
 
         // If a thumb has become active or inactive, redraw; otherwise,
         // if viewport dragging is allowed, start such a drag.
@@ -2261,14 +2365,20 @@ public abstract class MultiValueLinearControl extends Canvas {
      * Respond to a thumb drag ending.
      * 
      * @param e
-     *            Mouse event that occurred.
+     *            Mouse event that occurred, if a mouse event triggered this
+     *            invocation, or <code>null</code> if the invocation is the
+     *            result of a programmatic change.
      */
     private void thumbDragEnded(MouseEvent e) {
         ThumbSpecifier thumb = draggingThumb;
         draggingThumb = null;
-        dragThumbToPoint(thumb, e, true);
+        if (e != null) {
+            dragThumbToPoint(thumb, e, true);
+            if (isDisposed() == false) {
+                activeThumb = getEditableThumbForCoordinates(e.x, e.y);
+            }
+        }
         if (isDisposed() == false) {
-            activeThumb = getThumbForMouseEvent(e);
             redraw();
         }
     }
@@ -2315,26 +2425,47 @@ public abstract class MultiValueLinearControl extends Canvas {
     }
 
     /**
-     * Respond to the mouse cursor moving over the widget when a drag is not
-     * occurring.
-     * 
-     * @param e
-     *            Mouse event that occurred.
+     * Determine the currently active thumb if the mouse is positioned over the
+     * widget.
      */
-    private void mouseOverWidget(MouseEvent e) {
+    private void determineActiveThumb() {
+
+        // Calculate the mouse location relative to this widget.
+        Point mouseLocation = getDisplay().getCursorLocation();
+        Point offset = toDisplay(0, 0);
+        mouseLocation.x -= offset.x;
+        mouseLocation.y -= offset.y;
+
+        // If the mouse is over the widget, process its position to deter-
+        // mine which thumb, if any, should now be active.
+        if ((mouseLocation.x >= 0) && (mouseLocation.x < lastWidth)
+                && (mouseLocation.y >= 0) && (mouseLocation.y < lastHeight)) {
+            mouseOverWidget(mouseLocation.x, mouseLocation.y);
+        }
+    }
+
+    /**
+     * Respond to the mouse cursor moving over the widget when a drag is not
+     * occurring, or to an editability change for at least one thumb.
+     * 
+     * @param x
+     *            X coordinate of the mouse, relative to the widget.
+     * @param y
+     *            Y coordinate of the mouse, relative to the widget.
+     */
+    private void mouseOverWidget(int x, int y) {
 
         // If the widget is disposed, do nothing.
         if (isDisposed()) {
             return;
         }
 
-        // Get the thumb over which the mouse event occurred, if any.
-        ThumbSpecifier newThumb = getThumbForMouseEvent(e);
+        // Get the editable thumb over which the mouse event occurred,
+        // if any.
+        ThumbSpecifier newThumb = getEditableThumbForCoordinates(x, y);
 
-        // If a thumb has become active or inactive, redraw. This re-
-        // quires that the widget is editable.
-        if (isEditable()
-                && (activeThumb != newThumb)
+        // If a thumb has become active or inactive, redraw.
+        if ((activeThumb != newThumb)
                 && ((activeThumb == null) || (activeThumb.equals(newThumb) == false))) {
             activeThumb = newThumb;
             redraw();
@@ -2504,24 +2635,32 @@ public abstract class MultiValueLinearControl extends Canvas {
         // Calculate the minimum allowable values for the thumb
         // values.
         for (int j = 0; j < constrainedThumbValues.size(); j++) {
-            long value = (j == 0 ? minimumValue : minConstrainedThumbValues
-                    .get(j - 1) + minimumConstrainedThumbGap);
-            value = snapValueCalculator.getSnapThumbValue(value, value,
-                    maximumValue);
-            minConstrainedThumbValues.add(value);
+            if (constrainedThumbValuesEditable.get(j)) {
+                long value = (j == 0 ? minimumValue : minConstrainedThumbValues
+                        .get(j - 1) + minimumConstrainedThumbGap);
+                value = snapValueCalculator.getSnapThumbValue(value, value,
+                        maximumValue);
+                minConstrainedThumbValues.add(value);
+            } else {
+                minConstrainedThumbValues.add(constrainedThumbValues.get(j));
+            }
         }
 
         // Calculate the maximum allowable values for the thumb
         // values. The list of maximum values is generated backwards,
         // so it has to be reversed after the values are calculated.
         for (int j = constrainedThumbValues.size() - 1; j >= 0; j--) {
-            long value = (j == constrainedThumbValues.size() - 1 ? maximumValue
-                    : maxConstrainedThumbValues.get(constrainedThumbValues
-                            .size() - (j + 2))
-                            - minimumConstrainedThumbGap);
-            value = snapValueCalculator.getSnapThumbValue(value, minimumValue,
-                    value);
-            maxConstrainedThumbValues.add(value);
+            if (constrainedThumbValuesEditable.get(j)) {
+                long value = (j == constrainedThumbValues.size() - 1 ? maximumValue
+                        : maxConstrainedThumbValues.get(constrainedThumbValues
+                                .size() - (j + 2))
+                                - minimumConstrainedThumbGap);
+                value = snapValueCalculator.getSnapThumbValue(value,
+                        minimumValue, value);
+                maxConstrainedThumbValues.add(value);
+            } else {
+                maxConstrainedThumbValues.add(constrainedThumbValues.get(j));
+            }
         }
         Collections.reverse(maxConstrainedThumbValues);
     }
@@ -2866,9 +3005,11 @@ public abstract class MultiValueLinearControl extends Canvas {
             upperVisibleValue = maximumValue;
         }
 
-        // Remember the new range and redraw.
+        // Remember the new range, determine the active thumb
+        // if any, and redraw.
         this.lowerVisibleValue = lowerVisibleValue;
         this.upperVisibleValue = upperVisibleValue;
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
 
         // Notify listeners.
@@ -2891,6 +3032,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void constrainedThumbValueChanged(int index, long newValue,
             ChangeSource source) {
         constrainedThumbValues.set(index, newValue);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
         if (listeners.size() > 0) {
             long[] newValues = getCopyOfValues(constrainedThumbValues);
@@ -2913,6 +3055,7 @@ public abstract class MultiValueLinearControl extends Canvas {
     private void freeThumbValueChanged(int index, long newValue,
             ChangeSource source) {
         freeThumbValues.set(index, newValue);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
         if (listeners.size() > 0) {
             long[] newValues = getCopyOfValues(freeThumbValues);
@@ -2936,6 +3079,12 @@ public abstract class MultiValueLinearControl extends Canvas {
         constrainedThumbValues.clear();
         for (int j = 0; j < newValues.length; j++) {
             constrainedThumbValues.add(newValues[j]);
+            if (constrainedThumbValuesEditable.size() <= j) {
+                constrainedThumbValuesEditable.add(true);
+            }
+        }
+        while (constrainedThumbValuesEditable.size() > newValues.length) {
+            constrainedThumbValuesEditable.remove(newValues.length);
         }
         redraw();
         for (IMultiValueLinearControlListener listener : listeners) {
@@ -2956,10 +3105,31 @@ public abstract class MultiValueLinearControl extends Canvas {
         freeThumbValues.clear();
         for (int j = 0; j < newValues.length; j++) {
             freeThumbValues.add(newValues[j]);
+            if (freeThumbValuesEditable.size() <= j) {
+                freeThumbValuesEditable.add(true);
+            }
+        }
+        while (freeThumbValuesEditable.size() > newValues.length) {
+            freeThumbValuesEditable.remove(newValues.length);
         }
         redraw();
         for (IMultiValueLinearControlListener listener : listeners) {
             listener.freeThumbValuesChanged(this, newValues, source);
         }
+    }
+
+    /**
+     * Determine whether or not all constrained thumb values are editable.
+     * 
+     * @return True if all constrained thumb values are editable, false
+     *         otherwise.
+     */
+    private boolean areAllConstrainedValuesEditable() {
+        for (boolean editable : constrainedThumbValuesEditable) {
+            if (editable == false) {
+                return false;
+            }
+        }
+        return true;
     }
 }

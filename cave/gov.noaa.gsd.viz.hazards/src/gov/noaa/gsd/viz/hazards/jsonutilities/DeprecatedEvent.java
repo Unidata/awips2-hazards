@@ -29,6 +29,7 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
@@ -81,6 +82,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Sep 05, 2013 1264       blawrenc    Added support geometries of any
  *                                     different type (Lineal, Puntal, Polygonal).
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
+ * Feb 16, 2014 2161       Chris.Golden Added support for end time "until further notice" flag.
  * </pre>
  * 
  * @author bsteffen
@@ -120,6 +122,8 @@ public class DeprecatedEvent {
     private String state;
 
     private Long endTime;
+
+    private Boolean endTimeUntilFurtherNotice;
 
     private String siteID;
 
@@ -173,6 +177,8 @@ public class DeprecatedEvent {
                 .getHazardAttribute(HazardConstants.STREAM_NAME);
         startTime = event.getStartTime().getTime();
         endTime = event.getEndTime().getTime();
+        endTimeUntilFurtherNotice = (Boolean) attr
+                .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
         if (event.getIssueTime() != null) {
             issueTime = event.getIssueTime().getTime();
             creationTime = event.getIssueTime().getTime();
@@ -389,6 +395,14 @@ public class DeprecatedEvent {
         this.endTime = endTime;
     }
 
+    public Boolean isEndTimeUntilFurtherNotice() {
+        return endTimeUntilFurtherNotice;
+    }
+
+    public void setEndTimeUntilFurtherNotice(Boolean endTimeUntilFurtherNotice) {
+        this.endTimeUntilFurtherNotice = endTimeUntilFurtherNotice;
+    }
+
     public String getSiteID() {
         return siteID;
     }
@@ -554,6 +568,11 @@ public class DeprecatedEvent {
         }
         if (endTime != null) {
             event.setEndTime(new Date(endTime));
+        }
+        if (endTimeUntilFurtherNotice != null) {
+            event.addHazardAttribute(
+                    HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                    endTimeUntilFurtherNotice);
         }
         if (creationTime != null) {
             event.addHazardAttribute(CREATION_TIME, new Date(creationTime));

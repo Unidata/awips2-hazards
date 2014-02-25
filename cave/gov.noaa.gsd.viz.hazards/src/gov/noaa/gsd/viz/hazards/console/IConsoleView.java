@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -32,6 +33,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 12, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
+ * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the view.
  * </pre>
  * 
  * @author Chris.Golden
@@ -61,15 +64,24 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            megawidget specifiers.
      * @param activeAlerts
      *            Currently active alerts.
+     * @param eventIdentifiersAllowingUntilFurtherNotice
+     *            Set of the hazard event identifiers that at any given moment
+     *            allow the toggling of their "until further notice" mode. The
+     *            set is unmodifiable; attempts to modify it will result in an
+     *            {@link UnsupportedOperationException}. Note that this set is
+     *            kept up-to-date, and thus will always contain only those
+     *            events that can have their "until further notice" mode toggled
+     *            at the instant at which it is checked.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
-     *            to be shown in the toolbar. If <code>false</code>, they are
-     *            shown in the temporal display composite itself.
+     *            to be shown in the toolbar. If false, they are shown in the
+     *            temporal display composite itself.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Settings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar);
 
     /**
@@ -92,14 +104,18 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Update the current time.
      * 
+     * @param currentTime
+     *            New current time.
      */
-    public void updateCurrentTime(Date jsonCurrentTime);
+    public void updateCurrentTime(Date currentTime);
 
     /**
      * Update the selected time.
      * 
+     * @param selectedTime
+     *            New selected time.
      */
-    public void updateSelectedTime(Date jsonSelectedTime);
+    public void updateSelectedTime(Date selectedTime);
 
     /**
      * Update the selected time range.
@@ -171,7 +187,9 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
     public void setActiveAlerts(ImmutableList<IHazardAlert> activeAlerts);
 
     /**
-     * @return the current dynamic setting.
+     * Get the current settings.
+     * 
+     * @return Current settings.
      */
     public Settings getCurrentSettings();
 
@@ -179,14 +197,17 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * Set the settings to those specified.
      * 
      * @param currentSettingsID
+     *            Identifier of the new current settings.
      * @param settings
+     *            List of settings.
      */
     public void setSettings(String currentSettingsID, List<Settings> settings);
 
     /**
-     * Updates the title of the implementing gui
+     * Update the title of the implementing GUI.
      * 
      * @param title
+     *            New title.
      */
     public void updateTitle(String title);
 }

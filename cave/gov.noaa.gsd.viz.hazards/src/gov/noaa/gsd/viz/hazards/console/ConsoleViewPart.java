@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.swt.widgets.Composite;
@@ -45,10 +46,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
  * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
  *                                           points.
- * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
- * Nov 29, 2013 2380     daniel.s.schaffer@noaa.gov Continued consolidation of constants
+ * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
+ * Nov 04, 2013   2182     daniel.s.schaffer Started refactoring
+ * Nov 29, 2013   2380     daniel.s.schaffer Continued consolidation of constants
+ * Feb 19, 2014   2161     Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the temporal
+ *                                           display.
  * </pre>
  * 
  * @author Chris.Golden
@@ -121,15 +124,24 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      *            megawidget specifiers.
      * @param activeAlerts
      *            Currently active alerts.
+     * @param eventIdentifiersAllowingUntilFurtherNotice
+     *            Set of the hazard event identifiers that at any given moment
+     *            allow the toggling of their "until further notice" mode. The
+     *            set is unmodifiable; attempts to modify it will result in an
+     *            {@link UnsupportedOperationException}. Note that this set is
+     *            kept up-to-date, and thus will always contain only those
+     *            events that can have their "until further notice" mode toggled
+     *            at the instant at which it is checked.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
-     *            to be shown in the toolbar. If <code>false</code>, they are
-     *            shown in the temporal display composite itself.
+     *            to be shown in the toolbar. If false, they are shown in the
+     *            temporal display composite itself.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Settings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar) {
         this.currentSite = LocalizationManager
                 .getContextName(LocalizationLevel.SITE);
@@ -137,15 +149,10 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         setSettings(currentSettingsID, availableSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
                 visibleTimeRange, hazardEvents, currentSettings, jsonFilters,
-                activeAlerts, temporalControlsInToolBar);
+                activeAlerts, eventIdentifiersAllowingUntilFurtherNotice,
+                temporalControlsInToolBar);
     }
 
-    /**
-     * Create the part control for the view.
-     * 
-     * @param parent
-     *            Parent composite.
-     */
     @Override
     public void createPartControl(Composite parent) {
         super.createPartControl(parent);
@@ -163,17 +170,11 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         modeListener = new ModeListener(parent.getParent().getParent());
     }
 
-    /**
-     * Set the focus to this view.
-     */
     @Override
     public void setFocus() {
         temporalDisplay.setFocus();
     }
 
-    /**
-     * Dispose of this view part.
-     */
     @Override
     public void dispose() {
         modeListener.dispose();

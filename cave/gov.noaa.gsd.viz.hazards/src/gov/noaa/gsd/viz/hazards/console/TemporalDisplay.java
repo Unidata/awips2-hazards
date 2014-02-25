@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.console;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
@@ -22,6 +23,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_DATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_STRING;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
 import gov.noaa.gsd.common.utilities.DateStringComparator;
 import gov.noaa.gsd.common.utilities.DoubleStringComparator;
 import gov.noaa.gsd.common.utilities.JSONConverter;
@@ -56,9 +59,12 @@ import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 import java.awt.image.BufferedImage;
 import java.text.Collator;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -112,7 +118,6 @@ import org.eclipse.swt.widgets.ToolTip;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -195,6 +200,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           constant in HazardConstants to ensure
  *                                           that all time range widgets use the same
  *                                           minimum interval.
+ * Feb 14, 2014    2161    Chris.Golden      Added "Until Further Notice" option for
+ *                                           end times for event time range widgets
+ *                                           and right-click context-sensitive menu. 
+ *                                           Also fixed Javadoc comments, and added
+ *                                           usage of JDK 1.7 features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -220,10 +230,36 @@ class TemporalDisplay {
     public static final String SELECTED_TIME_MODE_RANGE = "Range";
 
     /**
+     * Text to show in date-time cells holding the "until further notice" value.
+     */
+    public static final String UNTIL_FURTHER_NOTICE_COLUMN_TEXT = "until further notice";
+
+    /**
+     * Text to show in the event-specific context-sensitive menu to provide the
+     * "until further notice" toggle option.
+     */
+    public static final String UNTIL_FURTHER_NOTICE_MENU_TEXT = "Until Further Notice";
+
+    /**
      * Selected time mode choices.
      */
     public static final ImmutableList<String> SELECTED_TIME_MODE_CHOICES = ImmutableList
             .of(SELECTED_TIME_MODE_SINGLE, SELECTED_TIME_MODE_RANGE);
+
+    /**
+     * Unchecked menu item image file name.
+     */
+    public static final String UNCHECKED_MENU_ITEM_IMAGE_FILE_NAME = "menuItemUnchecked.png";
+
+    /**
+     * Semi-checked menu item image file name.
+     */
+    public static final String SEMI_CHECKED_MENU_ITEM_IMAGE_FILE_NAME = "menuItemSemiChecked.png";
+
+    /**
+     * Checked menu item image file name.
+     */
+    public static final String CHECKED_MENU_ITEM_IMAGE_FILE_NAME = "menuItemChecked.png";
 
     /**
      * Toolbar button icon image file names.
@@ -235,8 +271,8 @@ class TemporalDisplay {
 
     /**
      * Descriptions of the toolbar buttons, each of which corresponds to the
-     * file name of the button at the same index in <code>
-     * TOOLBAR_BUTTON_IMAGE_FILE_NAMES</code>.
+     * file name of the button at the same index in
+     * {@link #TOOLBAR_BUTTON_IMAGE_FILE_NAMES}.
      */
     public static final ImmutableList<String> TOOLBAR_BUTTON_DESCRIPTIONS = ImmutableList
             .of("Zoom Out Timeline", "Page Back Timeline", "Pan Back Timeline",
@@ -289,7 +325,7 @@ class TemporalDisplay {
 
     /**
      * Descriptions of the buttons, each of which corresponds to the button at
-     * the same index in <code>BUTTON_IMAGE_NAMES</code>.
+     * the same index in {@link #BUTTON_IMAGE_NAMES}.
      */
     public static final ImmutableList<String> BUTTON_DESCRIPTIONS = ImmutableList
             .of("Zoom Out", "Page Back", "Pan Back", "Show Current Time",
@@ -428,6 +464,27 @@ class TemporalDisplay {
     private final Color RULER_BORDER_COLOR = new Color(Display.getCurrent(),
             131, 120, 103);
 
+    /**
+     * Unchecked menu item image.
+     */
+    private final Image UNCHECKED_MENU_ITEM_IMAGE = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            UNCHECKED_MENU_ITEM_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
+     * Semi-checked menu item image.
+     */
+    private final Image SEMI_CHECKED_MENU_ITEM_IMAGE = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            SEMI_CHECKED_MENU_ITEM_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
+     * Checked menu item image.
+     */
+    private final Image CHECKED_MENU_ITEM_IMAGE = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            CHECKED_MENU_ITEM_IMAGE_FILE_NAME, Display.getCurrent());
+
     // Private Variables
 
     /**
@@ -451,14 +508,16 @@ class TemporalDisplay {
      * Set of basic resources created for use in this window, to be disposed of
      * when this window is disposed of.
      */
-    private final Set<Resource> resources = Sets.newHashSet();
+    private final Set<Resource> resources = Sets.newHashSet(RULER_BORDER_COLOR,
+            UNCHECKED_MENU_ITEM_IMAGE, SEMI_CHECKED_MENU_ITEM_IMAGE,
+            CHECKED_MENU_ITEM_IMAGE);
 
     /**
      * Map of RGB triplets, each consisting of a string of three integers each
      * separated from the next by a space, to the corresponding colors created
      * for use as visual time range indicators. .
      */
-    private final Map<String, Color> timeRangeColorsForRGBs = Maps.newHashMap();
+    private final Map<String, Color> timeRangeColorsForRGBs = new HashMap<>();
 
     /**
      * Selected time mode combo box.
@@ -488,13 +547,12 @@ class TemporalDisplay {
     /**
      * Map of button identifiers to the associated navigation buttons.
      */
-    private final Map<String, Button> buttonsForIdentifiers = Maps.newHashMap();
+    private final Map<String, Button> buttonsForIdentifiers = new HashMap<>();
 
     /**
      * Map of button identifiers to the associated toolbar navigation actions.
      */
-    private final Map<String, Action> actionsForButtonIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, Action> actionsForButtonIdentifiers = new HashMap<>();
 
     /**
      * Selected time mode action, built for the toolbar and passed to this
@@ -565,7 +623,7 @@ class TemporalDisplay {
 
     /**
      * Map of hazard event identifiers to dictionaries providing the hazard
-     * events themselves. All keys are found in <code>eventIdentifiers</code>.
+     * events themselves. All keys are found in {@link #eventIdentifiers}.
      */
     private final Map<String, Dict> dictsForEventIdentifiers;
 
@@ -624,6 +682,16 @@ class TemporalDisplay {
     private Map<String, Menu> headerMenusForColumnNames;
 
     /**
+     * Hazard event context-sensitive menu.
+     */
+    private Menu rowMenu;
+
+    /**
+     * "Until further notice" menu item.
+     */
+    private MenuItem untilFurtherNoticeMenuItem;
+
+    /**
      * Map pairing column names with megawidget managers for those columns that
      * have megawidget-bearing context-sensitive menus associated with their
      * headers.
@@ -637,8 +705,8 @@ class TemporalDisplay {
 
     /**
      * List of visible column names. The order of this list is the order in
-     * which the columns appear in the table, meaning that when the <code>
-     * table.getColumnOrder()</code> method is called, the name of the column
+     * which the columns appear in the table, meaning that when the
+     * {@link Table#getColumnOrder()} method is called, the name of the column
      * found in the table at the index specified by the returned array's Nth
      * item will be the same as that found as the Nth item in this list.
      */
@@ -683,12 +751,12 @@ class TemporalDisplay {
 
     /**
      * Display properties for the countdown timer table cell that has
-     * experienced the <code>SWT.EraseItem</code> event but not the <code>
-     * SWT.PaintItem</code>. For each cell, the latter event immediately follows
-     * the former, before any other cell is erased or painted, so this reference
-     * is merely used to save the display properties for a cell in the very
-     * short time delta between the erasing and painting of said cell. It is
-     * never used beyond this.
+     * experienced the {@link SWT#EraseItem} event but not the
+     * {@link SWT#PaintItem}. For each cell, the latter event immediately
+     * follows the former, before any other cell is erased or painted, so this
+     * reference is merely used to save the display properties for a cell in the
+     * very short time delta between the erasing and painting of said cell. It
+     * is never used beyond this.
      */
     private ConsoleCountdownTimerDisplayProperties countdownTimerDisplayProperties = null;
 
@@ -705,8 +773,8 @@ class TemporalDisplay {
 
     /**
      * Last recorded width of the column holding the countdown timers; this is
-     * merely the last width given by the <code>SWT.EraseItem</code> event when
-     * the column in question was the countdown timer column.
+     * merely the last width given by the {@link SWT#EraseItem} event when the
+     * column in question was the countdown timer column.
      */
     private int countdownTimerColumnWidth;
 
@@ -741,6 +809,13 @@ class TemporalDisplay {
      * Presenter managing the view of which this display is a part.
      */
     private ConsolePresenter presenter = null;
+
+    /**
+     * Set of identifiers for hazard events that allow "until further notice".
+     * This will be kept up to date elsewhere, and is unmodifiable by the
+     * temporal display; it is read-only.
+     */
+    private Set<String> eventIdentifiersAllowingUntilFurtherNotice;
 
     /**
      * Flag indicating whether or not a notification of dynamic setting
@@ -1193,6 +1268,58 @@ class TemporalDisplay {
     };
 
     /**
+     * Row menu item selection listener, handling actions to be performed on a
+     * single .
+     */
+    private final SelectionListener rowMenuListener = new SelectionAdapter() {
+        @Override
+        public void widgetSelected(SelectionEvent e) {
+
+            // If the menu item that was invoked was the until further notice
+            // pseudo-checkbox, respond accordingly.
+            if (untilFurtherNoticeMenuItem == e.widget) {
+
+                // Determine whether until further notice has been toggled
+                // on or off. Since the menu item is not actually a checkbox,
+                // but rather a push button masquerading as a tri-state
+                // checkbox, use the icon it was displaying to determine
+                // whether the new toggle state is on or off.
+                boolean newUntilFurtherNotice = (untilFurtherNoticeMenuItem
+                        .getImage() == UNCHECKED_MENU_ITEM_IMAGE);
+
+                // Iterate through the selected hazard events, ensuring that
+                // each in turn has the correct until further notice state.
+                TableItem[] items = table.getItems();
+                for (int index : selectedIndices) {
+
+                    // Do nothing unless the old until further notice state
+                    // of this hazard event is not the same as the new state.
+                    String identifier = (String) items[index].getData();
+                    Dict eventDict = dictsForEventIdentifiers.get(identifier);
+                    boolean oldUntilFurtherNotice = (eventDict
+                            .containsKey(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE) ? (Boolean) eventDict
+                            .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
+                            : false);
+                    if (oldUntilFurtherNotice != newUntilFurtherNotice) {
+
+                        // Set the end time thumb in the time scale widget
+                        // to be read-only.
+                        ((MultiValueScale) tableEditorsForIdentifiers.get(
+                                identifier).getEditor())
+                                .setConstrainedThumbEditable(1,
+                                        !newUntilFurtherNotice);
+
+                        // Notify the model of the change.
+                        fireConsoleActionOccurred(new ConsoleAction(
+                                ConsoleAction.ActionType.EVENT_END_TIME_UNTIL_FURTHER_NOTICE_CHANGED,
+                                identifier, newUntilFurtherNotice));
+                    }
+                }
+            }
+        }
+    };
+
+    /**
      * Sort listener, used to listen for column-based sorts.
      */
     private final SelectionListener sortListener = new SelectionAdapter() {
@@ -1232,14 +1359,14 @@ class TemporalDisplay {
     public TemporalDisplay() {
 
         // Create the various lists and dictionaries required.
-        eventIdentifiers = Lists.newArrayList();
-        dictsForEventIdentifiers = Maps.newHashMap();
-        columnsForNames = Maps.newHashMap();
-        columnNamesForIdentifiers = Maps.newHashMap();
-        visibleColumnNames = Lists.newArrayList();
-        hintTextIdentifiersForVisibleColumnNames = Maps.newHashMap();
-        dateIdentifiersForVisibleColumnNames = Maps.newHashMap();
-        tableEditorsForIdentifiers = Maps.newHashMap();
+        eventIdentifiers = new ArrayList<>();
+        dictsForEventIdentifiers = new HashMap<>();
+        columnsForNames = new HashMap<>();
+        columnNamesForIdentifiers = new HashMap<>();
+        visibleColumnNames = new ArrayList<>();
+        hintTextIdentifiersForVisibleColumnNames = new HashMap<>();
+        dateIdentifiersForVisibleColumnNames = new HashMap<>();
+        tableEditorsForIdentifiers = new HashMap<>();
 
         // Configure the date-time formatter.
         dateTimeFormatter = new SimpleDateFormat(DATE_TIME_FORMAT_STRING);
@@ -1267,19 +1394,30 @@ class TemporalDisplay {
      *            megawidget specifiers.
      * @param activeAlerts
      *            Currently active alerts.
+     * @param eventIdentifiersAllowingUntilFurtherNotice
+     *            Set of the hazard event identifiers that at any given moment
+     *            allow the toggling of their "until further notice" mode. The
+     *            set is unmodifiable; attempts to modify it will result in an
+     *            {@link UnsupportedOperationException}. Note that this set is
+     *            kept up-to-date, and thus will always contain only those
+     *            events that can have their "until further notice" mode toggled
+     *            at the instant at which it is checked.
      * @param showControlsInToolBar
      *            Flag indicating whether the controls (navigation buttons,
-     *            etc.) are to be shown in the toolbar. If <code>false</code>,
-     *            they are provided at the bottom of this composite instead.
+     *            etc.) are to be shown in the toolbar. If false, they are
+     *            provided at the bottom of this composite instead.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Settings currentSettings, String filterMegawidgets,
             ImmutableList<IHazardAlert> activeAlerts,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean showControlsInToolBar) {
 
-        // Remember the presenter.
+        // Remember the presenter, and the set of event identifiers
+        // allowing "until further notice".
         this.presenter = presenter;
+        this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
 
         // If the controls are to be shown in the toolbar, hide the
         // ones in the composite; otherwise, delete the ones in the
@@ -1491,7 +1629,7 @@ class TemporalDisplay {
      * @return List of the current hazard events.
      */
     public List<Dict> getEvents() {
-        List<Dict> dictList = Lists.newArrayList();
+        List<Dict> dictList = new ArrayList<>();
         for (String eventId : eventIdentifiers) {
             dictList.add(dictsForEventIdentifiers.get(eventId));
         }
@@ -1563,9 +1701,12 @@ class TemporalDisplay {
                     // check the item; if the color changed, alter
                     // the color of the range between the two
                     // time scale thumbs; if the selected state
-                    // changed, select or deselect the item; other-
-                    // wise, as long as the key is not the event
-                    // identifier, change the text to match.
+                    // changed, select or deselect the item; if
+                    // the "until further notice" end time flag
+                    // changed, enable or disable the end time
+                    // thumb on the time scale; otherwise, as long
+                    // as the key is not the event identifier,
+                    // change the text to match.
                     if (key.equals(HAZARD_EVENT_CHECKED)) {
                         item.setChecked((Boolean) dict
                                 .get(HAZARD_EVENT_CHECKED));
@@ -1622,9 +1763,16 @@ class TemporalDisplay {
                                 selectedIndices = table.getSelectionIndices();
                             }
                         }
+                    } else if (key
+                            .equals(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+                        scale.setConstrainedThumbEditable(
+                                1,
+                                !Boolean.TRUE.equals(dict
+                                        .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
                     } else if (!key.equals(HAZARD_EVENT_IDENTIFIER)) {
 
-                        // Change the text to match the new value.
+                        // Change the text to match the new
+                        // value.
                         String columnName = columnNamesForIdentifiers.get(key);
                         if (columnName != null) {
                             int columnIndex = getIndexOfColumnInTable(columnName);
@@ -1867,15 +2015,14 @@ class TemporalDisplay {
 
             // Get a list of all the column names for which there are
             // definitions, sorted alphabetically.
-            List<String> columnNames = Lists.newArrayList(columnsForNames
-                    .keySet());
+            List<String> columnNames = new ArrayList<>(columnsForNames.keySet());
             Collections.sort(columnNames);
 
             // Copy the list of column names to another list that will be
             // used to track which columns have associated header menus
             // in the loop below.
-            List<String> columnNamesToBeGivenMenus = Lists
-                    .newArrayList(columnNames);
+            List<String> columnNamesToBeGivenMenus = new ArrayList<>(
+                    columnNames);
 
             // Get the list of provided event filters.
             DictList filters = DictList.getInstance(filterMegawidgets);
@@ -1886,8 +2033,8 @@ class TemporalDisplay {
             // names and the filter, and then make one more menu with
             // just the column names checklist for all the columns that
             // do not have associated filters.
-            headerMenusForColumnNames = Maps.newHashMap();
-            headerMegawidgetManagersForColumnNames = Maps.newHashMap();
+            headerMenusForColumnNames = new HashMap<>();
+            headerMegawidgetManagersForColumnNames = new HashMap<>();
             for (int j = 0; j < filters.size() + 1; j++) {
 
                 // If there are no more columns needing menus, do nothing
@@ -2016,7 +2163,7 @@ class TemporalDisplay {
         // update the widths of these columns based on the widths that
         // were provided, as well as making the column the sort column
         // if that is appropriate.
-        List<String> columnNames = Lists.newArrayList();
+        List<String> columnNames = new ArrayList<>();
         for (int j = 0; j < table.getColumnCount(); ++j) {
             TableColumn column = table.getColumn(j);
             String columnName = column.getText();
@@ -2357,10 +2504,13 @@ class TemporalDisplay {
      *            Start time of the event, as epoch time in milliseconds.
      * @param endTime
      *            End time of the event, as epoch time in milliseconds.
+     * @param endTimeUntilFurtherNotice
+     *            Flag indicating whether or not the end time is currently
+     *            "Until further notice".
      * @return Time scale widget.
      */
     private MultiValueScale createTimeScale(TableItem item, Color color,
-            long startTime, long endTime) {
+            long startTime, long endTime, boolean endTimeUntilFurtherNotice) {
 
         // Create a time scale widget with two thumbs and configure it
         // appropriately. Note that the right inset of the widget is
@@ -2383,10 +2533,13 @@ class TemporalDisplay {
                 TIME_HORIZONTAL_PADDING + FORM_MARGIN_WIDTH, verticalPadding);
         scale.setVisibleValueRange(ruler.getLowerVisibleValue(),
                 ruler.getUpperVisibleValue());
-        scale.setMinimumDeltaBetweenConstrainedThumbs(HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
+        scale.setMinimumDeltaBetweenConstrainedThumbs(TIME_RANGE_MINIMUM_INTERVAL);
         scale.setConstrainedThumbValues(startTime, endTime);
         scale.setConstrainedThumbRangeColor(1, color);
         scale.setFreeMarkedValues(currentTime, selectedTime);
+        if (endTimeUntilFurtherNotice) {
+            scale.setConstrainedThumbEditable(1, false);
+        }
         scale.setFreeMarkedValueColor(0, currentTimeColor);
         scale.setFreeMarkedValueColor(1, selectedTimeColor);
         if (selectedTimeMode.equals(SELECTED_TIME_MODE_RANGE)) {
@@ -2580,7 +2733,7 @@ class TemporalDisplay {
                         }
                     } else {
                         TableItem[] selectedItems = table.getSelection();
-                        List<String> selectedIdentifiers = Lists.newArrayList();
+                        List<String> selectedIdentifiers = new ArrayList<>();
                         for (int j = 0; j < selectedItems.length; j++) {
                             TableItem item = selectedItems[j];
                             selectedIdentifiers.add((String) item.getData());
@@ -2629,6 +2782,13 @@ class TemporalDisplay {
             }
         });
 
+        // Create a context-sensitive menu to be deployed for
+        // table items as appropriate.
+        rowMenu = new Menu(table);
+        untilFurtherNoticeMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+        untilFurtherNoticeMenuItem.setText(UNTIL_FURTHER_NOTICE_MENU_TEXT);
+        untilFurtherNoticeMenuItem.addSelectionListener(rowMenuListener);
+
         // Add a listener for popup menu request events, to be
         // told when the user has attempted to pop up a menu
         // from the table.
@@ -2643,17 +2803,21 @@ class TemporalDisplay {
                         new Point(e.x, e.y));
                 int headerTop = table.getClientArea().y;
                 int headerBottom = headerTop + table.getHeaderHeight();
-                e.doit = ((point.y >= headerTop) && (point.y < headerBottom));
+                boolean headerClicked = ((point.y >= headerTop) && (point.y < headerBottom));
 
-                // If deploying the menu, set its items checkboxes
-                // to reflect which columns are showing and which
-                // are hidden. If only one column is showing, dis-
-                // able that checkbox so that the user cannot un-
-                // check it. Then update any associated megawidget
-                // manager's state as well, and set the menu as
-                // belonging to the table. If no menu is found for
-                // the specified column, do nothing.
-                if (e.doit) {
+                // Deploy the header menu if appropriate, or the
+                // item menu if an item was right-clicked.
+                if (headerClicked) {
+
+                    // Set the menu's items checkboxes to reflect
+                    // which columns are showing and which are
+                    // hidden. If only one column is showing, dis-
+                    // able that checkbox so that the user cannot
+                    // uncheck it. Then update any associated
+                    // megawidget manager's state as well, and set
+                    // the menu as belonging to the table. If no
+                    // menu is found for the specified column, do
+                    // nothing.
                     TableColumn column = getTableColumnAtPoint(new Point(e.x,
                             e.y));
                     if (column != null) {
@@ -2686,6 +2850,84 @@ class TemporalDisplay {
                         }
                         table.setMenu(menu);
                     }
+                } else {
+
+                    // Unfortunately, SWT tables fire these events
+                    // before the selection events, so at the point
+                    // where this code is executing, any modification
+                    // made to the table selection has not yet oc-
+                    // curred. Since this menu should only be dis-
+                    // played after such a selection change has been
+                    // made, the actual display of the menu is delayed
+                    // until the selection event has been handled.
+                    table.setMenu(rowMenu);
+                    rowMenu.setLocation(e.x, e.y);
+                    Display.getCurrent().asyncExec(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            // Only display the menu if at least one
+                            // table row is selected, and if the table
+                            // has not itself been disposed of.
+                            if ((table.isDisposed() == false)
+                                    && (selectedIndices != null)
+                                    && (selectedIndices.length > 0)) {
+
+                                // Iterate through the table rows,
+                                // determining for each one whether
+                                // its until further notice state may
+                                // be changed, and whether or not it
+                                // is currently in until further no-
+                                // tice mode.
+                                TableItem[] items = table.getItems();
+                                boolean untilFurtherNoticeAllowed = true;
+                                int numUntilFurtherNotice = 0;
+                                for (int index : selectedIndices) {
+                                    String identifier = (String) items[index]
+                                            .getData();
+                                    if (eventIdentifiersAllowingUntilFurtherNotice
+                                            .contains(identifier) == false) {
+                                        untilFurtherNoticeAllowed = false;
+                                    }
+                                    if (Boolean.TRUE
+                                            .equals(dictsForEventIdentifiers
+                                                    .get(identifier)
+                                                    .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE))) {
+                                        numUntilFurtherNotice++;
+                                    }
+                                }
+
+                                // Set the image for the menu item
+                                // as checked, semi-checked, or
+                                // unchecked, depending upon whether
+                                // all, some, or none of the selected
+                                // events are in until further notice
+                                // mode. Then enable it if all the
+                                // selected events may have this op-
+                                // tion toggled.
+                                //
+                                // NOTE: This is an SWT kludge; it is
+                                // using a push-button menu item to
+                                // simulate a tri-state checkbox menu
+                                // item, because SWT, in its infinite
+                                // wisdom, does not offer a tri-state
+                                // checkbox menu item.
+                                untilFurtherNoticeMenuItem
+                                        .setImage(numUntilFurtherNotice == 0 ? UNCHECKED_MENU_ITEM_IMAGE
+                                                : (numUntilFurtherNotice == selectedIndices.length ? CHECKED_MENU_ITEM_IMAGE
+                                                        : SEMI_CHECKED_MENU_ITEM_IMAGE));
+
+                                // Enable the menu item if all se-
+                                // lected events can have their until
+                                // further notice mode toggled, and
+                                // show the menu.
+                                untilFurtherNoticeMenuItem
+                                        .setEnabled(untilFurtherNoticeAllowed);
+                                rowMenu.setVisible(true);
+                            }
+                        }
+                    });
+                    e.doit = false;
                 }
             }
         });
@@ -2953,7 +3195,8 @@ class TemporalDisplay {
         if (type.equals(SETTING_COLUMN_TYPE_STRING)) {
             comparator = Collator.getInstance(Locale.getDefault());
         } else if (type.equals(SETTING_COLUMN_TYPE_DATE)) {
-            comparator = new DateStringComparator(dateTimeFormatter);
+            comparator = new DateStringComparator(dateTimeFormatter,
+                    UNTIL_FURTHER_NOTICE_COLUMN_TEXT);
         } else if (type.equals(SETTING_COLUMN_TYPE_NUMBER)) {
             comparator = new LongStringComparator();
         } else if (type.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
@@ -3047,7 +3290,7 @@ class TemporalDisplay {
         }
 
         // Create the time line ruler's hatch mark groups.
-        List<IHatchMarkGroup> hatchMarkGroups = Lists.newArrayList();
+        List<IHatchMarkGroup> hatchMarkGroups = new ArrayList<>();
         hatchMarkGroups.add(new DayHatchMarkGroup());
         hatchMarkGroups.add(new TimeHatchMarkGroup(6L * HOUR_INTERVAL, 0.25f,
                 hatchMarkColors[0], null));
@@ -3106,7 +3349,6 @@ class TemporalDisplay {
                 return range;
             }
         });
-        resources.add(RULER_BORDER_COLOR);
         ruler.setBorderColor(RULER_BORDER_COLOR);
         ruler.setHeightMultiplier(2.95f);
         ruler.setSnapValueCalculator(snapValueCalculator);
@@ -3308,7 +3550,7 @@ class TemporalDisplay {
     private void createTableRowsFromEventData() {
 
         // Create a list of table items to be selected.
-        List<TableItem> selectedTableItems = Lists.newArrayList();
+        List<TableItem> selectedTableItems = new ArrayList<>();
 
         // Create a table item for each row in the table.
         for (int j = 0; j < numberOfRows; j++) {
@@ -3339,12 +3581,16 @@ class TemporalDisplay {
 
             // Create the event scale. This always goes in the last
             // column of the table.
-            MultiValueScale scale = createTimeScale(item,
+            boolean untilFurtherNotice = Boolean.TRUE.equals(eventDict
+                    .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
+            MultiValueScale scale = createTimeScale(
+                    item,
                     getTimeRangeColorForRGB((String) eventDict
                             .get(HAZARD_EVENT_COLOR)),
                     ((Number) eventDict.get(HAZARD_EVENT_START_TIME))
                             .longValue(),
-                    ((Number) eventDict.get(HAZARD_EVENT_END_TIME)).longValue());
+                    ((Number) eventDict.get(HAZARD_EVENT_END_TIME)).longValue(),
+                    untilFurtherNotice);
 
             // Create the table editor for this time scale.
             createTableEditorForTimeScale(scale, item);
@@ -3832,7 +4078,7 @@ class TemporalDisplay {
         // sizing to be applied in order from largest to smallest
         // columns, ensuring a good distribution of the delta.
         int totalWidth = 0;
-        List<ColumnIndexAndWidth> columnIndicesAndWidths = Lists.newArrayList();
+        List<ColumnIndexAndWidth> columnIndicesAndWidths = new ArrayList<>();
         for (int j = 0; j < columns.length; j++) {
 
             // Only add a record for this column if it is not
@@ -4025,6 +4271,11 @@ class TemporalDisplay {
         if (columnDefinition.getType().equals(SETTING_COLUMN_TYPE_DATE)) {
             Number number = (Number) value;
             if (number != null) {
+                if (columnDefinition.getFieldName().equals(
+                        HAZARD_EVENT_END_TIME)
+                        && (number.longValue() == UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
+                    return UNTIL_FURTHER_NOTICE_COLUMN_TEXT;
+                }
                 return getDateTimeString(number.longValue());
             } else {
                 return getDateTimeString(0L);
@@ -4177,7 +4428,7 @@ class TemporalDisplay {
     /**
      * Get the index at which the specified column is found in the table. This
      * is not the index indicating the current ordering of the columns, but
-     * rather the index that, when provided to <code>table.getColumn()</code>,
+     * rather the index that, when provided to {@link Table#getColumn(int)},
      * returns the specified column.
      * 
      * @param name
@@ -4337,14 +4588,14 @@ class TemporalDisplay {
             // Compile a set of the selected event identifiers so that
             // they may be selected again later.
             TableItem[] selectedItems = table.getSelection();
-            Set<Object> selectedIdentifiers = Sets.newHashSet();
+            Set<Object> selectedIdentifiers = new HashSet<>();
             for (TableItem item : selectedItems) {
                 selectedIdentifiers.add(item.getData());
             }
 
             // Retrieve a list of the controls, deleting the old table
             // editors that these controls used.
-            Map<String, Control> controlsForIdentifiers = Maps.newHashMap();
+            Map<String, Control> controlsForIdentifiers = new HashMap<>();
             for (String key : tableEditorsForIdentifiers.keySet()) {
                 TableEditor editor = tableEditorsForIdentifiers.get(key);
                 controlsForIdentifiers.put(key, editor.getEditor());
@@ -4491,8 +4742,8 @@ class TemporalDisplay {
      * 
      * @param eventId
      *            Event identifier for which to fetch the expiration time.
-     * @return Expiration time as an epoch time in milliseconds, or <code>
-     *         Long.MAX_VALUE</code> if there is no expiration time.
+     * @return Expiration time as an epoch time in milliseconds, or
+     *         {@link Long#MAX_VALUE} if there is no expiration time.
      */
     private long getAlertExpirationTime(String eventId) {
         if (countdownTimersDisplayManager == null) {

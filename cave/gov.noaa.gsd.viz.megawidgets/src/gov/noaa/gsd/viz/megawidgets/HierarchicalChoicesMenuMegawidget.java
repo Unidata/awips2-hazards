@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,9 +20,6 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Hierarchical choices menu megawidget, allowing the selection of zero or more
@@ -40,6 +39,8 @@ import com.google.common.collect.Maps;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
+ *                                           to new JDK 1.7 features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -122,7 +123,7 @@ public class HierarchicalChoicesMenuMegawidget extends
 
         // Create menu items and any nested submenus required
         // for the hierarchical state choices.
-        items = Lists.newArrayList();
+        items = new ArrayList<>();
         for (Object choice : choices) {
             items.add(convertStateToMenuItem(menu, -1, choice, listener));
         }
@@ -184,7 +185,7 @@ public class HierarchicalChoicesMenuMegawidget extends
      * Synchronize the specified menu to the specified state. This includes
      * synchronizing any nested menus of this menu as well.
      * 
-     * @param menuItems
+     * @param items
      *            Array of menu items to be synchronized.
      * @param state
      *            State to which the menu item is to be synchronized, in the
@@ -197,7 +198,7 @@ public class HierarchicalChoicesMenuMegawidget extends
         // Iterate through the state list, recording each selected item's
         // identifier paired with its sub-list (if it is a branch node in
         // the state tree) or with nothing (if it is a leaf).
-        Map<String, List<?>> subListsForSelectedIdentifiers = Maps.newHashMap();
+        Map<String, List<?>> subListsForSelectedIdentifiers = new HashMap<>();
         if (state != null) {
             for (Object element : state) {
                 String identifier;
@@ -288,14 +289,14 @@ public class HierarchicalChoicesMenuMegawidget extends
         // one that is checked or grayed to the state
         // hierarchy, as well as any descendants that are
         // checked or grayed.
-        List<Object> children = Lists.newArrayList();
+        List<Object> children = new ArrayList<>();
         for (MenuItem item : items) {
             if (item.getStyle() == SWT.CHECK) {
                 if (item.getSelection()) {
                     children.add(item.getData());
                 }
             } else {
-                Map<String, Object> node = Maps.newHashMap();
+                Map<String, Object> node = new HashMap<>();
                 node.put(HierarchicalChoicesMenuSpecifier.CHOICE_NAME,
                         item.getText());
                 node.put(HierarchicalChoicesMenuSpecifier.CHOICE_IDENTIFIER,
@@ -323,8 +324,8 @@ public class HierarchicalChoicesMenuMegawidget extends
      *            which case the name will be used as the identifier.
      * @param listener
      *            Selection listener to be registered; if present, the menu item
-     *            must be of the style <code>SWT.CHECK</code>; otherwise, it
-     *            must be of the style <code>SWT.CASCADE</code>.
+     *            must be of the style {@link SWT#CHECK}; otherwise, it must be
+     *            of the style {@link SWT#CASCADE}.
      * @return Created menu item.
      */
     private MenuItem createMenuItem(Menu parent, int index, String name,

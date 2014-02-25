@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Lists;
 
 /**
  * Hierarchical choices megawidget, allowing the selection of zero or more
@@ -33,6 +33,8 @@ import com.google.common.collect.Lists;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
+ *                                           instead of only lists for the state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +49,7 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
     /**
      * State associated with the tree.
      */
-    protected final List<Object> state = Lists.newArrayList();
+    protected final List<Object> state = new ArrayList<>();
 
     // Protected Constructors
 
@@ -108,14 +110,14 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // If the state is not a list, an error has occurred.
-        if ((state != null) && ((state instanceof List) == false)) {
+        // If the state is not a collection, an error has occurred.
+        if ((state != null) && ((state instanceof Collection) == false)) {
             throw new MegawidgetStateException(identifier, getSpecifier()
                     .getType(), state, "must be list of choices");
         }
 
         // Ensure that the provided hierarchy is legal.
-        List<?> hierarchy = (List<?>) state;
+        Collection<?> hierarchy = (Collection<?>) state;
         if (hierarchy != null) {
             HierarchicalBoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
             ChoicesMegawidgetSpecifier.IllegalChoicesProblem eval = specifier

@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Base class for megawidget specifiers that include a closed hierarchical list
@@ -49,6 +49,8 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
+ *                                           instead of only lists for the state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,9 +64,9 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
 
     /**
      * Choice children parameter name; each choice in the tree associated with
-     * <code>MEGAWIDGET_VALUE_CHOICES</code> that is a map may contain a
-     * reference to a list of other choices associated with this name. These
-     * choices are the children of that choice.
+     * {@link #MEGAWIDGET_VALUE_CHOICES} that is a map may contain a reference
+     * to a list of other choices associated with this name. These choices are
+     * the children of that choice.
      */
     public static final String CHOICE_CHILDREN = "children";
 
@@ -90,8 +92,8 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
 
     @Override
     protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(List.class);
+        Set<Class<?>> classes = new HashSet<>();
+        classes.add(Collection.class);
         return classes;
     }
 
@@ -105,12 +107,12 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
             String parameterName, Map<?, ?> map, int index) {
 
         // If the map has something other than a
-        // list for a children entry, it is
+        // collection for a children entry, it is
         // illegal.
         Object children = map.get(CHOICE_CHILDREN);
-        if ((children != null) && ((children instanceof List) == false)) {
+        if ((children != null) && ((children instanceof Collection) == false)) {
             return new IllegalChoicesProblem(parameterName, "[" + index + "]",
-                    CHOICE_CHILDREN, children, "must be list of children");
+                    CHOICE_CHILDREN, children, "must be collection of children");
         }
 
         // Check the children lists of the tree for
@@ -118,7 +120,7 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
         // always have unique identifiers.
         if (children != null) {
             IllegalChoicesProblem eval = evaluateChoicesLegality(parameterName,
-                    (List<?>) children);
+                    (Collection<?>) children);
             if (eval != NO_ILLEGAL_CHOICES_PROBLEM) {
                 eval.addParentToBadElementLocation("[" + index + "]");
                 return eval;
@@ -139,7 +141,8 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
             if (node2 instanceof String) {
                 return false;
             }
-            if (isSubset((List<?>) ((Map<?, ?>) node1).get(CHOICE_CHILDREN),
+            if (isSubset(
+                    (Collection<?>) ((Map<?, ?>) node1).get(CHOICE_CHILDREN),
                     (List<?>) ((Map<?, ?>) node2).get(CHOICE_CHILDREN)) == false) {
                 return false;
             }
@@ -148,21 +151,21 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
     }
 
     @Override
-    protected final List<Object> createChoicesCopy(List<?> list) {
+    protected final List<Object> createChoicesCopy(Collection<?> list) {
 
         // Create a new list, and copy each element into it from
         // the old list. If an element is a map, then make a
         // copy of the map instead of using the original, and
         // also copy the child list within that map.
-        List<Object> listCopy = Lists.newArrayList();
+        List<Object> listCopy = new ArrayList<>();
         for (Object item : list) {
             if (item instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) item;
-                Map<String, Object> mapCopy = Maps.newHashMap();
+                Map<String, Object> mapCopy = new HashMap<>();
                 for (Object key : map.keySet()) {
                     if (key.equals(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN)) {
                         mapCopy.put((String) key,
-                                createChoicesCopy((List<?>) map.get(key)));
+                                createChoicesCopy((Collection<?>) map.get(key)));
                     } else {
                         mapCopy.put((String) key, map.get(key));
                     }

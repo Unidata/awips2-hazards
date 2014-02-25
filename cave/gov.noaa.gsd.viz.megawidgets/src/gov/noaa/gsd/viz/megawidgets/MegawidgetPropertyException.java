@@ -19,7 +19,8 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 24, 2013   1277     Chris.Golden      Initial creation
- * 
+ * Feb 12, 2014   2161     Chris.Golden      Added nested cause's description to
+ *                                           toString().
  * </pre>
  * 
  * @author Chris.Golden
@@ -128,6 +129,9 @@ public class MegawidgetPropertyException extends MegawidgetException {
         }
         if (getMessage() != null) {
             builder.append(": " + getMessage());
+        }
+        if (getCause() != null) {
+            builder.append(" (caused by: " + getCause().toString() + ")");
         }
         return builder.toString();
     }

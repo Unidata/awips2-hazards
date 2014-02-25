@@ -9,24 +9,15 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Queues;
 
 /**
  * Description: Manager of detail field megawidgets that are children of a
@@ -45,6 +36,9 @@ import com.google.common.collect.Queues;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Feb 12, 2014    2161    Chris.Golden      Changed to delegate most of its
+ *                                           work to the new DetailChildren-
+ *                                           Manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,28 +51,21 @@ public class BoundedChoicesDetailChildrenManager implements
     // Private Variables
 
     /**
-     * List of all detail child megawidgets that have been created.
+     * Detail children manager that does most of the work.
      */
-    private final List<IControl> detailMegawidgets = Lists.newArrayList();
+    private final DetailChildrenManager detailChildrenManager;
 
     /**
      * Map of identifiers of detail child megawidgets that are notifiers to the
      * choice buttons with which they are associated.
      */
-    private final Map<String, Button> choiceButtonsForDetailIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, Button> choiceButtonsForDetailIdentifiers = new HashMap<>();
 
     /**
      * Map of choice buttons to the listeners used to receive notification of
      * the buttons' selection.
      */
     private final SelectionListener choiceButtonListener;
-
-    /**
-     * Map of creation-time attribute identifiers to corresponding values; this
-     * is passed to each megawidget at construction time.
-     */
-    private final Map<String, Object> creationParams;
 
     /**
      * Notification listener to which to pass any notifications intercepted from
@@ -108,14 +95,15 @@ public class BoundedChoicesDetailChildrenManager implements
     public BoundedChoicesDetailChildrenManager(
             SelectionListener choiceButtonListener,
             Map<String, Object> creationParams) {
-        this.choiceButtonListener = choiceButtonListener;
-        this.creationParams = Maps.newHashMap(creationParams);
+        creationParams = new HashMap<>(creationParams);
         notificationListener = (INotificationListener) creationParams
                 .get(INotifier.NOTIFICATION_LISTENER);
-        this.creationParams.put(INotifier.NOTIFICATION_LISTENER, this);
+        creationParams.put(INotifier.NOTIFICATION_LISTENER, this);
         stateChangeListener = (IStateChangeListener) creationParams
                 .get(IStateful.STATE_CHANGE_LISTENER);
-        this.creationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
+        creationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
+        this.detailChildrenManager = new DetailChildrenManager(creationParams);
+        this.choiceButtonListener = choiceButtonListener;
     }
 
     // Public Methods
@@ -126,7 +114,7 @@ public class BoundedChoicesDetailChildrenManager implements
      * @return List of all detail child megawidgets.
      */
     public List<IControl> getDetailMegawidgets() {
-        return Lists.newArrayList(detailMegawidgets);
+        return detailChildrenManager.getDetailMegawidgets();
     }
 
     /**
@@ -156,77 +144,23 @@ public class BoundedChoicesDetailChildrenManager implements
      *             If an error occurs while creating or initializing the
      *             associated megawidgets.
      */
-    public List<Control> createDetailChildMegawidgetsForChoice(Button button,
+    public List<Composite> createDetailChildMegawidgetsForChoice(Button button,
             Composite adjacentComposite, Composite overallComposite,
             int buttonWidth, List<IControlSpecifier> detailSpecifiers)
             throws MegawidgetException {
 
-        // If there are no child megawidgets, do nothing.
-        if (detailSpecifiers.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // Determine how many rows of megawidgets are specified, and how
-        // many specifiers will be on each row. Specifiers that exist
-        // on rows after the first will be placed within a composite, one
-        // per row.
-        Queue<Integer> specifierCountPerRow = Queues.newLinkedBlockingQueue();
-        int specifierCount = 0;
-        for (int j = 0; j < detailSpecifiers.size(); j++) {
-            if (detailSpecifiers.get(j).isFullWidthOfColumn()) {
-                if ((specifierCount > 0) || specifierCountPerRow.isEmpty()) {
-                    specifierCountPerRow.add(specifierCount);
-                    specifierCount = 0;
-                }
-                specifierCountPerRow.add(1);
-            } else {
-                specifierCount++;
-            }
-        }
-        if (specifierCount > 0) {
-            specifierCountPerRow.add(specifierCount);
-        }
-
-        // Iterate through the detail megawidget specifiers, creating each
-        // in turn, ensuring that each is nested in the proper composite.
-        // First row ones are simply placed in the provided adjacent
-        // composite, while any that belong in subsequent rows have com-
-        // posites made for each such row and are placed in those.
-        List<Control> subsequentRowComposites = Lists.newArrayList();
-        Composite composite = adjacentComposite;
-        specifierCount = specifierCountPerRow.remove();
-        int index = 0;
-        for (IControlSpecifier detailSpecifier : detailSpecifiers) {
-
-            // If this megawidget belongs in a new row, create a new
-            // composite in which to place the megawidget and use it
-            // for this row.
-            if ((index++ == specifierCount)
-                    && (specifierCountPerRow.isEmpty() == false)) {
-                specifierCount = specifierCountPerRow.remove();
-                composite = new Composite(overallComposite, SWT.NONE);
-                GridLayout layout = new GridLayout(specifierCount, false);
-                layout.horizontalSpacing = 3;
-                layout.marginWidth = layout.marginHeight = 0;
-                layout.marginLeft = buttonWidth;
-                composite.setLayout(layout);
-                composite.setLayoutData(new GridData(
-                        (specifierCount > 1 ? SWT.LEFT : SWT.FILL), SWT.TOP,
-                        true, false));
-                subsequentRowComposites.add(composite);
-                index = 1;
-            }
-
-            // Create the megawidget.
-            IControl megawidget = detailSpecifier.createMegawidget(composite,
-                    IControl.class, creationParams);
-            detailMegawidgets.add(megawidget);
+        // Delegate the work of creating the detail megawidgets, then
+        // iterate through the created megawidgets, associating each in
+        // turn with its button.
+        DetailChildrenManager.CompositesAndMegawidgets compositesAndMegawidgets = detailChildrenManager
+                .createDetailChildMegawidgets(adjacentComposite,
+                        overallComposite, buttonWidth, detailSpecifiers);
+        for (IControl megawidget : compositesAndMegawidgets
+                .getDetailMegawidgets()) {
             rememberChildMegawidgetsAssociationWithChoiceButton(megawidget,
                     button);
         }
-
-        // Return any row composites that were created.
-        return subsequentRowComposites;
+        return compositesAndMegawidgets.getComposites();
     }
 
     @Override

@@ -8,6 +8,10 @@ recommender framework
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
+    Feb      2013  2161      Chris.Golden        Removed megawidget side effects script
+                                                 from this file and placed it in its own
+                                                 RiverFloodRecommenderSideEffects.py file,
+                                                 which is localized.
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -19,6 +23,7 @@ import RecommenderTemplate
 import numpy
 import JUtil
 from EventSet import EventSet
+from LocalizationInterface import LocalizationInterface
 
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
 
@@ -89,13 +94,11 @@ class Recommender(RecommenderTemplate.Recommender):
         levelFieldDict["showScale"] = True
         
         includeNonFloodPointDict = {}
-        includeNonFloodPointDict["fieldType"] = "CheckBoxes"
+        includeNonFloodPointDict["fieldType"] = "CheckBox"
         includeNonFloodPointDict["fieldName"] = "includeNonFloodPoints"
-        includeNonFloodPointDict["choices"] = [    
-                     {"identifier":"includeNonFloodPoints", "displayString": "Include Non-Flood Points"},
-                     ]
+        includeNonFloodPointDict["label"] = "Include Non-Flood Points"
         includeNonFloodPointDict["enable"] = False
-        includeNonFloodPointDict["values"] = []
+        includeNonFloodPointDict["values"] = False
 
         
         fieldDicts = [choiceFieldDict, levelFieldDict, includeNonFloodPointDict]
@@ -108,23 +111,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # Define the side effects script used to make the megawidgets
         # affect one another (in this case, radio button selection
         # enables and disables the forecast confidence spinner).        
-        dialogDict["sideEffectsScript"] = """
-def applySideEffects(triggerIdentifier, mutableProperties):
-   if triggerIdentifier == "forecastType":
-      if mutableProperties["forecastType"]["values"]["forecastType"] == "Watch":
-         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 50 } }, "includeNonFloodPoints":{"enable":False, "values":{"includeNonFloodPoints":[]} } }
-      elif mutableProperties["forecastType"]["values"]["forecastType"] == "Warning":
-         return { "forecastConfidencePercentage": { "enable": False, "values": { "forecastConfidencePercentage": 80 } }, "includeNonFloodPoints":{"enable":True } }
-      else:
-         return { "forecastConfidencePercentage": { "enable": True } }
-   elif triggerIdentifier == "forecastConfidencePercentage":
-      if mutableProperties["forecastConfidencePercentage"]["values"]["forecastConfidencePercentage"] >= 80:
-         return {"includeNonFloodPoints":{"enable": True } }
-      else:
-         return {"includeNonFloodPoints":{"enable": False, "values":{"includeNonFloodPoints":[] } } }
-   else:
-      return None
-"""
+        localizationInterface = LocalizationInterface()
+        dialogDict["sideEffectsScript"] = localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/RiverFloodRecommenderSideEffects.py", "common")
         
         return dialogDict
     

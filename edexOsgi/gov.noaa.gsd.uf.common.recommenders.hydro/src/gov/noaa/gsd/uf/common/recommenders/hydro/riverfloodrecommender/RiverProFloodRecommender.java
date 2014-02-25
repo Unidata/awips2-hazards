@@ -577,7 +577,6 @@ public class RiverProFloodRecommender {
     private EventSet<IHazardEvent> createHazards(
             Map<String, Object> dialogInputMap) {
         boolean isWarning = false;
-        boolean includeNonFloodPoints = false;
 
         /*
          * Check the runData for a forecast confidence percentage.
@@ -593,11 +592,8 @@ public class RiverProFloodRecommender {
             }
         }
 
-        if (dialogInputMap.containsKey(INCLUDE_NONFLOOD_POINTS)
-                && ((List<String>) dialogInputMap.get(INCLUDE_NONFLOOD_POINTS))
-                        .size() > 0) {
-            includeNonFloodPoints = true;
-        }
+        boolean includeNonFloodPoints = Boolean.TRUE.equals(dialogInputMap
+                .get(INCLUDE_NONFLOOD_POINTS));
 
         EventSet<IHazardEvent> potentialHazardEventSet = getPotentialRiverHazards(
                 isWarning, includeNonFloodPoints);

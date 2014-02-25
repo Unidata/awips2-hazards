@@ -11,6 +11,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.E
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
@@ -149,6 +150,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            conversions to/from JSON.
  * Feb 07, 2014  2890      bkowal             Product Generation JSON refactor.
  * Feb 19, 2014  2915      bkowal             JSON settings re-factor
+ * Feb 19, 2014  2161      Chris.Golden       Added ability to handle console action
+ *                                            indicating that until further notice
+ *                                            has changed for an event.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1566,6 +1570,15 @@ public final class HazardServicesMessageHandler implements
                     Long.parseLong(consoleAction.getStartTime()));
             eventInfo.put(HAZARD_EVENT_END_TIME,
                     Long.parseLong(consoleAction.getEndTime()));
+            updateEventData(eventInfo, true);
+            break;
+        }
+
+        case EVENT_END_TIME_UNTIL_FURTHER_NOTICE_CHANGED: {
+            Map<String, Serializable> eventInfo = new HashMap<>();
+            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
+            eventInfo.put(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                    consoleAction.getChecked());
             updateEventData(eventInfo, true);
             break;
         }

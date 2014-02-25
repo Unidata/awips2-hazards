@@ -91,7 +91,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
  * Nov 23, 2013  1462      blawrenc    Changed default polygon border width from 1 to 3.
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
  * Nov 30, 2013            blawrenc    Added hazard color retrieval from style rules.
- * 
+ * Feb 24, 2014  2161      Chris.Golden Added VTECutilities to Python include path.
  * </pre>
  * 
  * @author bsteffen
@@ -176,6 +176,9 @@ public class SessionConfigurationManager implements
         // Categories.
         StringBuilder metadataIncludes = new StringBuilder();
         metadataIncludes.append(file.getFile().getParent());
+        file = pathManager
+                .getStaticLocalizationFile("python/VTECutilities/VTECConstants.py");
+        metadataIncludes.append(":").append(file.getFile().getParent());
         file = pathManager
                 .getStaticLocalizationFile("hazardServices/hazardMetaData/HazardMetaData.py");
         metadataIncludes.append(":").append(file.getFile().getParent());

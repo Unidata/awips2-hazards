@@ -14,14 +14,14 @@ import org.eclipse.swt.graphics.Font;
  * Hatch mark group, an interface that must be implemented in order to specify
  * the properties of a particular group of hatch marks (vertical line and their
  * labels). Hatch marks are visual elements of the "ruler" display of a
- * <code>MultiValueRuler</code>. Each group is made up of hatch marks of the
- * same height and color and with the same interval between them; thus, for
- * example, a ruler acting as a time line might have a hatch mark group for
- * days, another for six-hour increments, another for hours, and so on.
+ * {@link MultiValueRuler}. Each group is made up of hatch marks of the same
+ * height and color and with the same interval between them; thus, for example,
+ * a ruler acting as a time line might have a hatch mark group for days, another
+ * for six-hour increments, another for hours, and so on.
  * <p>
- * If an implementation's <code>getHeightFraction()</code> returns 1.0, then a
+ * If an implementation's {@link #getHeightFraction()} returns 1.0, then a
  * horizontal dividing line will be drawn below the labels using the color
- * fetched via <code>getColor()</code>.
+ * fetched via {@link #getColor()}.
  * 
  * <pre>
  * 
@@ -29,7 +29,7 @@ import org.eclipse.swt.graphics.Font;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jan 28, 2014    2161    Chris.Golden      Prettied up the Javadoc.
  * </pre>
  * 
  * @see MultiValueRuler

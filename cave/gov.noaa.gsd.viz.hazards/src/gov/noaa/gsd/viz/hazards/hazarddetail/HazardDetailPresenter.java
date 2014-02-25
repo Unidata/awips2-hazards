@@ -16,9 +16,9 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
 
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -45,9 +45,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  *                                           singleton.
  * Nov 14, 2013    1463    Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
- * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * Dec 03, 2013    2182    daniel.s.schaffer eliminated IHazardsIF
+ * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the view
+ *                                           during initialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,12 +84,6 @@ public class HazardDetailPresenter extends
 
     // Public Methods
 
-    /**
-     * Receive notification of a model change.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
@@ -141,12 +136,6 @@ public class HazardDetailPresenter extends
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
     public void initialize(IHazardDetailView<?, ?> view) {
 
@@ -157,7 +146,8 @@ public class HazardDetailPresenter extends
                 .getHazardInfoOptions());
         TimeRange timeRange = timeManager.getVisibleRange();
         getView().initialize(this, basicInfo, metadataMegawidgets,
-                timeRange.getStart().getTime(), timeRange.getEnd().getTime());
+                timeRange.getStart().getTime(), timeRange.getEnd().getTime(),
+                eventManager.getEventIdsAllowingUntilFurtherNotice());
 
         // Update the view with the currently selected hazard events,
         // if any.
@@ -195,7 +185,7 @@ public class HazardDetailPresenter extends
                     .getConflictingEventsForSelectedEvents();
 
         } else {
-            eventConflictList = Maps.newHashMap();
+            eventConflictList = new HashMap<>();
         }
 
         return eventConflictList;

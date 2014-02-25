@@ -29,6 +29,8 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2013    2545    Chris.Golden      Initial creation
+ * Feb 08, 2014    2161    Chris.Golden      Modified to work with new version
+ *                                           of DateTimeComponent constructor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -150,7 +152,8 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         dateTime = new DateTimeComponent(null, parent, specifier.getLabel(),
                 specifier, state, specifier.isHorizontalExpander(),
-                !specifier.isSendingEveryChange(), dateTimeManager);
+                specifier.getSpacing(), !specifier.isSendingEveryChange(),
+                dateTimeManager);
 
         // Render the widget uneditable if necessary.
         if (isEditable() == false) {

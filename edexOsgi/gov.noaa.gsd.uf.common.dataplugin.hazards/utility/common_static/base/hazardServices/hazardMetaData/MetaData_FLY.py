@@ -1,3 +1,4 @@
+import VTECConstants
 
 from CAP_Fields import CAP_Fields
 
@@ -80,8 +81,20 @@ MetaData_FLY = [
             "valueLabels": {"riseAbove": "Rise Above Time:","crest": "Crest Time:","fallBelow": "Fall Below Time:"},
             "shortValueLabels": {"riseAbove": "Rise","crest": "Crest","fallBelow": "Fall"},
             "relativeValueWeights": {"riseAbove": 3,"crest": 3,"fallBelow": 3},
+            "minimumTimeInterval": 60000,
             "notify":1,
             "spacing": 5,
+            "timeDescriptors": {
+                str(int(VTECConstants.UFN_TIME_VALUE_SECS) * 1000): "N/A"
+               },
+            "detailFields": {
+                "fallBelow": [
+                        {
+                         "fieldName": "fallBelowUntilFurtherNotice",
+                         "fieldType": "CheckBox",
+                         "label": "Until further notice"
+                        }]
+               }
            },
 
            # The following product sections contain logic and/or 

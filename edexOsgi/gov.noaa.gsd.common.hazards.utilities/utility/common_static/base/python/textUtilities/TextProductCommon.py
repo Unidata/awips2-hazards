@@ -5,9 +5,11 @@
 14    Date         Ticket#      Engineer             Description
 15    ------------ ---------- ----------- --------------------------
 16    April 5, 2013            Tracy.L.Hansen      Initial creation
-17    
-18    @author Tracy.L.Hansen@noaa.gov
-20    '''
+17    Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
+18                                                 instead of hardcoded value.
+19
+20    @author Tracy.L.Hansen@noaa.gov
+21    '''
 
 import cPickle, os, types, string, copy
 import sys, gzip, time, re
@@ -18,6 +20,7 @@ from dateutil import tz
 import EventFactory
 import GeometryFactory
 import JUtil
+import VTECConstants
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -1230,7 +1233,7 @@ class TextProductCommon(object):
         return None, None
     
     def untilFurtherNotice(self, time_ms):
-        if time_ms / 1000 >= sys.maxsize:
+        if time_ms / 1000 >= VTECConstants.UFN_TIME_VALUE_SECS:
             return True
         else:
             return False

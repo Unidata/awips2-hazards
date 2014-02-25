@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Description: List builder megawidget specifier, used to create megawidgets
@@ -27,6 +27,8 @@ import com.google.common.collect.Maps;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
+ *                                           instead of only lists for the state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -120,15 +122,15 @@ public class UnboundedListBuilderSpecifier extends
 
     @SuppressWarnings("unchecked")
     @Override
-    protected List<Object> createChoicesCopy(List<?> list) {
+    protected List<Object> createChoicesCopy(Collection<?> list) {
 
         // Create a new list, and copy each element into it from
         // the old list. If an element is a map, then make a
         // copy of the map instead of using the original.
-        List<Object> listCopy = Lists.newArrayList();
+        List<Object> listCopy = new ArrayList<>();
         for (Object item : list) {
             if (item instanceof Map) {
-                listCopy.add(Maps.newHashMap((Map<String, Object>) item));
+                listCopy.add(new HashMap<>((Map<String, Object>) item));
             } else {
                 listCopy.add(item);
             }

@@ -14,6 +14,10 @@ import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,16 +25,14 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
-import com.google.common.collect.Sets;
 
 /**
  * Time scale megawidget, providing the user the ability to select one or more
@@ -64,6 +66,13 @@ import com.google.common.collect.Sets;
  *                                           widget to avoid bugs caused by only
  *                                           one value of N being updated when the
  *                                           state of all values is checked.
+ * Jan 31, 2014   2161     Chris.Golden      Added option to change editability of
+ *                                           each state value individually. Also
+ *                                           added ability to include detail mega-
+ *                                           widgets for each state value. Also
+ *                                           added custom strings to be displayed
+ *                                           in place of date-time values for
+ *                                           specified values.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,7 +80,7 @@ import com.google.common.collect.Sets;
  * @see TimeScaleSpecifier
  */
 public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
-        implements IControl {
+        implements IParent<IControl>, IControl {
 
     // Protected Static Constants
 
@@ -80,9 +89,10 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        names.add(TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES);
         names.add(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME);
         names.add(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -175,12 +185,18 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     private final Map<String, Long> statesForIds;
 
     /**
-     * Copy of <code>statesForIds</code> made just before the first state change
+     * Copy of {@link #statesForIds} made just before the first state change
      * resulting from a thumb drag is processed. This is used only if the
      * specifier indicates that rapidly-changing values resulting in state
      * changes should not prompt listener notifications.
      */
     private Map<String, Long> lastForwardedStatesForIds;
+
+    /**
+     * Map pairing state identifier keys with their current editability flags as
+     * values.
+     */
+    private final Map<String, Boolean> editabilityForIds;
 
     /**
      * Main label of the megawidget, if any.
@@ -246,7 +262,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 if (scale.setConstrainedThumbValue(index, value)) {
                     recordStateChange(identifier, value);
                 } else {
-                    dateTimesForIds.get(identifier).setState(oldValue);
+                    setDateTimeComponentValues(identifier, oldValue);
                 }
             }
 
@@ -274,6 +290,16 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * Detail child megawidget manager.
+     */
+    private final DetailChildrenManager childManager;
+
+    /**
+     * List of additional composites created to hold detail megawidgets.
+     */
+    private final List<GridLayout> additionalDetailCompositeLayouts;
+
     // Protected Constructors
 
     /**
@@ -286,9 +312,13 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      * @param paramMap
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
+     * @throws MegawidgetException
+     *             If an error occurs while creating or initializing any
+     *             megawidgets acting as detail fields for the various states.
      */
     protected TimeScaleMegawidget(TimeScaleSpecifier specifier,
-            Composite parent, Map<String, Object> paramMap) {
+            Composite parent, Map<String, Object> paramMap)
+            throws MegawidgetException {
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
@@ -334,23 +364,36 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
 
         // Compute the starting value(s) for the different
         // state identifiers, and create and populate the
-        // state map with them.
-        statesForIds = Maps.newHashMap();
+        // state map with them. Also determine the starting
+        // editability states for the state identifiers.
+        statesForIds = new HashMap<>();
+        editabilityForIds = new HashMap<>();
         long[] startingValues = new long[specifier.getStateIdentifiers().size()];
+        boolean[] startingEditabilities = new boolean[startingValues.length];
         for (int j = 0; j < startingValues.length; j++) {
             startingValues[j] = (startingValues.length == 1 ? ((bounds
                     .upperEndpoint() - bounds.lowerEndpoint()) / 2L)
                     + bounds.lowerEndpoint() : bounds.lowerEndpoint()
                     + (specifier.getMinimumInterval() * j));
-            statesForIds.put(specifier.getStateIdentifiers().get(j),
-                    startingValues[j]);
+            String identifier = specifier.getStateIdentifiers().get(j);
+            statesForIds.put(identifier, startingValues[j]);
+            startingEditabilities[j] = specifier.isStateEditable(identifier);
+            editabilityForIds.put(identifier, startingEditabilities[j]);
         }
+
+        // Create the child manager for the detail mega-
+        // widgets that may be associated with the different
+        // states if appropriate.
+        childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new DetailChildrenManager(
+                paramMap) : null);
 
         // Iterate through the state identifiers, creating
         // date-time components for each.
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
-        dateTimesForIds = Maps.newHashMap();
-        labels = Lists.newArrayList();
+        dateTimesForIds = new HashMap<>();
+        labels = new ArrayList<>();
+        additionalDetailCompositeLayouts = new ArrayList<>();
+        int greatestHeight = 0;
         for (String identifier : specifier.getStateIdentifiers()) {
 
             // Determine what text label, if any, to use
@@ -363,15 +406,82 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 text = specifier.getStateLabel(identifier);
             }
 
+            // If there are additional megawidgets to be
+            // placed to the right of the date-time compo-
+            // nent, create a composite to act as a parent
+            // for both the date-time component and the
+            // additional megawidgets.
+            List<IControlSpecifier> detailSpecifiers = specifier
+                    .getDetailFieldsForState(identifier);
+            Composite statePanel = UiBuilder
+                    .getOrCreateCompositeForComponentWithDetailMegawidgets(
+                            detailSpecifiers, panel, SWT.NONE);
+
             // Create the date-time component for this state
-            // identifier.
+            // identifier, and make it read-only if appropri-
+            // ate.
             DateTimeComponent dateTime = new DateTimeComponent(identifier,
-                    panel, text, specifier, statesForIds.get(identifier),
-                    false, onlySendEndStateChanges, dateTimeManager);
+                    statePanel, text, specifier, statesForIds.get(identifier),
+                    false, (statePanel == panel ? specifier.getSpacing() : 0),
+                    onlySendEndStateChanges, dateTimeManager);
             labels.add(dateTime.getLabel());
+            if (editabilityForIds.get(identifier) == false) {
+                dateTime.setEditable(false, helper);
+            }
+
+            // If there are additional megawidgets, lay
+            // out the composite in which the date-time
+            // component and the first row of said mega-
+            // widgets are found, and create the mega-
+            // widgets.
+            if (statePanel != panel) {
+                GridData statePanelLayoutData = new GridData(SWT.LEFT,
+                        SWT.CENTER, false, false);
+                statePanelLayoutData.verticalIndent = specifier.getSpacing();
+                statePanel.setLayoutData(statePanelLayoutData);
+                List<Composite> additionalComposites = childManager
+                        .createDetailChildMegawidgets(statePanel, panel, 0,
+                                detailSpecifiers).getComposites();
+                for (Composite composite : additionalComposites) {
+                    additionalDetailCompositeLayouts.add((GridLayout) composite
+                            .getLayout());
+                }
+                int height = statePanel.computeSize(SWT.DEFAULT, SWT.DEFAULT).y;
+                if (height > greatestHeight) {
+                    greatestHeight = height;
+                }
+            }
 
             // Add the date-time component to the map.
             dateTimesForIds.put(identifier, dateTime);
+        }
+
+        // Determine which detail megawidgets that were
+        // created take up the full width of this mega-
+        // widget, and align all such megawidgets' com-
+        // ponents to bring some visual order to the
+        // widget soup.
+        if (childManager != null) {
+            List<IControl> fullWidthDetailMegawidgets = new ArrayList<>();
+            for (IControl detailMegawidget : childManager
+                    .getDetailMegawidgets()) {
+                if (((IControlSpecifier) detailMegawidget.getSpecifier())
+                        .isFullWidthOfColumn()) {
+                    fullWidthDetailMegawidgets.add(detailMegawidget);
+                }
+            }
+            ControlComponentHelper
+                    .alignMegawidgetsElements(fullWidthDetailMegawidgets);
+        }
+
+        // If at least one date-time component has additional
+        // megawidgets, ensure that all the date-time com-
+        // ponents have the right minimum height so as to not
+        // make the highest row look larger than the others.
+        if (greatestHeight > 0) {
+            for (DateTimeComponent dateTime : dateTimesForIds.values()) {
+                dateTime.setHeight(greatestHeight);
+            }
         }
 
         // Create the multi-thumbed scale component.
@@ -388,6 +498,11 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         scale.setMinimumDeltaBetweenConstrainedThumbs(specifier
                 .getMinimumInterval());
         scale.setConstrainedThumbValues(startingValues);
+        for (int j = 0; j < startingEditabilities.length; j++) {
+            if (startingEditabilities[j] == false) {
+                scale.setConstrainedThumbEditable(j, false);
+            }
+        }
         for (int j = 1; j < startingValues.length; j++) {
             scale.setConstrainedThumbRangeColor(j, Display.getCurrent()
                     .getSystemColor(SWT.COLOR_LIST_SELECTION));
@@ -432,7 +547,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 if (onlySendEndStateChanges
                         && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_ONGOING)
                         && (lastForwardedStatesForIds == null)) {
-                    lastForwardedStatesForIds = Maps.newHashMap(statesForIds);
+                    lastForwardedStatesForIds = new HashMap<>(statesForIds);
                 }
 
                 // See if notification of listeners
@@ -459,7 +574,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 // cending order.
                 TimeScaleSpecifier specifier = getSpecifier();
                 List<String> stateIdentifiers = specifier.getStateIdentifiers();
-                List<Integer> indicesOfValuesToNotify = Lists.newArrayList();
+                List<Integer> indicesOfValuesToNotify = new ArrayList<>();
                 for (int j = 0; j < values.length; j++) {
 
                     // Get the new value and see if
@@ -473,8 +588,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                     if ((statesForIds.get(identifier) == null)
                             || (values[j] != statesForIds.get(identifier))) {
                         statesForIds.put(identifier, values[j]);
-                        TimeScaleMegawidget.this.dateTimesForIds
-                                .get(identifier).setState(values[j]);
+                        setDateTimeComponentValues(identifier, values[j]);
                         if (notify) {
                             indicesOfValuesToNotify.add(j);
                         }
@@ -557,6 +671,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
             return isEditable();
+        } else if (name.equals(TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES)) {
+            return new HashMap<>(editabilityForIds);
         } else if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
             return getLowerVisibleTime();
         } else if (name.equals(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME)) {
@@ -565,11 +681,32 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         return super.getMutableProperty(name);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
             setEditable(getPropertyBooleanValueFromObject(value, name, null));
+        } else if (name.equals(TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES)) {
+
+            // Ensure that the value is a map of state identifiers to
+            // booleans.
+            Map<String, Boolean> map = null;
+            try {
+                map = (HashMap<String, Boolean>) value;
+                if (map == null) {
+                    throw new NullPointerException();
+                }
+            } catch (Exception e) {
+                throw new MegawidgetPropertyException(getSpecifier()
+                        .getIdentifier(), name, getSpecifier().getType(),
+                        value, "bad map of booleans", e);
+            }
+
+            // Set each state's editability in turn.
+            for (String identifier : map.keySet()) {
+                setStateEditable(identifier, map.get(identifier));
+            }
         } else if (name.equals(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME)) {
             setVisibleTimeRange(
                     getPropertyLongValueFromObject(value, name, null),
@@ -654,9 +791,19 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
 
     @Override
     public void setLeftDecorationWidth(int width) {
+
+        // Iterate through the labels, setting each of them to have the speci-
+        // fied width.
         if ((labels != null) && (labels.size() > 0)) {
             helper.setWidgetsWidth(width,
                     labels.toArray(new Label[labels.size()]));
+        }
+
+        // If any additional composites were created to hold detail megawidgets
+        // on rows after any of the date-time component rows, adjust their left
+        // margins to match the new width.
+        for (GridLayout layout : additionalDetailCompositeLayouts) {
+            layout.marginLeft = width;
         }
     }
 
@@ -669,6 +816,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     public final void setRightDecorationWidth(int width) {
 
         // No action.
+    }
+
+    @Override
+    public final List<IControl> getChildren() {
+        return (childManager == null ? Collections.<IControl> emptyList()
+                : childManager.getDetailMegawidgets());
     }
 
     /**
@@ -699,6 +852,47 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      */
     public void setVisibleTimeRange(long lower, long upper) {
         scale.setVisibleValueRange(lower, upper);
+    }
+
+    /**
+     * Determine whether or not the specified state is editable. Note that if
+     * {@link #isEditable()} returns false, then the the individual editability
+     * flags for different states are ignored, and the entire megawidget is
+     * read-only.
+     * 
+     * @param identifier
+     *            Identifier of the state for which the editability is to be
+     *            determined.
+     * @return True if the state is editable, false otherwise.
+     */
+    public final boolean isStateEditable(String identifier) {
+        return editabilityForIds.get(identifier);
+    }
+
+    /**
+     * Set the editability of the specified state. Note that if
+     * {@link #isEditable()} returns false, then the the individual editability
+     * flags for different states are ignored, and the entire megawidget is
+     * read-only.
+     * 
+     * @param identifier
+     *            Identifier of the state for which the editability is to be
+     *            determined.
+     * @param editable
+     *            Flag indicating whether or not the state is to be editable.
+     */
+    public final void setStateEditable(String identifier, boolean editable) {
+        if (editable == editabilityForIds.get(identifier)) {
+            return;
+        }
+        editabilityForIds.put(identifier, editable);
+        if (isEditable()) {
+            dateTimesForIds.get(identifier).setEditable(editable, helper);
+            scale.setConstrainedThumbEditable(
+                    ((TimeScaleSpecifier) getSpecifier())
+                            .getIndicesForStateIdentifiers().get(identifier),
+                    editable);
+        }
     }
 
     // Protected Methods
@@ -734,7 +928,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         // ponent about the change.
         scale.setConstrainedThumbValue(((TimeScaleSpecifier) getSpecifier())
                 .getIndicesForStateIdentifiers().get(identifier), value);
-        dateTimesForIds.get(identifier).setState(value);
+        setDateTimeComponentValues(identifier, value);
     }
 
     @Override
@@ -762,7 +956,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             Long value = getStateLongObjectFromObject(
                     newStatesForIds.get(identifier), identifier, null);
             recordStateChange(identifier, value);
-            dateTimesForIds.get(identifier).setState(value);
+            setDateTimeComponentValues(identifier, value);
         }
 
         // Compile a list of values, one per thumb, us-
@@ -796,10 +990,18 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        for (DateTimeComponent dateTime : dateTimesForIds.values()) {
-            dateTime.setEditable(editable, helper);
+        for (String identifier : dateTimesForIds.keySet()) {
+            dateTimesForIds.get(identifier).setEditable(
+                    (editable == false ? false
+                            : editabilityForIds.get(identifier)), helper);
         }
-        scale.setEditable(editable);
+        Map<String, Integer> indicesForIds = ((TimeScaleSpecifier) getSpecifier())
+                .getIndicesForStateIdentifiers();
+        for (String identifier : indicesForIds.keySet()) {
+            int index = indicesForIds.get(identifier);
+            scale.setConstrainedThumbEditable(index, (editable == false ? false
+                    : editabilityForIds.get(identifier)));
+        }
     }
 
     /**
@@ -830,12 +1032,35 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
     }
 
     /**
+     * Set the date-time component associated with the specified state
+     * identifier to show the specified state.
+     * 
+     * @param identifier
+     *            State identifier with which the date-time component to have
+     *            its value set is associated.
+     * @param value
+     *            New value of the date-time component.
+     */
+    private void setDateTimeComponentValues(String identifier, long value) {
+        DateTimeComponent dateTime = dateTimesForIds.get(identifier);
+        dateTime.setState(value);
+        String descriptiveString = ((TimeScaleSpecifier) getSpecifier())
+                .getStateDescriptiveText(value);
+        if (descriptiveString != null) {
+            dateTime.setNullText(descriptiveString);
+            dateTime.setShowNullText(true);
+        } else {
+            dateTime.setShowNullText(false);
+        }
+    }
+
+    /**
      * Record the specified state change.
      * 
      * @param identifier
      *            State identifier to be changed.
      * @param value
-     *            New value of the state associated with <code>identifier</code>
+     *            New value of the state associated with the identifier.
      */
     private void recordStateChange(String identifier, Long value) {
         statesForIds.put(identifier, value);

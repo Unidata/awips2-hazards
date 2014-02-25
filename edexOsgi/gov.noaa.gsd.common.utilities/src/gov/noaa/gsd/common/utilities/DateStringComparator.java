@@ -26,6 +26,9 @@ import java.util.Date;
  * ------------ ---------- ----------- --------------------------
  * Mar 19, 2013            Chris.Golden      Initial creation
  * Nov 25, 2013    2336    Chris.Golden      Moved to gov.noaa.gsd.common.utilities.
+ * Feb 16, 2014    2161    Chris.Golden      Added specification of a text string
+ *                                           that is always treated as the largest
+ *                                           possible date value when sorting.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,6 +43,11 @@ public class DateStringComparator implements Comparator<String> {
      */
     private DateFormat dateFormat = null;
 
+    /**
+     * Special string to treat as largest possible value when sorting.
+     */
+    private String largestPossibleValue = null;
+
     // Public Constructors
 
     /**
@@ -47,27 +55,31 @@ public class DateStringComparator implements Comparator<String> {
      * 
      * @param dateFormat
      *            Date format to be used for parsing the dates from strings.
+     * @param largestPossibleValue
+     *            Special string that when encountered in a sort is to be
+     *            treated as the largest possible value.
      */
-    public DateStringComparator(DateFormat dateFormat) {
+    public DateStringComparator(DateFormat dateFormat,
+            String largestPossibleValue) {
         this.dateFormat = dateFormat;
+        this.largestPossibleValue = largestPossibleValue;
     }
 
     // Public Methods
 
-    /**
-     * Compare the two dates, each specified in the format given by
-     * <code>dateFormat</code>.
-     * 
-     * @param o1
-     *            First date.
-     * @param o2
-     *            Second date.
-     * @return Integer that is less than, equal to, or greater than 0 depending
-     *         upon whether the first date is less than, equal to, or greater
-     *         than the second date, respectively.
-     */
     @Override
     public int compare(String o1, String o2) {
+        boolean firstLargest = o1.equals(largestPossibleValue);
+        boolean secondLargest = o2.equals(largestPossibleValue);
+        if (firstLargest && secondLargest) {
+            return 0;
+        }
+        if (firstLargest) {
+            return 1;
+        }
+        if (secondLargest) {
+            return -1;
+        }
         Date date1 = null, date2 = null;
         try {
             date1 = dateFormat.parse(o1);

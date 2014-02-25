@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.eclipse.jface.action.Action;
@@ -54,7 +55,8 @@ public class HazardDetailViewForTesting implements
     @Override
     public void initialize(HazardDetailPresenter presenter,
             String jsonGeneralWidgets, String jsonMetadataWidgets,
-            long minVisibleTime, long maxVisibleTime) {
+            long minVisibleTime, long maxVisibleTime,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice) {
 
     }
 

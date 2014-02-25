@@ -359,8 +359,9 @@ MetaData_FAW = [
                             },
                             {
                              "fieldName":"additionalInfoParticularStreamTime",
-                             "fieldType":"TimeScale",
-                             "valueLabels": "by:"
+                             "fieldType":"Time",
+                             "label": "by:",
+                             "fullWidthOfColumn": False
                             }
                       ]
                      },

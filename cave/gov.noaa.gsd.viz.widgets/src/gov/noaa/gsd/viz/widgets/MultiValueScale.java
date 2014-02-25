@@ -17,7 +17,6 @@ import java.util.List;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
@@ -57,6 +56,11 @@ import org.eclipse.swt.widgets.Display;
  * Jan 15, 2014    2704    Chris.Golden      Changed to make its visual
  *                                           components size themselves pro-
  *                                           portionally to the current font.
+ * Jan 28, 2014    2161    Chris.Golden      Added ability to render each
+ *                                           thumb editable or read-only
+ *                                           individuallly, instead of
+ *                                           controlling editability at a
+ *                                           coarser widget level.
  * </pre>
  * 
  * @author Chris.Golden
@@ -333,12 +337,6 @@ public class MultiValueScale extends MultiValueLinearControl {
 
     // Public Methods
 
-    /**
-     * Determine whether or not the viewport is draggable via a mouse click and
-     * drag. This implementation always returns false.
-     * 
-     * @return True if the viewport is draggable, false otherwise.
-     */
     @Override
     public final boolean isViewportDraggable() {
         return false;
@@ -449,20 +447,15 @@ public class MultiValueScale extends MultiValueLinearControl {
             disabledThumbImage = createThumbImage(ThumbState.DISABLED);
         }
 
-        // Recalculate the preferred size and redraw the widget if a change
-        // in one of the dimensions occurred.
+        // Recalculate the preferred size and the active thumb, and redraw
+        // the widget, if a change in one of the dimensions occurred.
         if (trackChanged || thumbChanged) {
             computePreferredSize(true);
+            scheduleDetermineActiveThumbIfEnabled();
             redraw();
         }
     }
 
-    /**
-     * Set the font to that specified.
-     * 
-     * @param font
-     *            New font.
-     */
     @Override
     public final void setFont(Font font) {
 
@@ -472,30 +465,19 @@ public class MultiValueScale extends MultiValueLinearControl {
         // Recalculate the font-relative pixel dimensions.
         calculateFontRelativePixelDimensions();
 
-        // Recalculate the preferred size.
+        // Recalculate the preferred size and the active thumb, and redraw.
         computePreferredSize(true);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
     // Protected Methods
 
-    /**
-     * Respond to a change in the enabled state of the widget. Subclasses should
-     * implement this method to change the visual cues to indicate whether or
-     * not the widget is enabled.
-     */
     @Override
     protected final void widgetEnabledStateChanged() {
         redraw();
     }
 
-    /**
-     * Calculate the preferred size of the widget.
-     * 
-     * @param force
-     *            Flag indicating whether or not the preferred size should be
-     *            recomputed if already found to be computed.
-     */
     @Override
     protected final void computePreferredSize(boolean force) {
 
@@ -510,12 +492,6 @@ public class MultiValueScale extends MultiValueLinearControl {
         }
     }
 
-    /**
-     * Paint the widget.
-     * 
-     * @param e
-     *            Event that triggered this invocation.
-     */
     @Override
     protected final void paintControl(PaintEvent e) {
 
@@ -696,39 +672,33 @@ public class MultiValueScale extends MultiValueLinearControl {
         e.gc.setForeground(foreground);
     }
 
-    /**
-     * Determine which thumb the specified mouse event occurred within the
-     * bounds of, if any.
-     * 
-     * @param e
-     *            Mouse event.
-     * @return Specifier of the thumb over which the event occurred, or
-     *         <code>null</code> if the event did not occur over a thumb.
-     */
     @Override
-    protected final ThumbSpecifier getThumbForMouseEvent(MouseEvent e) {
+    protected final ThumbSpecifier getEditableThumbForCoordinates(int x, int y) {
 
         // If the cursor is inside the client area, check to see if it
-        // is over one of the thumbs by iterating through the latter,
-        // and return the index of the thumb it is over, if this is
-        // the case. Otherwise, return -1 to indicate that the event
-        // did not occur over a thumb.
-        if ((e.x >= 0)
-                && (e.x < getClientAreaWidth() + getLeftInset()
-                        + getRightInset())
-                && (e.y >= 0)
-                && (e.y < getClientAreaHeight() + getTopInset()
+        // is over one of the editable thumbs by iterating through the
+        // latter, and return the index of the thumb it is over, if
+        // this is the case. Otherwise, return -1 to indicate that the
+        // coordinate is not over an editable thumb.
+        if ((x >= 0)
+                && (x < getClientAreaWidth() + getLeftInset() + getRightInset())
+                && (y >= 0)
+                && (y < getClientAreaHeight() + getTopInset()
                         + getBottomInset())) {
             for (ValueType type : getThumbTypeHitTestOrder()) {
                 for (int j = 0; j < (type == ValueType.CONSTRAINED ? getConstrainedThumbValueCount()
                         : getFreeThumbValueCount()); j++) {
+                    if ((type == ValueType.CONSTRAINED ? isConstrainedThumbEditable(j)
+                            : isFreeThumbEditable(j)) == false) {
+                        continue;
+                    }
                     int thumbX = mapValueToPixel(type == ValueType.CONSTRAINED ? getConstrainedThumbValue(j)
                             : getFreeThumbValue(j));
-                    if ((e.x >= thumbX - thumbLongitudinalDimension / 2)
-                            && (e.x < thumbX + thumbLongitudinalDimension
+                    if ((x >= thumbX - thumbLongitudinalDimension / 2)
+                            && (x < thumbX + thumbLongitudinalDimension
                                     - (thumbLongitudinalDimension / 2))
-                            && (e.y >= getTopInset() + 1)
-                            && (e.y < getTopInset() + getClientAreaHeight())) {
+                            && (y >= getTopInset() + 1)
+                            && (y < getTopInset() + getClientAreaHeight())) {
                         return new ThumbSpecifier(type, j);
                     }
                 }
@@ -737,39 +707,17 @@ public class MultiValueScale extends MultiValueLinearControl {
         return null;
     }
 
-    /**
-     * Get the vertical offset from the top of the widget that is where the top
-     * of a tooltip being displayed for a thumb is located.
-     * 
-     * @return Vertical offset in pixels.
-     */
     @Override
     protected final int getThumbTooltipVerticalOffsetFromTop(
             ThumbSpecifier thumb) {
         return getTopInset() + thumbLateralDimension + 1;
     }
 
-    /**
-     * Respond to notification that a change may have occurred in the boundary
-     * of the area in which a mouse hover may generate a tooltip showing the
-     * value under the mouse. Since multi-value scale widgets never show
-     * tooltips along the track, this implementation simply sets the tooltip
-     * bounds to <code>null</code>.
-     * <p>
-     * If this class is changed to show tooltip bounds along the track, this
-     * method will have to be called whenever the track size changes.
-     */
     @Override
     protected final void tooltipBoundsChanged() {
         setTooltipBounds(null);
     }
 
-    /**
-     * Respond to the disposal of the widget.
-     * 
-     * @param e
-     *            Disposal event that triggered this invocation.
-     */
     @Override
     protected final void widgetDisposed(DisposeEvent e) {
         for (Image image : trackTileImages) {
@@ -794,14 +742,6 @@ public class MultiValueScale extends MultiValueLinearControl {
         TRACK_BORDER_HIGHLIGHT_COLOR.dispose();
     }
 
-    /**
-     * Respond to the thumb range color at the specified index changing.
-     * 
-     * @param index
-     *            Index of the range that changed color.
-     * @param color
-     *            New color.
-     */
     @Override
     protected final void constrainedThumbRangeColorChanged(int index,
             Color color) {

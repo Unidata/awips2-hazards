@@ -21,12 +21,16 @@ import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IContributionManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -46,7 +50,6 @@ import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -73,7 +76,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           conflict detection.
  * Oct 22, 2013    1462    Bryon.Lawrence    Added menu options for hatched
  *                                           area display options.
- * 
+ * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the view part.
  * </pre>
  * 
  * @author Chris.Golden
@@ -120,32 +124,32 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     /**
      * Suffix for the preferences key holding the X value of the bounds of the
      * last saved detached view; this is only relevant if the value for the
-     * preference key <code>FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX</code>
-     * for the same perspective is <code>true</code>.
+     * preference key {@link #FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX} for
+     * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_X_SUFFIX = ".lastDetachedBoundsX";
 
     /**
      * Suffix for the preferences key holding the Y value of the bounds of the
      * last saved detached view; this is only relevant if the value for the
-     * preference key <code>FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX</code>
-     * for the same perspective is <code>true</code>.
+     * preference key {@link #FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX} for
+     * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_Y_SUFFIX = ".lastDetachedBoundsY";
 
     /**
      * Suffix for the preferences key holding the width value of the bounds of
      * the last saved detached view; this is only relevant if the value for the
-     * preference key <code>FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX</code>
-     * for the same perspective is <code>true</code>.
+     * preference key {@link #FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX} for
+     * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_WIDTH_SUFFIX = ".lastDetachedBoundsWidth";
 
     /**
      * Suffix for the preferences key holding the height value of the bounds of
      * the last saved detached view; this is only relevant if the value for the
-     * preference key <code>FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX</code>
-     * for the same perspective is <code>true</code>.
+     * preference key {@link #FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX} for
+     * the same perspective is true.
      */
     private static final String LAST_DETACHED_BOUNDS_HEIGHT_SUFFIX = ".lastDetachedBoundsHeight";
 
@@ -201,11 +205,10 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
          * @param text
          *            Text to be displayed.
          * @param iconFileName
-         *            File name of the icon to be displayed, or
-         *            <code>null</code> if no icon is to be associated with this
-         *            action.
+         *            File name of the icon to be displayed, or <code>null
+         *            </code> if no icon is to be associated with this action.
          * @param style
-         *            Style; one of the <code>IAction</code> style constants.
+         *            Style; one of the {@link IAction} style constants.
          * @param toolTipText
          *            Tool tip text, or <code>null</code> if none is required.
          * @param actionType
@@ -225,9 +228,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
         // Public Methods
 
-        /**
-         * Run the action.
-         */
         @Override
         public void run() {
             fireConsoleAction(actionType, actionName);
@@ -267,20 +267,11 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
         // Public Methods
 
-        /**
-         * Set the temporal display to that specified.
-         * 
-         * @param temporalDisplay
-         *            Temporal display.
-         */
         @Override
         public void setTemporalDisplay(TemporalDisplay temporalDisplay) {
             this.temporalDisplay = temporalDisplay;
         }
 
-        /**
-         * Run the action.
-         */
         @Override
         public void run() {
             if (temporalDisplay == null) {
@@ -364,12 +355,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
         // Public Methods
 
-        /**
-         * Set the temporal display to that specified.
-         * 
-         * @param temporalDisplay
-         *            Temporal display.
-         */
         @Override
         public void setTemporalDisplay(TemporalDisplay temporalDisplay) {
             this.temporalDisplay = temporalDisplay;
@@ -377,17 +362,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
         // Protected Methods
 
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
         @Override
         protected Menu doGetMenu(Control parent, Menu menu) {
 
@@ -471,8 +445,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
      * These are constructed if necessary as contributions to the main user
      * interface and then passed to the view part when it comes into existence.
      */
-    private final Map<String, Action> actionsForButtonIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, Action> actionsForButtonIdentifiers = new HashMap<>();
 
     /**
      * View part listener.
@@ -610,31 +583,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
 
     // Public Methods
 
-    /**
-     * Initialize the view.
-     * 
-     * @param presenter
-     *            Presenter managing this view.
-     * @param selectedTime
-     *            Selected time as epoch time in milliseconds.
-     * @param currentTime
-     *            Current time as epoch time in milliseconds.
-     * @param visibleTimeRange
-     *            Amount of time visible at once in the time line as an epoch
-     *            time range in milliseconds.
-     * @param hazardEvents
-     * @param currentSettings
-     * @param availableSettings
-     * @param jsonFilters
-     *            JSON string holding a list of dictionaries providing filter
-     *            megawidget specifiers.
-     * @param activeAlerts
-     *            Currently active alerts.
-     * @param temporalControlsInToolBar
-     *            Flag indicating whether or not temporal display controls are
-     *            to be shown in the toolbar. If <code>false</code>, they are
-     *            shown in the temporal display composite itself.
-     */
     @Override
     public final void initialize(final ConsolePresenter presenter,
             final Date selectedTime, final Date currentTime,
@@ -642,6 +590,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             final Settings currentSettings,
             final List<Settings> availableSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
+            final Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             final boolean temporalControlsInToolBar) {
         this.presenter = presenter;
         this.temporalControlsInToolBar = temporalControlsInToolBar;
@@ -651,20 +600,12 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                 getViewPart().initialize(presenter, selectedTime, currentTime,
                         visibleTimeRange, hazardEvents, currentSettings,
                         availableSettings, jsonFilters, activeAlerts,
+                        eventIdentifiersAllowingUntilFurtherNotice,
                         temporalControlsInToolBar);
             }
         });
     }
 
-    /**
-     * Accept contributions to the main user interface, which this view
-     * controls, of the specified type from the specified contributors.
-     * 
-     * @param contributors
-     *            List of potential contributors.
-     * @param type
-     *            Type of main UI contributions to accept from the contributors.
-     */
     @Override
     public final void acceptContributionsToMainUI(
             List<? extends IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors,
@@ -676,7 +617,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         // last contribution specified is not a separator, a separator
         // is placed after the contributions to render them visually
         // distinct from what comes next.
-        final List<Action> totalContributions = Lists.newArrayList();
+        final List<Action> totalContributions = new ArrayList<>();
         for (IMainUiContributor<Action, RCPMainUserInterfaceElement> contributor : contributors) {
             List<? extends Action> contributions = contributor
                     .contributeToMainUI(type);
@@ -728,17 +669,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return List of contributions; this may be empty if none are to be made.
-     */
     @Override
     public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
@@ -746,7 +676,7 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
             if (temporalControlsInToolBar) {
 
                 // Create the selected time mode action.
-                List<Action> list = Lists.newArrayList();
+                List<Action> list = new ArrayList<>();
                 list.add(new SeparatorAction());
                 selectedTimeModeAction = new SelectedTimeModeAction();
                 list.add(selectedTimeModeAction);
@@ -814,9 +744,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         }
     }
 
-    /**
-     * Ensure the view is visible.
-     */
     @Override
     public final void ensureVisible() {
         executeOnCreatedViewPart(new Runnable() {
@@ -827,9 +754,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Update the current time.
-     */
     @Override
     public final void updateCurrentTime(final Date currentTime) {
         executeOnCreatedViewPart(new Runnable() {
@@ -840,10 +764,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Update the selected time.
-     * 
-     */
     @Override
     public final void updateSelectedTime(final Date selectedTime) {
         executeOnCreatedViewPart(new Runnable() {
@@ -854,15 +774,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Update the selected time range.
-     * 
-     * @param jsonRange
-     *            JSON string holding a list with two elements: the start time
-     *            of the selected time range epoch time in milliseconds, and the
-     *            end time of the selected time range epoch time in
-     *            milliseconds.
-     */
     @Override
     public final void updateSelectedTimeRange(final String jsonRange) {
         executeOnCreatedViewPart(new Runnable() {
@@ -873,13 +784,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Update the visible time delta.
-     * 
-     * @param jsonVisibleTimeDelta
-     *            JSON string holding the amount of time visible at once in the
-     *            time line as an epoch time range in milliseconds.
-     */
     @Override
     public final void updateVisibleTimeDelta(final String jsonVisibleTimeDelta) {
         executeOnCreatedViewPart(new Runnable() {
@@ -890,16 +794,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Update the visible time range.
-     * 
-     * @param jsonEarliestVisibleTime
-     *            JSON string holding the earliest visible time in the time line
-     *            as an epoch time range in milliseconds.
-     * @param jsonLatestVisibleTime
-     *            JSON string holding the latest visible time in the time line
-     *            as an epoch time range in milliseconds.
-     */
     @Override
     public final void updateVisibleTimeRange(
             final String jsonEarliestVisibleTime,
@@ -913,11 +807,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Get the list of the current hazard events.
-     * 
-     * @return List of the current hazard events.
-     */
     @Override
     public final List<Dict> getHazardEvents() {
         ConsoleViewPart viewPart = getViewPart();
@@ -927,34 +816,18 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         return viewPart.getHazardEvents();
     }
 
-    /**
-     * Set the hazard events to those specified.
-     * 
-     * @param hazardEvents
-     * @param currentSettings
-     */
     @Override
     public final void setHazardEvents(final List<Dict> hazardEvents,
             final Settings currentSetttings) {
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart()
-                        .updateConsoleForChanges(hazardEvents, currentSetttings);
+                getViewPart().updateConsoleForChanges(hazardEvents,
+                        currentSetttings);
             }
         });
     }
 
-    /**
-     * Update the specified hazard event.
-     * 
-     * @param hazardEvent
-     *            JSON string holding a dictionary defining an event. The
-     *            dictionary must contain an <code>eventID</code> key mapping to
-     *            the event identifier as a value. All other mappings specify
-     *            properties that are to have their values to those associated
-     *            with the properties in the dictionary.
-     */
     @Override
     public final void updateHazardEvent(final String hazardEvent) {
         executeOnCreatedViewPart(new Runnable() {
@@ -965,12 +838,6 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * Set the list of currently active alerts.
-     * 
-     * @param activeAlerts
-     *            List of currently active alerts.
-     */
     @Override
     public void setActiveAlerts(final ImmutableList<IHazardAlert> activeAlerts) {
         executeOnCreatedViewPart(new Runnable() {
@@ -981,22 +848,12 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
         });
     }
 
-    /**
-     * 
-     * @return the current dynamic setting being used.
-     */
     @Override
     public final Settings getCurrentSettings() {
         ConsoleViewPart viewPart = getViewPart();
         return viewPart.getCurrentSettings();
     }
 
-    /**
-     * Set the settings to those specified.
-     * 
-     * @param currentSettingsID
-     * @param settings
-     */
     @Override
     public final void setSettings(final String currentSettingsID,
             final List<Settings> settings) {
@@ -1006,6 +863,11 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                 getViewPart().setSettings(currentSettingsID, settings);
             }
         });
+    }
+
+    @Override
+    public void updateTitle(String title) {
+        getViewPart().updateSite(title);
     }
 
     // Private Methods
@@ -1062,17 +924,5 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                 });
             }
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * gov.noaa.gsd.viz.hazards.console.IConsoleView#updateTitle(java.lang.String
-     * )
-     */
-    @Override
-    public void updateTitle(String title) {
-        getViewPart().updateSite(title);
     }
 }

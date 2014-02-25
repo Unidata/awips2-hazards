@@ -9,14 +9,17 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collection;
 import java.util.Map;
 
 /**
  * Description: Interface describing the methods to be implemented by any class
  * that is to be capable of applying arbitrary side effects to a set of
- * megawidgets when one of the megawidgets is invoked. Side effects may include
- * changes to the megawidgets' mutable properties, including state, and/or other
- * actions unrelated to the megawidgets themselves.
+ * megawidgets when one of the megawidgets is invoked or has its state changed
+ * (the latter either via the GUI or programmatically), or when the megawidgets
+ * are first constructed. Side effects may include changes to the megawidgets'
+ * mutable properties, including state, and/or other actions unrelated to the
+ * megawidgets themselves.
  * 
  * <pre>
  * 
@@ -24,7 +27,12 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 06, 2013   1277     Chris.Golden      Initial creation
- * 
+ * Feb 14, 2014   2161     Chris.Golden      Changed Javadoc comments to
+ *                                           explain exactly when a side
+ *                                           effects applier is invoked, and
+ *                                           altered signature of the method
+ *                                           to allow for multiple trigger
+ *                                           identifiers to be specified.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,9 +47,11 @@ public interface ISideEffectsApplier {
      * Apply side effects as a result of the the specified megawidget's
      * invocation.
      * 
-     * @param triggerIdentifier
-     *            Identifier of the megawidget that was invoked, thus
-     *            precipitating this method call.
+     * @param triggerIdentifiers
+     *            List of identifiers of the megawidgets that were invoked or
+     *            had their states changed, thus precipitating this method call.
+     *            If <code>null</code>, this means that this call is being made
+     *            to initialize the megawidgets.
      * @param mutableProperties
      *            Map of megawidget identifiers to submaps holding those
      *            megawidgets' mutable properties. The latter map the mutable
@@ -64,7 +74,7 @@ public interface ISideEffectsApplier {
      *         changed.
      */
     public Map<String, Map<String, Object>> applySideEffects(
-            String triggerIdentifier,
+            Collection<String> triggerIdentifiers,
             Map<String, Map<String, Object>> mutableProperties,
             boolean propertiesMayHaveChanged);
 }

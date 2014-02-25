@@ -12,10 +12,15 @@
 # of pils (TOR->SVS), no notification of WCL, SPC, TPC bulletins to GFE.
 
 # REFACTOR : 2012/07/18
-# rename activeTable to vtecRecords
+#    rename activeTable to vtecRecords
+#
+#    Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
+#                                                 instead of hardcoded value.
+#
 import sys, os, time, re, string, getopt, cPickle, os.path
 import copy, fcntl, glob, stat, tempfile, VTECTableSqueeze
 import VTECTableUtil as VTECTableUtil
+import VTECConstants
 
 import VTECIngester
 try:
@@ -93,7 +98,7 @@ class VTECDecoder(VTECTableUtil.VTECTableUtil):
           r"[123]?[0-9] 2[0-9]{3}.*$"
 
         #maximum future time (used for until further notice)
-        self._maxFutureTime = float(2**31 - 1)  #max signed int
+        self._maxFutureTime = VTECConstants.UFN_TIME_VALUE_SECS
 
     def decode(self):
         #get pil and date-time group

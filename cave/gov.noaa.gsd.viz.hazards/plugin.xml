@@ -161,6 +161,14 @@
             recursive="true"
             value="python/events/productgen/formats">
       </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            name="Megawidget Side Effects"
+            recursive="true"
+            value="hazardServices/megawidgetSideEffects">
+      </path>
    </extension>
    <extension point="org.eclipse.ui.views">
       <view id="gov.noaa.gsd.viz.hazards.hazarddetail.view"

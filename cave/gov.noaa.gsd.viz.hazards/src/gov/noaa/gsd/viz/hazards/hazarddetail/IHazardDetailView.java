@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
@@ -30,7 +31,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
  * Nov 14, 2013            Bryon.Lawrence    Added code to support hazard conflict 
  *                                           detection.
- * 
+ * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ *                                           "until further notice" to the view
+ *                                           during initialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,10 +58,19 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      *            Minimum visible time to be shown in the time megawidgets.
      * @param maxVisibleTime
      *            Maximum visible time to be shown in the time megawidgets.
+     * @param eventIdentifiersAllowingUntilFurtherNotice
+     *            Set of the hazard event identifiers that at any given moment
+     *            allow the toggling of their "until further notice" mode. The
+     *            set is unmodifiable; attempts to modify it will result in an
+     *            {@link UnsupportedOperationException}. Note that this set is
+     *            kept up-to-date, and thus will always contain only those
+     *            events that can have their "until further notice" mode toggled
+     *            at the instant at which it is checked.
      */
     public void initialize(HazardDetailPresenter presenter,
             String jsonGeneralWidgets, String jsonMetadataWidgets,
-            long minVisibleTime, long maxVisibleTime);
+            long minVisibleTime, long maxVisibleTime,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice);
 
     /**
      * Show the hazard detail subview.

@@ -215,6 +215,20 @@ public final class HazardConstants {
     public static final long TIME_RANGE_MINIMUM_INTERVAL = TimeUnit.MINUTES
             .toMillis(1L);
 
+    /**
+     * Value in milliseconds used to represent that a time is set to
+     * "Until Further Notice". This works out to be Tue Jan 19 03:14:07 GMT
+     * 2038; this is unfortunately in the not too distant future, but must be
+     * this value for interoperability reasons.
+     * <p>
+     * TODO: Change this value to the millisecond equivalent of Python's
+     * <code>date.max</code>, or to {@link Long#MAX_VALUE}, as is decided once
+     * interoperability is no longer a concern; see Redmine Task 2904 for
+     * details.
+     * </p>
+     */
+    public static final long UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS = 2147483647000L;
+
     /*
      * The following constants are for use with the hazard attributes object,
      * for use with keys. Also used with the required fields.
@@ -295,6 +309,8 @@ public final class HazardConstants {
 
     public static final String STREAM_NAME = "streamName";
 
+    public static final String FALL_BELOW_UNTIL_FURTHER_NOTICE = "fallBelowUntilFurtherNotice";
+
     /**
      * Event identifier key
      */
@@ -354,6 +370,11 @@ public final class HazardConstants {
      * End time key in hazard
      */
     public static final String HAZARD_EVENT_END_TIME = "endTime";
+
+    /**
+     * End time "until further notice" key in hazard
+     */
+    public static final String HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE = "endTimeUntilFurtherNotice";
 
     /**
      * Event tracking numbers

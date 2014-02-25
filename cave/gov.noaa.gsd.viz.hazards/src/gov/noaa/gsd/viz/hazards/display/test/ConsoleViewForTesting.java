@@ -6,6 +6,7 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -55,7 +56,9 @@ public class ConsoleViewForTesting implements IConsoleView {
     public void initialize(ConsolePresenter presenter, Date selectedTime,
             Date currentTime, long visibleTimeRange, List hazardEvents,
             Settings currentSettings, List settings, String jsonFilters,
-            ImmutableList activeAlerts, boolean temporalControlsInToolBar) {
+            ImmutableList activeAlerts,
+            Set eventIdentifiersAllowingUntilFurtherNotice,
+            boolean temporalControlsInToolBar) {
         throw new UnsupportedOperationException();
     }
 

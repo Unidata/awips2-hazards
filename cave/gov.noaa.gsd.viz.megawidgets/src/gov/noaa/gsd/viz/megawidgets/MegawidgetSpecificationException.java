@@ -20,7 +20,8 @@ package gov.noaa.gsd.viz.megawidgets;
  * ------------ ---------- ----------- --------------------------
  * Mar 24, 2013            Chris.Golden      Initial creation
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
- * 
+ * Feb 12, 2014   2161     Chris.Golden      Added nested cause's description to
+ *                                           toString().
  * </pre>
  * 
  * @author Chris.Golden
@@ -126,6 +127,9 @@ public class MegawidgetSpecificationException extends MegawidgetException {
         }
         if (getMessage() != null) {
             builder.append(": " + getMessage());
+        }
+        if (getCause() != null) {
+            builder.append(" (caused by: " + getCause().toString() + ")");
         }
         return builder.toString();
     }

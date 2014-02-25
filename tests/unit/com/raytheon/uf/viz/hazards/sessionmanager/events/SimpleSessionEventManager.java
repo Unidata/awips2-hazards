@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
@@ -129,6 +130,11 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Set<String> getEventIdsAllowingUntilFurtherNotice() {
         throw new UnsupportedOperationException();
     }
 

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -275,6 +276,23 @@ public interface ISessionEventManager {
     Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
 
     public Collection<IHazardEvent> getEventsForCurrentSettings();
+
+    /**
+     * Get a set indicating which hazard event identifiers are allowed to have
+     * their end time "until further notice" mode toggled. The returned object
+     * will be kept current by the instance of this class, so that it will
+     * continue to be valid as long as the session event manager exists. At any
+     * given instant after it is fetched via this method, it may be queried to
+     * determine whether or not a specific hazard event within this session may
+     * use "until further notice".
+     * <p>
+     * Note that the set is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
+     * 
+     * @return Set of hazard event identifiers indicating which events may have
+     *         their end time "until further notice" mode toggled.
+     */
+    public Set<String> getEventIdsAllowingUntilFurtherNotice();
 
     /**
      * Sets the state of the event to ENDED, persists it to the database and

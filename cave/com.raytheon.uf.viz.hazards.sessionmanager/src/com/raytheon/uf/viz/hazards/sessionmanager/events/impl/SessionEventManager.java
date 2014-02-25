@@ -29,6 +29,7 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.time.DateUtils;
 
@@ -117,7 +119,17 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * Jan 14, 2014 2755       bkowal      No longer create new Event IDs for events that
  *                                     are created EDEX-side for interoperability purposes.
- * 
+ * Feb 17, 2014 2161       Chris.Golden Added code to change the end time or fall-
+ *                                      below time to the "until further notice"
+ *                                      value if the corresponding "until further
+ *                                      notice" flag is set high. Also added code
+ *                                      to track the set of hazard events that can
+ *                                      have "until further notice" applied to
+ *                                      them. Added Javadoc comments to appropriate
+ *                                      methods (those that post notifications on
+ *                                      the event bus) identifying them as potential
+ *                                      hooks into addition/removal/modification of
+ *                                      events.
  * </pre>
  * 
  * @author bsteffen
@@ -125,6 +137,12 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  */
 
 public class SessionEventManager extends AbstractSessionEventManager {
+
+    /**
+     * Default duration for hazard events that do not have a type.
+     */
+    private static final long NULL_HAZARD_TYPE_DEFAULT_DURATION = TimeUnit.HOURS
+            .toMillis(8);
 
     /**
      * Contains the mappings between geodatabase table names and the UGCBuilders
@@ -184,6 +202,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private ISimulatedTimeChangeListener timeListener;
 
+    private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
+
     // TODO: will be standardized when usage has been refined in Phase II of
     // GFE interoperability modifications.
     private static final String HAZARD_ATTRIBUTE_INTEROPERABILITY = "interoperability";
@@ -226,6 +246,149 @@ public class SessionEventManager extends AbstractSessionEventManager {
         Collection<IHazardEvent> result = getEvents();
         filterEventsForConfig(result);
         return result;
+    }
+
+    /**
+     * Ensure that toggles of "until further notice" flags result in the
+     * appropriate time being set to "until further notice".
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Subscribe
+    public void hazardAttributesChanged(SessionEventAttributeModified change) {
+        if (change.getAttributeKey().equals(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+            change.getEvent().setEndTime(
+                    getTimeResultingFromUntilFurtherNoticeToggle(change
+                            .getEvent(), (Boolean) change.getAttributeValue(),
+                            change.getEvent().getStartTime(), 1L));
+        } else if (change.getAttributeKey().equals(
+                HazardConstants.FALL_BELOW_UNTIL_FURTHER_NOTICE)) {
+            Object crestTime = change.getEvent().getHazardAttribute(
+                    HazardConstants.CREST);
+            Date date = (crestTime instanceof Date ? (Date) crestTime
+                    : new Date(((Number) crestTime).longValue()));
+            change.getEvent().addHazardAttribute(
+                    HazardConstants.FALL_BELOW,
+                    getTimeResultingFromUntilFurtherNoticeToggle(
+                            change.getEvent(),
+                            (Boolean) change.getAttributeValue(), date, 2L));
+        }
+    }
+
+    @Override
+    public Set<String> getEventIdsAllowingUntilFurtherNotice() {
+        return Collections
+                .unmodifiableSet(identifiersOfEventsAllowingUntilFurtherNotice);
+    }
+
+    /**
+     * Get the time to be used as a result of an "until further notice" toggle.
+     * 
+     * @param event
+     *            Event that had its "until further notice" toggle changed.
+     * @param value
+     *            New value of the "until further notice" toggle; if <code>
+     *            null</code>, it is considered false.
+     * @param baseTime
+     *            Base time to which to add the default duration if
+     *            "until further notice" was toggled off.
+     * @param denominator
+     *            Number by which to divide the default duration when applying
+     *            it if "until further notice" has been toggled off.
+     * @return Time to be used as a result of an "until further notice" toggle.
+     */
+    private Date getTimeResultingFromUntilFurtherNoticeToggle(
+            IHazardEvent event, Boolean value, Date baseTime, long denominator) {
+
+        /*
+         * If "until further notice" was toggled on, use the time value that
+         * indicates "until further notice".
+         */
+        if (Boolean.TRUE.equals(value)) {
+            return new Date(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+        }
+
+        /*
+         * Since "until further notice" was toggled off, use the time value
+         * resulting from adding the default duration to the base time.
+         */
+        HazardTypes hts = configManager.getHazardTypes();
+        HazardTypeEntry ht = hts.get(HazardEventUtilities.getHazardType(event));
+        long defaultDuration = (ht != null ? ht.getDefaultDuration()
+                : NULL_HAZARD_TYPE_DEFAULT_DURATION) / denominator;
+        return new Date(baseTime.getTime() + defaultDuration);
+    }
+
+    /**
+     * Update the set of identifiers of events allowing the toggling of
+     * "until further notice" mode. This is to be called whenever one or more
+     * events have been added, removed, or had their hazard types changed.
+     * 
+     * @param event
+     *            Event that has been added, removed, or modified.
+     * @param removed
+     *            Flag indicating whether or not the change is the removal of
+     *            the event.
+     */
+    private void updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
+            IHazardEvent event, boolean removed) {
+
+        /*
+         * Assume the event should be removed from the set unless it is not
+         * being removed from the session, and it has a hazard type that allows
+         * "until further notice".
+         */
+        boolean allowsUntilFurtherNotice = false;
+        if (removed == false) {
+            HazardTypeEntry hazardType = configManager.getHazardTypes().get(
+                    HazardEventUtilities.getHazardType(event));
+            if ((hazardType != null) && hazardType.isAllowUntilFurtherNotice()) {
+                allowsUntilFurtherNotice = true;
+            }
+        }
+
+        if (allowsUntilFurtherNotice) {
+            identifiersOfEventsAllowingUntilFurtherNotice.add(event
+                    .getEventID());
+        } else {
+            identifiersOfEventsAllowingUntilFurtherNotice.remove(event
+                    .getEventID());
+        }
+    }
+
+    /**
+     * Ensure that the "until further notice" mode, if present in the specified
+     * event, is appropriate; if it is not, remove it.
+     * 
+     * @param event
+     *            Event to be checked.
+     */
+    private void ensureEventUntilFurtherNoticeAppropriate(IHazardEvent event) {
+
+        /*
+         * If this event cannot have "until further notice", ensure it is not
+         * one of its attributes.
+         */
+        if (identifiersOfEventsAllowingUntilFurtherNotice.contains(event
+                .getEventID()) == false) {
+
+            /*
+             * If the attributes contains the flag, remove it. If it was set
+             * high, then reset the end time to the start time plus the default
+             * duration for this event type.
+             */
+            Boolean untilFurtherNotice = (Boolean) event
+                    .getHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+            if (untilFurtherNotice != null) {
+                event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+                if (untilFurtherNotice.equals(Boolean.TRUE)) {
+                    event.setEndTime(getTimeResultingFromUntilFurtherNoticeToggle(
+                            event, Boolean.FALSE, event.getStartTime(), 1L));
+                }
+            }
+        }
     }
 
     private void filterEventsForConfig(Collection<IHazardEvent> events) {
@@ -322,6 +485,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
+    /**
+     * Add the specified hazard event.
+     * <p>
+     * <strong>NOTE</strong>: This method is called whenever an event is added
+     * to the current session, regardless of the source of the event. Additional
+     * logic (method calls, etc.) may therefore be added to this method's
+     * implementation as necessary if said logic must be run whenever an event
+     * is added.
+     */
     protected IHazardEvent addEvent(IHazardEvent event, boolean localEvent) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
 
@@ -451,6 +623,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             oevent.addHazardAttribute(ATTR_SELECTED, true);
         }
         oevent.addHazardAttribute(ATTR_CHECKED, true);
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
         notificationSender
                 .postNotification(new SessionEventAdded(this, oevent));
         return oevent;
@@ -461,6 +634,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
         removeEvent(event, true);
     }
 
+    /**
+     * Remove the specified hazard event.
+     * <p>
+     * <strong>NOTE</strong>: This method is called whenever an event is removed
+     * from the current session, regardless of the source of the change.
+     * Additional logic (method calls, etc.) may therefore be added to this
+     * method's implementation as necessary if said logic must be run whenever
+     * an event is removed.
+     */
     private void removeEvent(IHazardEvent event, boolean delete) {
         synchronized (events) {
             if (events.remove(event)) {
@@ -474,6 +656,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                         dbManager.removeEvents(histList);
                     }
                 }
+                updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event,
+                        true);
                 notificationSender.postNotification(new SessionEventRemoved(
                         this, event));
             }
@@ -494,15 +678,38 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
     }
 
+    /**
+     * Receive notification from an event that it was modified in any way
+     * <strong>except</strong> for state changes (for example, Pending to
+     * Issued), or the addition or removal of individual attributes.
+     * <p>
+     * <strong>NOTE</strong>: This method is called whenever an event is
+     * modified as detailed above within the current session, regardless of the
+     * source of the change. Additional logic (method calls, etc.) may therefore
+     * be added to this method's implementation as necessary if said logic must
+     * be run whenever an event is so modified.
+     */
     protected void hazardEventModified(SessionEventModified notification) {
         IHazardEvent event = notification.getEvent();
         addModification(event.getEventID());
         if (event instanceof ObservedHazardEvent) {
             ((ObservedHazardEvent) event).setModified(true);
         }
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event, false);
+        ensureEventUntilFurtherNoticeAppropriate(event);
         notificationSender.postNotification(notification);
     }
 
+    /**
+     * Receiver notification from an event that the latter experienced the
+     * modification of an individual attribute.
+     * <p>
+     * <strong>NOTE</strong>: This method is called whenever an event is
+     * modified as detailed above within the current session, regardless of the
+     * source of the change. Additional logic (method calls, etc.) may therefore
+     * be added to this method's implementation as necessary if said logic must
+     * be run whenever an event is so modified.
+     */
     protected void hazardEventAttributeModified(
             SessionEventAttributeModified notification) {
         IHazardEvent event = notification.getEvent();
@@ -510,6 +717,16 @@ public class SessionEventManager extends AbstractSessionEventManager {
         notificationSender.postNotification(notification);
     }
 
+    /**
+     * Receive notification from an event that the latter experienced a state
+     * change (for example, Pending to Issued).
+     * <p>
+     * <strong>NOTE</strong>: This method is called whenever an event
+     * experiences a state change in the current session, regardless of the
+     * source of the change. Additional logic (method calls, etc.) may therefore
+     * be added to this method's implementation as necessary if said logic must
+     * be run whenever an event is so modified.
+     */
     protected void hazardEventStateModified(
             SessionEventStateModified notification, boolean persist) {
         if (persist) {

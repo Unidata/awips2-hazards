@@ -37,6 +37,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Jul 10, 2013 1257       bsteffen    Initial creation
  * Oct 22, 2013 1463       blawrenc    Added fields to support
  *                                     hazard conflict checking.
+ * Feb 17, 2014 2161       Chris.Golden Added defaultDuration and
+ *                                      allowUntilFurtherNotice
+ *                                      fields.
  * 
  * </pre>
  * 
@@ -68,6 +71,10 @@ public class HazardTypeEntry {
     private double inclusionPercentage;
 
     private int hazardPointLimit;
+
+    private long defaultDuration;
+
+    private boolean allowUntilFurtherNotice;
 
     public String getHeadline() {
         return headline;
@@ -189,6 +196,22 @@ public class HazardTypeEntry {
         this.hazardPointLimit = hazardPointLimit;
     }
 
+    public long getDefaultDuration() {
+        return defaultDuration;
+    }
+
+    public void setDefaultDuration(long defaultDuration) {
+        this.defaultDuration = defaultDuration;
+    }
+
+    public boolean isAllowUntilFurtherNotice() {
+        return allowUntilFurtherNotice;
+    }
+
+    public void setAllowUntilFurtherNotice(boolean allowUntilFurtherNotice) {
+        this.allowUntilFurtherNotice = allowUntilFurtherNotice;
+    }
+
     /**
      * @return the inclusionTest
      */
@@ -197,7 +220,8 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @param inclusionTest the inclusionTest to set
+     * @param inclusionTest
+     *            the inclusionTest to set
      */
     public void setInclusionTest(boolean inclusionTest) {
         this.inclusionTest = inclusionTest;
@@ -211,7 +235,8 @@ public class HazardTypeEntry {
     }
 
     /**
-     * @param inclusionPercentage the inclusionPercentage to set
+     * @param inclusionPercentage
+     *            the inclusionPercentage to set
      */
     public void setInclusionPercentage(double inclusionPercentage) {
         this.inclusionPercentage = inclusionPercentage;

@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +24,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Checkboxes megawidget, allowing the selection of zero or more choices, each
@@ -48,12 +48,13 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Feb 13, 2014    2161    Chris.Golden      Javadoc fixes and use of JDK 1.7
+ *                                           features.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see CheckBoxesSpecifier S extends IContainerSpecifier<C>, M extends
- *      IMegawidget<C>, C extends ISpecifier
+ * @see CheckBoxesSpecifier
  */
 public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
         implements IParent<IControl>, IControl {
@@ -65,8 +66,8 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+        Set<String> names = new HashSet<>(
+                MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };

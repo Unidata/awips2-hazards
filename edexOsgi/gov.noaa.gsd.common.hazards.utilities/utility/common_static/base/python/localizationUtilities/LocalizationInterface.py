@@ -9,6 +9,8 @@ Date         Ticket#    Engineer          Description
         2012            JRamer            Original version.
 Oct 30, 2013            JRamer            Add Desk level, consolidate argument 
                                           checking logic for various access methods.
+Feb 14, 2013   2161     Chris.Golden      Fixed bug causing runtime error due to
+                                          incorrect import usage.
 """
 import xml.etree.ElementTree as ET
 import sys
@@ -23,7 +25,7 @@ import re
 import getpass
 from jsonCombine import jsonCombine
 from xml2Json import xml2Json
-import HazardServicesImporter
+from HazardServicesImporter import HazardServicesImporter
 from UFStatusLogger import UFStatusLogger
 from UErunner import UErunner
 
@@ -1320,7 +1322,7 @@ return ResponseMessageGeneric(stdout)
 
         # Load the Hazard Services Importer. This handles
         # incremental override of imports.
-        hsImporter = HazardServicesImporter.HazardServicesImporter.getInstance(incrementalOverrideImports=incrementalOverrideImports)
+        hsImporter = HazardServicesImporter.getInstance(incrementalOverrideImports=incrementalOverrideImports)
 
         sys.meta_path.append(hsImporter)
         

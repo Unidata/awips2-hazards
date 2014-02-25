@@ -15,7 +15,8 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #    12/??/13        2368       Tracy L. Hansen   Changing from eventDics to 
 #                                                 hazardEvents.
 #    01/16/14        2462          dgilling       Rewrite to use GetNextEtnRequest.    
-#
+#    Feb 14, 2013    2161        Chris.Golden     Added use of UFN_TIME_VALUE_SECS constant
+#                                                 instead of hardcoded value.
 #
     
 
@@ -26,6 +27,7 @@ from VTECTableUtil import VTECTableUtil
 from Pil import Pil
 import Logger as LogStream
 import ProductGenEtnProvider
+import VTECConstants
 
 
 # Define several named tuples for cleaner code
@@ -1230,13 +1232,13 @@ class VTECEngine(VTECTableUtil):
             # these keys always get the event from now until forever
             if phensig in self._ufnKeys:
                 proposed['startTime'] = self._time #now
-                proposed['endTime'] = float(2**31-1) #*1000  #forever
+                proposed['endTime'] = VTECConstants.UFN_TIME_VALUE_SECS
                 proposed['ufn'] = 1  #until further notice
 
             # these events are forced to be until further notice. Leave
             # starting time as specified in the hazardEvent.
             elif proposed['ufn'] == 1:
-                proposed['endTime'] = float(2**31-1) #*1000  #forever
+                proposed['endTime'] = VTECConstants.UFN_TIME_VALUE_SECS
                 proposed['ufn'] = 1  #until further notice
 
         return rval
@@ -2870,7 +2872,7 @@ class VTECEngine(VTECTableUtil):
             return False;
 
     def untilFurtherNotice(self, time_sec):
-        if time_sec >= sys.maxsize:
+        if time_sec >= VTECConstants.UFN_TIME_VALUE_SECS:
             return True
         else:
             return False

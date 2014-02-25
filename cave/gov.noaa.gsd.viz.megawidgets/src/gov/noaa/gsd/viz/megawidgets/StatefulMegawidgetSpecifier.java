@@ -11,6 +11,9 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.Utils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,9 +21,6 @@ import java.util.Set;
 import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Stateful megawidget specifier base class, from which specific types of
@@ -46,6 +46,8 @@ import com.google.common.collect.Sets;
  * Nov 04, 2013   2336     Chris.Golden      Added check of starting state value
  *                                           to ensure objects are of correct
  *                                           class for subclasses.
+ * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
+ *                                           to new JDK 1.7 features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -161,7 +163,7 @@ public abstract class StatefulMegawidgetSpecifier extends
         // determine which state identifiers are legal, and
         // ensure that no repeating or zero-length state
         // identifiers were supplied.
-        List<String> stateIdentifiers = Lists.newArrayList();
+        List<String> stateIdentifiers = new ArrayList<>();
         String[] identifiers = getIdentifier().split(":");
         for (String identifier : identifiers) {
             if ((identifier == null) || (identifier.length() == 0)) {
@@ -189,17 +191,17 @@ public abstract class StatefulMegawidgetSpecifier extends
 
         // Ensure that the state labels, if present, are
         // acceptable.
-        Set<Class<?>> classes = Sets.newHashSet();
+        Set<Class<?>> classes = new HashSet<>();
         classes.add(String.class);
         labelsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_LABELS, "string", classes, "",
-                null, null);
+                null, null, true);
 
         // Ensure that the short state labels, if present,
         // are acceptable.
         shortLabelsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_SHORT_LABELS, "string", classes,
-                "", labelsForStateIdentifiers, null);
+                "", labelsForStateIdentifiers, null, true);
 
         // Ensure that the relative state weights, if pre-
         // sent, are acceptable.
@@ -208,13 +210,13 @@ public abstract class StatefulMegawidgetSpecifier extends
         relativeWeightsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_RELATIVE_WEIGHTS,
                 "positive integer", classes, new Integer(1), null,
-                POSITIVE_INTEGER_VALUE_CONVERTER);
+                POSITIVE_INTEGER_VALUE_CONVERTER, true);
 
         // Ensure that the starting state values, if present, are
         // acceptable.
         valuesForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_VALUES, "state value",
-                getClassesOfState(), null, null, null);
+                getClassesOfState(), null, null, null, true);
     }
 
     // Public Methods
@@ -271,7 +273,7 @@ public abstract class StatefulMegawidgetSpecifier extends
      * megawidget specifier have to override this method.
      * <p>
      * <strong>Note</strong>: This method is invoked during
-     * <code>StatefulMegawidgetSpecifier</code> construction, and thus must be
+     * {@link StatefulMegawidgetSpecifier} construction, and thus must be
      * implemented to not rely upon (or alter) subclass-member-specific
      * variables. Thus, it should return a constant.
      * 
@@ -295,21 +297,32 @@ public abstract class StatefulMegawidgetSpecifier extends
      * @param description
      *            Description of the type of value expected for each state
      *            mapped parameter within <code>parameters</code>.
-     * @param valueClass
-     *            Class of which each value must be an instance.
+     * @param valueClasses
+     *            Set of classes allowable for each value, meaning that the
+     *            latter must be in instance of at least one class found in this
+     *            set.
      * @param defaultValue
-     *            Default parameter value to be used if no mapping is given.
+     *            Default parameter value to be used if no map is found in
+     *            <code>parameters</code> associated with the specified <code>
+     *            key</code>, and if no <code>defaultMap</code> is provided.
      * @param defaultMap
      *            Optional default mapping to to be used if no mapping is given.
      *            If provided, this is what is returned in the absence of a
      *            mapping; if <code>null</code>, a new mapping is constructed
      *            that maps all state identifiers to the value of <code>
-     *            defaultParameter</code>.
+     *            defaultValue</code>.
      * @param valueConverter
      *            Optional value converter to be used on the value(s) contained
-     *            by <code>object</code> to convert them to values of the
+     *            by <code>parameters</code> to convert them to values of the
      *            appropriate type. If <code>null</code>, the value is converted
      *            by a simple typecast.
+     * @param ensureMappingForEveryIdentifier
+     *            Flag that, if true, indicates that if <code>parameters</code>
+     *            contains a value for the specified <code>key</code>, it must
+     *            have a mapping for every one of this megawidget's state
+     *            identifiers. If false, then a mapping is created for any that
+     *            are not found, mapping each unmapped state identifier to
+     *            <code>defaultValue</code>.
      * @return Mapping of state identifiers to parameters of the specified type.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
@@ -317,7 +330,8 @@ public abstract class StatefulMegawidgetSpecifier extends
     protected final <T> Map<String, T> getStateMappedParametersFromObject(
             Map<String, Object> parameters, String key, String description,
             Set<Class<?>> valueClasses, T defaultValue,
-            Map<String, T> defaultMap, IValueConverter<T> valueConverter)
+            Map<String, T> defaultMap, IValueConverter<T> valueConverter,
+            boolean ensureMappingForEveryIdentifier)
             throws MegawidgetSpecificationException {
 
         // If no object is given to provide the mapping,
@@ -333,7 +347,7 @@ public abstract class StatefulMegawidgetSpecifier extends
             // a new mapping for all keys to the default
             // parameter value.
             if (defaultMap == null) {
-                map = Maps.newHashMap();
+                map = new HashMap<>();
                 for (String identifier : stateIdentifiers) {
                     map.put(identifier, defaultValue);
                 }
@@ -345,7 +359,8 @@ public abstract class StatefulMegawidgetSpecifier extends
             // Ensure that the map has the right number
             // of values within it.
             Map<?, ?> providedMap = (Map<?, ?>) object;
-            if (providedMap.size() != stateIdentifiers.size()) {
+            if (ensureMappingForEveryIdentifier
+                    && (providedMap.size() != stateIdentifiers.size())) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), key, providedMap,
                         "map must contain same number of parameters "
@@ -357,19 +372,23 @@ public abstract class StatefulMegawidgetSpecifier extends
             // state identifier at the corresponding
             // index, ensuring that each value is of the
             // correct type.
-            map = Maps.newHashMap();
+            map = new HashMap<>();
             for (String identifier : stateIdentifiers) {
                 Object providedValue = providedMap.get(identifier);
-                if (Utils.isValueIsInstanceOfAtLeastOneClass(providedValue,
-                        valueClasses) == false) {
-                    throw new MegawidgetSpecificationException(getIdentifier(),
-                            getType(), key, providedMap,
-                            "map value for state identifier \"" + identifier
-                                    + "is of incorrect type");
+                if (providedValue == null) {
+                    map.put(identifier, defaultValue);
+                } else {
+                    if (Utils.isValueIsInstanceOfAtLeastOneClass(providedValue,
+                            valueClasses) == false) {
+                        throw new MegawidgetSpecificationException(
+                                getIdentifier(), getType(), key, providedMap,
+                                "map value for state identifier \""
+                                        + identifier + "is of incorrect type");
+                    }
+                    map.put(identifier,
+                            convertValue(identifier, providedValue,
+                                    valueConverter, key, description));
                 }
-                map.put(identifier,
-                        convertValue(identifier, providedValue, valueConverter,
-                                key, description));
             }
         } else {
 
@@ -394,7 +413,7 @@ public abstract class StatefulMegawidgetSpecifier extends
 
             // Create the mapping of the single state
             // identifier to the given value.
-            map = Maps.newHashMap();
+            map = new HashMap<>();
             map.put(stateIdentifiers.get(0),
                     convertValue(stateIdentifiers.get(0), object,
                             valueConverter, key, description));

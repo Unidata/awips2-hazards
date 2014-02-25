@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -48,6 +49,8 @@ import com.google.common.collect.Lists;
  *                                           to see if it is an increment/
  *                                           decrement invoker in CDateTime
  *                                           widgets.
+ * Feb 08, 2014    2161    Chris.Golden      Broke out some code into a new
+ *                                           method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -176,9 +179,9 @@ public class UiBuilder {
      *            Specifier governing what label, if any, should be used, and
      *            what choices are required.
      * @param buttonFlags
-     *            Integer comprised of flags defined within <code>SWT</code>
-     *            that are to be passed to the constructor of each button that
-     *            is created.
+     *            Integer comprised of flags defined within {@link SWT} that are
+     *            to be passed to the constructor of each button that is
+     *            created.
      * @param detailChildrenManager
      *            Manager of any child detail megawidgets that are created; may
      *            be <code>null</code> if <code>specifier</code> does not
@@ -203,9 +206,9 @@ public class UiBuilder {
         // For each value, add a choice button.
         int buttonWidth = -1;
         boolean radioButtons = ((buttonFlags & SWT.RADIO) != 0);
-        List<Button> buttons = Lists.newArrayList();
-        List<Control> controls = Lists.newArrayList();
-        List<GridData> buttonsGridData = Lists.newArrayList();
+        List<Button> buttons = new ArrayList<>();
+        List<Control> controls = new ArrayList<>();
+        List<GridData> buttonsGridData = new ArrayList<>();
         int greatestHeight = 0;
         for (Object choice : specifier.getChoices()) {
 
@@ -215,20 +218,11 @@ public class UiBuilder {
             // both the choice button and the additional
             // megawidgets.
             String identifier = specifier.getIdentifierOfNode(choice);
-            Composite choiceParent = parent;
             List<IControlSpecifier> detailSpecifiers = specifier
                     .getDetailFieldsForChoice(identifier);
-            int additionalMegawidgetsCount = (detailSpecifiers == null ? 0
-                    : detailSpecifiers.size());
-            if (additionalMegawidgetsCount > 0) {
-                choiceParent = new Composite(parent,
-                        (radioButtons ? SWT.NO_RADIO_GROUP : SWT.NONE));
-                GridLayout layout = new GridLayout(
-                        additionalMegawidgetsCount + 1, false);
-                layout.horizontalSpacing = 3;
-                layout.marginWidth = layout.marginHeight = 0;
-                choiceParent.setLayout(layout);
-            }
+            Composite choiceParent = getOrCreateCompositeForComponentWithDetailMegawidgets(
+                    detailSpecifiers, parent,
+                    (radioButtons ? SWT.NO_RADIO_GROUP : SWT.NONE));
 
             // Create the choice button. The grid data
             // for the button must grab excess vertical
@@ -256,7 +250,7 @@ public class UiBuilder {
             // button and the first row of said mega-
             // widgets are found, and create the mega-
             // widgets.
-            if (additionalMegawidgetsCount > 0) {
+            if (choiceParent != parent) {
                 choiceParent.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
                         true, false));
                 controls.add(choiceParent);
@@ -279,7 +273,7 @@ public class UiBuilder {
         // ponents to bring some visual order to the
         // widget soup.
         if (detailChildrenManager != null) {
-            List<IControl> fullWidthDetailMegawidgets = Lists.newArrayList();
+            List<IControl> fullWidthDetailMegawidgets = new ArrayList<>();
             for (IControl detailMegawidget : detailChildrenManager
                     .getDetailMegawidgets()) {
                 if (((IControlSpecifier) detailMegawidget.getSpecifier())
@@ -312,9 +306,52 @@ public class UiBuilder {
             button.addSelectionListener(listener);
         }
 
-        // Return the label, if any, and the list of
-        // choice buttons.
+        // Return the list of choice buttons.
         return ImmutableList.copyOf(buttons);
+    }
+
+    /**
+     * Get the composite to be used to hold a megawidget component, or create
+     * such a composite if the component has detail megawidgets associated with
+     * it.
+     * 
+     * @param detailSpecifiers
+     *            List of detail megawidget specifiers, if there are any
+     *            required for this component, or <code>null</code> if there are
+     *            no detail megawidgets.
+     * @param originalComposite
+     *            Composite that holds either the component directly, or if
+     *            there are detail megawidgets, that holds the composite to be
+     *            created.
+     * @param flags
+     *            Flags to be passed to the composite when building the latter;
+     *            must be valid flags for building a {@link Composite}.
+     * @return If there were no detail specifiers, <code>
+     *         originalComposite</code>; otherwise, a newly constructed
+     *         composite to be used to hold both the megawidget component and
+     *         its detail megawidgets.
+     */
+    public static Composite getOrCreateCompositeForComponentWithDetailMegawidgets(
+            List<IControlSpecifier> detailSpecifiers,
+            Composite originalComposite, int flags) {
+
+        // If there are additional megawidgets to be
+        // placed to the right of the choice button,
+        // create a composite to act as a parent for
+        // both the choice button and the additional
+        // megawidgets.
+        Composite choiceParent = originalComposite;
+        int additionalMegawidgetsCount = (detailSpecifiers == null ? 0
+                : detailSpecifiers.size());
+        if (additionalMegawidgetsCount > 0) {
+            choiceParent = new Composite(originalComposite, flags);
+            GridLayout layout = new GridLayout(additionalMegawidgetsCount + 1,
+                    false);
+            layout.horizontalSpacing = 3;
+            layout.marginWidth = layout.marginHeight = 0;
+            choiceParent.setLayout(layout);
+        }
+        return choiceParent;
     }
 
     /**

@@ -14,13 +14,13 @@ import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -46,12 +46,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * Aug 16, 2013    1325    daniel.s.schaffer@noaa.gov    Alerts integration
+ * Aug 16, 2013    1325    daniel.s.schaffer Alerts integration
  * Aug 22, 2013    1936    Chris.Golden      Added console countdown timers.
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * Nov 04, 2013    2182    daniel.s.schaffer Started refactoring
+ * Dec 03, 2013    2182    daniel.s.schaffer Refactoring - eliminated IHazardsIF
+ * Jan 28, 2014    2161    Chris.Golden      Fixed bug that caused equality checks
+ *                                           of old and new hazard events to always
+ *                                           return false. Also added passing of
+ *                                           set of events allowing "until further
+ *                                           notice" to the view during initialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,12 +91,6 @@ public class ConsolePresenter extends
 
     // Public Methods
 
-    /**
-     * Receive notification of a model change.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
     @Override
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.CURRENT_TIME)) {
@@ -146,12 +143,6 @@ public class ConsolePresenter extends
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
     public final void initialize(IConsoleView<?, ?> view) {
 
@@ -162,8 +153,10 @@ public class ConsolePresenter extends
          */
         eventBus.register(this);
 
-        // Determine whether the time line navigation buttons should be in
-        // the console toolbar, or below the console's table.
+        /*
+         * Determine whether the time line navigation buttons should be in the
+         * console toolbar, or below the console's table.
+         */
         boolean temporalControlsInToolBar = true;
         StartUpConfig startUpConfig = configurationManager.getStartUpConfig();
         if (startUpConfig != null) {
@@ -179,14 +172,18 @@ public class ConsolePresenter extends
 
         List<Dict> eventsAsDicts = adaptEventsForDisplay();
 
-        // Initialize the view.
+        /*
+         * Initialize the view.
+         */
         view.initialize(this, timeManager.getSelectedTime(), timeManager
                 .getCurrentTime(), configurationManager.getSettings()
                 .getDefaultTimeDisplayDuration(), eventsAsDicts,
                 configurationManager.getSettings(), configurationManager
                         .getAvailableSettings(), jsonConverter
                         .toJson(configurationManager.getFilterConfig()),
-                alertsManager.getActiveAlerts(), temporalControlsInToolBar);
+                alertsManager.getActiveAlerts(), eventManager
+                        .getEventIdsAllowingUntilFurtherNotice(),
+                temporalControlsInToolBar);
     }
 
     private List<Dict> adaptEventsForDisplay() {
@@ -197,9 +194,27 @@ public class ConsolePresenter extends
                 .eventsAsJSONEvents(currentEvents);
         DeprecatedUtilities.adaptJSONEvent(jsonEvents, currentEvents,
                 configurationManager, timeManager);
-        List<Dict> result = Lists.newArrayList();
+        List<Dict> result = new ArrayList<>();
         for (DeprecatedEvent event : jsonEvents) {
-            result.add(Dict.getInstance(jsonConverter.toJson(event)));
+            Dict dict = Dict.getInstance(jsonConverter.toJson(event));
+
+            /*
+             * Longs are being converted to doubles unintentionally by this
+             * adaptation, so convert them back.
+             */
+            dict.put(HazardConstants.HAZARD_EVENT_START_TIME, ((Number) dict
+                    .get(HazardConstants.HAZARD_EVENT_START_TIME)).longValue());
+            dict.put(HazardConstants.HAZARD_EVENT_END_TIME, ((Number) dict
+                    .get(HazardConstants.HAZARD_EVENT_END_TIME)).longValue());
+            if (dict.containsKey(HazardConstants.RISE_ABOVE)) {
+                dict.put(HazardConstants.RISE_ABOVE, ((Number) dict
+                        .get(HazardConstants.RISE_ABOVE)).longValue());
+                dict.put(HazardConstants.CREST,
+                        ((Number) dict.get(HazardConstants.CREST)).longValue());
+                dict.put(HazardConstants.FALL_BELOW, ((Number) dict
+                        .get(HazardConstants.FALL_BELOW)).longValue());
+            }
+            result.add(dict);
         }
         return result;
     }
@@ -231,18 +246,19 @@ public class ConsolePresenter extends
 
         List<Dict> eventsAsDicts = adaptEventsForDisplay();
 
-        // Get the hazard events as shown by the view, and compare them
-        // to the hazard events in the model. If the number of events
-        // and their identifiers are unchanged, then one or more events
-        // have had their parameters changed; otherwise, the event set
-        // as a whole has changed.
+        /*
+         * Get the hazard events as shown by the view, and compare them to the
+         * hazard events in the model. If the number of events and their
+         * identifiers are unchanged, then one or more events have had their
+         * parameters changed; otherwise, the event set as a whole has changed.
+         */
         List<Dict> oldEvents = getView().getHazardEvents();
         Map<String, Dict> oldEventsMap = null;
         Map<String, Dict> newEventsMap = null;
         boolean eventsListUnchanged = (eventsAsDicts.size() == oldEvents.size());
         if (eventsListUnchanged) {
-            oldEventsMap = Maps.newHashMap();
-            newEventsMap = Maps.newHashMap();
+            oldEventsMap = new HashMap<>();
+            newEventsMap = new HashMap<>();
             for (int j = 0; j < eventsAsDicts.size(); j++) {
                 Dict event = oldEvents.get(j);
                 oldEventsMap.put((String) event
@@ -256,10 +272,11 @@ public class ConsolePresenter extends
             }
         }
 
-        // If one or more events have had their parameters changed,
-        // iterate through them and determine which have been changed,
-        // and update the view accordingly; otherwise, update the view's
-        // entire list.
+        /*
+         * If one or more events have had their parameters changed, iterate
+         * through them and determine which have been changed, and update the
+         * view accordingly; otherwise, update the view's entire list.
+         */
         if (eventsListUnchanged) {
             for (String identifier : oldEventsMap.keySet()) {
                 if (!oldEventsMap.get(identifier).equals(

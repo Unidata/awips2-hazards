@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +33,9 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collec-
+ *                                           tions instead of only lists for
+ *                                           the state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -84,6 +87,6 @@ public class CheckBoxesMenuSpecifier extends
     @SuppressWarnings("unchecked")
     @Override
     protected final Set<Class<?>> getClassesOfState() {
-        return Sets.newHashSet(List.class, String.class);
+        return Sets.newHashSet(Collection.class, String.class);
     }
 }

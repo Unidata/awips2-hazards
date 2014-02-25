@@ -9,11 +9,12 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.Sets;
 
 /**
  * Base class for megawidget specifiers that include sets of choices (whether
@@ -37,11 +38,12 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
+ *                                           instead of only lists for the state.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see ChoicesMegawidget
  */
 public abstract class ChoicesMegawidgetSpecifier extends
         StatefulMegawidgetSpecifier {
@@ -351,8 +353,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
 
     /**
      * Get a simple description of the data structure used to specify the
-     * choices list given by the <code>MEGAWIDGET_VALUE_CHOICES</code>
-     * parameter, such as "list" or "tree".
+     * choices list, such as "list" or "tree".
      * 
      * @return Simple description of the data structure.
      */
@@ -373,8 +374,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
      * @param index
      *            Index of the choices element being checked.
      * @return Problem that was found if the choices element map was found to be
-     *         illegal, or <code>NO_ILLEGAL_CHOICES_PROBLEM</code> if it is
-     *         legal.
+     *         illegal, or {@link #NO_ILLEGAL_CHOICES_PROBLEM} if it is legal.
      */
     protected abstract IllegalChoicesProblem evaluateChoicesMapLegality(
             String parameterName, Map<?, ?> map, int index);
@@ -386,7 +386,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
      *            Child list.
      * @return Copy of the child list.
      */
-    protected abstract List<Object> createChoicesCopy(List<?> list);
+    protected abstract List<Object> createChoicesCopy(Collection<?> list);
 
     /**
      * Get the problem that occurred when attempting to fetch the unique
@@ -409,18 +409,18 @@ public abstract class ChoicesMegawidgetSpecifier extends
      * Get the identifier of the specified choices list element.
      * 
      * @param node
-     *            Choices list element; must be of type <code>String</code> or
-     *            of type <code>Map</code>; if the latter, it must have a
-     *            <code>String</code> as a value paired with the key <code>
-     *            CHOICE_NAME</code>. Subclasses may fetch the identifier from
-     *            another key-value pairing within a the map.
+     *            Choices list element; must be of type {@link String} or of
+     *            type {@link Map}; if the latter, it must have a {@link String}
+     *            as a value paired with the key {@link #CHOICE_NAME}.
+     *            Subclasses may fetch the identifier from another key-value
+     *            pairing within a the map.
      * @return Identifier of the state hierarchy node, or <code>null</code> if
      *         no identifier is found.
      * @exception ClassCastException
-     *                If the node is neither a <code>String</code> nor a
-     *                <code>Map</code>, or if it is a <code>Map</code> but the
-     *                value associated with <code>CHOICE_NAME</code> or a
-     *                subclass-specific key is not a <code>String</code>.
+     *                If the node is neither a {@link String} nor a {@link Map},
+     *                or if it is a {@link Map} but the value associated with
+     *                {@link #CHOICE_NAME} or a subclass-specific key is not a
+     *                {@link String}.
      */
     protected abstract String getIdentifierOfNode(Object node);
 
@@ -428,10 +428,9 @@ public abstract class ChoicesMegawidgetSpecifier extends
      * Get the name of the specified choices list element.
      * 
      * @param node
-     *            Choices list element; must be of type <code>String</code> or
-     *            of type <code>Map</code>; if the latter, it must have a
-     *            <code>String</code> as a value paired with the key <code>
-     *            CHOICE_NAME</code>.
+     *            Choices list element; must be of type {@link String} or of
+     *            type {@link Map}; if the latter, it must have a {@link String}
+     *            as a value paired with the key {@link #CHOICE_NAME}.
      * @return Identifier of the state hierarchy node.
      */
     protected final String getNameOfNode(Object node) {
@@ -480,23 +479,23 @@ public abstract class ChoicesMegawidgetSpecifier extends
      * @param parameterName
      *            Name of the parameter with which this choices list is
      *            associated.
-     * @param list
-     *            Choices list to be checked.
+     * @param collection
+     *            Choices collection to be checked.
      * @return Problem that was found if the choices list was found to be
-     *         illegal, or <code>NO_ILLEGAL_CHOICES_PROBLEM</code> if it is
-     *         legal.
+     *         illegal, or {@link #NO_ILLEGAL_CHOICES_PROBLEM} if it is legal.
      */
     protected final IllegalChoicesProblem evaluateChoicesLegality(
-            String parameterName, List<?> list) {
+            String parameterName, Collection<?> collection) {
 
         // Iterate through the elements of this list, checking
         // each as a node for legality, and checking that all
         // elements have unique identifiers.
-        Set<String> identifiers = Sets.newHashSet();
-        for (int j = 0; j < list.size(); j++) {
+        Set<String> identifiers = new HashSet<>();
+        Iterator<?> iterator = collection.iterator();
+        for (int j = 0; j < collection.size(); j++) {
 
             // Get the node at this point.
-            Object node = list.get(j);
+            Object node = iterator.next();
 
             // If the node is just a string, it is legal; other-
             // wise, if it is a map, it must be checked further;
@@ -541,7 +540,7 @@ public abstract class ChoicesMegawidgetSpecifier extends
             // its siblings.
             if (identifiers.contains(identifier)) {
                 return new IllegalChoicesProblem(parameterName, "[" + j + "]",
-                        null, list, "has duplicate sibling identifier", 0);
+                        null, collection, "has duplicate sibling identifier", 0);
             }
             identifiers.add(identifier);
         }

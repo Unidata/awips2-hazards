@@ -35,7 +35,7 @@ import org.eclipse.swt.widgets.Composite;
 /**
  * Multi-value ruler, providing the display of a linear "ruler" that may be
  * scrolled along, or have its scale expanded or contracted. The ruler line is
- * visually divided up according to the <code>HatchMark</code> specifiers it is
+ * visually divided up according to the {@link IHatchMarkGroup} specifiers it is
  * provided.
  * <p>
  * Each ruler may have zero or more marked values, meaning values that are
@@ -53,7 +53,7 @@ import org.eclipse.swt.widgets.Composite;
  * <p>
  * The ruler is painted using the foreground color for the border and for text
  * labels, and the background color for the background fill. The various hatch
- * marks are drawn using the colors specified in their <code>HatchMark</code>
+ * marks are drawn using the colors specified in their {@link IHatchMarkGroup}
  * specifiers. Marked values are drawn using the colors specified for them, as
  * are marked value ranges, constrained value thumbs, constrained value ranges,
  * and free value thumbs.
@@ -64,10 +64,15 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Nov 05, 2013    2336    Chris.Golden      Modified to work wtih new base
+ * Nov 05, 2013    2336    Chris.Golden      Modified to work with new base
  *                                           class's ChangeSource.
  * Jan 14, 2014    2704    Chris.Golden      Adjusted vertical point at which
  *                                           hatch mark labels are drawn.
+ * Jan 28, 2014    2161    Chris.Golden      Added ability to render each
+ *                                           thumb editable or read-only
+ *                                           individuallly, instead of
+ *                                           controlling editability at a
+ *                                           coarser widget level.
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,12 +106,13 @@ public class MultiValueRuler extends MultiValueLinearControl {
 
     /**
      * Color of the background of the widget; this and other window colors
-     * should be fetchable via <code>Display.getSystemColor()</code>, but the
+     * should be fetchable via
+     * {@link org.eclipse.swt.widgets.Display#getSystemColor(int)}, but the
      * colors returned by that method seem to have no relationship to the colors
      * used on the same display for other (standard) widgets such as the SWT
-     * <code>Scale</code>, thus the colors defined here are hard-coded.
-     * Apparently this has to do with skins, which do not report their colors to
-     * SWT...
+     * {@link org.eclipse.swt.widgets.Scale}, thus the colors defined here are
+     * hard-coded. Apparently this has to do with skins, which do not report
+     * their colors to SWT...
      */
     private static final java.awt.Color BACKGROUND_COLOR = new java.awt.Color(
             239, 238, 235);
@@ -209,8 +215,8 @@ public class MultiValueRuler extends MultiValueLinearControl {
     /**
      * Map pairing thumb types to lists of colors for those thumbs; the color at
      * each index of each contained list corresponds to the thumb value of that
-     * type at the same index. If a color is <code>
-     * null</code>, a default color is used for that value's thumb.
+     * type at the same index. If a color is <code>null</code>, a default color
+     * is used for that value's thumb.
      */
     private final Map<ValueType, List<Color>> thumbColorsForTypes = new HashMap<ValueType, List<Color>>();
 
@@ -283,8 +289,9 @@ public class MultiValueRuler extends MultiValueLinearControl {
     // Public Constructors
 
     /**
-     * Construct a standard instance with a resize behavior of <code>
-     * ResizeBehavior.CHANGE_PIXELS_PER_VALUE_UNIT</code>.
+     * Construct a standard instance with a resize behavior of
+     * {@link MultiValueLinearControl.ResizeBehavior#CHANGE_PIXELS_PER_VALUE_UNIT}
+     * and no hatch mark groups.
      * 
      * @param parent
      *            Parent of this widget.
@@ -302,8 +309,9 @@ public class MultiValueRuler extends MultiValueLinearControl {
     }
 
     /**
-     * Construct a standard instance with a resize behavior of <code>
-     * ResizeBehavior.CHANGE_PIXELS_PER_TIME_UNIT</code>.
+     * Construct a standard instance with a resize behavior of
+     * {@link MultiValueLinearControl.ResizeBehavior#CHANGE_PIXELS_PER_VALUE_UNIT}
+     * .
      * 
      * @param parent
      *            Parent of this widget.
@@ -352,12 +360,6 @@ public class MultiValueRuler extends MultiValueLinearControl {
 
     // Public Methods
 
-    /**
-     * Determine whether or not the viewport is draggable via a mouse click and
-     * drag.
-     * 
-     * @return True if the viewport is draggable, false otherwise.
-     */
     @Override
     public final boolean isViewportDraggable() {
         return isViewportDraggable;
@@ -551,6 +553,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
     public final void setConstrainedThumbsDrawnAsBookends(boolean value) {
         constrainedThumbsAreBookends = value;
         createThumbImages(false);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -784,35 +787,26 @@ public class MultiValueRuler extends MultiValueLinearControl {
         // Remember the height multiplier.
         this.heightMultiplier = heightMultiplier;
 
-        // Recalculate the preferred size.
+        // Recalculate the preferred size and the active thumb, and redraw.
         computePreferredSize(true);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
-    /**
-     * Set the font to that specified.
-     * 
-     * @param font
-     *            New font.
-     */
     @Override
     public final void setFont(Font font) {
 
         // Let the superclass do its work.
         super.setFont(font);
 
-        // Recalculate the preferred size.
+        // Recalculate the preferred size and the active thumb, and redraw.
         computePreferredSize(true);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
     // Protected Methods
 
-    /**
-     * Respond to a change in the enabled state of the widget. Subclasses should
-     * implement this method to change the visual cues to indicate whether or
-     * not the widget is enabled.
-     */
     @Override
     protected final void widgetEnabledStateChanged() {
 
@@ -822,13 +816,6 @@ public class MultiValueRuler extends MultiValueLinearControl {
         redraw();
     }
 
-    /**
-     * Calculate the preferred size of the widget.
-     * 
-     * @param force
-     *            Flag indicating whether or not the preferred size should be
-     *            recomputed if already found to be computed.
-     */
     @Override
     protected final void computePreferredSize(boolean force) {
 
@@ -857,12 +844,6 @@ public class MultiValueRuler extends MultiValueLinearControl {
         }
     }
 
-    /**
-     * Paint the widget.
-     * 
-     * @param e
-     *            Event that triggered this invocation.
-     */
     @Override
     protected final void paintControl(PaintEvent e) {
 
@@ -1144,46 +1125,40 @@ public class MultiValueRuler extends MultiValueLinearControl {
         e.gc.setForeground(foreground);
     }
 
-    /**
-     * Determine which thumb the specified mouse event occurred within the
-     * bounds of, if any.
-     * 
-     * @param e
-     *            Mouse event.
-     * @return Specifier of the thumb over which the event occurred, or
-     *         <code>null</code> if the event did not occur over a thumb.
-     */
     @Override
-    protected final ThumbSpecifier getThumbForMouseEvent(MouseEvent e) {
+    protected final ThumbSpecifier getEditableThumbForCoordinates(int x, int y) {
 
         // If the cursor is inside the client area, check to see if it
-        // is over one of the thumbs by iterating through the latter,
-        // and return the index of the thumb it is over, if this is
-        // the case. Otherwise, return -1 to indicate that the event
-        // did not occur over a thumb.
-        if ((e.x >= 0)
-                && (e.x < getClientAreaWidth() + getLeftInset()
-                        + getRightInset())
-                && (e.y >= 0)
-                && (e.y < getClientAreaHeight() + getTopInset()
+        // is over one of the editable thumbs by iterating through the
+        // latter, and return the index of the thumb it is over, if
+        // this is the case. Otherwise, return -1 to indicate that the
+        // coordinate is not over an editable thumb.
+        if ((x >= 0)
+                && (x < getClientAreaWidth() + getLeftInset() + getRightInset())
+                && (y >= 0)
+                && (y < getClientAreaHeight() + getTopInset()
                         + getBottomInset())) {
             for (ValueType type : getThumbTypeHitTestOrder()) {
                 for (int j = 0; j < (type == ValueType.CONSTRAINED ? getConstrainedThumbValueCount()
                         : getFreeThumbValueCount()); j++) {
+                    if ((type == ValueType.CONSTRAINED ? isConstrainedThumbEditable(j)
+                            : isFreeThumbEditable(j)) == false) {
+                        continue;
+                    }
                     int thumbX = mapValueToPixel((type == ValueType.CONSTRAINED ? getConstrainedThumbValue(j)
                             : getFreeThumbValue(j)));
                     int thumbY = getTopInset()
                             + 1
                             + (int) (((1.0f - thumbHeightsForTypes.get(type)
                                     .get(j)) * (getClientAreaHeight() - (1 + imageBounds.height))) + 0.5f);
-                    if (((e.x >= thumbX - 2) && (e.x <= thumbX + 2))
-                            || ((e.y >= thumbY)
-                                    && (e.y <= thumbY + imageBounds.height)
-                                    && (e.x >= thumbX
+                    if (((x >= thumbX - 2) && (x <= thumbX + 2))
+                            || ((y >= thumbY)
+                                    && (y <= thumbY + imageBounds.height)
+                                    && (x >= thumbX
                                             - ((type == ValueType.FREE)
                                                     || (constrainedThumbsAreBookends == false)
                                                     || (j % 2 == 0) ? imageBounds.width / 2
-                                                    : 0)) && (e.x < thumbX
+                                                    : 0)) && (x < thumbX
                                     + ((type == ValueType.FREE)
                                             || (constrainedThumbsAreBookends == false)
                                             || (j % 2 == 1) ? imageBounds.width
@@ -1196,12 +1171,6 @@ public class MultiValueRuler extends MultiValueLinearControl {
         return null;
     }
 
-    /**
-     * Handle the specified unused mouse release event.
-     * 
-     * @param e
-     *            Mouse event.
-     */
     @Override
     protected void handleUnusedMouseRelease(MouseEvent e) {
         ThumbSpecifier specifier = getClosestThumbForMouseEvent(e);
@@ -1218,23 +1187,12 @@ public class MultiValueRuler extends MultiValueLinearControl {
         }
     }
 
-    /**
-     * Get the vertical offset from the top of the widget that is where the top
-     * of a tooltip being displayed for a thumb is located.
-     * 
-     * @return Vertical offset in pixels.
-     */
     @Override
     protected final int getThumbTooltipVerticalOffsetFromTop(
             ThumbSpecifier thumb) {
         return getTopInset() + getClientAreaHeight() + 1;
     }
 
-    /**
-     * Respond to notification that a change may have occurred in the boundary
-     * of the area in which a mouse hover may generate a tooltip showing the
-     * value under the mouse.
-     */
     @Override
     protected final void tooltipBoundsChanged() {
         Rectangle clientArea = getClientArea();
@@ -1247,12 +1205,6 @@ public class MultiValueRuler extends MultiValueLinearControl {
                         : preferredClientHeight) - (preferredClientHeight / 7)));
     }
 
-    /**
-     * Respond to the disposal of the widget.
-     * 
-     * @param e
-     *            Disposal event that triggered this invocation.
-     */
     @Override
     protected final void widgetDisposed(DisposeEvent e) {
         for (ValueType type : getThumbTypeDrawingOrder()) {
@@ -1422,6 +1374,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
                         : getFreeThumbValueCount()));
         updateThumb(type, index, getThumbColor(type, index),
                 getThumbHeight(type, index), direction);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -1469,6 +1422,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
                         : getFreeThumbValueCount()));
         updateThumb(type, index, getThumbColor(type, index), height,
                 getThumbDirection(type, index));
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -1518,6 +1472,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
                 (type == ValueType.CONSTRAINED ? getConstrainedMarkedValueCount()
                         : getFreeMarkedValueCount()));
         updateMarkedValueDirection(type, index, direction);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -1567,6 +1522,7 @@ public class MultiValueRuler extends MultiValueLinearControl {
                 (type == ValueType.CONSTRAINED ? getConstrainedMarkedValueCount()
                         : getFreeMarkedValueCount()));
         updateMarkedValueHeight(type, index, height);
+        scheduleDetermineActiveThumbIfEnabled();
         redraw();
     }
 
@@ -1596,6 +1552,10 @@ public class MultiValueRuler extends MultiValueLinearControl {
             for (ValueType type : getThumbTypeHitTestOrder()) {
                 for (int j = 0; j < (type == ValueType.CONSTRAINED ? getConstrainedThumbValueCount()
                         : getFreeThumbValueCount()); j++) {
+                    if ((type == ValueType.CONSTRAINED ? isConstrainedThumbEditable(j)
+                            : isFreeThumbEditable(j)) == false) {
+                        continue;
+                    }
                     int delta = Math
                             .abs(mapValueToPixel((type == ValueType.CONSTRAINED ? getConstrainedThumbValue(j)
                                     : getFreeThumbValue(j)))
@@ -1730,8 +1690,8 @@ public class MultiValueRuler extends MultiValueLinearControl {
      * Create a image to be used for drawing the selected time thumb.
      * 
      * @param color
-     *            Color to be used for the thumb, or <code>
-     *                   null</code> if the default thumb is to be drawn.
+     *            Color to be used for the thumb, or <code>null</code> if the
+     *            default thumb is to be drawn.
      * @param type
      *            Type of the thumb to be drawn.
      * @param index

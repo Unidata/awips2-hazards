@@ -29,11 +29,11 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
+ * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see UnboundedChoicesMegawidget
  */
 public abstract class UnboundedChoicesMegawidgetSpecifier extends
         ChoicesMegawidgetSpecifier {

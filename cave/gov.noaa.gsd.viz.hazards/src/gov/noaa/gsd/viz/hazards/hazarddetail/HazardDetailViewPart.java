@@ -9,8 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FALL_BELOW;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FALL_BELOW_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CATEGORY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_GROUP_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
@@ -19,11 +22,13 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPE_TYPE_CIRCLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.megawidgets.CheckBoxMegawidget;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.ControlSpecifierOptionsManager;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalChoicesTreeSpecifier;
@@ -35,6 +40,7 @@ import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.INotificationListener;
 import gov.noaa.gsd.viz.megawidgets.INotifier;
 import gov.noaa.gsd.viz.megawidgets.IParent;
+import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
 import gov.noaa.gsd.viz.megawidgets.IStateful;
@@ -46,6 +52,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierFactory;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.megawidgets.StatefulMegawidget;
 import gov.noaa.gsd.viz.megawidgets.StatefulMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.TimeMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
@@ -172,6 +179,11 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           added use of a constant in HazardConstants
  *                                           to ensure that all time range widgets use
  *                                           the same minimum interval.
+ * Feb 10, 2014   2161     Chris.Golden      Added "Until Further Notice" option for end
+ *                                           times and fall-below times for time range
+ *                                           megawidgets. Also corrected Javadoc, and
+ *                                           added code to support TimeMegawidget in
+ *                                           addition to TimeScaleMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -210,6 +222,31 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * End time state identifier.
      */
     private static final String END_TIME_STATE = "__endTime__";
+
+    /**
+     * Type of the checkbox megawidget.
+     */
+    private static final String CHECKBOX_MEGAWIDGET_TYPE = "CheckBox";
+
+    /**
+     * Suffix for checkbox megawidget identifiers that are to be detail fields
+     * for time scale megawidgets used to toggle the "until further notice"
+     * property for the associated state of that time scale. Each such checkbox
+     * therefore has the identifier comprised of the state identifier of the
+     * time scale, with this suffix appended.
+     */
+    private static final String UNTIL_FURTHER_NOTICE_STATE_SUFFIX = "UntilFurtherNotice";
+
+    /**
+     * Text for "until further notice" checkbox.
+     */
+    private static final String UNTIL_FURTHER_NOTICE_TEXT = "Until further notice";
+
+    /**
+     * Text to display in the date-time fields of the time range megawidget when
+     * the "until further notice" value is the current state for the end time.
+     */
+    private static final String UNTIL_FURTHER_NOTICE_VALUE_TEXT = "N/A";
 
     /**
      * Points table name column identifier.
@@ -322,6 +359,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Conflict tooltip.
      */
     private static final String CONFLICT_TOOLTIP = "Conflicts with other hazard(s)";
+
+    /**
+     * Rise-above/crest/fall-below megawidget identifier.
+     * <p>
+     * TODO: Eliminate this once the method using it, which is also deprecated,
+     * is eliminated.
+     */
+    @Deprecated
+    private static final String RISE_ABOVE_CREST_FALL_BELOW_MEGAWIDGET_IDENTIFIER = "riseAbove:crest:fallBelow";
 
     // Private Classes
 
@@ -462,32 +508,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Protected Methods
 
-        /**
-         * Change the component widgets to ensure their state matches that of
-         * the enabled flag.
-         * 
-         * @param enable
-         *            Flag indicating whether the component widgets are to be
-         *            enabled or disabled.
-         */
         @Override
         protected final void doSetEnabled(boolean enable) {
             table.setEnabled(enable);
         }
 
-        /**
-         * Get the current state for the specified identifier. This method is
-         * called by <code>
-         * getState()</code> only after the latter has ensured that the supplied
-         * state identifier is valid.
-         * 
-         * @param identifier
-         *            Identifier for which state is desired. Implementations may
-         *            assume that the state identifier supplied by this
-         *            parameter is valid for this megawidget.
-         * @return Object making up the current state for the specified
-         *         identifier.
-         */
         @Override
         protected final Object doGetState(String identifier) {
 
@@ -531,21 +556,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return state;
         }
 
-        /**
-         * Set the current state for the specified identifier. This method is
-         * called by <code> setState()</code> only after the latter has ensured
-         * that the supplied state identifier is valid, and has set a flag that
-         * indicates that this setting of the state will not trigger the
-         * megawidget to notify its listener of an invocation.
-         * 
-         * @param identifier
-         *            Identifier for which state is to be set. Implementations
-         *            may assume that the state identifier supplied by this
-         *            parameter is valid for this megawidget.
-         * @param state
-         *            Object making up the state to be used for this identifier,
-         *            or <code>null</code> if this state should be reset.
-         */
         @Override
         protected final void doSetState(String identifier, Object state) {
             if (state == null) {
@@ -558,23 +568,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
         }
 
-        /**
-         * Get a shortened description of the specified state for the specified
-         * identifier. This method is called by <code>getStateDescription() only
-         * after the latter has ensured that the supplied
-         * state identifier is valid.
-         * 
-         * @param identifier
-         *            Identifier to which the state would be assigned.
-         *            Implementations may assume that the state identifier
-         *            supplied by this parameter is valid for this megawidget.
-         * @param state
-         *            State for which to generate a shortened description.
-         * @return Description of the specified state.
-         * @throws MegawidgetStateException
-         *             If the specified state is not of a valid type for this
-         *             <code>StatefulMegawidget</code> implementation.
-         */
         @Override
         protected final String doGetStateDescription(String identifier,
                 Object state) throws MegawidgetStateException {
@@ -637,48 +630,21 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Public Methods
 
-        /**
-         * Get the flag indicating whether or not the megawidget is to be
-         * created in an editable state.
-         * 
-         * @return True if the megawidget is to be created as editable, false
-         *         otherwise.
-         */
         @Override
         public final boolean isEditable() {
             return optionsManager.isEditable();
         }
 
-        /**
-         * Get the width of the megawidget in columns within its parent.
-         * 
-         * @return Number of columns it should span.
-         */
         @Override
         public final int getWidth() {
             return optionsManager.getWidth();
         }
 
-        /**
-         * Determine whether or not the megawidget fills the width of the column
-         * it is occupying within its parent. This may be used by parent
-         * megawidgets to determine whether their children may be laid out side
-         * by side in the same column or not.
-         * 
-         * @return True if the megawidget fills the width of the column it
-         *         occupies, false otherwise.
-         */
         @Override
         public final boolean isFullWidthOfColumn() {
             return optionsManager.isFullWidthOfColumn();
         }
 
-        /**
-         * Get the spacing between this megawidget and the one above it in
-         * pixels.
-         * 
-         * @return Spacing.
-         */
         @Override
         public final int getSpacing() {
             return optionsManager.getSpacing();
@@ -692,18 +658,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * 
          * @param parent
          *            Parent in which to place the megawidget; for this
-         *            implementation, this must be a <code>Composite</code>.
+         *            implementation, this must be a {@link Composite}.
          * @param creationParams
          *            Hash table mapping identifiers to values that subclasses
          *            might require when creating a megawidget. This class looks
-         *            for a value associated with the key <code>
-         *            NOTIFICATION_LISTENER</code> that is of type <code>
-         *            INotificationListener</code>; if not found, then the
+         *            for a value associated with the key
+         *            {@link INotifier#NOTIFICATION_LISTENER} that is of type
+         *            {@link INotificationListener}; if not found, then the
          *            created megawidget will not attempt to notify when it is
          *            invoked. Furthermore, it looks for a value associated with
-         *            the key <code>STATE_CHANGED_LISTENER</code> that is of
-         *            type <code>IStateChangeListener</code>; if not found, then
-         *            the created megawidget will not attempt to notify of state
+         *            the key {@link IStateful#STATE_CHANGE_LISTENER} that is of
+         *            type {@link IStateChangeListener}; if not found, then the
+         *            created megawidget will not attempt to notify of state
          *            changes.
          * @return Created megawidget.
          * @throws MegawidgetException
@@ -826,6 +792,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private TimeScaleMegawidget timeRangeMegawidget = null;
 
     /**
+     * Event end time "until further notice" toggle megawidget.
+     */
+    private CheckBoxMegawidget endTimeUntilFurtherNoticeMegawidget = null;
+
+    /**
      * Set of all time scale megawidgets currently in existence.
      */
     private final Set<TimeScaleMegawidget> timeScaleMegawidgets = new HashSet<>();
@@ -846,7 +817,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private Composite metadataContentPanel = null;
 
     /**
-     * Layout manager for the <code>metadataContentPanel</code>.
+     * Layout manager for the {@link #metadataContentPanel}.
      */
     private StackLayout metadataContentLayout = null;
 
@@ -991,6 +962,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private HazardDetailView hazardDetailView = null;
 
+    /**
+     * Set of identifiers of events that allow "until further notice" mode to be
+     * toggled. The set is kept up to date elsewhere, so it always indicates
+     * which events have this property. It is unmodifiable by the hazard detail
+     * view.
+     */
+    private Set<String> eventIdentifiersAllowingUntilFurtherNotice;
+
     // Public Methods
 
     /**
@@ -1009,15 +988,27 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Minimum visible time.
      * @param maxVisibleTime
      *            Maximum visible time.
+     * @param eventIdentifiersAllowingUntilFurtherNotice
+     *            Set of the hazard event identifiers that at any given moment
+     *            allow the toggling of their "until further notice" mode. The
+     *            set is unmodifiable; attempts to modify it will result in an
+     *            {@link UnsupportedOperationException}. Note that this set is
+     *            kept up-to-date, and thus will always contain only those
+     *            events that can have their "until further notice" mode toggled
+     *            at the instant at which it is checked.
      */
     public void initialize(HazardDetailView hazardDetailView,
             String generalWidgets, String hazardMegawidgets,
-            long minVisibleTime, long maxVisibleTime) {
+            long minVisibleTime, long maxVisibleTime,
+            Set<String> eventIdentifiersAllowingUntilFurtherNotice) {
 
-        // Remember the minimum and maximum visible times.
+        // Remember the minimum and maximum visible times,
+        // the parent view, and the set of events that
+        // allow "until further notice".
         minimumVisibleTime = minVisibleTime;
         maximumVisibleTime = maxVisibleTime;
         this.hazardDetailView = hazardDetailView;
+        this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
 
         // Fill in the megawidget creation parameters
         // hash table, used to provide parameters
@@ -1386,6 +1377,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Create the time range sliders.
         try {
+
+            // Specify the time range megawidget as
+            // having two states, one for start
+            // time, the other for end time.
             Dict scaleObject = new Dict();
             scaleObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                     TIME_RANGE_IDENTIFIER);
@@ -1398,12 +1393,50 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             scaleObject.put(
                     TimeScaleSpecifier.MEGAWIDGET_MINIMUM_TIME_INTERVAL,
                     HazardConstants.TIME_RANGE_MINIMUM_INTERVAL);
+            scaleObject.put(IParentSpecifier.MEGAWIDGET_SPECIFIER_FACTORY,
+                    megawidgetSpecifierFactory);
+
+            // Specify the "Until further notice"
+            // checkbox to be shown next to the end
+            // time date-time fields.
+            Map<String, Object> checkboxObject = new HashMap<>();
+            checkboxObject.put(MegawidgetSpecifier.MEGAWIDGET_TYPE,
+                    CHECKBOX_MEGAWIDGET_TYPE);
+            checkboxObject.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
+                    END_TIME_STATE + UNTIL_FURTHER_NOTICE_STATE_SUFFIX);
+            checkboxObject.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                    UNTIL_FURTHER_NOTICE_TEXT);
+            List<Map<String, Object>> detailSpecifiers = new ArrayList<>();
+            detailSpecifiers.add(checkboxObject);
+            Map<String, List<Map<String, Object>>> detailSpecifiersMap = new HashMap<>();
+            detailSpecifiersMap.put(END_TIME_STATE, detailSpecifiers);
+            scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS,
+                    detailSpecifiersMap);
+
+            // Ensure that the time range megawidget
+            // shows special text if the "Until further
+            // notice" value is the current state for
+            // its end time.
+            Map<Long, String> descriptiveTextForValues = new HashMap<>();
+            descriptiveTextForValues.put(UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS,
+                    UNTIL_FURTHER_NOTICE_VALUE_TEXT);
+            scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS,
+                    descriptiveTextForValues);
+
+            // Create the megawidget, and save a re-
+            // ference to it and to its "Until further
+            // notice" checkbox.
             timeRangeMegawidget = new TimeScaleSpecifier(scaleObject)
                     .createMegawidget(timeRangePanel,
                             TimeScaleMegawidget.class, megawidgetCreationParams);
+            endTimeUntilFurtherNoticeMegawidget = (CheckBoxMegawidget) timeRangeMegawidget
+                    .getChildren().get(0);
             timeScaleMegawidgets.add(timeRangeMegawidget);
             ControlComponentHelper
                     .alignMegawidgetsElements(timeScaleMegawidgets);
+
+            // Set the initial state of the megawidget
+            // and its associated checkbox.
             if (primaryParamValues.size() > 0) {
                 timeRangeMegawidget.setUncommittedState(
                         START_TIME_STATE,
@@ -1414,6 +1447,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         primaryParamValues.get(visibleHazardIndex).get(
                                 HAZARD_EVENT_END_TIME));
                 timeRangeMegawidget.commitStateChanges();
+                if (Boolean.TRUE.equals(primaryParamValues.get(
+                        visibleHazardIndex).get(
+                        HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE))) {
+                    setTimeScaleMegawidgetEditability(timeRangeMegawidget,
+                            END_TIME_STATE, Boolean.FALSE);
+                    endTimeUntilFurtherNoticeMegawidget.setState(
+                            endTimeUntilFurtherNoticeMegawidget.getSpecifier()
+                                    .getIdentifier(), Boolean.TRUE);
+                }
             }
         } catch (Exception e) {
             statusHandler
@@ -1604,8 +1646,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // dictionaries, do nothing.
         if (primaryParamValues.size() == 0) {
             return;
-        } else if (megawidget == timeRangeMegawidget) {
-            timeRangeChanged();
+        } else if ((megawidget == timeRangeMegawidget)
+                || (megawidget == endTimeUntilFurtherNoticeMegawidget)) {
+            timeRangeChanged(megawidget == endTimeUntilFurtherNoticeMegawidget);
             return;
         }
 
@@ -1655,6 +1698,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             eventID = (String) primaryParamValues.get(visibleHazardIndex).get(
                     HAZARD_EVENT_IDENTIFIER);
             primaryParamValues.get(visibleHazardIndex).put(identifier, state);
+
+            // Handle the special case of the fall-below until-
+            // further-notice checkbox and its associated time
+            // range's editability.
+            String fullType = (String) primaryParamValues.get(
+                    visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE);
+            if (fullType != null) {
+                setFallBelowEditability(
+                        megawidgetsForIdsForTypes.get(fullType),
+                        primaryParamValues.get(visibleHazardIndex));
+            }
         }
 
         // Put together an action to be sent along to indicate
@@ -2454,6 +2508,23 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     primaryParamValues.get(visibleHazardIndex).get(
                             HAZARD_EVENT_END_TIME));
             timeRangeMegawidget.commitStateChanges();
+            Boolean untilFurtherNotice = (Boolean) primaryParamValues.get(
+                    visibleHazardIndex).get(
+                    HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+            setTimeScaleMegawidgetEditability(timeRangeMegawidget,
+                    END_TIME_STATE,
+                    (Boolean.TRUE.equals(untilFurtherNotice) ? Boolean.FALSE
+                            : Boolean.TRUE));
+            endTimeUntilFurtherNoticeMegawidget.setState(
+                    endTimeUntilFurtherNoticeMegawidget.getSpecifier()
+                            .getIdentifier(),
+                    (untilFurtherNotice == null ? Boolean.FALSE
+                            : untilFurtherNotice));
+            endTimeUntilFurtherNoticeMegawidget
+                    .setEnabled(eventIdentifiersAllowingUntilFurtherNotice
+                            .contains(primaryParamValues
+                                    .get(visibleHazardIndex).get(
+                                            HAZARD_EVENT_IDENTIFIER)));
         } catch (Exception e) {
             statusHandler
                     .error("HazardDetailViewPart.synchWithEventInfo(): "
@@ -2765,8 +2836,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Respond to the start or end times changing.
+     * 
+     * @param untilFurtherNoticeToggled
+     *            Flag indicating whether or not this method was invoked as a
+     *            result of the "until further notice" toggle value changing.
      */
-    private void timeRangeChanged() {
+    private void timeRangeChanged(boolean untilFurtherNoticeToggled) {
 
         // Do nothing if the appropriate megawidget is not
         // found.
@@ -2774,32 +2849,58 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return;
         }
 
-        // Get the times and save them.
-        try {
-            Long oldStartTime = (Long) primaryParamValues.get(
-                    visibleHazardIndex).get(HAZARD_EVENT_START_TIME);
-            Long oldEndTime = (Long) primaryParamValues.get(visibleHazardIndex)
-                    .get(HAZARD_EVENT_END_TIME);
-            Long startTime = (Long) timeRangeMegawidget
-                    .getState(START_TIME_STATE);
-            if (startTime == null) {
-                return;
+        // If the "until further notice" megawidget was
+        // toggled, respond by enabling or disabling edi-
+        // tability of the end time in the time range
+        // megawidget. Otherwise, at least one of the
+        // times has changed, so get the times and save
+        // them.
+        if (untilFurtherNoticeToggled) {
+            try {
+                Boolean untilFurtherNotice = (Boolean) endTimeUntilFurtherNoticeMegawidget
+                        .getState(endTimeUntilFurtherNoticeMegawidget
+                                .getSpecifier().getIdentifier());
+                setTimeScaleMegawidgetEditability(
+                        timeRangeMegawidget,
+                        END_TIME_STATE,
+                        (Boolean.TRUE.equals(untilFurtherNotice) ? Boolean.FALSE
+                                : Boolean.TRUE));
+                primaryParamValues.get(visibleHazardIndex).put(
+                        HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                        untilFurtherNotice);
+            } catch (Exception e) {
+                statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
+                        + "could not set state editability mutable property "
+                        + "for time range megawidget.", e);
             }
-            Long endTime = (Long) timeRangeMegawidget.getState(END_TIME_STATE);
-            if ((endTime == null)
-                    || ((oldStartTime != null)
-                            && oldStartTime.equals(startTime)
-                            && (oldEndTime != null) && oldEndTime
-                                .equals(endTime))) {
-                return;
+        } else {
+            try {
+                Long oldStartTime = (Long) primaryParamValues.get(
+                        visibleHazardIndex).get(HAZARD_EVENT_START_TIME);
+                Long oldEndTime = (Long) primaryParamValues.get(
+                        visibleHazardIndex).get(HAZARD_EVENT_END_TIME);
+                Long startTime = (Long) timeRangeMegawidget
+                        .getState(START_TIME_STATE);
+                if (startTime == null) {
+                    return;
+                }
+                Long endTime = (Long) timeRangeMegawidget
+                        .getState(END_TIME_STATE);
+                if ((endTime == null)
+                        || ((oldStartTime != null)
+                                && oldStartTime.equals(startTime)
+                                && (oldEndTime != null) && oldEndTime
+                                    .equals(endTime))) {
+                    return;
+                }
+                primaryParamValues.get(visibleHazardIndex).put(
+                        HAZARD_EVENT_START_TIME, startTime);
+                primaryParamValues.get(visibleHazardIndex).put(
+                        HAZARD_EVENT_END_TIME, endTime);
+            } catch (Exception e) {
+                statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
+                        + "could not get state from time range megawidget.", e);
             }
-            primaryParamValues.get(visibleHazardIndex).put(
-                    HAZARD_EVENT_START_TIME, startTime);
-            primaryParamValues.get(visibleHazardIndex).put(
-                    HAZARD_EVENT_END_TIME, endTime);
-        } catch (Exception e) {
-            statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
-                    + "could not get state from time range megawidgets.", e);
         }
 
         // Generate a HID action and fire it off.
@@ -2808,15 +2909,48 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 HAZARD_EVENT_IDENTIFIER,
                 (Serializable) primaryParamValues.get(visibleHazardIndex).get(
                         HAZARD_EVENT_IDENTIFIER));
-        eventInfo.put(
-                HAZARD_EVENT_START_TIME,
-                (Serializable) primaryParamValues.get(visibleHazardIndex).get(
-                        HAZARD_EVENT_START_TIME));
-        eventInfo.put(HAZARD_EVENT_END_TIME, (Serializable) primaryParamValues
-                .get(visibleHazardIndex).get(HAZARD_EVENT_END_TIME));
-
+        if (untilFurtherNoticeToggled) {
+            eventInfo.put(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                    (Serializable) primaryParamValues.get(visibleHazardIndex)
+                            .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
+        } else {
+            eventInfo.put(HAZARD_EVENT_START_TIME,
+                    (Serializable) primaryParamValues.get(visibleHazardIndex)
+                            .get(HAZARD_EVENT_START_TIME));
+            eventInfo.put(HAZARD_EVENT_END_TIME,
+                    (Serializable) primaryParamValues.get(visibleHazardIndex)
+                            .get(HAZARD_EVENT_END_TIME));
+        }
         fireHIDAction(new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_TIME_RANGE, eventInfo));
+    }
+
+    /**
+     * Set the specified time scale megawidget to have the specified state have
+     * the specified editability.
+     * 
+     * @param megawidget
+     *            Megawidget to have its editability altered.
+     * @param identifier
+     *            State identifer to have its editability altered.
+     * @param editable
+     *            Flag indicating whether the specified state identifier of the
+     *            specified megawidget should be editable.
+     * @throws MegawidgetException
+     *             If a problem occurs while changing the megawidget's
+     *             editability.
+     */
+    private void setTimeScaleMegawidgetEditability(
+            TimeScaleMegawidget megawidget, String identifier, Boolean editable)
+            throws MegawidgetException {
+        Map<String, Boolean> stateEditables = new HashMap<>();
+        for (String thisIdentifier : ((TimeScaleSpecifier) megawidget
+                .getSpecifier()).getStateIdentifiers()) {
+            stateEditables.put(thisIdentifier, (identifier
+                    .equals(thisIdentifier) ? editable : Boolean.TRUE));
+        }
+        megawidget.setMutableProperty(
+                TimeScaleSpecifier.MEGAWIDGET_STATE_EDITABLES, stateEditables);
     }
 
     /**
@@ -2838,9 +2972,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            within this table during the course of the invocation of this
      *            method, one per state held by a megawidget, so if a megawidget
      *            has two states, it will have two entries in the table. If
-     *            <code>
-     *            null</code>, no recording of megawidgets paired with state
-     *            identifiers occurs.
+     *            <code>null</code>, no recording of megawidgets paired with
+     *            state identifiers occurs.
      * @param paramValues
      *            Hash table pairing state identifiers with their starting state
      *            values, if any.
@@ -2863,6 +2996,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // them with their states, one entry per
         // state that each contains.
         Set<IControl> megawidgets = new HashSet<>();
+        Set<IControl> megawidgetsToAlign = new HashSet<>();
         for (ISpecifier megawidgetSpecifier : megawidgetSpecifiers) {
             IControl megawidget = null;
             try {
@@ -2875,6 +3009,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 e);
             }
             Set<IControl> newMegawidgets = new HashSet<>();
+            megawidgetsToAlign.add(megawidget);
             findAllDescendantMegawidgets(megawidget, newMegawidgets);
             recordNewMegawidgets(newMegawidgets, megawidgets,
                     megawidgetsForIds, megawidgetsForStateIds,
@@ -2883,7 +3018,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Align the megawidgets visually with one
         // another.
-        ControlComponentHelper.alignMegawidgetsElements(megawidgets);
+        ControlComponentHelper.alignMegawidgetsElements(megawidgetsToAlign);
 
         // Set the megawidgets' states to match the
         // initial values.
@@ -2899,8 +3034,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param megawidget
      *            Potential parent megawidget.
      * @param descendants
-     *            Set into which all descendants of <code>megawidget</code> will
-     *            be placed, including <code>megawidget</code> itself.
+     *            Set into which all descendants of the specified megawidget
+     *            will be placed, including the megawidget itself.
      */
     @SuppressWarnings("unchecked")
     private void findAllDescendantMegawidgets(IControl megawidget,
@@ -2957,7 +3092,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     megawidgetsForStateIds.put(identifier, megawidget);
                 }
             }
-            if (megawidget instanceof TimeScaleMegawidget) {
+            if (megawidget.getClass() == TimeScaleMegawidget.class) {
                 timeScaleMegawidgets.add((TimeScaleMegawidget) megawidget);
             }
         }
@@ -2967,13 +3102,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the metadata megawidgets' states as specified.
      * 
      * @param megawidgetsForIds
-     *            Hash table pairing megawidget identifiers with their
-     *            associated megawidgets. All created megawidgets have entries
-     *            created within the table during the course of the invocation
-     *            of this method.
+     *            Map pairing megawidget identifiers with their associated
+     *            megawidgets.
      * @param paramValues
-     *            Hash table pairing megawidget identifiers with their starting
-     *            state values, if any.
+     *            Map pairing megawidget identifiers with their state values, if
+     *            any.
      */
     private void setMegawidgetsStates(Map<String, IControl> megawidgetsForIds,
             Map<String, Object> paramValues) {
@@ -3005,7 +3138,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 if ((megawidget instanceof IStateful) == false) {
                     continue;
                 }
-                boolean timeScaleMegawidgetStatesNeedSetting = false;
+                boolean timeMegawidgetStatesNeedSetting = false;
                 for (String identifier : ((IStatefulSpecifier) megawidget
                         .getSpecifier()).getStateIdentifiers()) {
 
@@ -3016,7 +3149,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     // default value instead.
                     boolean useDefaultValue = !paramValues
                             .containsKey(identifier);
-                    if (megawidget instanceof TimeScaleMegawidget) {
+                    if ((megawidget.getClass() == TimeMegawidget.class)
+                            || (megawidget.getClass() == TimeScaleMegawidget.class)) {
                         useDefaultValue = (useDefaultValue || ((Number) paramValues
                                 .get(identifier)).longValue() == 0L);
                     }
@@ -3038,11 +3172,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     }
                     if (useDefaultValue) {
 
-                        // If this is a time scale megawidget, remember
-                        // that its starting values need setting. Other-
-                        // wise, use the default starting value.
-                        if (megawidget instanceof TimeScaleMegawidget) {
-                            timeScaleMegawidgetStatesNeedSetting = true;
+                        // If this is a time megawidget, remember that
+                        // its starting values need setting. Otherwise,
+                        // use the default starting value.
+                        if ((megawidget.getClass() == TimeMegawidget.class)
+                                || (megawidget.getClass() == TimeScaleMegawidget.class)) {
+                            timeMegawidgetStatesNeedSetting = true;
                             break;
                         } else {
                             try {
@@ -3095,12 +3230,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     }
                 }
 
-                // If this is a time scale megawidget and its state
-                // needs setting, set the starting values of its
-                // thumbs to equidistant temporal points along the
-                // current start-end time range of the event. This
-                // ensures that their starting values are not bogus.
-                if (timeScaleMegawidgetStatesNeedSetting) {
+                // If this is a time megawidget and its state needs
+                // setting, set the starting value(s) of its thumb(s)
+                // to equidistant temporal points along the current
+                // start-end time range of the event. This ensures
+                // that their starting values are not bogus.
+                if (timeMegawidgetStatesNeedSetting) {
                     try {
                         long start = (Long) timeRangeMegawidget
                                 .getState(START_TIME_STATE);
@@ -3170,6 +3305,51 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
                         eventInfo, false), true);
             }
+
+            // Handle the special case of the fall-below until-further-notice
+            // checkbox megawidget and associated time range megawidget.
+            setFallBelowEditability(megawidgetsForIds, paramValues);
+        }
+    }
+
+    /**
+     * If a fall-below parameter exists in the specified hazard event, ensure
+     * that its associated megawidget within the specified map has its
+     * editability set to be appropriate given the fall-below
+     * until-further-notice flag's value.
+     * <p>
+     * TODO: This method is a stopgap to handle the special case of
+     * "until further notice" checkboxes for fall-below values; it will be
+     * removed in the course of implementing Redmine code improvement 2925. At
+     * that time, extensive refactoring of this class will be performed,
+     * including the addition of the use of side effects scripts which will be
+     * responsible for this special case.
+     * 
+     * @param megawidgetsForIds
+     *            Map pairing megawidget identifiers with their associated
+     *            megawidgets.
+     * @param paramValues
+     *            Map pairing megawidget identifiers with their state values, if
+     *            any.
+     */
+    @Deprecated
+    private void setFallBelowEditability(
+            Map<String, IControl> megawidgetsForIds,
+            Map<String, Object> paramValues) {
+        if (megawidgetsForIds
+                .containsKey(RISE_ABOVE_CREST_FALL_BELOW_MEGAWIDGET_IDENTIFIER)) {
+            try {
+                setTimeScaleMegawidgetEditability(
+                        (TimeScaleMegawidget) megawidgetsForIds
+                                .get(RISE_ABOVE_CREST_FALL_BELOW_MEGAWIDGET_IDENTIFIER),
+                        FALL_BELOW, !Boolean.TRUE.equals(paramValues
+                                .get(FALL_BELOW_UNTIL_FURTHER_NOTICE)));
+            } catch (Exception e) {
+                statusHandler
+                        .error("HazardDetailViewPart: Exception during rise-above/crest/fall-below "
+                                + "megawidget editability manipulation; should not occur.",
+                                e);
+            }
         }
     }
 
@@ -3185,10 +3365,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param value
      *            New value of the state identifier.
      * @param megawidgetsNeedingCommit
-     *            Set of megawidgets needing an explicit commit;
-     *            <code>megawidget
-     *            </code> will be added to this set by this invocation if it is
-     *            an <code>IExplicitCommitStateful</code> instance.
+     *            Set of megawidgets needing an explicit commit; the specified
+     *            megawidget will be added to this set by this invocation if it
+     *            is an {@link IExplicitCommitStateful} instance.
      * @throws MegawidgetStateException
      *             If a state exception occurs while attempting to set the
      *             megawidget's state.
