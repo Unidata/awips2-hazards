@@ -27,12 +27,22 @@ from jsonCombine import jsonCombine
 from xml2Json import xml2Json
 from HazardServicesImporter import HazardServicesImporter
 from UFStatusLogger import UFStatusLogger
-from UErunner import UErunner
 
+# The following imports are JEP dependent.
 try:
     from LocalFileInstaller import *
 except :
     from AppFileInstaller import *
+
+try:
+    from UErunner import UErunner
+except:
+    pass
+
+try:
+    import PathManager
+except:
+    pass
 
 # The purpose of this class is to provide a very generalized interface to
 # localization data.
@@ -309,12 +319,20 @@ return ResponseMessageGeneric(site)
         self.__defDesk = edexDeskMap.get(self.__locServer)
         if self.__defDesk!=None :
             return self.__defDesk
-        cmd = "find /awips2/edex/data/utility -mindepth 3 -maxdepth 3 " + \
-              "-path '*/desk/*' -type d -exec basename '{}' \; | " + \
-              "sort -u | head -n 1"
-        self.__defDesk = self.__submitCommand(cmd)
+        # First try JEP enabled way, then non-JEP enabled way
+        try :
+            pathMgr = PathManager.PathManager()
+            try :
+                self.__defDesk = \
+                   pathMgr._getContext("CAVE_STATIC","DESK").getContextName()
+            except :
+                self.__defDesk = ""
+        except :
+            self.__defDesk = os.environ.get("DEFAULT_DESK", "")
+        if self.__defDesk == None :
+            self.__defDesk = ""
         edexDeskMap[self.__locServer] = self.__defDesk
-        return self.__defLoc
+        return self.__defDesk
 
     def processLevelArg(self, levelArg, restricted=False) :
         '''
@@ -673,90 +691,6 @@ return ResponseMessageGeneric(site)
             self.__logger.logMessage(msg, "Error")
 
         return False
-
-    # This method allows one to submit an arbitrary command through the
-    # uEngine to an arbitrary host.  If the host is "postgres", will attempt
-    # to verify that the command is run on the host that has postgres running.
-    def __submitCommand(self, submit, host="") :
-        tmpcmdfile = "tmpcmd"+str(os.getpid())+".csh"
-        if host=="postgres" :
-            mycmd = ""
-            tmpcmddata = "#!/bin/csh\n"
-            tmpcmddata += 'if ( "$1" != "" ) then\n'
-            tmpcmddata += '    set n = `ps -C postmaster -U awips | '
-            tmpcmddata +=           'grep postmaster | wc -l`\n'
-            tmpcmddata += '    if ( $n == 0 ) then\n'
-            tmpcmddata += '        ssh -q "dx1" $0\n'
-            tmpcmddata += '        exit\n'
-            tmpcmddata += '    endif\n'
-            tmpcmddata += 'endif\n'
-            tmpcmddata += submit+'\n'
-            tmpcmddata += \
-               '( ( sleep 3 ; rm -f $0 ) & ) >& /dev/null\n'
-        elif host!="" :
-            mycmd = ""
-            tmpcmddata = "#!/bin/csh\n"
-            tmpcmddata += 'if ( "$1" != "" ) then\n'
-            tmpcmddata += '    ssh -q "$1" $0\n'
-            tmpcmddata += '    exit\n'
-            tmpcmddata += 'endif\n'
-            tmpcmddata += submit+'\n'
-            tmpcmddata += \
-               '( ( sleep 3 ; rm -f $0 ) & ) >& /dev/null\n'
-        else :
-            tmpcmddata = ""
-            mycmd = submit
-        d = chr(34)
-        myscript = """
-from com.raytheon.uf.common.message.response import ResponseMessageGeneric
-import subprocess
-import os
-import stat
-"""
-        if len(tmpcmddata)>0 :
-            myscript += """
-if os.path.isdir("/home/awips/bin") :
-    tmpcmddir = "/home/awips/bin/"
-elif os.path.isdir("/data_store") :
-    tmpcmddir = "/data_store/"
-else :
-    tmpcmddir = os.environ["HOME"]+"/"
-"""
-            myscript += "\nexechost = "+d+d+d+host+d+d+d
-            myscript += "\ntmpcmdfile = "+d+d+d+tmpcmdfile+d+d+d
-            myscript += "\ntmpcmddata = "+d+d+d+tmpcmddata+d+d+d
-            myscript += """
-tmpcmdpath = tmpcmddir+tmpcmdfile
-ffff = open(tmpcmdpath, 'w')
-ffff.write(tmpcmddata)
-ffff.close()
-os.chmod(tmpcmdpath, stat.S_IRWXU|stat.S_IRWXG|stat.S_IROTH|stat.S_IXOTH)
-mycmd = tmpcmdpath+" "+exechost
-"""
-        else :
-            myscript += "\nmycmd = "+d+d+d+mycmd+' '+d+d+d
-        myscript += """
-p = subprocess.Popen(mycmd, shell=True, stdout=subprocess.PIPE)
-(stdout, stderr) = p.communicate()
-return ResponseMessageGeneric(stdout)
-"""
-
-        cacheenv = os.environ.get("DEFAULT_HOST", "-")
-        os.environ["DEFAULT_HOST"] = self.__locServer
-        contents = None
-        try :
-            ue = UErunner()
-            contents = ue.returnContents(script=myscript)
-        except :
-            contents = None
-        if cacheenv != "-" :
-            os.environ["DEFAULT_HOST"] = cacheenv
-        if contents != None :
-            return str(contents)
-
-        msg = "Error running arbitrary command in uEngine."
-        self.__logger.logMessage(msg, "Error")
-        return None
 
     # This method allows one to delete a localization file.  'locPath' is the
     # relative path to the file within the level, site or user directories.

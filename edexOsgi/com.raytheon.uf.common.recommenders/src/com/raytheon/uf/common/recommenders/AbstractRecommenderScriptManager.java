@@ -226,19 +226,12 @@ public abstract class AbstractRecommenderScriptManager extends
                 "localizationUtilities");
         String dataStoragePath = FileUtil.join(pythonPath, "dataStorage");
 
-        /*
-         * This is so we can access CommHandler.py, Util.py, and UEConfig.py.
-         * Maybe there is a better way to do this.
-         */
-        String fxaBinPath = FileUtil.join(File.separator, "awips2", "fxa",
-                "bin", "src");
-
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 recommenderConfigPath, recommenderUserPath,
                 recommenderSitePath, recommenderDirPath, dataAccessPath,
                 dataTimePath, eventsPath, utilitiesPath, gfePath, bridgePath,
                 trackUtilPath, geoUtilPath, genUtilPath, logUtilPath,
-                fxaBinPath, localizationUtilitiesPath, dataStoragePath);
+                localizationUtilitiesPath, dataStoragePath);
         return includePath;
     }
 

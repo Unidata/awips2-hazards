@@ -111,14 +111,6 @@ public class ProductScriptFactory extends
                         utilityDir));
             }
 
-            /*
-             * This is so we can access CommHandler.py, Util.py, and
-             * UEConfig.py. Maybe there is a better way to do this.
-             */
-            String fxaBinPath = FileUtil.join(
-                File.separator, "awips2", "fxa", "bin", "src");
-            hazardServicesUtilityPathList.add(fxaBinPath);
-
             String includePath = PyUtil
                     .buildJepIncludePath(hazardServicesUtilityPathList
                             .toArray(new String[0]));
