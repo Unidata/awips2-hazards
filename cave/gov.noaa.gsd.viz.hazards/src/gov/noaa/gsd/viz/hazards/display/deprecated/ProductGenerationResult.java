@@ -39,6 +39,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * May 28, 2013 1257       bsteffen    Initial creation
  * Sep 19, 2013 2046       mnash       Update for product generation.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Feb 18, 2014 2702       jsanchez    Used Serializable for products.
  * 
  * </pre>
  * 
@@ -89,7 +90,7 @@ public class ProductGenerationResult {
     @Deprecated
     public static class GeneratedProduct {
 
-        private Map<String, String> products = new HashMap<String, String>();
+        private Map<String, List<Serializable>> products = new HashMap<String, List<Serializable>>();
 
         private String productID;
 
@@ -99,15 +100,15 @@ public class ProductGenerationResult {
 
         private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
 
-        public Map<String, String> getProducts() {
+        public Map<String, List<Serializable>> getProducts() {
             return products;
         }
 
-        public void setProducts(Map<String, String> products) {
+        public void setProducts(Map<String, List<Serializable>> products) {
             this.products = products;
         }
 
-        public void addProduct(String format, String product) {
+        public void addProduct(String format, List<Serializable> product) {
             this.products.put(format, product);
         }
 

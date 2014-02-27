@@ -453,8 +453,9 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void checkSelectionPreview() {
-        GeneratedProductList generatedProductList = mockProductEditorView
-                .getGeneratedProductList();
+        List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
+                .getGeneratedProductsList();
+        GeneratedProductList generatedProductList = generatedProductListStorage.get(0);
         assertEquals(generatedProductList.size(), 2);
 
         IGeneratedProduct generatedProduct0 = generatedProductList

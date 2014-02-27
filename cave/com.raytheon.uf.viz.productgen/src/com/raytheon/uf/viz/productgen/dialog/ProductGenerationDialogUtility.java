@@ -27,17 +27,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import jep.JepException;
 
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -47,6 +48,9 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PythonScript;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.productgen.dialog.data.AbstractProductGeneratorData;
+import com.raytheon.uf.viz.productgen.dialog.data.ProductLevelData;
+import com.raytheon.uf.viz.productgen.dialog.data.SegmentData;
 import com.raytheon.uf.viz.productgen.dialog.formats.AbstractFormatTab;
 import com.raytheon.uf.viz.productgen.dialog.formats.TextFormatTab;
 
@@ -78,6 +82,9 @@ public class ProductGenerationDialogUtility {
      */
     public static final String EDITABLE = ":editable";
 
+    private static Pattern TAB_LABEL_PATTERN = Pattern
+            .compile("(\\w{1,}) \\((\\d{1,})\\)");
+
     private ProductGenerationDialogUtility() {
     }
 
@@ -86,29 +93,35 @@ public class ProductGenerationDialogUtility {
      * right side.
      * 
      * @param segmentNumber
-     * @param comboSelection
+     * @param key
      * @param editableEntries
      * @param formatTabMap
      * @param textAreaMap
      */
     public static void updateEditableEntries(
             int segmentNumber,
-            String comboSelection,
+            String key,
             Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries,
             Map<String, AbstractFormatTab> formatTabMap,
             Map<String, Text> textAreaMap) {
-        comboSelection = comboSelection + EDITABLE;
+        String editableKey = key + EDITABLE;
+
         for (Entry<String, Text> entry : textAreaMap.entrySet()) {
             String format = entry.getKey();
+            Matcher m = TAB_LABEL_PATTERN.matcher(format);
+            if (m.matches()) {
+                format = m.group(1);
+                if (segmentNumber - 1 != Integer.parseInt(m.group(2))) {
+                    continue;
+                }
+            }
             Text textArea = entry.getValue();
             LinkedHashMap<String, Serializable> map = editableEntries.get(
                     format).get(segmentNumber);
             // check if there is a need for a change
-            if (map != null
-                    && map.get(comboSelection) != null
-                    && map.get(comboSelection).equals(textArea.getText()) == false) {
-                String highlightedText = String
-                        .valueOf(map.get(comboSelection));
+            if (map != null && map.get(editableKey) != null
+                    && map.get(editableKey).equals(textArea.getText()) == false) {
+                String highlightedText = String.valueOf(map.get(editableKey));
                 // update the styled text
                 AbstractFormatTab tab = formatTabMap.get(format);
                 if (tab instanceof TextFormatTab) {
@@ -129,7 +142,7 @@ public class ProductGenerationDialogUtility {
                         styledText.setText(formattedText);
 
                         // update the editable entries map
-                        map.put(comboSelection, textArea.getText());
+                        map.put(editableKey, textArea.getText());
                     }
                 }
 
@@ -146,13 +159,13 @@ public class ProductGenerationDialogUtility {
      * @param eventData
      */
     public static void updateData(List<String> path,
-            LinkedHashMap<String, Serializable> data, int segmentNumber,
+            Map<String, Serializable> data, int segmentNumber,
             Serializable eventData) {
         // LinkedHashMap<String, Serializable> data = dataList.get(index);
         Map<String, Serializable> currentDataMap = data;
         for (int i = 0; i < path.size(); i++) {
             String key = path.get(i);
-            Object obj = currentDataMap.get(key);
+            Serializable obj = currentDataMap.get(key);
             if (i == path.size() - 1) {
                 currentDataMap.put(key, eventData);
             } else if (obj instanceof Map<?, ?>) {
@@ -163,17 +176,15 @@ public class ProductGenerationDialogUtility {
                 String newKey = path.get(++i);
                 List<?> list = (ArrayList<?>) obj;
                 if (list != null && !list.isEmpty()
-                        && list.get(segmentNumber) instanceof Map<?, ?>) {
+                        && list.get(segmentNumber - 1) instanceof Map<?, ?>) {
                     Map<String, Serializable> map = (Map<String, Serializable>) list
-                            .get(segmentNumber);
+                            .get(segmentNumber - 1);
 
                     if (i == path.size() - 1) {
                         // done - found what we're
                         // trying to replace
-                        String editableKeyName = newKey
-                                + ProductGenerationDialogUtility.EDITABLE;
-                        if (map.containsKey(editableKeyName)) {
-                            map.put(editableKeyName, eventData);
+                        if (map.containsKey(newKey)) {
+                            map.put(newKey, eventData);
                         }
                         break;
                     } else if (map.get(path.get(i)) instanceof Map<?, ?>) {
@@ -191,65 +202,68 @@ public class ProductGenerationDialogUtility {
      * Populates the individual format text areas with the value associated with
      * the editableKey.
      * 
-     * @param segmentCombo
+     * @param segmentNumber
+     * @param key
+     * @param generatedProduct
+     * @param formatTabMap
      * @param textAreaMap
-     * @param individualKeyCombo
-     * @param folderIndex
-     * @param formatTabList
-     * @param products
      */
-    public static void updateTextAreas(
-            Combo segmentCombo,
-            String formattedComboSelection,
-            Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries,
+    public static void updateTextAreas(int segmentNumber, String key,
+            IGeneratedProduct generatedProduct,
             Map<String, AbstractFormatTab> formatTabMap,
             Map<String, Text> textAreaMap) {
-        int segmentNumber = segmentCombo.getSelectionIndex();
-        String segment = segmentCombo.getItem(segmentNumber);
+        String editableKey = key + EDITABLE;
         for (String format : textAreaMap.keySet()) {
-            if (editableEntries.get(format) != null
-                    && editableEntries.get(format).get(segmentNumber) != null) {
-                Serializable value = editableEntries.get(format)
-                        .get(segmentNumber)
-                        .get(formattedComboSelection + EDITABLE);
-                String highlightedText = "";
-                if (value != null) {
-                    highlightedText = String.valueOf(value);
-                }
-                textAreaMap.get(format).setText(highlightedText);
+            String formatKey = format;
+            Matcher m = TAB_LABEL_PATTERN.matcher(format);
+            int subNumber = -1;
+            if (m.matches()) {
+                formatKey = m.group(1);
+                subNumber = Integer.parseInt(m.group(2)) + 1;
+            }
 
-                AbstractFormatTab tab = formatTabMap.get(format);
-                if (tab instanceof TextFormatTab) {
-                    TextFormatTab textTab = (TextFormatTab) tab;
-                    StyledText styledText = textTab.getText();
-                    int startIndex = 0;
-                    int length = highlightedText.length();
-                    if (length > 0) {
-                        int offset = styledText.getText().indexOf(segment);
-                        startIndex = styledText.getText().indexOf(
-                                highlightedText, offset);
-                    }
+            String displayedText = "";
+            Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = generatedProduct
+                    .getEditableEntries();
+            if ((subNumber != -1) && (subNumber != segmentNumber - 1)) {
+                // do nothing with displayedText
+            } else if (editableEntries.get(formatKey) != null
+                    && segmentNumber < editableEntries.get(formatKey).size()) {
+                LinkedHashMap<String, Serializable> map = editableEntries.get(
+                        formatKey).get(segmentNumber);
+                if (map != null && map.get(editableKey) != null) {
+                    displayedText = String.valueOf(map.get(editableKey));
 
-                    if (startIndex == -1) {
-                        startIndex = 0;
-                    }
-
-                    // performs highlighting
-                    styledText.setSelectionRange(startIndex, length);
-
-                    // scrolls to the line
-                    for (int lineIndex = 0; lineIndex < styledText
-                            .getLineCount(); lineIndex++) {
-                        if (highlightedText.contains(styledText
-                                .getLine(lineIndex))) {
-                            styledText.setTopIndex(lineIndex);
-                            break;
-                        }
+                    AbstractFormatTab tab = formatTabMap.get(format);
+                    if (tab instanceof TextFormatTab) {
+                        TextFormatTab textTab = (TextFormatTab) tab;
+                        highlight(textTab.getText(), displayedText);
                     }
                 }
             }
+
+            textAreaMap.get(format).setText(displayedText);
         }
 
+    }
+
+    /**
+     * Moves the format tab to the select segmentID
+     * 
+     * @param segmentID
+     * @param formatTabMap
+     */
+    public static void selectSegmentInTabs(
+            AbstractProductGeneratorData productGeneratorData,
+            Map<String, AbstractFormatTab> formatTabMap) {
+        clearHighlighting(formatTabMap);
+        for (AbstractFormatTab tab : formatTabMap.values()) {
+            if (tab instanceof TextFormatTab) {
+                TextFormatTab textTab = (TextFormatTab) tab;
+                StyledText styledText = textTab.getText();
+                productGeneratorData.highlight(styledText);
+            }
+        }
     }
 
     /**
@@ -278,27 +292,37 @@ public class ProductGenerationDialogUtility {
         AbstractFormatTab tab = formatTabMap.get(format);
         if (tab instanceof TextFormatTab) {
             TextFormatTab textTab = (TextFormatTab) tab;
-            StyledText styledText = textTab.getText();
-            int startIndex = 0;
-            int length = highlightedText.length();
-            if (length > 0) {
-                startIndex = styledText.getText().indexOf(highlightedText);
-            }
+            highlight(textTab.getText(), highlightedText);
+        }
+    }
 
-            if (startIndex == -1) {
-                startIndex = 0;
-                length = 0;
-            }
+    /**
+     * Highlights the text in the styledText object and scrolls to the location.
+     * 
+     * @param styledText
+     * @param text
+     */
+    private static void highlight(StyledText styledText, String text) {
+        int startIndex = 0;
+        int length = text.length();
+        if (length > 0) {
+            startIndex = styledText.getText().indexOf(text);
+        }
 
-            // performs highlighting
-            styledText.setSelectionRange(startIndex, length);
+        if (startIndex == -1) {
+            startIndex = 0;
+            length = 0;
+        }
 
-            // scrolls to the line
-            for (int lineIndex = 0; lineIndex < styledText.getLineCount(); lineIndex++) {
-                if (highlightedText.contains(styledText.getLine(lineIndex))) {
-                    styledText.setTopIndex(lineIndex);
-                    break;
-                }
+        // performs highlighting
+        styledText.setSelectionRange(startIndex, length);
+
+        // scrolls to the line
+        for (int lineIndex = 0; lineIndex < styledText.getLineCount(); lineIndex++) {
+            String line = styledText.getLine(lineIndex);
+            if (text.contains(line) || line.contains(text)) {
+                styledText.setTopIndex(lineIndex);
+                break;
             }
         }
     }
@@ -340,50 +364,51 @@ public class ProductGenerationDialogUtility {
         return rval;
     }
 
-    @Deprecated
-    public static void save(String productID, List<Segment> decodedSegments,
-            GeneratedProductList products) {
-        IHazardEvent hazardEvent = (IHazardEvent) products.getEventSet()
-                .iterator().next();
-        String eventID = hazardEvent.getEventID();
-        // TODO This is not correctly set
-        String productCategory = productID;
-
-        for (Segment segment : decodedSegments) {
-            // TODO verify that the data in segment gets set again
-            Map<String, WidgetInfo> widgetInfoMap = WidgetInfoFactory
-                    .createWidgetInfoMap(segment.getData());
-            for (WidgetInfo widgetInfo : widgetInfoMap.values()) {
-                String key = widgetInfo.getLabel();
-                Serializable value = widgetInfo.getValue();
-                ProductTextUtil.createOrUpdateProductText(key, productCategory,
-                        productID, segment.getSegmentID(), eventID, value);
+    public static void save(String eventID, String productCategory,
+            String productID, List<AbstractProductGeneratorData> decodedData) {
+        for (AbstractProductGeneratorData segment : decodedData) {
+            for (String editableKey : segment.getEditableKeys()) {
+                Serializable value = segment.getModifiedValue(editableKey);
+                if (value != null) {
+                    ProductTextUtil.createOrUpdateProductText(editableKey,
+                            productCategory, productID, segment.getSegmentID(),
+                            eventID, value);
+                }
             }
         }
 
     }
 
-    public static void save(GeneratedProductList products) {
-
-        // Need site, eventID, endTime (for purge), data
-    }
-
-    public static List<Segment> separateSegments(
+    /**
+     * Decodes the product generator data by separating the data into segments
+     * and a non-segment called product level
+     * 
+     * @param data
+     * @return
+     */
+    public static List<AbstractProductGeneratorData> decodeProductGeneratorData(
             LinkedHashMap<String, Serializable> data) {
-        List<Segment> segments = new ArrayList<Segment>();
+        List<AbstractProductGeneratorData> decodedData = new ArrayList<AbstractProductGeneratorData>();
+
+        LinkedHashMap<String, Serializable> tempData = (LinkedHashMap<String, Serializable>) data
+                .clone();
+        tempData.remove(HazardConstants.SEGMENTS);
+        ProductLevelData productLevel = new ProductLevelData(tempData);
+        decodedData.add(productLevel);
+
         // TODO Will need to be replaced with an interface to make
         // refactoring of the python dictionary easier
         LinkedHashMap<String, Serializable> segmentsMap = (LinkedHashMap<String, Serializable>) data
-                .get("segments");
+                .get(HazardConstants.SEGMENTS);
         List<Serializable> list = (List<Serializable>) segmentsMap
-                .get("segment");
+                .get(HazardConstants.SEGMENT);
         for (Serializable item : list) {
-            Segment segment = new Segment(
+            SegmentData segment = new SegmentData(
                     (LinkedHashMap<String, Serializable>) item);
-            segments.add(segment);
+            decodedData.add(segment);
         }
 
-        return segments;
+        return decodedData;
     }
 
     /**
@@ -435,6 +460,23 @@ public class ProductGenerationDialogUtility {
             }
 
         }
+
         return count;
     }
+
+    /**
+     * Parses the "editable" part of the key out to give the "pretty" text
+     * 
+     * @param key
+     * @return
+     */
+    public static String parseEditable(String key) {
+        String returnKey = key;
+        if (key.contains(EDITABLE.substring(1))) {
+            returnKey = key
+                    .substring(0, key.indexOf(EDITABLE.substring(1)) - 1);
+        }
+        return returnKey;
+    }
+
 }

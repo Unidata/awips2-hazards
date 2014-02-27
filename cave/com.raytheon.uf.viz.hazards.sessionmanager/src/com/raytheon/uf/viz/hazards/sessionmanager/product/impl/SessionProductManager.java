@@ -122,6 +122,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * Nov 29, 2013  2378       blarenc    Simplified state changes when products are issued.
  * Dec 11, 2013  2266      jsanchez     Used GeneratedProductList.
+ * Feb 18, 2014  2702      jsanchez     Used Serializable objects for entries.
  * </pre>
  * 
  * @author bsteffen
@@ -493,9 +494,9 @@ public class SessionProductManager implements ISessionProductManager {
              */
             if (information.getFormats() != null) {
                 for (String format : information.getFormats()) {
-                    List<Object> objs = product.getEntry(format);
+                    List<Serializable> objs = product.getEntry(format);
                     if (objs != null) {
-                        for (Object obj : objs) {
+                        for (Serializable obj : objs) {
                             ProductUtils.disseminate(String.valueOf(obj));
                         }
                     }
@@ -552,9 +553,9 @@ public class SessionProductManager implements ISessionProductManager {
 
                     // disseminates the legacy product
                     for (IGeneratedProduct product : information.getProducts()) {
-                        List<Object> objs = product.getEntry("Legacy");
+                        List<Serializable> objs = product.getEntry("Legacy");
                         if (objs != null) {
-                            for (Object obj : objs) {
+                            for (Serializable obj : objs) {
                                 ProductUtils.disseminate(String.valueOf(obj));
                             }
                         }

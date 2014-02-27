@@ -37,6 +37,7 @@ import java.util.Map;
  * Oct 17, 2012            jsanchez     Initial creation
  * Aug 20, 2013 1360       blawrenc     Added methods to set/get event set
  * Nov  5, 2013 2266       jsanchez     Removed getter/setter for event set.
+ * Feb 18, 2014 2702       jsanchez     Used Serializable.
  * </pre>
  * 
  * @author jsanchez
@@ -48,9 +49,9 @@ public interface IGeneratedProduct {
     public String getProductID();
 
     /** @return Returns a map of format types to generated products */
-    public Map<String, List<Object>> getEntries();
+    public Map<String, List<Serializable>> getEntries();
 
-    public void setEntries(Map<String, List<Object>> entries);
+    public void setEntries(Map<String, List<Serializable>> entries);
 
     public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries();
 
@@ -63,7 +64,7 @@ public interface IGeneratedProduct {
      *            the format type
      * @return Returns a generated product from a format type
      */
-    public List<Object> getEntry(String format);
+    public List<Serializable> getEntry(String format);
 
     /** @return Errors thrown when executing a python class */
     public String getErrors();

@@ -166,15 +166,6 @@ public class TestProductEditorView implements
      * @return
      */
     @Override
-    public GeneratedProductList getGeneratedProductList() {
-        return new GeneratedProductList();
-    }
-
-    /**
-     * @param
-     * @return
-     */
-    @Override
     public ICommandInvoker getIssueInvoker() {
         return issueInvoker;
     }

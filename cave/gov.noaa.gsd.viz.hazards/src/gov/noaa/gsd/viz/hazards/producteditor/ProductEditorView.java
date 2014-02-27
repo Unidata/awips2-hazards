@@ -13,9 +13,7 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.ui.PlatformUI;
@@ -23,7 +21,6 @@ import org.eclipse.ui.PlatformUI;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.productgen.dialog.GeneratorInfo;
 import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
 
 /**
@@ -39,6 +36,7 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Sep 19, 2013     2046    mnash           Update for product generation.
  * Feb 07, 2014  2890      bkowal       Product Generation JSON refactor.
+ * Feb 18, 2014  2702      jsanchez     Cleaned up code as part of the refactor.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -62,10 +60,6 @@ public final class ProductEditorView implements
      * Product editor dialog.
      */
     private ProductGenerationDialog productGenerationDialog = null;
-
-    private List<GeneratedProductList> generatedProductsList;
-
-    // private ProductEditorDialog productEditorDialog = null;
 
     // Public Constructors
 
@@ -102,27 +96,10 @@ public final class ProductEditorView implements
     @Override
     public boolean showProductEditorDetail(
             List<GeneratedProductList> generatedProductsList) {
-        this.generatedProductsList = generatedProductsList;
         productGenerationDialog = new ProductGenerationDialog(PlatformUI
                 .getWorkbench().getActiveWorkbenchWindow().getShell());
-        GeneratedProductList productsToDisplay = new GeneratedProductList();
-        Map<String, GeneratorInfo> generatorInformationMap = new HashMap<String, GeneratorInfo>();
-        for (GeneratedProductList productList : generatedProductsList) {
-            final String productGeneratorName = productList.getProductInfo();
-
-            GeneratorInfo generationInfo = new GeneratorInfo(
-                    productGeneratorName, 0);
-            for (int i = 1; i < productList.size(); i++) {
-                generationInfo.increment();
-            }
-            generatorInformationMap.put(productGeneratorName, generationInfo);
-            productsToDisplay.addAll(productList);
-        }
-
         productGenerationDialog
-                .setGeneratorInformationMap(generatorInformationMap);
-        productGenerationDialog.setProducts(productsToDisplay);
-
+                .setGeneratedProductListStorage(generatedProductsList);
         return true;
     }
 
@@ -140,17 +117,7 @@ public final class ProductEditorView implements
 
     @Override
     public List<GeneratedProductList> getGeneratedProductsList() {
-        return generatedProductsList;
-    }
-
-    public void setGeneratedProductsList(
-            List<GeneratedProductList> generatedProductsList) {
-        this.generatedProductsList = generatedProductsList;
-    }
-
-    @Override
-    public GeneratedProductList getGeneratedProductList() {
-        return productGenerationDialog.getGeneratedProducts();
+        return productGenerationDialog.getGeneratedProductListStorage();
     }
 
     @Override
