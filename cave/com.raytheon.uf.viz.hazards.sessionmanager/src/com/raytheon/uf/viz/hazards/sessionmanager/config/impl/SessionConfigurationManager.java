@@ -19,8 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,9 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.IHazardsColorTable;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.JsonHazardsColorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.XmlHazardsColorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
@@ -191,23 +188,6 @@ public class SessionConfigurationManager implements
         hazardMetaData = new ConfigLoader<HazardMetaData>(file,
                 HazardMetaData.class, null, metadataIncludes.toString());
         loaderPool.schedule(hazardMetaData);
-
-        file = pathManager
-                .getStaticLocalizationFile("python/dataStorage/ColorTable.xml");
-        ConfigLoader<XmlHazardsColorTable> xmlColorTable = new ConfigLoader<XmlHazardsColorTable>(
-                file, XmlHazardsColorTable.class);
-        loaderPool.schedule(xmlColorTable);
-
-        file = pathManager
-                .getStaticLocalizationFile("python/dataStorage/ColorTable.json");
-        ConfigLoader<JsonHazardsColorTable> jsonColorTable = new ConfigLoader<JsonHazardsColorTable>(
-                file, JsonHazardsColorTable.class);
-        loaderPool.schedule(jsonColorTable);
-
-        colorTables = new ArrayList<ConfigLoader<? extends IHazardsColorTable>>(
-                2);
-        colorTables.add(xmlColorTable);
-        colorTables.add(jsonColorTable);
 
         file = pathManager
                 .getStaticLocalizationFile("hazardServices/hazardTypes/HazardTypes.py");
