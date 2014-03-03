@@ -5,8 +5,7 @@ import CommonMetaData
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
-        self._hazardEvent= hazardEvent
-        self._metaDict = metaDict
+        self.initialize(hazardEvent, metaDict)
         metaData = [
                     self.getImmediateCause(),
                     self.getInclude(),
@@ -40,8 +39,7 @@ class MetaData(CommonMetaData.MetaData):
 
     # ADDITIONAL INFORMATION
     def additionalInfoChoices(self):
-        previewState = self._hazardEvent.get("previewState")
-        if previewState == "ended":
+        if self.previewState == "ended":
             return [ 
                 self.recedingWater(),
                 self.rainEnded(),
@@ -88,8 +86,11 @@ class MetaData(CommonMetaData.MetaData):
         return capFields          
         
     def CAP_WEA_Values(self):
-        if self._hazardEvent.getState() == "pending":
-           return "WEA_activated" 
+        if self.hazardState == "pending":
+                return ["WEA_activated"] 
+        else:
+            return []
        
     def CAP_WEA_Text(self):
         return "Flash Flood Warning this area til %s. Avoid flooded areas. Check local media. -NWS"
+    

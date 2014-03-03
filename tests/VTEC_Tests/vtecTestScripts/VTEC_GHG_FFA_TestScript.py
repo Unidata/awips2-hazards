@@ -1,3 +1,4 @@
+
 # ----------------------------------------------------------------------------
 # This software is in the public domain, furnished "as is", without technical
 # support, and with no warranty, express or implied, as to its usefulness for
@@ -290,6 +291,31 @@ scripts = [
     "clearHazardsTable": 1,
     },
 
+    {
+    "commentary": "Testing different eventIDs for same phen/sig.",
+    "name": "Hazard_FFA_EventID_1",
+    "drtTime": "20100101_0510",
+    "productType": "FFA",
+    "createGrids": [
+       (0, 3, "FA.A", ["FLZ049"], {'immediateCause': 'ER', 'eventID': 511}),
+       (0, 3, "FA.A", ["FLZ050"], {'immediateCause': 'ER', 'eventID': 512}),
+       ],
+    "checkStrings": [
+                     "FLZ049-050-",
+                     "/X.NEW.KTBW.FA.A.0001.100101T0510Z-100101T0800Z/",
+                     "/00000.0.ER.000000T0000Z.000000T0000Z.000000T0000Z.OO/",
+                     ],
+    },
+
+    {
+    "commentary": "Deleting hazard grids.",
+    "name": "Hazard_FFA_EventID_2",
+    "productType": None,
+    "checkStrings": [],
+    "clearHazardsTable": 1,
+    },
+
+
     ]
 
        
@@ -305,7 +331,6 @@ def testScript():
         "deleteGrids": [("Fcst", "Hazards", "SFC", "all", "all")],
         }
     return TestScript.generalTestScript(scripts, defaults)
-
 
 
 

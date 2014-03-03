@@ -7,8 +7,7 @@ import CommonMetaData
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
-        self._hazardEvent = hazardEvent
-        self._metaDict = metaDict
+        self.initialize(hazardEvent, metaDict)
         metaData = [
                     self.getInclude(),
                     self.getImmediateCauseMessage(),
@@ -80,8 +79,7 @@ class MetaData(CommonMetaData.MetaData):
         
     # ADDITIONAL INFORMATION
     def additionalInfoChoices(self):
-        previewState = self._hazardEvent.get("previewState")
-        if previewState == "ended":
+        if self.hazardState == "ended":
             return [ 
                 self.recedingWater(),
                 self.rainEnded(),

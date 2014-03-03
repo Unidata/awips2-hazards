@@ -841,4 +841,15 @@ public final class HazardConstants {
      */
     public static final long MIN_TIME = 0L;
 
+    /**
+     * Constants related to localization
+     */
+    public static final String PYTHON_LOCALIZATION_DIR = "python";
+
+    public static final String PYTHON_LOCALIZATION_UTILITIES_DIR = "localizationUtilities";
+
+    public static final String PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR = "VTECutilities";
+
+    public static final String PYTHON_LOCALIZATION_LOG_UTILITIES_DIR = "logUtilities";
+
 }

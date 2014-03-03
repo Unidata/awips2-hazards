@@ -24,15 +24,16 @@ import TestScript
 import collections
 import datetime
 import inspect
+import glob
+import traceback
 
 # use updateSysPath module in ../python_Tests/ to bootstrap python paths
 import sys
 sourcePath = os.path.abspath(inspect.getsourcefile(lambda _: None))
-thisDirList = os.path.join(sourcePath.split("/")[:-1])
-pythonTestDirList = sourcePath.split("/")[:-2]
-pythonTestDirList.append("python_Tests")
-thisDir =os.path.join("/",*thisDirList)
-pythonTestDir = os.path.join("/",*pythonTestDirList)
+scriptsDirList = sourcePath.split("/")[:-1]+["vtecTestScripts"]
+pythonTestDirList = sourcePath.split("/")[:-2]+["python_Tests"]
+scriptsDir = os.path.join("/", *scriptsDirList)
+pythonTestDir = os.path.join("/", *pythonTestDirList)
 sys.path.append(pythonTestDir)
 from updateSysPath import updateSysPath
 updateSysPath(fromSibling="edexOsgi/com.raytheon.uf.tools.cli/impl/src")
@@ -450,11 +451,21 @@ def main():
 
     LS.logger.log(75, "VTEC Test Harness Starting")
 
+    # If no file arguments provided, just use all the *.py files in
+    # the vtecTestScripts/ subdirectory.
+    if options.testScripts:
+        options.testScripts = glob.glob(os.path.join(scriptsDir, "*.py"))
 
     # run each script
     errorCount = 0
     for fn in options.testScripts:
         dirname = os.path.dirname(fn)
+        
+        # No directory specified, assume vtecTestScripts/ subdirectory.
+        if dirname == "" :
+            dirname = scriptsDir
+            fn = os.path.join(scriptsDir, fn)
+
         basename = os.path.basename(fn)
         base = os.path.splitext(basename)[0]  # without extension
         LS.logger.log(75, "TESTING SCRIPT {f}".format(f=base))
@@ -475,7 +486,8 @@ def main():
              status = vth.runTest()
         except Exception as s:
              status = False
-             print "EXCEPTION: ", s                    
+             print "EXCEPTION: ", s 
+             traceback.print_exc()                   
         if not status:
             errorCount += 1
 

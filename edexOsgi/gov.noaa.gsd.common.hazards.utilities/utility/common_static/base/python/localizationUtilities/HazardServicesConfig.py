@@ -94,7 +94,7 @@ class HazardServicesConfig :
         if not isinstance(baseConfigFileName, str) and not isinstance(baseConfigFileName, unicode):
             return None
         configData = self.checkConfigDataDict(baseConfigFileName)
-        
+        #['metaData']
         if configData is None:
             locPath = self.__configDir+"/"+baseConfigFileName+self.__extension
             configData = self.__myLI.getLocData(locPath, "COMMON", 
