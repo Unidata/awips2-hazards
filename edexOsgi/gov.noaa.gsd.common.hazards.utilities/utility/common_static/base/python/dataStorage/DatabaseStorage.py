@@ -14,6 +14,7 @@
                                       vtecTestRecords_local.json
                                       from being orphaned and 
                                       removed from localization.
+ Feb 27, 2014    2826    dgilling     Remove code that handles VTEC records.
 """
 
 import json, os, cPickle, time, fcntl, random, stat
@@ -27,14 +28,6 @@ class DatabaseStorage:
         # These files live in the same directory as this module.
         self._localizationPath = 'gfe/userPython/'
         self._dbPath = self.getUserPath("HazardServices")
-        self._vtecRecordsFileName = self._dbPath + "vtecRecords.json"
-        self._vtecRecordsLockName = self._dbPath + "vtecRecords.lock"
-        self._vtecRecordsLockFD = None
-        self._vtecRecordsLockTime = None
-        self._testVtecRecordsFileName = self._dbPath + "testVtecRecords.json"
-        self._testVtecRecordsLockName = self._dbPath + "testVtecRecords.lock"
-        self._testVtecRecordsLockFD = None
-        self._testVtecRecordsLockTime = None
         self._lastSeqNumFilePath = self._dbPath + ".lastSeqNum.json"
         
     def getUserPath(self, category):
@@ -52,9 +45,6 @@ class DatabaseStorage:
 
         elif dataType == 'events':
             return self.getEvents(dataType, info)
-        
-        elif dataType in ["vtecRecords", "testVtecRecords"]:
-            return self.getVtecRecords(dataType, info)
         
         elif dataType == "colorTable":
             format = info.get("format", "json")
@@ -81,22 +71,9 @@ class DatabaseStorage:
         
     def unlockEventDatabase(self):
         self._unlockDB(self._eventsFileName, self._eventsLockName, self._eventsLockFD, self._eventsLockTime)
-        
-    def lockVtecDatabase(self):
-        self._vtecRecordsLockFD, self._vtecRecordsLockTime = self._lockDB(self._vtecRecordsFileName, self._vtecRecordsLockName, initialData={})
-        
-    def unlockVtecDatabase(self):
-        self._unlockDB(self._vtecRecordsFileName, self._vtecRecordsLockName, self._vtecRecordsLockFD, self._vtecRecordsLockTime)
 
 #######################
 ####  HELPER METHODs
-    
-    def readVtecDatabase(self, dataType):
-        return self.getLocalData(self._dbPath+dataType, ["oid","key", "etn"], dataFormat="list")
-            
-    def writeVtecDatabase(self, dataType, vtecDicts):
-        self.writeJsonFile(self._localizationPath+dataType + "_local", id, vtecDicts, True) 
-        self.flush()
         
     def deleteVtecDatabase(self, vtecDicts):
         self.deleteLocalData(self._dbPath+"vtecRecords", ["oid","key", "etn"], vtecDicts, dataFormat="list")    
@@ -117,14 +94,10 @@ class DatabaseStorage:
     def resetEventDatabase(self):
         eventDicts = []  
         self.writeEventDatabase(eventDicts)
-
-    def resetVtecDatabase(self):
-        self.writeVtecDatabase("vtecRecords", [])
              
     def getAlertValues(self):
         result = self.getLocalData(self._dbPath+"alerts", "Not used")
         return json.dumps(result)
-        
     
     def getEvents(self, dataType, info):
         self.lockEventDatabase()
@@ -150,35 +123,7 @@ class DatabaseStorage:
                     if events[entry].get(field) not in values:
                         toRemove.append(entry)
                 for i in toRemove:
-                    events.pop(i)                      
-
-    def getVtecRecords(self, dataType, info):
-        self.lockVtecDatabase()
-        # dictTable is a dictionary of vtecRecords 
-        dictTable = self.readVtecDatabase(dataType)
-        if info.get("lock") != "True":
-            self.unlockVtecDatabase()
-        # Leave database locked if user has requested read with lock
-        ###Basic filter - filters for hazardTypes and visibleSites
-        filter = info.get("filter")
-        if filter is not None:
-            toRemove = []
-            hazardTypes = filter.get("hazardTypes")
-            if hazardTypes is not None:
-                for entry in dictTable:
-                    if dictTable[entry].get("key") not in hazardTypes:
-                        toRemove.append(entry)
-                for i in toRemove:
-                    dictTable.pop(i)
-            toRemove = []
-            visibleSites = filter.get("visibleSites")
-            if visibleSites is not None:
-                for entry in dictTable:
-                    if dictTable[entry].get("siteID") not in visibleSites:
-                        toRemove.append(entry)
-                for i in toRemove:
-                    dictTable.pop(i)
-        return json.dumps(dictTable)                        
+                    events.pop(i)                     
 
     def _lockDB(self, fileName, lockName, initialData=[]):
 

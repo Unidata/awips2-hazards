@@ -1,6 +1,13 @@
 #-----------------------------------------------------------------
 # VTEC Engine Wrapper
 #-----------------------------------------------------------------
+#
+# Software History:
+#  Date         Ticket#    Engineer    Description
+#  ------------ ---------- ----------- --------------------------
+#  Feb 27, 2014  #2826     dgilling     Updates for refactored VTECTableIO.
+#
+#
 
 from VTECEngine import VTECEngine
 from VTECEngine import VTECDefinitions
@@ -11,14 +18,8 @@ import os,sys
 import HazardUpgradeDowngrade as UpDown
 
 import json
-# These next two imports are for unit testing direct access to flat file vtecRecords
-from VTECTableIO import VTECTableIO
-user = os.environ['USER']
-try:
-    os.makedirs("/tmp/"+user)
-except:
-    pass
-DBPATH="/tmp/"+user+"/vtecRecords.db"
+import VTECTableIO
+
 
 # NOTE: VERY IMPORTANT.  The VTEC code must be run with the time zone of GMT0
 # to ensure all calculations are not done in local time.  This is accomplished
@@ -64,8 +65,8 @@ DBPATH="/tmp/"+user+"/vtecRecords.db"
 #------------------------------------------------------------------
 class VTECEngineWrapper(object):
     def __init__(self, bridge, productCategory, siteID4, hazardEvents = [],
-      vtecMode = 'O', issueTime=None, limitGeoZones=None, testHarnessMode=0,
-      vtecProduct=True):
+      vtecMode='O', issueTime=None, limitGeoZones=None, operationalMode=True,
+      testHarnessMode=False, vtecProduct=True):
         '''Constructor for VTEC Engine Wrapper
         Once instantiated, it will run the VTEC Engine.  Then the user can
         access the output through different functions.
@@ -86,20 +87,19 @@ class VTECEngineWrapper(object):
           hazard types issued at an office.  Example: PAFG (Fairbanks, AK).
         '''
         # If running the test harness, use "test" vtecRecords rather than "live" ones
-        if testHarnessMode:
-            self.vtecRecordType = "testVtecRecords"
-        else:
+        if operationalMode:
             self.vtecRecordType = "vtecRecords"
+        else:
+            self.vtecRecordType = "testVtecRecords"
             
         self.vtecProduct = vtecProduct
             
         # Access to VTEC Table and VTEC records
         self.bridge = bridge
+        self._io = VTECTableIO.getInstance(self.vtecRecordType=="vtecRecords", testHarnessMode)
+        vtecRecords = self._io.getVtecRecords() if self.vtecProduct else []
+        
         if self.bridge is not None:
-            if self.vtecProduct:
-                vtecRecords = json.loads(self.bridge.getVtecRecords(self.vtecRecordType))
-            else:
-                vtecRecords = [] 
             
             # hazard types has already been refactored in another code review
             # Hazard Types
@@ -107,8 +107,6 @@ class VTECEngineWrapper(object):
             # ProductGeneratorTable
             ProductGeneratorTable = json.loads(self.bridge.getProductGeneratorTable())
         else: # Testing
-            self._io = VTECTableIO(DBPATH)    # access the routines to read/write
-            vtecRecords = self._io.readVtecRecords()  # read the current records
             from LocalizationInterface import LocalizationInterface
             localizationInterface = LocalizationInterface("")      
             execString = localizationInterface.getLocFile(
@@ -158,29 +156,16 @@ class VTECEngineWrapper(object):
         # VTECEngineWrapper was instantiated, until the time mergeResults() took
         # place, then by reusing the records previously read may result in 
         # missing any changes to the vtec records that has occurred.
-                
-        if self.bridge is not None:        
-            criteria = {"dataType":self.vtecRecordType,
-                    "lock": "True",
-                    }
-            vtecRecords = json.loads(self.bridge.getData(json.dumps(criteria)))
-        else:
-            vtecRecords = self._io.readVtecRecords()  
+        criteria = {"lock": "True"}
+        vtecRecords = self._io.getVtecRecords(criteria)
        
         # Instantiate the ingester, to merge the calculated with vtec database
         ingester = VTECIngester()
         ingester.ingestVTEC(vtecDicts, vtecRecords, self._issueTime)
         mergedRecords = ingester.mergedVtecRecords()
 
-        if self.bridge is not None:
-            criteria = {
-                    "dataType": self.vtecRecordType,
-                    "vtecDicts": mergedRecords,
-                    "lock": "False",
-                    }
-            self.bridge.putData(json.dumps(criteria))
-        else:
-            self._io.writeVtecRecords(mergedRecords)
+        criteria = {"lock": "False"}
+        self._io.putVtecRecords(mergedRecords, criteria)
 
     def flush(self):
         """ Flush the print buffer """

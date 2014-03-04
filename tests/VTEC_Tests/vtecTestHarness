@@ -9,6 +9,7 @@
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
     Dec      2013  2368      Tracy.L.Hansen      Removing use of Bridge
+    Feb      2014  2826      dgilling            Modified to support new VTECTableIO class.
     
     @author Mark Mathewson / Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -38,8 +39,8 @@ sys.path.append(pythonTestDir)
 from updateSysPath import updateSysPath
 updateSysPath(fromSibling="edexOsgi/com.raytheon.uf.tools.cli/impl/src")
 
+import VTECTableIO
 from VTECEngineWrapper import VTECEngineWrapper
-from VTECTableIO import VTECTableIO
 import Logger as LS
 from HazardEvent import HazardEvent
 
@@ -55,15 +56,6 @@ HVTECre = r'/[0-9A-Z]{5}\.[0-3NU]\.[A-Z]{2}\.' + \
           r'[0-9]{6}T[0-9]{4}Z\.' + \
           r'[0-9]{6}T[0-9]{4}Z\.[0-9]{6}T[0-9]{4}Z\.[A-Z][A-Z]/'
 
-# THIS CODE USES THE vtec records directly through the use of the VTECTableIO
-# class. The location is defined in the test version of the VTECEngineWrapper.
-user = os.environ['USER']
-try:
-    os.makedirs("/tmp/"+user)
-except:
-    pass
-DBPATH="/tmp/"+user+"/vtecRecords.db"
-
         
 class VTECTestHarness(object):
 
@@ -77,7 +69,7 @@ class VTECTestHarness(object):
         '''
         self._scriptName = scriptName
         self._scripts = scripts
-        self._io = VTECTableIO(DBPATH) 
+        self._io = VTECTableIO.getInstance(True, True)
         self._eventNum = 0       
 
     def runTest(self):
@@ -86,7 +78,7 @@ class VTECTestHarness(object):
         LS.logVerbose("TEST STARTED:  {script}".format(script=self._scriptName))
 
         # we clear the hazards table initially
-        self._io.writeVtecRecords([])
+        self._io.clearVtecTable()
         
         for script in self._scripts:
             calculated = self._runEachIndividualTest(script)
@@ -190,7 +182,7 @@ class VTECTestHarness(object):
 
         clear = script.get('clearHazardsTable', 0)
         if clear:
-            self._io.writeVtecRecords([])
+            self._io.clearVtecTable()
                      
         productType = script.get("productType")
         if not productType:
@@ -208,7 +200,8 @@ class VTECTestHarness(object):
 
         # run the calculations
         wrapper = VTECEngineWrapper(None, productType, 'KTBW', hazardEvents,
-          issueTime=drtTime, vtecMode=script['vtecMode'], testHarnessMode=1)
+          issueTime=drtTime, vtecMode=script['vtecMode'], operationalMode=False, 
+          testHarnessMode=1)
 
         # get the ordered segments
         segments = wrapper.engine().getSegments()

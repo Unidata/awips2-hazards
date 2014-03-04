@@ -73,6 +73,7 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
  * 
  * Nov 23, 2013 1462       blawrenc    Added state of hatch area drawing.
+ * Apr 08, 2014 2826       dgilling    Fixed filesToDeleteOnReset to reflect proper paths.
  * 
  * </pre>
  * 
@@ -91,9 +92,10 @@ public class SessionManager implements ISessionManager {
      * TODO This need to be eliminated when we go to a database solution.
      */
     private static final String[] filesToDeleteOnReset = {
-            "gfe/userPython/testVtecRecords_local.json",
-            "gfe/userPython/vtecRecords.json",
-            "gfe/userPython/vtecRecords.lock" };
+            "hazardServices/testVtecRecords.json",
+            "hazardServices/testVtecRecords.lock",
+            "hazardServices/vtecRecords.json",
+            "hazardServices/vtecRecords.lock" };
 
     /**
      * Logging mechanism.

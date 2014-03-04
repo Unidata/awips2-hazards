@@ -929,11 +929,11 @@ class Product(ProductTemplate.Product):
         must have separate VTEC Engines.
         @param hazardEvents -- list of hazard events
         '''
-        testMode = self._sessionDict.get('testMode', 0)
+        opMode = not self._sessionDict.get('testMode', 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
                hazardEvents, vtecMode='O', issueTime=self._issueTime_secs,
-               testHarnessMode=testMode, vtecProduct=self._vtecProduct)
+               operationalMode=opMode, testHarnessMode=False, vtecProduct=self._vtecProduct)
         try :
             pass
         except :
