@@ -110,8 +110,8 @@ class Product(Legacy_ProductGenerator.Product):
         '''
         Group the segments into the products
          In this case, group the point FFAs and the area FFA's separately
-         return a list of tuples (productType, segments)
-        
+         return a list of productSegmentGroup dictionaries
+
          All FFA products are segmented
         '''        
         productSegmentGroups = []

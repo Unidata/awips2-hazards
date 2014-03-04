@@ -53,7 +53,7 @@ class Product(ProductTemplate.Product):
         '''  
         self.initialize()
     
-    def initialize(self):
+    def initialize(self):       
         self._gh = HazardServicesGenericHazards()
         self._mapInfo = MapInfo()
     
@@ -239,9 +239,9 @@ class Product(ProductTemplate.Product):
                     One hazard event is described
                     
         '''        
-        # Determine the list of segments given the hazard events        
+        # Determine the list of segments given the hazard events 
         segments = self._getSegments(hazardEvents)
-        self.logger.info('Product Generator --  len(segments)=' + str(len(segments)))
+        self.logger.info('Product Generator --  Number of segments=' + str(len(segments)))
          
         # Determine the list of products and associated segments given the segments
         productSegmentGroups = self._groupSegments(segments)
@@ -1090,14 +1090,18 @@ class Product(ProductTemplate.Product):
         else:
             return str               
                             
-    def getSegmentHazardEvents(self, segments):
+    def getSegmentHazardEvents(self, segments, hazardEventList=None):
         '''
+        @param segments: List of segments
         @param inputHazardEvents: Set of hazardEvents 
         @param eventIDs: The ids of the hazardEvents to retrieve from the input set
         @return: Return a list of hazardEvents
         '''
         #  Each segment lists eventIDs, so collect those and then use
         #  getHazardEvents to get the hazardEvents.
+        if not hazardEventList:
+            hazardEventList = self._generatedHazardEvents
+        
         eventIDs = []
         for segment in segments:
             ugcs, ids = segment
@@ -1105,13 +1109,13 @@ class Product(ProductTemplate.Product):
         hazardEvents = []
         for eventID in eventIDs:
             found = False
-            for hazardEvent in self._generatedHazardEvents:
+            for hazardEvent in hazardEventList:
                 if hazardEvent.getEventID() == eventID:
                     hazardEvents.append(hazardEvent)
                     found = True
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
-                mode = self._sessionDict.get('testMode','OPERATIONAL').upper()
+                mode = self._sessionDict.get('hazardMode','OPERATIONAL').upper()
                 hazardEvent = HazardDataAccess.getHazardEvent(str(eventID), mode)
                 # Initialize the product-specific information
                 hazardEvent.removeHazardAttribute('expirationTime');
@@ -1119,7 +1123,7 @@ class Product(ProductTemplate.Product):
                 hazardEvent.removeHazardAttribute('etns');
                 hazardEvent.removeHazardAttribute('pils');                
                 hazardEvents.append(hazardEvent)  
-                self._generatedHazardEvents.append(hazardEvent)              
+                hazardEventList.append(hazardEvent)              
         return hazardEvents
 
     def getMetadataItemForEvent(self, hazardEvent, metaData, fieldName):

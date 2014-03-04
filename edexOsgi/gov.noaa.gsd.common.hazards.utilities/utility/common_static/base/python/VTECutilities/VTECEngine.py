@@ -82,6 +82,7 @@ class VTECEngine(VTECTableUtil):
         self._vtecDef = vtecDefinitions
         self._vtecMode = vtecMode
         self._etnCache = {}
+        self._hazardEvents = hazardEvents
         
         # determine appropriate VTEC lifecycle, based on event dicts,
         # and the hazards table.  All hazard records provided must equate
@@ -153,7 +154,7 @@ class VTECEngine(VTECTableUtil):
 
         #print 'analyzed', self._analyzedTable
         # calculate the set of all zones in the proposed and vtec tables
-        zoneList = list(zonesP | zonesA)
+        zoneList = zonesP | zonesA
 
         #print 'zoneList', zoneList
         # determine the segments (unsorted). Different algorithms based on
@@ -180,7 +181,7 @@ class VTECEngine(VTECTableUtil):
         for seg in self._segments:
             self._calcPil(seg)
             self._vtecStrings[seg] = self._calcVTECString(seg)
-        
+                    
 #-----------------------------------------------------------------
 # VTEC Engine Accessors
 #-----------------------------------------------------------------
@@ -281,13 +282,13 @@ class VTECEngine(VTECTableUtil):
         Returns True if the segments/hazards are combinable.
         '''
         try:
-            hazardTypes = set([e.getHazardType() for e in hazardEvents])
+            hazardTypes = set(e.getHazardType() for e in hazardEvents)
         except KeyError:
             raise Exception("Hazard Type field missing in hazardEvent")
 
         try:
-            combinableSegments = set([self._vtecDef.hazards[ht]['combinableSegments']
-          for ht in hazardTypes])
+            combinableSegments = set(self._vtecDef.hazards[ht]['combinableSegments']
+          for ht in hazardTypes)
         except KeyError:
             raise Exception("Hazard type '{k}' not in HazardTypes".format(
               k=ht))
@@ -317,7 +318,7 @@ class VTECEngine(VTECTableUtil):
         '''
 
         try:
-            geoTypes = set([e.get('geoType') for e in hazardEvents])
+            geoTypes = set(e.get('geoType') for e in hazardEvents)
         except KeyError:
             raise Exception("'geoType' missing from hazardEvent record")
 
@@ -345,20 +346,20 @@ class VTECEngine(VTECTableUtil):
         '''
 
         if combinableSegments:
-            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if set(
-              a['id']) & set(segment[0])]   # vtecRecords that overlap segment
+            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if 
+              a['id'] & segment[0]]   # vtecRecords that overlap segment
 
             # some of the vtecRecords may have zones that include other
             # zones and segments.  We want to remove them here.
             vtecRecords1 = copy.deepcopy(vtecRecords)
             for h in vtecRecords1:
-                h['id'] = list(set(segment[0]) & set(h['id']))
+                h['id'] = segment[0] & h['id']
             return vtecRecords1
 
         else:
             # non-combinable segments
-            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if set(
-              a['id']) == set(segment[0]) and a['eventID'] in segment[1]]
+            vtecRecords = [a for a in self.consolidatedAnalyzedTable() if 
+              a['id'] == segment[0] and a['eventID'] & segment[1]]
             return vtecRecords
         
     def _calcPil(self, segment):
@@ -367,7 +368,11 @@ class VTECEngine(VTECTableUtil):
         '''
         vtecRecords = self.getVtecRecords(segment)
         for vtecRecord in vtecRecords:
-            vtecRecord['pil'] = Pil(self._productCategory, vtecRecord.get('act')).getPil()
+            hazardEvent = None
+            for hazardEvent in self._hazardEvents:
+                if hazardEvent.getEventID() == vtecRecord.get('eventID'):
+                    break
+            vtecRecord['pil'] = Pil(self._productCategory, vtecRecord, hazardEvent).getPil()
         
     def _calcVTECString(self, segment):
         '''Calculates the P-VTEC and H-VTEC strings for the segment.
@@ -440,18 +445,17 @@ class VTECEngine(VTECTableUtil):
             # get all vtecRecords for this zoneCombo
             if combinableSegments:
                 vtecRecords = [a for a in allVtecRecords \
-                  if set(a['id']) & zoneCombo[0]]
-
+                  if a['id'] & zoneCombo[0]]
 
                 # change the hazard record so it only has ids for this group
                 vtecRecords = copy.deepcopy(vtecRecords)
                 for v in vtecRecords:
-                    v['id'] = list(set(v['id']) & zoneCombo[0])
+                    v['id'] &= zoneCombo[0]
 
             # non-combinable segments
             else:
-                vtecRecords = [a for a in allVtecRecords if set(a['id']) == zoneCombo[0]
-                  and a['eventID'] in zoneCombo[1]] 
+                vtecRecords = [a for a in allVtecRecords if a['id'] == zoneCombo[0]
+                  and a['eventID'] & zoneCombo[1]] 
 
             vtecRecords.sort(self._vtecRecordsGroupSort)   # normal sorting order
 
@@ -793,13 +797,17 @@ class VTECEngine(VTECTableUtil):
             self._etnCache[phensig] = [(proposedRecord['startTime'], 
               proposedRecord['endTime'], 0, proposedRecord['eventID'], [id])]
     
-    def _assignNewETNs(self, vtecRecords):
+    def _assignNewETNs(self, vtecRecords, ignoreEventIDs):
         '''Assigns new etns to the etn cache. This is done after all requests
         for new etns have been made.
 
         Keyword Arguments:
         vtecRecords -- list of non-consolidated by id vtec records
           (dictionaries).
+        ignoreEventIDs -- True, if the assignment of ETNs is to ignore
+          the eventID.  Ignoring eventID can result in two ids getting the
+          same ETN for a phen/sig.
+          This also affects the assignment of ETNs with different eventIDs.
 
         No return value.
         '''
@@ -839,7 +847,7 @@ class VTECEngine(VTECTableUtil):
                     if etn2 == 0 and \
                       (self._isAdjacent((s1, e1), (s2, e2)) or\
                       self._overlaps((s1, e1), (s2, e2))) and \
-                      eventID1 == eventID2:
+                      (eventID1 == eventID2 or ignoreEventIDs):
 
                         # check for potential ETN duplication
                         for id2 in ids2:
@@ -934,16 +942,31 @@ class VTECEngine(VTECTableUtil):
 
         return vtecRecs
 
+    def _seperateMarineCountyZone(self, rec):
+        '''Separates out the ugcs by marine, county, and zone designators.
+
+        Keyword Arguments:
+        rec -- consolidated vtec record.
+
+        Returns list of ugc sets for the vtecRecord keeping the marine,
+        county, and zone ugcs separated.  Each entry in the returned list
+        will have at least one ugc in its set.
+        '''
+        mz = set(v for v in rec['id'] if v[2] == 'Z' and self._isMarineZone(v))
+        pz = set(v for v in rec['id'] if v[2] == 'Z' and not self._isMarineZone(v))
+        pc = set(v for v in rec['id'] if v[2] != 'Z')
+        return [z for z in [mz, pz, pc] if z]
+
     def _combineZones(self, vtecRecords, combinableSegments, zoneList):
         '''Determines how to combine all of the vtecRecords based on the
         combinableSegments flag and the list of zones.
 
         Keyword Arguments:
-        vtecRecords -- list of vtecRecord (dictionary) to determine how
-          to combine.
+        vtecRecords -- list of consolidated vtecRecords (dictionary) to
+          determine how to combine.
         combinableSegments -- True if hazards can be combined into segments,
           otherwise False if only one hazard can be in a segment.
-        zoneList -- A list of geographical identifiers that appear in
+        zoneList -- A set of geographical identifiers that appear in
           the analyzed table and vtec records.
 
         Returns unsorted list of combinations represented as a list of
@@ -957,42 +980,40 @@ class VTECEngine(VTECTableUtil):
         if not combinableSegments:
             outCombo = []   # start with an empty list
             for rec in vtecRecords:
-                # ensure Z, C, and marine zone ids are kept separated
-                idSets = [set([v for v in rec['id'] if v[2] == 'Z' and self._isMarineZone(v)]),
-                  set([v for v in rec['id'] if v[2] == 'Z' and not self._isMarineZone(v)]),
-                  set([v for v in rec['id'] if v[2] not in 'Z'])]
-                for ids in idSets:
-                    if ids and (ids, set([rec['eventID']])) not in outCombo:
-                        outCombo.append((ids, set([rec['eventID']])))
+                for ids in self._seperateMarineCountyZone(rec):
+                    if (ids, rec['eventID']) not in outCombo:
+                        outCombo.append((ids, rec['eventID']))
         else:
             # start with a complete list
-            outCombo = [set(zoneList)]
+            outCombo = [zoneList]
             for rec in vtecRecords:
-                # ensure Z, C, and marine zone ids are kept separated
-                idSets = [set([v for v in rec['id'] if v[2] == 'Z' and self._isMarineZone(v)]),
-                  set([v for v in rec['id'] if v[2] == 'Z' and not self._isMarineZone(v)]),
-                  set([v for v in rec['id'] if v[2] != 'Z'])]
-                for ids in idSets:
-                    if ids:
-                        for i, c in enumerate(outCombo):
-                            if c == ids:
-                                break
-                            common = c & ids
-                            notCommon = c ^ common
-                            if common and notCommon:
-                                outCombo[i] = notCommon
-                                outCombo.append(common) 
+                for ids in self._seperateMarineCountyZone(rec):
+                    for i, c in enumerate(outCombo):
+                        if c == ids:
+                            break
+                        common = c & ids
+                        notCommon = c ^ common
+                        if common and notCommon:
+                            outCombo[i] = notCommon
+                            outCombo.append(common) 
 
             # handle the event ids
-            ev = [set([a['eventID'] for a in vtecRecords if set(a['id']) & c])
-              for c in outCombo]
+            ev = []
+            for c in outCombo:
+                s = set()
+                for a in vtecRecords:
+                    if a['id'] & c:
+                        s = s | a['eventID']
+                ev.append(s)
             outCombo = zip(outCombo, ev)
 
-        # delete any empty segments
-        outCombo = [o for o in outCombo if len(o[1])]
-
-        # convert the sets into frozensets so they are hashable
-        out = [(frozenset(zones), frozenset(eids)) for zones, eids in outCombo]
+        # delete empty segments, convert sets to frozensets so they are hashable
+        out = []
+        for zones, eids in outCombo:
+            for rec in vtecRecords:
+                if rec['eventID'] & eids and rec['id'] & zones:
+                    out.append((frozenset(zones), frozenset(eids)))
+                    break
         return out
 
     def _getProposedTable(self, hazardEvents, limitGeoZones, combinableSegments):
@@ -1025,7 +1046,7 @@ class VTECEngine(VTECTableUtil):
         if combinableSegments:
             limitEventIDs = None
         else:
-            limitEventIDs = set([a['eventID'] for a in atable])
+            limitEventIDs = set(a['eventID'] for a in atable)
 
         # Combine time entries
         atable = self._timeCombine(atable)
@@ -1050,12 +1071,12 @@ class VTECEngine(VTECTableUtil):
           self.printVtecRecords(atable, combine=True))
         
         # determine zones in use (set of all zones in the proposed table)
-        zones = set([a['id'] for a in atable])
+        zones = set(a['id'] for a in atable)
                 
         # make a list of those events that have been marked as 'ended'
        ## or has an ending time now or earlier than now
-        endedEventIDs = set([a['eventID'] for a in atable
-          if a.get('state') == 'ENDED'])
+        endedEventIDs = set(a['eventID'] for a in atable
+          if a.get('state') == 'ENDED')
 
         # strip out all ended events from proposed
         atable = [a for a in atable if a.get('state') != 'ENDED']
@@ -1069,7 +1090,7 @@ class VTECEngine(VTECTableUtil):
           combine=True))
         LogStream.logVerbose('Zones=', zones)
         LogStream.logVerbose('limitEventIDs=', limitEventIDs)
-        LogStream.logVerbose('endedEventIDs=', endedEventIDs)
+        LogStream.logVerbose('endedEventIDs=', set(endedEventIDs))
 
         return atable, zones, limitEventIDs, endedEventIDs
 
@@ -1124,7 +1145,7 @@ class VTECEngine(VTECTableUtil):
 
 
         # determine zones in use
-        zones = set([a['id'] for a in actTable])
+        zones = set(a['id'] for a in actTable)
 
         # delete upgrade/downgrade information in current table
         actTable = self._removeFieldFromTable(actTable, 'upgradeFrom')
@@ -1608,7 +1629,7 @@ class VTECEngine(VTECTableUtil):
         '''
 
         # get a raw list of unique edit areas
-        zoneList = set([a['id'] for a in vtecRecords])
+        zoneList = set(a['id'] for a in vtecRecords)
         for zone in zoneList:
             # Remove lower priority hazards of the same type
             self.filterByZone(zone, vtecRecords)
@@ -1721,7 +1742,6 @@ class VTECEngine(VTECTableUtil):
         compare = ['eventID', 'id', 'key', 'officeid']  #considered equal
 
         for proposed in proposedTable:
-
             if proposed['act'] == 'CAN':
                 continue   #only occurs with merged vtecRecords
 
@@ -2042,13 +2062,17 @@ class VTECEngine(VTECTableUtil):
         return pTable
 
 
-    def _checkForNEW(self, pTable, activeVtecRecords):
+    def _checkForNEW(self, pTable, activeVtecRecords, ignoreEventIDs):
         '''Assigns NEW to remaining records and calculates the correct
         ETN number.
 
         Keyword Arguments:
         pTable -- proposed set of vtecRecords, non-consolidated by ID.
         activeVtecRecords -- active set of vtecRecords, in non-consolidated format.
+        ignoreEventIDs -- True, if the assignment of ETNs is to ignore
+          the eventID.  Ignoring eventID can result in two ids getting the
+          same ETN for a phen/sig.
+          This also affects the assignment of ETNs with different eventIDs.
 
         Returns the modified proposed table.
         '''
@@ -2095,7 +2119,7 @@ class VTECEngine(VTECTableUtil):
                         proposed['startTime'] = proposed['endTime']
 
         # determine any new ETNs
-        self._assignNewETNs(activeVtecRecords)
+        self._assignNewETNs(activeVtecRecords, ignoreEventIDs)
         LogStream.logDebug('New ETN cache: ', self._etnCache)
 
         # process again for records that are now marked NEW, but no etn
@@ -2792,7 +2816,7 @@ class VTECEngine(VTECTableUtil):
           self.printVtecRecords(pTable, combine=True))
 
         # Assign NEW to remaining records
-        pTable = self._checkForNEW(pTable, activeVtecRecords)
+        pTable = self._checkForNEW(pTable, activeVtecRecords, combinableSegments)
         LogStream.logDebug('Analyzed Table -- After checkForNEW:', 
           self.printVtecRecords(pTable, combine=True))
 

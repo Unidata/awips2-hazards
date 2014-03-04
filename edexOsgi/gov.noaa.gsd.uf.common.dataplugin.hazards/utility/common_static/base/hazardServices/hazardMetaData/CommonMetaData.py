@@ -1,7 +1,20 @@
-import VTECConstants
+"""
+    Description: Common Meta Data shared among hazard types.
+        
+"""
 
+import VTECConstants
 class MetaData:
     
+    def initialize(self, hazardEvent, metaDict):    
+        self.hazardEvent = hazardEvent
+        self.metaDict = metaDict
+        if self.hazardEvent:
+            self.hazardState = self.hazardEvent.getState()
+            self.previewState = self.hazardEvent.get("previewState")
+        else:
+            self.hazardState = "pending"
+            self.previewState = ""
     
     # POINT ID
     def getPointID(self):
@@ -190,9 +203,6 @@ class MetaData:
              "label": "Include:",
              "choices": self.includeChoices()
              }        
-    def includeChoices(self):
-        return []
-    
     def includeEmergency(self):
         return { 
                 "identifier": "ffwEmergency",
@@ -215,12 +225,12 @@ class MetaData:
                 "productString":"Rapid snow melt is causing flooding."
                 }
     def includeFlooding(self):
-                {
+        return  {
                  "identifier":"-FL", "displayString": "Flooding not directly reported, only heavy rain",
                  "productString": "Flooding is not directly reported, only heavy rains.",
                  }                
     def includeSmallStreams(self):
-                {"identifier":"+SS","displayString": "Small streams","productString":"Small Stream Flooding "
+        return {"identifier":"+SS","displayString": "Small streams","productString":"Small Stream Flooding "
                  }
     def includeUrbanAreas(self):
         return {"identifier":"+US",
@@ -228,7 +238,7 @@ class MetaData:
                   "productString":"Urban and Small Stream "
                   }
     def includeUrbanAreasSmallStreams(self):
-                {"identifier":"+US","displayString": "Urban areas and small streams",
+        return  {"identifier":"+US","displayString": "Urban areas and small streams",
                  "productString":"Urban and Small Stream Flooding "
                  }
     def includeArroyoSmallStreams(self):
@@ -320,11 +330,12 @@ class MetaData:
             "fieldName": "basis",
             "fieldType":"RadioButtons",
             "label":"Basis:",
-            "values": "radInd",
+            "values": self.basisDefaultValue(),
             "choices": self.basisChoices(),
-            }        
-    def basisChoices(self):
-        return []        
+            } 
+    def basisDefaultValue(self):
+        for choice in self.basisChoices():
+            return choice.get('identifier')       
     def basisDoppler(self):
         return {"identifier":"radInd", "displayString": "Doppler Radar indicated...", 
                 "productString": "Doppler Radar indicated",}
@@ -552,7 +563,7 @@ class MetaData:
                                           #basisPublicIncLocation# that will cause !**ADV TYPE**!''',
                       "detailFields": [
                             {
-                             "fielWatchdType": "Text",
+                             "fieldType": "Text",
                              "fieldName": "basisPublicIncLocation",
                              "expandHorizontally": True,
                              "maxChars": 40,
@@ -584,7 +595,6 @@ class MetaData:
                 "displayString": "Flooding due to heavy rain is possible...",
                       "productString": '''Flooding due to heavy rain is possible. The exact amount...intensity...timing...and location 
                       of the rain that will occur is still uncertain. Once there is more certainty...a flood warning or advisory will be issued.''',
-
                       }        
     def basisEnteredText(self):
         return {"identifier": "basisEnteredText",
@@ -644,8 +654,6 @@ class MetaData:
                      "label": "Additional Info:",
                      "choices": self.additionalInfoChoices()
                     }                    
-    def additionalInfoChoices(self):
-        return []        
     def listOfCities(self):
         return {"identifier":"listOfCities", "displayString": "Select for a list of cities", 
                     "productString": "ARBITRARY ARGUMENTS USED BY CITIES LIST GENERATOR." }
@@ -784,12 +792,8 @@ class MetaData:
                 "fieldType":"CheckList",
                 "label":"Calls to Action (1 or more):",
                 "fieldName": "cta",
-                "values": "noCTA",
                 "choices": self.getCTA_Choices()
                 }        
-    def getCTA_Choices(self):
-        return []
-    
     def ctaNoCTA(self):
         return {"identifier": "noCTA", "displayString": "No call to action",
                 "productString": ""}
@@ -1019,7 +1023,7 @@ class MetaData:
                 
     def CAP_WEA_Message(self):
         return {                
-                "fieldType":"CheckList",
+                "fieldType":"CheckBoxes",
                 "label":"Activate WEA Text",
                 "fieldName": "activateWEA",
                 "values": self.CAP_WEA_Values(),
@@ -1038,7 +1042,7 @@ class MetaData:
                  }
         
     def CAP_WEA_Values(self):
-        return "None"
+        return []
         
     def CAP_WEA_Text(self):
         return ''

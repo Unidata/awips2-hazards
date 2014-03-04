@@ -5,8 +5,7 @@ import CommonMetaData
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
-        self._hazardEvent= hazardEvent
-        self._metaDict = metaDict
+        self.initialize(hazardEvent, metaDict)
         metaData = [
                     self.getPointID(),
                     self.getImmediateCause(),
@@ -14,7 +13,6 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodRecord(),
                     self.getBasis(),
                     self.getDebrisFlowOptions(),
-                    self.getAdditionalInfo(),
                     self.getCTAs(),                    
                     ] + self.setCAP_Fields()
         return metaData

@@ -78,7 +78,7 @@ class Product(Legacy_ProductGenerator.Product):
     def _groupSegments(self, segments):
         '''
          Group the segments into the products
-            return a list of tuples (productInfo, segments)
+            return a list of productSegmentGroup dictionaries
         
          Check the pil 
           IF FFW -- make a new FFW -- there can only be one segment per FFW

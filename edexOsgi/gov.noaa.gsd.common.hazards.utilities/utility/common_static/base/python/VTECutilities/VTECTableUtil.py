@@ -15,7 +15,8 @@ class VTECTableUtil(object):
 #------------------------------------------------------------------
 
     #given the table, will consolidate like records and return a table
-    #with identical vtecRecords, but with multiple id entries
+    #with identical vtecRecords, but with multiple id entries, and
+    #with multiple eventIDs.
     def consolidateByID(self, ptable):
         '''Consolidates the vtec records by id.
 
@@ -23,13 +24,14 @@ class VTECTableUtil(object):
         pTable -- list of dictionary records in the vtecRecord format,
           non-consolidated.
 
-        Returns consolidated vtec records, with the 'id' field now a list.
+        Returns consolidated vtec records, with the 'id' and 'eventID'
+        fields now sets.
         '''
 
         compare = ['etn','vtecstr','ufn','areaPoints','valuePoints','hdln',
           'key','previousStart','previousEnd','purgeTime','issueTime',
           'downgradeFrom','upgradeFrom','startTime','endTime','act','phen',
-          'sig','officeid','seg','state','eventID', 'hvtec', 'subtype']
+          'sig','officeid','seg','state', 'hvtec', 'subtype']
 
         ctable = []
         for a in ptable:
@@ -37,22 +39,18 @@ class VTECTableUtil(object):
             for c in ctable:
                 if self.vtecRecordCompare(a, c, compare):
                     found = True
-                    if isinstance(a['id'], list):
-                        zones = a['id']
-                    else:
-                        zones = [a['id']]
-                 
-                    allzones = c['id']
-                    for z in zones:
-                        allzones.append(z)
-                    c['id'] = allzones
+                    zones = a['id'] if isinstance(a['id'], set) else set([a['id']])
+                    c['id'] |= a['id'] if isinstance(a['id'], set) else set([a['id']])
+                    c['eventID'] |= a['eventID'] if isinstance(a['eventID'], set) else set([a['eventID']])
 
                     break
 
             if not found:
                 newc = copy.deepcopy(a)
-                if not isinstance(newc['id'], list):
-                    newc['id'] = [newc['id']]
+                if not isinstance(newc['id'], set):
+                    newc['id'] = set([newc['id']])
+                if not isinstance(newc['eventID'], set):
+                    newc['eventID'] = set([newc['eventID']])
                 ctable.append(newc)
 
         return ctable
@@ -167,22 +165,28 @@ class VTECTableUtil(object):
           "End:     {endTime}  UFN: {ufn}\n"
           "Issue:   {issueTime}  Key: {key}\n{prevtecstr}"
           "Phen: {phen}  Sig: {sig}  SubT: {subtype}  Seg: {seg}  Etn: {etn}  Pil: {pil}"
-          "  EventID: {eventID} RecState: {recState}\n"
-          "ids: {zones}\n{relatedText}{hvtecStr}\n")
+          "  RecState: {recState}\n"
+          "EventID: {eventID}\n"
+          "GeoIDs: {zones}\n{relatedText}{hvtecStr}\n")
 
         try:
            etnS = "{etn:04d}".format(etn=h.get('etn'))
         except ValueError:
            etnS = "{etn:<4}".format(etn=h.get('etn'))
+
+        eid = h.get('eventID')
+        eid = list(eid) if isinstance(eid, set) else eid
+        gid = h.get('id')
+        gid = list(gid) if isinstance(gid, set) else gid
               
         t = fmt.format(vtecstr=h.get('vtecstr'), hdln=h.get('hdln'),
           startTime=self.printTime(h.get('startTime')), act=h.get('act'),
-          eventID=h.get('eventID'), endTime=self.printTime(h.get('endTime')),
+          eventID=eid, endTime=self.printTime(h.get('endTime')),
           ufn=h.get('ufn', 0), recState=h.get('state'),
           issueTime=self.printTime(h.get('issueTime')), key=h.get('key'),
           phen=h.get('phen'), sig=h.get('sig'), subtype=h.get('subtype'),
           officeid=h.get('officeid'), etn=etnS, seg=h.get('seg'), pil=h.get('pil'),
-          zones=h.get('id'), relatedText=relatedText, hvtecStr=hvtecStr,
+          zones=gid, relatedText=relatedText, hvtecStr=hvtecStr,
           prevtecstr=prevtecstr)
 
         return t
@@ -257,4 +261,3 @@ class VTECTableUtil(object):
     def _combineTR(self, tr1, tr2):
         '''Combines two time ranges and returns the 'span' of the times'''
         return (min(tr1[0], tr2[0]), max(tr1[1], tr2[1]))
-

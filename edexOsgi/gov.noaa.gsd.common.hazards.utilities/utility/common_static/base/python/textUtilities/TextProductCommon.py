@@ -857,9 +857,9 @@ class TextProductCommon(object):
                   vtecRecord['startTime'], vtecRecord['endTime'])  # May need to add leading space if non-null 
                 headlineStr = headlineStr + '...' + hazStr + localStr + '...\n'
             
-            # Add to section
+            # Add to sections
             for metaData, hazardEvent in metaDataList:
-                if hazardEvent.getEventID() == vtecRecord['eventID']:
+                if hazardEvent.getEventID() in vtecRecord['eventID']:
                     sections.append((vtecRecord, metaData, hazardEvent))
                     break 
 

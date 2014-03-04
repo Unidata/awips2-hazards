@@ -39,7 +39,7 @@ import DatabaseStorage
 import json
 
 from HazardServicesConfig import HazardServicesConfig
-from HazardMetaData import HazardMetaData
+import HazardMetaDataAccessor
 from HazardConstants import *
 from LocalizationInterface import LocalizationInterface
 from PythonOverrider import importModule
@@ -333,7 +333,7 @@ class Bridge:
             filter = info.get(FILTER_KEY) or {}
             phenomena, sig, subType = \
                filter.get(PHENOMENON), filter.get(SIGNIFICANCE), filter.get(SUBTYPE)
-            return HazardMetaData.getMetaData( \
+            return HazardMetaDataAccessor.getMetaData( \
                       HAZARD_METADATA, phenomena, sig, subType)
         
         elif dataType in [CONFIG_DATA, VTEC_TABLE_DATA, VTEC_RECORDS_DATA, ALERTS_DATA, \

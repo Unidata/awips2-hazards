@@ -19,12 +19,23 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
+import jep.Jep;
+import jep.JepException;
+
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
@@ -40,6 +51,7 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
+import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -138,16 +150,15 @@ public class SessionConfigurationManager implements
 
     private String siteId;
 
-    /**
-     * For JAXB serialization.
-     */
-    @SuppressWarnings("unused")
-    private SessionConfigurationManager() {
+    private Jep jep;
+
+    SessionConfigurationManager() {
 
     }
 
     public SessionConfigurationManager(IPathManager pathManager,
             ISessionNotificationSender notificationSender) {
+        this.jep = buildJep(pathManager);
         this.pathManager = pathManager;
         this.notificationSender = notificationSender;
 
@@ -213,6 +224,41 @@ public class SessionConfigurationManager implements
         settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
                 SettingsConfig[].class, "viewConfig");
         loaderPool.schedule(settingsConfig);
+    }
+
+    private Jep buildJep(IPathManager pathManager) {
+        try {
+            LocalizationContext localizationContext = pathManager.getContext(
+                    LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+            String pythonPath = pathManager.getFile(localizationContext,
+                    PYTHON_LOCALIZATION_DIR).getPath();
+            String localizationUtilitiesPath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_UTILITIES_DIR);
+            String vtecUtilitiesPath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+            String logUtilitiesPath = FileUtil.join(pythonPath,
+                    PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+
+            /**
+             * TODO This path is used in multiple places elsewhere. Are those
+             * cases also due to the micro-engine issue?
+             */
+            String tbdWorkaroundToUEngineInLocalizationPath = FileUtil.join(
+                    File.separator, "awips2", "fxa", "bin", "src");
+
+            String includePath = PyUtil
+                    .buildJepIncludePath(pythonPath, localizationUtilitiesPath,
+                            logUtilitiesPath,
+                            tbdWorkaroundToUEngineInLocalizationPath,
+                            vtecUtilitiesPath);
+            ClassLoader cl = this.getClass().getClassLoader();
+            Jep result = new Jep(false, includePath, cl);
+            result.eval("import JavaImporter");
+            return result;
+        } catch (JepException e) {
+            statusHandler.error("Could not load metadata " + e.getMessage());
+            return null;
+        }
     }
 
     protected void loadAllSettings() {
@@ -349,7 +395,8 @@ public class SessionConfigurationManager implements
                     subType = info[2];
                 }
                 Choice child = new Choice();
-                String headline = getHeadline(info[0], info[1], subType);
+                String headline = getHeadline(HazardEventUtilities
+                        .getHazardType(info[0], info[1], subType));
                 StringBuilder id = new StringBuilder();
                 for (String str : info) {
                     if (str != info[0]) {
@@ -377,32 +424,68 @@ public class SessionConfigurationManager implements
         HazardInfoOptions opt = new HazardInfoOptions();
         for (HazardMetaDataEntry entry : hazardMetaData.getConfig()) {
             HazardInfoOptionEntry optEnt = new HazardInfoOptionEntry();
-            List<String> types = new ArrayList<String>();
             for (String[] type : entry.getHazardTypes()) {
                 String subType = null;
                 if (type.length > 2) {
                     subType = type[2];
                 }
-                StringBuilder id = new StringBuilder();
-                for (String str : type) {
-                    if (str != type[0]) {
-                        id.append(".");
-                    }
-                    id.append(str);
-                }
-                String headline = getHeadline(type[0], type[1], subType);
+                String typeAsString = HazardEventUtilities.getHazardType(
+                        type[0], type[1], subType);
+                String headline = getHeadline(typeAsString);
                 if (headline != null) {
-                    id.append(" (");
-                    id.append(headline);
-                    id.append(")");
+                    typeAsString = typeAsString + " (" + headline + ")";
                 }
-                types.add(id.toString());
+                List<String> types = new ArrayList<>();
+                types.add(typeAsString);
+
+                optEnt.setHazardTypes(types);
+                String metaDataAsString = getHazardMetaData(type[0], type[1],
+                        subType);
+                JsonNode metaData = asJsonNode(metaDataAsString);
+                optEnt.setMetaData(metaData);
+                opt.add(optEnt);
             }
-            optEnt.setHazardTypes(types);
-            optEnt.setMetaData(entry.getMetaData());
-            opt.add(optEnt);
         }
         return opt;
+
+    }
+
+    private String getHazardMetaData(String phenomenon, String significance,
+            String subType) {
+
+        try {
+            jep.eval("import HazardServicesMetaDataRetriever");
+            StringBuilder sb = new StringBuilder();
+            sb.append(String
+                    .format("result = HazardServicesMetaDataRetriever.getMetaData('%s', '%s'",
+                            phenomenon, significance));
+            if (subType != null) {
+                sb.append(String.format(", '%s'", subType));
+            }
+            sb.append(")");
+            jep.eval(sb.toString());
+            String result = (String) jep.getValue("result");
+            return result;
+        } catch (JepException e) {
+            statusHandler.error("Could not get hazard metadata "
+                    + e.getMessage());
+            return null;
+        }
+    }
+
+    private JsonNode asJsonNode(String json) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(
+                    DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
+                    false);
+            JsonNode result = mapper.readValue(json, JsonNode.class);
+            return result;
+        } catch (Exception e) {
+            statusHandler.error("Could not get hazard metadata "
+                    + e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -521,8 +604,9 @@ public class SessionConfigurationManager implements
 
     @Override
     public String getHeadline(IHazardEvent event) {
-        return getHeadline(event.getPhenomenon(), event.getSignificance(),
-                event.getSubType());
+        return getHeadline(HazardEventUtilities.getHazardType(
+                event.getPhenomenon(), event.getSignificance(),
+                event.getSubType()));
     }
 
     @Override
@@ -559,15 +643,8 @@ public class SessionConfigurationManager implements
         notificationSender.postNotification(notification);
     }
 
-    private String getHeadline(String phen, String sig, String subType) {
-        if (phen == null || sig == null) {
-            return null;
-        }
-        String key = phen + "." + sig;
-        if (subType != null) {
-            key += "." + subType;
-        }
-        HazardTypeEntry type = hazardTypes.getConfig().get(key);
+    private String getHeadline(String id) {
+        HazardTypeEntry type = hazardTypes.getConfig().get(id);
         if (type == null) {
             return null;
         }
@@ -593,9 +670,7 @@ public class SessionConfigurationManager implements
 
     @Override
     public void shutdown() {
-        /**
-         * Nothing to do right now.
-         */
+        jep.close();
     }
 
 }
