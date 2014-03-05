@@ -118,8 +118,8 @@ public class HazardGeometryFactory extends AbstractDataFactory {
      * raytheon.uf.common.dataaccess.IDataRequest)
      */
     @Override
-    public DataTime[] getAvailableTimes(IDataRequest request)
-            throws TimeAgnosticDataException {
+    public DataTime[] getAvailableTimes(IDataRequest request,
+            boolean refTimeOnly) throws TimeAgnosticDataException {
         return getHazards(request, new TimeRange()).times;
     }
 
