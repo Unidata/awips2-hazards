@@ -121,6 +121,8 @@ public class SessionConfigurationManager implements
 
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
 
+    private static final String BRIDGE = "bridge";
+
     private ISessionNotificationSender notificationSender;
 
     private final JobPool loaderPool = new JobPool(
@@ -238,6 +240,7 @@ public class SessionConfigurationManager implements
                     PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
             String logUtilitiesPath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+            String bridgePath = FileUtil.join(pythonPath, BRIDGE);
 
             /**
              * TODO This path is used in multiple places elsewhere. Are those
@@ -246,11 +249,10 @@ public class SessionConfigurationManager implements
             String tbdWorkaroundToUEngineInLocalizationPath = FileUtil.join(
                     File.separator, "awips2", "fxa", "bin", "src");
 
-            String includePath = PyUtil
-                    .buildJepIncludePath(pythonPath, localizationUtilitiesPath,
-                            logUtilitiesPath,
-                            tbdWorkaroundToUEngineInLocalizationPath,
-                            vtecUtilitiesPath);
+            String includePath = PyUtil.buildJepIncludePath(pythonPath,
+                    localizationUtilitiesPath, logUtilitiesPath,
+                    tbdWorkaroundToUEngineInLocalizationPath,
+                    vtecUtilitiesPath, bridgePath);
             ClassLoader cl = this.getClass().getClassLoader();
             Jep result = new Jep(false, includePath, cl);
             result.eval("import JavaImporter");
