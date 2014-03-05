@@ -4,7 +4,7 @@ Bundle-Name: Riverpro
 Bundle-SymbolicName: com.raytheon.uf.edex.hazards.riverpro
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174",

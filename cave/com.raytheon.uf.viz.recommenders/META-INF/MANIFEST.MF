@@ -25,7 +25,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.commons.lang;bundle-version="2.3.0",
  org.eclipse.ui;bundle-version="3.8.2",
  com.raytheon.uf.viz.productgen;bundle-version="1.0.0"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: com.raytheon.uf.common.python,
  com.raytheon.uf.common.python.concurrent,

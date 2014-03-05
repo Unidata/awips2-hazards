@@ -4,7 +4,7 @@ Bundle-Name: Productgen
 Bundle-SymbolicName: com.raytheon.uf.common.hazards.productgen
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0",
  com.raytheon.uf.common.python;bundle-version="1.12.1174",
