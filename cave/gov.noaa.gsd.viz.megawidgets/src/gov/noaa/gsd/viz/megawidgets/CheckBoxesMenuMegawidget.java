@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,8 +19,6 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-
-import com.google.common.collect.Lists;
 
 /**
  * Checkboxes menu megawidget, allowing the selection of zero or more choices,
@@ -39,6 +38,11 @@ import com.google.common.collect.Lists;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Mar 06, 2014   2155     Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change. Also took advantage of new
+ *                                           JDK 1.7 features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -95,7 +99,8 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
                 } else {
                     state.remove(choice);
                 }
-                notifyListener(getSpecifier().getIdentifier(), state);
+                notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(
+                        state));
                 notifyListener();
             }
         };
@@ -125,7 +130,7 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
         }
 
         // Create the menu items.
-        items = Lists.newArrayList();
+        items = new ArrayList<>();
         createMenuItemsForChoices(menu, -1);
     }
 

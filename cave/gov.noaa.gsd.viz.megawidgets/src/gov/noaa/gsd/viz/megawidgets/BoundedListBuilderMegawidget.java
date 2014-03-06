@@ -9,7 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,9 +42,6 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
 
 /**
@@ -66,6 +66,12 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Mar 06, 2014   2155     Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change. Also fixed Javadoc and
+ *                                           took advantage of new JDK 1.7
+ *                                           features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -82,8 +88,8 @@ public class BoundedListBuilderMegawidget extends
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        Set<String> names = new HashSet<>(
+                MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -186,12 +192,11 @@ public class BoundedListBuilderMegawidget extends
     /**
      * Map of choice identifiers to their names.
      */
-    private final Map<String, String> choiceNamesForIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, String> choiceNamesForIdentifiers = new HashMap<>();
 
     /**
      * Last position of the available table's vertical scrollbar. This is used
-     * whenever the choices are being changed via <code>setChoices()</code> or
+     * whenever the choices are being changed via {@link #setChoices(Object)} or
      * one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
@@ -199,7 +204,7 @@ public class BoundedListBuilderMegawidget extends
 
     /**
      * Last position of the selected table's vertical scrollbar. This is used
-     * whenever the choices are being changed via <code>setChoices()</code> or
+     * whenever the choices are being changed via {@link #setChoices(Object)} or
      * one of the mutable property manipulation methods, in order to keep a
      * similar visual state to what came before.
      */
@@ -207,21 +212,19 @@ public class BoundedListBuilderMegawidget extends
 
     /**
      * Set of choices in the available table that were last selected. This is
-     * used whenever the choices are being changed via <code>setChoices()</code>
-     * or one of the mutable property manipulation methods, in order to keep a
-     * similar visual state to what came before.
+     * used whenever the choices are being changed via
+     * {@link #setChoices(Object)} or one of the mutable property manipulation
+     * methods, in order to keep a similar visual state to what came before.
      */
-    private final List<String> selectedAvailableChoiceIdentifiers = Lists
-            .newArrayList();
+    private final List<String> selectedAvailableChoiceIdentifiers = new ArrayList<>();
 
     /**
      * List of choices in the selected table that were last selected. This is
-     * used whenever the choices are being changed via <code>setChoices()</code>
-     * or one of the mutable property manipulation methods, in order to keep a
-     * similar visual state to what came before.
+     * used whenever the choices are being changed via
+     * {@link #setChoices(Object)} or one of the mutable property manipulation
+     * methods, in order to keep a similar visual state to what came before.
      */
-    private final List<String> selectedSelectedChoiceIdentifiers = Lists
-            .newArrayList();
+    private final List<String> selectedSelectedChoiceIdentifiers = new ArrayList<>();
 
     /**
      * Control component helper.
@@ -751,7 +754,7 @@ public class BoundedListBuilderMegawidget extends
         for (Table table : tables) {
             List<String> selectedChoiceIdentifiers = (table == availableTable ? selectedAvailableChoiceIdentifiers
                     : selectedSelectedChoiceIdentifiers);
-            List<TableItem> selectedTableItems = Lists.newArrayList();
+            List<TableItem> selectedTableItems = new ArrayList<>();
             for (TableItem item : table.getItems()) {
                 if (selectedChoiceIdentifiers.contains(item.getData())) {
                     selectedTableItems.add(item);
@@ -1038,7 +1041,7 @@ public class BoundedListBuilderMegawidget extends
         // list after the selected items are removed, if
         // any, as well as getting a list of the items
         // to be removed in ascending index order.
-        List<String> identifiers = Lists.newArrayList();
+        List<String> identifiers = new ArrayList<>();
         int firstUnselectedAfterSelected = getIndexOfFirstUnselectedAfterSelected(
                 availableTable, identifiers);
 
@@ -1226,7 +1229,7 @@ public class BoundedListBuilderMegawidget extends
         // one above it that is unselected, or just
         // -1 if the selection includes the first
         // item in the list.
-        List<String> identifiers = Lists.newArrayList();
+        List<String> identifiers = new ArrayList<>();
         index = getClosestUnselectedIndexAtOrAboveIndex(selectedTable, index,
                 identifiers);
 
@@ -1452,7 +1455,7 @@ public class BoundedListBuilderMegawidget extends
         // each the index indicating where it lives
         // in the choices list.
         int[] indices = new int[items.size()];
-        List<String> choiceNames = Lists.newArrayList();
+        List<String> choiceNames = new ArrayList<>();
         BoundedListBuilderSpecifier specifier = getSpecifier();
         for (Object choice : choices) {
             choiceNames.add(specifier.getNameOfNode(choice));
@@ -1474,7 +1477,7 @@ public class BoundedListBuilderMegawidget extends
     private void megawidgetWidgetsChanged() {
         state.clear();
         state.addAll(getItemsFromList(selectedTable, false, false, null));
-        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
         notifyListener();
     }
 
@@ -1497,7 +1500,7 @@ public class BoundedListBuilderMegawidget extends
     private List<String> getItemsFromList(Table table, boolean selectedOnly,
             boolean needIdentifiers, List<String> list) {
         if (list == null) {
-            list = Lists.newArrayList();
+            list = new ArrayList<>();
         } else {
             list.clear();
         }

@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,7 +27,6 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Checklist megawidget, allowing the selection of zero or more choices, each
@@ -49,6 +50,12 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Mar 06, 2014   2155     Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change. Also fixed Javadoc and
+ *                                           took advantage of new JDK 1.7
+ *                                           features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,8 +72,8 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        Set<String> names = new HashSet<>(
+                MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -95,7 +102,7 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
 
     /**
      * Last position of the vertical scrollbar. This is used whenever the
-     * choices are being changed via <code>setChoices()</code> or one of the
+     * choices are being changed via {@link #setChoices(Object)} or one of the
      * mutable property manipulation methods, in order to keep a similar visual
      * state to what came before.
      */
@@ -103,9 +110,10 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
 
     /**
      * Identifier of the node that was last selected in the choices list. This
-     * is used whenever the choices are being changed via <code>setChoices()
-     * </code> or one of the mutable property manipulation methods, in order to
-     * keep a similar visual state to what came before.
+     * is used whenever the choices are being changed via
+     * {@link #setChoices(Object)} </code> or one of the mutable property
+     * manipulation methods, in order to keep a similar visual state to what
+     * came before.
      */
     private String selectedChoiceIdentifier;
 
@@ -430,7 +438,7 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
      * Notify any listeners of a state change and invocation.
      */
     private void notifyListeners() {
-        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
         notifyListener();
     }
 }

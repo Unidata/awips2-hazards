@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +51,10 @@ import com.google.common.collect.ImmutableSet;
  *                                           can be added) choice megawidgets.
  * Feb 13, 2014    2161    Chris.Golden      Javadoc fixes and use of JDK 1.7
  *                                           features.
+ * Mar 06, 2014    2155    Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change.
  * </pre>
  * 
  * @author Chris.Golden
@@ -131,7 +136,8 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
                 } else {
                     state.remove(choice);
                 }
-                notifyListener(getSpecifier().getIdentifier(), state);
+                notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(
+                        state));
                 notifyListener();
             }
         };

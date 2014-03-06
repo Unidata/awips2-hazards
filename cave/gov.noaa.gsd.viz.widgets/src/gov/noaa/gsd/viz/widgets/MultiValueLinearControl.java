@@ -100,6 +100,17 @@ import org.eclipse.swt.widgets.ToolTip;
  *                                           individuallly, instead of
  *                                           controlling editability at a
  *                                           coarser widget level.
+ * Mar 06, 2014    2155    Chris.Golden      Fixed bug that caused thumbs
+ *                                           that are not being dragged to
+ *                                           be needlessly adjusted in an
+ *                                           overabundance of caution when
+ *                                           another thumb is being dragged.
+ *                                           This would not have been a
+ *                                           problem except that thumbs set
+ *                                           to Until Further Notice values
+ *                                           were being changed by dragging
+ *                                           of other thumbs in the same
+ *                                           widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2705,6 +2716,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             if (targetValue > newValues[thumb.index]) {
                 newValues[thumb.index] = targetValue;
                 for (int j = thumb.index + 1; j < newValues.length; j++) {
+                    if (newValues[j - 1] + minimumConstrainedThumbGap <= newValues[j]) {
+                        break;
+                    }
                     newValues[j] = snapValueCalculator.getSnapThumbValue(
                             newValues[j], newValues[j - 1]
                                     + minimumConstrainedThumbGap,
@@ -2713,6 +2727,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             } else {
                 newValues[thumb.index] = targetValue;
                 for (int j = thumb.index - 1; j >= 0; j--) {
+                    if (newValues[j + 1] - minimumConstrainedThumbGap >= newValues[j]) {
+                        break;
+                    }
                     newValues[j] = snapValueCalculator.getSnapThumbValue(
                             newValues[j], minConstrainedThumbValues.get(j),
                             newValues[j + 1] - minimumConstrainedThumbGap);

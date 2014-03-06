@@ -35,6 +35,10 @@ import java.util.Map;
  *                                           can be added) choice megawidgets.
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
+ * Mar 06, 2014   2155     Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change.
  * </pre>
  * 
  * @author Chris.Golden
@@ -173,7 +177,10 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
      * Notify any listeners of a state change and invocation.
      */
     protected final void notifyListeners() {
-        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener(
+                getSpecifier().getIdentifier(),
+                ((HierarchicalBoundedChoicesMegawidgetSpecifier) getSpecifier())
+                        .createChoicesCopy(state));
         notifyListener();
     }
 

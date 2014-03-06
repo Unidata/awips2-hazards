@@ -9,8 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,8 +46,6 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
 
 /**
@@ -63,6 +63,12 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           within the text widget to add the
  *                                           entered text to the list as an item
  *                                           if appropriate.
+ * Mar 06, 2014   2155     Chris.Golden      Fixed bug caused by a lack of
+ *                                           defensive copying of the state when
+ *                                           notifying a state change listener of
+ *                                           a change. Also fixed Javadoc and
+ *                                           took advantage of new JDK 1.7
+ *                                           features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,19 +162,20 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
 
     /**
      * Last position of the table's vertical scrollbar. This is used whenever
-     * the choices are being changed via <code>setState()</code> or one of the
-     * mutable property manipulation methods, in order to keep a similar visual
-     * state to what came before.
+     * the choices are being changed via {@link #setState(String, Object)} or
+     * one of the mutable property manipulation methods, in order to keep a
+     * similar visual state to what came before.
      */
     private int scrollPosition = 0;
 
     /**
      * Set of choices in the table that were last selected. This is used
-     * whenever the choices are being changed via <code>setState()</code> or one
-     * of the mutable property manipulation methods, in order to keep a similar
-     * visual state to what came before.
+     * whenever the choices are being changed via
+     * {@link #setState(String, Object)} or one of the mutable property
+     * manipulation methods, in order to keep a similar visual state to what
+     * came before.
      */
-    private final List<String> selectedChoices = Lists.newArrayList();
+    private final List<String> selectedChoices = new ArrayList<>();
 
     /**
      * Control component helper.
@@ -195,7 +202,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         helper = new ControlComponentHelper(specifier);
 
         // Copy the starting choices into the state.
-        state = Lists.newArrayList();
+        state = new ArrayList<>();
         List<?> startingState = (List<?>) specifier.getStartingState(specifier
                 .getIdentifier());
         if (startingState != null) {
@@ -529,7 +536,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
 
     @Override
     protected Object doGetState(String identifier) {
-        return Lists.newArrayList(state);
+        return new ArrayList<>(state);
     }
 
     @SuppressWarnings("unchecked")
@@ -555,7 +562,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
 
         // Ensure that the choices specified contain no
         // repetition.
-        Set<String> choices = Sets.newHashSet();
+        Set<String> choices = new HashSet<>();
         for (String choice : this.state) {
             if (choices.contains(choice)) {
                 this.state.clear();
@@ -632,7 +639,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         // See what items were selected previously that
         // are present in the new list, and select those
         // items.
-        List<TableItem> selectedTableItems = Lists.newArrayList();
+        List<TableItem> selectedTableItems = new ArrayList<>();
         for (TableItem item : table.getItems()) {
             if (selectedChoices.contains(item.getText())) {
                 selectedTableItems.add(item);
@@ -869,7 +876,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
      *            Index after which to add the selected available items.
      */
     private void addDroppedAtIndex(String items, int index) {
-        List<String> list = Lists.newArrayList();
+        List<String> list = new ArrayList<>();
         String[] itemArray = items.split("\n");
         for (String item : itemArray) {
             item = item.trim();
@@ -984,7 +991,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         // one above it that is unselected, or just
         // -1 if the selection includes the first
         // item in the list.
-        List<String> identifiers = Lists.newArrayList();
+        List<String> identifiers = new ArrayList<>();
         index = getClosestUnselectedIndexAtOrAboveIndex(index, identifiers);
 
         // If a valid index was found, get the item
@@ -1215,7 +1222,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
     private void megawidgetWidgetsChanged() {
         state.clear();
         state.addAll(getChoiceNames(false, null));
-        notifyListener(getSpecifier().getIdentifier(), state);
+        notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
         notifyListener();
     }
 
@@ -1232,7 +1239,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
      */
     private List<String> getChoiceNames(boolean selectedOnly, List<String> list) {
         if (list == null) {
-            list = Lists.newArrayList();
+            list = new ArrayList<>();
         } else {
             list.clear();
         }
