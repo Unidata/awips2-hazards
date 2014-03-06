@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
@@ -162,10 +163,14 @@ public class SessionProductManager implements ISessionProductManager {
      */
     private final IMessenger messenger;
 
-    public SessionProductManager(ISessionTimeManager timeManager,
+    private final SessionManager sessionManager;
+
+    public SessionProductManager(SessionManager sessionManager,
+            ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             ISessionEventManager eventManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
+        this.sessionManager = sessionManager;
         this.timeManager = timeManager;
         this.configManager = configManager;
         this.eventManager = eventManager;
@@ -323,9 +328,11 @@ public class SessionProductManager implements ISessionProductManager {
                         .getUserAnswerToQuestion(
                                 "Are you sure "
                                         + "you want to issue the hazard event(s)?");
+                sessionManager.setPreviewOngoing(false);
                 if (!answer) {
                     return;
                 }
+                sessionManager.setIssueOngoing(true);
             }
             EventSet<IEvent> events = new EventSet<IEvent>();
             events.addAttribute(HazardConstants.CURRENT_TIME, timeManager

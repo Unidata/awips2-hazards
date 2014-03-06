@@ -540,7 +540,16 @@ public final class HazardServicesMessageHandler implements
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued()) {
-            this.notifyModelEventsChanged();
+            sessionManager.setIssueOngoing(false);
+
+            /**
+             * TODO This method call is not actually necessary. However,
+             * deleting it causes the automated tests to break. They would have
+             * to be refactored in a non-trivial way (to handle
+             * {@link SessionModified}. I chose put this off for now by leaving
+             * the method call in.
+             */
+            notifyModelEventsChanged();
             return;
         }
 
@@ -1618,6 +1627,7 @@ public final class HazardServicesMessageHandler implements
             final HazardDetailAction hazardDetailAction) {
         switch (hazardDetailAction.getActionType()) {
         case PREVIEW:
+            sessionManager.setPreviewOngoing(true);
             preview();
             break;
 
@@ -1626,6 +1636,7 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case ISSUE:
+            sessionManager.setIssueOngoing(true);
             setIssuedState();
             break;
 

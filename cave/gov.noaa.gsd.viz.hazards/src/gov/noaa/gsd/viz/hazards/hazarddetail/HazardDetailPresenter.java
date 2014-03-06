@@ -20,10 +20,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
@@ -101,6 +103,18 @@ public class HazardDetailPresenter extends
                     getConflictingEventsForSelectedEvents());
             eventChange = false;
         }
+
+    }
+
+    /**
+     * TODO This is how Matt, Chris and Dan think model changes should be
+     * handled. We should move
+     * {@link HazardDetailPresenter#modelChanged(EnumSet)} into here.
+     */
+    @Subscribe
+    public void sessionModified(SessionModified event) {
+        getView().setPreviewOngoing(getModel().isPreviewOngoing());
+        getView().setIssueOngoing(getModel().isIssueOngoing());
     }
 
     /**

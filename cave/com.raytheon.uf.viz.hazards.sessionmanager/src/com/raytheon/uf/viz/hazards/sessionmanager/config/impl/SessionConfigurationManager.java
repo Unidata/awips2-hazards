@@ -72,7 +72,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDataEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.IHazardsColorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
@@ -139,8 +138,6 @@ public class SessionConfigurationManager implements
     private ConfigLoader<HazardMetaData> hazardMetaData;
 
     private ConfigLoader<ProductGeneratorTable> pgenTable;
-
-    private List<ConfigLoader<? extends IHazardsColorTable>> colorTables;
 
     private ConfigLoader<HazardTypes> hazardTypes;
 

@@ -11,8 +11,8 @@ package gov.noaa.gsd.viz.mvp.widgets;
 
 /**
  * Interface describing the methods required in any sort of HMI component that,
- * when invoked, executes a command by notifying its <code>
- * ICommandInvocationHandler</code> of the invocation.
+ * when invoked, executes a command by notifying its
+ * {@link ICommandInvocationHandler} of the invocation.
  * 
  * <pre>
  * 

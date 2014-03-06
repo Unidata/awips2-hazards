@@ -148,6 +148,7 @@ public class ProductEditorPresenter extends
     }
 
     private void dismissProductEditor() {
+        getModel().setPreviewOngoing(false);
         getView().closeProductEditorDialog();
     }
 }

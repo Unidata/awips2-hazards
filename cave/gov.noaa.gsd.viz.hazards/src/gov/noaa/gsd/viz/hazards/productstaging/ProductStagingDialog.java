@@ -114,7 +114,7 @@ class ProductStagingDialog extends BasicDialog {
     /**
      * Continue command invocation handler.
      */
-    private ICommandInvocationHandler continueHandler = null;
+    private ICommandInvocationHandler commandHandler = null;
 
     /**
      * Continue command invoker.
@@ -123,7 +123,7 @@ class ProductStagingDialog extends BasicDialog {
         @Override
         public void setCommandInvocationHandler(
                 ICommandInvocationHandler handler) {
-            continueHandler = handler;
+            commandHandler = handler;
         }
     };
 
@@ -291,8 +291,12 @@ class ProductStagingDialog extends BasicDialog {
     @Override
     protected void buttonPressed(int buttonId) {
         super.buttonPressed(buttonId);
-        if ((buttonId == IDialogConstants.OK_ID) && (continueHandler != null)) {
-            continueHandler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
+        if (commandHandler != null) {
+            if (buttonId == IDialogConstants.OK_ID) {
+                commandHandler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
+            } else if (buttonId == IDialogConstants.CANCEL_ID) {
+                commandHandler.commandInvoked(HazardConstants.CANCEL_BUTTON);
+            }
         }
     }
 

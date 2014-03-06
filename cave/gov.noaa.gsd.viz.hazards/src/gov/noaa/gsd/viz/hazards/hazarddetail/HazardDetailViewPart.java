@@ -970,6 +970,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private Set<String> eventIdentifiersAllowingUntilFurtherNotice;
 
+    private boolean previewOngoing = false;
+
+    private boolean issueOngoing = false;
+
     // Public Methods
 
     /**
@@ -1418,7 +1422,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // notice" value is the current state for
             // its end time.
             Map<Long, String> descriptiveTextForValues = new HashMap<>();
-            descriptiveTextForValues.put(UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS,
+            descriptiveTextForValues.put(
+                    UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS,
                     UNTIL_FURTHER_NOTICE_VALUE_TEXT);
             scaleObject.put(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS,
                     descriptiveTextForValues);
@@ -1511,8 +1516,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // Show the currently selected hazard type's metadata
         // panel.
         if (primaryParamValues.size() > 0) {
-            showMetadataForType((String) primaryParamValues.get(
-                    visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE));
+            showMetadataForType();
         }
 
         // Add a listener for hazard type changes which shows
@@ -1699,11 +1703,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     HAZARD_EVENT_IDENTIFIER);
             primaryParamValues.get(visibleHazardIndex).put(identifier, state);
 
-            // Handle the special case of the fall-below until-
-            // further-notice checkbox and its associated time
-            // range's editability.
-            String fullType = (String) primaryParamValues.get(
-                    visibleHazardIndex).get(HAZARD_EVENT_FULL_TYPE);
+            String fullType = getType();
             if (fullType != null) {
                 setFallBelowEditability(
                         megawidgetsForIdsForTypes.get(fullType),
@@ -1996,6 +1996,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             megawidget.setVisibleTimeRange(minimumVisibleTime,
                     maximumVisibleTime);
         }
+    }
+
+    void setPreviewOngoing(boolean previewOngoing) {
+        this.previewOngoing = previewOngoing;
+        setButtonsEnabledState();
+    }
+
+    void setIssueOngoing(boolean issueOngoing) {
+        this.issueOngoing = issueOngoing;
+        setButtonsEnabledState();
     }
 
     // Private Methods
@@ -2476,11 +2486,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // If there are no hazard events, do nothing.
         if (eventTabFolder.getItemCount() == 0) {
-            if (previewButton != null) {
-                previewButton.setEnabled(false);
-                proposeButton.setEnabled(false);
-                issueButton.setEnabled(false);
-            }
+            setEnabledState(previewButton, false);
+            setEnabledState(proposeButton, false);
+            setEnabledState(issueButton, false);
             return;
         }
 
@@ -2492,9 +2500,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         String category = getCategoryOfCurrentEvent();
         categoryCombo.setText(category);
         populateHazardTypesList(category);
-        String type = (String) primaryParamValues.get(visibleHazardIndex).get(
-                HAZARD_EVENT_FULL_TYPE);
-        typeCombo.setText(type);
+        typeCombo.setText(getType());
 
         // Set the start and end time in the time
         // range megawidgets.
@@ -2536,9 +2542,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // was already showing, then the megawidgets'
         // states still have to be synced with
         // the current values.
-        if (showMetadataForType(type) == false) {
+        if (showMetadataForType() == false) {
             synchMetadataMegawidgetsWithEventInfo();
         }
+    }
+
+    private String getType() {
+        String type = (String) primaryParamValues.get(visibleHazardIndex).get(
+                HAZARD_EVENT_FULL_TYPE);
+        return type;
     }
 
     /**
@@ -2546,9 +2558,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void synchMetadataMegawidgetsWithEventInfo() {
 
-        // Synch the main metadata megawidgets.
-        String fullType = (String) primaryParamValues.get(visibleHazardIndex)
-                .get(HAZARD_EVENT_FULL_TYPE);
+        String fullType = getType();
         setMegawidgetsStates(megawidgetsForIdsForTypes.get(fullType),
                 primaryParamValues.get(visibleHazardIndex));
 
@@ -2600,15 +2610,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Display the metadata panel for the specified hazard type.
+     * Display the metadata panel for the current hazard type.
      * 
-     * @param type
-     *            Hazard type.
      * @return True if the metadata pane had to be created during this
      *         invocation, false otherwise.
      */
-    private boolean showMetadataForType(String type) {
+    private boolean showMetadataForType() {
 
+        String type = getType();
         // If no type has been chosen, do nothing
         if (type == null) {
             statusHandler.info("HazardDetailViewPart.showMetadataForType(): "
@@ -2616,18 +2625,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             return false;
         }
 
-        // If the type is an empty string, disable the
-        // appropriate buttons; otherwise, enable them.
-        boolean enable = (type.length() > 0);
-        if (previewButton != null) {
-            previewButton.setEnabled(enable);
-        }
-        if (proposeButton != null) {
-            proposeButton.setEnabled(enable);
-        }
-        if (issueButton != null) {
-            issueButton.setEnabled(enable);
-        }
+        setButtonsEnabledState();
 
         // If the type chosen is the same as what was
         // already showing, do nothing more.
@@ -2745,6 +2743,24 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             configureScrolledCompositeToHoldPanel(panel);
         }
         return creationOccurred;
+    }
+
+    private void setButtonsEnabledState() {
+        /**
+         * If the type is an empty string, disable the appropriate buttons;
+         * otherwise, enable them if activities are not ongoing
+         */
+        boolean enable = (getType().length() > 0) && !previewOngoing
+                && !issueOngoing;
+        setEnabledState(previewButton, enable);
+        setEnabledState(proposeButton, enable);
+        setEnabledState(issueButton, enable);
+    }
+
+    private void setEnabledState(Button button, boolean enable) {
+        if (button != null && !button.isDisposed()) {
+            button.setEnabled(enable);
+        }
     }
 
     /**

@@ -105,4 +105,12 @@ public class HazardDetailViewForTesting implements
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void setPreviewOngoing(boolean previewOngoing) {
+    }
+
+    @Override
+    public void setIssueOngoing(boolean issueOngoing) {
+    }
+
 }

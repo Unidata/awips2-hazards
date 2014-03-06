@@ -133,4 +133,18 @@ public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void setVisibleTimeRange(long minVisibleTime, long maxVisibleTime);
 
+    /**
+     * Indicate if a preview of any {@link IHazardEvent}s is ongoing.
+     * 
+     * @param previewOngoing
+     */
+    void setPreviewOngoing(boolean previewOngoing);
+
+    /**
+     * Indicate if an issue of any {@link IHazardEvent}s is ongoing.
+     * 
+     * @param issueOngoing
+     */
+    void setIssueOngoing(boolean issueOngoing);
+
 }

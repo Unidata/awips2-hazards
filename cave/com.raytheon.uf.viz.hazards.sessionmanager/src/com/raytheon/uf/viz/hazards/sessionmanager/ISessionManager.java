@@ -152,12 +152,36 @@ public interface ISessionManager extends IUndoRedoable {
     /**
      * Returns the state of the display of hatched areas.
      * 
-     * @param
      * @return true - hatched areas are displayed. false - hatched areas are not
      *         displayed.
      */
     public boolean areHatchedAreasDisplayed();
 
     void handleRecommenderResult(EventSet<IEvent> eventList);
+
+    /**
+     * 
+     * @return True from the time the forecaster hits PREVIEW until they confirm
+     *         an issue, Cancel the Product Staging Dialog or Dismiss the
+     *         Product Editor
+     */
+    public boolean isPreviewOngoing();
+
+    /**
+     * @param isOngoing
+     */
+    public void setPreviewOngoing(boolean isOngoing);
+
+    /**
+     * 
+     * @return True from the time the forecaster confirms they want to issue
+     *         until the product issuance is complete
+     */
+    public boolean isIssueOngoing();
+
+    /**
+     * @param isOngoing
+     */
+    public void setIssueOngoing(boolean isOngoing);
 
 }

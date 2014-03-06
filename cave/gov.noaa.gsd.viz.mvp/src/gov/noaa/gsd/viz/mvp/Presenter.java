@@ -75,6 +75,8 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
 
         // Set the view to that specified and initialize it.
         setView(view);
+        eventBus.register(this);
+
     }
 
     // Public Methods

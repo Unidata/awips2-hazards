@@ -63,38 +63,44 @@ public class ProductStagingPresenter extends
     /**
      * Continue command invocation handler.
      */
-    private final ICommandInvocationHandler continueHandler = new ICommandInvocationHandler() {
+    private final ICommandInvocationHandler commandHandler = new ICommandInvocationHandler() {
         @Override
         public void commandInvoked(String command) {
             try {
-                String issueFlag = (getView().isToBeIssued() ? Boolean.TRUE
-                        .toString() : Boolean.FALSE.toString());
-                ProductStagingAction action = new ProductStagingAction();
-                action.setIssueFlag(issueFlag);
-                ProductStagingInfo productStagingInfo = getView()
-                        .getProductStagingInfo();
+                if (command.equals(HazardConstants.CONTINUE_BUTTON)) {
+                    String issueFlag = (getView().isToBeIssued() ? Boolean.TRUE
+                            .toString() : Boolean.FALSE.toString());
+                    ProductStagingAction action = new ProductStagingAction();
+                    action.setIssueFlag(issueFlag);
+                    ProductStagingInfo productStagingInfo = getView()
+                            .getProductStagingInfo();
 
-                Collection<IHazardEvent> selectedEvents = Lists.newArrayList();
-                for (ProductStagingInfo.Product product : productStagingInfo
-                        .getProducts()) {
+                    Collection<IHazardEvent> selectedEvents = Lists
+                            .newArrayList();
+                    for (ProductStagingInfo.Product product : productStagingInfo
+                            .getProducts()) {
 
-                    List<String> eventIds = product.getSelectedEventIDs();
-                    Collection<IHazardEvent> events = getSessionManager()
-                            .getEventManager().getEvents();
+                        List<String> eventIds = product.getSelectedEventIDs();
+                        Collection<IHazardEvent> events = getSessionManager()
+                                .getEventManager().getEvents();
 
-                    for (IHazardEvent eve : events) {
-                        if (eventIds.contains(eve.getEventID())) {
-                            eve.addHazardAttribute(
-                                    HazardConstants.HAZARD_EVENT_SELECTED, true);
-                            selectedEvents.add(eve);
+                        for (IHazardEvent eve : events) {
+                            if (eventIds.contains(eve.getEventID())) {
+                                eve.addHazardAttribute(
+                                        HazardConstants.HAZARD_EVENT_SELECTED,
+                                        true);
+                                selectedEvents.add(eve);
+                            }
                         }
                     }
-                }
-                getSessionManager().getEventManager().setSelectedEvents(
-                        selectedEvents);
+                    getSessionManager().getEventManager().setSelectedEvents(
+                            selectedEvents);
 
-                action.setProductStagingInfo(productStagingInfo);
-                fireAction(action);
+                    action.setProductStagingInfo(productStagingInfo);
+                    fireAction(action);
+                } else {
+                    getModel().setPreviewOngoing(false);
+                }
             } catch (Exception e1) {
                 statusHandler.error("ProductStatingPresenter.bind(): ", e1);
             }
@@ -170,6 +176,6 @@ public class ProductStagingPresenter extends
      */
     private void bind() {
         getView().getContinueInvoker().setCommandInvocationHandler(
-                continueHandler);
+                commandHandler);
     }
 }

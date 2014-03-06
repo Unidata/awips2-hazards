@@ -44,6 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -126,6 +127,10 @@ public class SessionManager implements ISessionManager {
      */
     private boolean hatchAreaDisplay = false;
 
+    private volatile boolean previewOngoing = false;
+
+    private volatile boolean issueOngoing = false;
+
     /*
      * Messenger for displaying questions and warnings to the user and
      * retrieving answers. This allows the viz side (App Builder) to be
@@ -148,8 +153,8 @@ public class SessionManager implements ISessionManager {
         configManager = new SessionConfigurationManager(pathManager, sender);
         eventManager = new SessionEventManager(timeManager, configManager,
                 hazardEventManager, sender, messenger);
-        productManager = new SessionProductManager(timeManager, configManager,
-                eventManager, sender, messenger);
+        productManager = new SessionProductManager(this, timeManager,
+                configManager, eventManager, sender, messenger);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,
@@ -373,6 +378,33 @@ public class SessionManager implements ISessionManager {
     @Override
     public void clearUndoRedo() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isPreviewOngoing() {
+        return previewOngoing;
+    }
+
+    @Override
+    public void setPreviewOngoing(boolean previewOngoing) {
+        this.previewOngoing = previewOngoing;
+        notifySessionModified();
+    }
+
+    @Override
+    public boolean isIssueOngoing() {
+        return issueOngoing;
+    }
+
+    @Override
+    public void setIssueOngoing(boolean issueOngoing) {
+        this.issueOngoing = issueOngoing;
+        notifySessionModified();
+
+    }
+
+    private void notifySessionModified() {
+        eventBus.post(new SessionModified());
     }
 
 }

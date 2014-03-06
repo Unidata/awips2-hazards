@@ -166,7 +166,9 @@ public final class HazardConstants {
      * Enumeration of all types of changes that may occur within the model.
      */
     public static enum Element {
-        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
+        EVENTS, CAVE_TIME, CURRENT_TIME, SELECTED_TIME, SELECTED_TIME_RANGE,
+
+        VISIBLE_TIME_DELTA, VISIBLE_TIME_RANGE, SETTINGS, CURRENT_SETTINGS, TOOLS, SITE;
     }
 
     /**

@@ -492,6 +492,20 @@ public class HazardDetailView extends
         }
     }
 
+    @Override
+    public void setPreviewOngoing(boolean previewOngoing) {
+        if (getViewPart() != null) {
+            getViewPart().setPreviewOngoing(previewOngoing);
+        }
+    }
+
+    @Override
+    public void setIssueOngoing(boolean issueOngoing) {
+        if (getViewPart() != null) {
+            getViewPart().setIssueOngoing(issueOngoing);
+        }
+    }
+
     // Package Methods
 
     /**
