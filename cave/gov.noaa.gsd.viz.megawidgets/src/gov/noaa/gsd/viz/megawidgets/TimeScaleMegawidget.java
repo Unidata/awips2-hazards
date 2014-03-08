@@ -73,6 +73,10 @@ import com.google.common.collect.Ranges;
  *                                           added custom strings to be displayed
  *                                           in place of date-time values for
  *                                           specified values.
+ * Mar 08, 2014    2155    Chris.Golden      Fixed bugs with date-time fields in
+ *                                           time megawidgets that caused unexpected
+ *                                           date-times to be selected when the user
+ *                                           manipulated the drop-down calendar.
  * </pre>
  * 
  * @author Chris.Golden
@@ -223,12 +227,12 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
         }
 
         @Override
-        public Range<Long> getAllowableRange(String identifier) {
-            return bounds;
-        }
+        public long renderValueChangeAcceptable(String identifier, long value) {
 
-        @Override
-        public boolean isValueChangeAcceptable(String identifier, long value) {
+            // Convert the value to something that could be
+            // selected using the scale component.
+            value = SNAP_VALUE_CALCULATOR.getSnapThumbValue(value,
+                    bounds.lowerEndpoint(), bounds.upperEndpoint());
 
             // Ensure that the new value is not too close to
             // or beyond a neighboring thumb's value.
@@ -237,13 +241,13 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             if ((index < scale.getConstrainedThumbValueCount() - 1)
                     && (value > scale.getConstrainedThumbValue(index + 1)
                             - scale.getMinimumDeltaBetweenConstrainedThumbs())) {
-                return false;
+                return -1L;
             } else if ((index > 0)
                     && (value < scale.getConstrainedThumbValue(index - 1)
                             + scale.getMinimumDeltaBetweenConstrainedThumbs())) {
-                return false;
+                return -1L;
             }
-            return true;
+            return value;
         }
 
         @Override

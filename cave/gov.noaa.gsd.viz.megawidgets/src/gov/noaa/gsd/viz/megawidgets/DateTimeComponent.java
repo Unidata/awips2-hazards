@@ -34,8 +34,6 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
-import com.google.common.collect.Range;
-
 /**
  * Description: Date-time component, providing an encapsulation of a single pair
  * of widgets, one allowing the viewing and manipulation of a date, the other a
@@ -53,6 +51,10 @@ import com.google.common.collect.Range;
  *                                           enough for each component to display
  *                                           date-time values. Also corrected
  *                                           Javadoc.
+ * Mar 08, 2014    2155    Chris.Golden      Fixed bugs with date-time fields in
+ *                                           time megawidgets that caused unexpected
+ *                                           date-times to be selected when the user
+ *                                           manipulated the drop-down calendar.
  * </pre>
  * 
  * @author Chris.Golden
@@ -193,29 +195,6 @@ public class DateTimeComponent {
                     Locale.getDefault());
             calendar.setTimeInMillis(time);
             return calendar;
-        }
-
-        /**
-         * Get a calendar instance with the current time.
-         * <p>
-         * <b>Note</b>: this is a bit of a hack, since the superclass specifies
-         * this method to allow the fetching of a calendar with the time
-         * specified as the parameter, but since this method is only called with
-         * the system current time as its parameter by Nebula classes, it is
-         * safe to just ignore its parameter and simply return the current time.
-         * This is done, in turn, so that the current time may be something
-         * other than the system current time. Without this hack, the current
-         * time would always be as provided by the system, which does not work
-         * if a simulated time is being used as the "current" time.
-         * </p>
-         * 
-         * @param timeMillis
-         *            This parameter is ignored in this implementation.
-         * @return Calendar instance set to the current time.
-         */
-        @Override
-        public Calendar getCalendarInstance(long timeMillis) {
-            return getCalendarInstance(null);
         }
 
         @Override
@@ -429,7 +408,8 @@ public class DateTimeComponent {
         // imum width required for it to ensure that it
         // stays at least that wide regardless of what
         // text is displayed by it.
-        date = new DateTime(panel, CDT.BORDER | CDT.DROP_DOWN | CDT.TAB_FIELDS);
+        date = new DateTime(panel, CDT.BORDER | CDT.DROP_DOWN | CDT.TAB_FIELDS
+                | CDT.COMPACT);
         date.setNullText(LONGEST_DATE_TEXT);
         date.setSelection(null);
         int dateWidth = date.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
@@ -686,46 +666,40 @@ public class DateTimeComponent {
         // rejected.
         long oldState = state;
 
-        // If the changed widget is the date widget, get its
-        // value and add the delta between the previous date and
-        // the value of the time widget to get the new state.
-        // Otherwise, use the new value of the time widget for
-        // the new state, and recalculate the delta between it
-        // and the closest previous midnight.
+        // If the new value is a midnight value, then add the
+        // delta between the previous date and the value of the
+        // time widget to get the new state. Otherwise, use the
+        // new value for the new state, and recalculate the delta
+        // between it and the closest previous midnight.
         boolean synchTimeWidget = false, synchDateWidget = false;
-        if (changed == date) {
-            dateTimestamp.setTime(date.getSelection().getTime());
-            state = dateTimestamp.getTime() + stateDeltaSinceMidnight;
+        long rawState = (changed == date ? date : time).getSelection()
+                .getTime();
+        long deltaSinceMidnight = getDeltaFromClosestPreviousMidnight(rawState);
+        if (deltaSinceMidnight == 0L) {
+            dateTimestamp.setTime(rawState);
+            state = rawState + stateDeltaSinceMidnight;
             timeTimestamp.setTime(state);
             synchTimeWidget = true;
         } else {
-            timeTimestamp.setTime(time.getSelection().getTime());
-            state = timeTimestamp.getTime();
-            stateDeltaSinceMidnight = getDeltaFromClosestPreviousMidnight(state);
+            timeTimestamp.setTime(rawState);
+            state = rawState;
+            stateDeltaSinceMidnight = deltaSinceMidnight;
             dateTimestamp.setTime(state - stateDeltaSinceMidnight);
         }
 
-        // If the new state is out of bounds, move it in bounds
-        // and recalculate the delta between it and the closest
-        // previous midnight.
-        Range<Long> bounds = holder.getAllowableRange(identifier);
-        if (bounds.contains(state) == false) {
-            state = (state < bounds.lowerEndpoint() ? bounds.lowerEndpoint()
-                    : bounds.upperEndpoint());
-            synchronizeTimestampTrackersToState();
-            synchTimeWidget = true;
-            if (date.getSelection().equals(dateTimestamp) == false) {
-                synchDateWidget = true;
-            }
-        }
-
         // If the holder does not like the new state, restore
-        // the old state.
-        if (holder.isValueChangeAcceptable(identifier, state) == false) {
+        // the old state; if it modified the new state, update
+        // the components to reflect this.
+        rawState = state;
+        state = holder.renderValueChangeAcceptable(identifier, rawState);
+        if (state == -1L) {
             state = oldState;
             synchronizeTimestampTrackersToState();
             synchDateWidget = (changed == date);
             synchTimeWidget = (changed == time);
+        } else if (state != rawState) {
+            synchronizeTimestampTrackersToState();
+            synchDateWidget = synchTimeWidget = true;
         }
 
         // Set the date widget and/or time widget to match the

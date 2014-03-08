@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,7 +18,6 @@ import org.eclipse.swt.widgets.Composite;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import com.google.common.collect.Ranges;
-import com.google.common.collect.Sets;
 
 /**
  * Time megawidget, providing the user the ability to select a single date-time
@@ -31,6 +31,10 @@ import com.google.common.collect.Sets;
  * Dec 13, 2013    2545    Chris.Golden      Initial creation
  * Feb 08, 2014    2161    Chris.Golden      Modified to work with new version
  *                                           of DateTimeComponent constructor.
+ * Mar 08, 2014    2155    Chris.Golden      Fixed bugs with date-time fields in
+ *                                           time megawidgets that caused unexpected
+ *                                           date-times to be selected when the user
+ *                                           manipulated the drop-down calendar.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,8 +50,8 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -90,13 +94,9 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
         }
 
         @Override
-        public Range<Long> getAllowableRange(String identifier) {
-            return bounds;
-        }
-
-        @Override
-        public boolean isValueChangeAcceptable(String identifier, long value) {
-            return true;
+        public long renderValueChangeAcceptable(String identifier, long value) {
+            return Math.max(Math.min(value, bounds.upperEndpoint()),
+                    bounds.lowerEndpoint());
         }
 
         @Override

@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import com.google.common.collect.Range;
-
 /**
  * Description: Interface describing the methods that must be implemented by
  * megawidgets that hold one or more {@link DateTimeComponent} objects.
@@ -21,6 +19,10 @@ import com.google.common.collect.Range;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 14, 2013    2545    Chris.Golden      Initial creation
+ * Mar 08, 2014    2155    Chris.Golden      Fixed bugs with date-time fields in
+ *                                           time megawidgets that caused unexpected
+ *                                           date-times to be selected when the user
+ *                                           manipulated the drop-down calendar.
  * </pre>
  * 
  * @author Chris.Golden
@@ -31,20 +33,6 @@ public interface IDateTimeComponentHolder {
     // Public Methods
 
     /**
-     * Get the range representing the bounds on the value that the specified
-     * date-time component is currently allowed to hold. The date-time component
-     * will use this whenever bounds-checking; it is acceptable for the
-     * implementation to return different ranges each time it is called.
-     * 
-     * @param identifier
-     *            Identifier of the date-time component for which the range is
-     *            being requested.
-     * @return Range of values that the date-time component is allowed to hold
-     *         at this instant.
-     */
-    public Range<Long> getAllowableRange(String identifier);
-
-    /**
      * Get the current epoch time in milliseconds.
      * 
      * @return Current epoch time in milliseconds.
@@ -52,19 +40,17 @@ public interface IDateTimeComponentHolder {
     public long getCurrentTime();
 
     /**
-     * Determine whether or not the specified value change is acceptable. Note
-     * that implementations do not need to check the value against the range
-     * boundaries; this has already been done prior to any invocation of this
-     * method via a call to <code>getAllowableRange()</code>.
+     * Convert the specified changed value to one that is acceptable.
      * 
      * @param identifier
      *            Identifier of the date-time component for which the potential
-     *            value change is being checked.
+     *            value change is being converted.
      * @param value
      *            Potential new value of the date-time component.
-     * @return True if the value change is acceptable, false otherwise.
+     * @return The value, modified as necessary, or <code>-1</code> if it is
+     *         unacceptable.
      */
-    public boolean isValueChangeAcceptable(String identifier, long value);
+    public long renderValueChangeAcceptable(String identifier, long value);
 
     /**
      * Receive notification that the value of the specified date-time component
