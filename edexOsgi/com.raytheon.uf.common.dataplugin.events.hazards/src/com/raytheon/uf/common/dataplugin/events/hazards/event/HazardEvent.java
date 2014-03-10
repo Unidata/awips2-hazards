@@ -46,6 +46,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
+import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
 import com.raytheon.uf.common.registry.annotations.SlotAttribute;
 import com.raytheon.uf.common.registry.annotations.SlotAttributeConverter;
 import com.raytheon.uf.common.registry.ebxml.slots.DateSlotConverter;
@@ -83,6 +84,7 @@ import com.vividsolutions.jts.geom.Geometry;
 @DynamicSerialize
 @RegistryObject({ HazardConstants.SITE_ID,
         HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUE_ID })
+@RegistryObjectVersion(value = 1.0f)
 public class HazardEvent implements IHazardEvent, IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -197,7 +199,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setState(event.getState());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
-            setHazardAttributes(event.getHazardAttributes());
+            setHazardAttributes(new HashMap<String, Serializable>(
+                    event.getHazardAttributes()));
         }
     }
 
