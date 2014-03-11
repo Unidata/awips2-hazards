@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Jan 14, 2014 2755       bkowal      Created a utility method for
  *                                     generating new Event IDs
  * Feb 02, 2014 2536       blawrenc   Moved geometry classes to a viz side class.
+ * Mar 03, 2014 3034       bkowal     Moved common actions into separate methods
  * 
  * 
  * </pre>
@@ -119,14 +120,19 @@ public class HazardEventUtilities {
         return parsed;
     }
 
-    public static boolean isDuplicate(IHazardEventManager manager,
-            IHazardEvent event) {
+    public static Map<String, HazardHistoryList> queryForEvents(
+            IHazardEventManager manager, IHazardEvent event) {
         HazardQueryBuilder builder = new HazardQueryBuilder();
         builder.addKey(HazardConstants.SITE_ID, event.getSiteID());
         builder.addKey(HazardConstants.PHENOMENON, event.getPhenomenon());
         builder.addKey(HazardConstants.SIGNIFICANCE, event.getSignificance());
-        Map<String, HazardHistoryList> hazards = manager
-                .getEventsByFilter(builder.getQuery());
+        return manager.getEventsByFilter(builder.getQuery());
+    }
+
+    public static boolean isDuplicate(IHazardEventManager manager,
+            IHazardEvent event) {
+        Map<String, HazardHistoryList> hazards = queryForEvents(manager,
+                event);
         boolean isDup = false;
         for (HazardHistoryList list : hazards.values()) {
             Iterator<IHazardEvent> iter = list.iterator();
@@ -189,14 +195,7 @@ public class HazardEventUtilities {
         return value;
     }
 
-    /**
-     * Determines if events are the same or are different.
-     * 
-     * @param event1
-     * @param event2
-     * @return
-     */
-    public static boolean checkDifferentEvents(IHazardEvent event1,
+    public static boolean checkDifferentSiteOrType(IHazardEvent event1,
             IHazardEvent event2) {
         if (event1.getSiteID().equals(event2.getSiteID()) == false) {
             return true;
@@ -213,36 +212,60 @@ public class HazardEventUtilities {
         // return true;
         // }
 
+        return false;
+    }
+
+    /**
+     * Determines if events are the same or are different.
+     * 
+     * @param event1
+     * @param event2
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    public static boolean checkDifferentEvents(IHazardEvent event1,
+            IHazardEvent event2) {
+        if (checkDifferentSiteOrType(event1, event2)) {
+            return true;
+        }
+
         Object obj1 = event1.getHazardAttribute(HazardConstants.ETNS);
         List<String> etns1 = null;
         List<String> etns2 = null;
-        // this will become OBE by refactor work, right now we have cases where
-        // it is a string and some where it is a list
-        if (obj1 instanceof String) {
-            etns1 = HazardEventUtilities.parseEtns((String) event1
-                    .getHazardAttribute(HazardConstants.ETNS));
-        } else {
-            etns1 = new ArrayList<String>();
-            List<Integer> list = (List<Integer>) obj1;
-            for (Integer in : list) {
-                etns1.add(String.valueOf(in));
+        /*
+         * Verify that the hazard event actually has ETNs associated with it.
+         */
+        if (obj1 != null) {
+            // this will become OBE by refactor work, right now we have cases
+            // where
+            // it is a string and some where it is a list
+            if (obj1 instanceof String) {
+                etns1 = HazardEventUtilities.parseEtns((String) event1
+                        .getHazardAttribute(HazardConstants.ETNS));
+            } else {
+                etns1 = new ArrayList<String>();
+                List<Integer> list = (List<Integer>) obj1;
+                for (Integer in : list) {
+                    etns1.add(String.valueOf(in));
+                }
+            }
+
+            Object obj2 = event2.getHazardAttribute(HazardConstants.ETNS);
+            if (obj2 instanceof String) {
+                etns2 = HazardEventUtilities.parseEtns((String) event2
+                        .getHazardAttribute(HazardConstants.ETNS));
+            } else {
+                etns2 = new ArrayList<String>();
+                List<Integer> list = (List<Integer>) obj2;
+                for (Integer in : list) {
+                    etns2.add(String.valueOf(in));
+                }
+            }
+            if (compareEtns(etns1, etns2) == false) {
+                return true;
             }
         }
 
-        Object obj2 = event2.getHazardAttribute(HazardConstants.ETNS);
-        if (obj2 instanceof String) {
-            etns2 = HazardEventUtilities.parseEtns((String) event2
-                    .getHazardAttribute(HazardConstants.ETNS));
-        } else {
-            etns2 = new ArrayList<String>();
-            List<Integer> list = (List<Integer>) obj2;
-            for (Integer in : list) {
-                etns2.add(String.valueOf(in));
-            }
-        }
-        if (compareEtns(etns1, etns2) == false) {
-            return true;
-        }
         return false;
     }
 

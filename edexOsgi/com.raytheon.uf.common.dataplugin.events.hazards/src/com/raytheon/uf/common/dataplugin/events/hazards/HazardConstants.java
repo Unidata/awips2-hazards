@@ -50,6 +50,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Mar 3, 2014  3034    bkowal      Added a constant for the gfe interoperability flag
  * 
  * </pre>
  * 
@@ -371,6 +372,12 @@ public final class HazardConstants {
      */
     public static final String HAZARD_EVENT_END_TIME = "endTime";
 
+    /**
+     * interoperability flag. Used to indicate when a hazard has been created
+     * based on a GFE grid.
+     */
+    public static final String GFE_INTEROPERABILITY = "interoperability-gfe";
+    
     /**
      * End time "until further notice" key in hazard
      */

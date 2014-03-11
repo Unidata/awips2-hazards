@@ -61,7 +61,8 @@ import com.vividsolutions.jts.geom.Point;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 11, 2013            mnash     Initial creation
+ * Jul 11, 2013            mnash       Initial creation
+ * Mar  3, 2014 3034       bkowal      Prevent Null Pointer Exception for Geometry
  * 
  * </pre>
  * 
@@ -122,6 +123,11 @@ public class RiverProHazardsCreator {
                 } else {
                     continue;
                 }
+                
+                if (warning.getGeometry() == null) {
+                    continue;
+                }
+                
                 // are are we doing a correct phen and sig, if not, continue on
                 if (phens.containsKey(warning.getPhen())
                         && sigs.containsKey(warning.getSig())) {

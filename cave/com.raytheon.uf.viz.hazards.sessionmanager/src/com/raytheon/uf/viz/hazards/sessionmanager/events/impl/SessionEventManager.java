@@ -130,6 +130,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      the event bus) identifying them as potential
  *                                      hooks into addition/removal/modification of
  *                                      events.
+ * Mar 3, 2014  3034       bkowal      Constant for GFE interoperability flag 
  * </pre>
  * 
  * @author bsteffen
@@ -203,10 +204,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
     private ISimulatedTimeChangeListener timeListener;
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
-
-    // TODO: will be standardized when usage has been refined in Phase II of
-    // GFE interoperability modifications.
-    private static final String HAZARD_ATTRIBUTE_INTEROPERABILITY = "interoperability";
 
     /*
      * The messenger for displaying questions and warnings to the user and
@@ -519,7 +516,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if ((event.getState() == null
                 || event.getState() == HazardState.PENDING || event.getState() == HazardState.POTENTIAL)
                 && event.getHazardAttributes().containsKey(
-                        HAZARD_ATTRIBUTE_INTEROPERABILITY) == false) {
+                        HazardConstants.GFE_INTEROPERABILITY) == false) {
 
             /*
              * Can only add geometry to selected if the hazard type is empty.

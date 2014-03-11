@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.hazards.gfe;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -87,6 +88,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Feb 20, 2014 2999       bkowal       Additional Interoperability improvements.
  *                                      Handle the cases when multiple hazards
  *                                      are associated with a single gfe grid.
+ * Mar 03, 2014 3034       bkowal       Use the gfe interoperability constant.
+ *                                      Handle hazard history lists > 1 hazard correctly.
  * 
  * </pre>
  * 
@@ -121,10 +124,6 @@ public class HazardEventHandler {
 
     private static final Pattern PARM_OPERATIONAL_PATTERN = Pattern
             .compile(PARM_OPERATIONAL_FCST);
-
-    // TODO: will be standardized when usage has been refined in Phase II of
-    // GFE interoperability modifications.
-    private static final String HAZARD_ATTRIBUTE_INTEROPERABILITY = "interoperability";
 
     /**
      * Constructor.
@@ -179,20 +178,7 @@ public class HazardEventHandler {
                     + hazardEvent.getSignificance();
             boolean convert = GridValidator.needsGridConversion(phenSig);
 
-            /*
-             * Determine if this is a hazard that we have just updated due to a
-             * grid update and/or creation. This will ensure that we do not
-             * attempt to create grids and/or update hazards more times than we
-             * need to.
-             */
-            if (convert
-                    && hazardEvent.getHazardAttributes().containsKey(
-                            HAZARD_ATTRIBUTE_INTEROPERABILITY) == false) {
-                /*
-                 * if the hazard includes the INTEROPERABILITY attribute, it was
-                 * created from a grid; so, the grid that would normally be
-                 * created already exists.
-                 */
+            if (convert) {
                 createGrid(hazardEvent, hazardEvent.getStartTime());
             }
             break;
@@ -348,24 +334,34 @@ public class HazardEventHandler {
                 } else {
                     Geometry hazardGeometry = null;
 
-                    // update the hazard that was retrieved.
-                    int hazardsCount = events.entrySet().size();
-                    if (hazardsCount == 1) {
-                        IHazardEvent hazardEvent = events.entrySet().iterator()
-                                .next().getValue().get(0);
-                        hazardGeometry = hazardEvent.getGeometry();
-                        updateCandidates.add(hazardEvent);
+                    List<IHazardEvent> hazardEventsToIterateOver = null;
+
+                    /*
+                     * determine how many hazards need to be reviewed.
+                     */
+                    int hazardsListCount = events.entrySet().size();
+                    if (hazardsListCount == 1) {
+                        hazardEventsToIterateOver = events.entrySet()
+                                .iterator().next().getValue().getEvents();
                     } else {
+                        hazardEventsToIterateOver = new LinkedList<>();
                         for (String hazardEventID : events.keySet()) {
-                            IHazardEvent hazardEvent = events
-                                    .get(hazardEventID).get(0);
-                            if (hazardGeometry == null) {
-                                hazardGeometry = hazardEvent.getGeometry();
-                            } else {
-                                hazardGeometry = hazardGeometry
-                                        .union(hazardEvent.getGeometry());
-                            }
-                            updateCandidates.add(hazardEvent);
+                            hazardEventsToIterateOver.addAll(events.get(
+                                    hazardEventID).getEvents());
+                        }
+                    }
+
+                    /*
+                     * Iterate through a full & complete list of the hazards
+                     * that were found.
+                     */
+                    for (IHazardEvent iterateHazardEvent : hazardEventsToIterateOver) {
+                        updateCandidates.add(iterateHazardEvent);
+                        if (hazardGeometry == null) {
+                            hazardGeometry = iterateHazardEvent.getGeometry();
+                        } else {
+                            hazardGeometry = hazardGeometry
+                                    .union(iterateHazardEvent.getGeometry());
                         }
                     }
 
@@ -378,8 +374,10 @@ public class HazardEventHandler {
                                 .translateHazardPolygonToGfe(gridLocation,
                                         hazardGeometry);
                     } catch (TransformException e) {
-                        statusHandler.handle(Priority.PROBLEM,
-                                e.getLocalizedMessage(), e);
+                        statusHandler
+                                .handle(Priority.PROBLEM,
+                                        "Failed to convert the hazard polygon to a GFE polygon!",
+                                        e);
                     }
                 }
 
@@ -522,7 +520,8 @@ public class HazardEventHandler {
         // additional metadata will be stored in this field in the
         // next
         // phase of GFE interoperability changes.
-        hazardEvent.addHazardAttribute(HAZARD_ATTRIBUTE_INTEROPERABILITY, true);
+        hazardEvent.addHazardAttribute(HazardConstants.GFE_INTEROPERABILITY,
+                true);
 
         return hazardEvent;
     }
