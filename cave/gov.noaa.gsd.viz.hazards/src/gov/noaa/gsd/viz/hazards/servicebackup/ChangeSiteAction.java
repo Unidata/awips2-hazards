@@ -26,9 +26,6 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.xml.bind.JAXB;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -45,7 +42,6 @@ import com.raytheon.uf.common.localization.PathManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 
 /**
@@ -152,15 +148,6 @@ public class ChangeSiteAction extends Action {
                 file = files.get(LocalizationLevel.BASE);
             }
 
-            try {
-                JAXBContext context = JAXBContext
-                        .newInstance(BackupSites.class);
-                Unmarshaller unmarshaller = context.createUnmarshaller();
-                unmarshaller.unmarshal(file.getFile());
-            } catch (JAXBException e) {
-                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
-                        e);
-            }
             BackupSites bSites = JAXB.unmarshal(file.getFile(),
                     BackupSites.class);
             String site = LocalizationManager

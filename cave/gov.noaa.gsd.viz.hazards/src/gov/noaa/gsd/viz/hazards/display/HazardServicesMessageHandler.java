@@ -1053,6 +1053,7 @@ public final class HazardServicesMessageHandler implements
     }
 
     public void updateSite(String site) {
+        sessionConfigurationManager.getSettings().getVisibleSites().add(site);
         appBuilder.notifyModelChanged(EnumSet.of(HazardConstants.Element.SITE));
     }
 

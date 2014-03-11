@@ -19,8 +19,17 @@
  **/
 package com.raytheon.uf.edex.hazards.handlers;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardRetrieveRequestResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
 
@@ -44,7 +53,9 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
 public class HazardEventIdHandler implements
         IRequestHandler<HazardEventIdRequest> {
 
-    private static final String LOCK_NAME = "Hazard Services Event Id";
+    private static final String OPERATIONAL_LOCK_NAME = "Operational Hazard Services Event Id";
+
+    private static final String PRACTICE_LOCK_NAME = "Practice Hazard Services Event Id";
 
     /**
      * 
@@ -61,19 +72,42 @@ public class HazardEventIdHandler implements
      */
     @Override
     public Object handleRequest(HazardEventIdRequest request) throws Exception {
-        ClusterTask task = ClusterLockUtils.lookupLock(LOCK_NAME,
+        // have different numbering depending on practice/operational hazards
+        String lockName = request.isPractice() ? PRACTICE_LOCK_NAME
+                : OPERATIONAL_LOCK_NAME;
+        ClusterTask task = ClusterLockUtils.lookupLock(lockName,
                 request.getSiteId());
 
-        task = ClusterLockUtils.lock(LOCK_NAME, request.getSiteId(),
+        task = ClusterLockUtils.lock(lockName, request.getSiteId(),
                 task.getExtraInfo(), 15, true);
         Integer eventId = 0;
         if (task.getExtraInfo() == null || task.getExtraInfo().isEmpty()) {
-            // starting at 1
-            eventId = 1;
+            HazardRetrieveRequest req = new HazardRetrieveRequest();
+            HazardQueryBuilder builder = new HazardQueryBuilder();
+            builder.addKey(HazardConstants.SITE_ID, request.getSiteId());
+            req.setFilters(builder.getQuery());
+            HazardRetrieveRequestResponse response = (HazardRetrieveRequestResponse) RequestRouter
+                    .route(req);
+            if (response.getEvents().isEmpty()) {
+                // starting at 1 if none exists in the database
+                eventId = 1;
+            } else {
+                // we don't find the site in the cluster_task table, but we have
+                // some in the hazards table, we want to make sure we start from
+                // that value
+                List<String> list = new ArrayList<String>(response.getEvents()
+                        .keySet());
+                List<Integer> ints = new ArrayList<Integer>();
+                for (String l : list) {
+                    ints.add(Integer.valueOf(l));
+                }
+                Collections.sort(ints);
+                eventId = ints.get(ints.size() - 1);
+            }
         } else {
             eventId = Integer.parseInt(task.getExtraInfo()) + 1;
         }
-        ClusterLockUtils.updateExtraInfo(LOCK_NAME, request.getSiteId(),
+        ClusterLockUtils.updateExtraInfo(lockName, request.getSiteId(),
                 String.valueOf(eventId));
         ClusterLockUtils.unlock(task, false);
         return eventId;

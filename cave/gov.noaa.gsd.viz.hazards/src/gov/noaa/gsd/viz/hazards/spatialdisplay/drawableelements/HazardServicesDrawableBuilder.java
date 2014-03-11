@@ -37,13 +37,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -629,8 +627,7 @@ public class HazardServicesDrawableBuilder {
             String mapLabelParameter = configManager.getHazardTypes()
                     .get(hazardType).getHazardHatchLabel();
 
-            String cwa = LocalizationManager
-                    .getContextName(LocalizationLevel.SITE);
+            String cwa = configManager.getSiteID();
 
             Set<IGeometryData> hazardArea = HatchingUtilities
                     .buildHatchedAreaForEvent(mapDBtableName,

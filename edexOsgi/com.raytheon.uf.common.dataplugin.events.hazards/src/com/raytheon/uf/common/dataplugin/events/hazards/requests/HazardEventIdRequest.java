@@ -45,6 +45,9 @@ public class HazardEventIdRequest implements IServerRequest {
     @DynamicSerializeElement
     private String siteId;
 
+    @DynamicSerializeElement
+    private boolean practice;
+
     /**
      * Default constructor
      */
@@ -64,5 +67,20 @@ public class HazardEventIdRequest implements IServerRequest {
      */
     public String getSiteId() {
         return siteId;
+    }
+
+    /**
+     * @param practice
+     *            the practice to set
+     */
+    public void setPractice(boolean practice) {
+        this.practice = practice;
+    }
+
+    /**
+     * @return the practice
+     */
+    public boolean isPractice() {
+        return practice;
     }
 }
