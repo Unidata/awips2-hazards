@@ -71,7 +71,10 @@ public class WarningHazardsCreator {
                 AbstractWarningRecord record = null;
                 if (ob instanceof AbstractWarningRecord) {
                     record = (AbstractWarningRecord) ob;
-                    if (record.getGeometry() == null) {
+                    // throw out no geometry, no phensig too
+                    if (record.getGeometry() == null
+                            || record.getPhensig() == null
+                            || record.getPhensig().isEmpty()) {
                         continue;
                     }
                 } else {
