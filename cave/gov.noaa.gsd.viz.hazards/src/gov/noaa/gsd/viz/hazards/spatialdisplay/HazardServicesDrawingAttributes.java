@@ -33,6 +33,7 @@ import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * This is the base class for most of the Hazard Services renderables.
@@ -107,7 +108,17 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
             IHazardEvent hazardEvent) {
         Geometry geometry = hazardEvent.getGeometry().getGeometryN(shapeNum);
 
-        return Lists.newArrayList(geometry.getCoordinates());
+        List<Coordinate> coordinateList = null;
+
+        if (geometry instanceof Polygon) {
+            coordinateList = Lists.newArrayList(((Polygon) geometry)
+                    .getExteriorRing().getCoordinates());
+
+        } else {
+            coordinateList = Lists.newArrayList(geometry.getCoordinates());
+        }
+
+        return coordinateList;
     }
 
     public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
@@ -165,6 +176,7 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         return lineWidth;
     }
 
+    @Override
     public void setLineWidth(float lineWidth) {
         this.lineWidth = lineWidth;
     }

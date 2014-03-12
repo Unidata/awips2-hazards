@@ -991,26 +991,26 @@ class Product(ProductTemplate.Product):
         @return newHazardEvents -- list of augmented hazard events with 
             entries added for the shape type and site ID
         '''
+        #
+        # TODO - This logic needs to be improved or replaced 
+        # to reflect the fact that multiple geometries of different shape types may be
+        # associated with a single hazard event
         newHazardEvents = []
         for hazardEvent in hazardEvents:
             # VTEC processing expects siteID4 e.g. KOAX instead of OAX
             hazardEvent.set('siteID4', str(self._fullStationID))
 
             geometryCollection = hazardEvent.getGeometry()
-            geometryList = []
             
             for geometry in geometryCollection:
             
                 geometryType = geometry.geom_type
             
                 if geometryType in [HazardConstants.SHAPELY_POLYGON, HazardConstants.SHAPELY_MULTIPOLYGON]:
-                    geometryList.extend(self._extractPolygons(hazardEvent))
                     hazardEvent.set('shapeType', 'polygon')
                 elif geometryType == HazardConstants.SHAPELY_LINE:
-                    geometryList.append(list(geometry.coords))
                     hazardEvent.set('shapeType', 'line')
                 else:
-                    geometryList.append(list(geometry.coords))
                     hazardEvent.set('shapeType', 'point')
 
                     # Ensure the event has a pointID

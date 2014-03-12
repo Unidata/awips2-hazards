@@ -112,6 +112,17 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      */
     private volatile Boolean modified = false;
 
+    /*
+     * Flag indicating whether or not the hazard geometry has been clipped.
+     */
+    private volatile Boolean clipped = false;
+
+    /*
+     * Flag indicating whether or not the hazard geometry has had its points
+     * reduced.
+     */
+    private volatile Boolean reduced = false;
+
     @Override
     public Date getStartTime() {
         return delegate.getStartTime();
@@ -410,6 +421,14 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             if (eventManager.canChangeGeometry(this)) {
                 pushToStack("setGeometry", Geometry.class, getGeometry());
                 delegate.setGeometry(geom);
+                /*
+                 * Reset the clipped and point reduction flags when the geometry
+                 * changes. This indicates that clipping and point reduction may
+                 * need to be redone on this event.
+                 */
+                this.clipped = false;
+                this.reduced = false;
+
                 if (notify) {
                     eventManager
                             .hazardEventModified(new SessionEventGeometryModified(
@@ -570,6 +589,57 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     public void setModified(boolean modified) {
         this.modified = modified;
+    }
+
+    /**
+     * Returns the clipped state of the geometry associated with this hazard.
+     * 
+     * @param
+     * @return true - the geometry associated with this hazard has been clipped
+     *         false - the geometry associated with this hazard has not been
+     *         clipped
+     */
+    public boolean isClipped() {
+        return clipped;
+    }
+
+    /**
+     * Sets the clipped state of the geometry associated with this hazard event.
+     * 
+     * @param isClipped
+     *            true - the geometry has been clipped false - the geometry has
+     *            not been clipped or the geometry was clipped but has now been
+     *            modified and needs to be reclipped.
+     * @return
+     */
+    public void setClipped(boolean isClipped) {
+        clipped = isClipped;
+    }
+
+    /**
+     * Returns the reduced state of the geometry associated with this hazard.
+     * 
+     * @param
+     * @return true - the geometry associated with this hazard has had point
+     *         reduction applied to it. false - the geometry associated with
+     *         this hazard has not had point reduction applied to it
+     */
+    public boolean isReduced() {
+        return reduced;
+    }
+
+    /**
+     * Sets the reduced state of the geometry associated with this hazard event.
+     * 
+     * @param isReduced
+     *            true - the geometry has had point reduction applied to it.
+     *            false - the geometry has not had point reduction applied to it
+     *            or the geometry was reduced but has now been modified and
+     *            needs to have point reduction reapplied to it.
+     * @return
+     */
+    public void setReduced(boolean isReduced) {
+        reduced = isReduced;
     }
 
 }

@@ -252,8 +252,10 @@ public class HazardServicesDrawableBuilder {
                     .getWorkbench().getActiveWorkbenchWindow().getShell(),
                     sessionManager);
 
-            List<Coordinate> points = Lists.newArrayList(hazardHatchArea
-                    .getCoordinates());
+            List<Coordinate> points = Lists
+                    .newArrayList(((Polygon) hazardHatchArea).getExteriorRing()
+                            .getCoordinates());
+
             drawingAttributes.setLineWidth(1);
             drawingAttributes.setColors(drawingAttributes
                     .buildHazardEventColors(hazardEvent,
@@ -305,22 +307,11 @@ public class HazardServicesDrawableBuilder {
     public AbstractDrawableComponent buildText(Geometry geometry, String id,
             Layer activeLayer, GeometryFactory geoFactory) {
         Point centerPoint;
-        AbstractDrawableComponent drawableComponent = null;
-        Coordinate[] coords = geometry.getCoordinates();
 
-        if (coords.length > 1) {
-            Coordinate[] fullyEnclosedCoords = new Coordinate[coords.length + 1];
-            System.arraycopy(coords, 0, fullyEnclosedCoords, 0, coords.length);
-            fullyEnclosedCoords[coords.length] = coords[0];
-            LineString ls = geoFactory.createLineString(fullyEnclosedCoords);
-            centerPoint = ls.getCentroid();
-        } else {
-            centerPoint = geoFactory.createPoint(coords[0]);
-        }
-
-        drawableComponent = new HazardServicesText(drawingAttributes,
-                drawingAttributes.getString()[0], TEXT, centerPoint,
-                activeLayer, id);
+        centerPoint = geometry.getCentroid();
+        AbstractDrawableComponent drawableComponent = new HazardServicesText(
+                drawingAttributes, drawingAttributes.getString()[0], TEXT,
+                centerPoint, activeLayer, id);
 
         return drawableComponent;
     }
@@ -369,11 +360,10 @@ public class HazardServicesDrawableBuilder {
                     drawable.setMovable(isEventAreaEditable);
 
                 }
-
-                addTextComponent(toolLayer, hazardEvent.getEventID(), result,
-                        drawableComponent);
-
             }
+
+            addTextComponentAtGeometryCenterPoint(toolLayer, result,
+                    hazardEvent);
 
         }
         return result;
@@ -704,6 +694,35 @@ public class HazardServicesDrawableBuilder {
                     + geometryClass);
         }
         return result;
+    }
+
+    /**
+     * Creates a text label at the centroid of a collection of geometries. This
+     * allows several geometries associated with one hazard event to share a
+     * single label. This helps to reduce the screen clutter which can result
+     * when a hazard event has many geometries associated with it.
+     * 
+     * @param toolLayer
+     *            The viz resource to draw to.
+     * @param drawableComponents
+     *            List of drawables to add this text label to.
+     * @param hazardEvent
+     *            The hazard event being labeled
+     * 
+     * @return
+     */
+    public void addTextComponentAtGeometryCenterPoint(ToolLayer toolLayer,
+            List<AbstractDrawableComponent> drawableComponents,
+            IHazardEvent hazardEvent) {
+        if (drawingAttributes.getString() != null
+                && drawingAttributes.getString().length > 0) {
+
+            AbstractDrawableComponent text = buildText(
+                    hazardEvent.getGeometry(), hazardEvent.getEventID(),
+                    toolLayer.getActiveLayer(), toolLayer.getGeoFactory());
+            toolLayer.addElement(text);
+            drawableComponents.add(text);
+        }
     }
 
     public void addTextComponent(ToolLayer toolLayer, String id,

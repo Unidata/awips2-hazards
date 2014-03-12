@@ -302,7 +302,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
          * indicates "until further notice".
          */
         if (Boolean.TRUE.equals(value)) {
-            return new Date(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+            return new Date(
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
         }
 
         /*
@@ -1330,45 +1331,54 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         for (IHazardEvent selectedEvent : selectedEvents) {
 
-            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                    .getHazardType());
+            if (!((ObservedHazardEvent) selectedEvent).isClipped()) {
+                HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                        .getHazardType());
 
-            if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
-                    .getState() != HazardState.ISSUED)
-                    || (selectedEvent.getState() == HazardState.ISSUED
-                            && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
-                                .isModified())) {
+                if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
+                        .getState() != HazardState.ISSUED)
+                        || (selectedEvent.getState() == HazardState.ISSUED
+                                && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
+                                    .isModified())) {
 
-                Set<IGeometryData> geoDataSet = HatchingUtilities
-                        .getClippedMapGeometries(
-                                hazardType.getHazardClipArea(), null, cwa,
-                                selectedEvent);
+                    Set<IGeometryData> geoDataSet = HatchingUtilities
+                            .getClippedMapGeometries(
+                                    hazardType.getHazardClipArea(), null, cwa,
+                                    selectedEvent);
 
-                List<Geometry> geometryList = Lists.newArrayList();
+                    List<Geometry> geometryList = Lists.newArrayList();
 
-                for (IGeometryData geoData : geoDataSet) {
-                    for (int i = 0; i < geoData.getGeometry()
-                            .getNumGeometries(); ++i) {
-                        geometryList.add(geoData.getGeometry().getGeometryN(i));
+                    for (IGeometryData geoData : geoDataSet) {
+                        for (int i = 0; i < geoData.getGeometry()
+                                .getNumGeometries(); ++i) {
+                            Geometry geometry = geoData.getGeometry()
+                                    .getGeometryN(i);
+
+                            if (!geometry.isEmpty()) {
+                                geometryList.add(geometry);
+                            }
+                        }
                     }
-                }
 
-                if (geometryList.isEmpty()) {
-                    StringBuffer warningMessage = new StringBuffer();
-                    warningMessage.append("Event " + selectedEvent.getEventID()
-                            + " ");
-                    warningMessage.append("is outside of the forecast area.\n");
-                    warningMessage.append("Product generation halted.");
-                    messenger.getWarner().warnUser("Clip Error",
-                            warningMessage.toString());
-                    success = false;
-                    break;
-                }
+                    if (geometryList.isEmpty()) {
+                        StringBuffer warningMessage = new StringBuffer();
+                        warningMessage.append("Event "
+                                + selectedEvent.getEventID() + " ");
+                        warningMessage
+                                .append("is outside of the forecast area.\n");
+                        warningMessage.append("Product generation halted.");
+                        messenger.getWarner().warnUser("Clip Error",
+                                warningMessage.toString());
+                        success = false;
+                        break;
+                    }
 
-                Geometry geoCollection = geoFactory
-                        .createGeometryCollection(geometryList
-                                .toArray(new Geometry[0]));
-                selectedEvent.setGeometry(geoCollection);
+                    Geometry geoCollection = geoFactory
+                            .createGeometryCollection(geometryList
+                                    .toArray(new Geometry[0]));
+                    selectedEvent.setGeometry(geoCollection);
+                    ((ObservedHazardEvent) selectedEvent).setClipped(true);
+                }
             }
         }
 
@@ -1383,64 +1393,79 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         for (IHazardEvent selectedEvent : selectedEvents) {
 
-            HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                    .getHazardType());
+            if (!((ObservedHazardEvent) selectedEvent).isReduced()) {
 
-            if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
-                    .getState() != HazardState.ISSUED)
-                    || (selectedEvent.getState() == HazardState.ISSUED
-                            && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
-                                .isModified())) {
+                boolean clippedState = ((ObservedHazardEvent) selectedEvent)
+                        .isClipped();
+                HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
+                        .getHazardType());
 
-                /*
-                 * Test if point reduction is necessary...
-                 */
-                int pointLimit = hazardType.getHazardPointLimit();
+                if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
+                        .getState() != HazardState.ISSUED)
+                        || (selectedEvent.getState() == HazardState.ISSUED
+                                && hazardType.isAllowAreaChange() && ((ObservedHazardEvent) selectedEvent)
+                                    .isModified())) {
 
-                if (pointLimit > 0) {
-
-                    List<Geometry> geometryList = Lists.newArrayList();
-
-                    /**
-                     * TODO: Eventually we want to share the same logic WarnGen
-                     * uses to reduce points. This is not accessible right not,
-                     * at least without creating a dependency between Hazard
-                     * Services and WarnGen.
+                    /*
+                     * Test if point reduction is necessary...
                      */
-                    Geometry geometryCollection = selectedEvent.getGeometry();
+                    int pointLimit = hazardType.getHazardPointLimit();
 
-                    for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
+                    if (pointLimit > 0) {
 
-                        Geometry geometry = geometryCollection.getGeometryN(i);
+                        List<Geometry> geometryList = Lists.newArrayList();
 
-                        if (geometry.getNumPoints() > pointLimit) {
+                        /**
+                         * TODO: Eventually we want to share the same logic
+                         * WarnGen uses to reduce points. This is not accessible
+                         * right not, at least without creating a dependency
+                         * between Hazard Services and WarnGen.
+                         */
+                        Geometry geometryCollection = selectedEvent
+                                .getGeometry();
 
-                            double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
+                        for (int i = 0; i < geometryCollection
+                                .getNumGeometries(); ++i) {
 
-                            DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
-                                    geometry);
-                            Geometry newGeometry = null;
+                            Geometry geometry = geometryCollection
+                                    .getGeometryN(i);
 
-                            do {
-                                simplifier
-                                        .setDistanceTolerance(distanceTolerance);
-                                newGeometry = simplifier.getResultGeometry();
-                                distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
-                            } while (newGeometry.getNumPoints() > pointLimit);
+                            if (geometry.getNumPoints() > pointLimit) {
 
-                            geometryList.add(newGeometry);
-                        } else {
-                            geometryList.add(geometry);
+                                double distanceTolerance = DEFAULT_DISTANCE_TOLERANCE;
+
+                                DouglasPeuckerSimplifier simplifier = new DouglasPeuckerSimplifier(
+                                        geometry);
+                                Geometry newGeometry = null;
+
+                                do {
+                                    simplifier
+                                            .setDistanceTolerance(distanceTolerance);
+                                    newGeometry = simplifier
+                                            .getResultGeometry();
+                                    distanceTolerance += DEFAULT_DISTANCE_TOLERANCE_INCREMENT;
+                                } while (newGeometry.getNumPoints() > pointLimit);
+
+                                if (!newGeometry.isEmpty()) {
+                                    geometryList.add(newGeometry);
+                                }
+
+                            } else {
+                                geometryList.add(geometry);
+                            }
                         }
+
+                        Geometry geoCollection = geoFactory
+                                .createGeometryCollection(geometryList
+                                        .toArray(new Geometry[0]));
+                        selectedEvent.setGeometry(geoCollection);
+
+                        ((ObservedHazardEvent) selectedEvent).setReduced(true);
+                        ((ObservedHazardEvent) selectedEvent)
+                                .setClipped(clippedState);
                     }
 
-                    Geometry geoCollection = geoFactory
-                            .createGeometryCollection(geometryList
-                                    .toArray(new Geometry[0]));
-                    selectedEvent.setGeometry(geoCollection);
-
                 }
-
             }
         }
     }
