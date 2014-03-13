@@ -112,11 +112,6 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
             return true;
         }
 
-        @Override
-        public boolean handleMouseMove(int x, int y) {
-            return true;
-        }
-
         // Needed to override this to prevent
         // it from being passed on to CAVE panning routines.
         @Override

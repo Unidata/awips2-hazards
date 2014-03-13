@@ -249,7 +249,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
             // Set the flag to the clicking selection status??????????????
             // isSelectByArea = false;
             points.clear();
-            return true;
+            return false;
 
         }
 

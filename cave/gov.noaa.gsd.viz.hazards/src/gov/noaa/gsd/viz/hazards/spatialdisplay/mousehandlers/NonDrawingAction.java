@@ -49,10 +49,6 @@ import com.vividsolutions.jts.geom.Point;
  */
 public class NonDrawingAction extends AbstractMouseHandler {
 
-    public static final String pgenType = "TornadoWarning";
-
-    public static final String pgenCategory = "MET";
-
     /**
      * Construct a standard instance.
      */

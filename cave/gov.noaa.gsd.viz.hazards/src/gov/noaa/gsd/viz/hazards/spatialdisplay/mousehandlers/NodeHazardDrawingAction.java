@@ -157,11 +157,6 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         private final DrawableElementFactory def = new DrawableElementFactory();
 
         @Override
-        public boolean handleMouseDown(int x, int y, int mouseButton) {
-            return false;
-        }
-
-        @Override
         public boolean handleMouseMove(int x, int y) {
             AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
                     .getInstance().getActiveEditor());
@@ -190,7 +185,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                 getDrawingLayer().issueRefresh();
             }
 
-            return true;
+            return false;
         }
 
         // Needed to override this to prevent
