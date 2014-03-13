@@ -110,12 +110,14 @@ public class HazardEventUtilities {
 
     public static List<String> parseEtns(String etns) {
         List<String> parsed = new ArrayList<String>();
-        if (etns.contains("[")) {
-            etns = etns.replaceAll("\\[|\\]", "");
-            String[] split = etns.split(",");
-            parsed = Arrays.asList(split);
-        } else if (etns.isEmpty() == false) {
-            parsed.add(etns);
+        if (etns != null && etns.isEmpty() == false) {
+            if (etns.contains("[")) {
+                etns = etns.replaceAll("\\[|\\]", "");
+                String[] split = etns.split(",");
+                parsed = Arrays.asList(split);
+            } else if (etns.isEmpty() == false) {
+                parsed.add(etns);
+            }
         }
         return parsed;
     }
