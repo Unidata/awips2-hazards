@@ -110,12 +110,14 @@ public class HazardEventUtilities {
 
     public static List<String> parseEtns(String etns) {
         List<String> parsed = new ArrayList<String>();
-        if (etns.contains("[")) {
-            etns = etns.replaceAll("\\[|\\]", "");
-            String[] split = etns.split(",");
-            parsed = Arrays.asList(split);
-        } else if (etns.isEmpty() == false) {
-            parsed.add(etns);
+        if (etns != null && etns.isEmpty() == false) {
+            if (etns.contains("[")) {
+                etns = etns.replaceAll("\\[|\\]", "");
+                String[] split = etns.split(",");
+                parsed = Arrays.asList(split);
+            } else if (etns.isEmpty() == false) {
+                parsed.add(etns);
+            }
         }
         return parsed;
     }
@@ -131,8 +133,7 @@ public class HazardEventUtilities {
 
     public static boolean isDuplicate(IHazardEventManager manager,
             IHazardEvent event) {
-        Map<String, HazardHistoryList> hazards = queryForEvents(manager,
-                event);
+        Map<String, HazardHistoryList> hazards = queryForEvents(manager, event);
         boolean isDup = false;
         for (HazardHistoryList list : hazards.values()) {
             Iterator<IHazardEvent> iter = list.iterator();
@@ -280,9 +281,13 @@ public class HazardEventUtilities {
      */
     private static boolean compareEtns(List<String> etns1, List<String> etns2) {
         for (String etn1 : etns1) {
-            for (String etn2 : etns2) {
-                if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
-                    return false;
+            if (etn1 != null && etn1.isEmpty() == false) {
+                for (String etn2 : etns2) {
+                    if (etn2 != null && etn2.isEmpty() == false) {
+                        if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
+                            return false;
+                        }
+                    }
                 }
             }
         }

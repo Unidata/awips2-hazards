@@ -83,6 +83,7 @@ public class HazardEventIdHandler implements
         Integer eventId = 0;
         if (task.getExtraInfo() == null || task.getExtraInfo().isEmpty()) {
             HazardRetrieveRequest req = new HazardRetrieveRequest();
+            req.setPractice(request.isPractice());
             HazardQueryBuilder builder = new HazardQueryBuilder();
             builder.addKey(HazardConstants.SITE_ID, request.getSiteId());
             req.setFilters(builder.getQuery());
