@@ -41,10 +41,6 @@ public class DragDropAction extends NonDrawingAction {
 
     private String toolName = null;
 
-    public static final String pgenType = "TornadoWarning";
-
-    public static final String pgenCategory = "MET";
-
     @Override
     protected IInputHandler createMouseHandler() {
         return new MoveHandler();

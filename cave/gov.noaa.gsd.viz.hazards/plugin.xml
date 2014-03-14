@@ -27,9 +27,15 @@
                   label="Start Hazard Services"
                   style="push">
                <visibleWhen>
-                  <reference
-                        definitionId="com.raytheon.uf.viz.d2d.ui.inD2DActionSet">
-                  </reference>
+	               <and>
+	                  <reference
+	                        definitionId="com.raytheon.uf.viz.d2d.ui.inD2DActionSet">
+	                  </reference> 
+	                  <test
+	                     args="Practice"
+	                     property="com.raytheon.viz.core.mode.CAVEMode">
+	               	  </test>
+	               </and>
                </visibleWhen>
             </command>
             <command
@@ -38,9 +44,15 @@
                   label="Start Hazard Services"
                   style="push">
                <visibleWhen>
-                  <reference
-                        definitionId="com.raytheon.viz.gfe.inGFEActionSet">
-                  </reference>
+                  <and>
+                     <reference
+                           definitionId="com.raytheon.viz.gfe.inGFEActionSet">
+                     </reference>
+                     <test
+                        args="Practice"
+                        property="com.raytheon.viz.core.mode.CAVEMode">
+               	     </test>
+                  </and>
                </visibleWhen>
             </command>
             <command
@@ -49,9 +61,15 @@
                   label="Start Hazard Services"
                   style="push">
                <visibleWhen>
-                  <reference
-                        definitionId="com.raytheon.viz.hydro.inHydroActionSet">
-                  </reference>
+	               <and>
+	                  <reference
+	                        definitionId="com.raytheon.viz.hydro.inHydroActionSet">
+	                  </reference>
+	                  <test
+	                        args="Practice"
+	                        property="com.raytheon.viz.core.mode.CAVEMode">
+	               	  </test>
+	               </and>
                </visibleWhen>
             </command>
             <command
@@ -60,13 +78,18 @@
                   label="Start Hazard Services"
                   style="push">
                <visibleWhen>
-                  <reference
-                        definitionId="com.raytheon.viz.inMPEActionSet">
-                  </reference>
+	               <and>
+		               <reference
+		                     definitionId="com.raytheon.viz.inMPEActionSet">
+		               </reference>
+		               <test
+			                 args="Practice"
+			                 property="com.raytheon.viz.core.mode.CAVEMode">
+			           </test>
+	               </and>
                </visibleWhen>
             </command>
          </toolbar>
-        
       </menuContribution>
    </extension>
    <extension

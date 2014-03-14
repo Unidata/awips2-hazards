@@ -65,10 +65,6 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
 
     private final ISessionManager sessionManager;
 
-    public static final String pgenType = "TornadoWarning";
-
-    public static final String pgenCategory = "MET";
-
     public RectangleMultiSelectionAction(ISessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
