@@ -1704,7 +1704,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             primaryParamValues.get(visibleHazardIndex).put(identifier, state);
 
             String fullType = getType();
-            if (fullType != null) {
+            if (fullType.length() > 0) {
                 setFallBelowEditability(
                         megawidgetsForIdsForTypes.get(fullType),
                         primaryParamValues.get(visibleHazardIndex));
@@ -2547,10 +2547,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
     }
 
+    /**
+     * Get the type of the topmost hazard event in the tab folder, if any.
+     * 
+     * @return Full type of the topmost hazard event in the tab folder, or an
+     *         empty string if there are no hazards showing or the topmost
+     *         hazard has no type.
+     */
     private String getType() {
+        if (primaryParamValues.size() <= visibleHazardIndex) {
+            return "";
+        }
         String type = (String) primaryParamValues.get(visibleHazardIndex).get(
                 HAZARD_EVENT_FULL_TYPE);
-        return type;
+        return (type == null ? "" : type);
     }
 
     /**
@@ -2618,12 +2628,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private boolean showMetadataForType() {
 
         String type = getType();
-        // If no type has been chosen, do nothing
-        if (type == null) {
-            statusHandler.info("HazardDetailViewPart.showMetadataForType(): "
-                    + "Problem: switching to null hazard type, ignoring.");
-            return false;
-        }
 
         setButtonsEnabledState();
 
