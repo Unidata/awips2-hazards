@@ -38,6 +38,7 @@ import java.util.Map;
  * Aug 20, 2013 1360       blawrenc     Added event set.
  * Sep 19, 2013 2046       mnash        Update for product generation.
  * Nov  5, 2013 2266       jsanchez     Created getter/setters for eventSet. Added editableEntries.
+ * Feb 18, 2013 2702       jsanchez     Used Serializable.
  * 
  * </pre>
  * 
@@ -49,7 +50,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     private final String productID;
 
     /** Resulting products generated */
-    private Map<String, List<Object>> entries = new LinkedHashMap<String, List<Object>>();
+    private Map<String, List<Serializable>> entries = new LinkedHashMap<String, List<Serializable>>();
 
     /* Map of editable entries - mainly used for GUI highlighting */
     private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
@@ -69,16 +70,16 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     }
 
     @Override
-    public Map<String, List<Object>> getEntries() {
+    public Map<String, List<Serializable>> getEntries() {
         return entries;
     }
 
     @Override
-    public void setEntries(Map<String, List<Object>> entries) {
+    public void setEntries(Map<String, List<Serializable>> entries) {
         this.entries = entries;
     }
 
-    public void addEntry(String key, List<Object> entry) {
+    public void addEntry(String key, List<Serializable> entry) {
         this.entries.put(key, entry);
     }
 
@@ -100,7 +101,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     }
 
     @Override
-    public List<Object> getEntry(String format) {
+    public List<Serializable> getEntry(String format) {
         if (entries != null) {
             return entries.get(format);
         }
@@ -127,10 +128,9 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     @Override
     public String getText(String key) {
         StringBuilder builder = new StringBuilder();
-        for (Object entry : entries.get(key)) {
+        for (Serializable entry : entries.get(key)) {
             builder.append(entry.toString());
         }
         return builder.toString();
     }
-
 }

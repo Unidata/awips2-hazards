@@ -7,10 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import java.util.List;
-
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+
+import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
@@ -27,6 +27,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Sep 19, 2013 2046       mnash        Update for product generation.
  * Jan  7, 2013 2367       jsanchez     Used GeneratedProductList.
  * Feb 7, 2014  2890       bkowal      Product Generation JSON refactor.
+ * Feb 18, 2014 2702       jsanchez    Removed unused method.
  * 
  * </pre>
  * 
@@ -55,8 +56,6 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return Generated products list.
      */
-    public GeneratedProductList getGeneratedProductList();
-
     public List<GeneratedProductList> getGeneratedProductsList();
 
     /**

@@ -781,6 +781,12 @@ public final class HazardConstants {
 
     public static final String ETN = "eventTrackingNumber";
 
+    public static final String UGC_CODES = "ugcCodes";
+
+    public static final String UGC_CODE = "ugcCode";
+
+    public static final String TEXT = "text";
+
     /**
      * Drag drop dot identifier.
      */

@@ -1,31 +1,24 @@
 package com.raytheon.uf.viz.productgen.dialog;
 
-import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
-import gov.noaa.gsd.viz.megawidgets.IParametersEditorListener;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.ParametersEditorFactory;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.CaretEvent;
+import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.events.FocusEvent;
-import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Point;
@@ -34,25 +27,24 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.productgen.dialog.data.AbstractProductGeneratorData;
+import com.raytheon.uf.viz.productgen.dialog.data.SegmentData;
 import com.raytheon.uf.viz.productgen.dialog.formats.AbstractFormatTab;
 import com.raytheon.uf.viz.productgen.dialog.formats.TextFormatTab;
+import com.raytheon.uf.viz.productgen.dialog.listener.IssueListener;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -67,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Aug 13, 2013            mnash     Initial creation
  * Nov  5, 2013 2266       jsanchez  Moved ProductUtil to individual formats. Add a call to format again.
+ * Feb 18, 2014 2702       jsanchez   Implemented individual CAP segments and the save method. Cleaned up along with the refactor.
  * </pre>
  * 
  * @author mnash
@@ -83,25 +76,21 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     private static final String ISSUE_LABEL = "Issue";
 
-    private static final String GENERATE_LABEL = "Generate";
-
     private static final String SAVE_LABEL = "Save";
 
     private static final String DISMSS_LABEL = "Dismiss";
 
-    private static final String SEGMENT_COMBO_LABEL = "Segments:";
-
-    private static final String UNFORMATTED_LABEL = "Unformatted";
-
-    private static final String FORMATTED_LABEL = "Formatted";
-
     private static final String DIALOG_TITLE = "Product Editor";
 
-    private static final int FORMAT_TAB_WIDTH = 510;
+    private static final int FORMAT_WIDTH = 510;
 
-    private static final int FORMAT_TAB_HEIGHT = 400;
+    private static final int FORMAT_HEIGHT = 200;
 
-    private static final String FORMATTED_COMBO_INSTRUCTION = "Select a key";
+    private static final int MIN_HEIGHT = 500;
+
+    private static final int MIN_WIDTH = 900;
+
+    public static final String TAB_LABEL_FORMAT = "%s (%d)";
 
     /*
      * An arbitrary button width to make sure they are all equal.
@@ -131,14 +120,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * ****** Helper maps ******
      */
 
-    private Map<String, GeneratorInfo> generatorInformationMap = new HashMap<String, GeneratorInfo>();
-
-    /*
-     * The products to be shown on the right hand side of the dialog.
-     */
-    private GeneratedProductList products;
-
-    private int issueCounter;
+    private List<GeneratedProductList> generatedProductListStorage;
 
     /*
      * Map of format to AbstractFormatTab. This is helpful when doing
@@ -160,18 +142,11 @@ public class ProductGenerationDialog extends CaveSWTDialog {
     private List<Combo> segmentsComboList = new ArrayList<Combo>();
 
     /*
-     * The formatListener that handles all the work in product generation, as
-     * well as sets up the progress bar and calls the method to re-populate the
-     * formats
-     */
-    public final Listener formatListener = createGenerateListener();
-
-    /*
      * Helps identify the segments of a the python data dictionary
      */
-    private List<List<Segment>> decodedSegments;
+    private List<List<AbstractProductGeneratorData>> decodedAbstractProductGeneratorData = new ArrayList<List<AbstractProductGeneratorData>>();
 
-    private boolean unformattedTabSelected = true;
+    private boolean notHighlighting = true;
 
     /*
      * TODO, the following need to be looked into whether they are necessary
@@ -225,19 +200,15 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         }
     };
 
-    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
-        @Override
-        public long getCurrentTime() {
-            return SimulatedTime.getSystemTime().getMillis();
-        }
-    };
+    private IssueListener issueListener;
 
     /**
      * @param parentShell
      */
     public ProductGenerationDialog(Shell parentShell) {
-        super(parentShell, SWT.RESIZE);
+        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT);
         setText(DIALOG_TITLE);
+        issueListener = new IssueListener(this);
     }
 
     /*
@@ -249,7 +220,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     @Override
     protected void initializeComponents(Shell shell) {
-        shell.setMinimumSize(500, 300);
+        shell.setMinimumSize(MIN_WIDTH, MIN_HEIGHT);
         shell.setLayout(new GridLayout(1, false));
         shell.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false));
 
@@ -292,12 +263,13 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         bar.setVisible(false);
         folder.setTopRight(bar);
         setLayoutInfo(folder, 1, false, SWT.FILL, SWT.FILL, true, true, null);
-        if (products != null) {
-            formatTabList.clear();
-            formattedKeyComboList.clear();
-            formatFolderList.clear();
-            for (int i = 0; i < products.size(); i++) {
-                IGeneratedProduct product = products.get(i);
+        formatTabList.clear();
+        formattedKeyComboList.clear();
+        formatFolderList.clear();
+        int offset = 0;
+        for (GeneratedProductList products : generatedProductListStorage) {
+            for (int folderIndex = 0; folderIndex < products.size(); folderIndex++) {
+                IGeneratedProduct product = products.get(folderIndex);
                 LinkedHashMap<String, Serializable> data = product.getData();
 
                 CTabItem item = new CTabItem(folder, SWT.NONE);
@@ -317,12 +289,13 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                         .countEditables(data) > 0;
                 if (isEditable) {
                     folder.setSelection(0);
-                    setLayoutInfo(sashForm, 2, true, SWT.FILL, SWT.FILL, true,
-                            true, null);
+
+                    setLayoutInfo(sashForm, 2, false, SWT.FILL, SWT.FILL,
+                            false, false, null);
                     Composite leftComp = new Composite(sashForm, SWT.NONE);
                     setLayoutInfo(leftComp, 1, false, SWT.FILL, SWT.FILL, true,
                             true, null);
-                    createDataEditor(leftComp, i);
+                    new DataEditor(this, leftComp, offset + folderIndex);
                 } else {
                     setLayoutInfo(sashForm, 1, true, SWT.FILL, SWT.FILL, true,
                             true, null);
@@ -332,6 +305,9 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                 setLayoutInfo(rightComp, 1, false, SWT.FILL, SWT.FILL, true,
                         true, null);
 
+                if (isEditable) {
+                    sashForm.setWeights(new int[] { 35, 65 });
+                }
                 sashForm.layout();
 
                 Map<String, AbstractFormatTab> formatTabMap = createFormatEditor(
@@ -339,8 +315,10 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                 formatTabList.add(formatTabMap);
                 item.setControl(sashForm);
             }
+            offset += products.size();
         }
 
+        notifySegmentCombosList();
     }
 
     /**
@@ -355,37 +333,84 @@ public class ProductGenerationDialog extends CaveSWTDialog {
 
         Map<String, AbstractFormatTab> formatTabMap = new HashMap<String, AbstractFormatTab>();
         for (String format : formats) {
-            AbstractFormatTab tab = null;
-            Composite editorComp = new Composite(formatFolder, SWT.NONE);
-            setLayoutInfo(editorComp, 1, false, SWT.FILL, SWT.FILL, true, true,
-                    null);
+            List<Serializable> entries = product.getEntry(format);
+            int counter = 0;
+            for (Serializable entry : entries) {
+                AbstractFormatTab tab = null;
+                Composite editorComp = new Composite(formatFolder, SWT.NONE);
+                setLayoutInfo(editorComp, 1, false, SWT.FILL, SWT.FILL, true,
+                        true, null);
 
-            CTabItem formatItem = new CTabItem(formatFolder, SWT.NONE);
-            formatItem.setText(format);
-
-            if (product instanceof ITextProduct) {
-                StyledText text = new StyledText(editorComp, SWT.H_SCROLL
-                        | SWT.V_SCROLL | SWT.READ_ONLY);
-                text.setWordWrap(false);
-                text.setAlwaysShowScrollBars(false);
-                setLayoutInfo(text, 1, false, SWT.FILL, SWT.FILL, true, true,
-                        new Point(FORMAT_TAB_WIDTH, FORMAT_TAB_HEIGHT));
-
-                formatItem.setControl(editorComp);
-                tab = new TextFormatTab();
-                ((TextFormatTab) tab).setText(text);
-                tab.setTabItem(formatItem);
-                formatTabMap.put(format, tab);
-            }
-            if (product instanceof ITextProduct) {
-                try {
-                    String finalProduct = ((ITextProduct) product)
-                            .getText(format);
-                    ((TextFormatTab) tab).getText().setText(finalProduct);
-                } catch (ClassCastException e) {
-                    handler.error("Error building format tabs", e);
+                CTabItem formatItem = new CTabItem(formatFolder, SWT.NONE);
+                String label = format;
+                if (entries.size() > 1) {
+                    label = String.format(TAB_LABEL_FORMAT, format, counter);
                 }
+                formatItem.setText(label);
+
+                if (product instanceof ITextProduct) {
+                    StyledText text = new StyledText(editorComp, SWT.H_SCROLL
+                            | SWT.V_SCROLL | SWT.READ_ONLY);
+                    text.setWordWrap(false);
+                    text.setAlwaysShowScrollBars(false);
+                    setLayoutInfo(text, 1, false, SWT.FILL, SWT.FILL, true,
+                            true, new Point(FORMAT_WIDTH, FORMAT_HEIGHT));
+
+                    formatItem.setControl(editorComp);
+                    tab = new TextFormatTab();
+                    ((TextFormatTab) tab).setText(text);
+                    tab.setTabItem(formatItem);
+                    formatTabMap.put(label, tab);
+                }
+                if (product instanceof ITextProduct) {
+                    try {
+                        String finalProduct = String.valueOf(entry);
+                        StyledText text = ((TextFormatTab) tab).getText();
+                        text.setText(finalProduct);
+                        text.addCaretListener(new CaretListener() {
+
+                            @Override
+                            public void caretMoved(CaretEvent event) {
+                                Combo currentCombo = getCurrentSegmentCombo();
+                                if (currentCombo != null
+                                        && currentCombo.getItemCount() > 1) {
+                                    StyledText styledText = (StyledText) event
+                                            .getSource();
+                                    int offset = event.caretOffset;
+                                    String text = styledText.getText();
+                                    for (int i = 0; i < currentCombo
+                                            .getItemCount(); i++) {
+                                        String item = currentCombo.getItem(i);
+                                        int startIndex = text.indexOf(item);
+                                        if (startIndex != -1) {
+                                            int endIndex = text.indexOf(
+                                                    SegmentData.SEGMENT_END,
+                                                    startIndex);
+                                            if (notHighlighting
+                                                    && endIndex != -1
+                                                    && offset > startIndex
+                                                    && offset < endIndex) {
+                                                currentCombo.select(i);
+                                                currentCombo.notifyListeners(
+                                                        SWT.Selection,
+                                                        new Event());
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                            }
+                        });
+
+                    } catch (ClassCastException e) {
+                        handler.error("Error building format tabs", e);
+                    }
+                }
+
+                counter++;
             }
+
         }
 
         return formatTabMap;
@@ -421,119 +446,22 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         issueButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                issueCounter = 0;
-                final IPythonJobListener<GeneratedProductList> listener = new IPythonJobListener<GeneratedProductList>() {
-
-                    @Override
-                    public void jobFinished(
-                            final GeneratedProductList productList) {
-
-                        VizApp.runAsync(new Runnable() {
-                            public void run() {
-                                GeneratorInfo generatorInfo = generatorInformationMap
-                                        .get(productList.getProductInfo());
-                                int index = generatorInfo.getStart();
-                                for (IGeneratedProduct product : productList) {
-                                    products.set(index, product);
-                                    index++;
-                                    issueCounter++;
-                                }
-
-                                // Indicates that all generation is completed
-                                if (issueCounter == products.size()) {
-                                    issueHandler.commandInvoked(ISSUE_LABEL);
-                                    close();
-                                }
-                            };
-                        });
-                    }
-
-                    @Override
-                    public void jobFailed(Throwable e) {
-                        handler.error("Unable to issue", e);
-
-                    }
-                };
-
-                // TODO saving the user edits
-                // for (int folderIndex = 0; folderIndex <
-                // folder.getItemCount(); folderIndex++) {
-                // ProductGenerationDialogUtility.save(
-                // products.get(folderIndex).getProductID(),
-                // decodedSegments.get(folderIndex), products);
-                // }
-
                 // Calling the product generators to apply any required changes
                 // such as an updated ETN, issue time, etc.
                 ProductGeneration generation = new ProductGeneration();
-                for (GeneratorInfo generatorInfo : generatorInformationMap
-                        .values()) {
+                for (GeneratedProductList products : generatedProductListStorage) {
                     List<LinkedHashMap<String, Serializable>> dataList = new ArrayList<LinkedHashMap<String, Serializable>>();
-                    for (int i = generatorInfo.getStart(); i < generatorInfo
-                            .getSize(); i++) {
-                        dataList.add(products.get(i).getData());
+                    for (IGeneratedProduct product : products) {
+                        dataList.add(product.getData());
                     }
                     List<String> formats = new ArrayList<String>(products
-                            .get(generatorInfo.getStart()).getEntries()
-                            .keySet());
-                    generation.update(generatorInfo.getProductGeneratorName(),
-                            dataList,
+                            .get(0).getEntries().keySet());
+                    generation.update(products.getProductInfo(), dataList,
                             formats.toArray(new String[formats.size()]),
-                            listener);
+                            issueListener);
                 }
             }
         });
-    }
-
-    /*
-     * Updates the contents on the right with the data provided on the left. If
-     * the 'Unformatted' tab is selected than the formatListenered is fired,
-     * which passes the updated dictionary to the formatters. If the 'Formatted'
-     * view is selected than a simple text replace is performed.
-     * 
-     * @param buttonComp
-     */
-    private void createGenerateButton(Composite buttonComp) {
-        Button generateButton = new Button(buttonComp, SWT.PUSH);
-        generateButton.setText(GENERATE_LABEL);
-        setButtonGridData(generateButton);
-        generateButton.setEnabled(true);
-        generateButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                bar.setVisible(true);
-                // TODO Generating products based on 'formatted data' is not
-                // fully implemented yet.
-                // Only the tab is available for viewing
-                if (unformattedTabSelected) {
-                    formatListener.handleEvent(null);
-                } else {
-                    int folderIndex = folder.getSelectionIndex();
-                    Combo formattedKeyCombo = formattedKeyComboList
-                            .get(folderIndex);
-                    int index = formattedKeyCombo.getSelectionIndex();
-                    if (index > 0) {
-                        String comboSelection = formattedKeyCombo
-                                .getItem(index);
-                        Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = products
-                                .get(folderIndex).getEditableEntries();
-                        Map<String, AbstractFormatTab> formatTabMap = formatTabList
-                                .get(folderIndex);
-                        Map<String, Text> textAreaMap = textAreasList
-                                .get(folderIndex);
-                        Combo segmentsCombo = segmentsComboList
-                                .get(folderIndex);
-                        ProductGenerationDialogUtility.updateEditableEntries(
-                                segmentsCombo.getSelectionIndex(),
-                                comboSelection, editableEntries, formatTabMap,
-                                textAreaMap);
-                    }
-                }
-
-                bar.setVisible(false);
-            }
-        });
-
     }
 
     /**
@@ -548,13 +476,36 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         saveButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO user edited texts needs to be persisted
-                // int folderIndex = folder.getSelectionIndex();
-                // ProductGenerationDialogUtility.save(products.get(folderIndex)
-                // .getProductID(), decodedSegments.get(folder
-                // .getSelectionIndex()), products);
+                save();
             }
         });
+    }
+
+    /**
+     * Saves any modifications made to the unformatted data.
+     */
+    public void save() {
+        int offset = 0;
+        for (GeneratedProductList products : generatedProductListStorage) {
+            String productCategory = products.getProductInfo().replace(
+                    "_ProductGenerator", "");
+            Iterator<IEvent> iterator = products.getEventSet().iterator();
+            while (iterator.hasNext()) {
+                BaseHazardEvent event = (BaseHazardEvent) iterator.next();
+                int index = 0;
+                for (IGeneratedProduct product : products) {
+                    String productID = product.getProductID();
+                    ProductGenerationDialogUtility.save(
+                            event.getEventID(),
+                            productCategory,
+                            productID,
+                            decodedAbstractProductGeneratorData.get(offset
+                                    + index));
+                    index++;
+                }
+            }
+            offset += products.size();
+        }
     }
 
     /**
@@ -580,7 +531,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * 
      * @param button
      */
-    private void setButtonGridData(Button button) {
+    public void setButtonGridData(Button button) {
         GridData data = new GridData(SWT.FILL, SWT.NONE, true, false);
         data.widthHint = BUTTON_WIDTH;
         button.setLayoutData(data);
@@ -598,10 +549,10 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * @param grabVerSpace
      * @param bounds
      */
-    private void setLayoutInfo(Composite comp, int cols,
-            boolean colsEqualWidth, int horFil, int verFil,
-            boolean grabHorSpace, boolean grabVerSpace, Point bounds) {
-        GridLayout layout = new GridLayout(cols, false);
+    public void setLayoutInfo(Composite comp, int cols, boolean colsEqualWidth,
+            int horFil, int verFil, boolean grabHorSpace, boolean grabVerSpace,
+            Point bounds) {
+        GridLayout layout = new GridLayout(cols, colsEqualWidth);
         GridData layoutData = new GridData(horFil, verFil, grabHorSpace,
                 grabVerSpace);
         if (bounds != null) {
@@ -614,293 +565,89 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         comp.setLayoutData(layoutData);
     }
 
-    /*
-     * Creates the left side editor for managing the dictionary data and
-     * individual formatted data.
-     */
-    private void createDataEditor(Composite comp, final int folderIndex) {
-        final List<Segment> decodedSegmentList = decodedSegments
-                .get(folderIndex);
-        Composite segmentComposite = new Composite(comp, SWT.NONE);
-
-        segmentComposite.setLayout(new GridLayout(2, false));
-        segmentComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER,
-                true, false));
-
-        Label segmentsLabel = new Label(segmentComposite, SWT.NONE);
-        segmentsLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-                false, 1, 1));
-        segmentsLabel.setText(SEGMENT_COMBO_LABEL);
-        final Combo segmentsCombo = new Combo(segmentComposite, SWT.READ_ONLY);
-        for (Segment segment : decodedSegmentList) {
-            segmentsCombo.add(segment.getSegmentID());
+    public void setGeneratedProductListStorage(
+            List<GeneratedProductList> generatedProductListStorage) {
+        this.generatedProductListStorage = generatedProductListStorage;
+        for (GeneratedProductList products : generatedProductListStorage) {
+            for (IGeneratedProduct product : products) {
+                List<AbstractProductGeneratorData> decodedData = new ArrayList<AbstractProductGeneratorData>();
+                decodedData.addAll(ProductGenerationDialogUtility
+                        .decodeProductGeneratorData(product.getData()));
+                decodedAbstractProductGeneratorData.add(decodedData);
+            }
         }
-        segmentsCombo.select(0);
-        segmentsCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
-                false, 1, 1));
-
-        CTabFolder dataFolder = new CTabFolder(comp, SWT.BORDER);
-        setLayoutInfo(dataFolder, 1, false, SWT.FILL, SWT.FILL, true, true,
-                null);
-
-        // set up the 'Unformatted' scroll composite
-        ScrolledComposite unformattedScroller = new ScrolledComposite(
-                dataFolder, SWT.BORDER | SWT.V_SCROLL);
-        setLayoutInfo(unformattedScroller, 1, false, SWT.FILL, SWT.FILL, true,
-                true, null);
-
-        final Composite unformattedComp = new Composite(unformattedScroller,
-                SWT.NONE);
-        setLayoutInfo(unformattedComp, 1, false, SWT.FILL, SWT.FILL, true,
-                true, null);
-        LinkedHashMap<String, Serializable> unformatedData = (LinkedHashMap<String, Serializable>) decodedSegmentList
-                .get(segmentsCombo.getSelectionIndex()).getData();
-        addUnformattedEntries(unformattedComp, unformatedData,
-                decodedSegmentList);
-
-        unformattedScroller.setExpandHorizontal(true);
-        unformattedScroller.setExpandVertical(true);
-        unformattedScroller.setContent(unformattedComp);
-        unformattedScroller.setMinSize(unformattedComp.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        unformattedScroller.layout();
-
-        final CTabItem unformattedTabItem = new CTabItem(dataFolder, SWT.NONE);
-        unformattedTabItem.setText(UNFORMATTED_LABEL);
-        unformattedTabItem.setControl(unformattedScroller);
-
-        // set up the 'Formatted' scroll composite
-        ScrolledComposite formattedScroller = new ScrolledComposite(dataFolder,
-                SWT.BORDER | SWT.V_SCROLL);
-
-        final Composite formattedComp = new Composite(formattedScroller,
-                SWT.NONE);
-        setLayoutInfo(formattedComp, 1, false, SWT.FILL, SWT.FILL, true, true,
-                null);
-        addFormattedEntries(formattedComp, folderIndex);
-
-        formattedScroller.setExpandHorizontal(true);
-        formattedScroller.setExpandVertical(true);
-        formattedScroller.setContent(formattedComp);
-        formattedScroller.setMinSize(formattedComp.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        formattedScroller.layout();
-
-        final CTabItem formattedTabItem = new CTabItem(dataFolder, SWT.NONE);
-        formattedTabItem.setText(FORMATTED_LABEL);
-        formattedTabItem.setControl(formattedScroller);
-
-        // set up the generate button
-        Composite buttonComp = new Composite(comp, SWT.NONE);
-        GridLayout layout = new GridLayout(1, false);
-        GridData data = new GridData(SWT.CENTER, SWT.CENTER, true, false);
-        buttonComp.setLayout(layout);
-        buttonComp.setLayoutData(data);
-        createGenerateButton(buttonComp);
-
-        segmentsCombo.addSelectionListener(new SelectionAdapter() {
-
-            public void widgetSelected(SelectionEvent e) {
-                // Clear out composite's contents
-                for (Control control : unformattedComp.getChildren()) {
-                    control.dispose();
-                }
-
-                for (Control control : formattedComp.getChildren()) {
-                    control.dispose();
-                }
-
-                LinkedHashMap<String, Serializable> unformatedData = (LinkedHashMap<String, Serializable>) decodedSegmentList
-                        .get(segmentsCombo.getSelectionIndex()).getData();
-                addUnformattedEntries(unformattedComp, unformatedData,
-                        decodedSegmentList);
-                unformattedComp.layout();
-                addFormattedEntries(formattedComp, folderIndex);
-                formattedComp.layout();
-
-                // Removes highlighting
-                ProductGenerationDialogUtility.clearHighlighting(formatTabList
-                        .get(folder.getSelectionIndex()));
-            }
-
-        });
-        segmentsComboList.add(segmentsCombo);
-
-        dataFolder.setSelection(0);
-        dataFolder.addSelectionListener(new SelectionAdapter() {
-            public void widgetSelected(SelectionEvent e) {
-                if (e.item == unformattedTabItem) {
-                    // removes the highlighting
-                    ProductGenerationDialogUtility
-                            .clearHighlighting(formatTabList.get(folder
-                                    .getSelectionIndex()));
-                    unformattedTabSelected = true;
-                } else {
-                    formattedKeyComboList.get(folder.getSelectionIndex())
-                            .notifyListeners(SWT.Selection, new Event());
-                    unformattedTabSelected = false;
-                }
-            }
-        });
 
     }
 
     /**
-     * Creates the 'Unformatted' tab with the dictionary from the generators
+     * 
+     * @return a list of GeneratedProductList objects
      */
-    private void addUnformattedEntries(Composite comp,
-            Map<String, Serializable> data,
-            final List<Segment> decodedSegmentList) {
+    public List<GeneratedProductList> getGeneratedProductListStorage() {
+        return this.generatedProductListStorage;
+    }
 
-        final Map<String, WidgetInfo> widgetInfoMap = WidgetInfoFactory
-                .createWidgetInfoMap(data);
-        // widgetInfoMap = WidgetInfoFactory.createWidgetInfoMap(data);
-        List<String> labels = new ArrayList<String>();
-        Map<String, Object> parametersForLabels = new HashMap<String, Object>();
+    /**
+     * 
+     * @param index
+     * @return a format tab map for a particular index
+     */
+    public Map<String, AbstractFormatTab> getFormatTabMap(int index) {
+        return formatTabList.get(index);
+    }
 
-        for (Entry<String, WidgetInfo> entry : widgetInfoMap.entrySet()) {
-            labels.add(entry.getKey());
-            parametersForLabels
-                    .put(entry.getKey(), entry.getValue().getValue());
+    public Map<String, AbstractFormatTab> getCurrentFormatTabMap() {
+        return formatTabList.get(folder.getSelectionIndex());
+    }
+
+    public Map<String, Text> getCurrentTextAreas() {
+        return textAreasList.get(folder.getSelectionIndex());
+    }
+
+    /**
+     * Resets the formattedKeyCombos to their first item
+     */
+    public void resetFormattedKeyCombos() {
+        for (Combo formattedKeyCombo : formattedKeyComboList) {
+            formattedKeyCombo.select(0);
+            formattedKeyCombo.notifyListeners(SWT.Selection, new Event());
         }
+    }
 
-        try {
-            // Use factory to create megawidgets
-            ParametersEditorFactory factory = new ParametersEditorFactory();
-            factory.buildParametersEditor(comp, labels, parametersForLabels,
-                    System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1L),
-                    System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
-                    currentTimeProvider, new IParametersEditorListener() {
-                        @Override
-                        public void parameterValueChanged(String label,
-                                Object value) {
-                            Combo segmentsCombo = segmentsComboList.get(folder
-                                    .getSelectionIndex());
-                            int segmentNumber = segmentsCombo
-                                    .getSelectionIndex();
-                            WidgetInfo info = widgetInfoMap.get(label);
-                            ArrayList<String> path = new ArrayList<String>(
-                                    decodedSegmentList.get(segmentNumber)
-                                            .getPath());
-                            if (info.getPath() != null) {
-                                path.addAll(info.getPath());
-                            }
-                            path.add(label);
-                            ProductGenerationDialogUtility.updateData(path,
-                                    products.get(folder.getSelectionIndex())
-                                            .getData(), segmentNumber,
-                                    (Serializable) value);
-                        }
-                    });
-        } catch (MegawidgetException e) {
-            handler.error("Error creating megawidets", e);
+    private void notifySegmentCombosList() {
+        for (Combo segmentCombos : segmentsComboList) {
+            segmentCombos.notifyListeners(SWT.Selection, new Event());
         }
     }
 
     /**
-     * Creates the 'Formatted' tab with the editable keys and formatted values.
+     * Updates the formattedKeyComboList when a new formattedKeyCombo is added
+     * for a new folderIndex or replaces the existing formattedKeyCombo if the
+     * folderIndex already exists in the list.
+     * 
+     * @param folderIndex
+     * @param formattedKeyCombo
      */
-    private void addFormattedEntries(Composite comp, int folderIndex) {
-        final Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = products
-                .get(folderIndex).getEditableEntries();
-
-        // gather all possible interior keys
-        Set<String> uniqueKeys = new HashSet<String>();
-
-        for (String key : editableEntries.keySet()) {
-            if (editableEntries.get(key) != null) {
-                for (LinkedHashMap<String, Serializable> element : editableEntries
-                        .get(key)) {
-                    if (element != null) {
-                        for (String entryKey : element.keySet()) {
-                            String keyname = entryKey
-                                    .replace(
-                                            ProductGenerationDialogUtility.EDITABLE,
-                                            "");
-                            uniqueKeys.add(keyname);
-                        }
-                    }
-                }
-            }
-        }
-
-        final Combo formattedKeyCombo = new Combo(comp, SWT.READ_ONLY);
-        formattedKeyCombo.add(FORMATTED_COMBO_INSTRUCTION);
-        for (String uniqueKey : uniqueKeys) {
-            formattedKeyCombo.add(uniqueKey);
-        }
-        formattedKeyCombo.select(0);
-        formattedKeyCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
-                true, false, 1, 1));
-
-        formattedKeyCombo.addSelectionListener(new SelectionAdapter() {
-
-            public void widgetSelected(SelectionEvent e) {
-                int index = formattedKeyCombo.getSelectionIndex();
-                int folderIndex = folder.getSelectionIndex();
-                Map<String, Text> textAreaMap = textAreasList.get(folderIndex);
-                if (index > 0) {
-
-                    String comboSelection = formattedKeyCombo.getItem(index);
-                    Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = products
-                            .get(folderIndex).getEditableEntries();
-                    Map<String, AbstractFormatTab> formatTabMap = formatTabList
-                            .get(folderIndex);
-                    Combo segmentsCombo = segmentsComboList.get(folderIndex);
-                    ProductGenerationDialogUtility.updateTextAreas(
-                            segmentsCombo, comboSelection, editableEntries,
-                            formatTabMap, textAreaMap);
-                } else {
-                    for (Text text : textAreaMap.values()) {
-                        text.setText("");
-                    }
-                }
-            }
-
-        });
-
+    public void updateFormattedKeyComboList(int folderIndex,
+            Combo formattedKeyCombo) {
         if (formattedKeyComboList.isEmpty()
                 || folderIndex >= formattedKeyComboList.size()) {
             formattedKeyComboList.add(formattedKeyCombo);
         } else {
             formattedKeyComboList.set(folderIndex, formattedKeyCombo);
         }
+    }
 
-        // set up the text areas
-        Composite pieceComp = new Composite(comp, SWT.NONE);
-        setLayoutInfo(pieceComp, 1, false, SWT.FILL, SWT.DEFAULT, true, false,
-                null);
-        GridData gridData = new GridData(SWT.FILL, SWT.NONE, true, false);
-        gridData.heightHint = 100;
-        Map<String, Text> textAreaMap = new HashMap<String, Text>();
-        for (final String format : editableEntries.keySet()) {
-            Label label = new Label(pieceComp, SWT.FILL);
-            label.setText(format + ":");
-            Text text = new Text(pieceComp, SWT.MULTI | SWT.BORDER
-                    | SWT.V_SCROLL);
-            text.setLayoutData(gridData);
-            text.addFocusListener(new FocusListener() {
-
-                @Override
-                public void focusLost(FocusEvent e) {
-
-                }
-
-                @Override
-                public void focusGained(FocusEvent e) {
-                    int folderIndex = folder.getSelectionIndex();
-                    Map<String, Text> textAreaMap = textAreasList
-                            .get(folderIndex);
-                    CTabFolder formatFolder = formatFolderList.get(folderIndex);
-                    ProductGenerationDialogUtility.selectFormatTab(format,
-                            formatFolder,
-                            formatTabList.get(folder.getSelectionIndex()),
-                            textAreaMap);
-                }
-            });
-            textAreaMap.put(format, text);
-        }
-
+    /**
+     * Updates the textAreaList when a new textAreaMap is added for a new
+     * folderIndex or replaces the existing textAreaMap if the folderIndex
+     * already exists in the list.
+     * 
+     * @param folderIndex
+     * @param textAreaMap
+     */
+    public void updateTextAreasList(int folderIndex,
+            Map<String, Text> textAreaMap) {
         if (textAreasList.isEmpty() || folderIndex >= textAreasList.size()) {
             textAreasList.add(textAreaMap);
         } else {
@@ -908,134 +655,66 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         }
     }
 
-    /**
-     * Parses the "editable" part of the key out to give the "pretty" text
-     * 
-     * @param key
-     * @return
-     */
-    public static String parseEditable(String key) {
-        String returnKey = key;
-        if (key.contains(ProductGenerationDialogUtility.EDITABLE.substring(1))) {
-            returnKey = key.substring(0, key
-                    .indexOf(ProductGenerationDialogUtility.EDITABLE
-                            .substring(1)) - 1);
+    public Combo getCurrentFormattedKeyCombo() {
+        return formattedKeyComboList.get(folder.getSelectionIndex());
+    }
+
+    public List<AbstractProductGeneratorData> getDecodedDataList(int folderIndex) {
+        return decodedAbstractProductGeneratorData.get(folderIndex);
+    }
+
+    public CTabFolder getCurrentFormatFolder() {
+        return formatFolderList.get(folder.getSelectionIndex());
+    }
+
+    public Combo getCurrentSegmentCombo() {
+        Combo combo = null;
+        if (segmentsComboList.isEmpty() == false) {
+            combo = segmentsComboList.get(folder.getSelectionIndex());
         }
-        return returnKey;
+        return combo;
+    }
+
+    public void addSegmentCombo(Combo segmentsCombo) {
+        segmentsComboList.add(segmentsCombo);
+    }
+
+    public void setNotHighlighting(boolean flag) {
+        this.notHighlighting = flag;
     }
 
     /**
-     * Creates the reformat listener that will update the UI to notify the user
-     * that formatting is/has happened.
+     * Retrieves the IGeneratedProduct associated with the folder index
+     * 
+     * @param folderIndex
      * 
      * @return
      */
-    private Listener createGenerateListener() {
-        return new Listener() {
-
-            @Override
-            public void handleEvent(Event event) {
-
-                final IPythonJobListener<GeneratedProductList> listener = new IPythonJobListener<GeneratedProductList>() {
-
-                    @Override
-                    public void jobFinished(
-                            final GeneratedProductList productList) {
-
-                        VizApp.runAsync(new Runnable() {
-                            public void run() {
-
-                                GeneratorInfo generatorInfo = generatorInformationMap
-                                        .get(productList.getProductInfo());
-                                int index = generatorInfo.getStart();
-                                for (IGeneratedProduct product : productList) {
-                                    products.set(index, product);
-                                    Set<String> formats = product.getEntries()
-                                            .keySet();
-                                    Map<String, AbstractFormatTab> formatTabMap = formatTabList
-                                            .get(index);
-                                    for (String format : formats) {
-                                        AbstractFormatTab tab = formatTabMap
-                                                .get(format);
-
-                                        if (tab instanceof TextFormatTab) {
-                                            TextFormatTab textTab = (TextFormatTab) tab;
-                                            StyledText styledText = textTab
-                                                    .getText();
-
-                                            String finalProduct = ((ITextProduct) product)
-                                                    .getText(format);
-                                            styledText.setText(finalProduct);
-                                        }
-                                    }
-                                    index++;
-                                }
-
-                                // reset the Formatted tab
-                                for (Combo formattedKeyCombo : formattedKeyComboList) {
-                                    formattedKeyCombo.select(0);
-                                    formattedKeyCombo.notifyListeners(
-                                            SWT.Selection, new Event());
-                                }
-                            };
-                        });
-                    }
-
-                    @Override
-                    public void jobFailed(Throwable e) {
-                        handler.error("Unable to run product generation", e);
-
-                    }
-                };
-
-                ProductGeneration generation = new ProductGeneration();
-                for (GeneratorInfo generatorInfo : generatorInformationMap
-                        .values()) {
-                    List<LinkedHashMap<String, Serializable>> dataList = new ArrayList<LinkedHashMap<String, Serializable>>();
-                    for (int i = generatorInfo.getStart(); i < generatorInfo
-                            .getSize(); i++) {
-                        dataList.add(products.get(i).getData());
-                    }
-                    List<String> formats = new ArrayList<String>(products
-                            .get(generatorInfo.getStart()).getEntries()
-                            .keySet());
-                    generation.update(generatorInfo.getProductGeneratorName(),
-                            dataList,
-                            formats.toArray(new String[formats.size()]),
-                            listener);
-                }
-
+    public IGeneratedProduct getGeneratedProduct(int folderIndex) {
+        int offset = 0;
+        for (GeneratedProductList products : generatedProductListStorage) {
+            if (folderIndex < offset + products.size()) {
+                return products.get(folderIndex - offset);
             }
-        };
-    }
-
-    /**
-     * TODO Products should be set before the dialog pops up, or maybe we should
-     * pop up and then run the formatting? That might be more inline with
-     * rerunning it after we make changes.
-     * 
-     * @param products
-     */
-    public void setProducts(GeneratedProductList products) {
-        this.products = products;
-        decodedSegments = new ArrayList<List<Segment>>();
-        for (IGeneratedProduct product : products) {
-            List<Segment> decodedSegment = ProductGenerationDialogUtility
-                    .separateSegments(product.getData());
-            decodedSegments.add(decodedSegment);
+            offset += products.size();
         }
+        return null;
     }
 
-    public void setGeneratorInformationMap(
-            Map<String, GeneratorInfo> generatorInformationMap) {
-        this.generatorInformationMap = generatorInformationMap;
+    public IGeneratedProduct getCurrentGeneratedProduct() {
+        return getGeneratedProduct(folder.getSelectionIndex());
     }
 
-    /**
-     * @return the generated products
-     */
-    public GeneratedProductList getGeneratedProducts() {
-        return products;
+    public int getFolderSelectionIndex() {
+        return folder.getSelectionIndex();
+    }
+
+    public ProgressBar getProgressBar() {
+        return bar;
+    }
+
+    public void invokeIssue() {
+        issueHandler.commandInvoked(ISSUE_LABEL);
     }
 
     /**

@@ -109,8 +109,6 @@ class Format(FormatTemplate.Formatter):
             elif name == 'polygonText':
                 if 'polygonText' in dataDict and dataDict['polygonText']:
                     text += dataDict['polygonText'] + '\n\n'
-            elif name == 'endProduct':
-                text += '$$' 
             elif name == 'endSegment':
                 text += '&&\n\n' 
             elif name == 'CR':
@@ -159,6 +157,7 @@ class Format(FormatTemplate.Formatter):
         text = ''  
         for segment in segments['segment']:
             text += self._processProductParts(segment, segmentParts)
+            text += '$$\n\n'
         return text
 
     def processSections(self, sections, sectionParts):

@@ -27,7 +27,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    12/11/13        2266          jsanchez       Initial Creation.
-# 
+#    02/26/13        2702          jsanchez       Supported product level editable fields
 #
 from collections import OrderedDict
 
@@ -36,6 +36,8 @@ class Editable():
         self.result = []
         self.map = self.map = OrderedDict()
         self.newSegmentKeys = []
+        self.nonSegmentMap = OrderedDict()
+        self.nonSegmentList = []
         self.counter = 0;
         self.first = None
         self.inSegmentList = False
@@ -47,28 +49,33 @@ class Editable():
         if str(key) + ':editable' in self.validKeys:
             keyname = str(key) + ':editable'
             # check if a new segment is started
-            if self.counter < len(self.newSegmentKeys) and keyname == self.newSegmentKeys[self.counter]:
-                if self.counter > 0:
-                    self.result.append(self.map)
-                self.map = OrderedDict()
-                self.counter = self.counter + 1
-            self.map[keyname] = value
- 
+            if keyname in self.nonSegmentList:
+                self.nonSegmentMap[keyname] = value
+            else:
+                if self.counter < len(self.newSegmentKeys) and keyname == self.newSegmentKeys[self.counter]:
+                    if self.counter > 0:
+                        self.result.append(self.map)
+                    self.map = OrderedDict()
+                    self.counter = self.counter + 1
+                self.map[keyname] = value
+     
     def _getEditableKeys(self, data):
         '''
         Identifies the editable keys in data by looking if the key has ':editable'
         '''
         editableKeys = []
         for key in data:
+            value = data[key]
+            valtype = type(value)
             if ':editable' in key:
                 editableKeys.append(key)
                 # tracks when a new segment begins
                 if self.inSegmentList and self.first is None:
                     self.first = key
                     self.newSegmentKeys.append(key)
+                elif self.inSegmentList == False and key not in self.nonSegmentList:
+                    self.nonSegmentList.append(key)
                 
-            value = data[key]
-            valtype = type(value)
             if issubclass(valtype, dict):
                 editableList = self._getEditableKeys(value)
                 if editableList:
@@ -94,4 +101,5 @@ class Editable():
         if len(self.result) < len(self.newSegmentKeys):
             for i in range(len(self.newSegmentKeys) - len(self.result)):
                 self.result.append(None)
+        self.result.insert(0, self.nonSegmentMap)
         return self.result

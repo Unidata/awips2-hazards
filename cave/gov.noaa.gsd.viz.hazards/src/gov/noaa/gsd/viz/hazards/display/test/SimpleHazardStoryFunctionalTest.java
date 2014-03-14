@@ -347,8 +347,10 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkArealFloodWatchPreview() {
-        GeneratedProductList generatedProductList = mockProductEditorView
-                .getGeneratedProductList();
+        List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
+                .getGeneratedProductsList();
+        GeneratedProductList generatedProductList = generatedProductListStorage
+                .get(0);
         assertEquals(generatedProductList.size(), 1);
 
         IGeneratedProduct generatedProduct0 = generatedProductList
@@ -376,39 +378,40 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkArealFloodWarningPreview() {
-        GeneratedProductList generatedProductList = mockProductEditorView
-                .getGeneratedProductList();
-        assertEquals(generatedProductList.size(), 2);
+        List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
+                .getGeneratedProductsList();
+        assertEquals(generatedProductListStorage.size(), 2);
+        for (GeneratedProductList generatedProductList : generatedProductListStorage) {
+            for (IGeneratedProduct generatedProduct : generatedProductList) {
 
-        for (IGeneratedProduct generatedProduct : generatedProductList) {
+                String productID = generatedProduct.getProductID();
 
-            String productID = generatedProduct.getProductID();
+                if (productID.equals(FLOOD_WATCH_PRODUCT_ID)) {
+                    final String legacy = generatedProduct.getEntries()
+                            .get(ProductConstants.ASCII_PRODUCT_KEY)
+                            .get(NumberUtils.INTEGER_ZERO).toString();
+                    assertTrue(legacy.contains(CAN_VTEC_STRING));
+                } else if (productID.equals(FLOOD_WARNING_PRODUCT_ID)) {
+                    final String legacy = generatedProduct.getEntries()
+                            .get(ProductConstants.ASCII_PRODUCT_KEY)
+                            .get(NumberUtils.INTEGER_ZERO).toString();
+                    assertTrue(legacy.contains(NEW_VTEC_STRING));
+                    assertTrue(legacy.contains(AREAL_FLOOD_WARNING));
+                    final String xml = generatedProduct.getEntries()
+                            .get(ProductConstants.XML_PRODUCT_KEY)
+                            .get(NumberUtils.INTEGER_ZERO).toString();
+                    assertTrue(xml.contains(AREAL_FLOOD_WARNING));
+                    final String cap = generatedProduct.getEntries()
+                            .get(ProductConstants.CAP_PRODUCT_KEY)
+                            .get(NumberUtils.INTEGER_ZERO).toString();
+                    assertTrue(cap.contains(AREAL_FLOOD_WARNING));
 
-            if (productID.equals(FLOOD_WATCH_PRODUCT_ID)) {
-                final String legacy = generatedProduct.getEntries()
-                        .get(ProductConstants.ASCII_PRODUCT_KEY)
-                        .get(NumberUtils.INTEGER_ZERO).toString();
-                assertTrue(legacy.contains(CAN_VTEC_STRING));
-            } else if (productID.equals(FLOOD_WARNING_PRODUCT_ID)) {
-                final String legacy = generatedProduct.getEntries()
-                        .get(ProductConstants.ASCII_PRODUCT_KEY)
-                        .get(NumberUtils.INTEGER_ZERO).toString();
-                assertTrue(legacy.contains(NEW_VTEC_STRING));
-                assertTrue(legacy.contains(AREAL_FLOOD_WARNING));
-                final String xml = generatedProduct.getEntries()
-                        .get(ProductConstants.XML_PRODUCT_KEY)
-                        .get(NumberUtils.INTEGER_ZERO).toString();
-                assertTrue(xml.contains(AREAL_FLOOD_WARNING));
-                final String cap = generatedProduct.getEntries()
-                        .get(ProductConstants.CAP_PRODUCT_KEY)
-                        .get(NumberUtils.INTEGER_ZERO).toString();
-                assertTrue(cap.contains(AREAL_FLOOD_WARNING));
-
-            } else {
-                /*
-                 * Unexpected product encountered.
-                 */
-                testError();
+                } else {
+                    /*
+                     * Unexpected product encountered.
+                     */
+                    testError();
+                }
             }
         }
     }
@@ -421,8 +424,10 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkFollowUpStatementPreview() {
-        GeneratedProductList generatedProductList = mockProductEditorView
-                .getGeneratedProductList();
+        List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
+                .getGeneratedProductsList();
+        GeneratedProductList generatedProductList = generatedProductListStorage
+                .get(0);
         assertTrue(generatedProductList.size() >= NumberUtils.INTEGER_ONE);
 
         Map<String, IGeneratedProduct> generatedProductMap = new HashMap<String, IGeneratedProduct>();
@@ -450,8 +455,10 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @return
      */
     private void checkCancellationStatementPreview() {
-        GeneratedProductList generatedProductList = mockProductEditorView
-                .getGeneratedProductList();
+        List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
+                .getGeneratedProductsList();
+        GeneratedProductList generatedProductList = generatedProductListStorage
+                .get(0);
         assertEquals(generatedProductList.size(), 1);
 
         IGeneratedProduct generatedProduct = generatedProductList

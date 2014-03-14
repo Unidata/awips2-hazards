@@ -16,6 +16,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
@@ -56,11 +57,6 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @Override
     public void closeProductEditorDialog() {
-    }
-
-    @Override
-    public GeneratedProductList getGeneratedProductList() {
-        return generatedProducts;
     }
 
     @Override

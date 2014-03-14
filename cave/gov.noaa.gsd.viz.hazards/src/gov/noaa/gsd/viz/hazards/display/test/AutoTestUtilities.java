@@ -274,8 +274,9 @@ public class AutoTestUtilities {
     }
 
     Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
-        GeneratedProductList generatedProducts = editorView
-                .getGeneratedProductList();
+        List<GeneratedProductList> generatedProductsStorage = editorView
+                .getGeneratedProductsList();
+        GeneratedProductList generatedProducts =  generatedProductsStorage.get(0);
         IGeneratedProduct generatedProduct = generatedProducts.get(0);
         Dict d = new Dict();
         String productID = generatedProduct.getProductID();
