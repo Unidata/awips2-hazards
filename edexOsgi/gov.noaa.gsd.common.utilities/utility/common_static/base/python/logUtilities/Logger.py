@@ -26,7 +26,7 @@ logger.setLevel(loggingLevel)   #set to DEBUG to log practically everything
 ch = logging.StreamHandler()
 ch.setLevel(loggingLevel)
 
-rfh = logging.handlers.RotatingFileHandler("status.log", 'a', 50000000, 9)
+rfh = logging.handlers.RotatingFileHandler("/tmp/status.log", 'a', 50000000, 9)
 rfh.setLevel(loggingLevel)  #set to DEBUG to log practically everything
 
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
