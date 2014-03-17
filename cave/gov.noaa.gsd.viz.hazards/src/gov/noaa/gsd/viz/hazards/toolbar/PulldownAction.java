@@ -55,6 +55,12 @@ public abstract class PulldownAction extends BasicAction implements
         setMenuCreator(this);
     }
 
+    public PulldownAction(String text, String icon) {
+        super(text, icon, Action.AS_DROP_DOWN_MENU, text);
+        setMenuCreator(this);
+
+    }
+
     // Public Methods
 
     /**

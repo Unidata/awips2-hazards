@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
 import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
@@ -116,6 +115,8 @@ public class SettingsView implements
 
         // Private Variables
 
+        private static final String SETTINGS_ICON = "gear.png";
+
         /**
          * Flag indicating whether or not the menu should be repopulated with
          * setting names.
@@ -154,7 +155,7 @@ public class SettingsView implements
          * Construct a standard instance.
          */
         public SettingsPulldownAction() {
-            super(SETTINGS_TOOLBAR_BUTTON_TEXT);
+            super(SETTINGS_TOOLBAR_BUTTON_TEXT, SETTINGS_ICON);
         }
 
         // Public Methods
@@ -230,6 +231,8 @@ public class SettingsView implements
 
         // Private Variables
 
+        private static final String FILTER_ICON = "filter.png";
+
         /**
          * Megawidget manager handling the menu megawidgets.
          */
@@ -246,7 +249,7 @@ public class SettingsView implements
          * Construct a standard instance.
          */
         public FiltersPulldownAction() {
-            super(FILTERS_TOOLBAR_BUTTON_TEXT);
+            super(FILTERS_TOOLBAR_BUTTON_TEXT, FILTER_ICON);
         }
 
         // Public Methods
