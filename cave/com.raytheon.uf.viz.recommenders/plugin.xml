@@ -29,7 +29,7 @@
           localizationType="COMMON_STATIC"
           name="Recommenders"
           value="python/events/recommenders" 
-          recursive="false">
+          recursive="true">
        </path>
   </extension>
 </plugin>
