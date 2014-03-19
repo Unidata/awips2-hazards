@@ -55,6 +55,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Nov  14, 2013   1472     bkowal     Renamed hazard subtype to subType
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  *                                                    Also, fix to issue 2448
+ * March 19, 2014 3277     bkowal      Eliminate false errors due to standard
+ *                                     and expected interoperability actions.
  * 
  * </pre>
  * 
@@ -170,7 +172,17 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                  * Nothing to do here
                  */
 
-            } else {
+            } else if (hazardEvent.getState().equals(HazardState.PENDING)
+                    && hazardEvent.getHazardAttributes().containsKey(
+                            HazardConstants.GFE_INTEROPERABILITY)) {
+                /*
+                 * Nothing to do here - this hazard was created for GFE
+                 * interoperability which can be in the PENDING state if it was
+                 * created in response to the save of a GFE grid.
+                 */
+            }
+
+            else {
                 throw new IllegalArgumentException("Unexpected state "
                         + hazardEvent.getState());
             }
@@ -181,11 +193,11 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
             break;
 
         case UPDATE:
-            throw new IllegalArgumentException(String.format(
-                    "Currently, notification %s is not expected and so not"
-                            + "handled.", hazardNotification.getType()));
+            /*
+             * Do nothing for now. Hazards may occasionally be updated for
+             * interoperability purposes.
+             */
         }
-
     }
 
     private void generateAlertsForIssuedHazardEvent(IHazardEvent hazardEvent) {
