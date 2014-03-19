@@ -90,6 +90,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      are associated with a single gfe grid.
  * Mar 03, 2014 3034       bkowal       Use the gfe interoperability constant.
  *                                      Handle hazard history lists > 1 hazard correctly.
+ * Mar 19, 2014 3278       bkowal       Remove hazards that are associated with GFE
+ *                                      grids that are deleted.
  * 
  * </pre>
  * 
@@ -174,8 +176,7 @@ public class HazardEventHandler {
         switch (notification.getType()) {
         case STORE:
         case UPDATE:
-            String phenSig = hazardEvent.getPhenomenon() + "."
-                    + hazardEvent.getSignificance();
+            String phenSig = HazardEventUtilities.getHazardType(hazardEvent);
             boolean convert = GridValidator.needsGridConversion(phenSig);
 
             if (convert) {
@@ -202,6 +203,49 @@ public class HazardEventHandler {
         }
     }
 
+    private HazardEventManager getHazardEventManager(String parmID) {
+        Mode mode = this.determineHazardsMode(parmID);
+        if (mode == null) {
+            statusHandler
+                    .warn("Failed to determine mode associated with parmID: "
+                            + parmID);
+            return null;
+        }
+        HazardEventManager hazardEventManager = new HazardEventManager(mode);
+        // for now default to PRACTICE mode because everything else in
+        // hazard services is.
+        // TODO: remove the line below so that the event manager
+        // will be based on the true mode.
+        hazardEventManager = new HazardEventManager(Mode.PRACTICE);
+
+        return hazardEventManager;
+    }
+
+    /*
+     * Builds a list of events to examine while handling the HazardHistoryList.
+     */
+    private List<IHazardEvent> evaluateReturnedEvents(
+            Map<String, HazardHistoryList> events) {
+        List<IHazardEvent> hazardEventsToIterateOver = null;
+
+        /*
+         * determine how many hazards need to be reviewed.
+         */
+        int hazardsListCount = events.entrySet().size();
+        if (hazardsListCount == 1) {
+            hazardEventsToIterateOver = events.entrySet().iterator().next()
+                    .getValue().getEvents();
+        } else {
+            hazardEventsToIterateOver = new LinkedList<>();
+            for (String hazardEventID : events.keySet()) {
+                hazardEventsToIterateOver.addAll(events.get(hazardEventID)
+                        .getEvents());
+            }
+        }
+
+        return hazardEventsToIterateOver;
+    }
+
     private void handleHazardsGridUpdateNotification(
             GridUpdateNotification gridUpdateNotification) {
         if (HAZARD_PARM_NAME.equals(gridUpdateNotification.getParmId()
@@ -211,6 +255,24 @@ public class HazardEventHandler {
 
         final String parmID = gridUpdateNotification.getParmId().toString();
         final String siteID = gridUpdateNotification.getSiteID();
+        /*
+         * empty history indicates that the grid has been purged.
+         */
+        if (gridUpdateNotification.getHistories().isEmpty()) {
+            /*
+             * Determine if there are hazard events that also need to be
+             * removed.
+             */
+            Date startDate = gridUpdateNotification.getReplacementTimeRange()
+                    .getStart();
+            Date endDate = gridUpdateNotification.getReplacementTimeRange()
+                    .getEnd();
+
+            this.handleHazardsGridPurgeNotification(siteID, startDate, endDate,
+                    parmID);
+            return;
+        }
+
         GetGridRequest req = new GetGridRequest(
                 gridUpdateNotification.getParmId(),
                 Arrays.asList(gridUpdateNotification.getHistories().keySet()
@@ -239,23 +301,24 @@ public class HazardEventHandler {
             return;
         }
 
-        Mode mode = this.determineHazardsMode(parmID);
-        if (mode == null) {
-            statusHandler
-                    .warn("Failed to determine mode associated with parmID: "
-                            + parmID);
-            return;
-        }
-        HazardEventManager hazardEventManager = new HazardEventManager(mode);
-        // for now default to PRACTICE mode because everything else in
-        // hazard services is.
-        // TODO: remove the line below so that the event manager
-        // will be based on the true mode.
-        hazardEventManager = new HazardEventManager(Mode.PRACTICE);
-
         @SuppressWarnings("unchecked")
         List<DiscreteGridSlice> gridSlices = (List<DiscreteGridSlice>) serverResponse
                 .getPayload();
+        if (gridSlices.isEmpty()) {
+            /*
+             * Nothing to process.
+             */
+            return;
+        }
+
+        HazardEventManager hazardEventManager = this
+                .getHazardEventManager(parmID);
+        if (hazardEventManager == null) {
+            /*
+             * Unrecognized Parm ID.
+             */
+            return;
+        }
 
         for (DiscreteGridSlice discreteGridSlice : gridSlices) {
             Map<DiscreteKey, List<Grid2DBit>> gridsToProcessMap = new HashMap<DiscreteKey, List<Grid2DBit>>();
@@ -334,22 +397,8 @@ public class HazardEventHandler {
                 } else {
                     Geometry hazardGeometry = null;
 
-                    List<IHazardEvent> hazardEventsToIterateOver = null;
-
-                    /*
-                     * determine how many hazards need to be reviewed.
-                     */
-                    int hazardsListCount = events.entrySet().size();
-                    if (hazardsListCount == 1) {
-                        hazardEventsToIterateOver = events.entrySet()
-                                .iterator().next().getValue().getEvents();
-                    } else {
-                        hazardEventsToIterateOver = new LinkedList<>();
-                        for (String hazardEventID : events.keySet()) {
-                            hazardEventsToIterateOver.addAll(events.get(
-                                    hazardEventID).getEvents());
-                        }
-                    }
+                    List<IHazardEvent> hazardEventsToIterateOver = this
+                            .evaluateReturnedEvents(events);
 
                     /*
                      * Iterate through a full & complete list of the hazards
@@ -463,6 +512,67 @@ public class HazardEventHandler {
                     hazardEventManager.storeEvents(hazardsToCreate);
                 }
             }
+        }
+    }
+
+    private void handleHazardsGridPurgeNotification(String siteID,
+            Date startDate, Date endDate, String parmID) {
+        HazardEventManager hazardEventManager = this
+                .getHazardEventManager(parmID);
+        if (hazardEventManager == null) {
+            /*
+             * Unrecognized Parm ID.
+             */
+            return;
+        }
+
+        /*
+         * Retrieve any events within the time range.
+         */
+        HazardQueryBuilder builder = new HazardQueryBuilder();
+        builder.addKey(HazardConstants.SITE_ID, siteID);
+        builder.addKey(HazardConstants.HAZARD_EVENT_START_TIME, startDate);
+        builder.addKey(HazardConstants.HAZARD_EVENT_END_TIME, endDate);
+
+        Map<String, HazardHistoryList> events = hazardEventManager
+                .getEventsByFilter(builder.getQuery());
+        if (events.isEmpty()) {
+            /*
+             * No events to remove.
+             */
+            return;
+        }
+
+        List<IHazardEvent> hazardEventsToIterateOver = this
+                .evaluateReturnedEvents(events);
+
+        /*
+         * Build the list of events to remove.
+         */
+        List<IHazardEvent> eventsToRemove = new ArrayList<>();
+        for (IHazardEvent hazardEvent : hazardEventsToIterateOver) {
+            if (hazardEvent.getHazardAttributes().containsKey(
+                    HazardConstants.GFE_INTEROPERABILITY)) {
+                /*
+                 * The hazard was created in response to the creation of a GFE
+                 * grid.
+                 */
+                eventsToRemove.add(hazardEvent);
+                continue;
+            }
+
+            String phenSig = HazardEventUtilities.getHazardType(hazardEvent);
+            /*
+             * Determine if the event would be associated with a GFE grid.
+             */
+            boolean convert = GridValidator.needsGridConversion(phenSig);
+            if (convert) {
+                eventsToRemove.add(hazardEvent);
+            }
+        }
+
+        if (eventsToRemove.isEmpty() == false) {
+            hazardEventManager.removeEvents(eventsToRemove);
         }
     }
 
