@@ -48,6 +48,10 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Mar 18, 2014    2155    Chris.Golden      Fixed bug that caused radio buttons
+ *                                           to erroneously allow deselection by
+ *                                           the user, and changed from single-
+ *                                           line to multi-line comment style.
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,7 +118,9 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create and lay out the label and radio button widgets.
+        /*
+         * Create and lay out the label and radio button widgets.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 1,
                 SWT.NO_RADIO_GROUP,
                 UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED,
@@ -124,9 +130,23 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
             @Override
             public void widgetSelected(SelectionEvent e) {
                 Button radioButton = (Button) e.widget;
+
+                /*
+                 * To prevent radio buttons from being deselected, the selection
+                 * is reset to true if it was set to false. This is required
+                 * because the radio buttons are not grouped by their containing
+                 * composite, since they may have different composite parents
+                 * due to the possible presence of detail megawidgets.
+                 */
                 if (radioButton.getSelection() == false) {
+                    radioButton.setSelection(true);
                     return;
                 }
+
+                /*
+                 * Set the other radio buttons to be unselected, since again
+                 * they are not grouped by a single containing composite.
+                 */
                 for (Button otherButton : RadioButtonsMegawidget.this.radioButtons) {
                     if (otherButton != radioButton) {
                         otherButton.setSelection(false);
@@ -142,7 +162,9 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
         this.radioButtons = UiBuilder.buildChoiceButtons(panel, specifier,
                 SWT.RADIO, childManager, listener);
 
-        // Make the widgets read-only if the megawidget is not editable.
+        /*
+         * Make the widgets read-only if the megawidget is not editable.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
