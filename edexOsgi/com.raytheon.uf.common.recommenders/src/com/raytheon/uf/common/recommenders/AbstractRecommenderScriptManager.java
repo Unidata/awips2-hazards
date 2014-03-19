@@ -68,6 +68,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Dec 4, 2013  2461       bkowal      Recommenders at other localization
  *                                     levels can now override the base recommender.
  * Jan 20, 2014 2766       bkowal      Updated to use the Python Overrider
+ * Mar 19, 2014 3293       bkowal      Added the REGION localization level.
  * 
  * </pre>
  * 
@@ -150,13 +151,20 @@ public abstract class AbstractRecommenderScriptManager extends
                 LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
         String userPath = constructUserLocalizationRecommenderPath();
         String sitePath = constructSiteLocalizationRecommenderPath();
+        String regionPath = constructRegionLocalizationRecommenderPath();
         String basePath = constructBaseLocalizationRecommenderPath();
-        return PyUtil.buildJepIncludePath(basePath, sitePath, userPath);
+        return PyUtil.buildJepIncludePath(basePath, regionPath, sitePath,
+                userPath);
     }
 
     private static String constructBaseLocalizationRecommenderPath() {
         return constructLocalizationPath(LocalizationType.COMMON_STATIC,
                 LocalizationLevel.BASE, RECOMMENDERS_LOCALIZATION_DIR);
+    }
+
+    private static String constructRegionLocalizationRecommenderPath() {
+        return constructLocalizationPath(LocalizationType.COMMON_STATIC,
+                LocalizationLevel.REGION, RECOMMENDERS_LOCALIZATION_DIR);
     }
 
     private static String constructSiteLocalizationRecommenderPath() {

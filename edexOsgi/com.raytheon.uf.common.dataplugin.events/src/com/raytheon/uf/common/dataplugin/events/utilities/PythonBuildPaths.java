@@ -43,6 +43,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Mar 1, 2013            jsanchez     Initial creation
  * Jan 20, 2014 2766      bkowal       Re-ordered the paths. Created static
  *                                     variable for the python events directory.
+ * Mar 19, 2014 3293      bkowal       Added the REGION localization level.
  * 
  * </pre>
  * 
@@ -66,6 +67,8 @@ public class PythonBuildPaths {
         IPathManager pathMgr = PathManagerFactory.getPathManager();
         LocalizationContext baseContext = pathMgr.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        LocalizationContext regionContext = pathMgr.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.REGION);
         LocalizationContext siteContext = pathMgr.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.SITE);
         LocalizationContext userContext = pathMgr.getContext(
@@ -77,10 +80,13 @@ public class PythonBuildPaths {
                 .getFile().getPath();
         String sitePath = pathMgr.getLocalizationFile(siteContext, fileLoc)
                 .getFile().getPath();
+        String regionPath = pathMgr.getLocalizationFile(regionContext, fileLoc)
+                .getFile().getPath();
         String basePath = pathMgr.getLocalizationFile(baseContext, fileLoc)
                 .getFile().getPath();
 
-        return PyUtil.buildJepIncludePath(basePath, sitePath, userPath);
+        return PyUtil.buildJepIncludePath(basePath, regionPath, sitePath,
+                userPath);
     }
 
     /**

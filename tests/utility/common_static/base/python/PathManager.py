@@ -1,174 +1,176 @@
 # #
 # This software was developed and / or modified by Raytheon Company,
 # pursuant to Contract DG133W-05-CQ-1067 with the US Government.
-# 
+#
 # U.S. EXPORT CONTROLLED TECHNICAL DATA
 # This software product contains export-restricted data whose
 # export/transfer/disclosure is restricted by U.S. law. Dissemination
 # to non-U.S. persons whether in the United States or abroad requires
 # an export license or other authorization.
-# 
+#
 # Contractor Name:        Raytheon Company
 # Contractor Address:     6825 Pine Street, Suite 340
 #                         Mail Stop B8
 #                         Omaha, NE 68106
 #                         402.291.0100
-# 
+#
 # See the AWIPS II Master Rights File ("Master Rights File.pdf") for
 # further licensing information.
 # #
 
 #
 # Python should use this interface to get to the localization files.
-#   
 #
-#    
+#
+#
 #    SOFTWARE HISTORY
-#    
+#
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    03/18/13                      mnash        Initial Creation.
-#    
-# 
+#    11/08/13        2086          bkowal       Declare lists using [] instead of list()
+#
+#
 #
 
 import os, os.path
-import glob
-import AbstractPathManager
+import IPathManager
+import JUtil
+from jep import jarray
+
+from LocalizationFile import LocalizationFile
+from LockingFile import File
 
 from com.raytheon.uf.common.localization import PathManagerFactory
-from com.raytheon.uf.common.localization import LocalizationContext
+from com.raytheon.uf.common.localization import LocalizationContext as JavaLocalizationContext
 from com.raytheon.uf.common.localization import LocalizationContext_LocalizationType as LocalizationType, LocalizationContext_LocalizationLevel as LocalizationLevel
-from java.io import File    
+from java.io import File as JavaFile
+from java.lang import String
 
-# the supported levels are given here
-BASE = LocalizationLevel.BASE
-CONFIGURED = LocalizationLevel.CONFIGURED
-SITE = LocalizationLevel.SITE
-WORKSTATION = LocalizationLevel.WORKSTATION
-USER = LocalizationLevel.USER
+class PathManager(IPathManager.IPathManager):
 
-# the supported types are given here
-CAVE_STATIC = LocalizationType.CAVE_STATIC
-CAVE_CONFIG = LocalizationType.CAVE_CONFIG
-COMMON_STATIC = LocalizationType.COMMON_STATIC
-EDEX_STATIC = LocalizationType.EDEX_STATIC
-
-class PathManager(AbstractPathManager.AbstractPathManager):
-    
     def __init__(self):
-        self.pathManager = PathManagerFactory.getPathManager()
-        
-    def getStaticFile(self, name, mode):
-        '''
-        @param name: the name and path of the file
-        @param mode: the python mode for which to return the file handle for ('r','w','r+w')
-        @return: the file handle for which the calling method can manipulate.
-        @summary: This method returns the file handle based on the name and the
-        mode that is passed in.  The calling method MUST clean up the file handle by calling close.
-        '''
-        return open(self.getStaticFilePath(name), mode)
-    
-    def getStaticFilePath(self, name):
-        return self.pathManager.getStaticFile(name).getAbsolutePath()
-    
-    def getStaticLocalizationFile(self, name):
-        raise NotImplementedError()
-    
-    def getFilePath(self, context, name):
-        return self.pathManager.getFile(context, name).getAbsolutePath()
-    
-    def getFile(self, context, name, mode):
+        self.jpathManager = PathManagerFactory.getPathManager()
+
+    def getLocalizationFile(self, name, loctype=None, loclevel=None, locname=None):
         '''
         @param context: the localization context for which to get the file
         @param name: the name and path of the file
-        @param mode: the python mode for which to return the file handle for ('r','w','r+w')
-        @return: the file handle for which the calling method can manipulate.
-        @summary: This method returns the file handle based on the context, the name, and the
-        mode that is passed in.  The calling method MUST clean up the file handle by calling close.
+        @param loctype: the LocalizationType (COMMON_STATIC,CAVE_STATIC...)
+        @param loclevel: the localization level (BASE,SITE,USER...)
+        @param locname: the localization name if desired
+        @return: the localization file
+        @summary: This method returns the localization file based on the context and the name
         '''
-        return open(self.getFilePath(context, name), mode)
-    
-    def getLocalizationFile(self, context, name):
-        raise NotImplementedError()
-    
-    def getTieredLocalizationFile(self, type, name):
-        raise NotImplementedError()
-    
-    def listFiles(self, context, name, extensions, recursive, filesOnly):
-        fileLoc = self.getFilePath(context, name)
-        return self._listFiles(fileLoc, extensions, recursive, filesOnly)
-    
-    def listStaticFiles(self, name, extensions, recursive, filesOnly):
-        fileLoc = self.getStaticFilePath(name)
-        print fileLoc
-        return self._listFiles(fileLoc, extensions, recursive, filesOnly)
-    
-    def _listFiles(self, path, extensions, recursive, filesOnly):
-        listing = list()
-        if recursive :
-            for root, dirs, files in os.walk(path):
-                for f in files :
-                    fullpath = os.path.join(root, f)
-                    valid = self._checkFile(fullpath, extensions, filesOnly)
-                    if valid :
-                        listing.append(fullpath)
+        context = self._getContext(loctype, loclevel, locname)
+        if context is not None and len(context) == 1:
+            lFile = self.jpathManager.getLocalizationFile(context[0], name)
         else :
-            # probably should check if it is a directory first
-            for f in os.listdir(path):
-                fullpath = os.path.join(path, f)
-                valid = self._checkFile(fullpath, extensions, filesOnly)
-                if valid :
-                    listing.append(f)
-        # handle different method signatures            
-        return listing
-        
-    
-    def _checkFile(self, fullpath, extensions, filesOnly):
-        if extensions is not None and len(extensions) > 0 :
-            if os.path.splitext(fullpath)[1] in extensions :
-                if filesOnly :
-                    if os.path.isfile(fullpath):
-                        return True
-                else :
-                    return True
+            lFile = self.jpathManager.getStaticLocalizationFile(name)
+        if lFile is not None:
+            return LocalizationFile(lFile)
+
+    def getTieredLocalizationFile(self, loctype, name):
+        '''
+        @param loctype: The localization type to look in
+        @param name: The name of the file
+        @return: a dictionary of string to localization file
+        @summary: Returns the localization levels available for the file given
+        '''
+        jtype = self._convertType(loctype)
+        jMap = self.jpathManager.getTieredLocalizationFile(jtype, name)
+        iterator = jMap.entrySet().iterator()
+        vals = dict()
+        while iterator.hasNext() :
+            nextValue = iterator.next()
+            # the key of the entry set is a localization level, the value is a localization file
+            vals[nextValue.getKey().name()] = LocalizationFile(nextValue.getValue())
+        return vals
+
+    def listFiles(self, name, extensions, recursive, filesOnly, loctype=None, loclevel=None, locname=None):
+        '''
+        @param name: the name and path of the file
+        @param extensions: a list of the file extensions to filter on
+        @param recursive: whether or not to search through the directory recursively
+        @param filesOnly: whether or not directories should be included in the list
+        @param loctype: the localization type for which to get the file
+        @param loclevel: the localization level for which to get the file
+        @param locname: the name for which to get
+        @return: a list of the file paths
+        @summary: This method returns the list of fully qualified file paths for a 
+        directory or a directory and its sub-directories
+        '''
+        contexts = self._getContext(loctype, loclevel, locname)
+        extensionSize = len(extensions)
+        extArr = jarray(extensionSize, String)
+        for i in range(extensionSize):
+            extArr[i] = String(extensions[i])
+
+        if contexts is not None :
+            jfiles = self.jpathManager.listFiles(contexts, name, extArr, recursive, filesOnly)
         else :
-            if filesOnly :
-                if os.path.isfile(fullpath):
-                    return True
-            else :
-                return True
-        return False
-    
-    def getContext(self, type, level):
-        '''
-        @param type: The localization type, must be one of the pre-defined ones above
-        @param level: The localization level, must be one of the pre-defined ones above
-        @return: the localization context
-        '''
-        return self.pathManager.getContext(type, level)
-        
-    def getContextForSite(self, type, siteId):
-        '''
-        @param type: The localization type, must be one of the pre-defined ones above
-        @param siteId: The site id for which to search contexts
-        @return: the localization context for the site given with the type given
-        '''
-        return self.pathManager.getContextForSite(type, siteId)
-    
-    def getLocalSearchHierarchy(self, type):
-        raise NotImplementedError()
-    
-    def getContextList(self, level):
-        return self.pathManager.getContextList(level)
-    
+            jfiles = self.jpathManager.listStaticFiles(name, extArr, recursive, filesOnly)
+        if jfiles is not None :
+            files = []
+            for file in jfiles :
+                files.append(LocalizationFile(file))
+            return files
+
     def getAvailableLevels(self):
-        jLevels = self.pathManager.getAvailableLevels()
-        levels = list()
-        for level in levels :
+        '''
+        @return: the levels available to the caller
+        @summary: This method returns the list of available levels.
+        '''
+        jLevels = self.jpathManager.getAvailableLevels()
+        levels = []
+        for level in jLevels :
             levels.append(level.name())
         return levels
-    
-    def getCombinedFile(self, name):
-        raise NotImplementedError()
-    
+
+    # converts a type of a list of types to the java counterparts
+    def _convertType(self, loctype):
+        if loctype is not None:
+            jtype = loctype
+            if isinstance(loctype, basestring):
+                jtype = LocalizationType.valueOf(loctype)
+            elif isinstance(loctype, list):
+                jtype = []
+                for i in range(loctype):
+                    jtype[i] = self._convertType(loctype[i])
+            return jtype
+
+    # converts a level or a list of levels to the java counterparts
+    def _convertLevel(self, loclevel):
+        if loclevel is not None :
+            jlevel = loclevel
+            if isinstance(loclevel, basestring):
+                jlevel = LocalizationLevel.valueOf(loclevel)
+            elif isinstance(loclevel, list):
+                jlevel = []
+                for i in range(loclevel):
+                    jlevel[i] = self._convertLevel(loclevel[i])
+            return jlevel
+
+    def _getContext(self, loctype, loclevel, locname=None):
+        jtype = self._convertType(loctype)
+        jlevel = self._convertLevel(loclevel)
+        context = None
+        if isinstance(jtype, list) is False:
+            if jtype is not None :
+                jtype = [jtype]
+            if jlevel is not None :
+                jlevel = [jlevel]
+        return self._contextForList(jtype, jlevel, locname)
+
+    def _contextForList(self, loctypes, loclevels, locname=None):
+        # gets the contexts in list form, for ease of use, we always use a list of contexts
+        # for methods that can take both
+        contexts = jarray(len(loctypes), JavaLocalizationContext)
+        for i in range(len(loctypes)):
+            if locname is None and loclevels is None:
+                return None
+            elif loclevels is not None :
+                contexts[i] = self.jpathManager.getContext(loctypes[i], loclevels[i])
+            if locname is not None :
+                contexts[i].setContextName(locname)
+        return contexts

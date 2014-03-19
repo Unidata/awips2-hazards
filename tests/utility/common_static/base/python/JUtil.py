@@ -18,28 +18,90 @@
 # further licensing information.
 # #
 
-
-from java.lang import Integer, Float, Long, Boolean, String
-from java.util import HashMap, LinkedHashMap, ArrayList
-from java.util import Collections
 from collections import OrderedDict
+from java.util import HashMap, LinkedHashMap, ArrayList
+from java.lang import String
 
 #
 # Provides convenience methods for Java-Python bridging
 #
+# For utilization of the basics, doing the following will work just fine :
 #
+# import JUtil
+# JUtil.pyValToJavaObj(val)
+#
+# However, to do more advanced conversion, you can register a handler and it will then be
+# available to do the necessary conversion.
+# 
+# For example, Geometry objects are not currently handled.  The GeometryHandler module will
+# handle them however.  Code would be written as follows :
+#
+# import JUtil
+# from GeometryHandler import jtsToShapely, shapelyToJTS
+# JUtil.registerJavaToPython(jtsToShapely)
+# JUtil.registerPythonToJava(shapelyToJTS)
+# JUtil.pyValToJavaObj(val) 
 #
 #     SOFTWARE HISTORY
 #
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    05/01/08                      njensen       Initial Creation.
-#
+#    03/12/13         1759         dgilling      Extend Java List types handled
+#                                                by javaObjToPyVal().
+#    08/20/13         2250         mnash         Handle Dates, doubles, and arrays
+#    10/15/13                      mnash         Refactor to reduce dependencies and clean up
 #
 #
 
+
+
+def registerPythonToJava(method):
+    '''
+    We want to register new handlers per PythonInterpreter.  
+    This allows us to utilize different conversions that may not
+    be needed for some PythonInterpreters, but to use them in others
+    where they are required.
+    '''
+    pythonHandlers.append(method)
+    
+def registerJavaToPython(method):
+    javaHandlers.append(method)
+
+def pyValToJavaObj(val):
+    '''
+    The main method for Python to Java conversion in JUtil.  If no conversion
+    method can be found, a string representation of the python value will be 
+    returned as we do not want to crash the JVM.
+    '''
+    retVal = val
+    if retVal is not None :
+        for handleMethod in pythonHandlers:
+            success, obj = handleMethod(val)
+            if success:
+                retVal = obj
+                break
+    return retVal
+
+def javaObjToPyVal(obj, customConverter=None):
+    '''
+    The main method for Java to Python conversion in JUtil.  If no conversion
+    method can be found, the PyJObject will be returned and may still be able
+    to be used that way from within Python.
+    '''
+    retVal = obj
+    if retVal is not None :
+        for handleMethod in javaHandlers:
+            success, val = handleMethod(obj, customConverter)
+            if success:
+                retVal = val
+                break
+    return retVal
 
 def javaStringListToPylist(jlist):
+    '''
+    Going forward should use javaObjToPyVal instead.
+    '''
     pylist = []
     size = jlist.size()
     for i in range(size):
@@ -47,30 +109,19 @@ def javaStringListToPylist(jlist):
     return pylist
 
 def pylistToJavaStringList(pylist):
+    '''
+    Going forward should use pyValToJavaObj instead.
+    '''
     jlist = ArrayList();
     for i in pylist:
         jlist.add(String(i))
     return jlist
 
-def javaStringMapToPyDict(javaMap):
-    keys = javaMap.keySet()
-    itr = keys.iterator()
-    pyDict = {}
-    while itr.hasNext():
-        key = itr.next()
-        val = javaMap.get(key)
-        fval = str(val)
-        if fval.find('[') > -1:
-            exec "fval = " + fval
-        else:
-            try:
-                fval = float(fval)
-            except:
-                pass
-        pyDict[str(key)] = fval
-    return pyDict
 
 def javaMapToPyDict(javaMap, customConverter=None):
+    '''
+    Going forward should use javaObjToPyVal instead.
+    '''
     keys = javaMap.keySet()
     itr = keys.iterator()
     if javaMap.jclassname == "java.util.LinkedHashMap":
@@ -84,6 +135,9 @@ def javaMapToPyDict(javaMap, customConverter=None):
     return pyDict
 
 def pyDictToJavaMap(pyDict):
+    '''
+    Going forward should use pyValToJavaObj instead.
+    '''
     if pyDict is None :
         return None
 
@@ -96,67 +150,13 @@ def pyDictToJavaMap(pyDict):
         jmap.put(pyValToJavaObj(key), pyValToJavaObj(pyDict[key]))
     return jmap
 
-def pyValToJavaObj(val):
-    retObj = val
-    valtype = type(val)
-    if valtype is int:
-        retObj = Integer(val)
-    elif valtype is float:
-        retObj = Float(val)
-    elif valtype is long:
-        retObj = Long(val)
-    elif valtype is bool:
-        retObj = Boolean(val)
-    elif valtype is list:
-        retObj = ArrayList()
-        for i in val:
-            retObj.add(pyValToJavaObj(i))
-    elif valtype is tuple:
-        tempList = ArrayList()
-        for i in val:
-            tempList.add(pyValToJavaObj(i))
-        retObj = Collections.unmodifiableList(tempList)
-    elif issubclass(valtype, dict):
-        retObj = pyDictToJavaMap(val)
-    elif issubclass(valtype, JavaWrapperClass):
-        retObj = val.toJavaObj()
-    return retObj
-
-def javaObjToPyVal(obj, customConverter=None):
-    retVal = None
-    if obj is None:
-        return retVal
-
-    objtype = obj.jclassname
-    if objtype == "java.lang.Integer":
-        retVal = obj.intValue()
-    elif objtype == "java.lang.Float":
-        retVal = obj.floatValue()
-    elif objtype == "java.lang.Long":
-        retVal = obj.longValue()
-    elif objtype == "java.lang.Boolean":
-        retVal = bool(obj.booleanValue())
-    elif objtype == "java.util.ArrayList":
-        retVal = []
-        size = obj.size()
-        for i in range(size):
-            retVal.append(javaObjToPyVal(obj.get(i), customConverter))
-    elif objtype == "java.util.Collections$UnmodifiableRandomAccessList":
-        tempList = []
-        size = obj.size()
-        for i in range(size):
-            tempList.append(javaObjToPyVal(obj.get(i), customConverter))
-        retVal = tuple(tempList)
-    elif objtype == "java.util.HashMap":
-        retVal = javaMapToPyDict(obj, customConverter)
-    elif customConverter is not None:
-        retVal = customConverter(obj)
-
-    if retVal is None:
-        retVal = str(obj)
-    return retVal
-
 class JavaWrapperClass(object):
     def toJavaObj(self):
         raise NotImplementedError, "Subclasses must override this method."
 
+# this initializes the basic handlers for Java->Python conversion and Python->Java conversion
+
+from JUtilHandler import javaBasicsToPyBasics, pyBasicsToJavaBasics, javaCollectionToPyCollection, pyCollectionToJavaCollection, javaClassToPyClass, pyClassToJavaClass
+
+pythonHandlers = [pyBasicsToJavaBasics, pyCollectionToJavaCollection, pyClassToJavaClass]
+javaHandlers = [javaBasicsToPyBasics, javaCollectionToPyCollection, javaClassToPyClass]

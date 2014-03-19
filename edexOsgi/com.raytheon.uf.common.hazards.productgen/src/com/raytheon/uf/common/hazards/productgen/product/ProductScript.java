@@ -53,6 +53,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            jsanchez     Initial creation
  * Jan 20, 2014 2766       bkowal       Updated to use the Python Overrider
+ * Mar 19, 2014 3293       bkowal       Code cleanup.
  * 
  * </pre>
  * 
@@ -148,7 +149,6 @@ public class ProductScript extends PythonScriptController {
      *            (i.e. XML)
      * @return
      */
-    @SuppressWarnings("unchecked")
     public GeneratedProductList generateProduct(String product,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
             String[] formats) {
@@ -184,7 +184,6 @@ public class ProductScript extends PythonScriptController {
      * 
      * @return
      */
-    @SuppressWarnings("unchecked")
     public GeneratedProductList updateGeneratedProducts(String product,
             List<LinkedHashMap<String, Serializable>> updatedDataList,
             String[] formats) {
