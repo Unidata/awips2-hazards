@@ -289,6 +289,11 @@ public class RiverForecastPoint {
     private int currentObservationCategory;
 
     /**
+     * Index of current observation.
+     */
+    private int observedCurrentIndex;
+
+    /**
      * maximum forecast value
      */
     private SHEFObservation maximumForecast;
@@ -1538,8 +1543,7 @@ public class RiverForecastPoint {
         long system_time;
         int start_index, end_index;
 
-        /* initialize all the data */
-        int observedCurrentIndex = (int) MISSINGVAL;
+        this.observedCurrentIndex = (int) MISSINGVAL;
         this.observedMaximumIndex = (int) MISSINGVAL;
         this.observedMax24Index = (int) MISSINGVAL;
         this.observedMax06Index = (int) MISSINGVAL;
@@ -2873,6 +2877,115 @@ public class RiverForecastPoint {
     public Double convertHydroLongitudesToWesternHemisphere(
             final Double hydroLongitude) {
         return hydroLongitude * -1;
+    }
+
+    /**
+     * @return the observedCurrentIndex
+     */
+    public int getObservedCurrentIndex() {
+        return observedCurrentIndex;
+    }
+
+    /**
+     * @return the observedHydrograph
+     */
+    public Hydrograph getObservedHydrograph() {
+        return observedHydrograph;
+    }
+
+    /**
+     * @return the maximumForecastIndex
+     */
+    public int getMaximumForecastIndex() {
+        return maximumForecastIndex;
+    }
+
+    /**
+     * @return the forecastHydrograph
+     */
+    public Hydrograph getForecastHydrograph() {
+        return forecastHydrograph;
+    }
+
+    /**
+     * @return the observedRiseAboveTime
+     */
+    public Date getObservedRiseAboveTime() {
+        return observedRiseAboveTime;
+    }
+
+    /**
+     * @return the observedFallBelowTime
+     */
+    public Date getObservedFallBelowTime() {
+        return observedFallBelowTime;
+    }
+
+    /**
+     * @return the forecastRiseAboveTime
+     */
+    public Date getForecastRiseAboveTime() {
+        return forecastRiseAboveTime;
+    }
+
+    /**
+     * @return the forecastFallBelowTime
+     */
+    public Date getForecastFallBelowTime() {
+        return forecastFallBelowTime;
+    }
+
+    /**
+     * @return the numFcstH
+     */
+    public int getNumFcstH() {
+        return numFcstH;
+    }
+
+    /**
+     * @return the numObsH
+     */
+    public int getNumObsH() {
+        return numObsH;
+    }
+
+    /**
+     * @return the minor flood category.
+     */
+    public double getMinorFloodCategory() {
+        return this.floodCategory[HydroFloodCategories.MINOR_FLOOD_CATEGORY
+                .getRank()];
+    }
+
+    /**
+     * @return the moderate flood category.
+     */
+    public double getModerateFloodCategory() {
+        return this.floodCategory[HydroFloodCategories.MODERATE_FLOOD_CATEGORY
+                .getRank()];
+    }
+
+    /**
+     * @return the major flood category.
+     */
+    public double getMajorFloodCategory() {
+        return this.floodCategory[HydroFloodCategories.MAJOR_FLOOD_CATEGORY
+                .getRank()];
+    }
+
+    /**
+     * @return the major flood category.
+     */
+    public double getRecordFloodCategory() {
+        return this.floodCategory[HydroFloodCategories.RECORD_FLOOD_CATEGORY
+                .getRank()];
+    }
+
+    /**
+     * @return the floodFlow
+     */
+    public double getFloodFlow() {
+        return floodFlow;
     }
 
 }

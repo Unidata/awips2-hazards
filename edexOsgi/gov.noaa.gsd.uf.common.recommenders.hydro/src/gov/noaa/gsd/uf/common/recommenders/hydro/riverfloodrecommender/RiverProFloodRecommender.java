@@ -108,7 +108,7 @@ public class RiverProFloodRecommender {
      * Default constructor
      */
     public RiverProFloodRecommender() {
-        this.floodDAO = FloodRecommenderDAO.getInstance();
+        this(FloodRecommenderDAO.getInstance());
     }
 
     /**
@@ -120,24 +120,6 @@ public class RiverProFloodRecommender {
      */
     public RiverProFloodRecommender(IFloodRecommenderDAO floodDAO) {
         this.floodDAO = floodDAO;
-    }
-
-    /**
-     * Runs the Tool.
-     * 
-     * @param sessionAttributeMap
-     *            A map of session information
-     * @param dialogInputMap
-     *            A map of user-input dialog information
-     * @param spatialInputMap
-     *            A map of user-input spatial information
-     * @return A list of hazard events representing river flood recommendations
-     */
-    public EventSet<IHazardEvent> getRecommendation(
-            Map<String, Object> sessionAttributeMap,
-            Map<String, Object> dialogInputMap,
-            Map<String, Object> spatialInputMap) {
-
         initialize();
 
         /*
@@ -157,6 +139,24 @@ public class RiverProFloodRecommender {
          * The core of the recommender logic is here.
          */
         recommendRiverFloodHazards();
+
+    }
+
+    /**
+     * Runs the Tool.
+     * 
+     * @param sessionAttributeMap
+     *            A map of session information
+     * @param dialogInputMap
+     *            A map of user-input dialog information
+     * @param spatialInputMap
+     *            A map of user-input spatial information
+     * @return A list of hazard events representing river flood recommendations
+     */
+    public EventSet<IHazardEvent> getRecommendation(
+            Map<String, Object> sessionAttributeMap,
+            Map<String, Object> dialogInputMap,
+            Map<String, Object> spatialInputMap) {
 
         return createHazards(dialogInputMap);
     }
@@ -573,7 +573,6 @@ public class RiverProFloodRecommender {
      *            A map containing information from the tool dialog.
      * @return A set of recommended potential river flood hazards
      */
-    @SuppressWarnings("unchecked")
     private EventSet<IHazardEvent> createHazards(
             Map<String, Object> dialogInputMap) {
         boolean isWarning = false;
@@ -941,6 +940,55 @@ public class RiverProFloodRecommender {
         }
 
         return recordString;
+    }
+
+    /**
+     * @return the forecastPointList
+     */
+    public List<RiverForecastPoint> getForecastPointList() {
+        return forecastPointList;
+    }
+
+    /**
+     * @return the riverGroupList
+     */
+    public List<RiverForecastGroup> getRiverGroupList() {
+        return riverGroupList;
+    }
+
+    /**
+     * @return the countyForecastGroupList
+     */
+    public List<CountyForecastGroup> getCountyForecastGroupList() {
+        return countyForecastGroupList;
+    }
+
+    /**
+     * @return the hydroEventList
+     */
+    public List<HydroEvent> getHydroEventList() {
+        return hydroEventList;
+    }
+
+    /**
+     * @return the hazardSettings
+     */
+    public HazardSettings getHazardSettings() {
+        return hazardSettings;
+    }
+
+    /**
+     * @return the forecastPointEventMap
+     */
+    public Map<String, HydroEvent> getForecastPointEventMap() {
+        return forecastPointEventMap;
+    }
+
+    /**
+     * @return the floodDAO
+     */
+    public IFloodRecommenderDAO getFloodDAO() {
+        return floodDAO;
     }
 
 }

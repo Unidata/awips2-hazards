@@ -200,6 +200,8 @@ public class RiverFloodRecommenderNEBN1Test {
 
         };
 
+        String stateName = "Nebraska";
+
         floodDAO = new FloodRecommenderTestDAO(fpInfoid, location,
                 forecastGroup, countyStateList, hazardSettings, riverStatus,
                 ingestTable, ingestRecord, basisTime, systemTime, bestTS,
@@ -207,7 +209,7 @@ public class RiverFloodRecommenderNEBN1Test {
                 lookForwardHoursForAllForecastPoints,
                 basisHoursForAllForecastPoints, shiftHoursForAllForecastPoints,
                 defaultStageWindow, forecastPointsInCounty, observations,
-                forecasts);
+                forecasts, stateName);
     }
 
     /**
@@ -227,8 +229,8 @@ public class RiverFloodRecommenderNEBN1Test {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(true,
-                false);
+        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
+                true, false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation

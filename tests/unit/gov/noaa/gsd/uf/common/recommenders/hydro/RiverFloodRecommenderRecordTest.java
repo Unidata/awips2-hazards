@@ -62,7 +62,7 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
         });
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                null);
+                new FloodRecommenderDCTN1TestDAO());
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NR", recordStatus);
@@ -95,7 +95,7 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
         });
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                null);
+                new FloodRecommenderDCTN1TestDAO());
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NR", recordStatus);
@@ -128,7 +128,7 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
         });
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                null);
+                new FloodRecommenderDCTN1TestDAO());
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NO", recordStatus);
@@ -162,7 +162,7 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
         });
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                null);
+                new FloodRecommenderDCTN1TestDAO());
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("UU", recordStatus);
@@ -196,7 +196,7 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
         });
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                null);
+                new FloodRecommenderDCTN1TestDAO());
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("UU", recordStatus);

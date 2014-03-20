@@ -958,4 +958,38 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
         return SimulatedTime.getSystemTime().getTime();
     }
 
+    /**
+     * Translates a state abbreviation into a state name using the state table
+     * in the IHFS database.
+     * 
+     * @param stateAbbreviation
+     *            The two letter state abbreviation. These should be capital
+     *            letters.
+     * @return The name of the state which matches the abbreviation.
+     */
+    @Override
+    public String getStateNameForAbbreviation(String stateAbbreviation) {
+        String query = "SELECT name FROM State WHERE state = '"
+                + stateAbbreviation + "'";
+
+        List<Object[]> stateResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
+
+        if (stateResults.size() > 0) {
+            Object[] record = stateResults.get(0);
+            return (String) record[0];
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public List<Object[]> getRiverStationInfo(String lid) {
+        String query = "SELECT * FROM RiverStat WHERE lid = '" + lid + "'";
+
+        List<Object[]> statResults = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
+
+        return statResults;
+    }
 }

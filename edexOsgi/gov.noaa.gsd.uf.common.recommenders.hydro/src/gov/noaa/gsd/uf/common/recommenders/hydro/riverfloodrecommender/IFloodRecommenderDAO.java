@@ -334,4 +334,26 @@ public interface IFloodRecommenderDAO {
      * @return The system time.
      */
     public Date getSystemTime();
+
+    /**
+     * Translates a state abbreviation into a state name using the state table
+     * in the IHFS database.
+     * 
+     * @param stateAbbreviation
+     *            The two letter state abbreviation. These should be capital
+     *            letters.
+     * @return The name of the state which matches the abbreviation.
+     */
+
+    public String getStateNameForAbbreviation(String stateAbbreviation);
+
+    /**
+     * Retrieves the record from the riverstat table in the IHFS database for
+     * the specified river point.
+     * 
+     * @param lid
+     *            River point identifier
+     * @return The record in the riverstat for the specified river point
+     */
+    public List<Object[]> getRiverStationInfo(String lid);
 }

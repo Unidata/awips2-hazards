@@ -446,4 +446,37 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodRecommenderDAO {
         return systemDate;
     }
 
+    @Override
+    public String getStateNameForAbbreviation(String stateAbbreviation) {
+        return "Nebraska";
+    }
+
+    @Override
+    public List<Object[]> getRiverStationInfo(String lid) {
+        List<Object[]> riverStatInfo = Lists.newArrayList();
+        riverStatInfo
+                .add(new Object[] {
+                        "DCTN1",
+                        "HG",
+                        35,
+                        null,
+                        316140,
+                        0,
+                        null,
+                        null,
+                        35,
+                        06601200,
+                        null,
+                        691,
+                        null,
+                        "10/1/1929 - Present",
+                        "USGS",
+                        42.007928,
+                        96.242898,
+                        "Gage is approx. 500 feet upstream of Highway 175 bridge and along the right bank. Crest data from 1959 to 1974 available in hardcopy at Omaha WFO.",
+                        "2012-08-25", "USGS", "Missouri River", "None", "None",
+                        "NGVD 1929", null, 33, 1010, "2013-02-17", null, 0, "T" });
+        return riverStatInfo;
+    }
+
 }

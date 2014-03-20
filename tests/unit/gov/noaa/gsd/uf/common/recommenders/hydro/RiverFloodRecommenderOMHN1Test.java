@@ -213,6 +213,8 @@ public class RiverFloodRecommenderOMHN1Test {
                         "KKRFRVFMOM", "2012-12-07 15:27:00",
                         "2012-12-07 20:28:48" } };
 
+        String stateName = "Nebraska";
+
         floodDAO = new FloodRecommenderTestDAO(fpInfoid, location,
                 forecastGroup, countyStateList, hazardSettings, riverStatus,
                 ingestTable, ingestRecord, basisTime, systemTime, bestTS,
@@ -220,7 +222,7 @@ public class RiverFloodRecommenderOMHN1Test {
                 lookForwardHoursForAllForecastPoints,
                 basisHoursForAllForecastPoints, shiftHoursForAllForecastPoints,
                 defaultStageWindow, forecastPointsInCounty, observations,
-                forecasts);
+                forecasts, stateName);
     }
 
     /**
@@ -240,8 +242,8 @@ public class RiverFloodRecommenderOMHN1Test {
         recommender.getRecommendation(sessionAttributeMap, dialogInputMap,
                 spatialInputMap);
 
-        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(true,
-                false);
+        EventSet<IHazardEvent> results = recommender.getPotentialRiverHazards(
+                true, false);
         assertEquals(1, results.size());
         IHazardEvent recommendation = results.iterator().next();
         Map<String, Serializable> attributeMap = recommendation

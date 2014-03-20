@@ -83,6 +83,8 @@ public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
 
     private final Object[][] forecasts;
 
+    private final String stateName;
+
     static public final long QUESTIONABLE_BAD_THRESHOLD = 1073741824;
 
     /**
@@ -98,7 +100,7 @@ public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
             int basisHoursForAllForecastPoints,
             int shiftHoursForAllForecastPoints, double defaultStageWindow,
             String[] forecastPointsInCounty, Object[][] observations,
-            Object[][] forecasts) {
+            Object[][] forecasts, String stateName) {
         this.fpInfoid = fpInfoid;
         this.location = location;
         this.forecastGroup = forecastGroup;
@@ -120,6 +122,7 @@ public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
         this.forecastPointsInCounty = forecastPointsInCounty;
         this.observations = observations;
         this.forecasts = forecasts;
+        this.stateName = stateName;
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
@@ -360,4 +363,13 @@ public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
         return systemDate;
     }
 
+    @Override
+    public String getStateNameForAbbreviation(String stateAbbreviation) {
+        return stateName;
+    }
+
+    @Override
+    public List<Object[]> getRiverStationInfo(String lid) {
+        return new ArrayList<>();
+    }
 }

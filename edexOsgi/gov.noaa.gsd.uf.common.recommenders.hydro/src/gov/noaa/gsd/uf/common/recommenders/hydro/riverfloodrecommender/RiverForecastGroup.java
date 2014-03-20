@@ -54,9 +54,9 @@ public class RiverForecastGroup {
 
     private Date maxCurrentObservedTime;
 
-    private int maxMaxForecastCategory;
+    private int maxForecastCategory;
 
-    private Date maxMaxForecastTime;
+    private Date maxForecastTime;
 
     private int maxOMFCategory;
 
@@ -193,19 +193,19 @@ public class RiverForecastGroup {
         this.maxCurrentObservedCategory = max_curobs_cat;
         this.maxCurrentObservedTime = new Date(max_curobs_time);
 
-        this.maxMaxForecastCategory = max_maxfcst_cat;
-        this.maxMaxForecastTime = new Date(max_maxfcst_time);
+        this.maxForecastCategory = max_maxfcst_cat;
+        this.maxForecastTime = new Date(max_maxfcst_time);
 
         /*
          * if the cats are equal, use the observed since it is earlier in time.
          */
 
-        if (this.maxCurrentObservedCategory >= this.maxMaxForecastCategory) {
+        if (this.maxCurrentObservedCategory >= this.maxForecastCategory) {
             this.maxOMFCategory = this.maxCurrentObservedCategory;
             this.maxOMFTime = this.maxCurrentObservedTime;
         } else {
-            this.maxOMFCategory = this.maxMaxForecastCategory;
-            this.maxOMFTime = this.maxMaxForecastTime;
+            this.maxOMFCategory = this.maxForecastCategory;
+            this.maxOMFTime = this.maxForecastTime;
         }
 
     }
@@ -263,6 +263,20 @@ public class RiverForecastGroup {
      */
     public Date getMaxOMFTime() {
         return maxOMFTime;
+    }
+
+    /**
+     * @return the maxCurrentObservedCategory
+     */
+    public int getMaxCurrentObservedCategory() {
+        return maxCurrentObservedCategory;
+    }
+
+    /**
+     * @return the maxForecastCategory
+     */
+    public int getMaxForecastCategory() {
+        return maxForecastCategory;
     }
 
 }

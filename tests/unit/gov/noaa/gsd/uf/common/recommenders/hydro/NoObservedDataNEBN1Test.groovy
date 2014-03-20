@@ -55,6 +55,7 @@ class NoObservedDataNEBN1Test extends spock.lang.Specification {
     @Shared String[] forecastPointsInCounty
     @Shared Object[][] observations
     @Shared Object[][] forecasts
+    @Shared String stateName
 
     def setupSpec() {
 
@@ -109,6 +110,8 @@ class NoObservedDataNEBN1Test extends spock.lang.Specification {
         forecastPointsInCounty = ["NEBN1"];
 
         observations = [];
+
+        stateName = "Nebraska";
 
         forecasts = [
             [
@@ -479,7 +482,7 @@ class NoObservedDataNEBN1Test extends spock.lang.Specification {
                 lookForwardHoursForAllForecastPoints,
                 basisHoursForAllForecastPoints, shiftHoursForAllForecastPoints,
                 defaultStageWindow, forecastPointsInCounty, observations,
-                forecasts);
+                forecasts, stateName);
 
 
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(floodDAO)
