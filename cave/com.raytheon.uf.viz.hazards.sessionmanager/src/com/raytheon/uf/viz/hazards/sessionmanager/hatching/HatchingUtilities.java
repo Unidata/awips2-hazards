@@ -49,7 +49,13 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 02, 2014 2536      blawrenc     Initial creation
+ * Feb 02, 2014 2536       blawrenc    Initial creation
+ * Mar 20, 2014 3290       bkowal      A county will only be included in an
+ *                                     interoperability hazard if 10% of the
+ *                                     county is within the selected region.
+ *                                     This check is necessary to handle
+ *                                     discrepancies between the different
+ *                                     map resolutions.
  * 
  * </pre>
  * 
@@ -64,6 +70,12 @@ public class HatchingUtilities {
      * attributes that need to be retrieved from them to support UGC mapping.
      */
     private static Map<String, String[]> geoTableAttributesMap;
+
+    /*
+     * The default amount of area that must be selected within a country for
+     * inclusion. Currently at 10%.
+     */
+    private static final double DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT = 0.10;
 
     /**
      * Look-up table for UGC-related columns for tables in the maps geodatabase.
@@ -142,18 +154,34 @@ public class HatchingUtilities {
                     Geometry mapdbGeometry = mapGeometry.getGeometryN(j);
 
                     if (hazardGeometry.intersects(mapdbGeometry)) {
+                        /*
+                         * The default rule is to include the geometry.
+                         */
+                        boolean defaultIncludeGeometry = true;
+
+                        /*
+                         * We currently run a default inclusion test on
+                         * interoperability hazards due to differences in grid
+                         * resolution.
+                         */
+                        if (hazardEvent.getHazardAttributes().containsKey(
+                                HazardConstants.GFE_INTEROPERABILITY)) {
+                            defaultIncludeGeometry = defaultInclusionTest(
+                                    mapGeometry, hazardGeometry);
+                        }
+
                         if (applyIntersectionThreshold) {
                             boolean includeGeometry = testInclusion(
                                     mapdbGeometry, hazardGeometry,
                                     hazardTypeEntry);
 
-                            if (includeGeometry
+                            if ((includeGeometry && defaultIncludeGeometry)
                                     || mapdbGeometry.contains(hazardGeometry)
                                     || hazardGeometry.contains(mapdbGeometry)) {
                                 intersectingGeometries.add(geoData);
                                 continue outer;
                             }
-                        } else {
+                        } else if (defaultIncludeGeometry) {
                             intersectingGeometries.add(geoData);
                             continue outer;
                         }
@@ -507,18 +535,34 @@ public class HatchingUtilities {
             Geometry hazardGeometry, HazardTypeEntry hazardTypeEntry) {
 
         boolean testInclusion = hazardTypeEntry.isInclusionTest();
+        double inclusionPercentage = hazardTypeEntry.getInclusionPercentage();
 
-        if (testInclusion) {
+        return testInclusion(mapGeometry, hazardGeometry, testInclusion,
+                inclusionPercentage);
+    }
 
-            double inclusionPercentage = hazardTypeEntry
-                    .getInclusionPercentage();
-            Geometry intersection = hazardGeometry.intersection(mapGeometry);
-            double intersectionPercentage = intersection.getArea()
-                    / mapGeometry.getArea();
+    /*
+     * Default inclusion rules test. Currently used for interoperability
+     * hazards.
+     */
+    private static boolean defaultInclusionTest(Geometry mapGeometry,
+            Geometry hazardGeometry) {
 
-            return intersectionPercentage > inclusionPercentage;
+        return testInclusion(mapGeometry, hazardGeometry, true,
+                DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT);
+    }
+
+    private static boolean testInclusion(Geometry mapGeometry,
+            Geometry hazardGeometry, boolean testInclusion,
+            double inclusionPercentage) {
+        if (testInclusion == false) {
+            return true;
         }
 
-        return true;
+        Geometry intersection = hazardGeometry.intersection(mapGeometry);
+        double intersectionPercentage = intersection.getArea()
+                / mapGeometry.getArea();
+
+        return intersectionPercentage > inclusionPercentage;
     }
 }
