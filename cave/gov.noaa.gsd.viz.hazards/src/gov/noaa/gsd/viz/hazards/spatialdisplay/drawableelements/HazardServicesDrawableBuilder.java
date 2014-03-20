@@ -51,6 +51,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
@@ -631,10 +632,11 @@ public class HazardServicesDrawableBuilder {
                     Geometry geometry = geometryData.getGeometry()
                             .getGeometryN(i);
                     /*
-                     * Skip point geometries. Hatching does not make sense for
-                     * points.
+                     * Skip point and line geometries. Hatching does not make
+                     * sense for points and lines (they have no area).
                      */
-                    if (!(geometry instanceof Puntal)) {
+                    if (!(geometry instanceof Puntal)
+                            && !(geometry instanceof Lineal)) {
                         drawableComponent = buildPolygon(hazardEvent, geometry,
                                 activeLayer);
                         hatchedAreas.add(drawableComponent);
