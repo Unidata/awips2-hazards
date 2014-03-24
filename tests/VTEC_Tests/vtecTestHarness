@@ -453,7 +453,7 @@ def main():
 
     # If no file arguments provided, just use all the *.py files in
     # the vtecTestScripts/ subdirectory.
-    if options.testScripts:
+    if not options.testScripts:
         options.testScripts = glob.glob(os.path.join(scriptsDir, "*.py"))
 
     # run each script
@@ -497,7 +497,5 @@ def main():
     word = "ALL PASSED" if not errorCount else "FAILED {n} TESTS".format(n=errorCount)
     LS.logger.log(75, ("VTEC Test Harness Finished -- {w}".format(w=word)))
 
-    os.remove(os.path.join(os.getcwd(),"status.log"))
-            
 if __name__ == '__main__':
     main()
