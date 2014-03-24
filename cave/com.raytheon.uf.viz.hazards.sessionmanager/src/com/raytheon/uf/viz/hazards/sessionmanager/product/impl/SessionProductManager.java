@@ -123,6 +123,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 29, 2013  2378       blarenc    Simplified state changes when products are issued.
  * Dec 11, 2013  2266      jsanchez     Used GeneratedProductList.
  * Feb 18, 2014  2702      jsanchez     Used Serializable objects for entries.
+ * Mar 24, 2014  3323      bkowal       Use the mode when checking for grid conflicts.
  * </pre>
  * 
  * @author bsteffen
@@ -507,11 +508,14 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private boolean checkForConflicts(IHazardEvent hazardEvent) {
+        HazardEventManager.Mode mode = (CAVEMode.getMode() == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
+                : HazardEventManager.Mode.OPERATIONAL;
+
         boolean hasConflicts = true;
         try {
             // checks if selected events conflicting with existing grids
             // based on time and phensigs
-            HasConflictsRequest request = new HasConflictsRequest();
+            HasConflictsRequest request = new HasConflictsRequest(mode);
             request.setPhenSig(hazardEvent.getPhenomenon() + "."
                     + hazardEvent.getSignificance());
             request.setSiteID(hazardEvent.getSiteID());

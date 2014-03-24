@@ -14,6 +14,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.raytheon.uf.common.serialization.JAXBManager
 import com.raytheon.uf.common.time.SimulatedTime
@@ -44,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
  *                                                      location of utility
  *                                                      classes.
  * Dec 02, 2013  1472      bkowal      Fix junit test
+ * Mar 26, 2013  3323      bkowal      Include Mode when constructing a 
+ *                                     HazardNotification
  * </pre>
  *
  * @author daniel.s.schaffer@noaa.gov
@@ -110,7 +113,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setPhenomenon("SV")
         hazardEvent.setSubType(null)
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -139,7 +142,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     def "A hazard for which there is an alert is changed in an innocuous way"() {
         when: "The hazard is changed"
         event0.addHazardAttribute("foo", "bar")
-        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -153,7 +156,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         when: "The expirationTime is changed"
         IHazardEvent modifiedEvent = buildHazardEvent(EVENT_O,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
-        HazardNotification hazardNotification = new HazardNotification(modifiedEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(modifiedEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -172,7 +175,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -185,7 +188,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         activeAlerts.size() == 1
 
         when: "The hazard is canceled"
-        hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.DELETE)
+        hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.DELETE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         scheduledAlerts = alertsManager.getScheduledAlerts()
 
@@ -202,7 +205,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setPhenomenon("SV")
         hazardEvent.setSubType(null)
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -229,7 +232,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setPhenomenon("FL")
         hazardEvent.setSubType(null)
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         HazardEventExpirationSpatialTimer alert = activeAlerts.get(1)
@@ -249,7 +252,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setPhenomenon("FA")
         hazardEvent.setSubType(null)
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         HazardEventExpirationPopUpAlert alert = activeAlerts.get(1)
@@ -269,7 +272,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
         hazardEvent.setPhenomenon("WS")
 
-        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
         List<IHazardAlert> scheduledAlerts = alertsManager.getScheduledAlerts()
@@ -281,7 +284,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         when: "The hazard is changed to one that causes an alert"
         hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
-        hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE)
+        hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         activeAlerts = alertsManager.getActiveAlerts()
 
@@ -293,7 +296,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is ended"
 
-        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE)
+        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
         event0.setState(HazardState.ENDED);
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
@@ -306,7 +309,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is deleted"
 
-        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.DELETE)
+        HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.DELETE, HazardEventManager.Mode.PRACTICE)
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
 

@@ -36,6 +36,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2277       jsanchez     Initial creation
+ * Mar 24, 2014 3323       bkowal       Use the mode to retrieve the correct
+ *                                      grid when checking for conflicts.
  * 
  * </pre>
  * 
@@ -51,9 +53,8 @@ public class HasConflictsHandler implements
         TimeRange timeRange = GFERecordUtil.createGridTimeRange(request
                 .getStartTime(), request.getEndTime(), new TimeConstraints(
                 TimeUtil.SECONDS_PER_HOUR, TimeUtil.SECONDS_PER_HOUR, 0));
-        boolean hasConflicts = GridValidator.hasConflicts(request.getPhenSig(),
-                timeRange, request.getSiteID());
+        boolean hasConflicts = GridValidator.hasConflicts(request.getMode(),
+                request.getPhenSig(), timeRange, request.getSiteID());
         return hasConflicts;
     }
-
 }

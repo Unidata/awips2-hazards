@@ -26,6 +26,7 @@ import java.util.Map;
 
 import jep.JepException;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.ParmID;
 import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
@@ -51,6 +52,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 27, 2013 2277       jsanchez     Initial creation
+ * Mar 24, 2014 3323       bkowal       Use the mode to ensure that the correct
+ *                                      grid is accessed.
  * 
  * </pre>
  * 
@@ -91,8 +94,8 @@ public class GridValidator {
      * @throws JepException
      */
     @SuppressWarnings("unchecked")
-    public static boolean hasConflicts(String phenSig, TimeRange timeRange,
-            String siteID) {
+    public static boolean hasConflicts(Mode mode, String phenSig,
+            TimeRange timeRange, String siteID) {
         try {
             // get HazardsConflictDict from MergeHazards.py
             if (hazardsConflictDict == null) {
@@ -111,8 +114,9 @@ public class GridValidator {
                         .execute("getHazardsConflictDict", null);
             }
 
-            ParmID parmID = new ParmID(String.format(
-                    GridRequestHandler.PARAM_ID_FORMAT, siteID));
+            final String parmIDFormat = (mode == Mode.OPERATIONAL) ? GridRequestHandler.OPERATIONAL_PARM_ID_FORMAT
+                    : GridRequestHandler.PRACTICE_PARM_ID_FORMAT;
+            ParmID parmID = new ParmID(String.format(parmIDFormat, siteID));
             List<GFERecord> potentialRecords = GridRequestHandler
                     .findIntersectedGrid(parmID, timeRange);
             // test if hazardEvent will conflict with existing grids
@@ -123,7 +127,7 @@ public class GridValidator {
                 for (GFERecord record : potentialRecords) {
                     DiscreteGridSlice gridSlice = (DiscreteGridSlice) record
                             .getMessageData();
-                    for (DiscreteKey discreteKey : gridSlice.getKey()) {
+                    for (DiscreteKey discreteKey : gridSlice.getKeys()) {
                         for (String key : discreteKey.getSubKeys()) {
                             if (hazardsConflictList.contains(key)) {
                                 return true;

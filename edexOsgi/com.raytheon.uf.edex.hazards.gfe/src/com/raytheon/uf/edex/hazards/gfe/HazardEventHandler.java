@@ -92,6 +92,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      Handle hazard history lists > 1 hazard correctly.
  * Mar 19, 2014 3278       bkowal       Remove hazards that are associated with GFE
  *                                      grids that are deleted.
+ * Mar 30, 2014 3323       bkowal       The mode is now used to retrieve the correct
+ *                                      GridParmInfo instead of defaulting to Operational
+ *                                      all the time.
  * 
  * </pre>
  * 
@@ -104,11 +107,13 @@ public class HazardEventHandler {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardEventHandler.class);
 
-    private Map<String, GridParmInfo> gridParmInfoMap;
+    private boolean initialized;
+
+    private Map<String, GridParmInfo> operationalGridParmInfoMap;
+
+    private Map<String, GridParmInfo> practiceGridParmInfoMap;
 
     private static HazardEventHandler instance = new HazardEventHandler();
-
-    private GridParmInfo gridParmInfo;
 
     private static final String HAZARD_PARM_NAME = "Hazards";
 
@@ -131,7 +136,8 @@ public class HazardEventHandler {
      * Constructor.
      */
     private HazardEventHandler() {
-        gridParmInfoMap = new HashMap<String, GridParmInfo>();
+        this.operationalGridParmInfoMap = new HashMap<>();
+        this.practiceGridParmInfoMap = new HashMap<>();
     }
 
     /**
@@ -144,24 +150,52 @@ public class HazardEventHandler {
         if (instance == null) {
             instance = new HazardEventHandler();
         }
-        instance.setGridParmInfo(SiteUtil.getSite());
+        instance.initGridParmInfo(SiteUtil.getSite());
         return instance;
     }
 
-    private void setGridParmInfo(String siteID) {
-        gridParmInfo = gridParmInfoMap.get(siteID);
-        if (gridParmInfo == null) {
+    private void initGridParmInfo(String siteID) {
+        if (this.operationalGridParmInfoMap.containsKey(siteID) == false) {
             try {
-                gridParmInfo = GridRequestHandler.requestGridParmInfo(siteID);
-                gridParmInfoMap.put(siteID, gridParmInfo);
+                GridParmInfo gridParmInfo = GridRequestHandler
+                        .requestOperationalGridParmInfo(siteID);
+                this.operationalGridParmInfoMap.put(siteID, gridParmInfo);
                 statusHandler.info("HazardEventHandler initialized for "
-                        + siteID);
+                        + siteID + " (OPERATIONAL).");
             } catch (Exception e) {
-                statusHandler.error(
-                        "Unable to create hazard event handler. Please verify you have "
-                                + siteID + " activated via GFE.", e);
+                this.handleGridParmInfoException(siteID, e);
+                return;
             }
         }
+        if (this.practiceGridParmInfoMap.containsKey(siteID) == false) {
+            try {
+                GridParmInfo gridParmInfo = GridRequestHandler
+                        .requestPracticeGridParmInfo(siteID);
+                this.practiceGridParmInfoMap.put(siteID, gridParmInfo);
+                statusHandler.info("HazardEventHandler initialized for "
+                        + siteID + " (PRACTICE).");
+            } catch (Exception e) {
+                this.handleGridParmInfoException(siteID, e);
+                return;
+            }
+        }
+        this.initialized = true;
+    }
+
+    private GridParmInfo getGridParmInfo(String siteID, Mode mode) {
+        switch (mode) {
+        case OPERATIONAL:
+            return this.operationalGridParmInfoMap.get(siteID);
+        default:
+            return this.practiceGridParmInfoMap.get(siteID);
+        }
+    }
+
+    private void handleGridParmInfoException(String siteID, Throwable e) {
+        this.initialized = false;
+        statusHandler.error(
+                "Unable to create hazard event handler. Please verify you have "
+                        + siteID + " activated via GFE.", e);
     }
 
     /**
@@ -169,9 +203,25 @@ public class HazardEventHandler {
      * appropriately
      */
     public void handleNotification(byte[] bytes) throws Exception {
+        /*
+         * Were we successfully initialized? If not, we will not have a
+         * GridParmInfo to use.
+         */
+        if (this.initialized == false) {
+            statusHandler
+                    .warn("Initialization failed ... unable to process the Hazard Notification!");
+            return;
+        }
+
         HazardNotification notification = SerializationUtil
                 .transformFromThrift(HazardNotification.class, bytes);
         IHazardEvent hazardEvent = notification.getEvent();
+
+        /*
+         * Determine which parm should be used.
+         */
+        GridParmInfo gridParmInfo = this.getGridParmInfo(
+                hazardEvent.getSiteID(), notification.getMode());
 
         switch (notification.getType()) {
         case STORE:
@@ -180,11 +230,12 @@ public class HazardEventHandler {
             boolean convert = GridValidator.needsGridConversion(phenSig);
 
             if (convert) {
-                createGrid(hazardEvent, hazardEvent.getStartTime());
+                createGrid(hazardEvent, hazardEvent.getStartTime(),
+                        gridParmInfo);
             }
             break;
         case DELETE:
-            deleteGrid(hazardEvent);
+            deleteGrid(hazardEvent, gridParmInfo);
             break;
         }
     }
@@ -711,8 +762,9 @@ public class HazardEventHandler {
      * @param hazardEvent
      * @param currentDate
      */
-    public void createGrid(IHazardEvent hazardEvent, Date currentDate)
-            throws Exception {
+    public void createGrid(IHazardEvent hazardEvent, Date currentDate,
+            GridParmInfo gridParmInfo) throws Exception {
+
         List<GFERecord> newGFERecords = new ArrayList<GFERecord>();
         TimeRange timeRange = GFERecordUtil.createGridTimeRange(
                 hazardEvent.getStartTime(), hazardEvent.getEndTime(),
@@ -756,7 +808,8 @@ public class HazardEventHandler {
      * 
      * @param hazardEvent
      */
-    public void deleteGrid(IHazardEvent hazardEvent) throws Exception {
+    public void deleteGrid(IHazardEvent hazardEvent, GridParmInfo gridParmInfo)
+            throws Exception {
         String phenSig = hazardEvent.getPhenomenon() + "."
                 + hazardEvent.getSignificance();
         TimeRange timeRange = GFERecordUtil.createGridTimeRange(

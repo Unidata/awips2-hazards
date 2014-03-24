@@ -21,6 +21,7 @@ package com.raytheon.uf.common.dataplugin.events.hazards.requests;
 
 import java.util.Date;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
@@ -36,6 +37,8 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2277       jsanchez     Initial creation
+ * Mar 24, 2014 3323       bkowal       The Mode is now a property that must
+ *                                      be provided.
  * 
  * </pre>
  * 
@@ -56,6 +59,20 @@ public class HasConflictsRequest implements IServerRequest {
 
     @DynamicSerializeElement
     private Date endTime;
+
+    @DynamicSerializeElement
+    private boolean practiceMode;
+
+    public HasConflictsRequest() {
+    }
+
+    public HasConflictsRequest(Mode mode) {
+        this.practiceMode = (mode == Mode.PRACTICE);
+    }
+
+    public Mode getMode() {
+        return this.practiceMode ? Mode.PRACTICE : Mode.OPERATIONAL;
+    }
 
     public String getPhenSig() {
         return phenSig;
@@ -89,4 +106,11 @@ public class HasConflictsRequest implements IServerRequest {
         this.endTime = endTime;
     }
 
+    public boolean isPracticeMode() {
+        return practiceMode;
+    }
+
+    public void setPracticeMode(boolean practiceMode) {
+        this.practiceMode = practiceMode;
+    }
 }

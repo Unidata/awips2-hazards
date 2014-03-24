@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -33,6 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2013            mnash     Initial creation
+ * Mar 24, 2014 3323       bkowal    The mode is now required.
  * 
  * </pre>
  * 
@@ -54,15 +56,24 @@ public class HazardNotification {
     @DynamicSerializeElement
     private NotificationType type;
 
+    @DynamicSerializeElement
+    private boolean practiceMode;
+
     /**
      * Used only for serialization
      */
     public HazardNotification() {
     }
 
-    public HazardNotification(IHazardEvent event, NotificationType type) {
+    public HazardNotification(IHazardEvent event, NotificationType type,
+            Mode mode) {
         this.event = event;
         this.type = type;
+        this.practiceMode = (mode == Mode.PRACTICE);
+    }
+
+    public Mode getMode() {
+        return this.practiceMode ? Mode.PRACTICE : Mode.OPERATIONAL;
     }
 
     /**
@@ -93,5 +104,13 @@ public class HazardNotification {
      */
     public void setType(NotificationType type) {
         this.type = type;
+    }
+
+    public boolean isPracticeMode() {
+        return practiceMode;
+    }
+
+    public void setPracticeMode(boolean practiceMode) {
+        this.practiceMode = practiceMode;
     }
 }

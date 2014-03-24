@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.gfe.GridDataHistory;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
@@ -55,6 +56,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 27, 2013 2277       jsanchez     Initial creation
+ * Mar 24, 2013 3323       bkowal       Created methods to retrieve the correct
+ *                                      GridParmInfo based on mode.
  * 
  * </pre>
  * 
@@ -64,7 +67,15 @@ import com.raytheon.uf.common.time.TimeRange;
 
 public class GridRequestHandler {
 
-    public static final String PARAM_ID_FORMAT = "Hazards_SFC:%s_GRID__Fcst_00000000_0000";
+    private static final String PARM_ID_PREFIX_FORMAT = "Hazards_SFC:%s_GRID";
+
+    private static final String PARM_ID_SUFFIX_FORMAT = "Fcst_00000000_0000";
+
+    public static final String OPERATIONAL_PARM_ID_FORMAT = PARM_ID_PREFIX_FORMAT
+            + "__" + PARM_ID_SUFFIX_FORMAT;
+
+    public static final String PRACTICE_PARM_ID_FORMAT = PARM_ID_PREFIX_FORMAT
+            + "_Prac_" + PARM_ID_SUFFIX_FORMAT;
 
     /**
      * Retrieves the GridParmInfo for the siteID.
@@ -74,11 +85,11 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public static GridParmInfo requestGridParmInfo(String siteID)
-            throws Exception {
+    public static GridParmInfo requestGridParmInfo(String siteID,
+            String parmIDFormat) throws Exception {
         GetGridParmInfoRequest gridParmInfoRequest = new GetGridParmInfoRequest();
         gridParmInfoRequest.setParmIds(Arrays.asList(new ParmID[] { new ParmID(
-                String.format(PARAM_ID_FORMAT, siteID)) }));
+                String.format(parmIDFormat, siteID)) }));
 
         ServerResponse<List<GridParmInfo>> response = (ServerResponse<List<GridParmInfo>>) makeRequest(
                 siteID, gridParmInfoRequest);
@@ -90,6 +101,22 @@ public class GridRequestHandler {
         }
 
         return info;
+    }
+
+    public static GridParmInfo requestGridParmInfo(Mode mode, String siteID)
+            throws Exception {
+        return (mode == Mode.PRACTICE) ? requestPracticeGridParmInfo(siteID)
+                : requestOperationalGridParmInfo(siteID);
+    }
+
+    public static GridParmInfo requestOperationalGridParmInfo(String siteID)
+            throws Exception {
+        return requestGridParmInfo(siteID, OPERATIONAL_PARM_ID_FORMAT);
+    }
+
+    public static GridParmInfo requestPracticeGridParmInfo(String siteID)
+            throws Exception {
+        return requestGridParmInfo(siteID, PRACTICE_PARM_ID_FORMAT);
     }
 
     /**

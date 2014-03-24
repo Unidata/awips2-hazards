@@ -2,6 +2,7 @@ package com.raytheon.uf.edex.hazards;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -41,6 +42,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 27, 2013            mnash     Initial creation
+ * Mar 24, 2014 #3323      bkowal    Mode is now required to construct HazardNotification
  * 
  * </pre>
  * 
@@ -54,10 +56,11 @@ public class HazardNotifier {
     private static final String SEND_URI = "jms-generic:topic:"
             + HazardNotification.HAZARD_TOPIC + "?timeToLive=60000";
 
-    public static void notify(IHazardEvent event, NotificationType type) {
+    public static void notify(IHazardEvent event, NotificationType type,
+            Mode mode) {
         try {
             HazardNotification notification = new HazardNotification(event,
-                    type);
+                    type, mode);
             byte[] bytes = SerializationUtil.transformToThrift(notification);
             EDEXUtil.getMessageProducer().sendAsyncUri(SEND_URI, bytes);
         } catch (EdexException e) {

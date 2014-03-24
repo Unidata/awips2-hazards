@@ -65,6 +65,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * May 22, 2013            mnash     Initial creation
  * March 3, 2014 3034      bkowal    Improved comparisons of existing hazards.
  *                                   GFE hazards do not initially have ETNs.
+ * Mar 24, 2014  3323      bkowal    Use the mode to retrieve the correct
+ *                                   GridParmInfo.
  * 
  * </pre>
  * 
@@ -196,8 +198,8 @@ public class GFEHazardsCreator {
 
                     GridParmInfo gridParmInfo = null;
                     try {
-                        gridParmInfo = GridRequestHandler
-                                .requestGridParmInfo(event.getSiteID());
+                        gridParmInfo = GridRequestHandler.requestGridParmInfo(
+                                mode, event.getSiteID());
                     } catch (Exception e) {
                         statusHandler.error(
                                 "Failed to retrieve Grid Parm Info for site: "

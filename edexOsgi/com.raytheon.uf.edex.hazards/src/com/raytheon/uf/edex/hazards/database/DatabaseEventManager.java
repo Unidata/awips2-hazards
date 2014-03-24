@@ -34,6 +34,7 @@ import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.PracticeHazardEventPK;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -66,6 +67,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jan 14, 2014 2755     bkowal     Updated to use DetachedCriteria when selecting
  *                                  events so that the returned events will not
  *                                  be associated with an open session.
+ * Mar 24, 2014 #3323    bkowal     Include the mode in the hazard notification.
  * 
  * </pre>
  * 
@@ -77,6 +79,8 @@ public class DatabaseEventManager implements
         IHazardStorageManager<PracticeHazardEvent> {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DatabaseEventManager.class);
+
+    private static final Mode MODE = Mode.PRACTICE;
 
     private final CoreDao dao;
 
@@ -106,7 +110,7 @@ public class DatabaseEventManager implements
         statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully stored to database");
 
-        HazardNotifier.notify(event, NotificationType.STORE);
+        HazardNotifier.notify(event, NotificationType.STORE, MODE);
     }
 
     /*
@@ -123,7 +127,7 @@ public class DatabaseEventManager implements
                 + " successfully deleted from database");
 
         // need to not send the notification if this doesn't delete anything.
-        HazardNotifier.notify(event, NotificationType.DELETE);
+        HazardNotifier.notify(event, NotificationType.DELETE, MODE);
     }
 
     /*
@@ -133,13 +137,14 @@ public class DatabaseEventManager implements
      * com.raytheon.uf.edex.hazards.IHazardStorageManager#update(com.raytheon
      * .uf.common.dataplugin.events.hazards.event.IHazardEvent)
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void update(PracticeHazardEvent event) {
         dao.update(event);
         statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                 + " successfully updated in database");
 
-        HazardNotifier.notify(event, NotificationType.UPDATE);
+        HazardNotifier.notify(event, NotificationType.UPDATE, MODE);
     }
 
     /*

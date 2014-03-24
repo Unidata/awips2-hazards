@@ -31,6 +31,7 @@ import java.util.Set;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.registry.RegistryHandler;
@@ -57,6 +58,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Oct 30, 2013 #1472     bkowal    Implemented retrieval from the registry
  *                                  by phensig.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Mar 24, 2014 #3323      bkowal   Include the mode in the hazard notification.   
  * 
  * </pre>
  * 
@@ -67,6 +69,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 public class RegistryEventManager implements IHazardStorageManager<HazardEvent> {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(RegistryEventManager.class);
+
+    private static final Mode MODE = Mode.OPERATIONAL;
 
     private final HazardRegistryHandler handler;
 
@@ -91,7 +95,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.store(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully stored to registry");
-            HazardNotifier.notify(event, NotificationType.STORE);
+            HazardNotifier.notify(event, NotificationType.STORE, MODE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
@@ -108,7 +112,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.update(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully updated in registry");
-            HazardNotifier.notify(event, NotificationType.UPDATE);
+            HazardNotifier.notify(event, NotificationType.UPDATE, MODE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
@@ -124,7 +128,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             handler.delete(event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully deleted from registry");
-            HazardNotifier.notify(event, NotificationType.DELETE);
+            HazardNotifier.notify(event, NotificationType.DELETE, MODE);
         } catch (RegistryHandlerException e) {
             statusHandler.handle(
                     Priority.ERROR,
