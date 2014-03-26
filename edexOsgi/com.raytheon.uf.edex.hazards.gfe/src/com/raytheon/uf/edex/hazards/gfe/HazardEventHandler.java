@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.Iterator;
 
+import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opengis.referencing.operation.TransformException;
 import org.springframework.util.StringUtils;
 
@@ -66,6 +67,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
 /**
@@ -92,6 +95,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      Handle hazard history lists > 1 hazard correctly.
  * Mar 19, 2014 3278       bkowal       Remove hazards that are associated with GFE
  *                                      grids that are deleted.
+ * Mar 20, 2014 3301       bkowal       Use the new and more efficient method to combine
+ *                                      geometries recommended by the new GeoTools.
  * Mar 30, 2014 3323       bkowal       The mode is now used to retrieve the correct
  *                                      GridParmInfo instead of defaulting to Operational
  *                                      all the time.
@@ -254,6 +259,24 @@ public class HazardEventHandler {
         }
     }
 
+    /*
+     * This method is based on: http://docs.geotools.org/latest/userguide/library/jts/combine.html
+     */
+    private Geometry combineIntoOneGeometry(Geometry unionGeometry,
+            Geometry geometry) {
+        List<Geometry> geometryCollection = new ArrayList<>();
+        geometryCollection.add(unionGeometry);
+        geometryCollection.add(geometry);
+        GeometryFactory factory = JTSFactoryFinder.getGeometryFactory(null);
+
+        // note the following geometry collection may be invalid (say with
+        // overlapping polygons)
+        GeometryCollection newGeometryCollection = (GeometryCollection) factory
+                .buildGeometry(geometryCollection);
+
+        return newGeometryCollection.union();
+    }    
+    
     private HazardEventManager getHazardEventManager(String parmID) {
         Mode mode = this.determineHazardsMode(parmID);
         if (mode == null) {
@@ -460,8 +483,9 @@ public class HazardEventHandler {
                         if (hazardGeometry == null) {
                             hazardGeometry = iterateHazardEvent.getGeometry();
                         } else {
-                            hazardGeometry = hazardGeometry
-                                    .union(iterateHazardEvent.getGeometry());
+                            hazardGeometry = this.combineIntoOneGeometry(
+                                    hazardGeometry,
+                                    iterateHazardEvent.getGeometry());
                         }
                     }
 
