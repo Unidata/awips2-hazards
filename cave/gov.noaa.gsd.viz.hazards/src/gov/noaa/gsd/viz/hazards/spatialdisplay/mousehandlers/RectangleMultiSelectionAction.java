@@ -29,6 +29,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -63,9 +64,10 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
 
     protected AttrDlg attrDlg = null;
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent> sessionManager;
 
-    public RectangleMultiSelectionAction(ISessionManager sessionManager) {
+    public RectangleMultiSelectionAction(
+            ISessionManager<ObservedHazardEvent> sessionManager) {
         this.sessionManager = sessionManager;
     }
 

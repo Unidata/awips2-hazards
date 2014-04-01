@@ -67,6 +67,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilit
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
@@ -144,7 +145,7 @@ public class SessionProductManager implements ISessionProductManager {
      */
     private final ISessionConfigurationManager configManager;
 
-    private final ISessionEventManager eventManager;
+    private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     private final ISessionNotificationSender notificationSender;
 
@@ -189,7 +190,7 @@ public class SessionProductManager implements ISessionProductManager {
             Set<IHazardEvent> productEvents = new HashSet<IHazardEvent>();
             Set<IHazardEvent> possibleProductEvents = new HashSet<IHazardEvent>();
 
-            for (IHazardEvent e : eventManager.getEvents()) {
+            for (ObservedHazardEvent e : eventManager.getEvents()) {
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
                 }
@@ -241,7 +242,7 @@ public class SessionProductManager implements ISessionProductManager {
 
             String[][] allowedHazards = entry.getValue().getAllowedHazards();
 
-            for (IHazardEvent e : eventManager.getEvents()) {
+            for (ObservedHazardEvent e : eventManager.getEvents()) {
 
                 if (e.getPhenomenon() == null || e.getSignificance() == null) {
                     continue;
@@ -256,7 +257,7 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
-        for (IHazardEvent e : eventManager.getEvents()) {
+        for (ObservedHazardEvent e : eventManager.getEvents()) {
             String key = HazardEventUtilities.getHazardType(e);
             boolean found = false;
             for (String supported : supportedHazards) {
@@ -445,7 +446,7 @@ public class SessionProductManager implements ISessionProductManager {
          * example, two FA.A's, one selected, one not, and the user adds the
          * second one via the product staging dialog.
          */
-        for (IHazardEvent sessionEvent : eventManager.getEvents()) {
+        for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
             /*
              * Update Hazard Events with product information returned from the
              * Product Generators
@@ -473,9 +474,9 @@ public class SessionProductManager implements ISessionProductManager {
                             .removeHazardAttribute(HazardConstants.REPLACES);
 
                     if (updatedEvent.getState().equals(HazardState.ENDED)) {
-                        eventManager.endEvent(sessionEvent);
+                        eventManager.endEvent(sessionEvent, Originator.OTHER);
                     } else {
-                        eventManager.issueEvent(sessionEvent);
+                        eventManager.issueEvent(sessionEvent, Originator.OTHER);
                     }
 
                     break;
@@ -654,7 +655,7 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public boolean validateSelectedHazardsForProductGeneration() {
 
-        Collection<IHazardEvent> selectedEvents = eventManager
+        Collection<ObservedHazardEvent> selectedEvents = eventManager
                 .getSelectedEvents();
         Date simulatedTime = SimulatedTime.getSystemTime().getTime();
         List<String> eventIds = Lists.newArrayList();

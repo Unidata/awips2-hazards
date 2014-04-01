@@ -20,6 +20,8 @@ import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -45,7 +47,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * @version 1.0
  */
 public class SettingsPresenter extends
-        HazardServicesPresenter<ISettingsView<?, ?>> {
+        HazardServicesPresenter<ISettingsView<?, ?>> implements IOriginator {
 
     // Public Constructors
 
@@ -59,8 +61,8 @@ public class SettingsPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SettingsPresenter(ISessionManager model, ISettingsView<?, ?> view,
-            EventBus eventBus) {
+    public SettingsPresenter(ISessionManager<ObservedHazardEvent> model,
+            ISettingsView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
 

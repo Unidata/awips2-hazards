@@ -21,6 +21,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -63,7 +64,6 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardComponent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -86,7 +86,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -185,6 +188,11 @@ public final class HazardServicesMessageHandler implements
      */
     private final String SINGLE_SELECTED_TIME = "Single";
 
+    /**
+     * Indicates that no selected time has been updated.
+     */
+    private final String NO_SELECTED_TIME = "None";
+
     // Private Static Constants
 
     /**
@@ -200,9 +208,9 @@ public final class HazardServicesMessageHandler implements
      */
     private HazardServicesAppBuilder appBuilder = null;
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent> sessionManager;
 
-    private final ISessionEventManager sessionEventManager;
+    private final ISessionEventManager<ObservedHazardEvent> sessionEventManager;
 
     private final ISessionTimeManager sessionTimeManager;
 
@@ -289,13 +297,13 @@ public final class HazardServicesMessageHandler implements
      *            The selected event(s)
      * @param multipleSelection
      *            whether or not this is a part of a multiple selection action
-     * @param originator
+     * @param UIOriginator
      *            Where this action originated from
      * 
      * @throws VizException
      */
     public void updateSelectedEvents(final List<String> eventIDs,
-            HazardComponent originator) throws VizException {
+            IOriginator originator) throws VizException {
         String updateTime = setSelectedEvents(eventIDs, originator);
 
         if (updateTime.contains(SINGLE_SELECTED_TIME)) {
@@ -310,28 +318,29 @@ public final class HazardServicesMessageHandler implements
 
         notifyModelEventsChanged();
         appBuilder.showHazardDetail();
-        if (originator.equals(HazardComponent.CONSOLE)) {
+
+        if (originator != UIOriginator.SPATIAL_DISPLAY) {
             appBuilder.recenterRezoomDisplay();
         }
 
     }
 
     private String setSelectedEvents(List<String> eventIDs,
-            HazardComponent originator) {
-        Collection<IHazardEvent> selectedEvents = fromIDs(eventIDs);
+            IOriginator originator) {
+        Collection<ObservedHazardEvent> selectedEvents = fromIDs(eventIDs);
         Date selectedTime = sessionTimeManager.getSelectedTime();
 
-        sessionEventManager.setSelectedEvents(selectedEvents);
-        if (originator.equals(HazardComponent.CONSOLE)
+        sessionEventManager.setSelectedEvents(selectedEvents, originator);
+        if ((originator == UIOriginator.CONSOLE)
                 && !selectedTime.equals(sessionTimeManager.getSelectedTime())) {
-            return "Single";
+            return SINGLE_SELECTED_TIME;
         } else {
-            return "None";
+            return NO_SELECTED_TIME;
         }
     }
 
-    private Collection<IHazardEvent> fromIDs(List<String> eventIDs) {
-        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>();
+    private Collection<ObservedHazardEvent> fromIDs(List<String> eventIDs) {
+        Collection<ObservedHazardEvent> events = new ArrayList<ObservedHazardEvent>();
         for (String eventId : eventIDs) {
             events.add(sessionEventManager.getEventById(eventId));
         }
@@ -443,7 +452,6 @@ public final class HazardServicesMessageHandler implements
             Map<String, Serializable> spatialInfo,
             Map<String, Serializable> dialogInfo) {
 
-        ISessionManager sessionManager = appBuilder.getSessionManager();
         appBuilder.setCursor(SpatialViewCursorTypes.WAIT_CURSOR);
         Display.getCurrent().update();
 
@@ -452,7 +460,7 @@ public final class HazardServicesMessageHandler implements
         /*
          * Add events to the event set.
          */
-        Collection<IHazardEvent> hazardEvents = sessionManager
+        Collection<ObservedHazardEvent> hazardEvents = sessionManager
                 .getEventManager().getEvents();
 
         /*
@@ -493,6 +501,18 @@ public final class HazardServicesMessageHandler implements
 
         notifyModelEventsChanged();
 
+    }
+
+    /**
+     * TODO Get this from the session manager somehow.
+     */
+    @Deprecated
+    private HashMap<String, Serializable> buildStaticSettings() {
+        HashMap<String, Serializable> staticSettings = new HashMap<>();
+
+        staticSettings.put("defaultDuration", 1800000);
+        staticSettings.put("defaultSiteID", "OAX");
+        return staticSettings;
     }
 
     private IPythonJobListener<EventSet<IEvent>> getRecommenderListener(
@@ -571,12 +591,12 @@ public final class HazardServicesMessageHandler implements
      * @param eventIDs
      *            Identifiers of events to be deleted.
      */
-    private void deleteEvent(Collection<IHazardEvent> events) {
+    private void deleteEvent(Collection<ObservedHazardEvent> events) {
         statusHandler.debug("HazardServicesMessageHandler: deleteEvent: "
                 + events);
 
         for (IHazardEvent event : events) {
-            sessionEventManager.removeEvent(event);
+            sessionEventManager.removeEvent(event, null);
         }
         notifyModelEventsChanged();
         appBuilder.hideHazardDetail();
@@ -586,13 +606,13 @@ public final class HazardServicesMessageHandler implements
      * Changes the state of the selected events to the state given by the state
      * parameter
      */
-    public void changeSelectedEventsToProposedState() {
+    public void changeSelectedEventsToProposedState(IOriginator UIOriginator) {
 
-        Collection<IHazardEvent> events = sessionEventManager
+        Collection<ObservedHazardEvent> events = sessionEventManager
                 .getSelectedEvents();
 
-        for (IHazardEvent event : events) {
-            sessionEventManager.proposeEvent(event);
+        for (ObservedHazardEvent event : events) {
+            sessionEventManager.proposeEvent(event, UIOriginator);
         }
 
         notifyModelEventsChanged();
@@ -601,7 +621,7 @@ public final class HazardServicesMessageHandler implements
     }
 
     private void updateToPreviewEnded() {
-        Collection<IHazardEvent> events = sessionEventManager
+        Collection<ObservedHazardEvent> events = sessionEventManager
                 .getSelectedEvents();
 
         for (IHazardEvent event : events) {
@@ -752,18 +772,18 @@ public final class HazardServicesMessageHandler implements
      * Console appear in CAVE.
      * 
      * @param selectedTime
-     * @param originator
+     * @param UIOriginator
      */
-    public void updateSelectedTime(Date selectedTime, HazardComponent originator)
+    public void updateSelectedTime(Date selectedTime, IOriginator originator)
             throws VizException {
         sessionTimeManager.setSelectedTime(selectedTime);
 
-        if (originator.equals(HazardComponent.CAVE)) {
+        if (originator == Originator.OTHER) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(HazardConstants.Element.SELECTED_TIME));
         }
 
-        if (originator.equals(HazardComponent.CONSOLE)) {
+        if (originator == UIOriginator.CONSOLE) {
             updateCaveSelectedTime();
         }
     }
@@ -828,7 +848,7 @@ public final class HazardServicesMessageHandler implements
 
     /**
      * Updates information for an event taking into consideration the
-     * originator.
+     * UIOriginator.
      * 
      * @param map
      *            The portions of the event which are being updated.
@@ -838,38 +858,37 @@ public final class HazardServicesMessageHandler implements
      * @return
      */
     public void updateEventData(Map<String, Serializable> map,
-            boolean isUserInitiated) {
-        _updateEventData(map, isUserInitiated);
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.EVENTS));
+            boolean isUserInitiated, IOriginator UIOriginator) {
+        _updateEventData(map, isUserInitiated, UIOriginator);
+        appBuilder.notifyModelChanged(
+                EnumSet.of(HazardConstants.Element.EVENTS), UIOriginator);
     }
 
     /**
      * This method is called when the event type is changed in the Hazard
      * Information Dialog
-     * 
-     * @param jsonText
-     *            Contains information regarding the event type.
      */
-    public void updateEventType(Map<String, Serializable> map) {
-        _updateEventData(map, true);
+    public void updateEventType(Map<String, Serializable> map,
+            IOriginator UIOriginator) {
+        _updateEventData(map, true, UIOriginator);
         notifyModelEventsChanged();
     }
 
     private void _updateEventData(Map<String, Serializable> map,
-            Boolean isUserInitiated) {
-        IHazardEvent event = sessionEventManager.getEventById((String) map
-                .get(HazardConstants.HAZARD_EVENT_IDENTIFIER));
-
+            Boolean isUserInitiated, IOriginator UIOriginator) {
+        ObservedHazardEvent oEvent = sessionEventManager
+                .getEventById((String) map
+                        .get(HazardConstants.HAZARD_EVENT_IDENTIFIER));
+        BaseHazardEvent event = null;
         for (String key : map.keySet()) {
             if (HazardConstants.HAZARD_EVENT_IDENTIFIER.equals(key)) {
                 ;
             } else if (HAZARD_EVENT_FULL_TYPE.equals(key)) {
                 IHazardEvent oldEvent = null;
 
-                if (!sessionEventManager.canChangeType(event)) {
-                    oldEvent = event;
-                    event = new BaseHazardEvent(event);
+                if (!sessionEventManager.canChangeType(oEvent)) {
+                    oldEvent = oEvent;
+                    event = new BaseHazardEvent(oEvent);
                     event.setEventID("");
                     event.setState(HazardState.PENDING);
                     event.addHazardAttribute(HazardConstants.REPLACES,
@@ -882,11 +901,12 @@ public final class HazardServicesMessageHandler implements
                     event.removeHazardAttribute(PILS);
                     Date d = new Date();
                     event.setIssueTime(d);
-                    Collection<IHazardEvent> selection = sessionEventManager
+                    Collection<ObservedHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
-                    event = sessionEventManager.addEvent(event);
-                    selection.add(event);
-                    sessionEventManager.setSelectedEvents(selection);
+                    oEvent = sessionEventManager.addEvent(event, UIOriginator);
+                    selection.add(oEvent);
+                    sessionEventManager.setSelectedEvents(selection,
+                            UIOriginator);
                 }
                 String fullType = (String) map.get(key);
                 if (!fullType.isEmpty()) {
@@ -918,9 +938,9 @@ public final class HazardServicesMessageHandler implements
                                 HazardConstants.HazardState.ENDED.getValue());
                     }
 
-                    event.setPhenomenon(phenSig[0]);
-                    event.setSignificance(phenSig[1]);
-                    event.setSubType(subType);
+                    oEvent.setPhenomenon(phenSig[0]);
+                    oEvent.setSignificance(phenSig[1]);
+                    oEvent.setSubType(subType);
 
                     /*
                      * Make sure the updated hazard type is a part of the
@@ -928,35 +948,37 @@ public final class HazardServicesMessageHandler implements
                      */
                     Set<String> visibleTypes = sessionConfigurationManager
                             .getSettings().getVisibleTypes();
-                    visibleTypes.add(HazardEventUtilities.getHazardType(event));
+                    visibleTypes
+                            .add(HazardEventUtilities.getHazardType(oEvent));
                     appBuilder.notifyModelChanged(EnumSet
                             .of(HazardConstants.Element.CURRENT_SETTINGS));
                 } else {
-                    event.setPhenomenon(null);
-                    event.setSignificance(null);
-                    event.setSubType(null);
+                    oEvent.setPhenomenon(null);
+                    oEvent.setSignificance(null);
+                    oEvent.setSubType(null);
                 }
-
             } else if (HAZARD_EVENT_START_TIME.equals(key)) {
-                if (!sessionEventManager.canChangeTimeRange(event)) {
+                if (!sessionEventManager.canChangeTimeRange(oEvent)) {
                     event = new BaseHazardEvent(event);
-                    Collection<IHazardEvent> selection = sessionEventManager
+                    Collection<ObservedHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
-                    event = sessionEventManager.addEvent(event);
-                    selection.add(event);
-                    sessionEventManager.setSelectedEvents(selection);
+                    oEvent = sessionEventManager.addEvent(event, UIOriginator);
+                    selection.add(oEvent);
+                    sessionEventManager.setSelectedEvents(selection,
+                            UIOriginator);
                 }
-                event.setStartTime(new Date((Long) map.get(key)));
+                oEvent.setStartTime(new Date((Long) map.get(key)));
             } else if (HAZARD_EVENT_END_TIME.equals(key)) {
-                if (!sessionEventManager.canChangeTimeRange(event)) {
+                if (!sessionEventManager.canChangeTimeRange(oEvent)) {
                     event = new BaseHazardEvent(event);
-                    Collection<IHazardEvent> selection = sessionEventManager
+                    Collection<ObservedHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
-                    event = sessionEventManager.addEvent(event);
-                    selection.add(event);
-                    sessionEventManager.setSelectedEvents(selection);
+                    oEvent = sessionEventManager.addEvent(event, UIOriginator);
+                    selection.add(oEvent);
+                    sessionEventManager.setSelectedEvents(selection,
+                            UIOriginator);
                 }
-                event.setEndTime(new Date((Long) map.get(key)));
+                oEvent.setEndTime(new Date((Long) map.get(key)));
             } else if (map.get(key).getClass().equals(ArrayList.class)) {
                 @SuppressWarnings({ "unchecked" })
                 List<String> stringList = (List<String>) map.get(key);
@@ -969,27 +991,27 @@ public final class HazardServicesMessageHandler implements
                  * HMI, this Python list is converted to a Java list. So, arrays
                  * are not consistently handled. The type is not preserved.
                  */
-                event.addHazardAttribute(key, (Serializable) stringList);
+                oEvent.addHazardAttribute(key, (Serializable) stringList);
             } else {
                 Object primitive = map.get(key);
                 if (primitive.getClass() == String.class) {
-                    event.addHazardAttribute(key, (String) primitive);
+                    oEvent.addHazardAttribute(key, (String) primitive);
                 } else if (primitive.getClass() == Boolean.class) {
-                    event.addHazardAttribute(key, (Boolean) primitive);
+                    oEvent.addHazardAttribute(key, (Boolean) primitive);
                 } else if (primitive.getClass() == Float.class) {
-                    event.addHazardAttribute(key, (Float) primitive);
+                    oEvent.addHazardAttribute(key, (Float) primitive);
                 } else if (primitive.getClass() == Double.class) {
-                    event.addHazardAttribute(key, (Double) primitive);
+                    oEvent.addHazardAttribute(key, (Double) primitive);
                 } else if (primitive instanceof Number) {
-                    Object currentVal = event.getHazardAttribute(key);
+                    Object currentVal = oEvent.getHazardAttribute(key);
                     if (currentVal instanceof Integer) {
-                        event.addHazardAttribute(key,
+                        oEvent.addHazardAttribute(key,
                                 ((Number) primitive).intValue());
                     } else if (currentVal instanceof Long) {
-                        event.addHazardAttribute(key,
+                        oEvent.addHazardAttribute(key,
                                 ((Number) primitive).longValue());
                     } else {
-                        event.addHazardAttribute(key, new Date(
+                        oEvent.addHazardAttribute(key, new Date(
                                 ((Number) primitive).longValue()));
                     }
                 } else {
@@ -998,8 +1020,8 @@ public final class HazardServicesMessageHandler implements
             }
         }
 
-        if (isUserInitiated && event instanceof ObservedHazardEvent) {
-            ((ObservedHazardEvent) event).setModified(true);
+        if (isUserInitiated) {
+            oEvent.setModified(true);
         }
 
     }
@@ -1045,17 +1067,16 @@ public final class HazardServicesMessageHandler implements
     /**
      * This method is invoked when the current CAVE time changes.
      * 
-     * @param originator
-     *            The originator of the current time update. For the moment,
+     * @param UIOriginator
+     *            The UIOriginator of the current time update. For the moment,
      *            this should be set to "Cave". This should be an enumeration
      *            not a string.
      * 
      * @throws VizException
      */
-    public void updateCurrentTime(HazardComponent originator)
-            throws VizException {
+    public void updateCurrentTime(IOriginator UIOriginator) throws VizException {
 
-        if (originator.equals(HazardComponent.CAVE)) {
+        if (UIOriginator == Originator.OTHER) {
             appBuilder.notifyModelChanged(EnumSet
                     .of(HazardConstants.Element.CURRENT_TIME));
         }
@@ -1108,7 +1129,7 @@ public final class HazardServicesMessageHandler implements
             if ((frameCount > 0) && (frameIndex != -1)) {
                 try {
                     updateSelectedTime(new Date(dataTimeList.get(frameIndex)),
-                            HazardComponent.CAVE);
+                            Originator.OTHER);
                 } catch (VizException e) {
                     statusHandler.error("HazardServicesMessageHandler:", e);
                 }
@@ -1126,7 +1147,7 @@ public final class HazardServicesMessageHandler implements
      */
     public void handleContextMenuSelection(String label) {
         if (label.contains(HazardConstants.CONTEXT_MENU_PROPOSE)) {
-            changeSelectedEventsToProposedState();
+            changeSelectedEventsToProposedState(null);
         } else if (label.contains(HazardConstants.CONTEXT_MENU_ISSUE)) {
             issueEvents();
         } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
@@ -1154,11 +1175,11 @@ public final class HazardServicesMessageHandler implements
             appBuilder.loadGeometryOverlayForSelectedEvent();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
             sessionEventManager
-                    .sortEvents(ISessionEventManager.SEND_SELECTED_BACK);
+                    .sortEvents(AbstractSessionEventManager.SEND_SELECTED_BACK);
             notifyModelEventsChanged();
         } else if (label.equals(HazardConstants.CONETXT_MENU_BRING_TO_FRONT)) {
             sessionEventManager
-                    .sortEvents(ISessionEventManager.SEND_SELECTED_FRONT);
+                    .sortEvents(AbstractSessionEventManager.SEND_SELECTED_FRONT);
             notifyModelEventsChanged();
         } else if (label
                 .equals(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS)) {
@@ -1169,8 +1190,9 @@ public final class HazardServicesMessageHandler implements
 
     private void removeEventsWithState(String stateValue) {
         HazardState state = HazardState.valueOf(stateValue.toUpperCase());
-        for (IHazardEvent event : sessionEventManager.getEventsByState(state)) {
-            sessionEventManager.removeEvent(event);
+        for (ObservedHazardEvent event : sessionEventManager
+                .getEventsByState(state)) {
+            sessionEventManager.removeEvent(event, null);
         }
     }
 
@@ -1210,7 +1232,7 @@ public final class HazardServicesMessageHandler implements
      */
     public void handleProductDisplayAction(ProductEditorAction action) {
         if (action.getHazardAction() == HazardAction.PROPOSE) {
-            this.changeSelectedEventsToProposedState();
+            changeSelectedEventsToProposedState(action.getOriginator());
         } else if (action.getHazardAction() == HazardAction.ISSUE) {
             if (this.continueIfThereAreHazardConflicts()) {
                 productGeneratorHandler.createProductsFromHazardEventSets(true,
@@ -1251,7 +1273,7 @@ public final class HazardServicesMessageHandler implements
                 && !appBuilder.getTimer().isInterrupted()) {
 
             try {
-                updateCurrentTime(HazardComponent.CAVE);
+                updateCurrentTime(Originator.OTHER);
             } catch (VizException e) {
                 statusHandler.error(
                         "Error updating Hazard Services components", e);
@@ -1308,7 +1330,7 @@ public final class HazardServicesMessageHandler implements
      */
     public void checkHazardConflicts() {
 
-        ISessionEventManager sessionEventManager = sessionManager
+        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
                 .getEventManager();
 
         Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
@@ -1349,7 +1371,7 @@ public final class HazardServicesMessageHandler implements
 
         Boolean userResponse = true;
 
-        ISessionEventManager sessionEventManager = sessionManager
+        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
                 .getEventManager();
 
         Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
@@ -1410,7 +1432,7 @@ public final class HazardServicesMessageHandler implements
                         .newArrayList(spatialDisplayAction
                                 .getSelectedEventIDs());
                 updateSelectedEvents(convertedEventIDs,
-                        HazardComponent.SPATIAL_DISPLAY);
+                        UIOriginator.SPATIAL_DISPLAY);
 
             } catch (VizException e) {
                 statusHandler.error(getClass().getName()
@@ -1487,7 +1509,8 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case UPDATE_EVENT_METADATA:
-            updateEventData(spatialDisplayAction.getToolParameters(), true);
+            updateEventData(spatialDisplayAction.getToolParameters(), true,
+                    spatialDisplayAction.getOriginator());
             break;
 
         case UNDO:
@@ -1535,7 +1558,7 @@ public final class HazardServicesMessageHandler implements
         case SELECTED_TIME_CHANGED:
             try {
                 updateSelectedTime(consoleAction.getNewTime(),
-                        HazardComponent.CONSOLE);
+                        UIOriginator.CONSOLE);
             } catch (VizException e) {
                 statusHandler.error("HazardServicesMessageListener."
                         + "consoleActionOccurred(): Unable to update "
@@ -1557,7 +1580,7 @@ public final class HazardServicesMessageHandler implements
             Map<String, Serializable> eventInfo = new HashMap<>();
             eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
             eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
-            updateEventData(eventInfo, true);
+            updateEventData(eventInfo, true, consoleAction.getOriginator());
             break;
         }
 
@@ -1566,7 +1589,7 @@ public final class HazardServicesMessageHandler implements
             try {
                 List<String> eventIDsString = Lists.newArrayList(consoleAction
                         .getSelectedEventIDs());
-                updateSelectedEvents(eventIDsString, HazardComponent.CONSOLE);
+                updateSelectedEvents(eventIDsString, UIOriginator.CONSOLE);
 
             } catch (VizException e) {
                 statusHandler.error("Error updating selected events", e);
@@ -1580,7 +1603,7 @@ public final class HazardServicesMessageHandler implements
                     Long.parseLong(consoleAction.getStartTime()));
             eventInfo.put(HAZARD_EVENT_END_TIME,
                     Long.parseLong(consoleAction.getEndTime()));
-            updateEventData(eventInfo, true);
+            updateEventData(eventInfo, true, consoleAction.getOriginator());
             break;
         }
 
@@ -1589,7 +1612,7 @@ public final class HazardServicesMessageHandler implements
             eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
             eventInfo.put(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                     consoleAction.getChecked());
-            updateEventData(eventInfo, true);
+            updateEventData(eventInfo, true, consoleAction.getOriginator());
             break;
         }
 
@@ -1632,7 +1655,8 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case PROPOSE:
-            changeSelectedEventsToProposedState();
+            changeSelectedEventsToProposedState(hazardDetailAction
+                    .getOriginator());
             break;
 
         case ISSUE:
@@ -1646,15 +1670,18 @@ public final class HazardServicesMessageHandler implements
 
         case UPDATE_TIME_RANGE:
             updateEventData(hazardDetailAction.getParameters(),
-                    hazardDetailAction.getIsUserInitiated());
+                    hazardDetailAction.getIsUserInitiated(),
+                    hazardDetailAction.getOriginator());
             break;
 
         case UPDATE_EVENT_TYPE:
-            updateEventType(hazardDetailAction.getParameters());
+            updateEventType(hazardDetailAction.getParameters(),
+                    hazardDetailAction.getOriginator());
             break;
         case UPDATE_EVENT_METADATA:
             updateEventData(hazardDetailAction.getParameters(),
-                    hazardDetailAction.getIsUserInitiated());
+                    hazardDetailAction.getIsUserInitiated(),
+                    hazardDetailAction.getOriginator());
             break;
 
         default:
@@ -1799,7 +1826,7 @@ public final class HazardServicesMessageHandler implements
         eventBus.unregister(this);
     }
 
-    public ISessionManager getSessionManager() {
+    public ISessionManager<ObservedHazardEvent> getSessionManager() {
         return sessionManager;
     }
 
@@ -1911,7 +1938,7 @@ public final class HazardServicesMessageHandler implements
     @Override
     public void timechanged() {
         try {
-            updateCurrentTime(HazardComponent.CAVE);
+            updateCurrentTime(Originator.OTHER);
         } catch (VizException e) {
             statusHandler.error("Error updating Hazard Services current time",
                     e);

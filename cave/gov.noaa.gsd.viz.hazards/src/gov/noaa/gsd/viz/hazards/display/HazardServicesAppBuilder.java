@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
@@ -76,7 +77,10 @@ import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -247,7 +251,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private ToolLayer toolLayer;
 
-    private ISessionManager sessionManager;
+    private ISessionManager<ObservedHazardEvent> sessionManager;
 
     private AlertVizPresenter alertVizPresenter;
 
@@ -750,13 +754,43 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param changed
      *            Set of model elements that have changed.
      */
-    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed) {
+    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed,
+            IOriginator originator) {
         if (disposing) {
             return;
         }
         for (HazardServicesPresenter<?> presenter : presenters) {
-            presenter.modelChanged(changed);
+            if (shouldCall(originator, presenter)) {
+                presenter.modelChanged(changed);
+            }
         }
+    }
+
+    public void notifyModelChanged(EnumSet<HazardConstants.Element> changed) {
+        notifyModelChanged(changed, Originator.OTHER);
+    }
+
+    /**
+     * This is a temporary kludge that is needed until the event propagation is
+     * switched over to going directly from the model to presenters, instead of
+     * having this class act as an intermediary. At that time, presenters will
+     * be free to either respond to or ignore notifications that are a result of
+     * their own actions. For the moment, assume that any actions taken by the
+     * console are ignored by the console, and the same for the HID.
+     */
+    @Deprecated
+    private boolean shouldCall(IOriginator originator,
+            HazardServicesPresenter<?> presenter) {
+        if (originator == null) {
+            return true;
+        }
+        if (((originator == UIOriginator.HAZARD_INFORMATION_DIALOG) && presenter
+                .getClass().equals(HazardDetailPresenter.class))
+                || ((originator == UIOriginator.CONSOLE) && presenter
+                        .getClass().equals(ConsolePresenter.class))) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1100,7 +1134,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         PythonSideEffectsApplier.prepareForShutDown();
     }
 
-    public ISessionManager getSessionManager() {
+    public ISessionManager<ObservedHazardEvent> getSessionManager() {
         return sessionManager;
     }
 

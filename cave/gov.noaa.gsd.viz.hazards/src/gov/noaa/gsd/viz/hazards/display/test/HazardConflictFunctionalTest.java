@@ -24,6 +24,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Description: {@link FunctionalTest} of the hazard conflict detection.
@@ -143,7 +144,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
         try {
 
-            Collection<IHazardEvent> selectedEvents = appBuilder
+            Collection<ObservedHazardEvent> selectedEvents = appBuilder
                     .getSessionManager().getEventManager().getSelectedEvents();
             switch (step) {
             case CREATE_FIRST_HAZARD_AREA:
@@ -232,7 +233,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
         /*
          * Retrieve the selected event.
          */
-        Collection<IHazardEvent> selectedEvents = appBuilder
+        Collection<ObservedHazardEvent> selectedEvents = appBuilder
                 .getSessionManager().getEventManager().getSelectedEvents();
 
         assertTrue(selectedEvents.size() == 1);
@@ -266,7 +267,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
         /*
          * Retrieve the selected event.
          */
-        Collection<IHazardEvent> selectedEvents = appBuilder
+        Collection<ObservedHazardEvent> selectedEvents = appBuilder
                 .getSessionManager().getEventManager().getSelectedEvents();
 
         /*

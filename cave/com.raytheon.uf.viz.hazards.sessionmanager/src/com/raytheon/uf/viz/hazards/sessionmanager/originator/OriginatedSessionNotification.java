@@ -17,16 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.events;
+package com.raytheon.uf.viz.hazards.sessionmanager.originator;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * A Notification that will be sent out through the SessionManager to notify all
- * components that a new event has been removed from the session.
+ * Contains the originator of what sent this out so that can be filtered upon.
  * 
  * <pre>
  * 
@@ -34,27 +30,38 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
+ * Feb 6, 2014            mnash     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author mnash
  * @version 1.0
  */
 
-public class SessionEventRemoved extends SessionEventsModified implements
-        ISessionNotification {
+public class OriginatedSessionNotification implements ISessionNotification {
 
-    private final IHazardEvent event;
+    private IOriginator originator;
 
-    public SessionEventRemoved(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, IOriginator originator) {
-        super(eventManager, originator);
-        this.event = event;
+    /**
+     * 
+     */
+    public OriginatedSessionNotification(IOriginator originator) {
+        this.originator = originator;
     }
 
-    public IHazardEvent getEvent() {
-        return event;
+    /**
+     * @return the originator
+     */
+    public IOriginator getOriginator() {
+        return originator;
     }
+
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(IOriginator originator) {
+        this.originator = originator;
+    }
+
 }

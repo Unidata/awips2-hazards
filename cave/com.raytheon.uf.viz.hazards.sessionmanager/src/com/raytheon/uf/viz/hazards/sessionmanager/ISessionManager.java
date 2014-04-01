@@ -23,6 +23,7 @@ import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -52,14 +53,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * @version 1.0
  */
 
-public interface ISessionManager extends IUndoRedoable {
+public interface ISessionManager<E extends IHazardEvent> extends IUndoRedoable {
 
     /**
      * Get a manager for interacting with the events
      * 
      * @return
      */
-    public ISessionEventManager getEventManager();
+    public ISessionEventManager<E> getEventManager();
 
     /**
      * Get a manager for interacting with the times

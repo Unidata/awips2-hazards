@@ -158,10 +158,6 @@ public final class HazardConstants {
         }
     }
 
-    public static enum HazardComponent {
-        CONSOLE, SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, CAVE
-    }
-
     /**
      * Enumeration of all types of changes that may occur within the model.
      */

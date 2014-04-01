@@ -97,7 +97,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testUpdate() {
         eventManager.reset();
-        eventManager.addEvent(getDummyEvent());
+        eventManager.addEvent(getDummyEvent(), null);
 
         IHazardEvent event = getDummyEvent();
         event.setPhenomenon(TEST_PHEN2);
@@ -116,7 +116,7 @@ public class SessionHazardNotificationListenerTest {
     public void testRestore() {
         eventManager.reset();
 
-        IHazardEvent event = eventManager.addEvent(getDummyEvent());
+        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
         event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
@@ -133,7 +133,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testDelete() {
         eventManager.reset();
-        eventManager.addEvent(getDummyEvent());
+        eventManager.addEvent(getDummyEvent(), null);
 
         HazardNotification notification = new HazardNotification(
                 getDummyEvent(), NotificationType.DELETE, Mode.PRACTICE);
@@ -150,7 +150,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testPreserveSelection() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent());
+        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
         event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
@@ -167,7 +167,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testAddAttribute() {
         eventManager.reset();
-        eventManager.addEvent(getDummyEvent());
+        eventManager.addEvent(getDummyEvent(), null);
 
         IHazardEvent event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
@@ -185,7 +185,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testRemoveAttribute() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent());
+        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
@@ -202,7 +202,7 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testChangeAttribute() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent());
+        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
 
         event = getDummyEvent();

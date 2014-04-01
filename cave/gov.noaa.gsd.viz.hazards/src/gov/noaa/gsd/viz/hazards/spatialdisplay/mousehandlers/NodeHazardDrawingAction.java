@@ -38,6 +38,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -84,9 +85,10 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
     private final HazardEventBuilder hazardEventBuilder;
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent> sessionManager;
 
-    public NodeHazardDrawingAction(ISessionManager sessionManager) {
+    public NodeHazardDrawingAction(
+            ISessionManager<ObservedHazardEvent> sessionManager) {
         this.sessionManager = sessionManager;
         hazardEventBuilder = new HazardEventBuilder(sessionManager);
     }
@@ -289,7 +291,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                 }
 
                 SessionEventAdded action = new SessionEventAdded(
-                        sessionManager.getEventManager(), hazardEvent);
+                        sessionManager.getEventManager(), hazardEvent,
+                        getSpatialPresenter());
                 getSpatialPresenter().fireAction(action);
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
@@ -313,7 +316,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             IHazardEvent hazardEvent = hazardEventBuilder
                     .buildPointHazardEvent(loc);
             SessionEventAdded action = new SessionEventAdded(
-                    sessionManager.getEventManager(), hazardEvent);
+                    sessionManager.getEventManager(), hazardEvent,
+                    getSpatialPresenter());
             getSpatialPresenter().fireAction(action);
         }
     }

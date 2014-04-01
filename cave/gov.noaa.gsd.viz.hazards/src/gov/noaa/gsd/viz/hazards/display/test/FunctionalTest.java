@@ -33,6 +33,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Description: Base class for automated testing. The approach is to create mock
@@ -122,7 +123,7 @@ public abstract class FunctionalTest {
 
     protected AutoTestUtilities autoTestUtilities;
 
-    protected final ISessionEventManager eventManager;
+    protected final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;

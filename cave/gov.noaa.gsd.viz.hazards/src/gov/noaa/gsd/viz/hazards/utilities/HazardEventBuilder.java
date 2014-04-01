@@ -15,6 +15,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -40,9 +41,10 @@ public class HazardEventBuilder {
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent> sessionManager;
 
-    public HazardEventBuilder(ISessionManager sessionManager) {
+    public HazardEventBuilder(
+            ISessionManager<ObservedHazardEvent> sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -100,7 +102,8 @@ public class HazardEventBuilder {
         event.setGeometry(geometry);
         event.addHazardAttribute(CREATION_TIME, sessionManager.getTimeManager()
                 .getCurrentTime());
-        IHazardEvent result = sessionManager.getEventManager().addEvent(event);
+        IHazardEvent result = sessionManager.getEventManager().addEvent(event,
+                null);
         return result;
     }
 

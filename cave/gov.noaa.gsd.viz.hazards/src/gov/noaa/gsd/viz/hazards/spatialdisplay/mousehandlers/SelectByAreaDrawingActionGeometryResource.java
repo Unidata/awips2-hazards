@@ -31,6 +31,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -150,7 +151,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
         private Mode mode = Mode.CREATE;
 
-        private final ISessionManager sessionManager = getSpatialPresenter()
+        private final ISessionManager<ObservedHazardEvent> sessionManager = getSpatialPresenter()
                 .getSessionManager();
 
         /*
@@ -303,7 +304,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                             eventID = hazardEvent.getEventID();
                             SessionEventAdded addAction = new SessionEventAdded(
                                     sessionManager.getEventManager(),
-                                    hazardEvent);
+                                    hazardEvent, getSpatialPresenter());
 
                             getSpatialPresenter().fireAction(addAction);
 
@@ -356,7 +357,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                                 .getEventManager().getEventById(eventID);
                         modifiedEvent.setGeometry(mergedPolygons);
                         SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(
-                                sessionManager.getEventManager(), modifiedEvent);
+                                sessionManager.getEventManager(),
+                                modifiedEvent, getSpatialPresenter());
                         getSpatialPresenter().fireAction(modifyAction);
 
                     }

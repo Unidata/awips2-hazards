@@ -34,6 +34,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
@@ -83,7 +84,7 @@ class HazardServicesProductGenerationHandler {
 
     private static final Integer GROUP_BORDER_MARGIN = 10;
 
-    private final ISessionManager sessionManager;
+    private final ISessionManager<ObservedHazardEvent> sessionManager;
 
     private final ISessionProductManager productManager;
 
@@ -91,7 +92,8 @@ class HazardServicesProductGenerationHandler {
 
     private final EventBus eventBus;
 
-    HazardServicesProductGenerationHandler(ISessionManager sessionManager,
+    HazardServicesProductGenerationHandler(
+            ISessionManager<ObservedHazardEvent> sessionManager,
             EventBus eventBus) {
         this.sessionManager = sessionManager;
         this.productManager = sessionManager.getProductManager();
@@ -248,8 +250,8 @@ class HazardServicesProductGenerationHandler {
         Collection<ProductInformation> productsToGenerate = new ArrayList<ProductInformation>();
 
         List<String> selectedEventIDs = new ArrayList<>();
-        for (IHazardEvent selectedEvent : this.sessionManager.getEventManager()
-                .getSelectedEvents()) {
+        for (ObservedHazardEvent selectedEvent : this.sessionManager
+                .getEventManager().getSelectedEvents()) {
             selectedEventIDs.add(selectedEvent.getEventID());
         }
 

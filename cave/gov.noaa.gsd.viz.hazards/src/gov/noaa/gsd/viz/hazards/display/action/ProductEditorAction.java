@@ -13,6 +13,7 @@ import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Action class "fired" from the Product Editor. Registered observers receive
@@ -35,6 +36,8 @@ public class ProductEditorAction {
     private List<GeneratedProductList> generatedProductsList;
 
     private String eventID;
+
+    private IOriginator originator;
 
     public ProductEditorAction(HazardAction hazardAction) {
         this.hazardAction = hazardAction;
@@ -70,5 +73,20 @@ public class ProductEditorAction {
 
     public String getEventID() {
         return eventID;
+    }
+
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(IOriginator originator) {
+        this.originator = originator;
+    }
+
+    /**
+     * @return the originator
+     */
+    public IOriginator getOriginator() {
+        return originator;
     }
 }

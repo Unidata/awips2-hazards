@@ -23,6 +23,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -83,7 +84,8 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
      * @throws VizException
      *             If a viz exception occurs.
      */
-    public PointDrawingAttributes(Shell parShell, ISessionManager sessionManager)
+    public PointDrawingAttributes(Shell parShell,
+            ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
         this(parShell, sessionManager, Element.INNER);
     }
@@ -99,7 +101,7 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
      *             If a viz exception occurs.
      */
     public PointDrawingAttributes(Shell parShell,
-            ISessionManager sessionManager, Element element)
+            ISessionManager<ObservedHazardEvent> sessionManager, Element element)
             throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
         this.element = element;

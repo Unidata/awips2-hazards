@@ -16,6 +16,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * <Description> The PGEN drawing attributes associated with a polygon drawn on
@@ -45,7 +46,8 @@ public class SelectionRectangleDrawingAttributes extends
     private LineStyle lineStyle = LINE_SOLID;
 
     public SelectionRectangleDrawingAttributes(Shell parShell,
-            ISessionManager sessionManager) throws VizException {
+            ISessionManager<ObservedHazardEvent> sessionManager)
+            throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
     }
 

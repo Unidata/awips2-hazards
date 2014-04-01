@@ -21,10 +21,14 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * Provides basic functionality og ISessionEventManager
@@ -51,11 +55,43 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  */
 
 public abstract class AbstractSessionEventManager implements
-        ISessionEventManager {
+        ISessionEventManager<ObservedHazardEvent> {
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * front of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_FRONT = new Comparator<ObservedHazardEvent>() {
+
+        @Override
+        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
+            boolean s1 = Boolean.TRUE.equals(o1
+                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED));
+            boolean s2 = Boolean.TRUE.equals(o2
+                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED));
+            if (s1) {
+                if (s2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else if (s2) {
+                return -1;
+            }
+            return 0;
+        }
+
+    };
+
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * back of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_BACK = Collections
+            .reverseOrder(SEND_SELECTED_FRONT);
 
     @Override
-    public IHazardEvent getEventById(String eventId) {
-        for (IHazardEvent event : getEvents()) {
+    public ObservedHazardEvent getEventById(String eventId) {
+        for (ObservedHazardEvent event : getEvents()) {
             if (event.getEventID().equals(eventId)) {
                 return event;
             }
@@ -64,11 +100,11 @@ public abstract class AbstractSessionEventManager implements
     }
 
     @Override
-    public Collection<IHazardEvent> getEventsByState(HazardState state) {
-        Collection<IHazardEvent> allEvents = getEvents();
-        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
+    public Collection<ObservedHazardEvent> getEventsByState(HazardState state) {
+        Collection<ObservedHazardEvent> allEvents = getEvents();
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
                 allEvents.size());
-        for (IHazardEvent event : allEvents) {
+        for (ObservedHazardEvent event : allEvents) {
             if (event.getState().equals(state)) {
                 events.add(event);
             }
@@ -77,11 +113,11 @@ public abstract class AbstractSessionEventManager implements
     }
 
     @Override
-    public Collection<IHazardEvent> getSelectedEvents() {
-        Collection<IHazardEvent> allEvents = getEventsForCurrentSettings();
-        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
+    public Collection<ObservedHazardEvent> getSelectedEvents() {
+        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
                 allEvents.size());
-        for (IHazardEvent event : allEvents) {
+        for (ObservedHazardEvent event : allEvents) {
             if (Boolean.TRUE.equals(event.getHazardAttribute(ATTR_SELECTED))) {
                 events.add(event);
             }
@@ -90,32 +126,35 @@ public abstract class AbstractSessionEventManager implements
     }
 
     @Override
-    public void setSelectedEvents(Collection<IHazardEvent> selectedEvents) {
-        for (IHazardEvent event : getSelectedEvents()) {
+    public void setSelectedEvents(
+            Collection<ObservedHazardEvent> selectedEvents,
+            IOriginator originator) {
+        for (ObservedHazardEvent event : getSelectedEvents()) {
             if (!selectedEvents.contains(event.getEventID())) {
                 event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED,
-                        false);
+                        false, originator);
             }
         }
-        for (IHazardEvent event : selectedEvents) {
-            event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
+        for (ObservedHazardEvent event : selectedEvents) {
+            event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true,
+                    originator);
 
             /*
              * Once selected, a potential event or set of events should be set
              * to PENDING.
              */
             if (event.getState() == HazardState.POTENTIAL) {
-                event.setState(HazardState.PENDING);
+                event.setState(HazardState.PENDING, Originator.OTHER);
             }
         }
     }
 
     @Override
-    public Collection<IHazardEvent> getCheckedEvents() {
-        Collection<IHazardEvent> allEvents = getEventsForCurrentSettings();
-        Collection<IHazardEvent> events = new ArrayList<IHazardEvent>(
+    public Collection<ObservedHazardEvent> getCheckedEvents() {
+        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
                 allEvents.size());
-        for (IHazardEvent event : allEvents) {
+        for (ObservedHazardEvent event : allEvents) {
             if (Boolean.TRUE.equals(event.getHazardAttribute(ATTR_CHECKED))) {
                 events.add(event);
             }

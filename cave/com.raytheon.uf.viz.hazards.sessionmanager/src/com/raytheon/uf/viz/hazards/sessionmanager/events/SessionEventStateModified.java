@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -41,12 +43,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public class SessionEventStateModified extends SessionEventModified
-        implements ISessionNotification {
+public class SessionEventStateModified extends SessionEventModified implements
+        ISessionNotification {
 
-    public SessionEventStateModified(ISessionEventManager eventManager,
-            IHazardEvent event) {
-        super(eventManager, event);
+    public SessionEventStateModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent event, IOriginator originator) {
+        super(eventManager, event, originator);
     }
 
     public HazardState getState() {

@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -51,7 +52,8 @@ public class DotDrawingAttributes extends HazardServicesDrawingAttributes {
 
     private LineStyle lineStyle = LINE_SOLID;
 
-    public DotDrawingAttributes(Shell parShell, ISessionManager sessionManager)
+    public DotDrawingAttributes(Shell parShell,
+            ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
     }

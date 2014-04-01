@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Action class "fired" from the SpatialDisplay when the state of the Spatial
@@ -72,6 +73,8 @@ public class SpatialDisplayAction {
     private double dragToLatitude;
 
     private double dragToLongitude;
+
+    private IOriginator originator;
 
     public SpatialDisplayAction(ActionType actionType) {
         this.actionType = actionType;
@@ -234,4 +237,18 @@ public class SpatialDisplayAction {
         return eventID;
     }
 
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(IOriginator originator) {
+        this.originator = originator;
+    }
+
+    /**
+     * @return the originator
+     */
+    public IOriginator getOriginator() {
+        return originator;
+    }
 }

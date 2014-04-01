@@ -16,6 +16,7 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * The PGEN drawing attributes associated with a star drawn on the Spatial
@@ -43,7 +44,8 @@ public class StarDrawingAttributes extends HazardServicesDrawingAttributes {
 
     private LineStyle lineStyle = LINE_SOLID;
 
-    public StarDrawingAttributes(Shell parShell, ISessionManager sessionManager)
+    public StarDrawingAttributes(Shell parShell,
+            ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
     }

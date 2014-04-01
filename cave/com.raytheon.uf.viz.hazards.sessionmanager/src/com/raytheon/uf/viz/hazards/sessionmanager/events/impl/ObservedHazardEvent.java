@@ -43,6 +43,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryMod
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -231,143 +233,207 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     @Override
     public void setSiteID(String site) {
-        setSiteID(site, true);
+        setSiteID(site, true, Originator.OTHER);
     }
 
     @Override
     public void setEventID(String eventId) {
-        setEventID(eventId, true);
+        setEventID(eventId, true, Originator.OTHER);
     }
 
     @Override
     public void setState(HazardState state) {
         if (changed(getState(), state)) {
-            setState(state, true, true);
+            setState(state, true, true, Originator.OTHER);
         }
     }
 
     @Override
     public void setPhenomenon(String phenomenon) {
-        setPhenomenon(phenomenon, true);
+        setPhenomenon(phenomenon, true, Originator.OTHER);
     }
 
     @Override
     public void setSignificance(String significance) {
-        setSignificance(significance, true);
+        setSignificance(significance, true, Originator.OTHER);
     }
 
     @Override
     public void setSubType(String subtype) {
-        setSubtype(subtype, true);
+        setSubtype(subtype, true, Originator.OTHER);
     }
 
     @Override
     public void setIssueTime(Date date) {
-        setIssueTime(date, true);
+        setIssueTime(date, true, Originator.OTHER);
     }
 
     @Override
     public void setEndTime(Date date) {
-        setEndTime(date, true);
+        setEndTime(date, true, Originator.OTHER);
     }
 
     @Override
     public void setStartTime(Date date) {
-        setStartTime(date, true);
+        setStartTime(date, true, Originator.OTHER);
     }
 
     @Override
     public void setGeometry(Geometry geom) {
-        setGeometry(geom, true);
+        setGeometry(geom, true, Originator.OTHER);
     }
 
     @Override
     public void setHazardMode(ProductClass mode) {
-        setHazardMode(mode, true);
+        setHazardMode(mode, true, Originator.OTHER);
     }
 
     @Override
     public void setHazardAttributes(Map<String, Serializable> attributes) {
-        setHazardAttributes(attributes, true);
+        setHazardAttributes(attributes, true, Originator.OTHER);
     }
 
     @Override
     public void addHazardAttribute(String key, Serializable value) {
-        addHazardAttribute(key, value, true);
+        addHazardAttribute(key, value, true, Originator.OTHER);
     }
 
     @Override
     public void removeHazardAttribute(String key) {
-        removeHazardAttribute(key, true);
+        removeHazardAttribute(key, true, Originator.OTHER);
     }
 
-    protected void setSiteID(String site, boolean notify) {
+    public void setSiteID(String siteID, IOriginator originator) {
+        setSiteID(siteID, true, originator);
+    }
+
+    public void setEventID(String eventID, IOriginator originator) {
+        setEventID(eventID, true, originator);
+    }
+
+    public void setState(HazardState state, IOriginator originator) {
+        setState(state, true, true, originator);
+    }
+
+    public void setPhenomenon(String phenomenon, IOriginator originator) {
+        setPhenomenon(phenomenon, true, originator);
+    }
+
+    public void setSignificance(String significance, IOriginator originator) {
+        setSignificance(significance, true, originator);
+    }
+
+    public void setSubType(String subType, IOriginator originator) {
+        setSubtype(subType, true, originator);
+    }
+
+    public void setIssueTime(Date issueTime, IOriginator originator) {
+        setIssueTime(issueTime, true, originator);
+    }
+
+    public void setEndTime(Date endTime, IOriginator originator) {
+        setEndTime(endTime, true, originator);
+    }
+
+    public void setStartTime(Date startTime, IOriginator originator) {
+        setStartTime(startTime, true, originator);
+    }
+
+    public void setGeometry(Geometry geometry, IOriginator originator) {
+        setGeometry(geometry, true, originator);
+    }
+
+    public void setHazardMode(ProductClass productClass, IOriginator originator) {
+        setHazardMode(productClass, true, originator);
+    }
+
+    public void setHazardAttributes(Map<String, Serializable> attributes,
+            IOriginator originator) {
+        setHazardAttributes(attributes, true, originator);
+    }
+
+    public void addHazardAttribute(String key, Serializable value,
+            IOriginator originator) {
+        addHazardAttribute(key, value, true, originator);
+    }
+
+    public void removeHazardAttribute(String key, IOriginator originator) {
+        removeHazardAttribute(key, true, originator);
+    }
+
+    protected void setSiteID(String site, boolean notify, IOriginator originator) {
         if (changed(getSiteID(), site)) {
             delegate.setSiteID(site);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this));
+                        eventManager, this, originator));
             }
         }
     }
 
-    protected void setEventID(String eventId, boolean notify) {
+    protected void setEventID(String eventId, boolean notify,
+            IOriginator originator) {
         if (changed(getEventID(), eventId)) {
             delegate.setEventID(eventId);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this));
+                        eventManager, this, originator));
             }
         }
     }
 
-    protected void setState(HazardState state, boolean notify, boolean persist) {
+    protected void setState(HazardState state, boolean notify, boolean persist,
+            IOriginator originator) {
 
         delegate.setState(state);
 
         if (notify) {
             eventManager.hazardEventStateModified(
-                    new SessionEventStateModified(eventManager, this), persist);
+                    new SessionEventStateModified(eventManager, this,
+                            originator), persist);
         }
     }
 
-    protected void setPhenomenon(String phenomenon, boolean notify) {
+    protected void setPhenomenon(String phenomenon, boolean notify,
+            IOriginator originator) {
         if (changed(getPhenomenon(), phenomenon)) {
             if (eventManager.canChangeType(this)) {
                 delegate.setPhenomenon(phenomenon);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, this));
+                            eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
-                throw new IllegalEventModificationException("subtype");
+                throw new IllegalEventModificationException("phenomenon");
             }
         }
     }
 
-    protected void setSignificance(String significance, boolean notify) {
+    protected void setSignificance(String significance, boolean notify,
+            IOriginator originator) {
         if (changed(getSignificance(), significance)) {
             if (eventManager.canChangeType(this)) {
                 delegate.setSignificance(significance);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, this));
+                            eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
-                throw new IllegalEventModificationException("subtype");
+                throw new IllegalEventModificationException("significance");
             }
         }
     }
 
-    protected void setSubtype(String subtype, boolean notify) {
+    protected void setSubtype(String subtype, boolean notify,
+            IOriginator originator) {
         if (changed(getSubType(), subtype)) {
             if (eventManager.canChangeType(this)) {
                 delegate.setSubType(subtype);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, this));
+                            eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
@@ -376,23 +442,24 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setIssueTime(Date date, boolean notify) {
+    protected void setIssueTime(Date date, boolean notify,
+            IOriginator originator) {
         if (changed(getIssueTime(), date)) {
             delegate.setIssueTime(date);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this));
+                        eventManager, this, originator));
             }
         }
     }
 
-    protected void setEndTime(Date date, boolean notify) {
+    protected void setEndTime(Date date, boolean notify, IOriginator originator) {
         if (changed(getEndTime(), date)) {
             if (eventManager.canChangeTimeRange(this)) {
                 delegate.setEndTime(date);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, this));
+                            eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
@@ -401,13 +468,14 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setStartTime(Date date, boolean notify) {
+    protected void setStartTime(Date date, boolean notify,
+            IOriginator originator) {
         if (changed(getStartTime(), date)) {
             if (eventManager.canChangeTimeRange(this)) {
                 delegate.setStartTime(date);
                 if (notify) {
                     eventManager.hazardEventModified(new SessionEventModified(
-                            eventManager, this));
+                            eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
@@ -416,7 +484,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setGeometry(Geometry geom, boolean notify) {
+    protected void setGeometry(Geometry geom, boolean notify,
+            IOriginator originator) {
         if (changed(getGeometry(), geom)) {
             if (eventManager.canChangeGeometry(this)) {
                 pushToStack("setGeometry", Geometry.class, getGeometry());
@@ -432,7 +501,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                 if (notify) {
                     eventManager
                             .hazardEventModified(new SessionEventGeometryModified(
-                                    eventManager, this));
+                                    eventManager, this, originator));
                 }
             } else {
                 this.modified = false;
@@ -441,47 +510,49 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setHazardMode(ProductClass mode, boolean notify) {
+    protected void setHazardMode(ProductClass mode, boolean notify,
+            IOriginator originator) {
         if (changed(getHazardMode(), mode)) {
             delegate.setHazardMode(mode);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this));
+                        eventManager, this, originator));
             }
         }
     }
 
     public void setHazardAttributes(Map<String, Serializable> attributes,
-            boolean notify) {
+            boolean notify, IOriginator originator) {
         if (changed(getHazardAttributes(), attributes)) {
             delegate.setHazardAttributes(attributes);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this));
+                        eventManager, this, originator));
             }
         }
     }
 
     public void addHazardAttribute(String key, Serializable value,
-            boolean notify) {
+            boolean notify, IOriginator originator) {
         if (changed(value, getHazardAttribute(key))) {
             delegate.removeHazardAttribute(key);
             delegate.addHazardAttribute(key, value);
             if (notify) {
                 eventManager
                         .hazardEventAttributeModified(new SessionEventAttributeModified(
-                                eventManager, this, key));
+                                eventManager, this, key, originator));
             }
         }
     }
 
-    public void removeHazardAttribute(String key, boolean notify) {
+    public void removeHazardAttribute(String key, boolean notify,
+            IOriginator originator) {
         if (getHazardAttribute(key) != null) {
             delegate.removeHazardAttribute(key);
             if (notify) {
                 eventManager
                         .hazardEventAttributeModified(new SessionEventAttributeModified(
-                                eventManager, this, key));
+                                eventManager, this, key, originator));
             }
         }
     }

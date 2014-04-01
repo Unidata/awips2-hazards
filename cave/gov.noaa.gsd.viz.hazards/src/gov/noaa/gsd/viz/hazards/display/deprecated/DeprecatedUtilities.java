@@ -52,9 +52,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 public class DeprecatedUtilities {
 
     public static DeprecatedEvent[] eventsAsJSONEvents(
-            Collection<IHazardEvent> events) {
+            Collection<? extends IHazardEvent> events) {
         DeprecatedEvent[] result = new DeprecatedEvent[events.size()];
-        Iterator<IHazardEvent> it = events.iterator();
+        Iterator<? extends IHazardEvent> it = events.iterator();
         for (int i = 0; i < result.length; i += 1) {
             IHazardEvent hevent = it.next();
             result[i] = new DeprecatedEvent(hevent);
@@ -72,11 +72,11 @@ public class DeprecatedUtilities {
      */
     @Deprecated
     public static void adaptJSONEvent(DeprecatedEvent[] jsonEvents,
-            Collection<IHazardEvent> events,
+            Collection<? extends IHazardEvent> events,
             ISessionConfigurationManager configManager,
             ISessionTimeManager timeManager) {
 
-        Iterator<IHazardEvent> it = events.iterator();
+        Iterator<? extends IHazardEvent> it = events.iterator();
         for (int i = 0; i < jsonEvents.length; i++) {
 
             /*
@@ -134,13 +134,13 @@ public class DeprecatedUtilities {
      */
     @SuppressWarnings("unchecked")
     @Deprecated
-    public static String eventsAsNodeJSON(Collection<IHazardEvent> events,
-            DeprecatedEvent[] events2) {
+    public static String eventsAsNodeJSON(
+            Collection<? extends IHazardEvent> events, DeprecatedEvent[] events2) {
         ObjectMapper jsonObjectMapper = new ObjectMapper();
         JSONConverter jsonConverter = new JSONConverter();
         ArrayNode jevents = jsonObjectMapper.createArrayNode();
 
-        Iterator<IHazardEvent> it2 = events.iterator();
+        Iterator<? extends IHazardEvent> it2 = events.iterator();
 
         for (int ii = 0; ii < events2.length; ii++) {
 

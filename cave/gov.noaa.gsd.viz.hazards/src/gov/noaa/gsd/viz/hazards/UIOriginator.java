@@ -17,16 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.events;
+package gov.noaa.gsd.viz.hazards;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * A Notification that will be sent out through the SessionManager to notify all
- * components that a new event has been removed from the session.
+ * Originator for UI elements
  * 
  * <pre>
  * 
@@ -34,27 +30,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
+ * Apr 1, 2014            mnash     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author mnash
  * @version 1.0
  */
 
-public class SessionEventRemoved extends SessionEventsModified implements
-        ISessionNotification {
-
-    private final IHazardEvent event;
-
-    public SessionEventRemoved(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, IOriginator originator) {
-        super(eventManager, originator);
-        this.event = event;
-    }
-
-    public IHazardEvent getEvent() {
-        return event;
-    }
+public enum UIOriginator implements IOriginator {
+    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, SETTINGS_DIALOG, CONSOLE;
 }

@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -58,7 +59,8 @@ public class StormTrackDotDrawingAttributes extends
     private LineStyle lineStyle = LINE_SOLID;
 
     public StormTrackDotDrawingAttributes(Shell parShell,
-            ISessionManager sessionManager) throws VizException {
+            ISessionManager<ObservedHazardEvent> sessionManager)
+            throws VizException {
         super(parShell, sessionManager.getConfigurationManager());
     }
 

@@ -48,11 +48,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.SessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
 
@@ -81,7 +81,7 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * @version 1.0
  */
 
-public class SessionManager implements ISessionManager {
+public class SessionManager implements ISessionManager<ObservedHazardEvent> {
 
     /**
      * Files in localization to be removed when the events are reset from the
@@ -105,7 +105,7 @@ public class SessionManager implements ISessionManager {
 
     private final EventBus eventBus;
 
-    private final ISessionEventManager eventManager;
+    private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     private final ISessionTimeManager timeManager;
 
@@ -181,7 +181,7 @@ public class SessionManager implements ISessionManager {
     }
 
     @Override
-    public ISessionEventManager getEventManager() {
+    public ISessionEventManager<ObservedHazardEvent> getEventManager() {
         return eventManager;
     }
 
@@ -243,7 +243,8 @@ public class SessionManager implements ISessionManager {
          * Force a refresh of the Hazard Services views. There is probably a
          * better way to do this.
          */
-        eventManager.setSelectedEvents(eventManager.getSelectedEvents());
+        eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
+                Originator.OTHER);
     }
 
     @Override
@@ -255,13 +256,14 @@ public class SessionManager implements ISessionManager {
     public void toggleHatchedAreaDisplay() {
         hatchAreaDisplay = !hatchAreaDisplay;
 
-        ISessionEventManager eventManager = getEventManager();
+        ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
 
         /*
          * Force a refresh of the Hazard Services views. There is probably a
          * better way to do this.
          */
-        eventManager.setSelectedEvents(eventManager.getSelectedEvents());
+        eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
+                Originator.OTHER);
 
     }
 
@@ -273,8 +275,8 @@ public class SessionManager implements ISessionManager {
     @Override
     public void reset() {
 
-        for (IHazardEvent event : eventManager.getEvents()) {
-            eventManager.removeEvent(event);
+        for (ObservedHazardEvent event : eventManager.getEvents()) {
+            eventManager.removeEvent(event, Originator.OTHER);
         }
 
         hazardManager.removeAllEvents();
@@ -307,12 +309,12 @@ public class SessionManager implements ISessionManager {
 
     @Override
     public void undo() {
-        Collection<IHazardEvent> events = eventManager.getSelectedEvents();
+        Collection<ObservedHazardEvent> events = eventManager
+                .getSelectedEvents();
 
         if (events.size() == 1) {
-            Iterator<IHazardEvent> eventIter = events.iterator();
-            ObservedHazardEvent obsEvent = (ObservedHazardEvent) eventIter
-                    .next();
+            Iterator<ObservedHazardEvent> eventIter = events.iterator();
+            ObservedHazardEvent obsEvent = eventIter.next();
             obsEvent.undo();
         }
 
@@ -320,15 +322,15 @@ public class SessionManager implements ISessionManager {
 
     @Override
     public void redo() {
-        Collection<IHazardEvent> events = eventManager.getSelectedEvents();
+        Collection<ObservedHazardEvent> events = eventManager
+                .getSelectedEvents();
 
         /*
          * Limited to single selected hazard events.
          */
         if (events.size() == 1) {
-            Iterator<IHazardEvent> eventIter = events.iterator();
-            ObservedHazardEvent obsEvent = (ObservedHazardEvent) eventIter
-                    .next();
+            Iterator<ObservedHazardEvent> eventIter = events.iterator();
+            ObservedHazardEvent obsEvent = eventIter.next();
             obsEvent.redo();
         }
 
@@ -336,15 +338,15 @@ public class SessionManager implements ISessionManager {
 
     @Override
     public Boolean isUndoable() {
-        Collection<IHazardEvent> hazardEvents = eventManager
+        Collection<ObservedHazardEvent> hazardEvents = eventManager
                 .getSelectedEvents();
 
         /*
          * Limited to single selected hazard events.
          */
         if (hazardEvents.size() == 1) {
-            Iterator<IHazardEvent> iterator = hazardEvents.iterator();
-            return ((IUndoRedoable) iterator.next()).isUndoable();
+            Iterator<ObservedHazardEvent> iterator = hazardEvents.iterator();
+            return iterator.next().isUndoable();
         }
 
         return false;
@@ -353,15 +355,15 @@ public class SessionManager implements ISessionManager {
     @Override
     public Boolean isRedoable() {
 
-        Collection<IHazardEvent> hazardEvents = eventManager
+        Collection<ObservedHazardEvent> hazardEvents = eventManager
                 .getSelectedEvents();
 
         /*
          * Limit to single selection.
          */
         if (hazardEvents.size() == 1) {
-            Iterator<IHazardEvent> iterator = hazardEvents.iterator();
-            return ((IUndoRedoable) iterator.next()).isRedoable();
+            Iterator<ObservedHazardEvent> iterator = hazardEvents.iterator();
+            return iterator.next().isRedoable();
         }
 
         return false;
@@ -372,7 +374,7 @@ public class SessionManager implements ISessionManager {
         for (IEvent event : eventList) {
             if (event instanceof IHazardEvent) {
                 IHazardEvent hevent = (IHazardEvent) event;
-                hevent = eventManager.addEvent(hevent);
+                hevent = eventManager.addEvent(hevent, Originator.OTHER);
             }
         }
     }

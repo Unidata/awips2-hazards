@@ -26,6 +26,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
@@ -79,7 +80,7 @@ public class HazardDetailPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardDetailPresenter(ISessionManager model,
+    public HazardDetailPresenter(ISessionManager<ObservedHazardEvent> model,
             IHazardDetailView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
@@ -173,7 +174,7 @@ public class HazardDetailPresenter extends
     }
 
     private DictList adaptEventsForDisplay() {
-        Collection<IHazardEvent> selectedEvents = eventManager
+        Collection<ObservedHazardEvent> selectedEvents = eventManager
                 .getSelectedEvents();
         DeprecatedEvent[] jsonEvents = DeprecatedUtilities
                 .eventsAsJSONEvents(selectedEvents);

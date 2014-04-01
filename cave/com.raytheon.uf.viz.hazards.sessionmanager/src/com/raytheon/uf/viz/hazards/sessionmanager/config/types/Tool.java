@@ -29,7 +29,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 /**
  * 
- * Object defining a product generator.
+ * Object defining a tool.
  * 
  * <pre>
  * 

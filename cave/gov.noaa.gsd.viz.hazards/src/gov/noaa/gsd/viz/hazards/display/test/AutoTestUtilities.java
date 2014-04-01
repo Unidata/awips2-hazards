@@ -35,6 +35,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.TopologyException;
 
@@ -207,7 +208,7 @@ public class AutoTestUtilities {
     }
 
     IHazardEvent getSelectedEvent() {
-        IHazardEvent selectedEvent = appBuilder.getSessionManager()
+        ObservedHazardEvent selectedEvent = appBuilder.getSessionManager()
                 .getEventManager().getSelectedEvents().iterator().next();
         return selectedEvent;
     }

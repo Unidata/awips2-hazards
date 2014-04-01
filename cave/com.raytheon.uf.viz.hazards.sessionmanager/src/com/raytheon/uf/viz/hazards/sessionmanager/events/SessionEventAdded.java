@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -45,9 +47,10 @@ public class SessionEventAdded extends SessionEventsModified implements
 
     private final IHazardEvent event;
 
-    public SessionEventAdded(ISessionEventManager eventManager,
-            IHazardEvent event) {
-        super(eventManager);
+    public SessionEventAdded(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent event, IOriginator originator) {
+        super(eventManager, originator);
         this.event = event;
     }
 

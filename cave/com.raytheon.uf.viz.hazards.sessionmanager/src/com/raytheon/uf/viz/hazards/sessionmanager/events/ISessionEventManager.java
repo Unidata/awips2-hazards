@@ -28,6 +28,7 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -58,7 +59,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * @version 1.0
  */
 
-public interface ISessionEventManager {
+public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
      * The selected attribute will be available as a Boolean for all hazards in
@@ -128,9 +129,10 @@ public interface ISessionEventManager {
      * selected and checked.
      * 
      * @param event
+     * @param originator
      * @return
      */
-    public IHazardEvent addEvent(IHazardEvent event);
+    public E addEvent(IHazardEvent event, IOriginator originator);
 
     /**
      * Get the event with the given ID or null if there is no such event in the
@@ -139,7 +141,7 @@ public interface ISessionEventManager {
      * @param eventId
      * @return
      */
-    public IHazardEvent getEventById(String eventId);
+    public E getEventById(String eventId);
 
     /**
      * Get all events with the given state from the session. This will never
@@ -148,35 +150,41 @@ public interface ISessionEventManager {
      * @param state
      * @return
      */
-    public Collection<IHazardEvent> getEventsByState(HazardState state);
+    public Collection<E> getEventsByState(HazardState state);
 
     /**
      * Remove an event from the session.
      * 
      * @param event
+     * @param originator
      */
-    public void removeEvent(IHazardEvent event);
+    public void removeEvent(IHazardEvent event, IOriginator originator);
 
     /**
      * Get all events that are currently part of this session.
      * 
      * @return
      */
-    public Collection<IHazardEvent> getEvents();
+    public Collection<E> getEvents();
 
     /**
      * Get all events where the ATTR_SELECTED is True.
      * 
      * @return
      */
-    public Collection<IHazardEvent> getSelectedEvents();
+    public Collection<E> getSelectedEvents();
 
     /**
      * Return the selected event that was most recently modified.
      * 
      * @return
      */
-    public IHazardEvent getLastModifiedSelectedEvent();
+    public E getLastModifiedSelectedEvent();
+
+    /**
+     * @return id of the most recently selected event
+     */
+    String getLastSelectedEventID();
 
     /**
      * Set the selected events. Any currently selected events that are no in
@@ -184,15 +192,19 @@ public interface ISessionEventManager {
      * will get ATTR_SELECTED set to True.
      * 
      * @param selectedEvents
+     * @param originator
      */
-    public void setSelectedEvents(Collection<IHazardEvent> selectedEvents);
+    public void setSelectedEvents(Collection<E> selectedEvents,
+            IOriginator originator);
 
     /**
      * Get all events where the ATTR_CHECKED is True.
      * 
      * @return
      */
-    public Collection<IHazardEvent> getCheckedEvents();
+    public Collection<E> getCheckedEvents();
+
+    public Collection<E> getEventsForCurrentSettings();
 
     /**
      * Tests whether it is valid to change a hazards geometry.
@@ -200,7 +212,7 @@ public interface ISessionEventManager {
      * @param event
      * @return
      */
-    public boolean canChangeGeometry(IHazardEvent event);
+    public boolean canChangeGeometry(E event);
 
     /**
      * Tests whether it is valid to change a hazards start or end time
@@ -208,7 +220,7 @@ public interface ISessionEventManager {
      * @param event
      * @return
      */
-    public boolean canChangeTimeRange(IHazardEvent event);
+    public boolean canChangeTimeRange(E event);
 
     /**
      * Tests whether it is valid to change a hazard type(includes phen, sig, and
@@ -217,7 +229,17 @@ public interface ISessionEventManager {
      * @param event
      * @return
      */
-    public boolean canChangeType(IHazardEvent event);
+    public boolean canChangeType(E event);
+
+    /**
+     * Tests if an event's area can be changed.
+     * 
+     * @param event
+     *            The event to test
+     * @return True - the event's area can be changed. False - the event's area
+     *         cannot be changed.
+     */
+    public boolean canEventAreaBeChanged(E event);
 
     /**
      * Sort the events using a comparator. This can be useful with
@@ -225,12 +247,7 @@ public interface ISessionEventManager {
      * 
      * @param comparator
      */
-    public void sortEvents(Comparator<IHazardEvent> comparator);
-
-    /**
-     * Execute any shutdown needed.
-     */
-    public void shutdown();
+    public void sortEvents(Comparator<E> comparator);
 
     /**
      * Checks all events for conflicts.
@@ -275,8 +292,6 @@ public interface ISessionEventManager {
      */
     Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
 
-    public Collection<IHazardEvent> getEventsForCurrentSettings();
-
     /**
      * Get a set indicating which hazard event identifiers are allowed to have
      * their end time "until further notice" mode toggled. The returned object
@@ -298,36 +313,28 @@ public interface ISessionEventManager {
      * Sets the state of the event to ENDED, persists it to the database and
      * notifies all listeners of this state change.
      * 
-     * @param The
-     *            event to end.
-     * @return
+     * @param event
+     * @param originator
      */
-    public void endEvent(IHazardEvent event);
+    public void endEvent(E event, IOriginator originator);
 
     /**
      * Sets the state of the event to ISSUED, persists it to the database and
      * notifies all listeners of this.
      * 
-     * @param The
-     *            event to issue.
-     * @return
+     * @param event
+     * @param originator
      */
-    public void issueEvent(IHazardEvent event);
+    public void issueEvent(E event, IOriginator originator);
 
     /**
      * Sets the state of the event to PROPOSED, persists it to the database and
      * notifies all listeners of this.
      * 
-     * @param The
-     *            event to propose
-     * @return
+     * @param event
+     * @param originator
      */
-    public void proposeEvent(IHazardEvent event);
-
-    /**
-     * @return id of the most recently selected event
-     */
-    String getLastSelectedEventID();
+    public void proposeEvent(E event, IOriginator originator);
 
     /**
      * Clips the selected hazard geometries to the cwa or hsa boundaries as
@@ -350,21 +357,16 @@ public interface ISessionEventManager {
     void reduceSelectedHazardGeometries();
 
     /**
-     * Tests if an event's area can be changed.
-     * 
-     * @param event
-     *            The event to test
-     * @return True - the event's area can be changed. False - the event's area
-     *         cannot be changed.
-     */
-    public boolean canEventAreaBeChanged(IHazardEvent event);
-
-    /**
      * Updates the UGC information associated with the selected hazard events.
      * 
      * @param
      * @return
      */
     public void updateSelectedHazardUGCs();
+
+    /**
+     * Execute any shutdown needed.
+     */
+    public void shutdown();
 
 }

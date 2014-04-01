@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,6 +33,9 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -63,7 +69,7 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     private final boolean canChangeType;
 
-    private final List<IHazardEvent> events = new ArrayList<IHazardEvent>();
+    private final List<ObservedHazardEvent> events = new ArrayList<ObservedHazardEvent>();
 
     public SimpleSessionEventManager() {
         this(true, true, true);
@@ -77,38 +83,42 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public IHazardEvent addEvent(IHazardEvent event) {
-        events.add(event);
-        return event;
+    public ObservedHazardEvent addEvent(IHazardEvent event,
+            IOriginator originator) {
+        SessionEventManager eventManager = mock(SessionEventManager.class);
+        ObservedHazardEvent ev = new ObservedHazardEvent(event, eventManager);
+        when(eventManager.canChangeType(ev)).thenReturn(true);
+        events.add(ev);
+        return ev;
     }
 
     @Override
-    public void removeEvent(IHazardEvent event) {
+    public void removeEvent(IHazardEvent event, IOriginator originator) {
         events.remove(event);
     }
 
     @Override
-    public Collection<IHazardEvent> getEvents() {
+    public Collection<ObservedHazardEvent> getEvents() {
         return events;
     }
 
     @Override
-    public boolean canChangeGeometry(IHazardEvent event) {
+    public boolean canChangeGeometry(ObservedHazardEvent event) {
         return canChangeGeometry;
     }
 
     @Override
-    public boolean canChangeTimeRange(IHazardEvent event) {
+    public boolean canChangeTimeRange(ObservedHazardEvent event) {
         return canChangeTimeRange;
     }
 
     @Override
-    public boolean canChangeType(IHazardEvent event) {
+    public boolean canChangeType(ObservedHazardEvent event) {
         return canChangeType;
     }
 
     @Override
-    public void sortEvents(Comparator<IHazardEvent> comparator) {
+    public void sortEvents(Comparator<ObservedHazardEvent> comparator) {
         Collections.sort(events, comparator);
     }
 
@@ -117,7 +127,7 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public IHazardEvent getLastModifiedSelectedEvent() {
+    public ObservedHazardEvent getLastModifiedSelectedEvent() {
         return null;
     }
 
@@ -151,22 +161,23 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public Collection<IHazardEvent> getEventsForCurrentSettings() {
+    public Collection<ObservedHazardEvent> getEventsForCurrentSettings() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void endEvent(IHazardEvent event) {
+    public void endEvent(ObservedHazardEvent event, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void issueEvent(IHazardEvent event) {
+    public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void proposeEvent(IHazardEvent event) {
+    public void proposeEvent(ObservedHazardEvent event, IOriginator originator) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -180,7 +191,7 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public boolean canEventAreaBeChanged(IHazardEvent event) {
+    public boolean canEventAreaBeChanged(ObservedHazardEvent event) {
         throw new UnsupportedOperationException();
     }
 

@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.hazards.display.action;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+
 /**
  * This action is "fired" from the Hazard Information Dialog when its state
  * changes. Registered observers receive this object and act on it.
@@ -42,6 +44,8 @@ public class HazardDetailAction {
      * event as modified by the user.
      */
     private Boolean isUserInitiated = true;
+
+    private IOriginator originator;
 
     public HazardDetailAction(ActionType actionType) {
         this.actionType = actionType;
@@ -91,4 +95,18 @@ public class HazardDetailAction {
         this.isUserInitiated = isUserInitiated;
     }
 
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(IOriginator originator) {
+        this.originator = originator;
+    }
+
+    /**
+     * @return the originator
+     */
+    public IOriginator getOriginator() {
+        return originator;
+    }
 }

@@ -18,6 +18,7 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -54,8 +55,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ToolsPresenter(ISessionManager model, IToolsView<?, ?> view,
-            EventBus eventBus) {
+    public ToolsPresenter(ISessionManager<ObservedHazardEvent> model,
+            IToolsView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
 

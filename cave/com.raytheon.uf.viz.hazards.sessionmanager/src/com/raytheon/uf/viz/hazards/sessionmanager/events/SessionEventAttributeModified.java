@@ -23,6 +23,8 @@ import java.io.Serializable;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -47,9 +49,10 @@ public class SessionEventAttributeModified extends SessionEventModified
 
     private final String attributeKey;
 
-    public SessionEventAttributeModified(ISessionEventManager eventManager,
-            IHazardEvent event, String attributeKey) {
-        super(eventManager, event);
+    public SessionEventAttributeModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent event, String attributeKey, IOriginator originator) {
+        super(eventManager, event, originator);
         this.attributeKey = attributeKey;
     }
 
@@ -64,6 +67,5 @@ public class SessionEventAttributeModified extends SessionEventModified
     public Serializable getAttributeValue() {
         return getEvent().getHazardAttribute(attributeKey);
     }
-
 
 }

@@ -16,6 +16,7 @@ import java.util.EnumSet;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Alerts presenter, used to mediate between the model and the alerts view.
@@ -54,7 +55,7 @@ public class AlertsConfigPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public AlertsConfigPresenter(ISessionManager model,
+    public AlertsConfigPresenter(ISessionManager<ObservedHazardEvent> model,
             IAlertsConfigView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }

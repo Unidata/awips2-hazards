@@ -24,7 +24,6 @@ import java.util.Map;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
@@ -32,6 +31,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Console presenter, used to manage the console view.
@@ -84,8 +84,8 @@ public class ConsolePresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ConsolePresenter(ISessionManager model, IConsoleView<?, ?> view,
-            EventBus eventBus) {
+    public ConsolePresenter(ISessionManager<ObservedHazardEvent> model,
+            IConsoleView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
 
@@ -187,7 +187,7 @@ public class ConsolePresenter extends
     }
 
     private List<Dict> adaptEventsForDisplay() {
-        Collection<IHazardEvent> currentEvents = eventManager
+        Collection<ObservedHazardEvent> currentEvents = eventManager
                 .getEventsForCurrentSettings();
 
         DeprecatedEvent[] jsonEvents = DeprecatedUtilities

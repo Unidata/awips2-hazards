@@ -32,6 +32,7 @@ import com.raytheon.uf.viz.core.notification.NotificationException;
 import com.raytheon.uf.viz.core.notification.NotificationMessage;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * An INotificationObserver that keeps the session event manager in sync with
@@ -57,15 +58,17 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionHazardNotificationListener.class);
 
-    private final Reference<ISessionEventManager> manager;
+    private final Reference<ISessionEventManager<ObservedHazardEvent>> manager;
 
-    public SessionHazardNotificationListener(ISessionEventManager manager) {
+    public SessionHazardNotificationListener(
+            ISessionEventManager<ObservedHazardEvent> manager) {
         this(manager, true);
     }
 
-    public SessionHazardNotificationListener(ISessionEventManager manager,
-            boolean observe) {
-        this.manager = new WeakReference<ISessionEventManager>(manager);
+    public SessionHazardNotificationListener(
+            ISessionEventManager<ObservedHazardEvent> manager, boolean observe) {
+        this.manager = new WeakReference<ISessionEventManager<ObservedHazardEvent>>(
+                manager);
         if (observe) {
             NotificationManagerJob.addObserver(HazardNotification.HAZARD_TOPIC,
                     this);
@@ -74,7 +77,7 @@ public class SessionHazardNotificationListener implements INotificationObserver 
 
     @Override
     public void notificationArrived(NotificationMessage[] messages) {
-        ISessionEventManager manager = this.manager.get();
+        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
         if (manager == null) {
             NotificationManagerJob.removeObserver(
                     HazardNotification.HAZARD_TOPIC, this);
@@ -94,13 +97,13 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     }
 
     public void handleNotification(HazardNotification notification) {
-        ISessionEventManager manager = this.manager.get();
+        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
         IHazardEvent newEvent = notification.getEvent();
         IHazardEvent oldEvent = manager.getEventById(newEvent.getEventID());
         switch (notification.getType()) {
         case DELETE:
             if (oldEvent != null) {
-                manager.removeEvent(oldEvent);
+                manager.removeEvent(oldEvent, Originator.OTHER);
             }
             break;
         case UPDATE:
@@ -109,7 +112,7 @@ public class SessionHazardNotificationListener implements INotificationObserver 
                 SessionEventUtilities.mergeHazardEvents(newEvent, oldEvent);
                 return;
             }
-            manager.addEvent(newEvent);
+            manager.addEvent(newEvent, Originator.OTHER);
             break;
         }
     }

@@ -33,6 +33,7 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -68,7 +69,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
     protected AttrDlg attrDlg = null;
 
-    public FreeHandHazardDrawingAction(ISessionManager sessionManager) {
+    public FreeHandHazardDrawingAction(
+            ISessionManager<ObservedHazardEvent> sessionManager) {
 
         /*
          * Create the attribute container.
@@ -171,7 +173,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                                     .getCoordinates());
                     SessionEventAdded action = new SessionEventAdded(
                             getSpatialPresenter().getSessionManager()
-                                    .getEventManager(), hazardEvent);
+                                    .getEventManager(), hazardEvent,
+                            getSpatialPresenter());
                     getSpatialPresenter().fireAction(action);
 
                 } catch (InvalidGeometryException e) {

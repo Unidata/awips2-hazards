@@ -19,6 +19,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
@@ -44,8 +45,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
-        Presenter<ISessionManager, HazardConstants.Element, V, Object> {
+public abstract class HazardServicesPresenter<V extends IView<?, ?>>
+        extends
+        Presenter<ISessionManager<ObservedHazardEvent>, HazardConstants.Element, V, Object> {
 
     protected JSONConverter jsonConverter = new JSONConverter();
 
@@ -53,7 +55,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
 
     protected final ISessionConfigurationManager configurationManager;
 
-    protected final ISessionEventManager eventManager;
+    protected final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     protected final IHazardSessionAlertsManager alertsManager;
 
@@ -69,8 +71,8 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardServicesPresenter(ISessionManager model, V view,
-            EventBus eventBus) {
+    public HazardServicesPresenter(ISessionManager<ObservedHazardEvent> model,
+            V view, EventBus eventBus) {
         super(model, view, eventBus);
         this.timeManager = model.getTimeManager();
         this.configurationManager = model.getConfigurationManager();
@@ -97,7 +99,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
      * 
      * @return Session manager.
      */
-    public ISessionManager getSessionManager() {
+    public ISessionManager<ObservedHazardEvent> getSessionManager() {
         return getModel();
     }
 }

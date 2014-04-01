@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 
@@ -50,8 +51,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 
 public class SessionManagerFactory {
 
-    public static ISessionManager getSessionManager(IMessenger messenger,
-            EventBus eventBus) {
+    public static ISessionManager<ObservedHazardEvent> getSessionManager(
+            IMessenger messenger, EventBus eventBus) {
         return new SessionManager(PathManagerFactory.getPathManager(),
                 new HazardEventManager(HazardEventManager.Mode.PRACTICE),
                 messenger, eventBus);

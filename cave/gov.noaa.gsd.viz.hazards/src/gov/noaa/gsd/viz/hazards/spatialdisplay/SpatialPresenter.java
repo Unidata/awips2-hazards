@@ -20,6 +20,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -47,7 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * @version 1.0
  */
 public class SpatialPresenter extends
-        HazardServicesPresenter<ISpatialView<?, ?>> {
+        HazardServicesPresenter<ISpatialView<?, ?>> implements IOriginator {
 
     /**
      * Logging mechanism.
@@ -80,8 +82,8 @@ public class SpatialPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SpatialPresenter(ISessionManager model, ISpatialView<?, ?> view,
-            EventBus eventBus) {
+    public SpatialPresenter(ISessionManager<ObservedHazardEvent> model,
+            ISpatialView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
 

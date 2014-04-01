@@ -28,6 +28,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
@@ -119,8 +120,9 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
             break;
 
         case EVENT1:
-            Iterator<IHazardEvent> iterator = appBuilder.getSessionManager()
-                    .getEventManager().getSelectedEvents().iterator();
+            Iterator<ObservedHazardEvent> iterator = appBuilder
+                    .getSessionManager().getEventManager().getSelectedEvents()
+                    .iterator();
 
             IHazardEvent event = iterator.next();
             event = skipToJustCreatedEventIfNecessary(iterator, event);
@@ -193,7 +195,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     }
 
     private IHazardEvent skipToJustCreatedEventIfNecessary(
-            Iterator<IHazardEvent> iterator, IHazardEvent event) {
+            Iterator<ObservedHazardEvent> iterator, IHazardEvent event) {
         if (event.getPhenomenon().equals(AREAL_FLOOD_WATCH_PHEN)) {
             event = iterator.next();
         }

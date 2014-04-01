@@ -29,6 +29,7 @@ import gov.noaa.gsd.common.utilities.DateStringComparator;
 import gov.noaa.gsd.common.utilities.DoubleStringComparator;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.common.utilities.LongStringComparator;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
@@ -3791,6 +3792,7 @@ class TemporalDisplay {
      *            Action to be fired off to listeners.
      */
     private void fireConsoleActionOccurred(ConsoleAction consoleAction) {
+        consoleAction.setOriginator(UIOriginator.CONSOLE);
         presenter.fireAction(consoleAction);
     }
 

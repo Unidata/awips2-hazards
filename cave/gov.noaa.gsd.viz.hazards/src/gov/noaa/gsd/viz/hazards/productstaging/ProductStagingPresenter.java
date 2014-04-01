@@ -19,10 +19,12 @@ import java.util.List;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -48,7 +50,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * @version 1.0
  */
 public class ProductStagingPresenter extends
-        HazardServicesPresenter<IProductStagingView<?, ?>> {
+        HazardServicesPresenter<IProductStagingView<?, ?>> implements
+        IOriginator {
 
     // Private Static Constants
 
@@ -75,16 +78,16 @@ public class ProductStagingPresenter extends
                     ProductStagingInfo productStagingInfo = getView()
                             .getProductStagingInfo();
 
-                    Collection<IHazardEvent> selectedEvents = Lists
+                    Collection<ObservedHazardEvent> selectedEvents = Lists
                             .newArrayList();
                     for (ProductStagingInfo.Product product : productStagingInfo
                             .getProducts()) {
 
                         List<String> eventIds = product.getSelectedEventIDs();
-                        Collection<IHazardEvent> events = getSessionManager()
+                        Collection<ObservedHazardEvent> events = getSessionManager()
                                 .getEventManager().getEvents();
 
-                        for (IHazardEvent eve : events) {
+                        for (ObservedHazardEvent eve : events) {
                             if (eventIds.contains(eve.getEventID())) {
                                 eve.addHazardAttribute(
                                         HazardConstants.HAZARD_EVENT_SELECTED,
@@ -93,8 +96,16 @@ public class ProductStagingPresenter extends
                             }
                         }
                     }
+
+                    /*
+                     * TODO: This sort of logic, and maybe the above, is
+                     * business logic, and belongs in the session manager
+                     * somewhere. A good indicator of this is that the use of
+                     * Originator.OTHER is not really appropriate within a
+                     * presenter.
+                     */
                     getSessionManager().getEventManager().setSelectedEvents(
-                            selectedEvents);
+                            selectedEvents, Originator.OTHER);
 
                     action.setProductStagingInfo(productStagingInfo);
                     fireAction(action);
@@ -119,7 +130,7 @@ public class ProductStagingPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductStagingPresenter(ISessionManager model,
+    public ProductStagingPresenter(ISessionManager<ObservedHazardEvent> model,
             IProductStagingView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }

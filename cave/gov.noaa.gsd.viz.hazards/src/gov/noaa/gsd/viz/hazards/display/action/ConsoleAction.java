@@ -11,6 +11,8 @@ package gov.noaa.gsd.viz.hazards.display.action;
 
 import java.util.Date;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+
 /**
  * Represents an action originating from the H.S. console.
  * 
@@ -59,13 +61,7 @@ public class ConsoleAction {
 
     private boolean checked = false;
 
-    // Hide the default constructor.
-    // Force the actionType and actionName
-    // to be defined when the object is created.
-    @SuppressWarnings("unused")
-    private ConsoleAction() {
-        // TODO Auto-generated constructor stub
-    }
+    private IOriginator originator;
 
     /**
      * Construct an instance of a ConsoleAction
@@ -267,5 +263,20 @@ public class ConsoleAction {
 
     public String[] getSelectedEventIDs() {
         return auxStringArray;
+    }
+
+    /**
+     * @param originator
+     *            the originator to set
+     */
+    public void setOriginator(IOriginator originator) {
+        this.originator = originator;
+    }
+
+    /**
+     * @return the originator
+     */
+    public IOriginator getOriginator() {
+        return originator;
     }
 }

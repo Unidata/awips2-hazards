@@ -23,6 +23,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -3431,6 +3432,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * listeners.
      */
     private void fireHIDAction(HazardDetailAction action) {
+        action.setOriginator(UIOriginator.HAZARD_INFORMATION_DIALOG);
         hazardDetailView.fireAction(action, false);
     }
 

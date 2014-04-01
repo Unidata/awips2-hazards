@@ -44,6 +44,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -130,7 +131,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 /*
                  * Retrieve the selected event.
                  */
-                Collection<IHazardEvent> selectedEvents = appBuilder
+                Collection<ObservedHazardEvent> selectedEvents = appBuilder
                         .getSessionManager().getEventManager()
                         .getSelectedEvents();
 
@@ -175,7 +176,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
             case UPDATE_EVENT_TYPE:
 
-                Collection<IHazardEvent> selectedEvents = appBuilder
+                Collection<ObservedHazardEvent> selectedEvents = appBuilder
                         .getSessionManager().getEventManager()
                         .getSelectedEvents();
 
@@ -271,7 +272,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 /*
                  * Retrieve the selected event.
                  */
-                Collection<IHazardEvent> selectedEvents = appBuilder
+                Collection<ObservedHazardEvent> selectedEvents = appBuilder
                         .getSessionManager().getEventManager()
                         .getSelectedEvents();
 

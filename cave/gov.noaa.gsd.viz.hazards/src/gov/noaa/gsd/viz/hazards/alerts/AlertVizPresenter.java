@@ -27,6 +27,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Description: {@link Presenter} for alerts shown in AlertViz
@@ -52,8 +53,8 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
 
     private IUFStatusHandler statusHandler;
 
-    public AlertVizPresenter(ISessionManager model, IView<?, ?> view,
-            EventBus eventBus) {
+    public AlertVizPresenter(ISessionManager<ObservedHazardEvent> model,
+            IView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
 
     }

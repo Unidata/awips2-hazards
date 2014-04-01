@@ -21,8 +21,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.Collection;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -42,16 +43,18 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public class SessionEventsModified implements ISessionNotification {
+public class SessionEventsModified extends OriginatedSessionNotification {
 
-    protected final ISessionEventManager eventManager;
+    protected final ISessionEventManager<ObservedHazardEvent> eventManager;
 
-    public SessionEventsModified(ISessionEventManager eventManager) {
-        super();
+    public SessionEventsModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IOriginator originator) {
+        super(originator);
         this.eventManager = eventManager;
     }
 
-    public Collection<IHazardEvent> getEvents() {
+    public Collection<ObservedHazardEvent> getEvents() {
         return eventManager.getEvents();
     }
 }

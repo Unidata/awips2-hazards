@@ -90,7 +90,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
 import com.raytheon.viz.core.rsc.jts.JTSCompiler;
@@ -150,7 +152,8 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  */
 public class ToolLayer extends
         AbstractMovableToolLayer<AbstractDrawableComponent> implements
-        IContextMenuContributor, IToolChangedListener, IResourceDataChanged {
+        IContextMenuContributor, IToolChangedListener, IResourceDataChanged,
+        IOriginator {
 
     /**
      * Logging mechanism.
@@ -234,7 +237,7 @@ public class ToolLayer extends
      * The previous list of events drawn. Used for testing if a redraw is
      * necessary.
      */
-    private Collection<IHazardEvent> previousEvents;
+    private Collection<ObservedHazardEvent> previousEvents;
 
     /*
      * reference to eventBus singleton instance
@@ -479,9 +482,12 @@ public class ToolLayer extends
             return;
         }
 
-        ISessionManager sessionManager = appBuilder.getSessionManager();
-        ISessionEventManager eventManager = sessionManager.getEventManager();
-        Collection<IHazardEvent> events = eventManager.getCheckedEvents();
+        ISessionManager<ObservedHazardEvent> sessionManager = appBuilder
+                .getSessionManager();
+        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+                .getEventManager();
+        Collection<ObservedHazardEvent> events = eventManager
+                .getCheckedEvents();
         ISessionTimeManager timeManager = sessionManager.getTimeManager();
         TimeRange selectedRange = timeManager.getSelectedTimeRange();
         Date selectedTime = timeManager.getSelectedTime();
@@ -506,7 +512,7 @@ public class ToolLayer extends
 
         selectedEventIDs.clear();
 
-        for (IHazardEvent hazardEvent : events) {
+        for (ObservedHazardEvent hazardEvent : events) {
 
             /*
              * Keep an inventory of which events are selected.
@@ -590,7 +596,7 @@ public class ToolLayer extends
         }
     }
 
-    private boolean areEventsChanged(Collection<IHazardEvent> events) {
+    private boolean areEventsChanged(Collection<ObservedHazardEvent> events) {
         for (IHazardEvent hazardEvent : events) {
             for (IHazardEvent previousEvent : previousEvents) {
                 if (hazardEvent.getEventID().equals(previousEvent.getEventID())) {
@@ -603,9 +609,9 @@ public class ToolLayer extends
         return true;
     }
 
-    private void filterEventsForTime(Collection<IHazardEvent> events,
+    private void filterEventsForTime(Collection<ObservedHazardEvent> events,
             TimeRange selectedRange, Date selectedTime) {
-        Iterator<IHazardEvent> it = events.iterator();
+        Iterator<ObservedHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
 
@@ -1343,14 +1349,14 @@ public class ToolLayer extends
 
     public void notifyModifiedGeometry(String eventID, Geometry geometry) {
         if (geometry.isValid()) {
-            ISessionEventManager sessionEventManager = appBuilder
+            ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
                     .getSessionManager().getEventManager();
 
             IHazardEvent hazardEvent = sessionEventManager
                     .getEventById(eventID);
             hazardEvent.setGeometry(geometry);
             SessionEventGeometryModified action = new SessionEventGeometryModified(
-                    sessionEventManager, hazardEvent);
+                    sessionEventManager, hazardEvent, this);
             eventBus.post(action);
         } else {
             IsValidOp op = new IsValidOp(geometry);
@@ -1444,15 +1450,15 @@ public class ToolLayer extends
      * @return A list of entries to add to the context menu.
      */
     public List<String> getContextMenuEntries() {
-        ISessionEventManager eventManager = appBuilder.getSessionManager()
-                .getEventManager();
+        ISessionEventManager<ObservedHazardEvent> eventManager = appBuilder
+                .getSessionManager().getEventManager();
         List<String> entries = new ArrayList<String>();
         EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
 
         boolean isModified = false;
         boolean canBeClippedAndReduced = false;
 
-        for (IHazardEvent event : eventManager.getSelectedEvents()) {
+        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
             states.add(event.getState());
 
             if (event instanceof IModifiable
@@ -1513,7 +1519,7 @@ public class ToolLayer extends
         /*
          * Check for potential events.
          */
-        Collection<IHazardEvent> potentialEvents = eventManager
+        Collection<ObservedHazardEvent> potentialEvents = eventManager
                 .getEventsByState(HazardState.POTENTIAL);
 
         if (!potentialEvents.isEmpty()) {

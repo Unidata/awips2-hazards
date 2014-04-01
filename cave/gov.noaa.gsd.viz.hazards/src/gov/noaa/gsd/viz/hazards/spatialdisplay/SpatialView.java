@@ -71,6 +71,7 @@ import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 
@@ -1320,8 +1321,8 @@ public class SpatialView implements
          * Need to determine if the selected event was based on a geometry read
          * from the database
          */
-        Collection<IHazardEvent> selectedEvents = presenter.getSessionManager()
-                .getEventManager().getSelectedEvents();
+        Collection<ObservedHazardEvent> selectedEvents = presenter
+                .getSessionManager().getEventManager().getSelectedEvents();
 
         for (IHazardEvent selectedEvent : selectedEvents) {
             final String eventID = selectedEvent.getEventID();

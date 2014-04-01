@@ -19,6 +19,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
  * Description: Product Editor presenter, used to mediate between the model and
@@ -60,7 +61,7 @@ public class ProductEditorPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductEditorPresenter(ISessionManager model,
+    public ProductEditorPresenter(ISessionManager<ObservedHazardEvent> model,
             IProductEditorView<?, ?> view, EventBus eventBus) {
         super(model, view, eventBus);
     }
