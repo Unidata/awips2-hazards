@@ -618,7 +618,7 @@ public class HazardServicesDrawableBuilder {
             String mapLabelParameter = configManager.getHazardTypes()
                     .get(hazardType).getHazardHatchLabel();
 
-            String cwa = configManager.getSiteID();
+            String cwa = hazardEvent.getSiteID();
 
             Set<IGeometryData> hazardArea = HatchingUtilities
                     .buildHatchedAreaForEvent(mapDBtableName,
