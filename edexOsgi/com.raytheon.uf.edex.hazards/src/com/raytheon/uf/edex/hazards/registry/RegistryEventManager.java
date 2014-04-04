@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.registry.RegistryHandler;
+import com.raytheon.uf.common.registry.ebxml.RegistryUtil;
 import com.raytheon.uf.common.registry.handler.RegistryHandlerException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -92,7 +93,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
     @Override
     public void store(HazardEvent event) {
         try {
-            handler.store(event);
+            handler.store(RegistryUtil.registryUser, event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully stored to registry");
             HazardNotifier.notify(event, NotificationType.STORE, MODE);
@@ -109,7 +110,7 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
     @Override
     public void update(HazardEvent event) {
         try {
-            handler.update(event);
+            handler.update(RegistryUtil.registryUser, event);
             statusHandler.handle(Priority.INFO, "Hazard " + event.getEventID()
                     + " successfully updated in registry");
             HazardNotifier.notify(event, NotificationType.UPDATE, MODE);
