@@ -239,9 +239,10 @@ public class GridRequestHandler {
             // Make a request to actually save the grid.
             List<SaveGridRequest> sgr = new ArrayList<SaveGridRequest>();
             sgr.add(new SaveGridRequest(gridParmInfo.getParmID(),
-                    replacementTimeRange, records, false));
+                    replacementTimeRange, records));
             SaveGfeGridRequest saveGfeGridRequest = new SaveGfeGridRequest();
-            saveGfeGridRequest.setSaveRequest(sgr);
+            saveGfeGridRequest.setSaveRequests(sgr);
+            saveGfeGridRequest.setClientSendStatus(false);
             response = makeRequest(siteID, saveGfeGridRequest);
         } finally {
             // Unlock
