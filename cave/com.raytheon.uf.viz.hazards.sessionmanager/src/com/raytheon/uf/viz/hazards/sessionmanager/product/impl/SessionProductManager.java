@@ -485,6 +485,7 @@ public class SessionProductManager implements ISessionProductManager {
 
             }
         }
+        boolean operational = CAVEMode.getMode() == CAVEMode.OPERATIONAL;
         /*
          * Disseminate the products
          */
@@ -498,7 +499,8 @@ public class SessionProductManager implements ISessionProductManager {
                     List<Serializable> objs = product.getEntry(format);
                     if (objs != null) {
                         for (Serializable obj : objs) {
-                            ProductUtils.disseminate(String.valueOf(obj));
+                            ProductUtils.disseminate(String.valueOf(obj),
+                                    operational);
                         }
                     }
                 }
@@ -560,7 +562,8 @@ public class SessionProductManager implements ISessionProductManager {
                         List<Serializable> objs = product.getEntry("Legacy");
                         if (objs != null) {
                             for (Serializable obj : objs) {
-                                ProductUtils.disseminate(String.valueOf(obj));
+                                ProductUtils.disseminate(String.valueOf(obj),
+                                        false);
                             }
                         }
                     }

@@ -35,6 +35,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
+import com.raytheon.uf.common.activetable.SendPracticeProductRequest;
 import com.raytheon.uf.common.dataplugin.text.AfosWmoIdDataContainer;
 import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
 import com.raytheon.uf.common.dataplugin.text.request.GetAfosIdRequest;
@@ -58,6 +59,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jan 11, 2013            jsanchez     Initial creation
  * Jun 20, 2013 1122       jsanchez     Added a disseminate method.
  * Sep 12, 2013 717        jsanchez     Changed disseminate to return void type.
+ * Apr  4, 2013            jsanchez     Handled dissemination differently for operational mode and practice mode.
  * 
  * </pre>
  * 
@@ -260,48 +262,55 @@ public class ProductUtils {
      * Disseminates the text product via the OUPRequest.
      * 
      * @param product
+     * @param operational
      */
-    public static void disseminate(String product) {
+    public static void disseminate(String product, boolean operational) {
 
         try {
-            String awipsWanPil = null;
-            String awipsID = null;
+            if (operational) {
+                String awipsWanPil = null;
+                String awipsID = null;
 
-            Matcher m = wmoHeaderPattern.matcher(product);
+                Matcher m = wmoHeaderPattern.matcher(product);
 
-            if (m.find()) {
-                GetAfosIdRequest afosIdRequest = new GetAfosIdRequest();
-                afosIdRequest.setTtaaii(m.group(1));
-                afosIdRequest.setCccc(m.group(2));
-                AfosWmoIdDataContainer container = (AfosWmoIdDataContainer) RequestRouter
-                        .route(afosIdRequest);
-                if (container != null && !container.getIdList().isEmpty()) {
-                    AfosToAwips item = container.getIdList().get(0);
-                    awipsID = item.getAfosid().substring(3);
-                    awipsWanPil = m.group(2) + awipsID;
+                if (m.find()) {
+                    GetAfosIdRequest afosIdRequest = new GetAfosIdRequest();
+                    afosIdRequest.setTtaaii(m.group(1));
+                    afosIdRequest.setCccc(m.group(2));
+                    AfosWmoIdDataContainer container = (AfosWmoIdDataContainer) RequestRouter
+                            .route(afosIdRequest);
+                    if (container != null && !container.getIdList().isEmpty()) {
+                        AfosToAwips item = container.getIdList().get(0);
+                        awipsID = item.getAfosid().substring(3);
+                        awipsWanPil = m.group(2) + awipsID;
+                    }
                 }
+
+                SimpleDateFormat formatter = new SimpleDateFormat("ddHHmm");
+                formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+                String userDateTimeStamp = formatter.format(SimulatedTime
+                        .getSystemTime().getTime());
+
+                OfficialUserProduct oup = new OfficialUserProduct();
+                oup.setAwipsWanPil(awipsWanPil);
+                oup.setNeedsWmoHeader(false);
+                oup.setProductText(product);
+                oup.setSource("HazardServices");
+                oup.setWmoType("");
+                oup.setUserDateTimeStamp(userDateTimeStamp);
+                oup.setFilename(awipsID + ".wan"
+                        + (System.currentTimeMillis() / 1000));
+                oup.setAddress("ALL");
+
+                OUPRequest req = new OUPRequest();
+                req.setCheckBBB(true);
+                req.setProduct(oup);
+                RequestRouter.route(req);
+            } else {
+                SendPracticeProductRequest req = new SendPracticeProductRequest();
+                req.setProductText(product);
+                RequestRouter.route(req);
             }
-
-            SimpleDateFormat formatter = new SimpleDateFormat("ddHHmm");
-            formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
-            String userDateTimeStamp = formatter.format(SimulatedTime
-                    .getSystemTime().getTime());
-
-            OfficialUserProduct oup = new OfficialUserProduct();
-            oup.setAwipsWanPil(awipsWanPil);
-            oup.setNeedsWmoHeader(false);
-            oup.setProductText(product);
-            oup.setSource("HazardServices");
-            oup.setWmoType("");
-            oup.setUserDateTimeStamp(userDateTimeStamp);
-            oup.setFilename(awipsID + ".wan"
-                    + (System.currentTimeMillis() / 1000));
-            oup.setAddress("ALL");
-
-            OUPRequest req = new OUPRequest();
-            req.setCheckBBB(true);
-            req.setProduct(oup);
-            RequestRouter.route(req);
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Error transmitting text product", e);
