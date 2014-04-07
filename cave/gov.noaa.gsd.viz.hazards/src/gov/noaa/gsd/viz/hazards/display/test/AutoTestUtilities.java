@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -27,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -172,7 +172,7 @@ public class AutoTestUtilities {
 
     private final HazardServicesAppBuilder appBuilder;
 
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     private final HazardEventBuilder hazardEventBuilder;
 
@@ -204,7 +204,7 @@ public class AutoTestUtilities {
         HazardDetailAction hazardDetailAction = new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
         hazardDetailAction.setParameters(eventTypeSelection);
-        appBuilder.getEventBus().post(hazardDetailAction);
+        appBuilder.getEventBus().publishAsync(hazardDetailAction);
     }
 
     IHazardEvent getSelectedEvent() {
@@ -265,19 +265,20 @@ public class AutoTestUtilities {
      * @return
      */
     void issueEvent() {
-        eventBus.post(new HazardDetailAction(
+        eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.ISSUE));
     }
 
     void previewEvent() {
-        eventBus.post(new HazardDetailAction(
+        eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.PREVIEW));
     }
 
     Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
         List<GeneratedProductList> generatedProductsStorage = editorView
                 .getGeneratedProductsList();
-        GeneratedProductList generatedProducts =  generatedProductsStorage.get(0);
+        GeneratedProductList generatedProducts = generatedProductsStorage
+                .get(0);
         IGeneratedProduct generatedProduct = generatedProducts.get(0);
         Dict d = new Dict();
         String productID = generatedProduct.getProductID();
@@ -295,7 +296,7 @@ public class AutoTestUtilities {
         Map<String, Serializable> damBreakInfo = new HashMap<>();
         damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
         damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
-        eventBus.post(new ToolAction(
+        eventBus.publishAsync(new ToolAction(
                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                 FunctionalTest.DAM_BREAK_FLOOD_RECOMMENDER, damBreakInfo));
     }
@@ -303,18 +304,18 @@ public class AutoTestUtilities {
     void setAddToPendingMode(SpatialDisplayAction.ActionIdentifier mode) {
         SpatialDisplayAction action = new SpatialDisplayAction(
                 SpatialDisplayAction.ActionType.ADD_PENDING_TO_SELECTED, mode);
-        eventBus.post(action);
+        eventBus.publishAsync(action);
     }
 
     void changeStaticSettings(String settingsID) {
         StaticSettingsAction action = new StaticSettingsAction(
                 StaticSettingsAction.ActionType.SETTINGS_CHOSEN, settingsID);
-        eventBus.post(action);
+        eventBus.publishAsync(action);
     }
 
     void changeCurrentSettings(Settings settings) {
         CurrentSettingsAction action = new CurrentSettingsAction(settings);
-        eventBus.post(action);
+        eventBus.publishAsync(action);
     }
 
     void updateSelectedEventAttributes(
@@ -325,7 +326,7 @@ public class AutoTestUtilities {
         SpatialDisplayAction displayAction = new SpatialDisplayAction(
                 SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
         displayAction.setToolParameters(updatedEventAttributes);
-        eventBus.post(displayAction);
+        eventBus.publishAsync(displayAction);
     }
 
     /*

@@ -7,10 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.pythonjoblistener;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -36,7 +36,7 @@ import com.raytheon.uf.viz.core.VizApp;
  */
 public class HazardServicesRecommenderJobListener implements
         IPythonJobListener<EventSet<IEvent>> {
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     private final String toolID;
 
@@ -52,7 +52,8 @@ public class HazardServicesRecommenderJobListener implements
      * @param toolID
      *            The name of the tool which produced this recommendation.
      */
-    public HazardServicesRecommenderJobListener(EventBus eventBus, String toolID) {
+    public HazardServicesRecommenderJobListener(
+            BoundedReceptionEventBus<Object> eventBus, String toolID) {
         this.eventBus = eventBus;
         this.toolID = toolID;
     }
@@ -66,20 +67,9 @@ public class HazardServicesRecommenderJobListener implements
      */
     @Override
     public void jobFinished(final EventSet<IEvent> result) {
-
-        /*
-         * Need to place the result on the thread the Session Manager is
-         * running. At the moment this is the UI thread.
-         */
-        VizApp.runAsync(new Runnable() {
-
-            @Override
-            public void run() {
-                ToolAction action = new ToolAction(
-                        ToolActionEnum.TOOL_RECOMMENDATIONS, result, toolID);
-                eventBus.post(action);
-            }
-        });
+        ToolAction action = new ToolAction(
+                ToolActionEnum.TOOL_RECOMMENDATIONS, result, toolID);
+        eventBus.publishAsync(action);
     }
 
     /**

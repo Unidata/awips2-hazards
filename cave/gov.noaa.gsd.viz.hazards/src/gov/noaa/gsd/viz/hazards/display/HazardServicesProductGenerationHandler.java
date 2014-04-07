@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
 
@@ -22,10 +23,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -90,17 +91,17 @@ class HazardServicesProductGenerationHandler {
 
     private final Map<String, ProductGenerationAuditor> productGenerationAuditManager;
 
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     HazardServicesProductGenerationHandler(
             ISessionManager<ObservedHazardEvent> sessionManager,
-            EventBus eventBus) {
+            BoundedReceptionEventBus<Object> eventBus) {
         this.sessionManager = sessionManager;
         this.productManager = sessionManager.getProductManager();
         this.eventBus = eventBus;
         this.productGenerationAuditManager = new HashMap<String, ProductGenerationAuditor>();
 
-        this.eventBus.register(this);
+        this.eventBus.subscribe(this);
     }
 
     boolean productGenerationRequired() {
@@ -352,7 +353,7 @@ class HazardServicesProductGenerationHandler {
         }
     }
 
-    @Subscribe
+    @Handler
     public void auditProductGeneration(ProductGenerated generated) {
         ProductGenerationAuditor productGenerationAuditor = null;
         ProductInformation productInformation = generated
@@ -373,7 +374,7 @@ class HazardServicesProductGenerationHandler {
         this.publishGenerationCompletion(productGenerationAuditor);
     }
 
-    @Subscribe
+    @Handler
     public void handleProductGeneratorResult(ProductFailed failed) {
         ProductGenerationAuditor productGenerationAuditor = null;
         ProductInformation productInformation = failed.getProductInformation();
@@ -399,7 +400,7 @@ class HazardServicesProductGenerationHandler {
         IProductGenerationComplete productGenerationComplete = new ProductGenerationComplete(
                 productGenerationAuditor.isIssue(),
                 productGenerationAuditor.getGeneratedProducts());
-        this.eventBus.post(productGenerationComplete);
+        this.eventBus.publishAsync(productGenerationComplete);
     }
 
     @Override

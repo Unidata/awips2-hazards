@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
@@ -16,10 +17,10 @@ import gov.noaa.gsd.viz.mvp.Presenter;
 import java.util.EnumSet;
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -54,12 +55,12 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     private IUFStatusHandler statusHandler;
 
     public AlertVizPresenter(ISessionManager<ObservedHazardEvent> model,
-            IView<?, ?> view, EventBus eventBus) {
+            IView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
 
     }
 
-    @Subscribe
+    @Handler
     public void alertsModified(HazardAlertsModified notification) {
         ImmutableList<IHazardAlert> activeAlerts = notification
                 .getActiveAlerts();
@@ -90,7 +91,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     public void initialize(IView<?, ?> view) {
         renderedAlerts = Lists.newArrayList();
         statusHandler = UFStatus.getHandler(getClass());
-        eventBus.register(this);
+        eventBus.subscribe(this);
         alertAsNeeded(getModel().getAlertsManager().getActiveAlerts());
     }
 }

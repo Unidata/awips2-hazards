@@ -42,4 +42,6 @@ public interface ISessionNotificationSender {
 
     public void postNotification(ISessionNotification notification);
 
+    public void postNotificationAsync(ISessionNotification notification);
+
 }

@@ -19,7 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
-import com.google.common.eventbus.EventBus;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.localization.PathManagerFactory;
@@ -54,7 +55,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
 public class SessionManagerFactory {
 
     public static ISessionManager<ObservedHazardEvent> getSessionManager(
-            IMessenger messenger, EventBus eventBus) {
+            IMessenger messenger, BoundedReceptionEventBus<Object> eventBus) {
         Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
                 : Mode.OPERATIONAL;
         return new SessionManager(PathManagerFactory.getPathManager(),

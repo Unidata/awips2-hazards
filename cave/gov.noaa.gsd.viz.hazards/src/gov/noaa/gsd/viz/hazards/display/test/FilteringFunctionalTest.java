@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
@@ -19,10 +18,11 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import java.util.List;
 import java.util.Set;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Sets;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -67,13 +67,13 @@ public class FilteringFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         step = Steps.START;
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
 
         try {
@@ -93,7 +93,7 @@ public class FilteringFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         switch (step) {
@@ -108,7 +108,7 @@ public class FilteringFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void staticSettingsActionOccurred(
             final StaticSettingsAction settingsAction) {
         switch (step) {
@@ -134,7 +134,7 @@ public class FilteringFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void currentSettingsActionOccurred(
             final CurrentSettingsAction settingsAction) {
         List<Dict> events = mockConsoleView.getHazardEvents();
@@ -161,7 +161,7 @@ public class FilteringFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
 

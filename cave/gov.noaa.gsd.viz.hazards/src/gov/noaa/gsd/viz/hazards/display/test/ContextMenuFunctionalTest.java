@@ -10,7 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
 import java.io.Serializable;
@@ -19,9 +18,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
@@ -71,8 +71,8 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         /*
          * Create a new hazard area.
          */
@@ -89,7 +89,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
      *            The spatial display action
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void spatialDisplayActionOccurred(
             final SpatialDisplayAction spatialDisplayAction) {
 
@@ -112,7 +112,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
         try {
             switch (step) {

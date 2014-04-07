@@ -46,7 +46,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.OAX;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SET_CONFIDENCE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SEV2;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -61,10 +60,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -138,14 +138,14 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         this.step = Steps.RUN_DAM_BREAK;
-        eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
-                DAM_BREAK_FLOOD_RECOMMENDER));
+        eventBus.publishAsync(new ToolAction(
+                ToolAction.ToolActionEnum.RUN_TOOL, DAM_BREAK_FLOOD_RECOMMENDER));
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             List<Dict> hazards;
@@ -164,7 +164,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     riverFloodInfo.put(FORECAST_CONFIDENCE_PERCENTAGE,
                             FORECAST_CONFIDENCE_VALUE);
                     riverFloodInfo.put(FORECAST_TYPE, SET_CONFIDENCE);
-                    eventBus.post(new ToolAction(
+                    eventBus.publishAsync(new ToolAction(
                             ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
                             RIVER_FLOOD_RECOMMENDER, riverFloodInfo));
                     break;
@@ -201,7 +201,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                      */
 
                     step = Steps.RUN_FLOOD;
-                    eventBus.post(new ToolAction(
+                    eventBus.publishAsync(new ToolAction(
                             ToolAction.ToolActionEnum.RUN_TOOL,
                             RIVER_FLOOD_RECOMMENDER));
                     break;
@@ -228,7 +228,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     SpatialDisplayAction displayAction = new SpatialDisplayAction(
                             SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
                             eventIDs);
-                    eventBus.post(displayAction);
+                    eventBus.publishAsync(displayAction);
                     break;
                 default:
                     testError();
@@ -244,7 +244,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void spatialDisplayActionOccurred(
             final SpatialDisplayAction spatialDisplayAction) {
         try {
@@ -280,7 +280,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -324,7 +324,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
 
@@ -419,7 +419,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private void postContextMenuEvent(String choice) {
         SpatialDisplayAction spatialAction = new SpatialDisplayAction(
                 SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0, choice);
-        eventBus.post(spatialAction);
+        eventBus.publishAsync(spatialAction);
     }
 
     private void checkReplacementEvents(String state) {
@@ -536,7 +536,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         ProductEditorAction action = new ProductEditorAction(HazardAction.ISSUE);
         action.setGeneratedProductsList(mockProductEditorView
                 .getGeneratedProductsList());
-        eventBus.post(action);
+        eventBus.publishAsync(action);
     }
 
     private void replaceEvent(Dict event, String eventType) {
@@ -548,7 +548,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 HYDROLOGY_SETTING);
         metadata.put(HAZARD_EVENT_FULL_TYPE, eventType);
 
-        eventBus.post(new HazardDetailAction(
+        eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_EVENT_TYPE, metadata));
     }
 
@@ -561,7 +561,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             allMetadata.put(key, metadata.get(key));
         }
 
-        eventBus.post(new HazardDetailAction(
+        eventBus.publishAsync(new HazardDetailAction(
                 HazardDetailAction.ActionType.UPDATE_EVENT_METADATA,
                 allMetadata));
     }

@@ -11,11 +11,13 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction
+import net.engio.mbassy.bus.config.BusConfiguration
+import net.engio.mbassy.listener.Handler
 import spock.lang.*
 
-import com.google.common.eventbus.EventBus
-import com.google.common.eventbus.Subscribe
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager
@@ -48,7 +50,6 @@ class ProductEditorTest extends spock.lang.Specification {
     @Shared GeneratedProductList generatedProductList
     @Shared Object[] forecastGroup
     @Shared TestProductEditorView testView;
-    @Shared EventBus eventBus;
     @Shared ProductEditorAction action;
     @Shared ISessionManager sessionManager;
 
@@ -63,8 +64,6 @@ class ProductEditorTest extends spock.lang.Specification {
         generatedProductList.setProductInfo('Test')
 
         testView = new TestProductEditorView();
-        eventBus = new EventBus();
-        eventBus.register(this);
         sessionManager = mock(ISessionManager.class)
         when(sessionManager.getTimeManager()).thenReturn(mock(ISessionTimeManager.class))
     }
@@ -113,15 +112,19 @@ class ProductEditorTest extends spock.lang.Specification {
         then: "The dialog will close"
     }
 
-    @Subscribe
+    @Handler
     public void productStagingActionOccurred(
             ProductEditorAction action) {
         this.action = action;
     }
 
-    private EventBus createEventBus() {
-        EventBus eventBus = new EventBus();
-        eventBus.register(this);
+    private BoundedReceptionEventBus<Object> createEventBus() {
+        BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(BusConfiguration.Default(0), new IRunnableAsynchronousScheduler() {
+                    public void schedule(Runnable runnable) {
+                        /* No action; no asynchronously-published messages are posted to the event bus by the product editor presenter. */
+                    }
+                });
+        eventBus.subscribe(this);
         return eventBus;
     }
 }

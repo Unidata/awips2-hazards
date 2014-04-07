@@ -30,7 +30,8 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.viz.recommenders;bundle-version="1.0.0",
  com.raytheon.uf.common.hazards.productgen;bundle-version="1.0.0",
  org.apache.commons.beanutils;bundle-version="1.8.3",
- org.eclipse.core.expressions;bundle-version="3.4.400"
+ org.eclipse.core.expressions;bundle-version="3.4.400",
+ gov.noaa.gsd.common.eventbus;bundle-version="1.0.0"
 Export-Package: gov.noaa.gsd.viz.hazards.display,
  gov.noaa.gsd.viz.hazards.jsonutilities,
  gov.noaa.gsd.viz.hazards.console,

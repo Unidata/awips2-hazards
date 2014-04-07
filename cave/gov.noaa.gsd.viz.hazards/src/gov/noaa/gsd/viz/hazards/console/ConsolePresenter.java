@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
@@ -21,8 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
+import net.engio.mbassy.listener.Handler;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -85,7 +86,7 @@ public class ConsolePresenter extends
      *            Event bus used to signal changes.
      */
     public ConsolePresenter(ISessionManager<ObservedHazardEvent> model,
-            IConsoleView<?, ?> view, EventBus eventBus) {
+            IConsoleView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 
@@ -145,13 +146,6 @@ public class ConsolePresenter extends
 
     @Override
     public final void initialize(IConsoleView<?, ?> view) {
-
-        /**
-         * TODO Can this be pushed into the super class? If so then all
-         * subclasses would have to do that otherwise double registration will
-         * occur.
-         */
-        eventBus.register(this);
 
         /*
          * Determine whether the time line navigation buttons should be in the
@@ -291,7 +285,7 @@ public class ConsolePresenter extends
         }
     }
 
-    @Subscribe
+    @Handler
     public void alertsModified(HazardAlertsModified notification) {
         view.setActiveAlerts(notification.getActiveAlerts());
     }

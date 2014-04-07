@@ -7,6 +7,8 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
@@ -48,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import net.engio.mbassy.bus.config.BusConfiguration;
+
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -62,7 +66,6 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -156,6 +159,28 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Private Static Constants
 
     /**
+     * Scheduler to be used to make {@link Runnable} instances get executed on
+     * the main thread. For now, the main thread is the UI thread; when this is
+     * changed, this will be rendered obsolete, as at that point there will need
+     * to be a blocking queue of <code>Runnable</code>s available to allow the
+     * new worker thread to be fed jobs. At that point, this should be replaced
+     * with an object that enqueues the <code>Runnable</code>s.
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
+
+    /**
      * Preferences key used to determine whether or not to start off the views
      * as hidden when loaded from a bundle.
      */
@@ -177,7 +202,13 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Event bus.
      */
-    private final EventBus eventBus = new EventBus();
+    private final BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(
+            BusConfiguration.Default(0), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Automated tests.
+     */
+    private AutomatedTests automatedTests;
 
     /**
      * Message handler for all incoming messages.
@@ -393,8 +424,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         String autoTestsEnabled = System
                 .getenv("HAZARD_SERVICES_AUTO_TESTS_ENABLED");
         if (autoTestsEnabled != null) {
-            AutomatedTests tests = new AutomatedTests();
-            tests.run(this);
+            automatedTests = new AutomatedTests();
+            automatedTests.run(this);
 
             // Build a menubar contributor that adds the
             // automated test menu item.
@@ -408,7 +439,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                                 Action.AS_PUSH_BUTTON, null) {
                             @Override
                             public void run() {
-                                eventBus.post(new ConsoleAction(
+                                eventBus.publish(new ConsoleAction(
                                         ConsoleAction.ActionType.RUN_AUTOMATED_TESTS));
                             }
                         };
@@ -726,7 +757,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * 
      * @return Event bus.
      */
-    public EventBus getEventBus() {
+    public BoundedReceptionEventBus<Object> getEventBus() {
         return eventBus;
     }
 
@@ -1084,7 +1115,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * Notify any objects interested in the shutting down of Hazard
          * Services.
          */
-        eventBus.post(new HazardServicesCloseAction());
+        eventBus.publishAsync(new HazardServicesCloseAction());
         sessionManager.shutdown();
 
         VizGlobalsManager.removeListener(VizConstants.FRAMES_ID, this);

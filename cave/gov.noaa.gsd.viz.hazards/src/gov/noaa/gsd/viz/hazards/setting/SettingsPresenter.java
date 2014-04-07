@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
@@ -62,7 +62,7 @@ public class SettingsPresenter extends
      *            Event bus used to signal changes.
      */
     public SettingsPresenter(ISessionManager<ObservedHazardEvent> model,
-            ISettingsView<?, ?> view, EventBus eventBus) {
+            ISettingsView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 

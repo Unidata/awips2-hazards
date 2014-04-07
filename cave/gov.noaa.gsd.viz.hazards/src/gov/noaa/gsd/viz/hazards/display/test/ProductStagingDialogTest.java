@@ -16,14 +16,14 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATC
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -69,14 +69,14 @@ public class ProductStagingDialogTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         step = Steps.START;
         autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X, 41.0);
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
 
         try {
@@ -103,7 +103,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -129,7 +129,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         ProductStagingInfo productStagingInfo = mockProductStagingView

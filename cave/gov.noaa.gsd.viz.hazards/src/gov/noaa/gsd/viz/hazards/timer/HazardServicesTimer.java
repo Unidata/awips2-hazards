@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.timer;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+
 import java.util.Calendar;
 import java.util.Date;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Hazard Services utility which notifies all observers after a set amount of
@@ -43,7 +43,7 @@ public class HazardServicesTimer extends Thread {
 
     private final boolean repeat;
 
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     /**
      * Creates a Timer which wakes up and notifies its clients after the
@@ -58,7 +58,7 @@ public class HazardServicesTimer extends Thread {
      *            Event bus used to signal changes.
      */
     public HazardServicesTimer(long elapsedTime, boolean repeat,
-            EventBus eventBus) {
+            BoundedReceptionEventBus<Object> eventBus) {
         this.eventBus = eventBus;
         this.elapsedTime = elapsedTime;
         this.repeat = repeat;
@@ -95,14 +95,6 @@ public class HazardServicesTimer extends Thread {
         Date caveTime = SimulatedTime.getSystemTime().getTime();
         final TimerAction timerAction = new TimerAction(this.elapsedTime,
                 actualElapsedTime, caveTime);
-
-        // Alert the VizApp thread that it has a job
-        // to do when it gets a chance.
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                eventBus.post(timerAction);
-            }
-        });
+        eventBus.publishAsync(timerAction);
     }
 }

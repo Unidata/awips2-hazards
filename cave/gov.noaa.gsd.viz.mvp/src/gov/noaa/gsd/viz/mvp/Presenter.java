@@ -9,9 +9,9 @@
  */
 package gov.noaa.gsd.viz.mvp;
 
-import java.util.EnumSet;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
-import com.google.common.eventbus.EventBus;
+import java.util.EnumSet;
 
 /**
  * Superclass from which to derive presenters for specific types of views. Its
@@ -53,7 +53,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * Event bus used to signal changes.
      */
-    protected final EventBus eventBus;
+    protected final BoundedReceptionEventBus<Object> eventBus;
 
     // Public Constructors
 
@@ -67,7 +67,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public Presenter(M model, V view, EventBus eventBus) {
+    public Presenter(M model, V view, BoundedReceptionEventBus<Object> eventBus) {
 
         // Remember the model and the event bus.
         this.model = model;
@@ -75,7 +75,9 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
 
         // Set the view to that specified and initialize it.
         setView(view);
-        eventBus.register(this);
+
+        // Register for notifications.
+        eventBus.subscribe(this);
 
     }
 
@@ -110,7 +112,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
      *            Action.
      */
     public final void fireAction(A action) {
-        eventBus.post(action);
+        eventBus.publish(action);
     }
 
     /**

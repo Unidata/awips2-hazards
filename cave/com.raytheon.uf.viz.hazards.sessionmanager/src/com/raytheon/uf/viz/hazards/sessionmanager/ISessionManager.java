@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+
 import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -102,7 +104,8 @@ public interface ISessionManager<E extends IHazardEvent> extends IUndoRedoable {
 
     /**
      * Register an object as to receive ISessionNotifiation events for this
-     * session. The object passed in should use the EventBus @Subscribe
+     * session. The object passed in should use the
+     * {@link BoundedReceptionEventBus} <code>{@literal @}Handler</code>
      * annotation to specify which methods are listening for
      * ISessionNotification or its sub classes.
      * 

@@ -19,7 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
-import com.google.common.eventbus.EventBus;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
 /**
@@ -39,18 +40,21 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public class SessionNotificationSender implements
-        ISessionNotificationSender {
+public class SessionNotificationSender implements ISessionNotificationSender {
 
-    private final EventBus bus;
+    private final BoundedReceptionEventBus<Object> bus;
 
-    public SessionNotificationSender(EventBus bus) {
+    public SessionNotificationSender(BoundedReceptionEventBus<Object> bus) {
         this.bus = bus;
     }
 
     @Override
     public void postNotification(ISessionNotification notification) {
-        bus.post(notification);
+        bus.publish(notification);
     }
 
+    @Override
+    public void postNotificationAsync(ISessionNotification notification) {
+        bus.publishAsync(notification);
+    }
 }

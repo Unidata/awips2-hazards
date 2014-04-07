@@ -41,12 +41,13 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -233,7 +234,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         geoFactory = new GeometryFactory();
     }
 
-    @Subscribe
+    @Handler(priority = 1)
     public void settingsModified(SettingsModified notification) {
         loadEventsForSettings(notification.getSettings());
     }
@@ -253,7 +254,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * @param change
      *            Change that occurred.
      */
-    @Subscribe
+    @Handler(priority = 1)
     public void hazardAttributesChanged(SessionEventAttributeModified change) {
         if (change.getAttributeKey().equals(
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {

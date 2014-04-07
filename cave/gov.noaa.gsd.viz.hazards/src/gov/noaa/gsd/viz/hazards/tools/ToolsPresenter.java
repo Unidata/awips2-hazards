@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
 import java.util.List;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
@@ -56,7 +56,7 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            Event bus used to signal changes.
      */
     public ToolsPresenter(ISessionManager<ObservedHazardEvent> model,
-            IToolsView<?, ?> view, EventBus eventBus) {
+            IToolsView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 

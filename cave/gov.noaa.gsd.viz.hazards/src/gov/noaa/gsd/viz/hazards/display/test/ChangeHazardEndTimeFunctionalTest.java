@@ -14,7 +14,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXT_VTEC_STRING;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
@@ -23,9 +22,10 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -60,13 +60,13 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         step = Steps.START;
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
         try {
             switch (step) {
@@ -84,7 +84,7 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -108,7 +108,7 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
@@ -127,7 +127,7 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                 HazardDetailAction action = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_TIME_RANGE,
                         updatedMetadata);
-                eventBus.post(action);
+                eventBus.publishAsync(action);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:

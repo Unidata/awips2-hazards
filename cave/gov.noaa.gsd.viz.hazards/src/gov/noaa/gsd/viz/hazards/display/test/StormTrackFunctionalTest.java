@@ -17,7 +17,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SYMBOL_NEW_LAT_LON;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TRACK_POINTS;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
@@ -31,10 +30,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
@@ -73,8 +73,8 @@ public class StormTrackFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
 
         step = Steps.START;
         savedCurrentSettings = appBuilder.getCurrentSettings();
@@ -82,7 +82,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             switch (action.getActionType()) {
@@ -116,7 +116,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                             SpatialDisplayAction.ActionType.RUN_TOOL,
                             MODIFY_STORM_TRACK_TOOL, toolParameters);
                     step = Steps.MODIFY_TOOL;
-                    eventBus.post(modifyAction);
+                    eventBus.publishAsync(modifyAction);
                 } else {
                     EventSet<IEvent> events = action.getRecommendedEventList();
                     assertEquals(events.size(), 1);
@@ -139,7 +139,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void staticSettingsActionOccurred(
             final StaticSettingsAction settingsAction) {
         try {
@@ -158,7 +158,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                 SpatialDisplayAction action = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.RUN_TOOL,
                         STORM_TRACK_TOOL, toolParameters);
-                eventBus.post(action);
+                eventBus.publishAsync(action);
                 break;
 
             case MODIFY_TOOL:
@@ -177,7 +177,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void currrentSettingsActionOccurred(
             final CurrentSettingsAction settingsAction) {
         try {

@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.AREAL_FLOOD_WATCH_PHEN;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EVENT_BUILDER_OFFSET;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -21,9 +20,10 @@ import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLe
 
 import java.util.Iterator;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -77,8 +77,8 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
 
         step = Steps.START;
         autoTestUtilities
@@ -86,7 +86,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void spatialDisplayActionOccurred(
             final SpatialDisplayAction spatialDisplayAction) {
 
@@ -110,7 +110,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazardEvent(SessionEventAdded action) {
         switch (step) {
         case EVENT0:
@@ -138,7 +138,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -167,7 +167,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             if (action.getActionType().equals(
@@ -181,7 +181,7 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         assertEquals(productGenerationComplete.getGeneratedProducts().size(), 1);

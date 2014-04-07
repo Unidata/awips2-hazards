@@ -22,9 +22,10 @@ package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
@@ -121,7 +122,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         this.visibleRange = visibleRange;
     }
 
-    @Subscribe
+    @Handler
     public void eventSelected(SessionEventAttributeModified notification) {
         if (notification.isAttrbute(ISessionEventManager.ATTR_SELECTED)) {
             if (Boolean.TRUE.equals(notification.getAttributeValue())) {

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.action.ProductStagingAction;
@@ -17,7 +18,6 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -137,7 +137,8 @@ public class ProductStagingPresenter extends
      *            Event bus used to signal changes.
      */
     public ProductStagingPresenter(ISessionManager<ObservedHazardEvent> model,
-            IProductStagingView<?, ?> view, EventBus eventBus) {
+            IProductStagingView<?, ?> view,
+            BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 

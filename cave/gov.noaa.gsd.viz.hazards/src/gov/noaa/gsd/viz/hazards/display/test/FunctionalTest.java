@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
@@ -28,7 +29,6 @@ import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -77,7 +77,7 @@ public abstract class FunctionalTest {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
-    protected EventBus eventBus;
+    protected BoundedReceptionEventBus<Object> eventBus;
 
     protected HazardServicesAppBuilder appBuilder;
 
@@ -135,15 +135,20 @@ public abstract class FunctionalTest {
     }
 
     private void registerForEvents() {
-        this.eventBus.register(this);
+        this.eventBus.subscribe(this);
     }
 
     protected void run() {
         resetEvents();
         mockViews();
         checkForFloodSettings();
-
+        runFirstStep();
     }
+
+    /**
+     * Start off the test by executing the first step.
+     */
+    protected abstract void runFirstStep();
 
     private void checkForFloodSettings() {
         Settings currentSettings = appBuilder.getSessionManager()
@@ -155,7 +160,7 @@ public abstract class FunctionalTest {
     }
 
     private void resetEvents() {
-        eventBus.post(new ConsoleAction(ConsoleAction.ActionType.RESET,
+        eventBus.publish(new ConsoleAction(ConsoleAction.ActionType.RESET,
                 ConsoleAction.RESET_EVENTS));
     }
 
@@ -274,13 +279,14 @@ public abstract class FunctionalTest {
         productEditorPresenter.setView(realProductEditorView);
 
         appBuilder.setQuestionAnswerer(realQuestionAnswerer);
+
         unRegisterForEvents();
         if (success) {
             statusHandler.debug(String.format("%s Successful", this.getClass()
                     .getSimpleName()));
-            eventBus.post(new TestCompleted(this.getClass()));
+            eventBus.publish(new TestCompleted(this.getClass()));
         } else {
-            eventBus.post(new TestCompleted(StopTesting.class));
+            eventBus.publish(new TestCompleted(StopTesting.class));
         }
 
     }
@@ -290,7 +296,7 @@ public abstract class FunctionalTest {
     }
 
     private void unRegisterForEvents() {
-        this.eventBus.unregister(this);
+        this.eventBus.unsubscribe(this);
     }
 
 }

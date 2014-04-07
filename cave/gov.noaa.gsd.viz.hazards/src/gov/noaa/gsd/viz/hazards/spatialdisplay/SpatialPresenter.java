@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
@@ -14,7 +15,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory
 import java.util.Date;
 import java.util.EnumSet;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -83,7 +83,7 @@ public class SpatialPresenter extends
      *            Event bus used to signal changes.
      */
     public SpatialPresenter(ISessionManager<ObservedHazardEvent> model,
-            ISpatialView<?, ?> view, EventBus eventBus) {
+            ISpatialView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 

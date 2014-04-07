@@ -21,7 +21,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WARN
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATCH_PRODUCT_ID;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.NEW_VTEC_STRING;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -35,10 +34,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -97,8 +97,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         try {
             this.step = Steps.CREATE_NEW_HAZARD_AREA;
             Coordinate[] coordinates = autoTestUtilities.buildEventArea(-96.0,
@@ -118,7 +118,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      * @param action
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
 
         try {
@@ -148,7 +148,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
                 hazardDetailAction.setParameters(eventTypeSelection);
-                eventBus.post(hazardDetailAction);
+                eventBus.publishAsync(hazardDetailAction);
                 break;
 
             default:
@@ -168,7 +168,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      *            The action originating from the Hazard Information Dialog.
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -256,7 +256,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
      *            Framework.
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
@@ -295,7 +295,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 HazardDetailAction hazardDetailAction = new HazardDetailAction(
                         HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
                 hazardDetailAction.setParameters(hazardTypeSelection);
-                eventBus.post(hazardDetailAction);
+                eventBus.publishAsync(hazardDetailAction);
             } else if (step == Steps.PREVIEW_AREAL_FLOOD_WARNING) {
                 checkArealFloodWarningPreview();
                 step = Steps.ISSUE_AREAL_FLOOD_WARNING;
@@ -322,7 +322,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 SpatialDisplayAction spatialAction = new SpatialDisplayAction(
                         SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED,
                         0, HazardConstants.END_SELECTED_HAZARDS);
-                eventBus.post(spatialAction);
+                eventBus.publishAsync(spatialAction);
             } else if (step == Steps.PREVIEW_CANCELLATION_STATEMENT) {
                 checkCancellationStatementPreview();
                 step = Steps.ISSUE_CANCELLATION_STATEMENT;

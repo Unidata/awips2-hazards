@@ -8,3 +8,4 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Import-Package: com.google.common.eventbus
 Export-Package: gov.noaa.gsd.viz.mvp,
  gov.noaa.gsd.viz.mvp.widgets
+Require-Bundle: gov.noaa.gsd.common.eventbus;bundle-version="1.0.0"

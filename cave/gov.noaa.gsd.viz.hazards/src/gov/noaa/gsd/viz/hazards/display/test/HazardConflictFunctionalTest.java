@@ -18,9 +18,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import java.util.Collection;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -86,8 +87,22 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
     }
 
+    @Override
+    protected void runFirstStep() {
+
+        /*
+         * Simulate the forecaster turning 'on' hazard conflict detection via
+         * the Console view menu.
+         */
+        this.step = Steps.TOGGLE_ON_HAZARD_DETECTION;
+        ConsoleAction consoleAction = new ConsoleAction(
+                ConsoleAction.ActionType.CHANGE_MODE,
+                ConsoleAction.AUTO_CHECK_CONFLICTS);
+        eventBus.publishAsync(consoleAction);
+    }
+
     /**
-     * Listens for tool actions occurring within Hazard Services. Calls the
+     * Listens for console actions occurring within Hazard Services. Calls the
      * appropriate tests based on the current test step.
      * 
      * @param action
@@ -95,20 +110,9 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      *            Services
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void consoleActionOccurred(final ConsoleAction action) {
-        if (action.getActionType().equals(ConsoleAction.ActionType.RESET)) {
-
-            /*
-             * Simulate the forecaster turning 'on' hazard conflict detection
-             * via the Console view menu.
-             */
-            this.step = Steps.TOGGLE_ON_HAZARD_DETECTION;
-            ConsoleAction consoleAction = new ConsoleAction(
-                    ConsoleAction.ActionType.CHANGE_MODE,
-                    ConsoleAction.AUTO_CHECK_CONFLICTS);
-            eventBus.post(consoleAction);
-        } else if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
+        if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
 
             if (this.step == Steps.TOGGLE_ON_HAZARD_DETECTION) {
                 /*
@@ -139,7 +143,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      * @param action
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
 
         try {
@@ -182,7 +186,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      *            The action originating from the Hazard Information Dialog.
      * @return
      */
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -207,7 +211,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
                     ConsoleAction consoleAction = new ConsoleAction(
                             ConsoleAction.ActionType.CHANGE_MODE,
                             ConsoleAction.AUTO_CHECK_CONFLICTS);
-                    eventBus.post(consoleAction);
+                    eventBus.publishAsync(consoleAction);
                 }
 
             }

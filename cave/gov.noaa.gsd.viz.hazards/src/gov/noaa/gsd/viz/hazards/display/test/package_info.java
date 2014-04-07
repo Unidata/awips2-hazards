@@ -1,26 +1,23 @@
 /**
  * A framework for the automated tests.  These tests are run from
  * from within hazard services via selection "Run Automated Tests"
- * in the "View Menu".
- * This selection is only available when the environment variable
- * HAZARD_SERVICES_AUTO_TESTS_ENABLED is set (in eclipse.sh for example).
+ * in the "View Menu". This selection is only available when the
+ * environment variable HAZARD_SERVICES_AUTO_TESTS_ENABLED is set
+ * (in eclipse.sh for example).
  * 
- * The framework leverages the same {@link com.google.common.eventbus.EventBus}s as the code under
- * test. The test code will typically subscribe to the same kinds of
- * events as the code under test.  For example, 
- * {@link com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated} 
- * That way, when an event arrives
- * indicating a product has been generated, the test code receives that event
- * and thus knows that it can now test that the product information to 
- * be displayed in the GUI is correct. 
- *
- * The framework assumes the following.
- * Suppose object A registers first for event E on the EventBus.
- * Suppose object B registers for event E on the EventBus.
- * Then when E occurs, A will be notified before B.
- * This seems to be holding up in practice so far.  If we have only been
- * lucky then we will want to figure out a way to allow for the event
- * bus to have this behavior.
+ * The framework leverages the same
+ * {@link gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus}
+ * as the code under test. The test code will typically subscribe to
+ * the same kinds of events as the code under test. For example, 
+ * {@link com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated}.
+ * That way, when an event arrives indicating a product has been
+ * generated, the test code receives that event and thus knows that it
+ * can now test that the product information to be displayed in the
+ * GUI is correct. Handlers should run at a priority of less than 0 to
+ * indicate that they should receive events after the rest of Hazard
+ * Services does, so that the various components of Hazard Services
+ * may modify their states in response to such messages before the
+ * test handlers receive the events.
  *
  * The solution currently has the down side that the code under
  * test (in {@link gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder}) needs to know about the test

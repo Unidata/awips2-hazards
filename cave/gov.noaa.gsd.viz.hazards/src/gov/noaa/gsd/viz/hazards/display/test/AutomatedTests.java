@@ -9,13 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.test.FunctionalTest.StopTesting;
+import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -51,79 +52,92 @@ public class AutomatedTests {
 
     private HazardServicesAppBuilder appBuilder;
 
+    /**
+     * Functional test that is currently running. This must be referenced in
+     * order to keep it from being garbage collected. When using the guava
+     * <code>EventBus</code>, this was not required, because the
+     * <code>EventBus</code> itself kept a strong reference to anything
+     * registered with it; but by design, the {@link BoundedReceptionEventBus}
+     * uses weak references, and thus if this reference is not kept, garbage
+     * collection of the test occurs.
+     */
+    private FunctionalTest functionalTest;
+
     public AutomatedTests() {
     }
 
     public void run(final HazardServicesAppBuilder appBuilder) {
 
         this.appBuilder = appBuilder;
-        appBuilder.getEventBus().register(this);
+        appBuilder.getEventBus().subscribe(this);
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         if (consoleAction.getActionType().equals(
                 ConsoleAction.ActionType.RUN_AUTOMATED_TESTS)) {
-            new MixedHazardStoryFunctionalTest(appBuilder).run();
+            runTest(new MixedHazardStoryFunctionalTest(appBuilder));
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void testCompleted(final TestCompleted testCompleted) {
         if (testCompleted.getTestClass().equals(
                 MixedHazardStoryFunctionalTest.class)) {
-            new SimpleHazardStoryFunctionalTest(appBuilder).run();
+            runTest(new SimpleHazardStoryFunctionalTest(appBuilder));
 
         }
 
         else if (testCompleted.getTestClass().equals(
                 SimpleHazardStoryFunctionalTest.class)) {
-            new StormTrackFunctionalTest(appBuilder).run();
+            runTest(new StormTrackFunctionalTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 StormTrackFunctionalTest.class)) {
-            new AddNewPendingToSelectedTest(appBuilder).run();
+            runTest(new AddNewPendingToSelectedTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 AddNewPendingToSelectedTest.class)) {
-            new ChangeHazardAreaFunctionalTest(appBuilder).run();
+            runTest(new ChangeHazardAreaFunctionalTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 ChangeHazardAreaFunctionalTest.class)) {
-            new ChangeHazardEndTimeFunctionalTest(appBuilder).run();
+            runTest(new ChangeHazardEndTimeFunctionalTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 ChangeHazardEndTimeFunctionalTest.class)) {
-            new ProductStagingDialogTest(appBuilder).run();
+            runTest(new ProductStagingDialogTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 ProductStagingDialogTest.class)) {
-            new FilteringFunctionalTest(appBuilder).run();
+            runTest(new FilteringFunctionalTest(appBuilder));
         }
 
         else if (testCompleted.getTestClass().equals(
                 FilteringFunctionalTest.class)) {
-            new ContextMenuFunctionalTest(appBuilder).run();
+            runTest(new ContextMenuFunctionalTest(appBuilder));
 
         } else if (testCompleted.getTestClass().equals(
                 ContextMenuFunctionalTest.class)) {
-            new HazardConflictFunctionalTest(appBuilder).run();
+            runTest(new HazardConflictFunctionalTest(appBuilder));
 
         } else if (testCompleted.getTestClass().equals(
                 HazardConflictFunctionalTest.class)) {
-            new DamBreakFunctionalTest(appBuilder).run();
+            runTest(new DamBreakFunctionalTest(appBuilder));
 
         } else if (testCompleted.getTestClass().equals(StopTesting.class)) {
+            functionalTest = null;
             statusHandler.debug("Stopping tests");
             resetEvents();
 
         } else {
+            functionalTest = null;
             statusHandler.debug("All tests completed");
 
             /**
@@ -138,8 +152,13 @@ public class AutomatedTests {
 
     }
 
+    private void runTest(FunctionalTest test) {
+        functionalTest = test;
+        functionalTest.run();
+    }
+
     private void resetEvents() {
-        appBuilder.getEventBus().post(
+        appBuilder.getEventBus().publishAsync(
                 new ConsoleAction(ConsoleAction.ActionType.RESET,
                         ConsoleAction.RESET_EVENTS));
     }

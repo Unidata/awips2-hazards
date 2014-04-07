@@ -19,10 +19,11 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+
 import java.util.Collection;
 import java.util.Iterator;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
@@ -103,7 +104,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     private final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(this.getClass());
 
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
@@ -145,7 +146,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager, IMessenger messenger,
-            EventBus eventBus) {
+            BoundedReceptionEventBus<Object> eventBus) {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         this.eventBus = eventBus;
@@ -171,12 +172,12 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         alertsManager.start();
         recommenderEngine = new CAVERecommenderEngine();
         recommenderEngine.injectEngine(new InteractiveRecommenderEngine());
-        eventBus.register(timeManager);
-        eventBus.register(configManager);
-        eventBus.register(eventManager);
-        eventBus.register(productManager);
-        eventBus.register(recommenderEngine);
-        eventBus.register(alertsManager);
+        eventBus.subscribe(timeManager);
+        eventBus.subscribe(configManager);
+        eventBus.subscribe(eventManager);
+        eventBus.subscribe(productManager);
+        eventBus.subscribe(recommenderEngine);
+        eventBus.subscribe(alertsManager);
 
     }
 
@@ -212,12 +213,12 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
 
     @Override
     public void registerForNotification(Object object) {
-        eventBus.register(object);
+        eventBus.subscribe(object);
     }
 
     @Override
     public void unregisterForNotification(Object object) {
-        eventBus.unregister(object);
+        eventBus.unsubscribe(object);
     }
 
     @Override
@@ -408,7 +409,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     }
 
     private void notifySessionModified() {
-        eventBus.post(new SessionModified());
+        eventBus.publish(new SessionModified());
     }
 
 }

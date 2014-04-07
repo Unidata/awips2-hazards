@@ -13,14 +13,13 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CON_VTEC_S
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXA_VTEC_STRING;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
+import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
@@ -59,14 +58,14 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         super(appBuilder);
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         step = Steps.START;
 
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleNewHazard(SessionEventAdded action) {
         try {
             switch (step) {
@@ -85,7 +84,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleHazardGeometryModification(
             SessionEventGeometryModified action) {
 
@@ -107,7 +106,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         try {
@@ -121,7 +120,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
@@ -137,7 +136,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                 SessionEventGeometryModified action = new SessionEventGeometryModified(
                         eventManager, event, null);
                 step = Steps.READY_FOR_PREVIEW;
-                eventBus.post(action);
+                eventBus.publishAsync(action);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:

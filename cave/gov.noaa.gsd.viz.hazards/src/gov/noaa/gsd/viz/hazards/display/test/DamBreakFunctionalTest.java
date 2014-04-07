@@ -21,7 +21,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FFW_NON_CO
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.OAX;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -29,9 +28,10 @@ import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 
 /**
@@ -74,17 +74,17 @@ class DamBreakFunctionalTest extends FunctionalTest {
 
     }
 
-    @Subscribe
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
+    @Override
+    protected void runFirstStep() {
         /*
          * Create a new hazard area.
          */
         this.step = Steps.RUN_DAM_BREAK_LOW_CONFIDENCE;
-        eventBus.post(new ToolAction(ToolAction.ToolActionEnum.RUN_TOOL,
-                DAM_BREAK_FLOOD_RECOMMENDER));
+        eventBus.publishAsync(new ToolAction(
+                ToolAction.ToolActionEnum.RUN_TOOL, DAM_BREAK_FLOOD_RECOMMENDER));
     }
 
-    @Subscribe
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             List<Dict> hazards;
@@ -132,7 +132,7 @@ class DamBreakFunctionalTest extends FunctionalTest {
                     checkDamBreakRecommendationLowConfidence(hidEvent);
 
                     step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
-                    eventBus.post(new ToolAction(
+                    eventBus.publishAsync(new ToolAction(
                             ToolAction.ToolActionEnum.RUN_TOOL,
                             DAM_BREAK_FLOOD_RECOMMENDER));
                     break;
@@ -151,7 +151,7 @@ class DamBreakFunctionalTest extends FunctionalTest {
                     checkDamBreakRecommendationHighConfidence(hidEvent);
 
                     step = Steps.RUN_DAM_BREAK_DAM_FAILED;
-                    eventBus.post(new ToolAction(
+                    eventBus.publishAsync(new ToolAction(
                             ToolAction.ToolActionEnum.RUN_TOOL,
                             DAM_BREAK_FLOOD_RECOMMENDER));
 

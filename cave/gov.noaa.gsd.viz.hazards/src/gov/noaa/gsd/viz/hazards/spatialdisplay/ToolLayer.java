@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -60,7 +61,6 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -242,7 +242,7 @@ public class ToolLayer extends
     /*
      * reference to eventBus singleton instance
      */
-    private EventBus eventBus = null;
+    private BoundedReceptionEventBus<Object> eventBus = null;
 
     /**
      * Spatial view.
@@ -789,7 +789,7 @@ public class ToolLayer extends
         SpatialDisplayAction action = new SpatialDisplayAction(
                 SpatialDisplayAction.ActionType.SELECTED_EVENTS_CHANGED,
                 eventIDs);
-        eventBus.post(action);
+        eventBus.publish(action);
     }
 
     /**
@@ -807,7 +807,7 @@ public class ToolLayer extends
         SpatialDisplayAction action = new SpatialDisplayAction(
                 SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0,
                 menuLabel);
-        eventBus.post(action);
+        eventBus.publish(action);
     }
 
     /**
@@ -821,13 +821,7 @@ public class ToolLayer extends
         if (allowDisposeMessage) {
             final SpatialDisplayAction action = new SpatialDisplayAction(
                     SpatialDisplayAction.ActionType.DISPLAY_DISPOSED);
-
-            VizApp.runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    eventBus.post(action);
-                }
-            });
+            eventBus.publishAsync(action);
         }
     }
 
@@ -1357,7 +1351,7 @@ public class ToolLayer extends
             hazardEvent.setGeometry(geometry);
             SessionEventGeometryModified action = new SessionEventGeometryModified(
                     sessionEventManager, hazardEvent, this);
-            eventBus.post(action);
+            eventBus.publish(action);
         } else {
             IsValidOp op = new IsValidOp(geometry);
             statusHandler.warn("Invalid Geometry: "
@@ -1370,7 +1364,7 @@ public class ToolLayer extends
     public void notifyModifiedStormTrack(Map<String, Serializable> parameters) {
         ModifyStormTrackAction action = new ModifyStormTrackAction();
         action.setParameters(parameters);
-        eventBus.post(action);
+        eventBus.publish(action);
     }
 
     @Override

@@ -1,20 +1,26 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
-import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler
+import gov.noaa.gsd.common.utilities.Utils
+
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.LinkedBlockingDeque
+
+import net.engio.mbassy.bus.config.BusConfiguration
 
 import org.joda.time.DateTime
 
 import spock.lang.*
 
-import com.google.common.eventbus.EventBus
 import com.raytheon.uf.common.colormap.Color
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.raytheon.uf.common.serialization.JAXBManager
 import com.raytheon.uf.common.time.SimulatedTime
@@ -58,8 +64,9 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     ISessionTimeManager sessionTimeManager;
     HazardSessionAlertsManager alertsManager;
     ISessionConfigurationManager sessionConfigurationManager;
-    EventBus eventBus;
+    BoundedReceptionEventBus<Object> eventBus;
     HazardEventForAlertsTesting event0
+    BlockingQueue<Runnable> queue = new LinkedBlockingDeque<>();
 
     static String EVENT_O = "event_0"
     static String EVENT_1 = "event_1"
@@ -68,6 +75,8 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
      * Sets up this test.
      */
     def setup() {
+
+
 
         hazardEventManager = new InMemoryHazardEventManager()
         event0 = buildHazardEvent(EVENT_O,
@@ -80,7 +89,11 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         mockConfigurationManager()
 
 
-        eventBus = new EventBus()
+        eventBus = new BoundedReceptionEventBus<>(BusConfiguration.Default(0), new IRunnableAsynchronousScheduler() {
+                    public void schedule(Runnable runnable) {
+                        /* No action; the messages posted to the event bus are ignored by this test. */
+                    }
+                })
         ISessionNotificationSender sender = new SessionNotificationSender(
                 eventBus);
         alertsManager = new HazardSessionAlertsManager(sender, sessionTimeManager)

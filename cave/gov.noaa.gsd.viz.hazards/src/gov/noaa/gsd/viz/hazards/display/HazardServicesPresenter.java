@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
@@ -72,7 +72,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      *            Event bus used to signal changes.
      */
     public HazardServicesPresenter(ISessionManager<ObservedHazardEvent> model,
-            V view, EventBus eventBus) {
+            V view, BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
         this.timeManager = model.getTimeManager();
         this.configurationManager = model.getConfigurationManager();

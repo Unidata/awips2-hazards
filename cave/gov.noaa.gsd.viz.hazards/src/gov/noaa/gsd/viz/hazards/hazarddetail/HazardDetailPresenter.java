@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
@@ -19,8 +20,8 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
+import net.engio.mbassy.listener.Handler;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
@@ -81,7 +82,8 @@ public class HazardDetailPresenter extends
      *            Event bus used to signal changes.
      */
     public HazardDetailPresenter(ISessionManager<ObservedHazardEvent> model,
-            IHazardDetailView<?, ?> view, EventBus eventBus) {
+            IHazardDetailView<?, ?> view,
+            BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 
@@ -112,7 +114,7 @@ public class HazardDetailPresenter extends
      * handled. We should move
      * {@link HazardDetailPresenter#modelChanged(EnumSet)} into here.
      */
-    @Subscribe
+    @Handler
     public void sessionModified(SessionModified event) {
         getView().setPreviewOngoing(getModel().isPreviewOngoing());
         getView().setIssueOngoing(getModel().isIssueOngoing());

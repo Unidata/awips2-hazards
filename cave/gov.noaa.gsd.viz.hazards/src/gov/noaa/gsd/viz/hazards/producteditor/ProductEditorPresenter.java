@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
@@ -14,7 +15,6 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -64,7 +64,8 @@ public class ProductEditorPresenter extends
      *            Event bus used to signal changes.
      */
     public ProductEditorPresenter(ISessionManager<ObservedHazardEvent> model,
-            IProductEditorView<?, ?> view, EventBus eventBus) {
+            IProductEditorView<?, ?> view,
+            BoundedReceptionEventBus<Object> eventBus) {
         super(model, view, eventBus);
     }
 

@@ -21,6 +21,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
@@ -51,14 +52,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -221,7 +222,7 @@ public final class HazardServicesMessageHandler implements
 
     private final HazardServicesProductGenerationHandler productGeneratorHandler;
 
-    private final EventBus eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
 
     // Public Static Methods
 
@@ -278,7 +279,7 @@ public final class HazardServicesMessageHandler implements
                 .getConfigurationManager();
         this.eventBus = appBuilder.getEventBus();
 
-        this.eventBus.register(this);
+        this.eventBus.subscribe(this);
 
         sessionConfigurationManager.setSiteID(LocalizationManager.getInstance()
                 .getCurrentSite());
@@ -559,7 +560,7 @@ public final class HazardServicesMessageHandler implements
 
     }
 
-    @Subscribe
+    @Handler
     public void handleProductGenerationCompletion(
             IProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued()) {
@@ -705,7 +706,7 @@ public final class HazardServicesMessageHandler implements
      * @param action
      */
 
-    @Subscribe
+    @Handler
     public void handleStormTrackModification(ModifyStormTrackAction action) {
         runTool(HazardConstants.MODIFY_STORM_TRACK_TOOL,
                 action.getParameters(), null);
@@ -713,17 +714,15 @@ public final class HazardServicesMessageHandler implements
                 .of(HazardConstants.Element.EVENTS));
     }
 
-    @Subscribe
+    @Handler
     public void handleNewHazard(SessionEventAdded action) {
         notifyModelEventsChanged();
     }
 
-    @Subscribe
+    @Handler
     public void handleHazardGeometryModification(
             SessionEventGeometryModified action) {
-
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.EVENTS));
+        notifyModelEventsChanged();
     }
 
     /**
@@ -1387,7 +1386,12 @@ public final class HazardServicesMessageHandler implements
         return userResponse;
     }
 
-    @Subscribe
+    /**
+     * This will no longer be needed once presenters listen directly for session
+     * events.
+     */
+    @Handler
+    @Deprecated
     public void sessionEventsModified(final SessionEventsModified notification) {
         VizApp.runAsync(new Runnable() {
 
@@ -1398,7 +1402,12 @@ public final class HazardServicesMessageHandler implements
         });
     }
 
-    @Subscribe
+    /**
+     * This will no longer be needed once presenters listen directly for session
+     * events.
+     */
+    @Handler
+    @Deprecated
     public void selectedTimeChanged(SelectedTimeChanged notification) {
         VizApp.runAsync(new Runnable() {
 
@@ -1418,7 +1427,7 @@ public final class HazardServicesMessageHandler implements
      * @param spatialDisplayAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void spatialDisplayActionOccurred(
             final SpatialDisplayAction spatialDisplayAction) {
         SpatialDisplayAction.ActionType actionType = spatialDisplayAction
@@ -1498,7 +1507,7 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case DISPLAY_DISPOSED:
-            eventBus.unregister(this);
+            eventBus.unsubscribe(this);
             closeHazardServices();
             break;
 
@@ -1539,7 +1548,7 @@ public final class HazardServicesMessageHandler implements
      * @param consoleAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         switch (consoleAction.getActionType()) {
         case RESET:
@@ -1624,7 +1633,7 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case CLOSE:
-            eventBus.unregister(this);
+            eventBus.unsubscribe(this);
             closeHazardServices();
             break;
 
@@ -1648,7 +1657,7 @@ public final class HazardServicesMessageHandler implements
      * @param hazardDetailAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void hazardDetailActionOccurred(
             final HazardDetailAction hazardDetailAction) {
         switch (hazardDetailAction.getActionType()) {
@@ -1699,7 +1708,7 @@ public final class HazardServicesMessageHandler implements
      * @param productEditorAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void productEditorActionOccurred(
             final ProductEditorAction productEditorAction) {
         handleProductDisplayAction(productEditorAction);
@@ -1713,7 +1722,7 @@ public final class HazardServicesMessageHandler implements
      * @param productStagingAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void productStagingActionOccurred(
             final ProductStagingAction productStagingAction) {
 
@@ -1727,7 +1736,7 @@ public final class HazardServicesMessageHandler implements
 
     }
 
-    @Subscribe
+    @Handler
     public void currentSettingsActionOccurred(
             final CurrentSettingsAction settingsAction) {
         changeCurrentSettings(settingsAction.getSettings());
@@ -1740,7 +1749,7 @@ public final class HazardServicesMessageHandler implements
      * @param settingsAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void settingsActionOccurred(final StaticSettingsAction settingsAction) {
         switch (settingsAction.getActionType()) {
 
@@ -1768,7 +1777,7 @@ public final class HazardServicesMessageHandler implements
      * @param timerAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void timerActionOccurred(final TimerAction timerAction) {
         handleTimerAction(timerAction.getCaveTime());
     }
@@ -1780,7 +1789,7 @@ public final class HazardServicesMessageHandler implements
      * @param toolAction
      *            Action received.
      */
-    @Subscribe
+    @Handler
     public void toolActionOccurred(final ToolAction action) {
         switch (action.getActionType()) {
         case RUN_TOOL:
@@ -1805,7 +1814,7 @@ public final class HazardServicesMessageHandler implements
 
     }
 
-    @Subscribe
+    @Handler
     public void changeSiteOccurred(ChangeSiteAction action) {
         getSessionManager().getConfigurationManager().setSiteID(
                 action.getSite());
@@ -1821,10 +1830,10 @@ public final class HazardServicesMessageHandler implements
      * @param closeAction
      *            The Hazard Services shutdown notification.
      */
-    @Subscribe
+    @Handler
     public void HazardServicesShutDownListener(
             final HazardServicesCloseAction closeAction) {
-        eventBus.unregister(this);
+        eventBus.unsubscribe(this);
     }
 
     public ISessionManager<ObservedHazardEvent> getSessionManager() {
