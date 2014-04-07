@@ -31,6 +31,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -306,7 +307,8 @@ public class SelectionAction extends NonDrawingAction {
              * Button 2 functionality for adding/deleting vertices... This
              * mimics WarnGen.
              */
-            if (button == 2) {
+            if (button == 2
+                    && getDrawingLayer().getSelectedHazardIHISLayer() != null) {
                 handleNodeAdditionOrDeletion();
             } else if (isVertexMove) {
                 handleNodeMove();
@@ -331,6 +333,8 @@ public class SelectionAction extends NonDrawingAction {
                 getDrawingLayer().elementClicked(
                         getDrawingLayer().getSelectedDE(),
                         shiftKeyIsDown || ctrlKeyIsDown, true);
+            } else {
+                return false;
             }
             finalizeMouseHandling();
 
@@ -831,8 +835,8 @@ public class SelectionAction extends NonDrawingAction {
          * Add a new node to a selected geometry.
          */
         public void addNode() {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             AbstractDrawableComponent selectedElement = getDrawingLayer()
                     .getSelectedHazardIHISLayer();
 
@@ -925,7 +929,6 @@ public class SelectionAction extends NonDrawingAction {
 
                     movePointIndex = -1;
                     moveType = null;
-
                 }
             }
         }

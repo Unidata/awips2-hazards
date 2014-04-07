@@ -10,13 +10,8 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_SOLID;
-import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
-import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 
 import java.util.List;
-
-import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -44,81 +39,19 @@ import com.vividsolutions.jts.geom.Coordinate;
  */
 public class DotDrawingAttributes extends HazardServicesDrawingAttributes {
 
-    public static int SMOOTH_FACTOR = 0;
-
     public static double SIZE_SCALE = 10.5;
 
-    private final boolean filled = true;
-
-    private LineStyle lineStyle = LINE_SOLID;
-
-    public DotDrawingAttributes(Shell parShell,
+    public DotDrawingAttributes(
             ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
-        super(parShell, sessionManager.getConfigurationManager());
+        super(sessionManager.getConfigurationManager());
+        this.filled = true;
+        this.closed = true;
     }
 
     @Override
-    public void setAttrForDlg(IAttribute ia) {
-
-    }
-
-    /**
-     * Returns the smoothing factor used to draw polygons.
-     * 
-     * @return int
-     * 
-     */
-    @Override
-    public int getSmoothFactor() {
-        return SMOOTH_FACTOR;
-    }
-
-    /**
-     * Sets flag indicating whether or not this event drawable shoulf be closed.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isClosedLine() {
-        return true;
-    }
-
-    /**
-     * Returns a flag indicating whether or not to fill a polygon.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isFilled() {
-        return filled;
-    }
-
-    /**
-     * Returns the fill pattern to use in drawing a event polgyon.
-     * 
-     * @return FillPattern
-     * 
-     * @see FillPattern
-     */
-    @Override
-    public FillPattern getFillPattern() {
-        return FillPattern.FILL_PATTERN_5;
-    }
-
-    @Override
-    public void setSOLIDLineStyle() {
-        this.lineStyle = LINE_SOLID;
-    }
-
-    @Override
-    public void setDASHEDLineStyle() {
+    public void setDashedLineStyle() {
         this.lineStyle = LINE_DASHED_4;
-    }
-
-    @Override
-    public LineStyle getLineStyle() {
-        return lineStyle;
     }
 
     @Override

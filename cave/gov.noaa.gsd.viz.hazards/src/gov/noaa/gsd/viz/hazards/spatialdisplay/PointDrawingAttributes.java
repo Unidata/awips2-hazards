@@ -10,14 +10,9 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_SOLID;
-import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
-import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
 
 import java.awt.Color;
 import java.util.List;
-
-import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -60,8 +55,6 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
 
     private static final double OUTER_SELECTED_SIZE_SCALE = 10.5;
 
-    private static final int SMOOTH_FACTOR = 0;
-
     // Private Variables
 
     private double sizeScale;
@@ -69,8 +62,6 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
     private float lineWidth = 2.0f;
 
     private Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
-
-    private LineStyle lineStyle = LINE_SOLID;
 
     private Element element = Element.INNER;
 
@@ -84,10 +75,12 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
      * @throws VizException
      *             If a viz exception occurs.
      */
-    public PointDrawingAttributes(Shell parShell,
+    public PointDrawingAttributes(
             ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
-        this(parShell, sessionManager, Element.INNER);
+        this(sessionManager, Element.INNER);
+        this.closed = true;
+        this.filled = true;
     }
 
     /**
@@ -100,74 +93,16 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
      * @throws VizException
      *             If a viz exception occurs.
      */
-    public PointDrawingAttributes(Shell parShell,
+    public PointDrawingAttributes(
             ISessionManager<ObservedHazardEvent> sessionManager, Element element)
             throws VizException {
-        super(parShell, sessionManager.getConfigurationManager());
+        super(sessionManager.getConfigurationManager());
         this.element = element;
     }
 
-    // Public Methods
-
     @Override
-    public void setAttrForDlg(IAttribute ia) {
-
-        // No action.
-    }
-
-    @Override
-    public int getSmoothFactor() {
-        return SMOOTH_FACTOR;
-    }
-
-    @Override
-    public float getLineWidth() {
-        return lineWidth;
-    }
-
-    @Override
-    public void setLineWidth(float lineWidth) {
-        this.lineWidth = lineWidth;
-    }
-
-    @Override
-    public Boolean isClosedLine() {
-        return true;
-    }
-
-    @Override
-    public Color[] getColors() {
-        return colors;
-    }
-
-    @Override
-    public void setColors(Color[] colors) {
-        this.colors = colors;
-    }
-
-    @Override
-    public Boolean isFilled() {
-        return true;
-    }
-
-    @Override
-    public FillPattern getFillPattern() {
-        return FillPattern.FILL_PATTERN_5;
-    }
-
-    @Override
-    public void setSOLIDLineStyle() {
-        this.lineStyle = LINE_SOLID;
-    }
-
-    @Override
-    public void setDASHEDLineStyle() {
+    public void setDashedLineStyle() {
         this.lineStyle = LINE_DASHED_4;
-    }
-
-    @Override
-    public LineStyle getLineStyle() {
-        return lineStyle;
     }
 
     @Override

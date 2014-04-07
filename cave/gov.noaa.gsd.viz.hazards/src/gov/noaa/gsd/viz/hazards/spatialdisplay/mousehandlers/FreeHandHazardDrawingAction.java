@@ -10,7 +10,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.PolygonDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
+import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -20,8 +20,6 @@ import gov.noaa.nws.ncep.ui.pgen.tools.InputHandlerDefaultImpl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -34,6 +32,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -67,7 +66,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandHazardDrawingAction.class);
 
-    protected AttrDlg attrDlg = null;
+    protected ILine freeLine = null;
 
     public FreeHandHazardDrawingAction(
             ISessionManager<ObservedHazardEvent> sessionManager) {
@@ -76,9 +75,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
          * Create the attribute container.
          */
         try {
-            attrDlg = new PolygonDrawingAttributes(PlatformUI.getWorkbench()
-                    .getActiveWorkbenchWindow().getShell(), false,
-                    sessionManager);
+            freeLine = new PolygonDrawingAttributes(false, sessionManager);
         } catch (VizException e) {
             statusHandler.error("FreeHandHazardDrawingAction.<init>: Creation "
                     + "of polygon drawing attributes failed.", e);
@@ -91,7 +88,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
     }
 
     public class FreeHandHazardDrawingHandler extends InputHandlerDefaultImpl {
-        private final ArrayList<Coordinate> points = Lists.newArrayList();
+        private final ArrayList<Coordinate> points = new ArrayList<>();
 
         /*
          * An instance of DrawableElementFactory, which is used to create a new
@@ -120,8 +117,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
         public boolean handleMouseUp(int x, int y, int mouseButton) {
             // Finishes the editing action, if one has
             // been initiated.
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             Coordinate loc = editor.translateClick(x, y);
 
             if (mouseButton != 1 || loc == null) {
@@ -161,7 +158,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                 // Could be LINE_SOLID or LINE_DASHED_4
                 @SuppressWarnings("unused")
                 AbstractDrawableComponent warningBox = def.create(
-                        DrawableType.LINE, attrDlg, "Line", "LINE_DASHED_4",
+                        DrawableType.LINE, freeLine, "Line", "LINE_DASHED_4",
                         reducedPointsList, getDrawingLayer().getActiveLayer());
 
                 points.clear();
@@ -176,7 +173,6 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
                                     .getEventManager(), hazardEvent,
                             getSpatialPresenter());
                     getSpatialPresenter().fireAction(action);
-
                 } catch (InvalidGeometryException e) {
                     statusHandler
                             .handle(Priority.WARN,
@@ -196,8 +192,8 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
         // behavior when drawing to CAVE
         @Override
         public boolean handleMouseDownMove(int x, int y, int mouseButton) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             Coordinate loc = editor.translateClick(x, y);
 
             if ((mouseButton != 1) || (loc == null)) {
@@ -209,7 +205,7 @@ public class FreeHandHazardDrawingAction extends AbstractMouseHandler {
 
                 // create the ghost element and put it in the drawing layer
                 AbstractDrawableComponent ghost = def.create(DrawableType.LINE,
-                        attrDlg, "Line", "LINE_SOLID", points,
+                        freeLine, "Line", "LINE_SOLID", points,
                         getDrawingLayer().getActiveLayer());
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);

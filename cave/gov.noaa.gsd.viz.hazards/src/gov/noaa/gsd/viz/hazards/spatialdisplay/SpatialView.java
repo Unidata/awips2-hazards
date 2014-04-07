@@ -781,9 +781,8 @@ public class SpatialView implements
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawNodedPolygonChoiceAction,
                     drawFreehandPolygonChoiceAction, drawNodedPathChoiceAction,
-                    drawPointChoiceAction, new SeparatorAction(),
-                    selectByAreaMapsPulldownAction, new SeparatorAction(),
-                    addGeometryToSelectedAction);
+                    drawPointChoiceAction, selectByAreaMapsPulldownAction,
+                    new SeparatorAction(), addGeometryToSelectedAction);
         }
         return Collections.emptyList();
     }

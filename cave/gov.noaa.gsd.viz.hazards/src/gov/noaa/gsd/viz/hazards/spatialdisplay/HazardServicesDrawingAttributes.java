@@ -10,21 +10,18 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.LineAttrDlg;
-import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
+import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
+import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 import java.awt.Color;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.swt.widgets.Shell;
-
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -54,11 +51,13 @@ import com.vividsolutions.jts.geom.Polygon;
  * 
  * @author Bryon.Lawrence
  */
-public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
+public abstract class HazardServicesDrawingAttributes extends Line {
 
     public enum BorderStyles {
         SOLID, DASHED, DOTTED, NONE
     };
+
+    private static final int DEFAULT_SMOOTH_FACTOR = 0;
 
     // Label to display with the drawable.
     private String[] label = null;
@@ -71,38 +70,30 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
 
     private Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
 
-    private float lineWidth;
-
     private boolean selected = false;
+
+    protected LineStyle lineStyle;
 
     private final IDescriptor descriptor;
 
     protected AbstractEditor editor;
 
-    public HazardServicesDrawingAttributes(Shell parShell,
+    public HazardServicesDrawingAttributes(
             ISessionConfigurationManager configurationManager)
             throws VizException {
-        super(parShell);
+        super();
         this.configurationManager = configurationManager;
         editor = EditorUtil.getActiveEditorAs(AbstractEditor.class);
         descriptor = editor.getActiveDisplayPane().getDescriptor();
-    }
-
-    @Override
-    public void setAttrForDlg(IAttribute ia) {
-        // TODO Auto-generated method stub
-
+        lineStyle = LineStyle.LINE_SOLID;
+        lineWidth = 2.0f;
     }
 
     public void setString(String[] label) {
         this.label = label;
     }
 
-    public abstract gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle getLineStyle();
-
-    public abstract void setSOLIDLineStyle();
-
-    public abstract void setDASHEDLineStyle();
+    public abstract void setDashedLineStyle();
 
     public List<Coordinate> buildCoordinates(int shapeNum,
             IHazardEvent hazardEvent) {
@@ -113,7 +104,6 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         if (geometry instanceof Polygon) {
             coordinateList = Lists.newArrayList(((Polygon) geometry)
                     .getExteriorRing().getCoordinates());
-
         } else {
             coordinateList = Lists.newArrayList(geometry.getCoordinates());
         }
@@ -205,7 +195,8 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
     protected void setLineStyle(IHazardEvent hazardEvent,
             ISessionConfigurationManager configManager) {
         String borderStyle = "NONE";
-        LineStyle linestyle = configManager.getBorderStyle(hazardEvent);
+        com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle linestyle = configManager
+                .getBorderStyle(hazardEvent);
         if (linestyle != null) {
             borderStyle = linestyle.toString();
         }
@@ -213,13 +204,11 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         switch (BorderStyles.valueOf(borderStyle)) {
 
         case SOLID:
-            setSOLIDLineStyle();
+            setSolidLineStyle();
             break;
-
         case DASHED:
-            setDASHEDLineStyle();
+            setDashedLineStyle();
             break;
-
         case NONE:
             // Nothing to do at the moment.
             break;
@@ -286,5 +275,33 @@ public abstract class HazardServicesDrawingAttributes extends LineAttrDlg {
         Long pointTime = (Long) shape.get(HazardConstants.POINT_TIME);
 
         setPointID(pointTime);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see gov.noaa.nws.ncep.ui.pgen.elements.Line#getSmoothFactor()
+     */
+    @Override
+    public int getSmoothFactor() {
+        return DEFAULT_SMOOTH_FACTOR;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see gov.noaa.nws.ncep.ui.pgen.elements.Line#getFillPattern()
+     */
+    @Override
+    public FillPattern getFillPattern() {
+        return FillPattern.FILL_PATTERN_5;
+    }
+
+    public void setSolidLineStyle() {
+        this.lineStyle = LineStyle.LINE_SOLID;
+    }
+
+    public gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle getLineStyle() {
+        return lineStyle;
     }
 }

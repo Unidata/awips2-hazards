@@ -10,9 +10,9 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
 import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
+import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -65,7 +65,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(FreeHandMultiSelectionAction.class);
 
-    protected AttrDlg drawingAttributes = null;
+    protected Line drawingAttributes = null;
 
     private final ISessionManager<ObservedHazardEvent> sessionManager;
 
@@ -79,7 +79,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
         IInputHandler handler = super.getMouseHandler();
         try {
             ((SelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                    null, sessionManager);
+                    sessionManager);
         } catch (VizException e) {
             statusHandler.error("MultiSelectionAction.getMouseHandler(): ", e);
         }
@@ -106,7 +106,7 @@ public final class FreeHandMultiSelectionAction extends NonDrawingAction {
         /*
          * Drawing attributes for the lasso line.
          */
-        private AttrDlg drawingAttributes = null;
+        private ILine drawingAttributes = null;
 
         /**
          * Attribute dialog for displaying track points info

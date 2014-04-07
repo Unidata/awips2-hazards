@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
-
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -114,11 +111,8 @@ public class HazardServicesDrawableBuilder {
             int shapeNum, Layer activeLayer, String symbol) {
         DECollection collectionComponent = new DECollection();
         try {
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
-
-            drawingAttributes = new PointDrawingAttributes(shell,
-                    sessionManager, PointDrawingAttributes.Element.OUTER);
+            drawingAttributes = new PointDrawingAttributes(sessionManager,
+                    PointDrawingAttributes.Element.OUTER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
             drawingAttributes.setTextPosition(TextPositioner.TOP);
             List<Coordinate> points = drawingAttributes.buildCoordinates(
@@ -129,7 +123,7 @@ public class HazardServicesDrawableBuilder {
                             .getEventID(), true));
 
             HazardServicesDrawingAttributes drawingAttributes = new PointDrawingAttributes(
-                    shell, sessionManager, PointDrawingAttributes.Element.INNER);
+                    sessionManager, PointDrawingAttributes.Element.INNER);
             drawingAttributes.setAttributes(shapeNum, hazardEvent);
             points = drawingAttributes.buildCoordinates(shapeNum, hazardEvent);
 
@@ -154,9 +148,7 @@ public class HazardServicesDrawableBuilder {
         AbstractDrawableComponent drawableComponent = null;
 
         try {
-            drawingAttributes = new LineDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    sessionManager);
+            drawingAttributes = new LineDrawingAttributes(sessionManager);
 
             List<Coordinate> points = drawingAttributes.buildCoordinates(
                     shapeNum, hazardEvent);
@@ -193,9 +185,7 @@ public class HazardServicesDrawableBuilder {
         AbstractDrawableComponent drawableComponent = null;
 
         try {
-            drawingAttributes = new LineDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    sessionManager);
+            drawingAttributes = new LineDrawingAttributes(sessionManager);
 
             drawingAttributes.setAttributes(0, hazardEvent);
 
@@ -220,9 +210,8 @@ public class HazardServicesDrawableBuilder {
         AbstractDrawableComponent drawableComponent = null;
 
         try {
-            drawingAttributes = new PolygonDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    drawFilled, sessionManager);
+            drawingAttributes = new PolygonDrawingAttributes(drawFilled,
+                    sessionManager);
 
             List<Coordinate> points = drawingAttributes.buildCoordinates(
                     shapeNum, hazardEvent);
@@ -249,9 +238,7 @@ public class HazardServicesDrawableBuilder {
         AbstractDrawableComponent drawableComponent = null;
 
         try {
-            drawingAttributes = new PolygonDrawingAttributes(PlatformUI
-                    .getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    sessionManager);
+            drawingAttributes = new PolygonDrawingAttributes(sessionManager);
 
             List<Coordinate> points = Lists
                     .newArrayList(((Polygon) hazardHatchArea).getExteriorRing()
@@ -289,8 +276,7 @@ public class HazardServicesDrawableBuilder {
         AbstractDrawableComponent result = null;
         try {
             StormTrackDotDrawingAttributes drawingAttributes = new StormTrackDotDrawingAttributes(
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                            .getShell(), sessionManager);
+                    sessionManager);
             this.drawingAttributes = drawingAttributes;
             drawingAttributes.setTextPosition(TextPositioner.TOP);
             List<Coordinate> points = drawingAttributes.buildCoordinates();
@@ -507,8 +493,7 @@ public class HazardServicesDrawableBuilder {
 
         try {
             StarDrawingAttributes drawingAttributes = new StarDrawingAttributes(
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                            .getShell(), sessionManager);
+                    sessionManager);
             drawingAttributes.setTextPosition(TextPositioner.TOP);
             List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
                     1.0, centerPoint);
@@ -541,8 +526,7 @@ public class HazardServicesDrawableBuilder {
 
         try {
             DotDrawingAttributes drawingAttributes = new DotDrawingAttributes(
-                    PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                            .getShell(), sessionManager);
+                    sessionManager);
             drawingAttributes.setTextPosition(TextPositioner.TOP);
             List<Coordinate> points = drawingAttributes.buildCircleCoordinates(
                     1.0, centerPoint);

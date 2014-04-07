@@ -8,11 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_SOLID;
-import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
-import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
-
-import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -35,67 +30,17 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  */
 public class StarDrawingAttributes extends HazardServicesDrawingAttributes {
 
-    public static int SMOOTH_FACTOR = 0;
-
     public static double SIZE_SCALE = 3.0;
 
     @SuppressWarnings("unused")
     private String[] label = { "" };
 
-    private LineStyle lineStyle = LINE_SOLID;
-
-    public StarDrawingAttributes(Shell parShell,
+    public StarDrawingAttributes(
             ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
-        super(parShell, sessionManager.getConfigurationManager());
-    }
-
-    @Override
-    public void setAttrForDlg(IAttribute ia) {
-
-    }
-
-    /**
-     * Returns the smoothing factor used to draw polygons.
-     * 
-     * @return int
-     * 
-     */
-    @Override
-    public int getSmoothFactor() {
-        return SMOOTH_FACTOR;
-    }
-
-    /**
-     * Sets flag indicating whether or not this event drawable shoulf be closed.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isClosedLine() {
-        return true;
-    }
-
-    /**
-     * Returns a flag indicating whether or not to fill a polygon.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isFilled() {
-        return true;
-    }
-
-    /**
-     * Returns the fill pattern to use in drawing a event polgyon.
-     * 
-     * @return FillPattern
-     * 
-     * @see FillPattern
-     */
-    @Override
-    public FillPattern getFillPattern() {
-        return FillPattern.FILL_PATTERN_5;
+        super(sessionManager.getConfigurationManager());
+        filled = true;
+        closed = true;
     }
 
     @Override
@@ -104,18 +49,8 @@ public class StarDrawingAttributes extends HazardServicesDrawingAttributes {
     }
 
     @Override
-    public void setSOLIDLineStyle() {
-        this.lineStyle = LINE_SOLID;
-    }
-
-    @Override
-    public void setDASHEDLineStyle() {
+    public void setDashedLineStyle() {
         this.lineStyle = LINE_DASHED_4;
-    }
-
-    @Override
-    public LineStyle getLineStyle() {
-        return lineStyle;
     }
 
     @Override

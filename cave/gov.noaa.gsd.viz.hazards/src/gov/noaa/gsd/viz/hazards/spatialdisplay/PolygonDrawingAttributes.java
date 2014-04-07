@@ -8,11 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_2;
-import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_SOLID;
-import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
-import gov.noaa.nws.ncep.ui.pgen.display.IAttribute;
-
-import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -39,86 +34,25 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  */
 public class PolygonDrawingAttributes extends HazardServicesDrawingAttributes {
 
-    public static int SMOOTH_FACTOR = 0;
-
     public static double SIZE_SCALE = 7.5;
 
-    private boolean filled = true;
-
-    private LineStyle lineStyle = LINE_SOLID;
-
-    public PolygonDrawingAttributes(Shell parShell,
+    public PolygonDrawingAttributes(
             ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
-        super(parShell, sessionManager.getConfigurationManager());
+        super(sessionManager.getConfigurationManager());
     }
 
-    public PolygonDrawingAttributes(Shell parShell, boolean drawFilled,
+    public PolygonDrawingAttributes(boolean drawFilled,
             ISessionManager<ObservedHazardEvent> sessionManager)
             throws VizException {
-        super(parShell, sessionManager.getConfigurationManager());
+        super(sessionManager.getConfigurationManager());
         this.filled = drawFilled;
+        this.closed = true;
     }
 
     @Override
-    public void setAttrForDlg(IAttribute ia) {
-
-    }
-
-    /**
-     * Returns the smoothing factor used to draw polygons.
-     * 
-     * @return int
-     */
-    @Override
-    public int getSmoothFactor() {
-        return SMOOTH_FACTOR;
-    }
-
-    /**
-     * Sets flag indicating whether or not this event drawable shoulf be closed.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isClosedLine() {
-        return true;
-    }
-
-    /**
-     * Returns a flag indicating whether or not to fill a polygon.
-     * 
-     * @return Boolean
-     */
-    @Override
-    public Boolean isFilled() {
-        return filled;
-    }
-
-    /**
-     * Returns the fill pattern to use in drawing a event polgyon.
-     * 
-     * @return FillPattern
-     * @see FillPattern
-     */
-    @Override
-    public FillPattern getFillPattern() {
-        return FillPattern.FILL_PATTERN_5;
-    }
-
-    @Override
-    public void setSOLIDLineStyle() {
-        this.lineStyle = LINE_SOLID;
-    }
-
-    @Override
-    public void setDASHEDLineStyle() {
+    public void setDashedLineStyle() {
         this.lineStyle = LINE_DASHED_2;
-    }
-
-    @Override
-    public LineStyle getLineStyle() {
-        return lineStyle;
     }
 
     @Override

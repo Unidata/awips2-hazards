@@ -9,8 +9,8 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SelectionRectangleDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements.IHazardServicesShape;
-import gov.noaa.nws.ncep.ui.pgen.attrdialog.AttrDlg;
 import gov.noaa.nws.ncep.ui.pgen.attrdialog.TrackExtrapPointInfoDlg;
+import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
@@ -62,7 +62,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(RectangleMultiSelectionAction.class);
 
-    protected AttrDlg attrDlg = null;
+    protected Line attrDlg = null;
 
     private final ISessionManager<ObservedHazardEvent> sessionManager;
 
@@ -86,7 +86,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
         IInputHandler handler = super.getMouseHandler();
         try {
             ((RectangleMultiSelectionHandler) handler).drawingAttributes = new SelectionRectangleDrawingAttributes(
-                    null, sessionManager);
+                    sessionManager);
         } catch (VizException e) {
             statusHandler.error(
                     "In RectangleMultiSelectionAction.getMouseHandler():", e);
@@ -119,7 +119,7 @@ public class RectangleMultiSelectionAction extends NonDrawingAction {
         /*
          * Drawing attributes for this rectangle
          */
-        private AttrDlg drawingAttributes = null;
+        private ILine drawingAttributes = null;
 
         private final DrawableElementFactory def = new DrawableElementFactory();
 

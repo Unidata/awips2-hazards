@@ -24,8 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.ui.PlatformUI;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
@@ -37,9 +35,9 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -75,12 +73,12 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
     /**
      * Shape type to be drawn.
      */
-    private String shapeType = null;
+    private GeometryType shapeType = null;
 
     /**
      * Map of shape types to drawing attributes.
      */
-    private final Map<String, HazardServicesDrawingAttributes> drawingAttributesForShapeTypes = Maps
+    private final Map<GeometryType, HazardServicesDrawingAttributes> drawingAttributesForShapeTypes = Maps
             .newHashMap();
 
     private final HazardEventBuilder hazardEventBuilder;
@@ -105,22 +103,22 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
      *            Shape type.
      */
     public void setShapeType(String shapeType) {
-        this.shapeType = shapeType;
+        this.shapeType = GeometryType.valueOf(shapeType.toUpperCase());
         if (drawingAttributesForShapeTypes.get(shapeType) == null) {
             try {
-                HazardServicesDrawingAttributes drawingAttributes = (shapeType
-                        .equals(GeometryType.POLYGON.getValue()) ? new PolygonDrawingAttributes(
-                        PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                                .getShell(), false, sessionManager)
-                        : (shapeType.equals(GeometryType.LINE.getValue()) ? new LineDrawingAttributes(
-                                PlatformUI.getWorkbench()
-                                        .getActiveWorkbenchWindow().getShell(),
-                                sessionManager) : new PointDrawingAttributes(
-                                PlatformUI.getWorkbench()
-                                        .getActiveWorkbenchWindow().getShell(),
-                                sessionManager)));
-                drawingAttributesForShapeTypes
-                        .put(shapeType, drawingAttributes);
+                HazardServicesDrawingAttributes drawingAttributes = null;
+                if (this.shapeType == GeometryType.LINE) {
+                    drawingAttributes = new LineDrawingAttributes(
+                            sessionManager);
+                } else if (this.shapeType == GeometryType.POLYGON) {
+                    drawingAttributes = new PolygonDrawingAttributes(false,
+                            sessionManager);
+                } else {
+                    drawingAttributes = new PointDrawingAttributes(
+                            sessionManager);
+                }
+                drawingAttributesForShapeTypes.put(this.shapeType,
+                        drawingAttributes);
             } catch (VizException e) {
                 statusHandler.error("Could not create drawing attributes.", e);
             }
@@ -149,7 +147,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         /*
          * Points of the new watch box.
          */
-        private final List<Coordinate> points = Lists.newArrayList();
+        private final List<Coordinate> points = new ArrayList<>();
 
         /*
          * An instance of DrawableElementFactory, which is used to create a new
@@ -160,8 +158,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
         @Override
         public boolean handleMouseMove(int x, int y) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             Coordinate loc = editor.translateClick(x, y);
 
             if (loc == null) {
@@ -179,8 +177,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
                 List<Coordinate> ghostPts = Lists.newArrayList(points);
                 ghostPts.add(loc);
-                // ((Line) ghost)
-                // .setLinePoints(Lists.newArrayList(ghostPts));
+
                 ((Line) ghost).setLinePoints(ghostPts);
 
                 getDrawingLayer().setGhostLine(ghost);
@@ -194,8 +191,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         // it from being passed on to CAVE panning routines.
         @Override
         public boolean handleMouseUp(int x, int y, int mouseButton) {
-            AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                    .getInstance().getActiveEditor());
+            AbstractEditor editor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
             Coordinate loc = editor.translateClick(x, y);
 
             if (loc == null) {
@@ -203,7 +200,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             }
 
             if (mouseButton == 1) {
-                if (shapeType.equals(GeometryType.POINT.getValue())) {
+                if (shapeType == GeometryType.POINT) {
                     createPointShape(loc);
                 } else {
                     addPointIfNotIdenticalToPreviousPoint(loc);
@@ -211,18 +208,17 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
             } else if (mouseButton == 3) {
 
-                if (shapeType.equals(GeometryType.POINT.getValue())) {
+                if (shapeType == GeometryType.POINT) {
                     createPointShape(loc);
                 } else {
-
-                    // This is where the ghost object is replaced
-                    // by the new shape. For the moment just delete
-                    // the ghost line.
+                    /*
+                     * This is where the ghost object is replaced by the new
+                     * shape. For the moment just delete the ghost line.
+                     */
                     addPointIfNotIdenticalToPreviousPoint(loc);
                     if (points.size() != 0) {
                         getDrawingLayer().removeGhostLine();
-                        if (points.size() < (shapeType
-                                .equals(GeometryType.POLYGON.getValue()) ? 3
+                        if (points.size() < (shapeType == GeometryType.POLYGON ? 3
                                 : 2)) {
                             points.clear();
                             getDrawingLayer().issueRefresh();
@@ -236,11 +232,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                 getSpatialPresenter().getView().drawingActionComplete();
 
                 return true;
-
             }
-
             return true;
-
         }
 
         /**
@@ -252,6 +245,11 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
          */
         @Override
         public boolean handleMouseDownMove(int x, int y, int mouseButton) {
+            // allow panning if it is mouse button 2 to be consistent with other
+            // applications
+            if (mouseButton == 2) {
+                return false;
+            }
             return true;
         }
 
@@ -279,27 +277,22 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
             // list of points that is the same as its first point.
             try {
                 IHazardEvent hazardEvent;
-                if (shapeType.equals(GeometryType.POLYGON.getValue())) {
+                if (shapeType == GeometryType.POLYGON) {
                     Utilities.closeCoordinatesIfNecessary(points);
                     hazardEvent = hazardEventBuilder
                             .buildPolygonHazardEvent(pointsAsArray());
                 } else {
-
                     hazardEvent = hazardEventBuilder
                             .buildLineHazardEvent(pointsAsArray());
-
                 }
 
-                SessionEventAdded action = new SessionEventAdded(
-                        sessionManager.getEventManager(), hazardEvent,
+                sessionManager.getEventManager().addEvent(hazardEvent,
                         getSpatialPresenter());
-                getSpatialPresenter().fireAction(action);
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
                         "Error drawing noded polygon: " + e.getMessage());
             }
             points.clear();
-
         }
 
         private Coordinate[] pointsAsArray() {
@@ -315,10 +308,8 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
         private void createPointShape(Coordinate loc) {
             IHazardEvent hazardEvent = hazardEventBuilder
                     .buildPointHazardEvent(loc);
-            SessionEventAdded action = new SessionEventAdded(
-                    sessionManager.getEventManager(), hazardEvent,
+            sessionManager.getEventManager().addEvent(hazardEvent,
                     getSpatialPresenter());
-            getSpatialPresenter().fireAction(action);
         }
     }
 }
