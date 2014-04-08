@@ -47,7 +47,7 @@ public class HazardNotification {
     public static final String HAZARD_TOPIC = "edex.alerts.hazards";
 
     public static enum NotificationType {
-        STORE, UPDATE, DELETE;
+        STORE, UPDATE, DELETE, DELETE_ALL;
     }
 
     @DynamicSerializeElement

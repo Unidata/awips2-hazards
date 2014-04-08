@@ -33,6 +33,7 @@ import com.raytheon.uf.viz.core.notification.NotificationMessage;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * An INotificationObserver that keeps the session event manager in sync with
@@ -100,6 +101,10 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
         IHazardEvent newEvent = notification.getEvent();
         IHazardEvent oldEvent = manager.getEventById(newEvent.getEventID());
+        if (CAVEMode.getMode() == CAVEMode.PRACTICE
+                && notification.isPracticeMode() == false) {
+            return;
+        }
         switch (notification.getType()) {
         case DELETE:
             if (oldEvent != null) {

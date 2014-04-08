@@ -47,7 +47,7 @@ public class HazardDataStorageRequest implements IServerRequest {
 
     @DynamicSerialize
     public enum RequestType {
-        STORE, UPDATE, DELETE;
+        STORE, UPDATE, DELETE, DELETE_ALL;
     }
 
     @DynamicSerializeElement

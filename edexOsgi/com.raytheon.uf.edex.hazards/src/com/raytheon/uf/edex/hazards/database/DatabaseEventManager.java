@@ -133,6 +133,24 @@ public class DatabaseEventManager implements
     /*
      * (non-Javadoc)
      * 
+     * @see com.raytheon.uf.edex.hazards.IHazardStorageManager#deleteAll()
+     */
+    @Override
+    public void deleteAll(List<PracticeHazardEvent> events) {
+        dao.deleteAll(events);
+        statusHandler.handle(Priority.INFO,
+                "All hazards successfully deleted from database");
+        // null event, as we will want to handle ALL events
+        for (PracticeHazardEvent event : events) {
+            HazardNotifier
+                    .notify(event, NotificationType.DELETE, MODE);
+        }
+        HazardNotifier.notify(null, NotificationType.DELETE_ALL, MODE);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
      * @see
      * com.raytheon.uf.edex.hazards.IHazardStorageManager#update(com.raytheon
      * .uf.common.dataplugin.events.hazards.event.IHazardEvent)

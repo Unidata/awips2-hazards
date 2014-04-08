@@ -21,10 +21,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * This is the preferred method of obtaining a new ISessionManager. This
@@ -53,8 +55,9 @@ public class SessionManagerFactory {
 
     public static ISessionManager<ObservedHazardEvent> getSessionManager(
             IMessenger messenger, EventBus eventBus) {
+        Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
+                : Mode.OPERATIONAL;
         return new SessionManager(PathManagerFactory.getPathManager(),
-                new HazardEventManager(HazardEventManager.Mode.PRACTICE),
-                messenger, eventBus);
+                new HazardEventManager(mode), messenger, eventBus);
     }
 }

@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventE
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardEventExpirationAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.HazardType;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Description: An {@link IHazardAlertStrategy} based on expiration times of
@@ -137,7 +138,14 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     @Override
     public void updateAlerts(Object notification) {
         HazardNotification hazardNotification = (HazardNotification) notification;
-
+        /*
+         * should we do anything with this alert? (are we in the right mode for
+         * it)
+         */
+        if (CAVEMode.getMode() == CAVEMode.PRACTICE
+                && hazardNotification.isPracticeMode() == false) {
+            return;
+        }
         switch (hazardNotification.getType()) {
 
         case STORE:

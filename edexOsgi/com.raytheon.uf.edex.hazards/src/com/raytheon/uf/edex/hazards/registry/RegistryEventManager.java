@@ -30,8 +30,8 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.registry.RegistryHandler;
@@ -59,7 +59,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Oct 30, 2013 #1472     bkowal    Implemented retrieval from the registry
  *                                  by phensig.
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Mar 24, 2014 #3323      bkowal   Include the mode in the hazard notification.   
+ * Mar 24, 2014 #3323      bkowal   Include the mode in the hazard notification.
  * 
  * </pre>
  * 
@@ -103,7 +103,6 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                     "Unable to store " + event.getSiteID() + "-"
                             + event.getEventID() + "-" + event.getIssueTime(),
                     e);
-
         }
     }
 
@@ -137,6 +136,29 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
                             + event.getEventID() + "-" + event.getIssueTime(),
                     e);
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.hazards.IHazardStorageManager#deleteAll(java.util
+     * .List)
+     */
+    @Override
+    public void deleteAll(List<HazardEvent> events) {
+        try {
+            handler.delete(events);
+            statusHandler.handle(Priority.INFO,
+                    "All hazards successfully deleted from registry");
+        } catch (RegistryHandlerException e) {
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to delete all hazards", e);
+        }
+        for (HazardEvent event : events) {
+            HazardNotifier.notify(event, NotificationType.DELETE, MODE);
+        }
+        HazardNotifier.notify(null, NotificationType.DELETE_ALL, MODE);
     }
 
     @Override

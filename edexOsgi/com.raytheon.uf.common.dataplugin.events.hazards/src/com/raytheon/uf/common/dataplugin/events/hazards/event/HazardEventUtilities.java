@@ -156,6 +156,7 @@ public class HazardEventUtilities {
         // make a request for the hazard event id from the cluster task
         // table
         HazardEventIdRequest request = new HazardEventIdRequest();
+        request.setPractice(true);
         request.setSiteId(site);
         String value = "";
         boolean createNew = false;
@@ -186,6 +187,7 @@ public class HazardEventUtilities {
 
     public static String generateEventID(String site) throws Exception {
         HazardEventIdRequest request = new HazardEventIdRequest();
+        request.setPractice(true);
         request.setSiteId(site);
         String value = "";
         try {

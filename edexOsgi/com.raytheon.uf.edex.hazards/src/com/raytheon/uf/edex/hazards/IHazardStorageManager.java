@@ -68,6 +68,8 @@ public interface IHazardStorageManager<T extends IHazardEvent> {
      */
     public void delete(T event);
 
+    public void deleteAll(List<T> events);
+
     /**
      * Retrieve a Map<String,List<IHazardEvent>> from the storage system as
      * defined by the implementing class. The Map contains the event id as the

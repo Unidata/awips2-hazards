@@ -29,11 +29,25 @@
 	<bean id="hazardEventHandler"
 		class="com.raytheon.uf.edex.hazards.gfe.HazardEventHandler" factory-method="getInstance" depends-on="getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/> 
 
+	<bean id="activeTableRemover"
+		class="com.raytheon.uf.edex.hazards.gfe.ActiveTableRemover" factory-method="getInstance"/> 
+
 	<camelContext id="gfeactions-camel" xmlns="http://camel.apache.org/schema/spring" errorHandlerRef="errorHandler">
 		<route id="hazardNotificationRoute">
 			<from uri="jms-generic:topic:edex.alerts.hazards" />	
             <doTry>
     			<bean ref="hazardEventHandler" method="handleNotification" />					
+                <doCatch>
+                    <exception>java.lang.Throwable</exception>
+                    <to uri="log:activeTable?level=ERROR"/>
+                </doCatch>
+            </doTry>
+		</route>
+		
+		<route id="activeTableDeleter">
+			<from uri="jms-generic:topic:edex.alerts.hazards" />	
+            <doTry>
+    			<bean ref="activeTableRemover" method="handleNotification" />					
                 <doCatch>
                     <exception>java.lang.Throwable</exception>
                     <to uri="log:activeTable?level=ERROR"/>

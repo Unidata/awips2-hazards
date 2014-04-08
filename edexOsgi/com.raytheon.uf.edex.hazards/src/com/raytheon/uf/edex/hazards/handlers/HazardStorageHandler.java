@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.handlers;
 
+import java.util.Arrays;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
@@ -75,6 +77,9 @@ public class HazardStorageHandler implements
                 for (IHazardEvent event : events) {
                     manager.delete(event);
                 }
+                break;
+            case DELETE_ALL:
+                manager.deleteAll(Arrays.asList(events));
                 break;
             case UPDATE:
                 for (IHazardEvent event : events) {

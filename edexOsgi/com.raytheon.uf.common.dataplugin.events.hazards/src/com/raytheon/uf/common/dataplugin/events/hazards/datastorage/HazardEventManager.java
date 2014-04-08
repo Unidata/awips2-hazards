@@ -495,10 +495,16 @@ public class HazardEventManager implements IHazardEventManager {
         for (Entry<String, HazardHistoryList> entry : list.entrySet()) {
             events.addAll(entry.getValue().getEvents());
         }
-        return removeEvents(events);
-        // throw new UnsupportedOperationException(
-        // "Cannot remove all events from the "
-        // + (practice == true ? "practice" : "operational")
-        // + " storage area");
+        try {
+            HazardDataStorageRequest request = new HazardDataStorageRequest();
+            request.setEvents(events.toArray(new IHazardEvent[0]));
+            request.setPractice(practice);
+            request.setType(RequestType.DELETE_ALL);
+            RequestRouter.route(request);
+            return true;
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return false;
     }
 }
