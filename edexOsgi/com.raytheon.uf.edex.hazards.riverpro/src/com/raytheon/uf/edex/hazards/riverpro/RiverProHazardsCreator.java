@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.hazards.riverpro;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,8 @@ import com.raytheon.edex.plugin.text.dao.AfosToAwipsDao;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
+import com.raytheon.uf.common.dataplugin.annotations.DataURIUtil;
+import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecaction;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
@@ -42,6 +45,11 @@ import com.raytheon.uf.common.dataplugin.shef.tables.Vtecsignif;
 import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
+import com.raytheon.uf.common.dataquery.requests.DbQueryRequest;
+import com.raytheon.uf.common.dataquery.requests.RequestConstraint;
+import com.raytheon.uf.common.dataquery.responses.DbQueryResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -99,9 +107,32 @@ public class RiverProHazardsCreator {
 
     private static final AfosToAwipsDao a2aDao = new AfosToAwipsDao();
 
+    public void createHazardsFromBytes(byte[] bytes) {
+        Map<String, RequestConstraint> vals = new HashMap<String, RequestConstraint>();
+        try {
+            PracticeDataURINotificationMessage value = SerializationUtil
+                    .transformFromThrift(
+                            PracticeDataURINotificationMessage.class, bytes);
+            String[] uris = value.getDataURIs();
+            if (uris.length > 0) {
+                vals.putAll(RequestConstraint.toConstraintMapping(DataURIUtil
+                        .createDataURIMap(uris[0])));
+            }
+            DbQueryRequest request = new DbQueryRequest(vals);
+            DbQueryResponse response = (DbQueryResponse) RequestRouter
+                    .route(request);
+            PluginDataObject[] pdos = response
+                    .getEntityObjects(PluginDataObject.class);
+            if (pdos.length != 0) {
+                createHazards(Arrays.asList(pdos));
+            }
+        } catch (Exception e) {
+            statusHandler.error("Unable to create hazards for pdos", e);
+        }
+    }
+
     public void createHazards(List<PluginDataObject> objects) {
         if (objects.isEmpty() == false) {
-            boolean practice = objects.get(0) instanceof PracticeWarningRecord;
             // find the gauge locations from the table
             Map<String, Point> gaugeLocations = null;
             try {
@@ -117,17 +148,18 @@ public class RiverProHazardsCreator {
             Map<String, String> sigs = retrieveAvailable(SIGNIF, VTEC_SIGNIF);
             // loop over each record
             for (PluginDataObject obj : objects) {
+                boolean practice = obj instanceof PracticeWarningRecord;
                 AbstractWarningRecord warning = null;
                 if (obj instanceof AbstractWarningRecord) {
                     warning = (AbstractWarningRecord) obj;
                 } else {
                     continue;
                 }
-                
+
                 if (warning.getGeometry() == null) {
                     continue;
                 }
-                
+
                 // are are we doing a correct phen and sig, if not, continue on
                 if (phens.containsKey(warning.getPhen())
                         && sigs.containsKey(warning.getSig())) {

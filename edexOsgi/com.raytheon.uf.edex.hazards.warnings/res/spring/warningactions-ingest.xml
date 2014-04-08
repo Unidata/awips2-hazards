@@ -9,8 +9,16 @@
 	<camelContext id="warningactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
 		<route id="hazards.warningIngest">
-			<from uri="vm:hazards.warningIngest"/>
+			<from uri="vm:hazards.warningIngest" />
 			<bean ref="warningHazardsCreator" method="createHazards" />
+		</route>
+	</camelContext>
+
+	<camelContext id="practicewarningactions-camel" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<route id="hazards.practiceWarningIngest">
+			<from uri="jms-generic:topic:edex.alerts.practicewarning" />
+			<bean ref="warningHazardsCreator" method="createHazardsFromBytes" />
 		</route>
 	</camelContext>
 </beans>

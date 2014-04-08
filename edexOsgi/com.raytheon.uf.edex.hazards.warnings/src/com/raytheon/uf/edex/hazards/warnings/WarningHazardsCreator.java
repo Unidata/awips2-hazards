@@ -20,17 +20,28 @@
 package com.raytheon.uf.edex.hazards.warnings;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
+import com.raytheon.uf.common.dataplugin.annotations.DataURIUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
+import com.raytheon.uf.common.dataquery.requests.DbQueryRequest;
+import com.raytheon.uf.common.dataquery.requests.RequestConstraint;
+import com.raytheon.uf.common.dataquery.responses.DbQueryResponse;
+import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -60,114 +71,154 @@ public class WarningHazardsCreator {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(WarningHazardsCreator.class);
 
+    public void createHazardsFromBytes(byte[] bytes) {
+        Map<String, RequestConstraint> vals = new HashMap<String, RequestConstraint>();
+        try {
+            PracticeDataURINotificationMessage value = SerializationUtil
+                    .transformFromThrift(
+                            PracticeDataURINotificationMessage.class, bytes);
+            String[] uris = value.getDataURIs();
+            if (uris.length > 0) {
+                vals.putAll(RequestConstraint.toConstraintMapping(DataURIUtil
+                        .createDataURIMap(uris[0])));
+            }
+            DbQueryRequest request = new DbQueryRequest(vals);
+            DbQueryResponse response = (DbQueryResponse) RequestRouter
+                    .route(request);
+            PluginDataObject[] pdos = response
+                    .getEntityObjects(PluginDataObject.class);
+            if (pdos.length != 0) {
+                createHazards(Arrays.asList(pdos));
+            }
+        } catch (Exception e) {
+            statusHandler.error("Unable to create hazards for pdos", e);
+        }
+    }
+
     public void createHazards(List<PluginDataObject> objects) {
         if (objects.isEmpty() == false) {
-            Mode mode = objects.get(0) instanceof PracticeWarningRecord ? Mode.PRACTICE
-                    : Mode.OPERATIONAL;
-            // TODO, use mode above
-            HazardEventManager manager = new HazardEventManager(Mode.PRACTICE);
             List<IHazardEvent> events = new ArrayList<IHazardEvent>();
+            IHazardEventManager manager;
             for (PluginDataObject ob : objects) {
-                AbstractWarningRecord record = null;
                 if (ob instanceof AbstractWarningRecord) {
-                    record = (AbstractWarningRecord) ob;
-                    // throw out no geometry, no phensig too
-                    if (record.getGeometry() == null
-                            || record.getPhensig() == null
-                            || record.getPhensig().isEmpty()) {
+                    Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
+                            : Mode.OPERATIONAL;
+                    manager = new HazardEventManager(mode);
+                    if (mode == Mode.OPERATIONAL) {
+                        statusHandler
+                                .info("Encountered an operational hazard, skipping");
                         continue;
                     }
-                } else {
-                    continue;
-                }
-                IHazardEvent event = manager.createEvent();
+                    AbstractWarningRecord record = null;
+                    if (ob instanceof AbstractWarningRecord) {
+                        record = (AbstractWarningRecord) ob;
+                        // throw out no geometry, no phensig too
+                        if (record.getGeometry() == null
+                                || record.getPhensig() == null
+                                || record.getPhensig().isEmpty()) {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                    IHazardEvent event = manager.createEvent();
 
-                String value = null;
-                try {
-                    value = HazardEventUtilities.determineEtn(
-                            record.getXxxid(), record.getAct(),
-                            record.getEtn(), manager);
-                } catch (Exception e) {
-                    statusHandler.handle(Priority.PROBLEM,
-                            "Failed to generate Hazard Event ID!", e);
-                    /*
-                     * TODO: previously exceptions were ignored - should this
-                     * record be skipped when an event id cannot be generated?
-                     * should the entire process be halted?
-                     */
-                }
-                event.setEventID(value);
-                event.setEndTime(record.getEndTime().getTime());
-                event.setStartTime(record.getStartTime().getTime());
-                event.setIssueTime(record.getIssueTime().getTime());
-                event.setGeometry(record.getGeometry());
-                event.setPhenomenon(record.getPhen());
-                event.setSignificance(record.getSig());
-                event.setSiteID(record.getXxxid());
-                event.addHazardAttribute(HazardConstants.EXPIRATION_TIME,
-                        record.getPurgeTime().getTime().getTime());
-                event.addHazardAttribute(HazardConstants.ETNS,
-                        "[" + record.getEtn() + "]");
-                event.setHazardMode(HazardConstants
-                        .productClassFromAbbreviation(record.getProductClass()));
-                event.setState(HazardEventUtilities.stateBasedOnAction(record
-                        .getAct()));
+                    String value = null;
+                    try {
+                        value = HazardEventUtilities.determineEtn(
+                                record.getXxxid(), record.getAct(),
+                                record.getEtn(), manager);
+                    } catch (Exception e) {
+                        statusHandler.handle(Priority.PROBLEM,
+                                "Failed to generate Hazard Event ID!", e);
+                        /*
+                         * TODO: previously exceptions were ignored - should
+                         * this record be skipped when an event id cannot be
+                         * generated? should the entire process be halted?
+                         */
+                    }
+                    event.setEventID(value);
+                    event.setEndTime(record.getEndTime().getTime());
+                    event.setStartTime(record.getStartTime().getTime());
+                    event.setIssueTime(record.getIssueTime().getTime());
+                    event.setGeometry(record.getGeometry());
+                    event.setPhenomenon(record.getPhen());
+                    event.setSignificance(record.getSig());
+                    event.setSiteID(record.getXxxid());
+                    event.addHazardAttribute(HazardConstants.CREATION_TIME,
+                            record.getIssueTime().getTime().getTime());
+                    event.addHazardAttribute(HazardConstants.EXPIRATION_TIME,
+                            record.getPurgeTime().getTime().getTime());
+                    event.addHazardAttribute(HazardConstants.ETNS,
+                            "[" + record.getEtn() + "]");
+                    event.setHazardMode(HazardConstants
+                            .productClassFromAbbreviation(record
+                                    .getProductClass()));
+                    event.setState(HazardEventUtilities
+                            .stateBasedOnAction(record.getAct()));
 
-                // these don't apply to everything so the may be blank, but we
-                // want to make sure we fill everything out of the warnings into
-                // the IHazardEvent object
-                Calendar floodBegin = record.getFloodBegin();
-                Calendar floodCrest = record.getFloodCrest();
-                Calendar floodEnd = record.getFloodEnd();
-                String floodSeverity = record.getFloodSeverity();
-                String floodRecordStatus = record.getFloodRecordStatus();
-                String immediateCause = record.getImmediateCause();
+                    // these don't apply to everything so the may be blank, but
+                    // we
+                    // want to make sure we fill everything out of the warnings
+                    // into
+                    // the IHazardEvent object
+                    Calendar floodBegin = record.getFloodBegin();
+                    Calendar floodCrest = record.getFloodCrest();
+                    Calendar floodEnd = record.getFloodEnd();
+                    String floodSeverity = record.getFloodSeverity();
+                    String floodRecordStatus = record.getFloodRecordStatus();
+                    String immediateCause = record.getImmediateCause();
 
-                if (floodBegin != null) {
-                    event.addHazardAttribute(HazardConstants.FLOOD_BEGIN_TIME,
-                            floodBegin.getTime());
-                }
-                if (floodCrest != null) {
-                    event.addHazardAttribute(HazardConstants.FLOOD_CREST_TIME,
-                            floodCrest.getTime());
-                }
-                if (floodEnd != null) {
-                    event.addHazardAttribute(HazardConstants.FLOOD_END_TIME,
-                            floodEnd.getTime());
-                }
-                if (floodSeverity != null) {
-                    event.addHazardAttribute(HazardConstants.FLOOD_SEVERITY,
-                            floodSeverity);
-                    // this only applies to FF.W
-                    if (event.getPhenomenon().equals("FF")
-                            && event.getSignificance().equals("W")) {
-                        if (floodSeverity.equals("0")) {
-                            event.setSubType("Convective");
-                        } else {
-                            event.setSubType("NonConvective");
+                    if (floodBegin != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_BEGIN_TIME,
+                                floodBegin.getTime());
+                    }
+                    if (floodCrest != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_CREST_TIME,
+                                floodCrest.getTime());
+                    }
+                    if (floodEnd != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_END_TIME,
+                                floodEnd.getTime());
+                    }
+                    if (floodSeverity != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_SEVERITY, floodSeverity);
+                        // this only applies to FF.W
+                        if (event.getPhenomenon().equals("FF")
+                                && event.getSignificance().equals("W")) {
+                            if (floodSeverity.equals("0")) {
+                                event.setSubType("Convective");
+                            } else {
+                                event.setSubType("NonConvective");
+                            }
                         }
                     }
-                }
-                if (floodRecordStatus != null) {
-                    event.addHazardAttribute(
-                            HazardConstants.FLOOD_RECORD_STATUS,
-                            floodRecordStatus);
-                }
-                if (immediateCause != null) {
-                    event.addHazardAttribute(
-                            HazardConstants.FLOOD_IMMEDIATE_CAUSE,
-                            immediateCause);
-                }
+                    if (floodRecordStatus != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_RECORD_STATUS,
+                                floodRecordStatus);
+                    }
+                    if (immediateCause != null) {
+                        event.addHazardAttribute(
+                                HazardConstants.FLOOD_IMMEDIATE_CAUSE,
+                                immediateCause);
+                    }
 
-                if (HazardEventUtilities.isDuplicate(manager, event) == false) {
-                    events.add(event);
-                }
-            }
-            if (events.isEmpty() == false) {
-                boolean stored = manager.storeEvents(events);
-                if (stored == false) {
-                    throw new RuntimeException(
-                            "Unable to store converted events to the database");
+                    if (HazardEventUtilities.isDuplicate(manager, event) == false) {
+                        events.add(event);
+                    }
+                    if (events.isEmpty() == false) {
+                        boolean stored = manager.storeEvents(events);
+                        if (stored == false) {
+                            throw new RuntimeException(
+                                    "Unable to store converted events to the database with type "
+                                            + mode.name().toLowerCase());
+                        }
+                    }
                 }
             }
         }

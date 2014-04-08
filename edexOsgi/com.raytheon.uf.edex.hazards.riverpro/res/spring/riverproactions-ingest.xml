@@ -13,4 +13,12 @@
 			<bean ref="riverproHazardsCreator" method="createHazards" />
 		</route>
 	</camelContext>
+	
+	<camelContext id="practiceriverproactions-camel" xmlns="http://camel.apache.org/schema/spring"
+		errorHandlerRef="errorHandler">
+		<route id="hazards.practiceRiverproIngest">
+			<from uri="jms-generic:topic:edex.alerts.practicewarning" />
+			<bean ref="riverproHazardsCreator" method="createHazardsFromBytes" />
+		</route>
+	</camelContext>
 </beans>
