@@ -209,6 +209,9 @@ public class SelectByAreaDrawingActionGeometryResource extends
          */
         @Override
         public boolean handleMouseDownMove(int x, int y, int mouseButton) {
+            if (mouseButton == 2) {
+                return false;
+            }
             AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
                     .getInstance().getActiveEditor();
             Coordinate c = editor.translateClick(x, y);
@@ -256,7 +259,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
 
                 editor.refresh();
                 return false;
-            } else {
+            } else if (mouseButton == 3) {
                 // Unload the ZoneDbResource??
 
                 // Send off the selected geometries.
@@ -368,9 +371,8 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     getSpatialPresenter().getView().drawingActionComplete();
 
                 }
-
-                return false;
             }
+            return false;
         }
 
         /**

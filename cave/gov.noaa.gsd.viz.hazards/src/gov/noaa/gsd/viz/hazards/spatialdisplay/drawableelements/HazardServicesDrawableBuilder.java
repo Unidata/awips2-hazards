@@ -659,12 +659,9 @@ public class HazardServicesDrawableBuilder {
                     Point centroid = geometryData.getGeometry().getCentroid();
 
                     AbstractDrawableComponent textComponent = new HazardServicesText(
-                            drawingAttributes,
-                            HazardConstants.COUNTY_INCLUDED_IN_HAZARD_ANNOTATION,
-                            TEXT,
-                            centroid,
-                            activeLayer,
-                            HazardConstants.COUNTY_INCLUDED_IN_HAZARD_ANNOTATION);
+                            drawingAttributes, hazardEvent.getSignificance(),
+                            TEXT, centroid, activeLayer,
+                            hazardEvent.getSignificance());
                     hatchedAreaAnnotations.add(textComponent);
                 }
             }
