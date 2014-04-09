@@ -78,7 +78,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private String subtype;
 
-    private Date issueTime;
+    private Date creationTime;
 
     private ProductClass hazardMode;
 
@@ -97,7 +97,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
-        setIssueTime(event.getIssueTime());
+        setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
@@ -206,13 +206,13 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public Date getIssueTime() {
-        return issueTime;
+    public Date getCreationTime() {
+        return creationTime;
     }
 
     @Override
-    public void setIssueTime(Date date) {
-        this.issueTime = date;
+    public void setCreationTime(Date creationTime) {
+        this.creationTime = creationTime;
     }
 
     @Override
@@ -299,7 +299,7 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result
                 + ((hazardState == null) ? 0 : hazardState.hashCode());
         result = prime * result
-                + ((issueTime == null) ? 0 : issueTime.hashCode());
+                + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
         result = prime * result
@@ -362,11 +362,11 @@ public class BaseHazardEvent implements IHazardEvent {
         if (hazardState != other.hazardState) {
             return false;
         }
-        if (issueTime == null) {
-            if (other.issueTime != null) {
+        if (creationTime == null) {
+            if (other.creationTime != null) {
                 return false;
             }
-        } else if (!issueTime.equals(other.issueTime)) {
+        } else if (!creationTime.equals(other.creationTime)) {
             return false;
         }
         if (phenomenon == null) {

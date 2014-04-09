@@ -20,7 +20,9 @@
 package com.raytheon.uf.edex.hazards.handlers;
 
 import java.util.Arrays;
+import java.util.Date;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardDataStorageRequest;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
@@ -70,6 +72,8 @@ public class HazardStorageHandler implements
             switch (request.getType()) {
             case STORE:
                 for (IHazardEvent event : events) {
+                    event.addHazardAttribute(HazardConstants.PERSIST_TIME,
+                            new Date());
                     manager.store(event);
                 }
                 break;
@@ -83,6 +87,8 @@ public class HazardStorageHandler implements
                 break;
             case UPDATE:
                 for (IHazardEvent event : events) {
+                    event.addHazardAttribute(HazardConstants.PERSIST_TIME,
+                            new Date());
                     manager.update(event);
                 }
                 break;

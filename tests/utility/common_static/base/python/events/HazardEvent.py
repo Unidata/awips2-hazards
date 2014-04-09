@@ -47,7 +47,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.site = None
         self.eventId = None
         self.hazardState = None
-        self.issueTime = None
+        self.creationTime = None
         self.startTime = None
         self.endTime = None
         self.phenomenon = None
@@ -93,12 +93,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setSubtype(self, subtype):
         self.subtype = subtype
         
-    def getIssueTime(self):
-        return self.issueTime
+    def getCreationTime(self):
+        return self.creationTime
     
-    def setIssueTime(self, issueTime):
-        dt = Date(long(self.getMillis(issueTime)))
-        self.issueTime = dt
+    def setCreationTime(self, creationTime):
+        dt = Date(long(self.getMillis(creationTime)))
+        self.creationTime = dt
             
     def setEndTime(self, endTime):
         dt = Date(long(self.getMillis(endTime)))
@@ -140,8 +140,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return getSignificance()
         elif lowerKey == 'subtype':
             return getSubtype()
-        elif lowerKey == 'issuetime':
-            return getIssueTime()
+        elif lowerKey == 'creationtime':
+            return getCreationTime()
         elif lowerKey == 'endtime':
             return getEndTime()
         elif lowerKey == 'starttime': 
@@ -169,8 +169,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             setSignificance(value)
         elif lowerKey == 'subtype':
             setSubtype(value)
-        elif lowerKey == 'issuetime':
-            setIssueTime(value)
+        elif lowerKey == 'creationtime':
+            setCreationTime(value)
         elif lowerKey == 'endtime':
             setEndTime(value)
         elif lowerKey == 'starttime': 
@@ -194,7 +194,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.jobj.setPhenomenon(self.phenomenon)
         self.jobj.setSignificance(self.significance)
         self.jobj.setSubType(self.subtype)
-        self.jobj.setIssueTime(self.issueTime)
+        self.jobj.setCreationTime(self.creationTime)
         self.jobj.setEndTime(self.endTime)
         self.jobj.setStartTime(self.startTime)
         self.jobj.setHazardMode(self.hazardMode)

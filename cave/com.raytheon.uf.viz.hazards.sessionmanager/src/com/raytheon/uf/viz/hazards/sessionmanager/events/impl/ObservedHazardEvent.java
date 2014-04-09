@@ -176,8 +176,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public Date getIssueTime() {
-        return delegate.getIssueTime();
+    public Date getCreationTime() {
+        return delegate.getCreationTime();
     }
 
     @Override
@@ -264,8 +264,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void setIssueTime(Date date) {
-        setIssueTime(date, true, Originator.OTHER);
+    public void setCreationTime(Date date) {
+        setCreationTime(date, true, Originator.OTHER);
     }
 
     @Override
@@ -327,8 +327,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setSubtype(subType, true, originator);
     }
 
-    public void setIssueTime(Date issueTime, IOriginator originator) {
-        setIssueTime(issueTime, true, originator);
+    public void setCreationTime(Date issueTime, IOriginator originator) {
+        setCreationTime(issueTime, true, originator);
     }
 
     public void setEndTime(Date endTime, IOriginator originator) {
@@ -384,7 +384,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setState(HazardState state, boolean notify, boolean persist,
             IOriginator originator) {
-
         delegate.setState(state);
 
         if (notify) {
@@ -442,10 +441,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setIssueTime(Date date, boolean notify,
+    protected void setCreationTime(Date date, boolean notify,
             IOriginator originator) {
-        if (changed(getIssueTime(), date)) {
-            delegate.setIssueTime(date);
+        if (getCreationTime() == null) {
+            delegate.setCreationTime(date);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
                         eventManager, this, originator));

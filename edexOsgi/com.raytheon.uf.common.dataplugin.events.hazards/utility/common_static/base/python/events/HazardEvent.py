@@ -96,12 +96,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def getHazardType(self):
         return self.jobj.getHazardType()
         
-    def getIssueTime(self):
-        return datetime.datetime.fromtimestamp(self.jobj.getIssueTime().getTime() / 1000.0)
+    def getCreationTime(self):
+        return datetime.datetime.fromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
     
-    def setIssueTime(self, issueTime):
-        dt = Date(long(self._getMillis(issueTime)))
-        self.jobj.setIssueTime(dt)
+    def setCreationTime(self, creationTime):
+        dt = Date(long(self._getMillis(creationTime)))
+        self.jobj.setCreationTime(dt)
       
     def getEndTime(self):
         if self.jobj.getEndTime() is not None :
@@ -197,10 +197,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         self.setPhenomenon(javaClass.getPhenomenon())
         self.setSignificance(javaClass.getSignificance())
         self.setSubtype(javaClass.getSubType())
-        if javaClass.getIssueTime() is not None:
-            self.setIssueTime(datetime.datetime.fromtimestamp(javaClass.getIssueTime().getTime() / 1000.0))
+        if javaClass.getCreationTime() is not None:
+            self.setCreationTime(datetime.datetime.fromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
         else :
-            self.setIssueTime(datetime.datetime.now())
+            self.setCreationTime(datetime.datetime.now())
         if javaClass.getStartTime() is not None:
             self.setStartTime(datetime.datetime.fromtimestamp(javaClass.getStartTime().getTime() / 1000.0))
         else:
@@ -231,8 +231,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSignificance()
         elif lowerKey == 'subtype':
             return self.getSubtype()
-        elif lowerKey == 'issuetime':
-            return self.getIssueTime()
+        elif lowerKey == 'creationtime':
+            return self.getCreationTime()
         elif lowerKey == 'endtime':
             return self.getEndTime()
         elif lowerKey == 'starttime': 
@@ -260,8 +260,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setSignificance(value)
         elif lowerKey == 'subtype':
             self.setSubtype(value)
-        elif lowerKey == 'issuetime':
-            self.setIssueTime(value)
+        elif lowerKey == 'creationtime':
+            self.setCreationTime(value)
         elif lowerKey == 'endtime':
             self.setEndTime(value)
         elif lowerKey == 'starttime': 

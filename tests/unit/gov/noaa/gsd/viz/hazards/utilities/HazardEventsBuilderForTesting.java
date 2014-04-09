@@ -92,7 +92,7 @@ public class HazardEventsBuilderForTesting {
                      * Deal with the fact that the handling of IssueTime needs
                      * work. See Issue #694.
                      */
-                    event.setIssueTime(date);
+                    event.setCreationTime(date);
                 } else if (key.equals(HAZARD_EVENT_END_TIME)) {
                     Date date = dateFromMillis(eventDict, key);
                     event.setEndTime(date);

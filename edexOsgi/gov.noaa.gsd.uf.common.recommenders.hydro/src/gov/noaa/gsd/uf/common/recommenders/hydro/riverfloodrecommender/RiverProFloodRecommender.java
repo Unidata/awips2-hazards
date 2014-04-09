@@ -660,9 +660,7 @@ public class RiverProFloodRecommender {
                                     hazardAttributes, riverHazard);
                         }
 
-                        hazardAttributes.put(HazardConstants.CREATION_TIME,
-                                Calendar.getInstance().getTime().getTime());
-                        riverHazard.setIssueTime(Calendar.getInstance()
+                        riverHazard.setCreationTime(Calendar.getInstance()
                                 .getTime());
 
                         List<Double> pointCoords = Lists.newArrayList();

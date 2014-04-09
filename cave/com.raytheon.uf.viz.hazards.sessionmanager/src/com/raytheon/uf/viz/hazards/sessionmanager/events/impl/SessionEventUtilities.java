@@ -53,7 +53,7 @@ public class SessionEventUtilities {
         oldEvent.setSiteID(newEvent.getSiteID());
         oldEvent.setEndTime(newEvent.getEndTime());
         oldEvent.setStartTime(newEvent.getStartTime());
-        oldEvent.setIssueTime(newEvent.getIssueTime());
+        oldEvent.setCreationTime(newEvent.getCreationTime());
         oldEvent.setGeometry(newEvent.getGeometry());
         oldEvent.setPhenomenon(newEvent.getPhenomenon());
         oldEvent.setSignificance(newEvent.getSignificance());

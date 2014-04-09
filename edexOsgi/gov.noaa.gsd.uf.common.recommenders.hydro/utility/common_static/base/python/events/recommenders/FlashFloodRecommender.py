@@ -456,7 +456,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     startDateTime = datetime.datetime.fromtimestamp(currentTime)
                     endDateTime = datetime.datetime.fromtimestamp((currentTime + DEFAULT_FFW_DURATION_IN_SECONDS))
             
-                    hazardEvent.setIssueTime(creationDateTime)
+                    hazardEvent.setCreationTime(creationDateTime)
                     hazardEvent.setStartTime(startDateTime)
                     hazardEvent.setEndTime(endDateTime)
                     pythonEventSet.add(hazardEvent)

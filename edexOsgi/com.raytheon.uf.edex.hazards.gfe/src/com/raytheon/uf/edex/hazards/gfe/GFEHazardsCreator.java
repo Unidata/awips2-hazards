@@ -533,9 +533,9 @@ public class GFEHazardsCreator {
         event.addHazardAttribute(HazardConstants.VTEC_CODES, "[" + rec.getAct()
                 + "]");
         event.addHazardAttribute(HazardConstants.PILS, "[" + rec.getPil() + "]");
-        event.addHazardAttribute(HazardConstants.CREATION_TIME, rec
-                .getIssueTime().getTime().getTime());
-        event.setIssueTime(rec.getIssueTime().getTime());
+        event.addHazardAttribute(HazardConstants.ISSUE_TIME, rec.getIssueTime()
+                .getTime().getTime());
+        event.setCreationTime(rec.getIssueTime().getTime());
 
         return true;
     }

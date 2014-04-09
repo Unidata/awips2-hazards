@@ -23,7 +23,7 @@
 
 class HazardEvent:
     def __init__(self, siteID=None, eventID=None, uniqueID=None, state=None, phenomenon=None, 
-                 significance=None, subtype=None, startTime=None, endTime=None, issueTime=None,
+                 significance=None, subtype=None, startTime=None, endTime=None, creationTime=None,
                  hazardMode=None, geometry=None, hazardAttributes={}):
 
         self.siteID = siteID
@@ -67,7 +67,7 @@ class HazardEvent:
         '''
         Date
         '''
-        self.issueTime = issueTime
+        self.creationTime = creationTime
     
         '''
         ProductClass
@@ -210,18 +210,18 @@ class HazardEvent:
         self.endTime = str(endTime) # new Date(endTime.getTime())
     
     '''
-     * @return the issueTime
+     * @return the creationTime
      '''    
-    def getIssueTime(self):
-        return self.issueTime
+    def getCreationTime(self):
+        return self.creationTime
     
 
     '''
-     * @param issueTime
-     *            the issueTime to set
+     * @param creationTime
+     *            the creationTime to set
      '''    
-    def setIssueTime(self, issueTime):
-        self.issueTime = str(issueTime) # new Date(issueTime.getTime())
+    def setCreationTime(self, creationTime):
+        self.creationTime = str(creationTime)  # new Date(creationTime.getTime())
     
     '''
      * @return the hazardMode

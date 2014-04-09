@@ -151,9 +151,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.ISSUE_TIME)
+    @SlotAttribute(HazardConstants.CREATION_TIME)
     @SlotAttributeConverter(DateSlotConverter.class)
-    private Date issueTime;
+    private Date creationTime;
 
     @DynamicSerializeElement
     @XmlAttribute
@@ -191,7 +191,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setEndTime(event.getEndTime());
         setEventID(event.getEventID());
         setStartTime(event.getStartTime());
-        setIssueTime(event.getIssueTime());
+        setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
@@ -363,20 +363,20 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     /**
-     * @return the issueTime
+     * @return the creationTime
      */
     @Override
-    public Date getIssueTime() {
-        return issueTime;
+    public Date getCreationTime() {
+        return creationTime;
     }
 
     /**
-     * @param issueTime
-     *            the issueTime to set
+     * @param creationTime
+     *            the creationTime to set
      */
     @Override
-    public void setIssueTime(Date issueTime) {
-        this.issueTime = new Date(issueTime.getTime());
+    public void setCreationTime(Date creationTime) {
+        this.creationTime = new Date(creationTime.getTime());
     }
 
     /**
@@ -548,8 +548,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         builder.append("Site : ").append(siteID).append("\n");
         builder.append("Phensig : ").append(phenomenon).append(".")
                 .append(significance).append("\n");
-        builder.append("Issue Time : ").append(new Date(issueTime.getTime()))
-                .append("\n");
+        builder.append("Creation Time : ")
+                .append(new Date(creationTime.getTime())).append("\n");
         builder.append("Start Time : ").append(new Date(startTime.getTime()))
                 .append("\n");
         builder.append("End Time : ").append(new Date(endTime.getTime()))
@@ -587,7 +587,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result
-                + ((issueTime == null) ? 0 : issueTime.hashCode());
+                + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
         result = prime * result
@@ -651,11 +651,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
         if (hazardMode != other.hazardMode) {
             return false;
         }
-        if (issueTime == null) {
-            if (other.issueTime != null) {
+        if (creationTime == null) {
+            if (other.creationTime != null) {
                 return false;
             }
-        } else if (!issueTime.equals(other.issueTime)) {
+        } else if (!creationTime.equals(other.creationTime)) {
             return false;
         }
         if (phenomenon == null) {

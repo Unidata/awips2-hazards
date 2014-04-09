@@ -903,8 +903,6 @@ public final class HazardServicesMessageHandler implements
                     event.removeHazardAttribute(VTEC_CODES);
                     event.removeHazardAttribute(ETNS);
                     event.removeHazardAttribute(PILS);
-                    Date d = new Date();
-                    event.setIssueTime(d);
                     Collection<ObservedHazardEvent> selection = sessionEventManager
                             .getSelectedEvents();
                     oEvent = sessionEventManager.addEvent(event, UIOriginator);

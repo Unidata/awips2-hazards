@@ -96,10 +96,16 @@ WSW = {
             "fieldName": "expirationTime", 
             "type": "date"
         }, 
-        "Issue Time": {
+        "Creation Time": {
             "sortDir": "none", 
             "width": 122, 
-            "fieldName": "issueTime", 
+            "fieldName": "creationTime",
+            "type": "date"
+        },
+        "Issue Time": {
+            "sortDir": "none",
+            "width": 122,
+            "fieldName": "issueTime",
             "type": "date"
         }, 
         "Site ID": {

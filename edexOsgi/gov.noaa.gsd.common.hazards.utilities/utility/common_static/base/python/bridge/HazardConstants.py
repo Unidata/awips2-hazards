@@ -89,7 +89,6 @@ RECOMMENDER_TOOL = "Recommender"
 PRODUCT_GENERATOR_TOOL = "ProductGenerator"
 
 # Data Types
-EVENTS_DATA = "events"
 CANNED_EVENT_DATA = "cannedEvents"
 SETTINGS_DATA = "settings"
 HAZARD_TYPES_DATA = "hazardTypes"

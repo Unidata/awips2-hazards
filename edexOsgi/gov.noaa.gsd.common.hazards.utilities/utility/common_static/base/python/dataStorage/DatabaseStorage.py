@@ -40,10 +40,7 @@ class DatabaseStorage:
         info = json.loads(criteria)
         dataType = info.get("dataType")
 
-        if dataType == "alerts":
-            return self.getAlertValues()
-
-        elif dataType == 'events':
+        if dataType == 'events':
             return self.getEvents(dataType, info)
         
         elif dataType == "colorTable":
@@ -95,9 +92,6 @@ class DatabaseStorage:
         eventDicts = []  
         self.writeEventDatabase(eventDicts)
              
-    def getAlertValues(self):
-        result = self.getLocalData(self._dbPath+"alerts", "Not used")
-        return json.dumps(result)
     
     def getEvents(self, dataType, info):
         self.lockEventDatabase()
@@ -171,27 +165,6 @@ class DatabaseStorage:
         fcntl.lockf(lockFD.fileno(), fcntl.LOCK_UN)
         t2 = time.time()
         lockFD.close()    
-        
-    def newSeqNum(self):
-        try:             #Check if last sequence number file exists, then open and edit
-            seqNumFile = open(self._lastSeqNumFilePath, 'r')
-            seqNum = int(seqNumFile.read())
-            seqNum += 1
-            seqNumFile = open(self._lastSeqNumFilePath, 'w')
-            seqNumFile.write(str(seqNum))
-            seqNumFile.close()
-            return str(seqNum)
-        except:        #If sequence number file does not exist, create it
-            # This is currently set to one more than the max eventID in events.json
-            FIRST_AVAILABLE_EVENT_ID = '17'
-            seqNumFile = open(self._lastSeqNumFilePath, 'w')
-            seqNumFile.write(FIRST_AVAILABLE_EVENT_ID)
-            seqNumFile.close()
-            return FIRST_AVAILABLE_EVENT_ID
-        
-    def getLayerColorTable(self, model):
-        colorTable_dir = self.readOnlyDbPath + "SnowAmtColorTable.xml"
-        return open(colorTable_dir, "r")
 
     def getLocalData(self, filename, id=None, dataFormat="dictionary"): 
         """ 

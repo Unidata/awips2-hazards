@@ -134,22 +134,15 @@ public class HazardHistoryList implements List<IHazardEvent> {
     public boolean add(IHazardEvent e) {
         // events are sorted by time, so we need to compare when we add that way
         // they are stored correctly
-        for (int i = 0; i < size(); i++) {
-            IHazardEvent event = get(i);
-            if (event.getIssueTime() != null && e.getIssueTime() != null) {
-                if (event.getIssueTime().before(e.getIssueTime())) {
-                    continue;
-                } else {
-                    events.add(i, e);
-                    return true;
-                }
-            }
+        boolean success = events.add(e);
+        if (success) {
+            sort();
         }
-        return events.add(e);
+        return success;
     }
 
     private void sort() {
-        Collections.sort(events, IHazardEvent.SORT_BY_ISSUE_TIME);
+        Collections.sort(events, IHazardEvent.SORT_BY_PERSIST_TIME);
     }
 
     /*

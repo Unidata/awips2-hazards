@@ -81,7 +81,10 @@ columns = [
                       "displayString": "Expiration Time",
                      },
                      {
-                      "displayString": "Issue Time", 
+                      "displayString": "Creation Time",
+                     },
+                     {
+                      "displayString": "Issue Time",
                      },
                      {
                       "displayString": "Site ID", 

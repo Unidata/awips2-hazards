@@ -238,7 +238,7 @@ public class HazardEventManager implements IHazardEventManager {
                                 Priority.ERROR,
                                 "Event " + ev.getSiteID() + "-"
                                         + ev.getEventID() + "-"
-                                        + ev.getIssueTime()
+                                        + ev.getCreationTime()
                                         + " is not valid, not storing.", e);
                     }
                 }
@@ -286,7 +286,7 @@ public class HazardEventManager implements IHazardEventManager {
                                 Priority.ERROR,
                                 "Event " + ev.getSiteID() + "-"
                                         + ev.getEventID() + "-"
-                                        + ev.getIssueTime()
+                                        + ev.getCreationTime()
                                         + " is not valid, not updating.");
                     }
                 }

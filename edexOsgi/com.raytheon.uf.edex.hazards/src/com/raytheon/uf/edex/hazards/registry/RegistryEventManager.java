@@ -101,8 +101,8 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             statusHandler.handle(
                     Priority.ERROR,
                     "Unable to store " + event.getSiteID() + "-"
-                            + event.getEventID() + "-" + event.getIssueTime(),
-                    e);
+                            + event.getEventID() + "-"
+                            + event.getCreationTime(), e);
         }
     }
 
@@ -117,8 +117,8 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             statusHandler.handle(
                     Priority.ERROR,
                     "Unable to update " + event.getSiteID() + "-"
-                            + event.getEventID() + "-" + event.getIssueTime(),
-                    e);
+                            + event.getEventID() + "-"
+                            + event.getCreationTime(), e);
         }
     }
 
@@ -133,8 +133,8 @@ public class RegistryEventManager implements IHazardStorageManager<HazardEvent> 
             statusHandler.handle(
                     Priority.ERROR,
                     "Unable to delete " + event.getSiteID() + "-"
-                            + event.getEventID() + "-" + event.getIssueTime(),
-                    e);
+                            + event.getEventID() + "-"
+                            + event.getCreationTime(), e);
         }
     }
 

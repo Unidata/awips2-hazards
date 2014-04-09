@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -100,8 +98,7 @@ public class HazardEventBuilder {
 
     private IHazardEvent finishBuild(IHazardEvent event, Geometry geometry) {
         event.setGeometry(geometry);
-        event.addHazardAttribute(CREATION_TIME, sessionManager.getTimeManager()
-                .getCurrentTime());
+        event.setCreationTime(sessionManager.getTimeManager().getCurrentTime());
         IHazardEvent result = sessionManager.getEventManager().addEvent(event,
                 null);
         return result;

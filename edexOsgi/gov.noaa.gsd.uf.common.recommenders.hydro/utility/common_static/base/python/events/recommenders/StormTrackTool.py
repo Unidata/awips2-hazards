@@ -324,7 +324,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.
-        hazardEvent.setIssueTime(datetime.datetime.fromtimestamp(\
+        hazardEvent.setCreationTime(datetime.datetime.fromtimestamp(\
           forJavaObj["currentTime"] / MILLIS_PER_SECOND))
         hazardEvent.setStartTime(datetime.datetime.fromtimestamp(\
           forJavaObj["startTime"] / MILLIS_PER_SECOND))

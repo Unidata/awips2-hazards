@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_END;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.END_SELECTED_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
@@ -21,7 +22,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HYDROLOGY_SETTING;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PROPOSE_SELECTED_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REMOVE_POTENTIAL_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
@@ -455,7 +455,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private void checkSelectionPreview() {
         List<GeneratedProductList> generatedProductListStorage = mockProductEditorView
                 .getGeneratedProductsList();
-        GeneratedProductList generatedProductList = generatedProductListStorage.get(0);
+        GeneratedProductList generatedProductList = generatedProductListStorage
+                .get(0);
         assertEquals(generatedProductList.size(), 2);
 
         IGeneratedProduct generatedProduct0 = generatedProductList
@@ -586,7 +587,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
+                1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(

@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CAUSE;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FFW_NON_CONVECTIVE_PHEN_SIG;
@@ -195,7 +195,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
+                1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
@@ -210,7 +211,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
+                1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(
@@ -225,7 +227,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_STATE),
                 HazardState.PENDING.getValue());
 
-        assertEquals(asDouble(event.get(ISSUE_TIME)), new Double(1.2971376E12));
+        assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
+                1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_START_TIME)), new Double(
                 1.2971376E12));
         assertEquals(asDouble(event.get(HAZARD_EVENT_END_TIME)), new Double(

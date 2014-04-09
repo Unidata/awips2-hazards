@@ -371,11 +371,16 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_END_TIME = "endTime";
 
     /**
+     * The persistence time of the hazard
+     */
+    public static final String PERSIST_TIME = "persistTime";
+
+    /**
      * interoperability flag. Used to indicate when a hazard has been created
      * based on a GFE grid.
      */
     public static final String GFE_INTEROPERABILITY = "interoperability-gfe";
-    
+
     /**
      * End time "until further notice" key in hazard
      */

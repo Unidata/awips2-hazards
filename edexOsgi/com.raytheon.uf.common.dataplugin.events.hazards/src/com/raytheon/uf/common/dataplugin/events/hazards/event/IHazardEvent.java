@@ -25,6 +25,7 @@ import java.util.Date;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.vividsolutions.jts.geom.Geometry;
@@ -49,10 +50,29 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public interface IHazardEvent extends IEvent {
-    public Comparator<IHazardEvent> SORT_BY_ISSUE_TIME = new Comparator<IHazardEvent>() {
+    public Comparator<IHazardEvent> SORT_BY_PERSIST_TIME = new Comparator<IHazardEvent>() {
         @Override
         public int compare(IHazardEvent o1, IHazardEvent o2) {
-            return o1.getIssueTime().compareTo(o2.getIssueTime());
+            Serializable o1Attr = o1
+                    .getHazardAttribute(HazardConstants.PERSIST_TIME);
+            Serializable o2Attr = o2
+                    .getHazardAttribute(HazardConstants.PERSIST_TIME);
+            Date o1Time = null;
+            if (o1Attr instanceof Date) {
+                o1Time = (Date) o1Attr;
+            } else {
+                o1Time = new Date((Long) o1Attr);
+            }
+
+            Date o2Time = null;
+
+            if (o2Attr instanceof Date) {
+                o2Time = (Date) o2Attr;
+            } else {
+                o2Time = new Date((Long) o2Attr);
+            }
+
+            return o1Time.compareTo(o2Time);
         }
     };
 
@@ -82,9 +102,9 @@ public interface IHazardEvent extends IEvent {
 
     public String getHazardType();
 
-    public Date getIssueTime();
+    public Date getCreationTime();
 
-    public void setIssueTime(Date date);
+    public void setCreationTime(Date date);
 
     public void setEndTime(Date date);
 

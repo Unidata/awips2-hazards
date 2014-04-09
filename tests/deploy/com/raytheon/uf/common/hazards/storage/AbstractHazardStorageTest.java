@@ -116,7 +116,7 @@ public abstract class AbstractHazardStorageTest {
         createdEvent.setEventID(UUID.randomUUID().toString());
         createdEvent.setEndTime(date);
         createdEvent.setHazardMode(clazz);
-        createdEvent.setIssueTime(date);
+        createdEvent.setCreationTime(date);
         createdEvent.setPhenomenon(phen);
         createdEvent.setSignificance(sig);
         createdEvent.setSiteID(site);
@@ -247,7 +247,7 @@ public abstract class AbstractHazardStorageTest {
     public void testUpdateTime() {
         IHazardEvent createdEvent = storeEvent();
         Date newTime = new Date();
-        createdEvent.setIssueTime(newTime);
+        createdEvent.setCreationTime(newTime);
         boolean tf = manager.updateEvent(createdEvent);
         assertTrue(tf);
         HazardHistoryList list = manager

@@ -1,6 +1,6 @@
 package gov.noaa.gsd.viz.hazards
 import static org.junit.Assert.*
-import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting;
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting
 import gov.noaa.gsd.viz.hazards.utilities.Utilities
 
 import org.joda.time.DateTime
@@ -67,7 +67,7 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
         anEvent.getSubType() == "Convective"
         anEvent.getStartTime() == startTime
         anEvent.getEndTime() == endTime
-        anEvent.getIssueTime() == issueTime
+        anEvent.getCreationTime() == issueTime
         anEvent.getHazardMode() == ProductClass.OPERATIONAL
         geometry.getNumPoints() == 5
     }

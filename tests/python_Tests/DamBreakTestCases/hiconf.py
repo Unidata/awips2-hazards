@@ -1234,5 +1234,5 @@ TestCaseResults = \
     "uniqueID": None, 
     "significance": "W", 
     "endTime": "2011-02-08 07:00:00", 
-    "issueTime": "2011-02-08 04:00:00"
+    "creationTime": "2011-02-08 04:00:00"
 }

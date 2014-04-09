@@ -753,9 +753,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 ;// do nothing.
             }
             if (needsPersist) {
-                // issue goes through special route so it does not reset state.
-                event.setIssueTime(SimulatedTime.getSystemTime().getTime(),
-                        false, notification.getOriginator());
                 notificationSender.postNotification(new SessionEventModified(
                         this, event, notification.getOriginator()));
                 try {

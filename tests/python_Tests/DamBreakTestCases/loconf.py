@@ -319,7 +319,7 @@ TestCaseResults = \
     "siteID": "OAX", 
     "significance": "A", 
     "endTime": "2011-02-08 07:00:00", 
-    "issueTime": "2011-02-08 04:00:00",
+    "creationTime": "2011-02-08 04:00:00",
     "subtype": None,
     "uniqueID": None
 

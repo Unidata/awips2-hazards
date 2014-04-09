@@ -140,13 +140,13 @@ public class WarningHazardsCreator {
                     event.setEventID(value);
                     event.setEndTime(record.getEndTime().getTime());
                     event.setStartTime(record.getStartTime().getTime());
-                    event.setIssueTime(record.getIssueTime().getTime());
+                    event.setCreationTime(record.getIssueTime().getTime());
                     event.setGeometry(record.getGeometry());
                     event.setPhenomenon(record.getPhen());
                     event.setSignificance(record.getSig());
                     event.setSiteID(record.getXxxid());
-                    event.addHazardAttribute(HazardConstants.CREATION_TIME,
-                            record.getIssueTime().getTime().getTime());
+                    event.addHazardAttribute(HazardConstants.ISSUE_TIME, record
+                            .getIssueTime().getTime().getTime());
                     event.addHazardAttribute(HazardConstants.EXPIRATION_TIME,
                             record.getPurgeTime().getTime().getTime());
                     event.addHazardAttribute(HazardConstants.ETNS,

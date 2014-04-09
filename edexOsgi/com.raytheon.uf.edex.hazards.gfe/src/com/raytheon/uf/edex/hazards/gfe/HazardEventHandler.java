@@ -20,28 +20,28 @@
 package com.raytheon.uf.edex.hazards.gfe;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.Iterator;
 
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.opengis.referencing.operation.TransformException;
 import org.springframework.util.StringUtils;
 
 import com.raytheon.edex.site.SiteUtil;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -53,8 +53,8 @@ import com.raytheon.uf.common.dataplugin.gfe.db.objects.ParmID;
 import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
 import com.raytheon.uf.common.dataplugin.gfe.grid.Grid2DBit;
 import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData;
-import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceID;
 import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceData.CoordinateType;
+import com.raytheon.uf.common.dataplugin.gfe.reference.ReferenceID;
 import com.raytheon.uf.common.dataplugin.gfe.request.GetGridDataRequest;
 import com.raytheon.uf.common.dataplugin.gfe.server.message.ServerResponse;
 import com.raytheon.uf.common.dataplugin.gfe.server.notify.GridUpdateNotification;
@@ -524,23 +524,14 @@ public class HazardEventHandler {
                     // sufficient to track the hazards that need to be
                     // updated.
                     for (IHazardEvent updateCandidateHazardEvent : updateCandidates) {
-                        Date issueTime = new Date();
+                        Date creationTime = new Date();
 
                         if (updateCandidateHazardEvent.getState() == HazardState.PENDING) {
                             updateCandidateHazardEvent
                                     .setState(HazardState.PROPOSED);
 
-                            /*
-                             * presently we are setting the issue time and
-                             * ProductClass based on an initial review of how
-                             * hazards are stored in the database when they are
-                             * created and proposed directly from hazard
-                             * services.
-                             */
                             updateCandidateHazardEvent
-                                    .setState(HazardState.PROPOSED);
-
-                            updateCandidateHazardEvent.setIssueTime(issueTime);
+                                    .setCreationTime(creationTime);
 
                             updateCandidateHazardEvent.setHazardMode(this
                                     .determineProductClass(parmID));

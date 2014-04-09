@@ -179,9 +179,16 @@ public class DeprecatedEvent {
         endTime = event.getEndTime().getTime();
         endTimeUntilFurtherNotice = (Boolean) attr
                 .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
-        if (event.getIssueTime() != null) {
-            issueTime = event.getIssueTime().getTime();
-            creationTime = event.getIssueTime().getTime();
+        if (event.getCreationTime() != null) {
+            /*
+             * Has it been issued? Otherwise, don't assign an issueTime
+             */
+            if (event.getState() == HazardState.ISSUED
+                    || event.getState() == HazardState.ENDED) {
+                issueTime = (Long) event
+                        .getHazardAttribute(HazardConstants.ISSUE_TIME);
+            }
+            creationTime = event.getCreationTime().getTime();
         } else {
             Object cTimeAttr = attr.get(CREATION_TIME);
             if (cTimeAttr instanceof Date) {

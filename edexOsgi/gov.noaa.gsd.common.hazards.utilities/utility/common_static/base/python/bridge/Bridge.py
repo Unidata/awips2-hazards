@@ -67,8 +67,6 @@ def deprecated(func):
     return newFunc
 
 try:
-    import HazardEventPythonAdapter as Adapter
-    from HazardEventPythonAdapter import HazardEventPythonAdapter
     import JUtil 
     from jep import *  
     import logging, UFStatusHandler
@@ -89,32 +87,12 @@ class Bridge:
             'gov.noaa.gsd.common.utilities', 'Bridge', level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
         
-        # The try/catch block is needed because when this module is used from python-only
-        # unit tests, we have no access to JAVA stuff which is embedded in HazardEventPythonAdapter
-        try:
-            self.hazardEventPythonAdapter = HazardEventPythonAdapter()
-        except:
-            tbData = traceback.format_exc()
-            self.logger.error(tbData)
-        
         self.textUtilityRoot = TEXT_UTILITY_ROOT
         self.caveEdexRepo = {}
 
 ###################################################################################
     ### External Interface methods
         
-    def setHazardEventManager(self, hazardEventManager):
-        '''
-        Sets the object which manages the storage and 
-        retrieval of hazard event information. The implementation
-        of the hazard event manager determines how the
-        events are actually stored (in memory, database, etc.)
-        
-        @param hazardEventManager:  The hazard event manager object.
-                                    Implements IHazardEventManager interface. 
-        '''
-        self.hazardEventPythonAdapter.setHazardEventManager(hazardEventManager)  
-    
     # Data interfaces -- Access to data in the NationalDatabase, AWIPS II, or external source
     #@deprecated
     def putData(self, criteria):
@@ -124,14 +102,7 @@ class Bridge:
         '''
         info = json.loads(criteria, 'UTF-8')
         dataType = info.get(DATA_TYPE_KEY)
-        if dataType == EVENTS_DATA:
-            hazardDicts = info.get(EVENTDICTS_KEY)
-            productCategory = info.get(PRODUCT_CATEGORY_KEY)
-            siteID = info.get(SITE_ID)
-            criteria = self.putHazards(hazardDicts, productCategory, siteID)
-            eventDicts = json.loads(criteria).get(EVENTDICTS_KEY)
-            self.writeEventDB(eventDicts)
-        elif dataType in [SETTINGS_DATA, HAZARD_TYPES_DATA, HAZARD_CATEGORIES_DATA, PRODUCT_DATA,
+        if dataType in [SETTINGS_DATA, HAZARD_TYPES_DATA, HAZARD_CATEGORIES_DATA, PRODUCT_DATA,
                         STARTUP_CONFIG_DATA]:
             hazardServicesConfig = HazardServicesConfig(dataType)
             name, configData, level = info.get('name'), info.get('configData'), info.get(LOCALIZATION_LEVEL)
@@ -360,14 +331,6 @@ class Bridge:
             return json.dumps(self.returnFilteredData(repoEntry, info))
         elif dataType in [CALLS_TO_ACTIONS_DATA]:
             pass        
-        elif dataType == EVENTS_DATA:
-            settings = info.get(SETTINGS_DATA)
-            if settings is not None:
-                return self.getHazards(settings)
-            # DSS.  None of the unit/functional tests ever hit this branch.
-            # Does the GUI?
-            else:
-                return self.DatabaseStorage.getData(criteria)
         elif dataType == GFE_DATA:
             selectedTimeMS = info.get(SELECTED_TIME_MS)
             gridParm = info.get(GRID_PARAM_KEY)
@@ -379,108 +342,10 @@ class Bridge:
 ###################################################################################
     ###  Helper methods
     
- 
-    def getHazards(self, settingsObject):
-        '''
-        Directly calls the DatabaseStorage to get hazards. 
-        All of the hazardCategory and returnType==kml section 
-        can likely be removed, as we no longer use kml files 
-        for hazards
-        @param settingsObject: The currently selected Hazard Services Settings
-        @return: A list of events for the given settings. 
-        '''
-
-        hazardFilter = {}
-        if type(settingsObject) in [types.DictType, collections.OrderedDict]:
-            currentSettings = settingsObject
-        else:
-            # Get the Settings
-            settingsID = str(settingsObject)
-            criteria = {DATA_TYPE_KEY: SETTINGS_DATA, FILTER_KEY:{SETTINGS_ID:settingsID}}
-            currentSettings = self.getData(json.dumps(criteria))
-            currentSettings = json.loads(currentSettings) 
-        self.addCriterium(currentSettings, VISIBLE_TYPES, hazardFilter)
-        self.addCriterium(currentSettings, VISIBLE_STATES, hazardFilter)
-        self.addCriterium(currentSettings, VISIBLE_SITES, hazardFilter)
-        criteria = {DATA_TYPE_KEY:EVENTS_DATA, RETURN_TYPE_KEY:'json'}
-        criteria[FILTER_KEY] = hazardFilter
-        return self.getEvents(criteria)
-    
-    def getEvents(self, info):
-        '''
-        Retrieves events based on the filter passed in.
-        @param info: The criteria to use to filter events.
-        @return: The events  
-        '''
-    
-        filter = info.get(FILTER_KEY)
-
-        eventFilter = {}
-
-        if filter is not None:
-            eventFilter[PHENSIG] = filter.get(VISIBLE_TYPES)
-            eventFilter[SITE_ID] = filter.get(VISIBLE_SITES)
-            eventFilter[STATE] = filter.get(VISIBLE_STATES) 
-        events = self.readEventsFromDB(eventFilter)    
-        
-        return json.dumps(events) 
-
-    def readAllEventsFromDB(self):
-        filter = {}
-        events = self.readEventsFromDB(filter)
-        return events
-        
-    def readEventsFromDB(self, filter):
-        events = self.hazardEventPythonAdapter.getEventsByFilter(filter)
-        return events
-    
-    def writeEventDB(self, eventDicts):
-        self.hazardEventPythonAdapter.storeEvents(eventDicts)  
-    
     def addCriterium(self, settings, key, filters):
         if settings.has_key(key):
             filters[key] = settings[key]
 
-    def putHazards(self, hazardDicts, productCategory, site4id,
-      currentTime=None, mergedRecords='separate', limitRecordTypeTo=None,
-      format='xml', path=''):
-        '''
-        Stores hazard database information.  HazardDicts is a list of dictionaries
-        describing current hazards.  ProductCategory is the product type, e.g.,
-        WSW, and site4id is the 4-letter site id, such as KSLC.  
-        '''
-        #self._formatHeaders(format)
-      
-        # convert strings back into objects
-        if type(hazardDicts) is types.StringType:
-            exec('hazardDicts=' + hazardDicts)
-        if currentTime is not None:
-            currentTime = float(currentTime)
-        if limitRecordTypeTo == 'None':
-            limitRecordTypeTo = None
-
-        # store all of the hazardDicts into the hazardDatabase. This will
-        # overwrite ones with the same hazardSequence number (which is what
-        # we want).
-        
-        # 'store' functionality copied from HazardMergerPurger
-        if type(hazardDicts) is list:
-            hazardDicts_dict = self._convertToDict(hazardDicts)
-            
-        #Get Current Hazards
-        records = self.readAllEventsFromDB()
-
-        # update the dictionary with new dictionary entries
-        keys = hazardDicts_dict.keys()
-        for key in keys:
-            records[key] = hazardDicts_dict[key]
-
-        # purge old records during our store operation
-        records = self._purgeOldRecords(records)
-
-        # write out the information back to disk
-        return json.dumps({DATA_TYPE_KEY:EVENTS_DATA, EVENTDICTS_KEY: records, 'unlock': 'True'})
-    
     def _convertToDict(self, listRecords):
         ''' 
         Converts the list into a dictionary of records.  This assumes that the

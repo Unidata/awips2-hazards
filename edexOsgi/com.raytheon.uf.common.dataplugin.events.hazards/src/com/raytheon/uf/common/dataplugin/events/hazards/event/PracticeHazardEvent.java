@@ -45,6 +45,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
 import org.hibernate.annotations.Type;
 
 import com.raytheon.uf.common.dataplugin.events.IValidator;
@@ -137,7 +138,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     @DynamicSerializeElement
     @XmlElement
     @Column
-    private Date issueTime;
+    private Date creationTime;
 
     @Column
     @DynamicSerializeElement
@@ -187,7 +188,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         setEventID(event.getEventID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
-        setIssueTime(event.getIssueTime());
+        setCreationTime(event.getCreationTime());
         setGeometry(event.getGeometry());
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
@@ -356,20 +357,20 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     }
 
     /**
-     * @return the issueTime
+     * @return the creationTime
      */
     @Override
-    public Date getIssueTime() {
-        return issueTime;
+    public Date getCreationTime() {
+        return creationTime;
     }
 
     /**
-     * @param issueTime
-     *            the issueTime to set
+     * @param creationTime
+     *            the creationTime to set
      */
     @Override
-    public void setIssueTime(Date issueTime) {
-        this.issueTime = issueTime;
+    public void setCreationTime(Date creationTime) {
+        this.creationTime = creationTime;
     }
 
     /**
@@ -544,25 +545,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("EventId : ").append(key.getEventID()).append("\n");
-        builder.append("Site : ").append(getSiteID()).append("\n");
-        builder.append("Phensig : ").append(phenomenon).append(".")
-                .append(significance).append("\n");
-        builder.append("Issue Time : ")
-                .append(new Date(getIssueTime().getTime())).append("\n");
-        builder.append("Start Time : ").append(new Date(startTime.getTime()))
-                .append("\n");
-        builder.append("End Time : ").append(new Date(endTime.getTime()))
-                .append("\n");
-        if (hazardAttrsSerializable.isEmpty() == false) {
-            builder.append("--Attributes--\n");
-            for (IHazardAttribute attr : hazardAttrsSerializable) {
-                builder.append(attr.getKey()).append(":")
-                        .append(attr.getValue()).append("\n");
-            }
-        }
-        return builder.toString();
+        return ToStringBuilder.reflectionToString(this).toString();
     }
 
     /*
@@ -587,7 +570,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
         result = prime * result
-                + ((issueTime == null) ? 0 : issueTime.hashCode());
+                + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
         result = prime * result
                 + ((phenomenon == null) ? 0 : phenomenon.hashCode());
@@ -642,11 +625,11 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         if (hazardMode != other.hazardMode) {
             return false;
         }
-        if (issueTime == null) {
-            if (other.issueTime != null) {
+        if (creationTime == null) {
+            if (other.creationTime != null) {
                 return false;
             }
-        } else if (!issueTime.equals(other.issueTime)) {
+        } else if (!creationTime.equals(other.creationTime)) {
             return false;
         }
         if (key == null) {

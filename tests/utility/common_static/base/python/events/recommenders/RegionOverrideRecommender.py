@@ -64,7 +64,7 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setPhenomenon("FZ")
         event.setSignificance("WARNING")
         d = datetime.datetime.now()
-        event.setIssueTime(d)
+        event.setCreationTime(d)
         event.setEndTime(d)
         event.setStartTime(d)
         event.setHazardMode("O")

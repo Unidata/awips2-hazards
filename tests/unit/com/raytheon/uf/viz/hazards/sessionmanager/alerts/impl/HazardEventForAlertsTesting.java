@@ -46,7 +46,7 @@ public class HazardEventForAlertsTesting implements IHazardEvent {
 
     private Date endTime;
 
-    private Date issueTime;
+    private Date creationTime;
 
     private Geometry geometry;
 
@@ -108,8 +108,8 @@ public class HazardEventForAlertsTesting implements IHazardEvent {
      * @return the issueTime
      */
     @Override
-    public Date getIssueTime() {
-        return issueTime;
+    public Date getCreationTime() {
+        return creationTime;
     }
 
     /**
@@ -117,8 +117,8 @@ public class HazardEventForAlertsTesting implements IHazardEvent {
      *            the issueTime to set
      */
     @Override
-    public void setIssueTime(Date issueTime) {
-        this.issueTime = issueTime;
+    public void setCreationTime(Date creationTime) {
+        this.creationTime = creationTime;
     }
 
     /**
