@@ -34,7 +34,6 @@ import jep.JepException;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
-import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -69,6 +68,14 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     levels can now override the base recommender.
  * Jan 20, 2014 2766       bkowal      Updated to use the Python Overrider
  * Mar 19, 2014 3293       bkowal      Added the REGION localization level.
+ * Apr 09, 2014 3395       bkowal      Improve recommender inventory management.
+ *                                     Scripts are now only loaded and initialized
+ *                                     as they are used. Scripts that are updated
+ *                                     via localization are now dropped after the
+ *                                     initial update and they will only be
+ *                                     re-loaded / re-initialized if the updated
+ *                                     script is actually used instead of after
+ *                                     every change / save.
  * 
  * </pre>
  * 
@@ -131,14 +138,6 @@ public abstract class AbstractRecommenderScriptManager extends
 
         jep.eval("import sys");
         jep.eval("sys.argv = ['RecommenderInterface']");
-
-        Thread thread = new Thread("Retrieve Recommender List") {
-            @Override
-            public void run() {
-                retrieveRecommenderList();
-            };
-        };
-        thread.run();
     }
 
     /**
@@ -254,6 +253,25 @@ public abstract class AbstractRecommenderScriptManager extends
             String recommenderName);
 
     /**
+     * This method will check the inventory to verify that the specified
+     * recommender has been loaded and initialized. If the recommender is not
+     * found in the inventory, the method will attempt to load and initialize
+     * the recommender.
+     * 
+     * @param recommenderName
+     *            The name of the recommender
+     * @return true if the recommender is in the inventory or if the recommender
+     *         has been successfully loaded and initialized; otherwise, false
+     */
+    protected boolean verifyRecommenderIsLoaded(String recommenderName) {
+        if (this.inventory.containsKey(recommenderName)) {
+            return true;
+        }
+
+        return this.initializeRecommender(recommenderName);
+    }
+
+    /**
      * This method just runs the execute method on the recommender. This method
      * assumes all the information that is being passed in is correct. This
      * should not be called by clients.
@@ -266,6 +284,14 @@ public abstract class AbstractRecommenderScriptManager extends
     public EventSet<IEvent> executeRecommender(String recommenderName,
             EventSet<IEvent> eventSet, Map<String, Serializable> dialogValues,
             Map<String, Serializable> spatialValues) {
+        /*
+         * This function call may only be needed in this location for the
+         * automated tests and not in a typical usage scenario?
+         */
+        if (this.verifyRecommenderIsLoaded(recommenderName) == false) {
+            return resolveEvents(null);
+        }
+
         final Map<String, Object> args = getStarterMap(recommenderName);
         args.put("eventSet", eventSet);
         args.put("dialogInputMap", dialogValues);
@@ -280,6 +306,36 @@ public abstract class AbstractRecommenderScriptManager extends
         return resolveEvents(retVal);
     }
 
+    private boolean initializeRecommender(String recName) {
+        long startTime = System.currentTimeMillis();
+        LocalizationFile localizationFile = this
+                .lookupRecommenderLocalization(recName);
+        if (localizationFile == null) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to find recommender: " + recName + "!");
+            return false;
+        }
+
+        // load the recommender.
+        EventRecommender reco = setMetadata(localizationFile);
+        if (reco != null) {
+            inventory.put(reco.getName(), reco);
+        } else {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Failed to initialize recommender: " + recName + "!");
+            return false;
+        }
+
+        localizationFile.addFileUpdatedObserver(this);
+
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        statusHandler.handle(Priority.VERBOSE, "Initialized Recommender "
+                + recName + " in " + duration + " ms.");
+
+        return true;
+    }
+
     /**
      * Method to take in and retrieve information from either spatial info or
      * dialog info.
@@ -290,13 +346,18 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     @SuppressWarnings("unchecked")
     public <T> Map<String, T> getInfo(String recName, String methodName) {
+        // determine if the recommender has been loaded & initialized yet.
+        if (this.verifyRecommenderIsLoaded(recName) == false) {
+            return new HashMap<String, T>();
+        }
+
         Object retVal = null;
         try {
             final Map<String, Object> args = getStarterMap(recName);
             retVal = execute(methodName, INTERFACE, args);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR, "Unable to get info from "
-                    + methodName, e);
+                    + methodName + " for Recommender " + recName, e);
         }
         if (retVal == null) {
             retVal = new HashMap<String, T>();
@@ -304,20 +365,18 @@ public abstract class AbstractRecommenderScriptManager extends
         return (Map<String, T>) retVal;
     }
 
-    /**
-     * Retrieve the recommenders based on the file name
-     */
-    private void retrieveRecommenderList() {
+    private LocalizationFile lookupRecommenderLocalization(final String recName) {
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationFile[] lFiles = manager.listStaticFiles(
                 recommenderDir.getName(), new String[] { "py" }, false, true);
         for (LocalizationFile lFile : lFiles) {
-            lFile.addFileUpdatedObserver(this);
-            EventRecommender reco = setMetadata(lFile);
-            if (reco != null) {
-                inventory.put(reco.getName(), reco);
+            final String modName = resolveCorrectName(lFile.getFile().getName());
+            if (recName.equals(modName)) {
+                return lFile;
             }
         }
+
+        return null;
     }
 
     /*
@@ -329,33 +388,19 @@ public abstract class AbstractRecommenderScriptManager extends
      */
     @Override
     public void fileUpdated(FileUpdatedMessage message) {
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-        FileChangeType type = message.getChangeType();
         String[] dirs = message.getFileName().split(File.separator);
         String name = dirs[dirs.length - 1];
         String filename = resolveCorrectName(name);
-        if (type == FileChangeType.UPDATED) {
-            EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
-                    message.getContext(), message.getFileName()));
-            if (rec != null) {
-                inventory.put(filename, rec);
-            }
-        } else if (type == FileChangeType.ADDED) {
-            if (inventory.get(filename) != null) {
-                inventory.get(filename).getFile()
-                        .removeFileUpdatedObserver(this);
-                inventory.remove(filename);
-            }
-            EventRecommender rec = setMetadata(pathMgr.getLocalizationFile(
-                    message.getContext(), message.getFileName()));
-            if (rec != null) {
-                inventory.put(filename, rec);
-            }
-            rec.getFile().addFileUpdatedObserver(this);
-        } else if (type == FileChangeType.DELETED) {
-            EventRecommender rec = inventory.remove(filename);
-            rec.getFile().removeFileUpdatedObserver(this);
+        if (this.inventory.get(filename) != null) {
+            this.inventory.get(filename).getFile()
+                    .removeFileUpdatedObserver(this);
+            final String modName = resolveCorrectName(name);
+            statusHandler.handle(Priority.VERBOSE,
+                    "Removing initialized Recommender " + modName
+                            + " due to update.");
+            this.inventory.remove(filename);
         }
+
         super.fileUpdated(message);
     }
 
@@ -363,6 +408,7 @@ public abstract class AbstractRecommenderScriptManager extends
     private EventRecommender setMetadata(LocalizationFile file) {
         final String modName = resolveCorrectName(file.getFile().getName());
         Map<String, Serializable> results = null;
+
         try {
             if (isInstantiated(modName) == false) {
                 instantiatePythonScript(modName);
