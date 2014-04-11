@@ -19,8 +19,10 @@
 # #
 
 import JUtil
-import ProductText
+from ProductText import ProductText
 
+from java.util import ArrayList
+from java.lang import Integer
 from com.raytheon.uf.common.hazards.productgen.editable import ProductTextUtil
 
 
@@ -43,6 +45,7 @@ def createProductText(key, productCategory, productID, segment, eventID, value):
     to a Java Serializable object.
     '''
     val = JUtil.pyValToJavaObj(value)
+    eventID = JUtil.pyValToJavaObj(eventID)
     ProductTextUtil.createProductText(key, productCategory, productID, segment, eventID, val)
 
 def updateProductText(key, productCategory, productID, segment, eventID, value):
@@ -51,18 +54,21 @@ def updateProductText(key, productCategory, productID, segment, eventID, value):
     to a Java Serializable object.
     '''
     val = JUtil.pyValToJavaObj(value)
+    eventID = JUtil.pyValToJavaObj(eventID)
     ProductTextUtil.updateProductText(key, productCategory, productID, segment, eventID, val)
     
 def deleteProductText(key, productCategory, productID, segment, eventID):
     '''
     Deletes an entry from the database.
     '''
+    eventID = JUtil.pyValToJavaObj(eventID)
     ProductTextUtil.deleteProductText(key, productCategory, productID, segment, eventID)
 
 def createOrUpdateProductText(key, productCategory, productID, segment, eventID):
     '''
     Saves or updates to the database.
     '''
+    eventID = JUtil.pyValToJavaObj(eventID)
     ProductTextUtil.createOrUpdateProductText(key, productCategory, productID, segment, eventID)
 
 def retrieveProductText(key, productCategory, productID, segment, eventID):
@@ -70,6 +76,7 @@ def retrieveProductText(key, productCategory, productID, segment, eventID):
     Returns a list of ProductText objects.  Retrieves from the database based on the keys passed in.
     If the user wants to match anything in that column, they should pass in None for that column.
     '''
+    eventID = JUtil.pyValToJavaObj(eventID)
     productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventID)
     
     size = productTextList.size()
@@ -77,4 +84,5 @@ def retrieveProductText(key, productCategory, productID, segment, eventID):
     for i in range(size):
         pythonlist.append(ProductText(productTextList.get(i)))
     
-    return pythonlist       
+    return pythonlist
+

@@ -28,11 +28,14 @@ import org.eclipse.swt.custom.StyledText;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
+import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialogUtility;
+import com.raytheon.uf.viz.productgen.dialog.data.AbstractProductGeneratorData;
 import com.raytheon.uf.viz.productgen.dialog.formats.AbstractFormatTab;
 import com.raytheon.uf.viz.productgen.dialog.formats.TextFormatTab;
 
@@ -71,50 +74,84 @@ public class GenerateListener implements
         VizApp.runAsync(new Runnable() {
             public void run() {
                 int offset = 0;
-                for (GeneratedProductList products : dialog
-                        .getGeneratedProductListStorage()) {
-                    if (products.getProductInfo().equals(
-                            productList.getProductInfo())) {
-                        int index = 0;
-                        for (IGeneratedProduct product : productList) {
-                            products.set(index, product);
-                            Set<String> formats = product.getEntries().keySet();
-                            Map<String, AbstractFormatTab> formatTabMap = dialog
-                                    .getFormatTabMap(offset + index);
-                            for (String format : formats) {
-                                List<Serializable> entries = product
-                                        .getEntry(format);
-                                int counter = 0;
-                                for (Serializable entry : entries) {
-                                    String label = format;
-                                    if (entries.size() > 2) {
-                                        label = String
-                                                .format(ProductGenerationDialog.TAB_LABEL_FORMAT,
-                                                        format, counter);
-                                    }
-                                    AbstractFormatTab tab = formatTabMap
-                                            .get(label);
+                try {
+                    for (GeneratedProductList products : dialog
+                            .getGeneratedProductListStorage()) {
+                        if (products.getProductInfo().equals(
+                                productList.getProductInfo())) {
+                            int index = 0;
+                            for (IGeneratedProduct product : productList) {
+                                products.set(index, product);
+                                Set<String> formats = product.getEntries()
+                                        .keySet();
+                                Map<String, AbstractFormatTab> formatTabMap = dialog
+                                        .getFormatTabMap(offset + index);
+                                for (String format : formats) {
+                                    List<Serializable> entries = product
+                                            .getEntry(format);
+                                    int counter = 0;
+                                    for (Serializable entry : entries) {
+                                        String label = format;
+                                        if (entries.size() > 2) {
+                                            label = String
+                                                    .format(ProductGenerationDialog.TAB_LABEL_FORMAT,
+                                                            format, counter);
+                                        }
+                                        AbstractFormatTab tab = formatTabMap
+                                                .get(label);
 
-                                    if (tab instanceof TextFormatTab) {
-                                        TextFormatTab textTab = (TextFormatTab) tab;
-                                        StyledText styledText = textTab
-                                                .getText();
+                                        if (tab instanceof TextFormatTab) {
+                                            TextFormatTab textTab = (TextFormatTab) tab;
+                                            StyledText styledText = textTab
+                                                    .getText();
 
-                                        String finalProduct = String
-                                                .valueOf(entry);
-                                        styledText.setText(finalProduct);
+                                            String finalProduct = String
+                                                    .valueOf(entry);
+                                            styledText.setData(styledText
+                                                    .getText());
+                                            styledText.setText(finalProduct);
+                                        }
+                                        counter++;
                                     }
-                                    counter++;
                                 }
+                                index++;
                             }
-                            index++;
+                        }
+                        offset += products.size();
+                    }
+
+                    // reset the Formatted tab
+                    dialog.resetFormattedKeyCombos();
+
+                    List<AbstractProductGeneratorData> decodedDataList = dialog
+                            .getDecodedDataList(dialog
+                                    .getFolderSelectionIndex());
+                    int selectionIndex = dialog.getCurrentSegmentCombo()
+                            .getSelectionIndex() - 1;
+                    AbstractProductGeneratorData segment = decodedDataList
+                            .get(selectionIndex);
+                    Serializable value = null;
+                    for (KeyInfo key : segment.getEditableKeys()) {
+                        value = segment.getModifiedValue(key, false);
+                        if (value != null) {
+                            break;
                         }
                     }
-                    offset += products.size();
+                    dialog.setNotHighlighting(false);
+                    ProductGenerationDialogUtility.clearHighlighting(dialog
+                            .getCurrentFormatTabMap());
+                    for (AbstractFormatTab tab : dialog
+                            .getCurrentFormatTabMap().values()) {
+                        if (tab instanceof TextFormatTab && value != null) {
+                            TextFormatTab textTab = (TextFormatTab) tab;
+                            ProductGenerationDialogUtility.highlight(
+                                    textTab.getText(), String.valueOf(value));
+                        }
+                    }
+                    dialog.setNotHighlighting(true);
+                } finally {
+                    dialog.getProgressBar().setVisible(false);
                 }
-
-                // reset the Formatted tab
-                dialog.resetFormattedKeyCombos();
             };
         });
 
@@ -123,7 +160,7 @@ public class GenerateListener implements
     @Override
     public void jobFailed(Throwable e) {
         handler.error("Unable to run product generation", e);
-
+        dialog.getProgressBar().setVisible(false);
     }
 
 }

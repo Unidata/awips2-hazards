@@ -41,6 +41,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Jan 10, 2014 2890       bkowal      Added an identifier to associate a
  *                                     ProductInformation with a product generation
  *                                     request.
+ * Mar 18, 2014 2917       jsanchez    Added getter/setters for ProductFormats.
  * 
  * </pre>
  * 
@@ -59,7 +60,7 @@ public class ProductInformation {
 
     private Map<String, Serializable> dialogSelections;
 
-    private String[] formats;
+    private ProductFormats productFormats;
 
     private GeneratedProductList products;
 
@@ -107,12 +108,12 @@ public class ProductInformation {
         this.dialogSelections = dialogSelections;
     }
 
-    public String[] getFormats() {
-        return formats;
+    public ProductFormats getProductFormats() {
+        return productFormats;
     }
 
-    public void setFormats(String[] formats) {
-        this.formats = formats;
+    public void setProductFormats(ProductFormats productFormats) {
+        this.productFormats = productFormats;
     }
 
     public GeneratedProductList getProducts() {

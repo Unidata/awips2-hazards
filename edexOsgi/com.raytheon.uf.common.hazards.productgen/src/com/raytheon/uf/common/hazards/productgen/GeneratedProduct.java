@@ -55,7 +55,7 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
     /* Map of editable entries - mainly used for GUI highlighting */
     private Map<String, List<LinkedHashMap<String, Serializable>>> editableEntries = new LinkedHashMap<String, List<LinkedHashMap<String, Serializable>>>();
 
-    private LinkedHashMap<String, Serializable> data;
+    private LinkedHashMap<KeyInfo, Serializable> data;
 
     /** Errors thrown executing python product classes */
     private String errors;
@@ -83,11 +83,11 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
         this.entries.put(key, entry);
     }
 
-    public LinkedHashMap<String, Serializable> getData() {
+    public LinkedHashMap<KeyInfo, Serializable> getData() {
         return data;
     }
 
-    public void setData(LinkedHashMap<String, Serializable> data) {
+    public void setData(LinkedHashMap<KeyInfo, Serializable> data) {
         this.data = data;
     }
 

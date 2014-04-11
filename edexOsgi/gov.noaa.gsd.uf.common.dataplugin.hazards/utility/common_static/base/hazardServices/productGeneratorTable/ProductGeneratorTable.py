@@ -25,7 +25,7 @@ ProductGeneratorTable = {
              ('FF.W.Convective',     "Flood"),
              ('FF.W.NonConvective',  "Flood"),             
              ],
-            "previewFormatters": ["Legacy", "XML", "CAP"],
+            "previewFormatters": ["Legacy"],
             "issueFormatters": ["Legacy", "XML", "CAP"],   
             }, 
         "ESF_ProductGenerator": {

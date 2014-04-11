@@ -55,9 +55,9 @@ public interface IGeneratedProduct {
 
     public Map<String, List<LinkedHashMap<String, Serializable>>> getEditableEntries();
 
-    public LinkedHashMap<String, Serializable> getData();
+    public LinkedHashMap<KeyInfo, Serializable> getData();
 
-    public void setData(LinkedHashMap<String, Serializable> data);
+    public void setData(LinkedHashMap<KeyInfo, Serializable> data);
 
     /**
      * @param format

@@ -26,6 +26,7 @@ import java.util.List;
 import jep.JepException;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.product.ProductScript;
 
 /**
@@ -51,13 +52,13 @@ public class ProductScriptUpdater extends
 
     private String product;
 
-    private List<LinkedHashMap<String, Serializable>> updatedDataList;
+    private List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList;
 
     /** String array of formats */
     private String[] formats;
 
     public ProductScriptUpdater(String product,
-            List<LinkedHashMap<String, Serializable>> updateDataList,
+            List<LinkedHashMap<KeyInfo, Serializable>> updateDataList,
             String[] formats) {
         this.product = product;
         this.updatedDataList = updateDataList;

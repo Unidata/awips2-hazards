@@ -21,6 +21,7 @@ import EventFactory
 import GeometryFactory
 import JUtil
 import VTECConstants
+from KeyInfo import KeyInfo
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -82,11 +83,13 @@ class TextProductCommon(object):
         @param key, potentially without a suffix e.g. 'info'
         @return the key value accounting for suffixes e.g. 'info:skip'
         '''        
-        for dictKey in [key, key+':skip', key+':editable']:
-            if dictionary.get(dictKey): 
-                return dictionary.get(dictKey)
-            if altDict and altDict.get(dictKey):
-                return altDict.get(dictKey)
+        if dictionary.get(key): 
+            return dictionary.get(key)
+        elif len(KeyInfo.getElements(key, dictionary)) > 0:
+            elements = KeyInfo.getElements(key, dictionary)
+            return dictionary[elements[0]]
+        if altDict and altDict.get(key):
+            return altDict.get(key)
         return default
                
     def setSiteID(self, siteID):

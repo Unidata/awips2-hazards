@@ -26,6 +26,8 @@ import java.util.regex.Pattern;
 
 import org.eclipse.swt.custom.StyledText;
 
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+
 /**
  * Non segmented data of the product generator data.
  * 
@@ -50,20 +52,8 @@ public class ProductLevelData extends AbstractProductGeneratorData {
                     "(^(\\w{2}[CZ]\\d{3}\\S*-\\d{6}-)$|((\\d{3}-)*\\d{6}-)$|((\\d{3}-)+))\\n",
                     Pattern.MULTILINE);
 
-    public ProductLevelData(Map<String, Serializable> data) {
-        super(data);
-    }
-
-    @Override
-    public String getDescriptionName() {
-        return "Product Level";
-    }
-
-    @Override
-    public String getSegmentID() {
-        // Since product level data is outside of the segments,
-        // null will be returned
-        return null;
+    public ProductLevelData(Map<KeyInfo, Serializable> data) {
+        super(data, null);
     }
 
     @Override
@@ -76,7 +66,16 @@ public class ProductLevelData extends AbstractProductGeneratorData {
 
             styledText.setSelectionRange(0, index);
         }
+    }
 
+    @Override
+    public String getDescriptionName() {
+        return "Product Level";
+    }
+
+    @Override
+    public String getSegmentID() {
+        return null;
     }
 
 }

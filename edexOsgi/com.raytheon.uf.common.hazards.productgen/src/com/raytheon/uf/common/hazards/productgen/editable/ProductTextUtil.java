@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextRequest.ProductRequestType;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
+ * Apr  7, 2014 2917       jsanchez  Changed the methods to accept eventIDs as a List<Integer>
  * 
  * </pre>
  * 
@@ -62,7 +64,8 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse createProductText(String key,
             String productCategory, String productID, String segment,
-            String eventID, Serializable value) {
+            List<Integer> eventIDs, Serializable value) {
+        String eventID = createQueryConstraintEventID(eventIDs);
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventID, value, ProductRequestType.CREATE);
         if (response.getExceptions() != null) {
@@ -85,7 +88,8 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse updateProductText(String key,
             String productCategory, String productID, String segment,
-            String eventID, Serializable value) {
+            List<Integer> eventIDs, Serializable value) {
+        String eventID = createQueryConstraintEventID(eventIDs);
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventID, value, ProductRequestType.UPDATE);
         if (response.getExceptions() != null) {
@@ -109,7 +113,8 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse deleteProductText(String key,
             String productCategory, String productID, String segment,
-            String eventID) {
+            List<Integer> eventIDs) {
+        String eventID = createQueryConstraintEventID(eventIDs);
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventID, null, ProductRequestType.DELETE);
         if (response.getExceptions() != null) {
@@ -134,7 +139,8 @@ public class ProductTextUtil {
      */
     public static List<ProductText> retrieveProductText(String key,
             String productCategory, String productID, String segment,
-            String eventID) {
+            List<Integer> eventIDs) {
+        String eventID = createQueryConstraintEventID(eventIDs);
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventID, null, ProductRequestType.RETRIEVE);
         if (response != null && response.getText() != null) {
@@ -156,7 +162,8 @@ public class ProductTextUtil {
      */
     public static ProductTextResponse createOrUpdateProductText(String key,
             String productCategory, String productID, String segment,
-            String eventID, Serializable value) {
+            List<Integer> eventIDs, Serializable value) {
+        String eventID = createQueryConstraintEventID(eventIDs);
         ProductTextResponse response = sendRequest(key, productCategory,
                 productID, segment, eventID, value,
                 ProductRequestType.SAVE_OR_UPDATE);
@@ -192,5 +199,17 @@ public class ProductTextUtil {
             handler.error("Unable to send request to server", e);
         }
         return response;
+    }
+
+    private static String createQueryConstraintEventID(List<Integer> eventIDs) {
+        Collections.sort(eventIDs);
+        StringBuilder sb = new StringBuilder();
+        for (Integer eventID : eventIDs) {
+            if (sb.length() > 0) {
+                sb.append(",");
+            }
+            sb.append(eventID);
+        }
+        return sb.toString();
     }
 }

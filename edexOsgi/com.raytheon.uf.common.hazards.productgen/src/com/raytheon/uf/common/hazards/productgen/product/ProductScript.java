@@ -33,6 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.LocalizationFile;
@@ -185,7 +186,7 @@ public class ProductScript extends PythonScriptController {
      * @return
      */
     public GeneratedProductList updateGeneratedProducts(String product,
-            List<LinkedHashMap<String, Serializable>> updatedDataList,
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
             String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(

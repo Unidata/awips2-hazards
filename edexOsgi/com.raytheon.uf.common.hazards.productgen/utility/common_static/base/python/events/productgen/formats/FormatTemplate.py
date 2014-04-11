@@ -47,14 +47,5 @@ class Formatter(object):
         @return: Abstract method does not return anything
         """
         return
-    
-    @abc.abstractmethod
-    def formatFrom(self, text):
-        """
-        Subclasses need to override this method.
-        @param text: raw text to be formatted
-        @return: Abstract method does not return anything
-        """
-        return
 
         

@@ -113,7 +113,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param listener
      */
     public void update(String product,
-            List<LinkedHashMap<String, Serializable>> updatedDataList,
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
             String[] formats, IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
                 product, updatedDataList, formats);

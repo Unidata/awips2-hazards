@@ -29,7 +29,7 @@ import java.util.Set;
 
 import org.eclipse.swt.custom.StyledText;
 
-import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialogUtility;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 /**
  * Abstract class to represent the different parts of a product generator data.
@@ -49,38 +49,62 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialogUtility;
  */
 
 public abstract class AbstractProductGeneratorData {
-    private Map<String, Serializable> data;
+
+    private Map<KeyInfo, Serializable> data;
+
+    protected String segmentID;
 
     private class EditableKeyInfo {
 
-        List<String> path;
+        List<KeyInfo> path;
 
         boolean modified = false;
 
+        boolean isDisplayable = false;
+
         Serializable value;
+
+        Serializable previousValue;
     }
 
-    private Map<String, EditableKeyInfo> editableKeyInfoMap = new HashMap<String, EditableKeyInfo>();
+    private Map<KeyInfo, EditableKeyInfo> editableKeyInfoMap = new HashMap<KeyInfo, EditableKeyInfo>();
 
-    public AbstractProductGeneratorData(Map<String, Serializable> data) {
+    public AbstractProductGeneratorData(Map<KeyInfo, Serializable> data,
+            String segmentID) {
         this.data = data;
+        this.segmentID = segmentID;
         determineEditableKeyPaths(null, data, false);
     }
 
     abstract public String getDescriptionName();
 
-    abstract public String getSegmentID();
+    public String getSegmentID() {
+        return segmentID;
+    }
+
+    abstract public void highlight(StyledText styledText);
 
     /**
      * Returns the set of editable keys of the data dictionary
      * 
      * @return
      */
-    public Set<String> getEditableKeys() {
+    public Set<KeyInfo> getEditableKeys() {
         return editableKeyInfoMap.keySet();
     }
 
-    public Map<String, Serializable> getData() {
+    public List<KeyInfo> getDisplayableKeys() {
+        List<KeyInfo> displayableKeys = new ArrayList<KeyInfo>();
+        for (Entry<KeyInfo, EditableKeyInfo> entry : editableKeyInfoMap
+                .entrySet()) {
+            if (entry.getValue().isDisplayable) {
+                displayableKeys.add(entry.getKey());
+            }
+        }
+        return displayableKeys;
+    }
+
+    public Map<KeyInfo, Serializable> getData() {
         return data;
     }
 
@@ -90,12 +114,12 @@ public abstract class AbstractProductGeneratorData {
      * @param editableKey
      * @return
      */
-    public Serializable getValue(String editableKey) {
+    public Serializable getValue(KeyInfo editableKey) {
         return editableKeyInfoMap.get(editableKey).value;
     }
 
-    public List<String> getPath(String editableKey) {
-        List<String> path = new ArrayList<String>();
+    public List<KeyInfo> getPath(KeyInfo editableKey) {
+        List<KeyInfo> path = new ArrayList<KeyInfo>();
         EditableKeyInfo info = editableKeyInfoMap.get(editableKey);
         if (info != null && info.path != null) {
             path.addAll(info.path);
@@ -110,17 +134,47 @@ public abstract class AbstractProductGeneratorData {
      * @param editableKey
      * @param value
      */
-    public void modify(String editableKey, Serializable value) {
-        editableKeyInfoMap.get(editableKey).value = value;
-        editableKeyInfoMap.get(editableKey).modified = true;
+    public void modify(KeyInfo editableKey, Serializable value) {
+        EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(editableKey);
+        editableKeyInfo.previousValue = editableKeyInfo.value;
+        editableKeyInfo.value = value;
+        editableKeyInfo.modified = true;
     }
 
-    public Serializable getModifiedValue(String editableKey) {
+    public Serializable getModifiedValue(KeyInfo editableKey, boolean saving) {
         EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(editableKey);
         if (editableKeyInfo.modified) {
+            if (saving) {
+                editableKeyInfo.previousValue = editableKeyInfo.value;
+                editableKeyInfo.modified = false;
+            }
             return editableKeyInfo.value;
         }
         return null;
+    }
+
+    /**
+     * If the editableKey was modified, the previous value will be returned and
+     * the modified flag will be set to false.
+     * 
+     * @param editableKey
+     * @return
+     */
+    public Serializable revertValue(KeyInfo editableKey) {
+        EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(editableKey);
+        if (editableKeyInfo.modified) {
+            editableKeyInfo.modified = false;
+            editableKeyInfo.value = editableKeyInfo.previousValue;
+            editableKeyInfo.previousValue = null;
+            return editableKeyInfo.value;
+        }
+        return null;
+    }
+
+    public void clearModifiedValues() {
+        for (EditableKeyInfo editableKeyInfo : editableKeyInfoMap.values()) {
+            editableKeyInfo.modified = false;
+        }
     }
 
     /**
@@ -131,20 +185,26 @@ public abstract class AbstractProductGeneratorData {
      * @param data
      * @param isParentEditable
      */
-    private void determineEditableKeyPaths(List<String> parentPath,
-            Map<String, Serializable> data, boolean isParentEditable) {
+    private void determineEditableKeyPaths(List<KeyInfo> parentPath,
+            Map<KeyInfo, Serializable> data, boolean isParentEditable) {
 
         if (data != null) {
-            for (Entry<String, Serializable> entry : data.entrySet()) {
-                boolean isEditable = entry.getKey().contains(
-                        ProductGenerationDialogUtility.EDITABLE)
-                        || isParentEditable;
-                String key = entry.getKey().replace(
-                        ProductGenerationDialogUtility.EDITABLE, "");
+            for (Entry<KeyInfo, Serializable> entry : data.entrySet()) {
+                KeyInfo key = entry.getKey();
+                boolean isEditable = key.isEditable() || isParentEditable;
+                boolean isDisplayable = key.isDisplayable();
+
+                if (isDisplayable) {
+                    EditableKeyInfo info = new EditableKeyInfo();
+                    info.isDisplayable = true;
+                    info.value = entry.getValue();
+                    editableKeyInfoMap.put(key, info);
+                    continue;
+                }
                 if (entry.getValue() instanceof Map<?, ?>) {
-                    Map<String, Serializable> subdata = (Map<String, Serializable>) entry
+                    Map<KeyInfo, Serializable> subdata = (Map<KeyInfo, Serializable>) entry
                             .getValue();
-                    List<String> path = new ArrayList<String>();
+                    List<KeyInfo> path = new ArrayList<KeyInfo>();
                     if (parentPath != null) {
                         path.addAll(parentPath);
                     }
@@ -155,32 +215,30 @@ public abstract class AbstractProductGeneratorData {
                     if (list != null && !list.isEmpty()) {
                         Object firstItem = list.get(0);
                         if (firstItem instanceof Map<?, ?>) {
-                            List<String> path = new ArrayList<String>();
+                            List<KeyInfo> path = new ArrayList<KeyInfo>();
                             if (parentPath != null) {
                                 path.addAll(parentPath);
                             }
                             path.add(entry.getKey());
                             for (Object item : list) {
                                 determineEditableKeyPaths(path,
-                                        (Map<String, Serializable>) item,
+                                        (Map<KeyInfo, Serializable>) item,
                                         isEditable);
                             }
                         } else if (isEditable) {
                             EditableKeyInfo info = new EditableKeyInfo();
                             info.path = parentPath;
                             info.value = entry.getValue();
-                            editableKeyInfoMap.put(key, info);
+                            editableKeyInfoMap.put(entry.getKey(), info);
                         }
                     }
                 } else if (isEditable) {
                     EditableKeyInfo info = new EditableKeyInfo();
                     info.path = parentPath;
                     info.value = entry.getValue();
-                    editableKeyInfoMap.put(key, info);
+                    editableKeyInfoMap.put(entry.getKey(), info);
                 }
             }
         }
     }
-
-    abstract public void highlight(StyledText styledText);
 }

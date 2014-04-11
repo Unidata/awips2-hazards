@@ -19,7 +19,7 @@
 # #
 
 #
-# Globally import and sets up instances of the products.
+# Basic information about the keys set in the dictionary.
 #   
 #
 #    
@@ -44,6 +44,9 @@ JUtil.registerJavaToPython(jtsToShapely)
 from HazardEventHandler import pyHazardEventToJavaHazardEvent, javaHazardEventToPyHazardEvent
 JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)
 JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
+from KeyInfoHandler import pyKeyInfoToJavaKeyInfo, javaKeyInfoToPyKeyInfo
+JUtil.registerPythonToJava(pyKeyInfoToJavaKeyInfo)
+JUtil.registerJavaToPython(javaKeyInfoToPyKeyInfo)
 from collections import OrderedDict
 from java.util import ArrayList
 from com.raytheon.uf.common.hazards.productgen import GeneratedProduct, GeneratedProductList
@@ -53,6 +56,7 @@ import logging, UFStatusHandler
 from com.raytheon.uf.common.dataplugin.events import EventSet
 
 from EventSet import EventSet as PythonEventSet
+from KeyInfo import KeyInfo
 
 class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
     
@@ -97,6 +101,10 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
         # make sure dataList is a python object
         if hasattr(dataList, 'jclassname'):
             dataList = JUtil.javaObjToPyVal(dataList)
+            dList = []
+            for data in dataList:
+                dList.append(self.keyInfoDictToPythonDict(data))
+            dataList = dList
             kwargs['dataList'] = dataList            
 
         # executeFrom does not need formats
@@ -151,13 +159,12 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                     try:
                         module = importlib.import_module(format) 
                         instance = getattr(module, 'Format')()
-                        result, editable = instance.execute(data)
+                        result = instance.execute(data)
                         if type(result) is list:
                             product = result
                         else:
                             product = [result] 
                         productDict[format] = product
-                        editables[format] = editable
 
                     except Exception, e:
                         productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check console for errors. ']
@@ -168,11 +175,78 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                         os.sys.__stdout__.flush()
                 # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
                 generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))          
-                generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
-                generatedProduct.setData(JUtil.pyValToJavaObj(data));
+                #generatedProduct.setEditableEntries(JUtil.pyDictToJavaMap(editables))
+                generatedProduct.setData(JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(data)));
             else:
                 generatedProduct = GeneratedProduct(None)
                 generatedProduct.setErrors('Can not format data. Not a python dictionary ')
             generatedProductList.add(generatedProduct)
 
         return generatedProductList
+    
+    def pyDictToKeyInfoDict(self, data):
+        if isinstance(data, OrderedDict):
+            convertedDict = OrderedDict()
+        else:
+            convertedDict = {}
+            
+        for key in data:
+            value = data[key]
+            if isinstance(key, str):
+                keyInfo = KeyInfo(key)
+            elif isinstance(key, KeyInfo):
+                keyInfo = key
+            
+            if isinstance(value, dict):
+                convertedDict[keyInfo] = self.pyDictToKeyInfoDict(value)
+            elif isinstance(value, list):
+                convertedDict[keyInfo] = self.convertPyList(value)
+            else:
+                convertedDict[keyInfo] = value
+            
+        return convertedDict
+    
+    def convertPyList(self, data):
+        convertedList = []
+        for item in data:
+            if isinstance(item, dict):
+                convertedItem = self.pyDictToKeyInfoDict(item)
+            elif isinstance(item, list):
+                convertedItem = self.convertPyList(item)
+            else:
+                convertedItem = item
+
+            convertedList.append(convertedItem)
+    
+        return convertedList
+    
+    def keyInfoDictToPythonDict(self, data):
+        convertedDict = OrderedDict()
+        for key in data:      
+            value = data[key]
+            
+            if isinstance(value, dict):
+                value = self.keyInfoDictToPythonDict(value)
+            elif isinstance(value, list):
+                value = self.keyInfoListToPythonList(value)
+                          
+            if isinstance(key, KeyInfo) and key.isEditable() == False:
+                key = key.getName()
+            
+            convertedDict[key] = value
+            
+        return convertedDict
+    
+    def keyInfoListToPythonList(self, data):
+        convertedList = []
+        for item in data:
+            if isinstance(item, dict):
+                convertedItem = self.keyInfoDictToPythonDict(item)
+            elif isinstance(item, list):
+                convertedItem = self.keyInfoListToPythonList(item)
+            else:
+                convertedItem = item
+               
+            convertedList.append(convertedItem)
+    
+        return convertedList

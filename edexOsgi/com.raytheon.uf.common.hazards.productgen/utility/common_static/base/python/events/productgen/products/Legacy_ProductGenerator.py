@@ -42,6 +42,8 @@ import HazardConstants
 
 from HazardEvent import HazardEvent
 from shapely import geometry
+from KeyInfo import KeyInfo
+import ProductTextUtil
 
 class Product(ProductTemplate.Product):
  
@@ -53,7 +55,7 @@ class Product(ProductTemplate.Product):
         '''  
         self.initialize()
     
-    def initialize(self):       
+    def initialize(self):      
         self._gh = HazardServicesGenericHazards()
         self._mapInfo = MapInfo()
     
@@ -120,7 +122,7 @@ class Product(ProductTemplate.Product):
             segmentParts = ['ugcHeader',
                             'vtecRecords',
                             'areaString',
-                            'cityString',
+                            'cities',
                             'issuanceTimeDate',
                             'summaryHeadlines',
                             ('sections', sectionParts),
@@ -265,7 +267,7 @@ class Product(ProductTemplate.Product):
             #  formatters
             segmentEntries = []
             
-            for segment in segments:  
+            for segment in segments:
                 segmentEntries.append(self._createSegment(segment))
             segmentDict = collections.OrderedDict()
             segmentDict['segment'] = segmentEntries
@@ -536,13 +538,14 @@ class Product(ProductTemplate.Product):
         
         # Area String, City String        
         self._areaString = ''
-        self._cityString = ''
+        self._cityList = []
         if self._segmented :
             if self._includeAreaNames:
                 self._areaString = self._tpc.formatUGC_names(self._ugcs)
             if self._includeCityNames:
-                self._cityString = 'INCLUDING THE CITIES OF ' + self._tpc.formatUGC_cities(self._ugcs)
-                
+                for cityInfo in self.getCityInfo(self._ugcs, returnType='list'):
+                    self._cityList.append(cityInfo[0])
+                                
         # Summary Headlines for the segment  -- this orders them  -- Used by Legacy after ugc header...
         #   Create and order the sections for the segment:
         #       (vtecRecord, sectionMetaData, sectionHazardEvent)      
@@ -552,8 +555,8 @@ class Product(ProductTemplate.Product):
         segmentEntry = collections.OrderedDict()
         segmentEntry['ugcCodes'] = self._formatUGC_entries(segment)
         segmentEntry['ugcHeader'] = self._ugcHeader
+        segmentEntry['segmentID'] = self._ugcHeader
         segmentEntry['areaString'] = self._areaString
-        self._setEditedField(segmentEntry, 'cityString', self._productID, segment, self._segmentHazardEvents[0], self._cityString)
         segmentEntry['areaType'] = self._geoType
         segmentEntry['expireTime'] = self._convertToISO(self._expireTime)
         segmentEntry['expireTime_datetime'] = self._convertToDatetime(self._expireTime)        
@@ -564,6 +567,9 @@ class Product(ProductTemplate.Product):
         # CAP Specific Fields        
         segmentEntry['status'] = 'Actual' 
         segmentEntry['CAP_areaString'] = self._tpc.formatUGC_namesWithState(self._ugcs, separator='; ') 
+        
+        eventIDs = list(iter(segment[1]))
+        self._setEditedField(segmentEntry, 'cities', self._productCategory, self._productID, eventIDs, segment, self._segmentHazardEvents[0], self._cityList)
         
         #
         # Generate the sections i.e. attribution bullets, calls-to-action, polygonText
@@ -668,11 +674,12 @@ class Product(ProductTemplate.Product):
             impactsPhrase = ''
             ctas = []
          
-        self._setEditedField(sectionEntry, 'firstBullet', self._productID, segment, sectionHazardEvent, firstBullet)
-        self._setEditedField(sectionEntry, 'pointPhrase', self._productID, segment, sectionHazardEvent, pointPhrase)
-        self._setEditedField(sectionEntry, 'timePhrase', self._productID, segment, sectionHazardEvent, timePhrase)
-        self._setEditedField(sectionEntry, 'basis', self._productID, segment, sectionHazardEvent, basisPhrase)
-        self._setEditedField(sectionEntry, 'impacts', self._productID, segment, sectionHazardEvent, impactsPhrase)
+        eventIDs = list(vtecRecord['eventID'])
+        self._setEditedField(sectionEntry, 'firstBullet', self._productCategory, self._productID, eventIDs, segment, sectionHazardEvent, firstBullet)
+        self._setEditedField(sectionEntry, 'pointPhrase', self._productCategory, self._productID, eventIDs, segment, sectionHazardEvent, pointPhrase)
+        self._setEditedField(sectionEntry, 'timePhrase', self._productCategory, self._productID, eventIDs,  segment, sectionHazardEvent, timePhrase)
+        self._setEditedField(sectionEntry, 'basis', self._productCategory, self._productID, eventIDs, segment, sectionHazardEvent, basisPhrase)
+        self._setEditedField(sectionEntry, 'impacts', self._productCategory,  self._productID, eventIDs, segment, sectionHazardEvent, impactsPhrase)
         sectionEntry['description'] = attribution + '\n' + firstBullet + pointPhrase + timePhrase + basisPhrase + impactsPhrase
        
         if ctas:
@@ -736,18 +743,43 @@ class Product(ProductTemplate.Product):
         '''
         pass
     
-    def _setEditedField(self, prodDict, key, productID, segment, hazardEvent, default):
+    def _setEditedField(self, prodDict, key, productCategory, productID, eventIDs, segment, hazardEvent, default):      
         '''
-        Stub to retrieve edited text using the given identifying information:
-                key, self._productCategory, productID, segment, eventID 
-        If not found, use the default value provided
-        The solution may also need to add identifying information to the prodDict key 
-           
+        Retrieve user edited text using the given identifying information:
+                key, self._productCategory, productID, segment, eventIDs 
+        If not found, use the default value provided         
         '''
-        # TODO: Check the Edited Text Database for the entry using the
-        #   --key, self._productCategory, productID, segment, eventID (from hazardEvent)
-        # If not there, use default:
-        prodDict[key + ":editable"] = default
+        # Converts a list of string integers into a list of integers
+        tmp = []
+        for eventID in eventIDs:
+            tmp.append(int(eventID))
+        eventIDs = tmp
+
+        if None in [key, productCategory, productID, eventIDs, segment]:
+            userEditedKey = key
+            value = default
+        else:
+            # create KeyInfo object
+            segmentList = list(segment[0])
+            segmentList.sort()
+            segment = ''
+            for seg in segmentList:
+                if len(segment) > 0:
+                    segment += ', '
+                segment += seg
+            segment = str(segment)
+            userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True)
+                    
+            # Try and retrieve previously edited text
+            productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
+            
+            # If not there, use defaultValue
+            if len(productTextList) > 0:
+                value = productTextList[0].getValue()
+            else:
+                value = default
+            
+        prodDict[userEditedKey] = value
     
     def _formatUGC_entries(self, segment):
         ugcDict = collections.OrderedDict()

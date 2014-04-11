@@ -6,12 +6,12 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -32,11 +32,10 @@ import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
-import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -75,8 +74,6 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * ***** CONSTANTS *****
      */
     private static final String ISSUE_LABEL = "Issue";
-
-    private static final String SAVE_LABEL = "Save";
 
     private static final String DISMSS_LABEL = "Dismiss";
 
@@ -270,7 +267,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         for (GeneratedProductList products : generatedProductListStorage) {
             for (int folderIndex = 0; folderIndex < products.size(); folderIndex++) {
                 IGeneratedProduct product = products.get(folderIndex);
-                LinkedHashMap<String, Serializable> data = product.getData();
+                LinkedHashMap<KeyInfo, Serializable> data = product.getData();
 
                 CTabItem item = new CTabItem(folder, SWT.NONE);
                 String productId = product.getProductID();
@@ -287,6 +284,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                  */
                 boolean isEditable = ProductGenerationDialogUtility
                         .countEditables(data) > 0;
+                DataEditor dataEditor = null;
                 if (isEditable) {
                     folder.setSelection(0);
 
@@ -295,7 +293,8 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                     Composite leftComp = new Composite(sashForm, SWT.NONE);
                     setLayoutInfo(leftComp, 1, false, SWT.FILL, SWT.FILL, true,
                             true, null);
-                    new DataEditor(this, leftComp, offset + folderIndex);
+                    dataEditor = new DataEditor(this, leftComp, offset
+                            + folderIndex);
                 } else {
                     setLayoutInfo(sashForm, 1, true, SWT.FILL, SWT.FILL, true,
                             true, null);
@@ -314,6 +313,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                         rightComp, product);
                 formatTabList.add(formatTabMap);
                 item.setControl(sashForm);
+                item.setData(dataEditor);
             }
             offset += products.size();
         }
@@ -378,7 +378,8 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                                             .getSource();
                                     int offset = event.caretOffset;
                                     String text = styledText.getText();
-                                    for (int i = 0; i < currentCombo
+                                    int selection = 0;
+                                    for (int i = 1; i < currentCombo
                                             .getItemCount(); i++) {
                                         String item = currentCombo.getItem(i);
                                         int startIndex = text.indexOf(item);
@@ -386,18 +387,23 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                                             int endIndex = text.indexOf(
                                                     SegmentData.SEGMENT_END,
                                                     startIndex);
-                                            if (notHighlighting
-                                                    && endIndex != -1
+                                            if (endIndex != -1
                                                     && offset > startIndex
                                                     && offset < endIndex) {
-                                                currentCombo.select(i);
-                                                currentCombo.notifyListeners(
-                                                        SWT.Selection,
-                                                        new Event());
+                                                selection = i;
                                                 break;
                                             }
                                         }
                                     }
+
+                                    if (notHighlighting && selection != 0) {
+                                        currentCombo.select(selection);
+                                        Event e = new Event();
+                                        e.data = false;
+                                        currentCombo.notifyListeners(
+                                                SWT.Selection, e);
+                                    }
+
                                 }
 
                             }
@@ -424,12 +430,11 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     private void createButtonComp(Composite comp) {
         Composite buttonComp = new Composite(comp, SWT.NONE);
-        GridLayout layout = new GridLayout(3, false);
+        GridLayout layout = new GridLayout(2, false);
         GridData data = new GridData(SWT.CENTER, SWT.CENTER, true, false);
         buttonComp.setLayout(layout);
         buttonComp.setLayoutData(data);
         createIssueButton(buttonComp);
-        createSaveButton(buttonComp);
         createDismissButton(buttonComp);
     }
 
@@ -450,7 +455,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                 // such as an updated ETN, issue time, etc.
                 ProductGeneration generation = new ProductGeneration();
                 for (GeneratedProductList products : generatedProductListStorage) {
-                    List<LinkedHashMap<String, Serializable>> dataList = new ArrayList<LinkedHashMap<String, Serializable>>();
+                    List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
                     for (IGeneratedProduct product : products) {
                         dataList.add(product.getData());
                     }
@@ -465,44 +470,15 @@ public class ProductGenerationDialog extends CaveSWTDialog {
     }
 
     /**
-     * The save button will save the edits made to the database.
-     * 
-     * @param buttonComp
-     */
-    private void createSaveButton(Composite buttonComp) {
-        Button saveButton = new Button(buttonComp, SWT.PUSH);
-        saveButton.setText(SAVE_LABEL);
-        setButtonGridData(saveButton);
-        saveButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                save();
-            }
-        });
-    }
-
-    /**
      * Saves any modifications made to the unformatted data.
      */
     public void save() {
         int offset = 0;
         for (GeneratedProductList products : generatedProductListStorage) {
-            String productCategory = products.getProductInfo().replace(
-                    "_ProductGenerator", "");
-            Iterator<IEvent> iterator = products.getEventSet().iterator();
-            while (iterator.hasNext()) {
-                BaseHazardEvent event = (BaseHazardEvent) iterator.next();
-                int index = 0;
-                for (IGeneratedProduct product : products) {
-                    String productID = product.getProductID();
-                    ProductGenerationDialogUtility.save(
-                            event.getEventID(),
-                            productCategory,
-                            productID,
-                            decodedAbstractProductGeneratorData.get(offset
-                                    + index));
-                    index++;
-                }
+            for (int index = 0; index < products.size(); index++) {
+                ProductGenerationDialogUtility
+                        .save(decodedAbstractProductGeneratorData.get(offset
+                                + index));
             }
             offset += products.size();
         }
@@ -520,8 +496,16 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         cancelButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                // TODO should reevaluate why we need a String passed in here
-                dismissHandler.commandInvoked(DISMSS_LABEL);
+                boolean dismiss = MessageDialog
+                        .openQuestion(
+                                getParent(),
+                                "Are you sure?",
+                                "Are you sure you want to 'Dismiss'? Your products will NOT be issued and will remain in a PENDING state.");
+                if (dismiss) {
+                    // TODO should reevaluate why we need a String passed in
+                    // here
+                    dismissHandler.commandInvoked(DISMSS_LABEL);
+                }
             }
         });
     }

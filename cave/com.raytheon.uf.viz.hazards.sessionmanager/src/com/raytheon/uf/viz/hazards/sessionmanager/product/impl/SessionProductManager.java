@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,11 +47,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
-import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SingleTypeJAXBManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -124,6 +119,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Dec 11, 2013  2266      jsanchez     Used GeneratedProductList.
  * Feb 18, 2014  2702      jsanchez     Used Serializable objects for entries.
  * Mar 24, 2014  3323      bkowal       Use the mode when checking for grid conflicts.
+ * Mar 18, 2014 2917       jsanchez     Implemented preview and issue formats.
  * </pre>
  * 
  * @author bsteffen
@@ -134,13 +130,13 @@ public class SessionProductManager implements ISessionProductManager {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionProductManager.class);
 
+    private static final String ISSUE_FORMATS = "issueFormatters";
+
+    private static final String PREVIEW_FORMATS = "previewFormatters";
+
     private final ISessionTimeManager timeManager;
 
-    private static final SingleTypeJAXBManager<ProductFormats> jaxb = SingleTypeJAXBManager
-            .createWithoutException(ProductFormats.class);
-
-    private static final String PRODUCT_FORMATS_FILE = "hazardServices"
-            + File.separator + "productFormats.xml";
+    private Map<String, List<Serializable>> productGeneratorTable;
 
     /*
      * A full configuration manager is needed to get access to the product
@@ -221,7 +217,8 @@ public class SessionProductManager implements ISessionProductManager {
                         .getDialogInfo(entry.getKey());
 
                 info.setDialogInfo(dialogInfo);
-                info.setFormats(getProductFormats());
+                info.setProductFormats(getProductFormats(info
+                        .getProductGeneratorName()));
                 result.add(info);
             }
         }
@@ -280,25 +277,25 @@ public class SessionProductManager implements ISessionProductManager {
     /*
      * Returns a list of product formats from the proudctFormats.xml.
      */
-    private static String[] getProductFormats() {
-        String[] formats = null;
+    private ProductFormats getProductFormats(String productGeneratorName) {
+        ProductFormats productFormats = new ProductFormats();
 
-        IPathManager pm = PathManagerFactory.getPathManager();
-        File hazardEventGridsXml = pm.getStaticFile(PRODUCT_FORMATS_FILE);
-
-        try {
-            ProductFormats productFormats = jaxb
-                    .unmarshalFromXmlFile(hazardEventGridsXml);
-            if (productFormats.getProductFormats() != null) {
-                formats = productFormats.getProductFormats();
-            }
-
-        } catch (SerializationException e) {
-            statusHandler
-                    .error("XML file unable to be read. Will not be able to create formats!.",
-                            e);
+        if (productGeneratorTable == null) {
+            productGeneratorTable = ProductFormats
+                    .getProductGeneratorTable(this.getClass().getClassLoader());
         }
-        return formats;
+
+        Map<String, Serializable> productGeneratorInfo = (Map<String, Serializable>) productGeneratorTable
+                .get(productGeneratorName);
+        if (productGeneratorInfo != null) {
+            productFormats.setIssueFormats((List<String>) productGeneratorInfo
+                    .get(ISSUE_FORMATS));
+            productFormats
+                    .setPreviewFormats((List<String>) productGeneratorInfo
+                            .get(PREVIEW_FORMATS));
+        }
+
+        return productFormats;
 
     }
 
@@ -430,7 +427,8 @@ public class SessionProductManager implements ISessionProductManager {
             }
 
             String product = information.getProductGeneratorName();
-            String[] formats = information.getFormats();
+            String[] formats = information.getProductFormats()
+                    .getPreviewFormats().toArray(new String[0]);
             IPythonJobListener<GeneratedProductList> listener = new JobListener(
                     issue, notificationSender, information);
             productGen.generate(product, events,
@@ -494,8 +492,10 @@ public class SessionProductManager implements ISessionProductManager {
              * This is temporary: issueFormats should be user configurable and
              * will be addressed by Issue #691 -- Clean up Configuration Files
              */
-            if (information.getFormats() != null) {
-                for (String format : information.getFormats()) {
+            if (information.getProductFormats() != null
+                    && information.getProductFormats().getIssueFormats() != null) {
+                for (String format : information.getProductFormats()
+                        .getIssueFormats()) {
                     List<Serializable> objs = product.getEntry(format);
                     if (objs != null) {
                         for (Serializable obj : objs) {

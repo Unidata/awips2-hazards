@@ -1,6 +1,0 @@
-<!-- The list of formats that a product can be converted into -->
-<productFormats>
-	<productFormat>Legacy</productFormat>
-	<productFormat>XML</productFormat>
-	<productFormat>CAP</productFormat>
-</productFormats>

@@ -34,12 +34,12 @@
 #    
 # 
 #
-from Editable import Editable
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 from xml.etree.ElementTree import Element, SubElement, tostring
 import FormatTemplate
 import os
 import collections
+from KeyInfo import KeyInfo
 
 class Format(FormatTemplate.Formatter):
     
@@ -49,11 +49,9 @@ class Format(FormatTemplate.Formatter):
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in XML format.
         '''
-        self.editables = Editable(data)  
         xml = Element('product')
         self.dictionary(xml, data)
-
-        return self.formatFrom(xml), self.editables._getResult()
+        return ProductUtils.prettyXML(tostring(xml), True)
     
     def xmlKeys(self): 
         return [   
@@ -82,7 +80,7 @@ class Format(FormatTemplate.Formatter):
         'subArea',
         'ugcHeader',
         'areaString',
-        'cityString',
+        'cities',
         'areaType',
         'expireTime',
         'vtecRecords',
@@ -141,31 +139,31 @@ class Format(FormatTemplate.Formatter):
         '''   
         if data is not None:
             for key in data:
-                editable = False
-                if ':editable' in key:
-                    editable = True
-                if key not in self.xmlKeys():
-                    if ':editable' in key:
-                        editable = True
-                        tmp = key[:-9]
-                        if tmp not in self.xmlKeys():
-                            continue
-                    else:
-                        continue
                 value = data[key]
+                editable = False
+                if isinstance(key, KeyInfo):
+                    editable = key.isEditable()
+                    key = key.getName()
+                
+                if key not in self.xmlKeys():
+                    continue
+
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)
                     self.dictionary(subElement, value)
                 elif isinstance(value, list):
-                    self.list(xml, key, value)
+                    if key == 'cities':
+                        subElement = SubElement(xml,'cities')               
+                        if editable:
+                            subElement.attrib['editable'] = 'true'
+                        self.list(subElement, 'city', value) 
+                    else:
+                        self.list(xml, key, value)
                 else:
-                    if editable:
-                        key = key[:-9]
                     subElement = SubElement(xml,key)
                     subElement.text = value
                     if editable:
                         subElement.attrib['editable'] = 'true'
-                        self.editables.add(key,ProductUtils.prettyXML(tostring(subElement), False))
     
     def list(self, xml, key, data):
         '''
@@ -174,9 +172,9 @@ class Format(FormatTemplate.Formatter):
         @return: Returns the list in XML format.
         '''
         editable = False
-        if ':editable' in key:
-            key = key[:-9]
-            editable = True    
+        if isinstance(key, KeyInfo):
+            editable = key.isEditable()
+            key = key.getName()  
         if data is not None:
             for value in data:
                 subElement = SubElement(xml, key)
@@ -186,6 +184,3 @@ class Format(FormatTemplate.Formatter):
                     self.dictionary(subElement, value)
                 else:          
                     subElement.text = value
-                    
-    def formatFrom(self, text):
-        return ProductUtils.prettyXML(tostring(text), True)

@@ -34,8 +34,8 @@ import FormatTemplate
 from time import gmtime, strftime
 import collections
 import types
-from Editable import Editable
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
+from KeyInfo import KeyInfo
 
 class Format(FormatTemplate.Formatter):
     
@@ -44,15 +44,12 @@ class Format(FormatTemplate.Formatter):
         Main method of execution to generate Legacy text
         @param data: dictionary values provided by the product generator
         @return: Returns the dictionary in Legacy format.
-        '''
+        '''     
         from TextProductCommon import TextProductCommon
-        self._tpc = TextProductCommon()        
+        self._tpc = TextProductCommon() 
         self.data = data
-        self.editables = Editable(data)
-        #print "Legacy data", data
-        #self._tpc.flush()
         text = self._processProductParts(data, self._tpc.getVal(data, 'productParts', []))
-        return self.formatFrom(text), self.editables._getResult()
+        return ProductUtils.wrapLegacy(str(text))
     
     def _processProductParts(self, dataDict, productParts, skipParts=[]):
         '''
@@ -74,7 +71,6 @@ class Format(FormatTemplate.Formatter):
                 tup = (part[0], part[1])
                 part = tup
                 name = part[0]
-
             if name == 'wmoHeader': text += self.processWmoHeader(dataDict['wmoHeader']) + '\n'
             elif name == 'wmoHeader_noCR': text += self.processWmoHeader(dataDict['wmoHeader'])
             elif name == 'easMessage':
@@ -113,11 +109,18 @@ class Format(FormatTemplate.Formatter):
                 text += '&&\n\n' 
             elif name == 'CR':
                 text += '\n'
-            else:
+            elif name == 'cities':
+                #self._cityString = 'INCLUDING THE CITIES OF ' + self._tpc.formatUGC_cities(self._ugcs)
+                cities = ''
+                elements = KeyInfo.getElements('cities', dataDict)
+                cityList = dataDict[elements[0]]
+                for city in cityList:
+                    cities += city + '...'
+                text += cities + '\n'
+            else:               
                 textStr = self._tpc.getVal(dataDict, name)
                 if textStr:
                     text += textStr + '\n'
-                    self.editables.add(name,self.formatFrom(textStr))
                     
         return text
         
@@ -204,7 +207,3 @@ class Format(FormatTemplate.Formatter):
                     item = self.cleanDictKeys(item)
             temp.append(item)
         return temp
-
-    def formatFrom(self, text):
-        return ProductUtils.wrapLegacy(str(text))
-    

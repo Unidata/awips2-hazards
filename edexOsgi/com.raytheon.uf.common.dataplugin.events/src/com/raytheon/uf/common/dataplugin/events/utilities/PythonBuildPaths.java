@@ -44,6 +44,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Jan 20, 2014 2766      bkowal       Re-ordered the paths. Created static
  *                                     variable for the python events directory.
  * Mar 19, 2014 3293      bkowal       Added the REGION localization level.
+ * Apr  7, 2014 2917      jsanchez     Added productgen to the include paths.
  * 
  * </pre>
  * 
@@ -143,6 +144,7 @@ public class PythonBuildPaths {
         String eventsPath = FileUtil.join(pythonPath, "events");
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
+        String productGenPath = FileUtil.join(eventsPath, "productgen");
 
         for (int i = 0; i < directories.length; i++) {
             directories[i] = buildLocalizationDirectory(directories[i])
@@ -151,7 +153,7 @@ public class PythonBuildPaths {
         String directoryPaths = PyUtil.buildJepIncludePath(directories);
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
                 dataAccessPath, dataTimePath, eventsPath, utilitiesPath,
-                gfePath);
+                gfePath, productGenPath);
         return PyUtil.buildJepIncludePath(includePath, directoryPaths);
     }
 }
