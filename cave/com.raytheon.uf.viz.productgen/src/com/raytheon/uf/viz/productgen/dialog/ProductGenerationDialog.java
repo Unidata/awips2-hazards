@@ -28,6 +28,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
@@ -59,6 +60,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 13, 2013            mnash     Initial creation
  * Nov  5, 2013 2266       jsanchez  Moved ProductUtil to individual formats. Add a call to format again.
  * Feb 18, 2014 2702       jsanchez   Implemented individual CAP segments and the save method. Cleaned up along with the refactor.
+ * Apr 11, 2014 2819       Chris.Golden Fixed bugs with the Preview and Issue
+ *                                      buttons in the HID remaining grayed out
+ *                                      when they should be enabled.
  * </pre>
  * 
  * @author mnash
@@ -75,7 +79,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     private static final String ISSUE_LABEL = "Issue";
 
-    private static final String DISMSS_LABEL = "Dismiss";
+    private static final String DISMISS_LABEL = "Dismiss";
 
     private static final String DIALOG_TITLE = "Product Editor";
 
@@ -111,7 +115,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
     /*
      * The format CTabFolder (right hand side)
      */
-    private List<CTabFolder> formatFolderList = new ArrayList<CTabFolder>();
+    private final List<CTabFolder> formatFolderList = new ArrayList<CTabFolder>();
 
     /*
      * ****** Helper maps ******
@@ -123,25 +127,25 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * Map of format to AbstractFormatTab. This is helpful when doing
      * 'highlighting'.
      */
-    private List<Map<String, AbstractFormatTab>> formatTabList = new ArrayList<Map<String, AbstractFormatTab>>();
+    private final List<Map<String, AbstractFormatTab>> formatTabList = new ArrayList<Map<String, AbstractFormatTab>>();
 
     /*
      * Maps format to text area. Used in conjunction with the formattedKeyCombo.
      */
-    private List<Map<String, Text>> textAreasList = new ArrayList<Map<String, Text>>();
+    private final List<Map<String, Text>> textAreasList = new ArrayList<Map<String, Text>>();
 
-    private List<Combo> formattedKeyComboList = new ArrayList<Combo>();
+    private final List<Combo> formattedKeyComboList = new ArrayList<Combo>();
 
     /*
      * The combo box that contains the segment ID. Controls what data to display
      * in the unformatted and formatted tabs.
      */
-    private List<Combo> segmentsComboList = new ArrayList<Combo>();
+    private final List<Combo> segmentsComboList = new ArrayList<Combo>();
 
     /*
      * Helps identify the segments of a the python data dictionary
      */
-    private List<List<AbstractProductGeneratorData>> decodedAbstractProductGeneratorData = new ArrayList<List<AbstractProductGeneratorData>>();
+    private final List<List<AbstractProductGeneratorData>> decodedAbstractProductGeneratorData = new ArrayList<List<AbstractProductGeneratorData>>();
 
     private boolean notHighlighting = true;
 
@@ -180,24 +184,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         }
     };
 
-    /*
-     * TODO Shell closed command invocation handler, should we do this
-     * differently?
-     */
-    private ICommandInvocationHandler shellClosedHandler = null;
-
-    /*
-     * TODO Shell closed command invoker, should we do this differently?
-     */
-    private final ICommandInvoker shellClosedInvoker = new ICommandInvoker() {
-        @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
-            shellClosedHandler = handler;
-        }
-    };
-
-    private IssueListener issueListener;
+    private final IssueListener issueListener;
 
     /**
      * @param parentShell
@@ -220,6 +207,14 @@ public class ProductGenerationDialog extends CaveSWTDialog {
         shell.setMinimumSize(MIN_WIDTH, MIN_HEIGHT);
         shell.setLayout(new GridLayout(1, false));
         shell.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false));
+        shell.addListener(SWT.Close, new Listener() {
+            @Override
+            public void handleEvent(Event event) {
+                if (dismissHandler != null) {
+                    dismissHandler.commandInvoked(DISMISS_LABEL);
+                }
+            }
+        });
 
         Composite fullComp = new Composite(shell, SWT.NONE);
         setLayoutInfo(fullComp, 1, false, SWT.FILL, SWT.FILL, true, true, null);
@@ -491,7 +486,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     private void createDismissButton(Composite buttonComp) {
         Button cancelButton = new Button(buttonComp, SWT.PUSH);
-        cancelButton.setText(DISMSS_LABEL);
+        cancelButton.setText(DISMISS_LABEL);
         setButtonGridData(cancelButton);
         cancelButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -504,7 +499,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                 if (dismiss) {
                     // TODO should reevaluate why we need a String passed in
                     // here
-                    dismissHandler.commandInvoked(DISMSS_LABEL);
+                    dismissHandler.commandInvoked(DISMISS_LABEL);
                 }
             }
         });
@@ -718,14 +713,6 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      */
     public ICommandInvoker getDismissInvoker() {
         return dismissInvoker;
-    }
-
-    /**
-     * 
-     * @return The shell closed invoker.
-     */
-    public ICommandInvoker getShellClosedInvoker() {
-        return shellClosedInvoker;
     }
 
 }

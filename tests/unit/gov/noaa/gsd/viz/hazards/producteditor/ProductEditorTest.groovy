@@ -12,14 +12,14 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 import static org.junit.Assert.*
 import static org.mockito.Mockito.*
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction
 import spock.lang.*
 
 import com.google.common.eventbus.EventBus
 import com.google.common.eventbus.Subscribe
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
 
 /**
  * Description: Tests the product display dialog. Simulates 
@@ -36,7 +36,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - elimination of IHazardsIF now requires a non-null 
  *                                                            sessionManager sent to presenter constructor
  * Feb 07, 2014 2890       bkowal       Product Generation JSON refactor.
- * 
+ * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -59,7 +61,7 @@ class ProductEditorTest extends spock.lang.Specification {
     def setupSpec() {
         generatedProductList = new GeneratedProductList();
         generatedProductList.setProductInfo('Test')
-        
+
         testView = new TestProductEditorView();
         eventBus = new EventBus();
         eventBus.register(this);
@@ -110,25 +112,6 @@ class ProductEditorTest extends spock.lang.Specification {
 
         then: "The dialog will close"
     }
-
-    /**
-     * Simulate the product display shell being closed.
-     * Check for an appropriate message being sent over the
-     * event bus.
-     */
-    def "Shell Closed" (){
-
-        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
-        presenter.showProductEditorDetail(generatedProductList);
-
-        when:"The user closes the shell"
-
-        testView.shellClosed();
-
-        then: "The dialog will close"
-    }
-
-
 
     @Subscribe
     public void productStagingActionOccurred(

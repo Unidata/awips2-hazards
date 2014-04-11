@@ -34,6 +34,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Feb 18, 2013            Bryon.Lawrence    Initial creation.
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
+ * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -100,8 +103,8 @@ public class ProductStagingView implements
     }
 
     @Override
-    public ICommandInvoker getContinueInvoker() {
-        return productStagingDialog.getContinueInvoker();
+    public ICommandInvoker getCommandInvoker() {
+        return productStagingDialog.getCommandInvoker();
     }
 
     @Override

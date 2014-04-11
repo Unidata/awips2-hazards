@@ -121,6 +121,9 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 18, 2014  2702      jsanchez     Used Serializable objects for entries.
  * Mar 24, 2014  3323      bkowal       Use the mode when checking for grid conflicts.
  * Mar 18, 2014 2917       jsanchez     Implemented preview and issue formats.
+ * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author bsteffen
@@ -328,11 +331,10 @@ public class SessionProductManager implements ISessionProductManager {
                         .getUserAnswerToQuestion(
                                 "Are you sure "
                                         + "you want to issue the hazard event(s)?");
-                sessionManager.setPreviewOngoing(false);
                 if (!answer) {
+                    sessionManager.setIssueOngoing(false);
                     return;
                 }
-                sessionManager.setIssueOngoing(true);
             }
             EventSet<IEvent> events = new EventSet<IEvent>();
             events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
@@ -434,6 +436,12 @@ public class SessionProductManager implements ISessionProductManager {
                     issue, notificationSender, information);
             productGen.generate(product, events,
                     information.getDialogSelections(), formats, listener);
+        } else {
+            if (issue) {
+                sessionManager.setIssueOngoing(false);
+            } else {
+                sessionManager.setPreviewOngoing(false);
+            }
         }
     }
 

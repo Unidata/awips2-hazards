@@ -29,7 +29,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013 2166       daniel.s.schaffer@noaa.gov      Initial creation
  * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
- * 
+ * Apr 11, 2014 2819       Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -73,18 +75,6 @@ public class ProductEditorViewForTesting implements IProductEditorView {
 
     @Override
     public ICommandInvoker getDismissInvoker() {
-        return new ICommandInvoker() {
-
-            @Override
-            public void setCommandInvocationHandler(
-                    ICommandInvocationHandler handler) {
-            }
-
-        };
-    }
-
-    @Override
-    public ICommandInvoker getShellClosedInvoker() {
         return new ICommandInvoker() {
 
             @Override

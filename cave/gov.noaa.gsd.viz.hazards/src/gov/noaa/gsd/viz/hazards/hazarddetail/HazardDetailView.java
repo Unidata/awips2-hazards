@@ -33,6 +33,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Hazard detail view, providing an an SWT-based view of hazard details.
@@ -55,9 +56,12 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
  * Nov 14, 2013   1463     Bryon.Lawrence    Added code to support hazard conflict
  *                                           detection.
- * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
+ * Feb 19, 2014   2161     Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view
  *                                           during initialization.
+ * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -493,17 +497,27 @@ public class HazardDetailView extends
     }
 
     @Override
-    public void setPreviewOngoing(boolean previewOngoing) {
-        if (getViewPart() != null) {
-            getViewPart().setPreviewOngoing(previewOngoing);
-        }
+    public void setPreviewOngoing(final boolean previewOngoing) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                if (getViewPart() != null) {
+                    getViewPart().setPreviewOngoing(previewOngoing);
+                }
+            }
+        });
     }
 
     @Override
-    public void setIssueOngoing(boolean issueOngoing) {
-        if (getViewPart() != null) {
-            getViewPart().setIssueOngoing(issueOngoing);
-        }
+    public void setIssueOngoing(final boolean issueOngoing) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                if (getViewPart() != null) {
+                    getViewPart().setIssueOngoing(issueOngoing);
+                }
+            }
+        });
     }
 
     // Package Methods

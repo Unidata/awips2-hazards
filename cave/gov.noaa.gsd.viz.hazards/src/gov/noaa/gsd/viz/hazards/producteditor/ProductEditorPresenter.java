@@ -40,7 +40,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Feb 07, 2014 2890       bkowal         Product Generation JSON refactor.
- * 
+ * Apr 11, 2014     2819   Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -125,7 +127,9 @@ public class ProductEditorPresenter extends
 
                         action.setGeneratedProductsList(getView()
                                 .getGeneratedProductsList());
+                        getModel().setIssueOngoing(true);
                         ProductEditorPresenter.this.fireAction(action);
+                        getModel().setPreviewOngoing(false);
                         getView().closeProductEditorDialog();
                     }
                 });
@@ -139,13 +143,6 @@ public class ProductEditorPresenter extends
                     }
                 });
 
-        getView().getShellClosedInvoker().setCommandInvocationHandler(
-                new ICommandInvocationHandler() {
-                    @Override
-                    public void commandInvoked(String command) {
-                        dismissProductEditor();
-                    }
-                });
     }
 
     private void dismissProductEditor() {

@@ -37,6 +37,9 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
  * Sep 19, 2013     2046    mnash           Update for product generation.
  * Feb 07, 2014  2890      bkowal       Product Generation JSON refactor.
  * Feb 18, 2014  2702      jsanchez     Cleaned up code as part of the refactor.
+ * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -128,11 +131,6 @@ public final class ProductEditorView implements
     @Override
     public ICommandInvoker getDismissInvoker() {
         return productGenerationDialog.getDismissInvoker();
-    }
-
-    @Override
-    public ICommandInvoker getShellClosedInvoker() {
-        return productGenerationDialog.getShellClosedInvoker();
     }
 
     @Override

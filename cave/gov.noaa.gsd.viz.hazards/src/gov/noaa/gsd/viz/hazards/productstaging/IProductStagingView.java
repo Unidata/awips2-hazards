@@ -27,7 +27,9 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -50,12 +52,12 @@ public interface IProductStagingView<C, E extends Enum<E>> extends IView<C, E> {
             ProductStagingInfo productStagingInfo);
 
     /**
-     * Get the continue command invoker to allow the presenter to bind with it
-     * for notifications.
+     * Get the command invoker to allow the presenter to bind with it for
+     * notifications.
      * 
-     * @return Continue command invoker.
+     * @return Command invoker.
      */
-    public ICommandInvoker getContinueInvoker();
+    public ICommandInvoker getCommandInvoker();
 
     /**
      * Determine whether or not the product should be issued.

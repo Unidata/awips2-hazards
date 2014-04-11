@@ -62,6 +62,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Nov 15, 2013   2182     daniel.s.schaffer Refactoring JSON - ProductStagingDialog
  * Dec 16, 2013   2545     Chris G.    Added current time provider for
  *                                     megawidget use.
+ * Apr 11, 2014   2819     Chris G.    Fixed bugs with the Preview and Issue
+ *                                     buttons in the HID remaining grayed out
+ *                                     when they should be enabled.
  * </pre>
  * 
  * @author shouming.wei
@@ -117,9 +120,9 @@ class ProductStagingDialog extends BasicDialog {
     private ICommandInvocationHandler commandHandler = null;
 
     /**
-     * Continue command invoker.
+     * Command invoker.
      */
-    private final ICommandInvoker continueInvoker = new ICommandInvoker() {
+    private final ICommandInvoker commandInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
                 ICommandInvocationHandler handler) {
@@ -222,12 +225,12 @@ class ProductStagingDialog extends BasicDialog {
     }
 
     /**
-     * Get the continue command invoker.
+     * Get the command invoker.
      * 
-     * @return Continue command invoker.
+     * @return Command invoker.
      */
-    public ICommandInvoker getContinueInvoker() {
-        return continueInvoker;
+    public ICommandInvoker getCommandInvoker() {
+        return commandInvoker;
     }
 
     /**
@@ -256,6 +259,11 @@ class ProductStagingDialog extends BasicDialog {
     protected void configureShell(Shell shell) {
         super.configureShell(shell);
         shell.setText(DIALOG_TITLE);
+    }
+
+    @Override
+    protected void handleShellCloseEvent() {
+        buttonPressed(IDialogConstants.CANCEL_ID);
     }
 
     @Override

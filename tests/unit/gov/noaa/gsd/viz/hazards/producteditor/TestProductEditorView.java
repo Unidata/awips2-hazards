@@ -31,6 +31,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Jul 15, 2013     585    Chris.Golden        Changed to use new version of IView.
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
+ * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -177,16 +180,6 @@ public class TestProductEditorView implements
     @Override
     public ICommandInvoker getDismissInvoker() {
         return dismissInvoker;
-    }
-
-    /**
-     * @param
-     * @return
-     */
-    @Override
-    public ICommandInvoker getShellClosedInvoker() {
-
-        return shellClosedInvoker;
     }
 
     /*

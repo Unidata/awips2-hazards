@@ -30,7 +30,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013  2166      daniel.s.schaffer@noaa.gov      Initial creation
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
+ * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -43,7 +45,7 @@ public class ProductStagingViewForTesting implements IProductStagingView {
 
     private ProductStagingInfo productStagingInfo;
 
-    private final ICommandInvoker continueInvoker = new ICommandInvoker() {
+    private final ICommandInvoker commandInvoker = new ICommandInvoker() {
         @Override
         public void setCommandInvocationHandler(
                 ICommandInvocationHandler handler) {
@@ -70,8 +72,8 @@ public class ProductStagingViewForTesting implements IProductStagingView {
     }
 
     @Override
-    public ICommandInvoker getContinueInvoker() {
-        return continueInvoker;
+    public ICommandInvoker getCommandInvoker() {
+        return commandInvoker;
     }
 
     @Override

@@ -156,6 +156,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Feb 19, 2014  2161      Chris.Golden       Added ability to handle console action
  *                                            indicating that until further notice
  *                                            has changed for an event.
+ * Apr 11, 2014  2819      Chris.Golden       Fixed bugs with the Preview and Issue
+ *                                            buttons in the HID remaining grayed out
+ *                                            when they should be enabled.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -635,6 +638,7 @@ public final class HazardServicesMessageHandler implements
      */
     private void issueEvents() {
         if (continueIfThereAreHazardConflicts()) {
+            sessionManager.setIssueOngoing(true);
             generateProducts(true);
             notifyModelEventsChanged();
         }
@@ -1091,6 +1095,7 @@ public final class HazardServicesMessageHandler implements
      * Generates products for preview.
      */
     public void preview() {
+        sessionManager.setPreviewOngoing(true);
         generateProducts(false);
     }
 
@@ -1650,7 +1655,6 @@ public final class HazardServicesMessageHandler implements
             final HazardDetailAction hazardDetailAction) {
         switch (hazardDetailAction.getActionType()) {
         case PREVIEW:
-            sessionManager.setPreviewOngoing(true);
             preview();
             break;
 
@@ -1660,7 +1664,6 @@ public final class HazardServicesMessageHandler implements
             break;
 
         case ISSUE:
-            sessionManager.setIssueOngoing(true);
             setIssuedState();
             break;
 

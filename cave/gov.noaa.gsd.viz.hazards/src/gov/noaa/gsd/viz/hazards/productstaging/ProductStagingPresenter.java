@@ -43,7 +43,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Nov 21, 2013  2446       daniel.s.schaffer@noaa.gov Bug fixes in product staging dialog
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -110,7 +112,11 @@ public class ProductStagingPresenter extends
                     action.setProductStagingInfo(productStagingInfo);
                     fireAction(action);
                 } else {
-                    getModel().setPreviewOngoing(false);
+                    if (getView().isToBeIssued()) {
+                        getModel().setIssueOngoing(false);
+                    } else {
+                        getModel().setPreviewOngoing(false);
+                    }
                 }
             } catch (Exception e1) {
                 statusHandler.error("ProductStatingPresenter.bind(): ", e1);
@@ -186,7 +192,7 @@ public class ProductStagingPresenter extends
      * By binding to the view, the presenter handles all of the view's events.
      */
     private void bind() {
-        getView().getContinueInvoker().setCommandInvocationHandler(
+        getView().getCommandInvoker().setCommandInvocationHandler(
                 commandHandler);
     }
 }

@@ -28,7 +28,9 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Jan  7, 2013 2367       jsanchez     Used GeneratedProductList.
  * Feb 7, 2014  2890       bkowal      Product Generation JSON refactor.
  * Feb 18, 2014 2702       jsanchez    Removed unused method.
- * 
+ * Apr 11, 2014 2819       Chris.Golden      Fixed bugs with the Preview and Issue
+ *                                           buttons in the HID remaining grayed out
+ *                                           when they should be enabled.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -71,13 +73,6 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * @return Command invoker associated with the dialog's dismiss button.
      */
     public ICommandInvoker getDismissInvoker();
-
-    /**
-     * Get the command invoker associated with the dialog's close button.
-     * 
-     * @return Command invoker associated with the dialog's close button.
-     */
-    public ICommandInvoker getShellClosedInvoker();
 
     public void openDialog();
 }
