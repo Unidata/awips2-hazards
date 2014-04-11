@@ -16,6 +16,7 @@
                                                  floodStage
     Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
     Jan  7, 2014   2367      jsanchez            Replaced ProductParts with a native python objects.
+    Apr 11, 2014   3422      bkowal              Use getHazardTypes in bridge.py
     
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -63,9 +64,8 @@ class Product(ProductTemplate.Product):
         
         self._vtecEngine = None
         self._productCategory = ''
-
-        # hazard types has already been refactored in another code review 
-        self._hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
+ 
+        self._hazardTypes = self.bridge.getHazardTypes() 
         
         self._areaDictionary = self.bridge.getAreaDictionary()
 
@@ -324,7 +324,7 @@ class Product(ProductTemplate.Product):
         segments = self._vtecEngine.getSegments()
         return segments
 
-    def _getSegments_ForPointsAndAreas(self, hazardEvents): 
+    def _getSegments_ForPointsAndAreas(self, hazardEvents):
         '''
         Gets the segments for point hazards and areal hazards separately
         
@@ -375,7 +375,7 @@ class Product(ProductTemplate.Product):
             else:                     
                 self._areaSegments = segments
                 self._areaVtecEngine = self._vtecEngine   
-               
+            
         return self._pointSegments + self._areaSegments
             
     def _groupSegments(self, segments):
@@ -1055,7 +1055,7 @@ class Product(ProductTemplate.Product):
             if hazardEvent.get('previewState') == 'ended':
                 hazardEvent.setState('ENDED')
             newHazardEvents.append(hazardEvent)
-   
+ 
         return newHazardEvents
     
     def _useEAS(self, vtecRecord):

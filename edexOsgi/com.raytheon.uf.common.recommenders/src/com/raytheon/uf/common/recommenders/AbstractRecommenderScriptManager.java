@@ -263,7 +263,7 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return true if the recommender is in the inventory or if the recommender
      *         has been successfully loaded and initialized; otherwise, false
      */
-    protected boolean verifyRecommenderIsLoaded(String recommenderName) {
+    public boolean verifyRecommenderIsLoaded(String recommenderName) {
         if (this.inventory.containsKey(recommenderName)) {
             return true;
         }
@@ -496,6 +496,11 @@ public abstract class AbstractRecommenderScriptManager extends
     }
 
     public List<EventRecommender> getInventory() {
+        return new ArrayList<EventRecommender>(inventory.values());
+    }
+
+    public List<EventRecommender> getInventory(String recommenderName) {
+        this.verifyRecommenderIsLoaded(recommenderName);
         return new ArrayList<EventRecommender>(inventory.values());
     }
 }

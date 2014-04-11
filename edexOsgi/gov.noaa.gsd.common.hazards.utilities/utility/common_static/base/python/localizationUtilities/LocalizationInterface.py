@@ -11,6 +11,8 @@ Oct 30, 2013            JRamer            Add Desk level, consolidate argument
                                           checking logic for various access methods.
 Feb 14, 2013   2161     Chris.Golden      Fixed bug causing runtime error due to
                                           incorrect import usage.
+Apr 11, 2014   3422     bkowal            Only retrieve localization files that actually
+                                          exist. Fix spelling errors.
 """
 import xml.etree.ElementTree as ET
 import sys
@@ -27,6 +29,8 @@ from jsonCombine import jsonCombine
 from xml2Json import xml2Json
 from HazardServicesImporter import HazardServicesImporter
 from UFStatusLogger import UFStatusLogger
+
+from ufpy import ThriftClient
 
 # The following imports are JEP dependent.
 try:
@@ -610,7 +614,7 @@ return ResponseMessageGeneric(site)
     # file within the level, site or user directories.  'siteUser' and
     # 'typeArg' are as in the Notes at top of this source file, except that
     # the type will not default to "COMMON_STATIC"; it must be specified.
-    # For 'levelArg', the value must be "Site", "Workstaion", or "User";
+    # For 'levelArg', the value must be "Site", "Workstation", or "User";
     # it is illegal to write out Base or Configured localization files.
     # Nor will 'levelArg' default if left blank.  'contextUser' is the username
     # used to determine whether one is allowed to write out the file in
@@ -622,7 +626,7 @@ return ResponseMessageGeneric(site)
                    contextUser="") :
 
         if locPath=="" :
-            msg = "No path to localizaton file provided."
+            msg = "No path to localization file provided."
             self.__logger.logMessage(msg, "Error")
             return False
 
@@ -708,7 +712,7 @@ return ResponseMessageGeneric(site)
                   contextUser="") :
 
         if locPath=="" :
-            msg = "No path to localizaton file provided."
+            msg = "No path to localization file provided."
             self.__logger.logMessage(msg, "Error")
             return False
 
@@ -740,6 +744,78 @@ return ResponseMessageGeneric(site)
         else :
             self.__lfi.setMyContextName(contextUser)
         return self.__lfi.rmFile(locPath0)
+    
+    def listLocFilesImproved(self, dirPath, locPath0, typeArg, levelArg="", siteUser="") :
+        if dirPath=="" :
+            msg = "No path to localization directory provided."
+            self.__logger.logMessage(msg, "Error")
+            return None
+
+        from dynamicserialize.dstypes.com.raytheon.uf.common.localization import LocalizationContext
+        from dynamicserialize.dstypes.com.raytheon.uf.common.localization.msgs import ListUtilityCommand
+        from dynamicserialize.dstypes.com.raytheon.uf.common.localization.msgs import UtilityRequestMessage
+        from dynamicserialize.dstypes.com.raytheon.uf.common.localization import LocalizationLevel
+        from dynamicserialize.dstypes.com.raytheon.uf.common.localization import LocalizationType
+
+        # create a thrift instance
+        thrift = ThriftClient.ThriftClient(caveEdexHost, defEdexPort, '/services')
+        
+        cmds = []
+        
+        # prepare the localization type
+        localizationType = LocalizationType(self.processTypeArg(typeArg))
+        
+        locLevels = self.processLevelArg(levelArg)
+        
+        # build the request message
+        req = UtilityRequestMessage()       
+        for level in locLevels:
+            cmd = ListUtilityCommand()
+            cmd.setSubDirectory(dirPath)
+            cmd.setRecursive(False)
+            cmd.setFilesOnly(True)
+            cmd.setLocalizedSite(self.getDefLoc())
+    
+            # prepare the localization level
+            localizationLevel = LocalizationLevel(level.upper())
+    
+            # create a localization context
+            localizationContext = LocalizationContext()
+            localizationContext.setLocalizationType(localizationType)
+            localizationContext.setLocalizationLevel(localizationLevel)
+            if level.upper() in ['CONFIGURED', 'SITE' ]:
+                localizationContext.setContextName(self.getDefLoc())
+            elif level.upper() == 'USER':
+                localizationContext.setContextName(self.__curUser)
+            elif level.upper() == 'DESK':
+                localizationContext.setContextName(self.getDefDesk())
+        
+            # build the utility command
+            cmd.setContext(localizationContext)
+            cmds.append(cmd)
+    
+            # add the command(s) to the request
+            req.setCommands(cmds)
+            
+        try:
+            serverResponse = thrift.sendRequest(req)
+        except Exception, e:
+            raise RuntimeError,  'Could not retrieve localization file list: ' + str(e)
+        
+        validLocalizationLevels = []
+        
+        for response in serverResponse.getResponses():
+            for entry in response.getEntries():
+                filename = entry.getFileName()
+                
+                if filename == locPath0:
+                    localizationContext = entry.getContext()
+                    validLocalizationLevels.append(localizationContext.getLocalizationLevel().getText())             
+
+        # return a list of the localization levels that the file is actually
+        # available in.
+
+        return validLocalizationLevels
 
     # This method allows one to get listings of localization directories.   
     # dirPath0 is the relative path to the directory under the level, site
@@ -754,11 +830,10 @@ return ResponseMessageGeneric(site)
     #
     def listLocFiles(self, dirPath, typeArg, levelArg="", siteUser="", \
                      prefix="", suffix="") :
-
         if dirPath=="" :
-            msg = "No path to localizaton directory provided."
+            msg = "No path to localization directory provided."
             self.__logger.logMessage(msg, "Error")
-            return None
+            return None            
 
         locLevels = self.processLevelArg(levelArg)
         locType = self.processTypeArg(typeArg)
@@ -832,7 +907,7 @@ return ResponseMessageGeneric(site)
     def locFileLevels(self, locPath, typeArg, siteUser="") :
 
         if locPath=="" :
-            msg = "No path to localizaton file provided."
+            msg = "No path to localization file provided."
             self.__logger.logMessage(msg, "Error")
             return None
 
@@ -892,9 +967,8 @@ return ResponseMessageGeneric(site)
     # should not throw exceptions.
     #
     def getLocFile(self, locPath, typeArg, levelArg="", siteUser="") :
-
         if locPath=="" :
-            msg = "No path to localizaton file provided."
+            msg = "No path to localization file provided."
             self.__logger.logMessage(msg, "Error")
             return None
 
@@ -1102,7 +1176,7 @@ return ResponseMessageGeneric(site)
                    incrementalOverride=True, incrementalOverrideImports=False) :
 
         if locPath=="" :
-            msg = "No path to localizaton file provided."
+            msg = "No path to localization file provided."
             self.__logger.logMessage(msg, "Error")
             return None
 
@@ -1166,12 +1240,17 @@ return ResponseMessageGeneric(site)
             d = 1
             eee = len(locLevels)
 
+        validLocalizationLevels = self.listLocFilesImproved(locPath, locPath0, typeArg, levelArg, siteUser)
+
         while lll!=eee:
             locLevel = locLevels[lll]
             locName = locNames[lll]
             lll = lll + d
-
+            
             if locLevel != "Base" and locName == "" :
+                continue
+            
+            if locLevel.upper() not in validLocalizationLevels:
                 continue
 
             self.__lfi.setLevel(locLevel)

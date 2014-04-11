@@ -35,6 +35,7 @@ import com.raytheon.uf.common.recommenders.executors.EntireRecommenderExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderDialogInfoExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderInventoryExecutor;
+import com.raytheon.uf.common.recommenders.executors.RecommenderLoaderInventoryExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderMetadataExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderSpatialInfoExecutor;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -55,6 +56,11 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Jul 12, 2013 1257       bsteffen    Convert recommender dialog info to use
  *                                     Serializeables for values instead of
  *                                     Strings.
+ * Apr 14, 2014 3422       bkowal      Created a second getInventory method
+ *                                     (primarily for testing purposes) that can
+ *                                     can be used to ensure that a file has actually
+ *                                     been loaded before the inventory is retrieved.
+ * 
  * 
  * </pre>
  * 
@@ -139,8 +145,8 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get dialog information", e);
+            return null;
         }
-        return null;
     }
 
     /**
@@ -184,6 +190,27 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
 
     public List<EventRecommender> getInventory() {
         IPythonExecutor<P, List<EventRecommender>> executor = new RecommenderInventoryExecutor<P>();
+        try {
+            return getCoordinator().submitSyncJob(executor);
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to submit job to get inventory", e);
+        }
+        return null;
+    }
+
+    /**
+     * THIS METHOD IS CURRENTLY PRIMARILY FOR UNIT TEST PURPOSES. Attempt to
+     * load the specified recommender and return the inventory.
+     * 
+     * @param recommenderName
+     *            The name of the recommender that should be or needs to be
+     *            loaded before returning the inventory
+     * @return the inventory of recommenders that have been loaded.
+     */
+    public List<EventRecommender> getInventory(String recommenderName) {
+        IPythonExecutor<P, List<EventRecommender>> executor = new RecommenderLoaderInventoryExecutor<P>(
+                recommenderName);
         try {
             return getCoordinator().submitSyncJob(executor);
         } catch (Exception e) {

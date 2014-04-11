@@ -17,12 +17,17 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.recommenders;
+package com.raytheon.uf.common.recommenders.executors;
 
-import org.junit.Ignore;
+import java.util.List;
+
+import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
+import com.raytheon.uf.common.recommenders.EventRecommender;
 
 /**
- * Tests a recommender without any overrides.
+ * THIS EXECUTOR CURRENTLY ONLY EXISTS FOR TESTING PURPOSES. This executor
+ * allows a user to specify a recommender that they would like to be loaded into
+ * inventory before retrieving the inventory.
  * 
  * <pre>
  * 
@@ -30,7 +35,7 @@ import org.junit.Ignore;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 24, 2014            bkowal     Initial creation
+ * Apr 14, 2014            bkowal     Initial creation
  * 
  * </pre>
  * 
@@ -38,16 +43,17 @@ import org.junit.Ignore;
  * @version 1.0
  */
 
-@Ignore
-public class RecommenderTestBase extends AbstractRecommenderOverrideTest {
-    private static final String RECOMMENDER_NAME = "BaseOverrideRecommender";
+public class RecommenderLoaderInventoryExecutor<P extends AbstractRecommenderScriptManager>
+        extends RecommenderInventoryExecutor<P> {
 
-    private static final String EXPECTED_KEY_VALUE = "TEST BASE";
+    private final String recommenderName;
 
-    /**
-     * 
-     */
-    public RecommenderTestBase() {
-        super(RECOMMENDER_NAME, EXPECTED_KEY_VALUE);
+    public RecommenderLoaderInventoryExecutor(final String recommenderName) {
+        this.recommenderName = recommenderName;
+    }
+
+    @Override
+    public List<EventRecommender> execute(P script) {
+        return script.getInventory(this.recommenderName);
     }
 }

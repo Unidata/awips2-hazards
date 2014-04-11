@@ -29,6 +29,7 @@ import static org.junit.Assert.fail;
 import java.io.Serializable;
 import java.util.Map;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -58,6 +59,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
+@Ignore
 public class RecommenderTestSuccess extends AbstractRecommenderTest {
 
     @Test

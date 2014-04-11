@@ -86,6 +86,7 @@ class VTECEngineWrapper(object):
           only used in places where there are multiple products for the same
           hazard types issued at an office.  Example: PAFG (Fairbanks, AK).
         '''
+        
         # If running the test harness, use "test" vtecRecords rather than "live" ones
         if operationalMode:
             self.vtecRecordType = "vtecRecords"
@@ -101,14 +102,13 @@ class VTECEngineWrapper(object):
         
         if self.bridge is not None:
             
-            # hazard types has already been refactored in another code review
             # Hazard Types
-            self.hazardTypes = json.loads(self.bridge.getData('{"dataType":"hazardTypes"}')) 
+            self.hazardTypes = self.bridge.getHazardTypes() 
             # ProductGeneratorTable
             ProductGeneratorTable = json.loads(self.bridge.getProductGeneratorTable())
         else: # Testing
             from LocalizationInterface import LocalizationInterface
-            localizationInterface = LocalizationInterface("")      
+            localizationInterface = LocalizationInterface("")  
             execString = localizationInterface.getLocFile(
                     "hazardServices/hazardTypes/HazardTypes.py", "COMMON_STATIC", "Base")
             exec execString

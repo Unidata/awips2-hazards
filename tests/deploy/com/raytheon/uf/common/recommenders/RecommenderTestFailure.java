@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -50,6 +51,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
  * @version 1.0
  */
 
+@Ignore
 public class RecommenderTestFailure extends AbstractRecommenderTest {
 
     @Test
