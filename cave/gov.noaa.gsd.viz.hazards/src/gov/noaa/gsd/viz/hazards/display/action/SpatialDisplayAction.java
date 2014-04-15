@@ -33,7 +33,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public class SpatialDisplayAction {
 
     public enum ActionType {
-        DRAWING, FRAME_CHANGED, ADD_PENDING_TO_SELECTED, CONEXT_MENU_SELECTED,
+        DRAWING, FRAME_CHANGED, ADD_PENDING_TO_SELECTED, CONTEXT_MENU_SELECTED,
 
         SELECTED_EVENTS_CHANGED, DMTS, DISPLAY_DISPOSED, RUN_TOOL,
 

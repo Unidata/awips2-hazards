@@ -32,6 +32,7 @@ import gov.noaa.gsd.common.utilities.LongStringComparator;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
@@ -74,6 +75,9 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.ActionContributionItem;
+import org.eclipse.jface.action.IContributionItem;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.TableEditor;
 import org.eclipse.swt.events.ControlEvent;
@@ -2783,13 +2787,6 @@ class TemporalDisplay {
             }
         });
 
-        // Create a context-sensitive menu to be deployed for
-        // table items as appropriate.
-        rowMenu = new Menu(table);
-        untilFurtherNoticeMenuItem = new MenuItem(rowMenu, SWT.PUSH);
-        untilFurtherNoticeMenuItem.setText(UNTIL_FURTHER_NOTICE_MENU_TEXT);
-        untilFurtherNoticeMenuItem.addSelectionListener(rowMenuListener);
-
         // Add a listener for popup menu request events, to be
         // told when the user has attempted to pop up a menu
         // from the table.
@@ -2852,7 +2849,18 @@ class TemporalDisplay {
                         table.setMenu(menu);
                     }
                 } else {
-
+                    if (rowMenu != null && rowMenu.isDisposed() == false) {
+                        rowMenu.dispose();
+                    }
+                    // Create a context-sensitive menu to be deployed for
+                    // table items as appropriate.
+                    rowMenu = new Menu(table);
+                    untilFurtherNoticeMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+                    untilFurtherNoticeMenuItem
+                            .setText(UNTIL_FURTHER_NOTICE_MENU_TEXT);
+                    untilFurtherNoticeMenuItem
+                            .addSelectionListener(rowMenuListener);
+                    createHazardMenu();
                     // Unfortunately, SWT tables fire these events
                     // before the selection events, so at the point
                     // where this code is executing, any modification
@@ -4854,6 +4862,35 @@ class TemporalDisplay {
             return columnDefinition.getDisplayEmptyAs();
         } else {
             return EMPTY_STRING;
+        }
+    }
+
+    /**
+     * Create the hazard menu
+     */
+    private void createHazardMenu() {
+        ContextMenuHelper helper = new ContextMenuHelper(presenter,
+                presenter.getSessionManager());
+        List<MenuItem> items = new ArrayList<>();
+        for (IContributionItem item : helper
+                .getSelectedHazardManagementItems(false)) {
+            MenuItem menuItem = null;
+            if (item instanceof ActionContributionItem) {
+                ActionContributionItem actionItem = (ActionContributionItem) item;
+                menuItem = new MenuItem(rowMenu, SWT.PUSH);
+                menuItem.setText(actionItem.getAction().getText());
+                menuItem.setData(actionItem.getAction());
+                menuItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        Action act = (Action) ((MenuItem) e.widget).getData();
+                        act.run();
+                    }
+                });
+            } else if (item instanceof Separator) {
+                menuItem = new MenuItem(rowMenu, SWT.SEPARATOR);
+            }
+            items.add(menuItem);
         }
     }
 }

@@ -320,7 +320,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 checkFollowUpStatementIssue();
                 step = Steps.PREVIEW_CANCELLATION_STATEMENT;
                 SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                        SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED,
+                        SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED,
                         0, HazardConstants.END_SELECTED_HAZARDS);
                 eventBus.publishAsync(spatialAction);
             } else if (step == Steps.PREVIEW_CANCELLATION_STATEMENT) {

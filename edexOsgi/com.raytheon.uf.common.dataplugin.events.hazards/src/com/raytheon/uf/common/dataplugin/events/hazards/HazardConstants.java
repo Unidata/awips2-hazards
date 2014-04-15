@@ -532,15 +532,13 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_ADD_REMOVE_SHAPES = "Add/Remove Shapes";
 
-    public static final String CONEXT_MENU_SELECTED = "ContextMenuSelected";
+    public static final String CONTEXT_MENU_SELECTED = "ContextMenuSelected";
 
     public static final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
 
     public static final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
-
-    public static final String CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
 
     public static final String CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS = "Clip and Reduce Selected Hazards";
 
@@ -668,13 +666,13 @@ public final class HazardConstants {
 
     public static final String STATIC_SETTINGS = "staticSettings";
 
-    public static final String END_SELECTED_HAZARDS = "End Selected Hazards";
+    public static final String END_SELECTED_HAZARDS = "End Selected";
 
-    public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected Hazards";
+    public static final String PROPOSE_SELECTED_HAZARDS = "Propose Selected";
 
     public static final String SPATIAL_INFO = "spatialInfo";
 
-    public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential Hazards";
+    public static final String REMOVE_POTENTIAL_HAZARDS = "Remove Potential";
 
     /*
      * Constants related to Data Access Framework Requests.

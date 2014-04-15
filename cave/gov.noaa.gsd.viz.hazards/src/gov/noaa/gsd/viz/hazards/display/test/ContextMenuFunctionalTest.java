@@ -95,8 +95,8 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
 
         try {
             this.step = Steps.CREATE_NEW_NODE_HAZARD_AREA;
-            List<String> contextMenuEntries = this.toolLayer
-                    .getContextMenuEntries();
+            List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
+                    .getFlatContextMenuActions());
 
             assertTrue(contextMenuEntries
                     .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
@@ -137,8 +137,8 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
                 break;
 
             case CREATE_NEW_NODE_HAZARD_AREA:
-                List<String> contextMenuEntries = this.toolLayer
-                        .getContextMenuEntries();
+                List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
+                        .getFlatContextMenuActions());
 
                 assertTrue(!contextMenuEntries
                         .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));

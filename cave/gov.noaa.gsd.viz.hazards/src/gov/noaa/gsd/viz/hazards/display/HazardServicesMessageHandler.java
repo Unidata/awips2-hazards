@@ -1168,8 +1168,7 @@ public final class HazardServicesMessageHandler implements
              * this would be lost when selecting different events.
              */
             appBuilder.showHazardDetail();
-        } else if (label
-                .contains(HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS)) {
+        } else if (label.contains(HazardConstants.REMOVE_POTENTIAL_HAZARDS)) {
             removeEventsWithState(HazardConstants.HazardState.POTENTIAL
                     .getValue());
             notifyModelEventsChanged();
@@ -1501,7 +1500,7 @@ public final class HazardServicesMessageHandler implements
             runTool(lonLat, null, null);
             break;
 
-        case CONEXT_MENU_SELECTED:
+        case CONTEXT_MENU_SELECTED:
             String label = spatialDisplayAction.getContextMenuLabel();
             handleContextMenuSelection(label);
             break;

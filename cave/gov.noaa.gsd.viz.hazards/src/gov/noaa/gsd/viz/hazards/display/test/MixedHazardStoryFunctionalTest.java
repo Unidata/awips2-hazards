@@ -10,8 +10,6 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_END;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.END_SELECTED_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
@@ -340,12 +338,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
             case SELECTION_ISSUE:
                 checkFirstSelectionIssue();
-                List<String> contextMenuEntries = toolLayer
-                        .getContextMenuEntries();
-                checkMenuContextMenu(contextMenuEntries,
-                        CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
-                assertTrue(contextMenuEntries
-                        .contains(CONTEXT_MENU_HAZARD_INFORMATION_DIALOG));
+                List<String> contextMenuEntries = convertContextMenuToString(toolLayer
+                        .getFlatContextMenuActions());
                 assertTrue(contextMenuEntries.contains(END_SELECTED_HAZARDS));
                 assertTrue(contextMenuEntries
                         .contains(PROPOSE_SELECTED_HAZARDS));
@@ -353,7 +347,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                         .contains(REMOVE_POTENTIAL_HAZARDS));
 
                 step = Steps.REMOVING_POTENTIAL_EVENTS;
-                postContextMenuEvent(CONTEXT_MENU_REMOVE_POTENTIAL_HAZARDS);
+                postContextMenuEvent(REMOVE_POTENTIAL_HAZARDS);
                 break;
 
             case REPLACEMENT_PREVIEW_FIRST_PRODUCT:
@@ -418,7 +412,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
     private void postContextMenuEvent(String choice) {
         SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0, choice);
+                SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
+                choice);
         eventBus.publishAsync(spatialAction);
     }
 

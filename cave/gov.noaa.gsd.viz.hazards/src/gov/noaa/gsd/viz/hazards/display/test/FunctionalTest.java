@@ -29,6 +29,11 @@ import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.jface.action.IAction;
+
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
@@ -289,6 +294,14 @@ public abstract class FunctionalTest {
             eventBus.publish(new TestCompleted(StopTesting.class));
         }
 
+    }
+
+    protected List<String> convertContextMenuToString(List<IAction> actions) {
+        List<String> contextMenu = new ArrayList<>();
+        for (IAction action : actions) {
+            contextMenu.add(action.getText());
+        }
+        return contextMenu;
     }
 
     protected static class StopTesting {

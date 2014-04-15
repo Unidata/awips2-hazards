@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ModifyStormTrackAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
@@ -39,7 +40,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -54,8 +54,11 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.ActionContributionItem;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
@@ -91,7 +94,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.awipstools.IToolChangedListener;
@@ -805,7 +807,7 @@ public class ToolLayer extends
      */
     private void fireContextMenuItemSelected(String menuLabel) {
         SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.CONEXT_MENU_SELECTED, 0,
+                SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED, 0,
                 menuLabel);
         eventBus.publish(action);
     }
@@ -1374,22 +1376,11 @@ public class ToolLayer extends
          * only if over a selected hazard and point. Retrieve the list of
          * context menu items to add...
          */
-        List<String> entries = getContextMenuEntries();
-
-        if (entries != null && entries.size() > 0) {
-
-            for (String contextMenuEntry : entries) {
-
-                menuManager.add(new Action(contextMenuEntry) {
-                    @Override
-                    public void run() {
-                        super.run();
-                        fireContextMenuItemSelected(getText());
-                    }
-                });
-            }
+        List<IAction> actions = getContextMenuActions();
+        for (IAction action : actions) {
+            menuManager.add(action);
         }
-
+        menuManager.add(new Separator());
     }
 
     /**
@@ -1443,94 +1434,82 @@ public class ToolLayer extends
      * @param
      * @return A list of entries to add to the context menu.
      */
-    public List<String> getContextMenuEntries() {
-        ISessionEventManager<ObservedHazardEvent> eventManager = appBuilder
-                .getSessionManager().getEventManager();
-        List<String> entries = new ArrayList<String>();
-        EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
+    public List<IAction> getContextMenuActions() {
+        ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
+                .getSpatialPresenter(), appBuilder.getSessionManager());
 
-        boolean isModified = false;
-        boolean canBeClippedAndReduced = false;
+        List<IAction> actions = new ArrayList<>();
 
-        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
-            states.add(event.getState());
+        IAction action = helper.createMenu(
+                "Manage hazards...",
+                helper.getSelectedHazardManagementItems(true).toArray(
+                        new IContributionItem[0]));
 
-            if (event instanceof IModifiable
-                    && ((IModifiable) event).isModified()) {
-                isModified = true;
+        if (action != null) {
+            actions.add(action);
+        }
+
+        // This isn't the best way to determine this, but not sure what to do at
+        // the moment.
+        boolean drawCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
+        boolean moveCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+        action = helper.createMenu(
+                "Modify area...",
+                helper.getSpatialHazardItems(drawCursor, moveCursor).toArray(
+                        new IContributionItem[0]));
+        if (action != null) {
+            actions.add(action);
+        }
+
+        action = helper.createMenu("Send to...", helper.getHazardSpatialItems()
+                .toArray(new IContributionItem[0]));
+        if (action != null) {
+            actions.add(action);
+        }
+        return actions;
+    }
+
+    /**
+     * This method just returns a flat look at the menu items, used for
+     * automated tests
+     * 
+     * @return
+     */
+    @Deprecated
+    public List<IAction> getFlatContextMenuActions() {
+        ContextMenuHelper helper = new ContextMenuHelper(getAppBuilder()
+                .getSpatialPresenter(), appBuilder.getSessionManager());
+
+        List<IAction> actions = new ArrayList<>();
+
+        for (IContributionItem item : helper
+                .getSelectedHazardManagementItems(true)) {
+            if (item instanceof ActionContributionItem) {
+                actions.add(((ActionContributionItem) item).getAction());
             }
+        }
 
-            if (event.getHazardType() != null) {
-                canBeClippedAndReduced = true;
-            }
-
-            /*
-             * Logic to handle hazard-specific contributions to the context
-             * menu. This is used, for example, by the "Add/Remove Shapes" entry
-             * which applies to hazard geometries created by the draw-by-area
-             * tool.
-             */
-            @SuppressWarnings("unchecked")
-            List<String> contextMenuEntries = (List<String>) event
-                    .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
-
-            if (contextMenuEntries != null) {
-                for (String contextMenuEntry : contextMenuEntries) {
-
-                    if (contextMenuEntry
-                            .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
-
-                        if (!eventManager.canEventAreaBeChanged(event)) {
-                            continue;
-                        }
-
-                        entries.add(contextMenuEntry);
-                    }
-                }
+        // This isn't the best way to determine this, but not sure what to do at
+        // the moment.
+        boolean drawCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
+        boolean moveCursor = spatialView
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+        for (IContributionItem item : helper.getSpatialHazardItems(drawCursor,
+                moveCursor)) {
+            if (item instanceof ActionContributionItem) {
+                actions.add(((ActionContributionItem) item).getAction());
             }
         }
 
-        entries.add(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG);
-        if (!isModified && states.contains(HazardState.ISSUED)) {
-            entries.add(HazardConstants.END_SELECTED_HAZARDS);
+        for (IContributionItem item : helper.getHazardSpatialItems()) {
+            if (item instanceof ActionContributionItem) {
+                actions.add(((ActionContributionItem) item).getAction());
+            }
         }
-        if (canBeClippedAndReduced) {
-            entries.add(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS);
-        }
-        if (!states.contains(HazardState.PROPOSED) || states.size() > 1) {
-            entries.add(HazardConstants.PROPOSE_SELECTED_HAZARDS);
-        }
-        if (!states.contains(HazardState.ISSUED) || states.size() > 1) {
-            entries.add("Issue Selected Hazards");
-            entries.add("Delete Selected Hazards");
-        }
-        if (states.contains(HazardState.PROPOSED)) {
-            entries.add("Save Proposed Hazards");
-        }
-        entries.add("Send to Back");
-        entries.add("Bring to Front");
-
-        /*
-         * Check for potential events.
-         */
-        Collection<ObservedHazardEvent> potentialEvents = eventManager
-                .getEventsByState(HazardState.POTENTIAL);
-
-        if (!potentialEvents.isEmpty()) {
-            entries.add(HazardConstants.REMOVE_POTENTIAL_HAZARDS);
-        }
-
-        entries.add("Hazard Occurrence Alerts");
-
-        if (spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR)) {
-            entries.add("Delete Node");
-        } else if (spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR)) {
-            entries.add("Add Node");
-        }
-
-        return entries;
+        return actions;
     }
 
     /**
