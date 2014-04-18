@@ -17,6 +17,7 @@
     Dec      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents
     Jan  7, 2014   2367      jsanchez            Replaced ProductParts with a native python objects.
     Apr 11, 2014   3422      bkowal              Use getHazardTypes in bridge.py
+    Apr 18, 2014   696       dgilling            Add support for selectable VTEC mode.
     
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -165,6 +166,12 @@ class Product(ProductTemplate.Product):
         siteEntry = self._siteInfo.get(self._backupSiteID)        
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
+        
+        vtecMode = metaDict.get('vtecMode')
+        if vtecMode:
+            vtecMode = str(vtecMode)
+        self._vtecMode = vtecMode
+        self._vtecTestMode = bool(metaDict.get('vtecTestMode'))
                 
     def _makeProducts_FromHazardEvents(self, hazardEvents): 
         '''        
@@ -1030,6 +1037,9 @@ class Product(ProductTemplate.Product):
         '''
         vtecRecords = []        
         for vtecString in self._vtecEngine.getVTECString(segment):
+            if not vtecString:
+                continue
+            
             vtecString = vtecString.strip('/')
             parts = vtecString.split('.')
             vtecString = '/' + vtecString + '/'
@@ -1179,7 +1189,7 @@ class Product(ProductTemplate.Product):
         opMode = not self._sessionDict.get('testMode', 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
-               hazardEvents, vtecMode='O', issueTime=self._issueTime_secs,
+               hazardEvents, vtecMode=self._vtecMode, issueTime=self._issueTime_secs,
                operationalMode=opMode, testHarnessMode=False, vtecProduct=self._vtecProduct)
         try :
             pass

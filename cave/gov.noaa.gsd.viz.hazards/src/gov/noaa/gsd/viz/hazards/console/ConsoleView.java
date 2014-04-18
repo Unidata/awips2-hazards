@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.viz.hazards.actions.ChangeVtecFormatAction;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
@@ -54,6 +55,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Console view, an implementation of IConsoleView that provides an Eclipse
@@ -78,6 +80,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           area display options.
  * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view part.
+ * Apr 15, 2014     696    David.Gillingham  Add ChangeVtecFormatAction to menu.
  * </pre>
  * 
  * @author Chris.Golden
@@ -734,11 +737,20 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
                     null, ConsoleAction.ActionType.CHANGE_MODE,
                     ConsoleAction.SHOW_HATCHED_AREA);
 
-            Action changeSiteAction = new ChangeSiteAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     resetSettingsCommandAction, sep,
                     checkHazardConflictsAction, autoCheckHazardConflictsAction,
-                    showHatchedAreaAction, sep, changeSiteAction);
+                    showHatchedAreaAction, sep);
+
+            if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
+                Action changeVtecFormat = new ChangeVtecFormatAction(presenter
+                        .getSessionManager().getProductManager());
+                actions.add(changeVtecFormat);
+                actions.add(sep);
+            }
+
+            Action changeSiteAction = new ChangeSiteAction(presenter);
+            actions.add(changeSiteAction);
 
             return actions;
         }

@@ -125,6 +125,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * Apr 29, 2014 3558       bkowal       The generate method now returns a boolean.
+ * Apr 18, 2014  696       dgilling     Add support for selectable VTEC format.
  * </pre>
  * 
  * @author bsteffen
@@ -168,6 +169,10 @@ public class SessionProductManager implements ISessionProductManager {
 
     private final SessionManager sessionManager;
 
+    private String vtecMode;
+
+    private boolean vtecTestMode;
+
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
@@ -180,6 +185,8 @@ public class SessionProductManager implements ISessionProductManager {
         this.notificationSender = notificationSender;
         this.productGen = new ProductGeneration();
         this.messenger = messenger;
+        this.vtecMode = "O";
+        this.vtecTestMode = false;
     }
 
     @Override
@@ -359,7 +366,22 @@ public class SessionProductManager implements ISessionProductManager {
             events.addAttribute(HAZARD_MODE, mode);
             String runMode = CAVEMode.getMode().toString();
             events.addAttribute("runMode", runMode);
-            events.addAttribute("vtecMode", "O");
+
+            String vtecModeToUse = "O";
+            if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
+                vtecModeToUse = vtecMode;
+            }
+            events.addAttribute("vtecMode", vtecModeToUse);
+
+            boolean vtecTestModeToUse = false;
+            if (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode())) {
+                vtecTestModeToUse = false;
+            } else if (CAVEMode.TEST.equals(CAVEMode.getMode())) {
+                vtecTestModeToUse = true;
+            } else {
+                vtecTestModeToUse = vtecTestMode;
+            }
+            events.addAttribute("vtecTestMode", vtecTestModeToUse);
 
             if (issue) {
                 events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
@@ -713,4 +735,18 @@ public class SessionProductManager implements ISessionProductManager {
         return eventIds.isEmpty() ? true : false;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
+     * #setVTECFormat(java.lang.String, boolean)
+     */
+    @Override
+    public void setVTECFormat(String vtecMode, boolean testMode) {
+        if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
+            this.vtecMode = vtecMode;
+            this.vtecTestMode = testMode;
+        }
+    }
 }

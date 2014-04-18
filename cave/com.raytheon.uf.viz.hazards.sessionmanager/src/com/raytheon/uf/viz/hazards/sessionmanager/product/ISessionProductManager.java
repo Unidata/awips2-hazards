@@ -34,6 +34,7 @@ import java.util.List;
  * Jun 19, 2013 1257       bsteffen    Initial creation
  * Apr 29, 2014 3558       bkowal      generate now returns a boolean indicating
  *                                     whether or not product generation has been cancelled.
+ * Apr 17, 2014  696       dgilling    Added setVTECFormat().
  * 
  * </pre>
  * 
@@ -96,4 +97,15 @@ public interface ISessionProductManager {
      */
     public List<String> getUnsupportedHazards();
 
+    /**
+     * Change the VTEC format generation parameters.
+     * 
+     * @param vtecMode
+     *            The first character of the VTEC string, usually "O", but
+     *            sometimes "T" or "E" or "X".
+     * @param testMode
+     *            Whether or not this is a test mode product. Controls headline
+     *            generation.
+     */
+    public void setVTECFormat(String vtecMode, boolean testMode);
 }
