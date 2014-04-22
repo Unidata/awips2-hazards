@@ -51,6 +51,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import net.engio.mbassy.bus.config.BusConfiguration;
+import net.engio.mbassy.bus.error.IPublicationErrorHandler;
+import net.engio.mbassy.bus.error.PublicationError;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -344,6 +346,33 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void initialize(ToolLayer toolLayer) {
         this.toolLayer = toolLayer;
+
+        /*
+         * Add an error handler so that any uncaught exceptions within message
+         * handlers are output using the status handler as an error.
+         */
+        eventBus.addErrorHandler(new IPublicationErrorHandler() {
+
+            @Override
+            public void handleError(PublicationError error) {
+
+                /*
+                 * Get the cause of the error, and if there's a nested cause,
+                 * use that instead. This is because the event bus wraps the
+                 * cause in an InvocationTargetException, which doesn't help in
+                 * identifying the problem; the exception developers would be
+                 * interested in is what caused the problem in the first place.
+                 */
+                Throwable cause = error.getCause();
+                if ((cause != null) && (cause.getCause() != null)) {
+                    cause = cause.getCause();
+                }
+                statusHandler.error(
+                        error.getListener().getClass() + "."
+                                + error.getHandler().getName() + "(): "
+                                + error.getMessage(), cause);
+            }
+        });
 
         ((ToolLayerResourceData) toolLayer.getResourceData())
                 .setAppBuilder(this);
