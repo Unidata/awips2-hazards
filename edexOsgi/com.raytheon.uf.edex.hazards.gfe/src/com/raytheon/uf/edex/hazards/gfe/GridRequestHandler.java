@@ -58,6 +58,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Sep 27, 2013 2277       jsanchez     Initial creation
  * Mar 24, 2013 3323       bkowal       Created methods to retrieve the correct
  *                                      GridParmInfo based on mode.
+ * Apr 08, 2014 3357       bkowal       No longer attempt to save to the Official
+ *                                      DB for practice mode.
  * 
  * </pre>
  * 
@@ -207,10 +209,12 @@ public class GridRequestHandler {
      * @throws Exception
      */
     public static void store(List<GFERecord> records,
-            GridParmInfo gridParmInfo, TimeRange replacementTimeRange)
-            throws Exception {
+            GridParmInfo gridParmInfo, TimeRange replacementTimeRange,
+            boolean practice) throws Exception {
         saveToForecastDB(gridParmInfo, records, replacementTimeRange);
-        saveToOfficialDB(gridParmInfo, replacementTimeRange);
+        if (practice == false) {
+            saveToOfficialDB(gridParmInfo, replacementTimeRange);
+        }
     }
 
     /**

@@ -42,6 +42,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Initial creation
  * Jan 10, 2014 2890       bkowal      Now subscribes to a notification indicating
  *                                     that all product generation is complete.
+ * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
+ *                                     without modifying any data or the state.
  * 
  * </pre>
  * 
@@ -147,7 +149,7 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                 break;
 
             default:
-                testError();
+                // Do Nothing.
             }
         } catch (Exception e) {
             handleException(e);

@@ -44,7 +44,10 @@ import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
 import com.raytheon.uf.common.dataplugin.gfe.util.GfeUtil;
 import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.time.TimeRange;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.MultiPolygon;
 
 /**
@@ -62,6 +65,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Feb 20, 2014 2999       bkowal       Handle geometries consisting of multiple
  *                                      polygons correctly when converting a
  *                                      geometry to a 'gfe geometry'
+ * Apr 08, 2014 3357       bkowal       Added additional utility methods to support
+ *                                      the updated gfe interoperability matching
+ *                                      method.
  * 
  * </pre>
  * 
@@ -145,6 +151,9 @@ public class GFERecordUtil {
 
         // create the Grid2DByte
         GridLocation gridLocation = gridParmInfo.getGridLoc();
+        if (isPointSetClosed(hazardEvent.getGeometry().getCoordinates()) == false) {
+            return null;
+        }
         MultiPolygon polygon = GfeUtil.createPolygon(hazardEvent.getGeometry()
                 .getCoordinates());
         polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
@@ -165,6 +174,14 @@ public class GFERecordUtil {
             GridLocation gridLocation, Geometry geometry)
             throws TransformException {
         Geometry gfePolygon = null;
+
+        /*
+         * If the geometry is not closed, return the original geometry. Certain
+         * GFE geometries consist of a set of points that are not closed.
+         */
+        if (isPointSetClosed(geometry.getCoordinates()) == false) {
+            return geometry;
+        }
 
         if (geometry.getNumGeometries() == 1) {
             MultiPolygon polygon = GfeUtil.createPolygon(geometry
@@ -190,5 +207,39 @@ public class GFERecordUtil {
         }
 
         return gfePolygon;
+    }
+
+    public static Grid2DBit translateHazardPolygonGrid2Bit(
+            GridLocation gridLocation, Geometry geometry)
+            throws TransformException {
+        Grid2DBit grid2DBit = null;
+
+        if (geometry.getNumGeometries() == 1) {
+            MultiPolygon polygon = GfeUtil.createPolygon(geometry
+                    .getCoordinates());
+            polygon = (MultiPolygon) JTS.transform(polygon, MapUtil
+                    .getTransformFromLatLon(PixelOrientation.CENTER,
+                            gridLocation));
+            grid2DBit = GfeUtil.filledBitArray(polygon, gridLocation);
+        } else {
+            for (int i = 0; i < geometry.getNumGeometries(); i++) {
+                Grid2DBit data = translateHazardPolygonGrid2Bit(gridLocation,
+                        geometry.getGeometryN(i));
+                if (grid2DBit == null) {
+                    grid2DBit = data;
+                } else {
+                    grid2DBit = grid2DBit.or(data);
+                }
+            }
+        }
+
+        return grid2DBit;
+    }
+
+    private static boolean isPointSetClosed(Coordinate[] coordinates) {
+        GeometryFactory gf = new GeometryFactory();
+        LineString ls = gf.createLineString(coordinates);
+
+        return ls.isClosed();
     }
 }

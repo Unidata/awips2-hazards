@@ -148,7 +148,6 @@ public class RiverProHazardsCreator {
             Map<String, String> sigs = retrieveAvailable(SIGNIF, VTEC_SIGNIF);
             // loop over each record
             for (PluginDataObject obj : objects) {
-                boolean practice = obj instanceof PracticeWarningRecord;
                 AbstractWarningRecord warning = null;
                 if (obj instanceof AbstractWarningRecord) {
                     warning = (AbstractWarningRecord) obj;
@@ -163,11 +162,11 @@ public class RiverProHazardsCreator {
                 // are are we doing a correct phen and sig, if not, continue on
                 if (phens.containsKey(warning.getPhen())
                         && sigs.containsKey(warning.getSig())) {
+
                     // loop over all gauge locations
                     for (Entry<String, Point> pt : gaugeLocations.entrySet()) {
                         // only create a record, if the gauge is in the area
                         if (warning.getGeometry().contains(pt.getValue())) {
-
                             // query the afos_to_awips table to get the product
                             // id
                             String productId = "";
@@ -192,7 +191,7 @@ public class RiverProHazardsCreator {
                             }
                             // testing whether it should go to the practice
                             // table, or to the regular table.
-                            if (practice) {
+                            if (obj instanceof PracticeWarningRecord) {
                                 VtecpracticeId id = new VtecpracticeId(
                                         pt.getKey(), productId, warning
                                                 .getIssueTime().getTime());
@@ -317,6 +316,7 @@ public class RiverProHazardsCreator {
      * @param clazz
      * @return
      */
+    @SuppressWarnings("unchecked")
     private <T extends Object> T retrieveVtecObject(String firstColumnValue,
             String firstColumnName, Class<T> clazz) {
         List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(

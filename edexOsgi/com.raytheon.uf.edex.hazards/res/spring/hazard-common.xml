@@ -29,4 +29,28 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest" />
 		<constructor-arg ref="getHazardEventIdHandler" />
 	</bean>
+	
+	<bean id="storeInteroperabilityHandler"
+		class="com.raytheon.uf.edex.hazards.interoperability.handlers.InteroperabilityStorageHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordStorageRequest" />
+		<constructor-arg ref="storeInteroperabilityHandler" />
+	</bean>
+	
+	<bean id="getPKInteroperabilityHandler"
+		class="com.raytheon.uf.edex.hazards.interoperability.handlers.InteroperabilityPKRetrieveHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrievePKRequest" />
+		<constructor-arg ref="getPKInteroperabilityHandler" />
+	</bean>
+	
+	<bean id="getInteroperabilityHandler"
+		class="com.raytheon.uf.edex.hazards.interoperability.handlers.InteroperabilityRetrieveHandler" />
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.RecordRetrieveRequest" />
+		<constructor-arg ref="getInteroperabilityHandler" />
+	</bean>	
 </beans>

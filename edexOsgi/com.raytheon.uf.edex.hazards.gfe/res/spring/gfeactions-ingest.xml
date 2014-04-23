@@ -4,7 +4,8 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
     <bean id="gridParmInfoHandler" class="com.raytheon.edex.plugin.gfe.server.handler.GetGridParmInfoHandler"/>
-    <bean id="getGridParmInfoRequestRegister" factory-bean="handlerRegistry" factory-method="register">
+    <bean id="getGridParmInfoRequestRegister" factory-bean="handlerRegistry" factory-method="register" 
+    depends-on="gridParmInfoHandler, handlerRegistry">
         <constructor-arg value="com.raytheon.uf.common.dataplugin.gfe.request.GetGridParmInfoRequest"/>
         <constructor-arg ref="gridParmInfoHandler"/>
     </bean>

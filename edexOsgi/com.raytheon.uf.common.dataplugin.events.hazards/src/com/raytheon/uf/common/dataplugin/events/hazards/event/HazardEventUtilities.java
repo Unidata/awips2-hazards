@@ -21,14 +21,12 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
@@ -52,6 +50,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  *                                     generating new Event IDs
  * Feb 02, 2014 2536       blawrenc   Moved geometry classes to a viz side class.
  * Mar 03, 2014 3034       bkowal     Moved common actions into separate methods
+ * Apr 08, 2014 3357       bkowal     Removed unused methods.
  * 
  * 
  * </pre>
@@ -122,35 +121,6 @@ public class HazardEventUtilities {
         return parsed;
     }
 
-    public static Map<String, HazardHistoryList> queryForEvents(
-            IHazardEventManager manager, IHazardEvent event) {
-        HazardQueryBuilder builder = new HazardQueryBuilder();
-        builder.addKey(HazardConstants.SITE_ID, event.getSiteID());
-        builder.addKey(HazardConstants.PHENOMENON, event.getPhenomenon());
-        builder.addKey(HazardConstants.SIGNIFICANCE, event.getSignificance());
-        return manager.getEventsByFilter(builder.getQuery());
-    }
-
-    public static boolean isDuplicate(IHazardEventManager manager,
-            IHazardEvent event) {
-        Map<String, HazardHistoryList> hazards = queryForEvents(manager, event);
-        boolean isDup = false;
-        for (HazardHistoryList list : hazards.values()) {
-            Iterator<IHazardEvent> iter = list.iterator();
-            while (iter.hasNext()) {
-                IHazardEvent ev = iter.next();
-                isDup = HazardEventUtilities.checkDifferentEvents(ev, event);
-                if (isDup) {
-                    break;
-                }
-            }
-            if (isDup) {
-                break;
-            }
-        }
-        return isDup;
-    }
-
     public static String determineEtn(String site, String action, String etn,
             IHazardEventManager manager) throws Exception {
         // make a request for the hazard event id from the cluster task
@@ -180,14 +150,14 @@ public class HazardEventUtilities {
             }
         }
         if ("NEW".equals(action) || createNew) {
-            value = generateEventID(site);
+            value = generateEventID(site, true);
         }
         return value;
     }
 
-    public static String generateEventID(String site) throws Exception {
+    public static String generateEventID(String site, boolean practice) throws Exception {
         HazardEventIdRequest request = new HazardEventIdRequest();
-        request.setPractice(true);
+        request.setPractice(practice);
         request.setSiteId(site);
         String value = "";
         try {
@@ -196,80 +166,6 @@ public class HazardEventUtilities {
             throw new Exception("Unable to make request for hazard event id", e);
         }
         return value;
-    }
-
-    public static boolean checkDifferentSiteOrType(IHazardEvent event1,
-            IHazardEvent event2) {
-        if (event1.getSiteID().equals(event2.getSiteID()) == false) {
-            return true;
-        }
-        if (event1.getPhenomenon().equals(event2.getPhenomenon()) == false) {
-            return true;
-        }
-        if (event1.getSignificance().equals(event2.getSignificance()) == false) {
-            return true;
-        }
-        // TODO, this is necessary when we use the mode to issue products later
-        // on
-        // if (event1.getHazardMode().equals(event2.getHazardMode()) == false) {
-        // return true;
-        // }
-
-        return false;
-    }
-
-    /**
-     * Determines if events are the same or are different.
-     * 
-     * @param event1
-     * @param event2
-     * @return
-     */
-    @SuppressWarnings("unchecked")
-    public static boolean checkDifferentEvents(IHazardEvent event1,
-            IHazardEvent event2) {
-        if (checkDifferentSiteOrType(event1, event2)) {
-            return true;
-        }
-
-        Object obj1 = event1.getHazardAttribute(HazardConstants.ETNS);
-        List<String> etns1 = null;
-        List<String> etns2 = null;
-        /*
-         * Verify that the hazard event actually has ETNs associated with it.
-         */
-        if (obj1 != null) {
-            // this will become OBE by refactor work, right now we have cases
-            // where
-            // it is a string and some where it is a list
-            if (obj1 instanceof String) {
-                etns1 = HazardEventUtilities.parseEtns((String) event1
-                        .getHazardAttribute(HazardConstants.ETNS));
-            } else {
-                etns1 = new ArrayList<String>();
-                List<Integer> list = (List<Integer>) obj1;
-                for (Integer in : list) {
-                    etns1.add(String.valueOf(in));
-                }
-            }
-
-            Object obj2 = event2.getHazardAttribute(HazardConstants.ETNS);
-            if (obj2 instanceof String) {
-                etns2 = HazardEventUtilities.parseEtns((String) event2
-                        .getHazardAttribute(HazardConstants.ETNS));
-            } else {
-                etns2 = new ArrayList<String>();
-                List<Integer> list = (List<Integer>) obj2;
-                for (Integer in : list) {
-                    etns2.add(String.valueOf(in));
-                }
-            }
-            if (compareEtns(etns1, etns2) == false) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

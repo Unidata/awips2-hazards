@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.hazards.warnings;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -35,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.dataquery.requests.DbQueryRequest;
@@ -45,6 +45,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
 
 /**
  * Allows for warning compatibility with interoperability. Creates IHazardEvent
@@ -59,6 +60,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Jun 11, 2013            mnash     Initial creation
  * Jan 15, 2014 2755       bkowal      Exception handling for failed hazard event
  *                                     id generation.
+ * Apr 08, 2014 3357       bkowal    Updated to use the new interoperability tables.
+ * Apr 23, 2014 3357       bkowal    Improved interoperability hazard comparison to prevent duplicate hazard creation.
  * 
  * </pre>
  * 
@@ -67,6 +70,16 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  */
 
 public class WarningHazardsCreator {
+
+    private static final String PHEN_FF = "FF";
+
+    private static final String SIG_W = "W";
+
+    private static final String CONVECTIVE_FL_SEVERITY = "0";
+
+    private static final String SUBTYPE_CONVECTIVE = "Convective";
+
+    private static final String SUBTYPE_NONCONVECTIVE = "NonConvective";
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(WarningHazardsCreator.class);
@@ -97,13 +110,11 @@ public class WarningHazardsCreator {
 
     public void createHazards(List<PluginDataObject> objects) {
         if (objects.isEmpty() == false) {
-            List<IHazardEvent> events = new ArrayList<IHazardEvent>();
-            IHazardEventManager manager;
             for (PluginDataObject ob : objects) {
                 if (ob instanceof AbstractWarningRecord) {
                     Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
                             : Mode.OPERATIONAL;
-                    manager = new HazardEventManager(mode);
+                    IHazardEventManager manager = new HazardEventManager(mode);
                     if (mode == Mode.OPERATIONAL) {
                         statusHandler
                                 .info("Encountered an operational hazard, skipping");
@@ -121,6 +132,12 @@ public class WarningHazardsCreator {
                     } else {
                         continue;
                     }
+
+                    // Determine if an event already exists.
+                    if (this.doesEventAlreadyExist(manager, record)) {
+                        continue;
+                    }
+
                     IHazardEvent event = manager.createEvent();
 
                     String value = null;
@@ -188,13 +205,9 @@ public class WarningHazardsCreator {
                         event.addHazardAttribute(
                                 HazardConstants.FLOOD_SEVERITY, floodSeverity);
                         // this only applies to FF.W
-                        if (event.getPhenomenon().equals("FF")
-                                && event.getSignificance().equals("W")) {
-                            if (floodSeverity.equals("0")) {
-                                event.setSubType("Convective");
-                            } else {
-                                event.setSubType("NonConvective");
-                            }
+                        String subType = this.determineSubType(record);
+                        if (subType != null) {
+                            event.setSubType(subType);
                         }
                     }
                     if (floodRecordStatus != null) {
@@ -208,19 +221,73 @@ public class WarningHazardsCreator {
                                 immediateCause);
                     }
 
-                    if (HazardEventUtilities.isDuplicate(manager, event) == false) {
-                        events.add(event);
+                    IHazardEvent existingEvent = InteroperabilityUtil
+                            .associatedExistingHazard(
+                                    manager,
+                                    event.getSiteID(),
+                                    event.getPhenomenon(),
+                                    event.getSignificance(),
+                                    event.getHazardAttributes()
+                                            .get(HazardConstants.ETNS)
+                                            .toString());
+                    if (existingEvent != null) {
+                        statusHandler.info("Match found for etn "
+                                + record.getEtn() + " with Hazard Event "
+                                + existingEvent.getEventID());
+                        InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
+                                existingEvent, record.getEtn(),
+                                INTEROPERABILITY_TYPE.WARNGEN);
+                        continue;
                     }
-                    if (events.isEmpty() == false) {
-                        boolean stored = manager.storeEvents(events);
-                        if (stored == false) {
-                            throw new RuntimeException(
-                                    "Unable to store converted events to the database with type "
-                                            + mode.name().toLowerCase());
-                        }
+
+                    boolean stored = manager.storeEvent(event);
+                    statusHandler.info("Created Hazard " + event.getEventID());
+                    if (stored) {
+                        InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
+                                event, record.getEtn(),
+                                INTEROPERABILITY_TYPE.WARNGEN);
+                    } else {
+                        throw new RuntimeException(
+                                "Unable to store converted events to the database  with type "
+                                        + mode.name().toLowerCase());
                     }
                 }
             }
         }
+    }
+
+    private boolean doesEventAlreadyExist(IHazardEventManager manager,
+            AbstractWarningRecord record) {
+        final String siteID = record.getXxxid();
+        final String etn = record.getEtn();
+        String phen = record.getPhen();
+        String sig = record.getSig();
+        String subType = this.determineSubType(record);
+        final String hazardType = HazardEventUtilities.getHazardType(phen, sig,
+                subType);
+        IHazardEvent hazardEvent = InteroperabilityUtil
+                .queryInteroperabilityByETNForHazard(manager, siteID,
+                        hazardType, etn, INTEROPERABILITY_TYPE.WARNGEN);
+
+        return (hazardEvent != null);
+    }
+
+    private String determineSubType(AbstractWarningRecord record) {
+        if (record.getFloodSeverity() == null) {
+            return null;
+        }
+
+        final String phen = record.getPhen();
+        final String sig = record.getSig();
+        if (PHEN_FF.equals(phen) == false) {
+            return null;
+        }
+
+        if (SIG_W.equals(sig) == false) {
+            return null;
+        }
+
+        return CONVECTIVE_FL_SEVERITY.equals(record.getFloodSeverity()) ? SUBTYPE_CONVECTIVE
+                : SUBTYPE_NONCONVECTIVE;
     }
 }

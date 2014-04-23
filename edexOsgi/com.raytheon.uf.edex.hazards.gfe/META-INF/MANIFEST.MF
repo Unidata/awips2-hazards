@@ -24,5 +24,6 @@ Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.recommenders;bundle-version="1.0.0",
  com.raytheon.uf.edex.recommenders;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.warning;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataaccess;bundle-version="1.0.0"
+ com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
+ com.raytheon.uf.edex.hazards;bundle-version="1.0.0"
 Export-Package: com.raytheon.uf.edex.hazards.gfe

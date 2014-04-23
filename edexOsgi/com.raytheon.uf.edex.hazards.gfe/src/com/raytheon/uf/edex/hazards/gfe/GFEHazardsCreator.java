@@ -22,10 +22,10 @@ package com.raytheon.uf.edex.hazards.gfe;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Date;
 
 import org.opengis.referencing.operation.TransformException;
 
@@ -42,8 +42,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridParmInfo;
 import com.raytheon.uf.common.dataplugin.message.PracticeDataURINotificationMessage;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
@@ -56,6 +55,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.edex.hazards.interoperability.util.InteroperabilityUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -73,6 +73,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                   GFE hazards do not initially have ETNs.
  * Mar 24, 2014  3323      bkowal    Use the mode to retrieve the correct
  *                                   GridParmInfo.
+ * April 8, 2014 3357      bkowal    Updated to use the new interoperability tables.
  * 
  * </pre>
  * 
@@ -186,14 +187,12 @@ public class GFEHazardsCreator {
                         continue;
                     }
                     Mode mode = null;
-                    if (rec instanceof PracticeWarningRecord) {
+                    boolean practice = (rec instanceof PracticeWarningRecord);
+                    if (practice) {
                         mode = Mode.PRACTICE;
                     } else {
                         mode = Mode.OPERATIONAL;
                     }
-
-                    // TODO do not override hazard mode.
-                    mode = Mode.PRACTICE;
                     HazardEventManager manager = new HazardEventManager(mode);
 
                     buildAreas(rec.getUgcZones());
@@ -224,16 +223,14 @@ public class GFEHazardsCreator {
 
                     Geometry geom = buildGeometry(geomData);
 
-                    IHazardEvent event = createEvent(manager, rec, geom);
-
                     GridParmInfo gridParmInfo = null;
                     try {
                         gridParmInfo = GridRequestHandler.requestGridParmInfo(
-                                mode, event.getSiteID());
+                                mode, rec.getXxxid());
                     } catch (Exception e) {
                         statusHandler.error(
                                 "Failed to retrieve Grid Parm Info for site: "
-                                        + event.getSiteID() + ".", e);
+                                        + rec.getXxxid() + ".", e);
                         return;
                     }
 
@@ -241,8 +238,7 @@ public class GFEHazardsCreator {
                     try {
                         newHazardGfeGeometry = GFERecordUtil
                                 .translateHazardPolygonToGfe(
-                                        gridParmInfo.getGridLoc(),
-                                        event.getGeometry());
+                                        gridParmInfo.getGridLoc(), geom);
                     } catch (TransformException e) {
                         statusHandler
                                 .error("GFE Geometry conversion has failed for the new Hazard!",
@@ -250,152 +246,77 @@ public class GFEHazardsCreator {
                         return;
                     }
 
-                    final TimeRange productHazardTimeRange = new TimeRange(
-                            event.getStartTime(), event.getEndTime());
+                    IHazardEvent event = createEvent(manager, rec,
+                            newHazardGfeGeometry, practice);
 
-                    boolean potentiallyUpdateEvents = false;
-                    List<IHazardEvent> hazardsToUpdate = new ArrayList<IHazardEvent>();
-                    Map<String, HazardHistoryList> hazards = HazardEventUtilities
-                            .queryForEvents(manager, event);
-                    for (HazardHistoryList list : hazards.values()) {
-                        Iterator<IHazardEvent> iter = list.iterator();
-                        while (iter.hasNext()) {
-                            IHazardEvent ev = iter.next();
+                    final TimeRange hazardGfeTimeRange = GFERecordUtil
+                            .createGridTimeRange(event.getStartTime(),
+                                    event.getEndTime(),
+                                    gridParmInfo.getTimeConstraints());
 
-                            /*
-                             * Get the GFE time range for the hazard event. The
-                             * product should exist within it.
-                             */
-                            TimeRange existingHazardTimeRange = GFERecordUtil
-                                    .createGridTimeRange(ev.getStartTime(),
-                                            ev.getEndTime(),
-                                            gridParmInfo.getTimeConstraints());
+                    List<IHazardEvent> eventsToUpdate = this.getEventsToUpdate(
+                            manager, event, hazardGfeTimeRange.getStart(),
+                            hazardGfeTimeRange.getEnd(), rec.getEtn());
 
-                            /*
-                             * Basic hazard attributes check
-                             */
-                            if (HazardEventUtilities.checkDifferentSiteOrType(
-                                    event, ev)) {
-                                /*
-                                 * Site and/or Hazard Type does not match.
-                                 */
-                                continue;
-                            }
-
-                            if (existingHazardTimeRange
-                                    .contains(productHazardTimeRange) == false) {
-                                /*
-                                 * Outside of the time range.
-                                 */
-                                continue;
-                            }
-
-                            Geometry existingHazardGfeGeometry = null;
-                            try {
-                                existingHazardGfeGeometry = GFERecordUtil
-                                        .translateHazardPolygonToGfe(
-                                                gridParmInfo.getGridLoc(),
-                                                ev.getGeometry());
-                            } catch (TransformException e) {
-                                statusHandler.error(
-                                        "GFE Geometry conversion has failed for existing Hazard: "
-                                                + ev.getEventID() + "!", e);
-                                return;
-                            }
-
-                            /*
-                             * Currently, every region on a hazard gfe grid will
-                             * have associated hazard event(s).
-                             */
-                            if (ev.getHazardAttributes().containsKey(
-                                    HazardConstants.GFE_INTEROPERABILITY)) {
-
-                                /* This hazard is based on a GFE grid. */
-
-                                /*
-                                 * Do we also need to check for geometries that
-                                 * are not associated with an existing hazard?
-                                 */
-
-                                potentiallyUpdateEvents = true;
-                                statusHandler
-                                        .info("Potentially updating event: "
-                                                + ev.getEventID());
-                                if (this.updateHazardWithProduct(ev, rec)) {
-                                    hazardsToUpdate.add(ev);
-                                }
-                            }
-                            /*
-                             * The hazard was created outside of GFE. So, a grid
-                             * associated with the hazard should exist. However,
-                             * the region occupied by the hazard may not line up
-                             * exactly with the gfe grid regions.
-                             */
-                            else {
-                                /*
-                                 * Verify that the geometry associated with the
-                                 * hazard at a minimum overlaps with the
-                                 * geometries that are associated with each of
-                                 * the geographical locations in the product.
-                                 * The formatter assumes that their is an exact
-                                 * match even if the hazard only occupies a
-                                 * portion of a geographical location.
-                                 * 
-                                 * And the formatter may split a hazard across
-                                 * multiple products when there is not an exact
-                                 * match.
-                                 * 
-                                 * Possibility?: This extra hazard events may be
-                                 * created when the formatter selects areas
-                                 * outside of the hazard area. However, that is
-                                 * a risk the user takes when they choose to
-                                 * draw a hazard in D2D rather than selecting
-                                 * the specific areas using the MakeHazard
-                                 * dialog in GFE.
-                                 */
-                                if (existingHazardGfeGeometry
-                                        .intersects(newHazardGfeGeometry)
-                                        || event.getGeometry().intersects(
-                                                newHazardGfeGeometry)) {
-                                    potentiallyUpdateEvents = true;
-                                    statusHandler
-                                            .info("Potentially updating event: "
-                                                    + ev.getEventID());
-                                    if (this.updateHazardWithProduct(ev, rec)) {
-                                        hazardsToUpdate.add(ev);
-                                    }
-                                } else {
-                                    event.setGeometry(existingHazardGfeGeometry);
-                                }
-                            }
-                        }
-                    }
-
-                    if (potentiallyUpdateEvents == false && event != null) {
-                        /*
-                         * Products occasionally arrive with end times that are
-                         * before the start times.
-                         * 
-                         * Possibly a bug where the actual time is used instead
-                         * of the CAVE simulated time by the product generator.
-                         */
+                    /*
+                     * If an existing event was not found, create a new event.
+                     */
+                    if (eventsToUpdate == null) {
                         if (event.getEndTime().getTime() < event.getStartTime()
                                 .getTime()) {
                             statusHandler
                                     .warn("Product "
                                             + rec.getXxxid()
                                             + " ends before it begins. Skipping record!");
-                            continue;
+                            return;
                         }
                         statusHandler.info("Creating event: "
                                 + event.getEventID());
+
                         manager.storeEvent(event);
-                    } else if (hazardsToUpdate.isEmpty() == false) {
-                        manager.updateEvents(hazardsToUpdate);
+
+                        InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
+                                event, rec.getEtn(), INTEROPERABILITY_TYPE.GFE);
+                    } else {
+                        for (IHazardEvent eventToUpdate : eventsToUpdate) {
+                            if (this.updateHazardWithProduct(eventToUpdate, rec)) {
+                                manager.updateEvent(eventToUpdate);
+                            }
+
+                            InteroperabilityUtil
+                                    .newOrUpdateInteroperabilityRecord(
+                                            eventToUpdate, rec.getEtn(),
+                                            INTEROPERABILITY_TYPE.GFE);
+                        }
                     }
                 }
             }
         }
+    }
+
+    private List<IHazardEvent> getEventsToUpdate(HazardEventManager manager,
+            IHazardEvent potentialEvent, final Date startDate,
+            final Date endDate, final String etn) {
+        /*
+         * Attempt to retrieve the associated hazard from the gfe
+         * interoperability table, if there is one.
+         */
+        List<IHazardEvent> events = GfeInteroperabilityUtil
+                .queryForInteroperabilityHazards(potentialEvent.getSiteID(),
+                        HazardEventUtilities.getHazardType(potentialEvent),
+                        startDate, endDate, manager);
+        if (events != null && events.isEmpty() == false) {
+            return events;
+        }
+
+        /*
+         * If it is not found in the gfe interoperability table, check the
+         * primary interoperability table - it may be associated with a
+         * different site.
+         */
+        return InteroperabilityUtil.queryInteroperabilityByETNForHazards(
+                manager, potentialEvent.getSiteID(),
+                HazardEventUtilities.getHazardType(potentialEvent), etn, null);
     }
 
     private void resetZones() {
@@ -491,7 +412,7 @@ public class GFEHazardsCreator {
      * @return
      */
     private IHazardEvent createEvent(IHazardEventManager manager,
-            AbstractWarningRecord rec, Geometry geom) {
+            AbstractWarningRecord rec, Geometry geom, boolean practice) {
         IHazardEvent event = manager.createEvent();
         event.setSiteID(rec.getXxxid());
         event.setPhenomenon(rec.getPhen());
@@ -508,7 +429,12 @@ public class GFEHazardsCreator {
         event.setHazardMode(value);
         event.setGeometry(geom);
 
-        event.setEventID(generateEventID(rec.getXxxid()));
+        try {
+            event.setEventID(HazardEventUtilities.generateEventID(
+                    rec.getXxxid(), practice));
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to generate hazard event id", e);
+        }
         this.updateHazardWithProduct(event, rec);
 
         return event;
@@ -538,18 +464,5 @@ public class GFEHazardsCreator {
         event.setCreationTime(rec.getIssueTime().getTime());
 
         return true;
-    }
-
-    private String generateEventID(String site) {
-        HazardEventIdRequest request = new HazardEventIdRequest();
-        request.setSiteId(site);
-        String value = "";
-        try {
-            value = RequestRouter.route(request).toString();
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    "Unable to make request for hazard event id", e);
-        }
-        return value;
     }
 }

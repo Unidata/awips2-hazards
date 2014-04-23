@@ -39,6 +39,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * ------------ ---------- ----------- --------------------------
  * Nov 14, 2013 2166       blawrenc    Created functional test for 
  *                                     hazard conflict detection.
+ * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
+ *                                     without modifying any data or the state.
  * 
  * </pre>
  * 
@@ -171,7 +173,7 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
                 break;
 
             default:
-                testError();
+                // Do Nothing.
             }
         } catch (Exception e) {
             handleException(e);

@@ -33,4 +33,6 @@ Export-Package: com.raytheon.uf.common.dataplugin.events.hazards,
  com.raytheon.uf.common.dataplugin.events.hazards.datastorage,
  com.raytheon.uf.common.dataplugin.events.hazards.event,
  com.raytheon.uf.common.dataplugin.events.hazards.event.collections,
+ com.raytheon.uf.common.dataplugin.events.hazards.interoperability,
+ com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests,
  com.raytheon.uf.common.dataplugin.events.hazards.requests
