@@ -604,7 +604,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
             if (other.endTime != null) {
                 return false;
             }
-        } else if (!endTime.equals(other.endTime)) {
+        } else if (endTime.getTime() != other.endTime.getTime()) {
             return false;
         }
         if (geometry == null) {
@@ -614,14 +614,6 @@ public class PracticeHazardEvent extends PersistableDataObject implements
         } else if (!geometry.equals(other.geometry)) {
             return false;
         }
-        if (hazardAttrsSerializable == null) {
-            if (other.hazardAttrsSerializable != null) {
-                return false;
-            }
-        } else if (!hazardAttrsSerializable
-                .equals(other.hazardAttrsSerializable)) {
-            return false;
-        }
         if (hazardMode != other.hazardMode) {
             return false;
         }
@@ -629,7 +621,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
             if (other.creationTime != null) {
                 return false;
             }
-        } else if (!creationTime.equals(other.creationTime)) {
+        } else if (creationTime.getTime() != other.creationTime.getTime()) {
             return false;
         }
         if (key == null) {
@@ -657,7 +649,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
             if (other.startTime != null) {
                 return false;
             }
-        } else if (!startTime.equals(other.startTime)) {
+        } else if (startTime.getTime() != other.startTime.getTime()) {
             return false;
         }
         if (state != other.state) {
