@@ -32,7 +32,6 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -48,6 +47,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2012            mnash     Initial creation
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Apr 24, 2014 3539      bkowal    Set column lengths
  * 
  * </pre>
  * 
@@ -58,24 +58,24 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 @SequenceGenerator(name = "PRACTICE_HAZARD_GENERATOR", sequenceName = "practicehazard_seq", allocationSize = 1)
 @XmlAccessorType(XmlAccessType.NONE)
-public class PracticeHazardEventPK implements ISerializableObject, Serializable {
+public class PracticeHazardEventPK implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.SITE_ID)
+    @Column(name = HazardConstants.SITE_ID, length = 4)
     private String siteID;
 
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.HAZARD_EVENT_IDENTIFIER)
+    @Column(name = HazardConstants.HAZARD_EVENT_IDENTIFIER, length = 100)
     private String eventID;
 
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "PRACTICE_HAZARD_GENERATOR")
     @DynamicSerializeElement
     @XmlElement
-    @Column(name = HazardConstants.UNIQUE_ID)
+    @Column(name = HazardConstants.UNIQUE_ID, length = 100)
     private String uniqueID;
 
     /**

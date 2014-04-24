@@ -61,6 +61,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * ------------ ---------- ----------- --------------------------
  * Oct 9, 2012             mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Remove ISerializableObject
+ * Apr 24, 2014 3539       bkowal      Set column lengths. Fix PersistableDataObject warning.
  * 
  * </pre>
  * 
@@ -73,8 +74,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 @DynamicSerialize
 @Table(name = "practice_hazard_attributes")
 @SequenceGenerator(name = "ATTRIBUTE_SEQ", sequenceName = "attribute_sequence", allocationSize = 1)
-public class PracticeHazardAttribute extends PersistableDataObject implements
-        IHazardAttribute {
+public class PracticeHazardAttribute extends PersistableDataObject<String>
+        implements IHazardAttribute {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PracticeHazardAttribute.class);
 
@@ -90,7 +91,7 @@ public class PracticeHazardAttribute extends PersistableDataObject implements
     @PrimaryKeyJoinColumn
     private PracticeHazardEventPK id;
 
-    @Column(updatable = true)
+    @Column(updatable = true, length = 60)
     @DynamicSerializeElement
     @XmlElement
     private String key;

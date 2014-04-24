@@ -46,6 +46,8 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.Type;
 
 import com.raytheon.uf.common.dataplugin.events.IValidator;
@@ -78,6 +80,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Oct 1, 2012            mnash     Initial creation
  * Dec 2013      2368    thansen    Added getHazardType
+ * Apr 24, 2014  3539    bkowal     Fix attribute delete cascade. Set columns lengths.
+ *                                  Fix PersistableDataObject warning.
  * </pre>
  * 
  * @author mnash
@@ -88,8 +92,8 @@ import com.vividsolutions.jts.geom.Geometry;
 @Table(name = "practice_hazards")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-public class PracticeHazardEvent extends PersistableDataObject implements
-        IHazardEvent, IValidator {
+public class PracticeHazardEvent extends PersistableDataObject<String>
+        implements IHazardEvent, IValidator {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(PracticeHazardEvent.class);
@@ -105,7 +109,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     /**
      * The state of the record at this point in time
      */
-    @Column
+    @Column(length = 15)
     @DynamicSerializeElement
     @XmlElement
     @Enumerated(EnumType.STRING)
@@ -114,7 +118,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     /**
      * Phenomenon that is being recorded
      */
-    @Column
+    @Column(length = 4)
     @DynamicSerializeElement
     @XmlElement
     private String phenomenon;
@@ -122,7 +126,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     /**
      * Significance of the hazard
      */
-    @Column
+    @Column(length = 4)
     @DynamicSerializeElement
     @XmlElement
     private String significance;
@@ -130,7 +134,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     /**
      * Subtype of the hazard
      */
-    @Column
+    @Column(length = 25)
     @DynamicSerializeElement
     @XmlElement
     private String subType;
@@ -150,7 +154,7 @@ public class PracticeHazardEvent extends PersistableDataObject implements
     @XmlElement
     private Date endTime;
 
-    @Column
+    @Column(length = 30)
     @DynamicSerializeElement
     @XmlElement
     @Enumerated(EnumType.STRING)
@@ -165,7 +169,8 @@ public class PracticeHazardEvent extends PersistableDataObject implements
 
     @DynamicSerializeElement
     @XmlElement
-    @OneToMany(cascade = { CascadeType.ALL }, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "id", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<PracticeHazardAttribute> hazardAttrsSerializable;
 
     @Transient
