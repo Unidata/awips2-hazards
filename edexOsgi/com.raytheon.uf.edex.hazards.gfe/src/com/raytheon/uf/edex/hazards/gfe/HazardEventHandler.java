@@ -98,7 +98,9 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      all the time.
  * Apr 08, 2014 3357       bkowal       Updated to use the new interoperability tables. Rewrote
  *                                      GFE geometry matching for interoperability.
- * 
+ * Apr 24, 2014 3535       bkowal       Ignore update notifications for unrecognized grid types
+ *                                      instead of logging a warning. This class will receive
+ *                                      every grid update notification.
  * 
  * 
  * </pre>
@@ -262,17 +264,9 @@ public class HazardEventHandler {
     private HazardEventManager getHazardEventManager(String parmID) {
         Mode mode = this.determineHazardsMode(parmID);
         if (mode == null) {
-            statusHandler
-                    .warn("Failed to determine mode associated with parmID: "
-                            + parmID);
             return null;
         }
         HazardEventManager hazardEventManager = new HazardEventManager(mode);
-        // for now default to PRACTICE mode because everything else in
-        // hazard services is.
-        // TODO: remove the line below so that the event manager
-        // will be based on the true mode.
-        hazardEventManager = new HazardEventManager(Mode.PRACTICE);
 
         return hazardEventManager;
     }
