@@ -34,8 +34,8 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataaccess.impl.DefaultGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -56,6 +56,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                     This check is necessary to handle
  *                                     discrepancies between the different
  *                                     map resolutions.
+ * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
+ *                                     configuration plugin.
  * 
  * </pre>
  * 

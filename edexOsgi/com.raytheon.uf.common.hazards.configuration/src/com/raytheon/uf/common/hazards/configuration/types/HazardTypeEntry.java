@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
+package com.raytheon.uf.common.hazards.configuration.types;
 
 import java.util.Arrays;
 import java.util.List;
@@ -40,6 +40,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Feb 17, 2014 2161       Chris.Golden Added defaultDuration and
  *                                      allowUntilFurtherNotice
  *                                      fields.
+ * Apr 28, 2014 3556       bkowal      Relocate to a common plugin.
  * 
  * </pre>
  * 

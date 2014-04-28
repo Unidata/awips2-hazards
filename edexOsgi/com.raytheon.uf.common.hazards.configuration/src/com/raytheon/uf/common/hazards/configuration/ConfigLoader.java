@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
+package com.raytheon.uf.common.hazards.configuration;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +53,9 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                                        by pulling it out of 
  *                                                        {@link SessionConfigurationManager}
  *                                                        Also, now loading XML using the file-based
- *                                                        JAXB unmarshal method                                                        unmarshal method that uses a file
+ *                                                        JAXB unmarshal method 
+ *                                                        unmarshal method that uses a file
+ * Apr 28, 2014 3556       bkowal       Relocate to a common plugin.
  * 
  * </pre>
  * 

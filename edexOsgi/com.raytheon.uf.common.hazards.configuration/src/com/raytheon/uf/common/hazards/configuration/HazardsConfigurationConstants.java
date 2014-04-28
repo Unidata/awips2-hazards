@@ -17,13 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
+package com.raytheon.uf.common.hazards.configuration;
 
-import java.util.HashMap;
-
+import java.io.File;
 
 /**
- * JSon compatible object for loading and storing Hazard Types.
+ * TODO Add Description
  * 
  * <pre>
  * 
@@ -31,14 +30,22 @@ import java.util.HashMap;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 29, 2013 1257       bsteffen    Initial creation
+ * Apr 28, 2014            bkowal     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author bkowal
  * @version 1.0
  */
-public class HazardTypes extends HashMap<String, HazardTypeEntry> {
 
-    private static final long serialVersionUID = 6324263616750393400L;
+public class HazardsConfigurationConstants {
+    /**
+     * 
+     */
+    protected HazardsConfigurationConstants() {
+    }
+
+    public static final String HAZARD_TYPES_PY = "hazardServices"
+            + File.separator + "hazardTypes" + File.separator
+            + "HazardTypes.py";
 }

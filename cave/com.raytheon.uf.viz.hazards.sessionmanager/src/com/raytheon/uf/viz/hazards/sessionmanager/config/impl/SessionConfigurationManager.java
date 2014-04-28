@@ -43,6 +43,10 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
 import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -70,8 +74,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlerts
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategories;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDataEntry;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
@@ -103,6 +105,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
  * Nov 30, 2013            blawrenc    Added hazard color retrieval from style rules.
  * Feb 24, 2014  2161      Chris.Golden Added VTECutilities to Python include path.
+ * Apr 28, 2014  3556      bkowal      Updated to use the new hazards common 
+ *                                     configuration plugin.
  * </pre>
  * 
  * @author bsteffen
@@ -203,7 +207,7 @@ public class SessionConfigurationManager implements
         loaderPool.schedule(hazardMetaData);
 
         file = pathManager
-                .getStaticLocalizationFile("hazardServices/hazardTypes/HazardTypes.py");
+                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
         hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
         loaderPool.schedule(hazardTypes);
 

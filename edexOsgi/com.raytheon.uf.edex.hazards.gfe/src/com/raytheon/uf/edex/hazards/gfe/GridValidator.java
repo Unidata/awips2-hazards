@@ -23,6 +23,8 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import jep.JepException;
 
@@ -30,17 +32,19 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.ParmID;
 import com.raytheon.uf.common.dataplugin.gfe.discrete.DiscreteKey;
-import com.raytheon.uf.common.dataplugin.gfe.python.GfePyIncludeUtil;
 import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
 import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.python.PythonScript;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SingleTypeJAXBManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 
 /**
  * Helper class to determine if a hazard even needs to create a grid.
@@ -54,6 +58,8 @@ import com.raytheon.uf.common.time.TimeRange;
  * Sep 27, 2013 2277       jsanchez     Initial creation
  * Mar 24, 2014 3323       bkowal       Use the mode to ensure that the correct
  *                                      grid is accessed.
+ * Apr 28, 2014 3556       bkowal       Now retrieves the hazard conflict dictionary
+ *                                      from static localization.                                     
  * 
  * </pre>
  * 
@@ -71,15 +77,6 @@ public class GridValidator {
     private static final String HAZARD_EVENT_GRIDS_FILE = "hazardServices"
             + File.separator + "hazardEventGrids.xml";
 
-    private static final String MERGE_HAZARDS_FILE = "gfe" + File.separator
-            + "userPython" + File.separator + "procedures" + File.separator
-            + "MergeHazards.py";
-
-    private static final List<String> preEvals = Arrays
-            .asList(new String[] {
-                    "import JUtil",
-                    "def getHazardsConflictDict() :\n     return JUtil.pyValToJavaObj(HazardsConflictDict)" });
-
     private static Map<String, List<String>> hazardsConflictDict;
 
     /**
@@ -93,25 +90,33 @@ public class GridValidator {
      * @throws Exception
      * @throws JepException
      */
-    @SuppressWarnings("unchecked")
-    public static boolean hasConflicts(Mode mode, String phenSig,
+    public static synchronized boolean hasConflicts(Mode mode, String phenSig,
             TimeRange timeRange, String siteID) {
         try {
             // get HazardsConflictDict from MergeHazards.py
             if (hazardsConflictDict == null) {
-                IPathManager pm = PathManagerFactory.getPathManager();
-                File scriptFile = pm.getStaticFile(MERGE_HAZARDS_FILE);
-                String python = GfePyIncludeUtil.getCommonPythonIncludePath();
-                String utilities = GfePyIncludeUtil.getUtilitiesIncludePath();
-                String gfe = GfePyIncludeUtil.getCommonGfeIncludePath();
-                String vtec = GfePyIncludeUtil.getVtecIncludePath();
+                statusHandler
+                        .info("Retrieving the hazard conflict dictionary.");
 
-                PythonScript script = new PythonScript(
-                        scriptFile.getPath(),
-                        PyUtil.buildJepIncludePath(python, utilities, gfe, vtec),
-                        GridValidator.class.getClassLoader(), preEvals);
-                hazardsConflictDict = (Map<String, List<String>>) script
-                        .execute("getHazardsConflictDict", null);
+                hazardsConflictDict = new HashMap<>();
+
+                IPathManager pm = PathManagerFactory.getPathManager();
+                LocalizationFile file = pm
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
+                ConfigLoader<HazardTypes> hazardTypesConfigLoader = new ConfigLoader<HazardTypes>(
+                        file, HazardTypes.class);
+                HazardTypes hazardTypes = hazardTypesConfigLoader.getConfig();
+                Iterator<String> hazardTypesIterator = hazardTypes.keySet()
+                        .iterator();
+                while (hazardTypesIterator.hasNext()) {
+                    final String hazardType = hazardTypesIterator.next();
+                    HazardTypeEntry entry = hazardTypes.get(hazardType);
+                    hazardsConflictDict.put(hazardType,
+                            entry.getHazardConflictList());
+                }
+
+                statusHandler
+                        .info("Successfully retrieved the hazard conflict dictionary!");
             }
 
             final String parmIDFormat = (mode == Mode.OPERATIONAL) ? GridRequestHandler.OPERATIONAL_PARM_ID_FORMAT
@@ -136,11 +141,6 @@ public class GridValidator {
                     }
                 }
             }
-
-        } catch (JepException e) {
-            statusHandler
-                    .error("Error trying to retrieve the HazardsConflictDict from MergeHazards.py",
-                            e);
         } catch (Exception e) {
             statusHandler.error(
                     "Error trying to retrieve intersecting gfe records", e);

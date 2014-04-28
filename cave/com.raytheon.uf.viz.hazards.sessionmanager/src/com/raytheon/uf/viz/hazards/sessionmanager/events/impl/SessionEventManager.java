@@ -59,6 +59,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -68,8 +70,6 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypeEntry;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -132,6 +132,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      hooks into addition/removal/modification of
  *                                      events.
  * Mar 3, 2014  3034       bkowal      Constant for GFE interoperability flag
+ * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
+ *                                     configuration plugin.
  * </pre>
  * 
  * @author bsteffen

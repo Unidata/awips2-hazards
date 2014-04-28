@@ -23,9 +23,9 @@ import java.util.List;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardTypes;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
@@ -45,6 +45,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
+ * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
+ *                                     configuration plugin.
  * 
  * </pre>
  * 
