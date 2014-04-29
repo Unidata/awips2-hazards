@@ -70,7 +70,7 @@ GEOMETRY_KEY = 'geometry'
 # See ffmp/FFMPSourceConfig.xml for available FFMP
 # data sources.
 supportedQPESourceList = [{'displayString':'DHR', 'identifier':'DHR'}]
-supportedGuidanceSourceList = [{'displayString':'RFCFFG', 'identifier':'RFCFFG'}]
+supportedGuidanceSourceList = [{'displayString':'DHR', 'identifier':'DHR'}]
 supportedForecastSourceList = []
 
      
@@ -84,7 +84,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # new strategy methods can be added to handle these new
         # datasets, and these dicts can be updated to reflect them.
         self.QPEStrategies = {'DHR':self.getAccumulatedDHR}
-        self.GuidanceStrategies = {'RFCFFG':self.getRFCGuidance}
+        self.GuidanceStrategies = {'DHR':self.getRFCGuidance}
         
         self.smallBasinMap = {}
 
@@ -215,7 +215,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.ffgName = dialogInputMap.get(GUID_SOURCE)
         self.accumulationHours = int(dialogInputMap.get(ACCUMULATION_INTERVAL))
         self.getRecommendation()
-        
+       
         return self.buildEventList()
         
     
@@ -268,14 +268,14 @@ class Recommender(RecommenderTemplate.Recommender):
             #
             # Determine the start and end times
             # of the accumulation interval
-            accumulationEndTime = availableTimes[-1].getRefTime()
-            accumulationStartTime = accumulationEndTime - self.accumulationHours * SECONDS_PER_HOUR;
+            accumulationEndTime = availableTimes[-1].getRefTime().getTime()
+            accumulationStartTime = accumulationEndTime - (self.accumulationHours * SECONDS_PER_HOUR * 1000);
             
             dateTimesToAccumulateOver = []
             
             for availableTime in availableTimes:
-                if availableTime.getRefTime() > accumulationStartTime and \
-                   availableTime.getRefTime() < accumulationEndTime:
+                 if availableTime.getRefTime().getTime() > accumulationStartTime and \
+                   availableTime.getRefTime().getTime() < accumulationEndTime:
                     dateTimesToAccumulateOver.append(availableTime)
                     
             dateTimesToAccumulateOver.reverse()      
@@ -295,10 +295,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 # FFMPBasin.getAccumValue()
                 factor = 0.0
                 
-                if previousDate.getRefTime() - accumulateDate.getRefTime() > SOURCE_EXPIRATION:
-                    factor = (float(previousDate.getRefTime() - (previousDate.getRefTime() - SOURCE_EXPIRATION))/float(SECONDS_PER_HOUR))
+                if previousDate.getRefTime().getTime() - accumulateDate.getRefTime().getTime() > SOURCE_EXPIRATION * 1000:
+                    factor = (float(previousDate.getRefTime().getTime() - (previousDate.getRefTime().getTime() - (SOURCE_EXPIRATION * 1000)))/float(SECONDS_PER_HOUR * 1000))
                 else:
-                    factor = (float(previousDate.getRefTime() - accumulateDate.getRefTime())/float(SECONDS_PER_HOUR))
+                    factor = (float(previousDate.getRefTime().getTime() - accumulateDate.getRefTime().getTime())/float(SECONDS_PER_HOUR * 1000))
                 
                 for geometryData in geometryDataList:
                     precipitationValue = geometryData.getNumber(self.sourceName)
@@ -318,26 +318,11 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
 
         #
-        # Read the available data sets for the RFC FFG guidance source. 
+        # Read the available data sets for the specified source. 
         ffmpSourceConfigManager = FFMPSourceConfigurationManager.getInstance()
-        product = ffmpSourceConfigManager.getProduct(self.sourceName)
-
-        guidanceList = product.getGuidanceSourcesByType(self.ffgName)
-        
-        bestGuidanceSource = None
-        minDurationDiff = sys.maxint
-   
-        #
-        # Find the RFC FFG data set with the best matching duration
-        # to the requested accumulation interval.
-        for i in range(guidanceList.size()):
-            guidanceSource = guidanceList.get(i)
-            durationHour = guidanceSource.getDurationHour()
-            diff = abs(durationHour - self.accumulationHours)
-            
-            if minDurationDiff > diff:
-                bestGuidanceSource = guidanceSource
-                minDurationDiff = diff
+        bestGuidanceSource = ffmpSourceConfigManager.getSource(self.sourceName)
+        if not bestGuidanceSource:
+            raise LookupError('Unable to find the source configuration for FFMP source: ' + self.sourceName)
                 
         #
         # Retrieve a list of available times for this dataset.        
@@ -361,12 +346,14 @@ class Recommender(RecommenderTemplate.Recommender):
         
             #
             # Apply adjustment to totals.
-            interpFactor = self.accumulationHours / bestGuidanceSource.getDurationHour()
+            if bestGuidanceSource.getDurationHour() == 0:
+                interpFactor = self.accumulationHours
+            else:
+                interpFactor = self.accumulationHours / bestGuidanceSource.getDurationHour()
             
             #
             # Store the guidance data in the small basin map.
             if guidanceDataList:
-                
                 for guidanceData in guidanceDataList:
                     basinName = guidanceData.getLocationName()
                     value = guidanceData.getNumber(bestGuidanceSourceName)
@@ -460,11 +447,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     hazardEvent.setStartTime(startDateTime)
                     hazardEvent.setEndTime(endDateTime)
                     pythonEventSet.add(hazardEvent)
-                    
+               
         return pythonEventSet
         
         
     def toString(self):
         return 'FlashFloodRecommender'
-    
-    
