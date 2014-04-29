@@ -32,6 +32,8 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 19, 2013 1257       bsteffen    Initial creation
+ * Apr 29, 2014 3558       bkowal      generate now returns a boolean indicating
+ *                                     whether or not product generation has been cancelled.
  * 
  * </pre>
  * 
@@ -58,8 +60,9 @@ public interface ISessionProductManager {
      *            whether to immediately issue the product or not
      * @param confim
      *            whether or not to confirm issuance
+     * @return whether or not to continue product generation
      */
-    public void generate(ProductInformation information, boolean issue,
+    public boolean generate(ProductInformation information, boolean issue,
             boolean confirm);
 
     /**

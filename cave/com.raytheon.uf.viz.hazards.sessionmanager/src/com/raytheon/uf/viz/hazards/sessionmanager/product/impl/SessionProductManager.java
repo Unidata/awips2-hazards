@@ -124,6 +124,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * Apr 29, 2014 3558       bkowal       The generate method now returns a boolean.
  * </pre>
  * 
  * @author bsteffen
@@ -281,6 +282,7 @@ public class SessionProductManager implements ISessionProductManager {
     /*
      * Returns a list of product formats from the proudctFormats.xml.
      */
+    @SuppressWarnings("unchecked")
     private ProductFormats getProductFormats(String productGeneratorName) {
         ProductFormats productFormats = new ProductFormats();
 
@@ -311,8 +313,16 @@ public class SessionProductManager implements ISessionProductManager {
         return result;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
+     * #generate(com.raytheon.uf.viz.hazards.sessionmanager.product.
+     * ProductInformation, boolean, boolean)
+     */
     @Override
-    public void generate(ProductInformation information, boolean issue,
+    public boolean generate(ProductInformation information, boolean issue,
             boolean confirm) {
 
         if (validateSelectedHazardsForProductGeneration()
@@ -333,7 +343,7 @@ public class SessionProductManager implements ISessionProductManager {
                                         + "you want to issue the hazard event(s)?");
                 if (!answer) {
                     sessionManager.setIssueOngoing(false);
-                    return;
+                    return false;
                 }
             }
             EventSet<IEvent> events = new EventSet<IEvent>();
@@ -443,6 +453,8 @@ public class SessionProductManager implements ISessionProductManager {
                 sessionManager.setPreviewOngoing(false);
             }
         }
+
+        return true;
     }
 
     @Override

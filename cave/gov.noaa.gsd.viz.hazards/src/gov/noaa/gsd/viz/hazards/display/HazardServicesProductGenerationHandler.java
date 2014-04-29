@@ -62,6 +62,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - Update for move of JSONConverter
  * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
+ * Apr 29, 2014 3558       bkowal      Halt product generation if the user clicks "No" on the confirm issue dialog.
  * 
  * </pre>
  * 
@@ -348,8 +349,16 @@ class HazardServicesProductGenerationHandler {
         }
 
         for (ProductInformation productInformation : productInformationRecords) {
-            this.productManager.generate(productInformation, issue, confirm);
+            boolean continueGeneration = this.productManager.generate(
+                    productInformation, issue, confirm);
             confirm = false;
+            if (continueGeneration == false) {
+                /*
+                 * Halt product generation, the user indicated that they did not
+                 * want to issue the product(s).
+                 */
+                break;
+            }
         }
     }
 
