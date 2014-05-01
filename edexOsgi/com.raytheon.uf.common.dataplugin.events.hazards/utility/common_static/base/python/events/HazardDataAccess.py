@@ -40,5 +40,4 @@ from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardE
 def getHazardEvent(eventId, mode):        
     manager = HazardEventManager(Mode.valueOf(mode))
     historyList = manager.getByEventID(eventId)
-    print "HDA historyList", historyList, historyList.size()
     return JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1))

@@ -68,7 +68,7 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
             "com.raytheon.uf.common.hazards.productgen", "ProductInterface", level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
     
-    def execute(self, moduleName, className, **kwargs):
+    def execute(self, moduleName, className, **kwargs):        
         javaDialogInput = kwargs['dialogInputMap']
         if javaDialogInput is not None :
             kwargs['dialogInputMap'] = JUtil.javaObjToPyVal(javaDialogInput)

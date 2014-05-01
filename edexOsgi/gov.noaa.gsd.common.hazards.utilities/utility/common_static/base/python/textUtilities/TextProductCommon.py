@@ -47,7 +47,6 @@ class TextProductCommon(object):
         self._areaDictionary = areaDict 
         self._root = None
         self._mapInfo = MapInfo()
-        self._cta = CallToActions()
         self.logger = logging.getLogger('TextProductCommon')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
@@ -108,25 +107,25 @@ class TextProductCommon(object):
         return reverse
  
     def getFormattedTime(self, time_secs, format='%I%M %p %Z %a %b %d %Y',
-                        shiftToLocal=1, upperCase=0, stripLeading=1):
+                        shiftToLocal=True, upperCase=False, stripLeading=True):
         '''
          Return a text string of the given time in seconds in the given format
          This method is used for product headers.
         '''
         if time_secs == 0:
             time_secs = time.time()
-        if shiftToLocal == 1:
+        if shiftToLocal:
             curTime = time.localtime(time_secs)
         else:
             curTime = time.gmtime(time_secs)
             localTime = time.localtime(time_secs)
             zoneName = time.strftime('%Z',localTime)
         timeStr = time.strftime(format, curTime)
-        if shiftToLocal == 0:
+        if not shiftToLocal:
             timeStr = string.replace(timeStr, zoneName, 'GMT')
-        if stripLeading==1 and (timeStr[0] == '0' or timeStr[0] == ' '):
+        if stripLeading and (timeStr[0] == '0' or timeStr[0] == ' '):
             timeStr = timeStr[1:]
-        if upperCase == 1:
+        if upperCase:
             timeStr = string.upper(timeStr)
         timeStr = string.replace(timeStr, '  ', ' ')
         return timeStr
@@ -828,7 +827,7 @@ class TextProductCommon(object):
                 hList.remove(vtecRecord)
                 continue
 
-            # make sure the vtecRecord is still in effect or within EXP critiera
+            # make sure the vtecRecord is still in effect or within EXP criteria
             if (vtecRecord['act'] != 'EXP' and issueTime >= vtecRecord['endTime']) or \
             (vtecRecord['act'] == 'EXP' and issueTime > 30*60 + vtecRecord['endTime']):
                 hList.remove(vtecRecord)

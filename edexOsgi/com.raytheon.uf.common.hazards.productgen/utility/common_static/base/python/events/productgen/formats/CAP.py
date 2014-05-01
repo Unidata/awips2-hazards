@@ -49,7 +49,14 @@ If a product has multiple segments, a CAP message will be generated for each seg
             <expires>2011-01-25T16:30:00-05:00</expires>
             <senderName>NWS Tampa Bay (West Central Florida)</senderName>
             <headline>Flash Flood Warning issued January 25 at 3:37PM EST
-            expiring January 25 at 4:30PM EST by NWS Tampa Bay</headline>
+            expiring January 25 at 4:30PM EST by NWS Tampaif key not in self.xmlKeys():
+                    if ':editable' in key:
+                        editable = True
+                        tmp = key[:-9]
+                        if tmp not in self.xmlKeys():
+                            continue
+                    else:
+                        continue Bay</headline>
             <description>THE NATIONAL WEATHER SERVICE IN RUSKIN HAS ISSUED A
             * FLASH FLOOD WARNING FOR...
             CITRUS COUNTY IN FLORIDA.
@@ -115,7 +122,7 @@ If a product has multiple segments, a CAP message will be generated for each seg
 
 ##########################
 INPUT : Product Dictionary for one legacy product
-CAP prodDict 
+CAP productDict 
 
 OrderedDict([
 ('disclaimer', 'This XML wrapped text product should be considered COMPLETELY EXPERIMENTAL. The National Weather Service currently makes NO GUARANTEE WHATSOEVER that this product will continue to be supplied without interruption. The format of this product MAY CHANGE AT ANY TIME without notice.'), 
@@ -228,12 +235,12 @@ from com.raytheon.uf.common.hazards.productgen import ProductUtils
 
 class Format(FormatTemplate.Formatter):
     
-    def execute(self, prodDict):
+    def execute(self, productDict):
         '''
         Main method of execution to generate CAP (Common Alerting Protocol) messages
         Loops through the segments of the product dictionary producing a CAP message for each
         
-        @param prodDict: dictionary values provided by the product generator
+        @param productDict: dictionary values provided by the product generator
         @return: Returns the resulting CAP messages in XML format.
         '''
         self._tpc = TextProductCommon()
@@ -241,40 +248,40 @@ class Format(FormatTemplate.Formatter):
         self.issuedBy = ' Issued by '
         
         messages = []       
-        if prodDict is not None:
-            # For each segment of the prodDict, there will be a separate CAP message
-            for segDict in prodDict.get('segments')['segment']:
+        if productDict is not None:
+            # For each segment of the productDict, there will be a separate CAP message
+            for segDict in productDict.get('segments'):
                 # Establish time zone to use for the segment
                 self._tz = self._tpc.getVal(segDict, 'timeZones')[0]
                 xml = Element('alert')
                 xml.attrib['xmlns'] = self.capVersion
-                self.createCAP_Message(xml, prodDict, segDict)
+                self.createCAP_Message(xml, productDict, segDict)
                 messages.append(ProductUtils.prettyXML(tostring(xml),True))
         return messages
    
-    def createCAP_Message(self, xml, prodDict, segDict):
+    def createCAP_Message(self, xml, productDict, segDict):
         '''
         Returns the CAP message in XML format for the given segment.
 
         @param xml: XML data structure that we are building
-        @param prodDict: dictionary values for an entire legacy product
+        @param productDict: dictionary values for an entire legacy product
         @param segDict: dictionary of values for a segment of the legacy product
         @return: Returns the resulting CAP message XML format.
         ''' 
         # Main Section                  
         for tag in self.CAP_tags(): 
-            self.createXML(xml, tag, prodDict, segDict) 
-        for sectionDict in segDict.get('sections')['section']:
+            self.createXML(xml, tag, productDict, segDict) 
+        for sectionDict in segDict.get('sections'):
             # Info Section
             infoDicts = self._tpc.getVal(sectionDict, 'info')
             for infoDict in infoDicts:
                 infoElement = SubElement(xml, 'info')
                 for tag in self.info_tags():
-                    self.createXML(infoElement, tag, prodDict, segDict, sectionDict, infoDict)
+                    self.createXML(infoElement, tag, productDict, segDict, sectionDict, infoDict)
                 # Parameters and Event Code
-                self.createBlocks(infoElement, prodDict, segDict, sectionDict, infoDict)
+                self.createBlocks(infoElement, productDict, segDict, sectionDict, infoDict)
                 # Area
-                self.createAreas(infoElement, prodDict, segDict, sectionDict, infoDict)
+                self.createAreas(infoElement, productDict, segDict, sectionDict, infoDict)
 
     class tag:
         '''
@@ -329,13 +336,13 @@ class Format(FormatTemplate.Formatter):
             self.tag('web', value='http://www.weather.gov')
             ]
 
-    def createXML(self, xml, tag, prodDict, segDict, sectionDict=None, infoDict=None):  
+    def createXML(self, xml, tag, productDict, segDict, sectionDict=None, infoDict=None):  
         '''
         For a given tag object, determine it's value and create an XML entry for it
         
         @param xml: parent node in Element tree 
         @param tag: a tag object specifying the tag and its value
-        @prodDict: dictionary values provided by the product generator
+        @productDict: dictionary values provided by the product generator
         @segDict: dictionary of values for a segment of the legacy product
         @sectionDict: dictionary of values for a section of a segment of the legacy product
           There could be multiple sections when multiple hazards are in a segment.
@@ -347,9 +354,9 @@ class Format(FormatTemplate.Formatter):
         if tag.value:
             value = tag.value
         elif tag.method:
-            value = tag.method(prodDict, segDict, sectionDict, infoDict)
+            value = tag.method(productDict, segDict, sectionDict, infoDict)
         elif tag.prodKey:
-            value = self._tpc.getVal(prodDict, tag.prodKey)
+            value = self._tpc.getVal(productDict, tag.prodKey)
         elif tag.segKey:
             value = self._tpc.getVal(segDict, tag.segKey)
         elif tag.sectionKey:
@@ -363,12 +370,12 @@ class Format(FormatTemplate.Formatter):
     '''
     The 'create' methods all take these arguments 
         @param xml: parent node in Element tree 
-        @prodDict: dictionary values provided by the product generator
+        @productDict: dictionary values provided by the product generator
         @segDict: dictionary of values for a segment of the legacy product
         @infoDict: dictionary of values for an info section. 
     
     '''                                                           
-    def createBlocks(self, xml, prodDict, segDict, sectionDict, infoDict):
+    def createBlocks(self, xml, productDict, segDict, sectionDict, infoDict):
         '''
         Create the parameters and eventCode blocks for the CAP info section
         '''
@@ -389,35 +396,34 @@ class Format(FormatTemplate.Formatter):
             weaText = weaText.replace('%s', dStr)
         self.createBlock(xml, 'parameter', {'valueName':'CMAMtext', 'value':weaText})             
         self.createBlock(xml, 'parameter', {'valueName':'TIME...MOT...LOC', 'value':segDict.get('timeMotionLocation')})             
-        self.createBlock(xml, 'eventCode', {'valueName':'SAME', 'value':prodDict.get('productID')})             
+        self.createBlock(xml, 'eventCode', {'valueName':'SAME', 'value':productDict.get('productID')})             
                 
-    def createAreas(self, xml, prodDict, segDict, sectionDict, infoDict):  
+    def createAreas(self, xml, productDict, segDict, sectionDict, infoDict):  
         '''
         create the areas portion of the CAP info section
         '''      
         areaElement = SubElement(xml, 'area')
         self.xmlSubElement(areaElement, 'areaDesc', segDict.get('areaString'))
-        if prodDict['productID'] in ['TOR', 'SVR', 'SVS', 'SMW', 'MWS', 'FFW', 'FFS', 'FLS', 'EWW']:
+        if productDict['productID'] in ['TOR', 'SVR', 'SVS', 'SMW', 'MWS', 'FFW', 'FFS', 'FLS', 'EWW']:
             polyStr = ''
             polygons = segDict.get('polygons')
-            polyList = polygons.get('polygon')
-            if polyList:
-                for polygon in polyList:
+            if polygons:
+                for polygon in polygons:
                     for point in polygon.get('point'):
                         polyStr += point.get('latitude')+', '+point.get('longitude') + ' '                    
                     self.xmlSubElement(areaElement, 'polygon', polyStr)
         # geoCodes
         if 'ugcCodes' in segDict:
-            ugcs = segDict['ugcCodes']['ugcCode']
+            ugcs = segDict['ugcCodes']
             for ugcDict in ugcs:
                 self.createBlock(areaElement, 'geocode', {'valueName':'UGC', 'value':ugcDict.get('text')} )     
      
-    def createIdentifier(self, prodDict, segDict, sectionDict, infoDict): 
+    def createIdentifier(self, productDict, segDict, sectionDict, infoDict): 
         # TODO identifier 
         self.identifier = 'NOAA-NWS-ALERTS-FL20110125203700FlashFloodWarning20110125213000FL.TBWSVRTBW.f809e7f8ffe0c3658e925873d720fe9c' 
         return self.identifier
     
-    def createMsgType(self, prodDict, segDict, sectionDict, infoDict):
+    def createMsgType(self, productDict, segDict, sectionDict, infoDict):
         '''
          NOTE: First check for Alert, then Update, then Cancel
          
@@ -442,7 +448,7 @@ class Format(FormatTemplate.Formatter):
         return self.msgType
 
     
-    def createNote(self, prodDict, segDict, sectionDict, infoDict):
+    def createNote(self, productDict, segDict, sectionDict, infoDict):
         '''
         Create the note e.g. Alert for Citrus; Hernando; Pasco (Florida) Issued by the National Weather Service
 
@@ -452,7 +458,7 @@ class Format(FormatTemplate.Formatter):
         note = self.msgType + ' for '+ aStr + self.issuedBy + 'the National Weather Service'
         return note
 
-    def createReferences(self, prodDict, segDict, sectionDict, infoDict):
+    def createReferences(self, productDict, segDict, sectionDict, infoDict):
         '''
         <references>sender,identifier,sent</references> 
         Where sender,identifier, and sent are the sender, identifier, and sent elements from the earlier 
@@ -466,24 +472,24 @@ class Format(FormatTemplate.Formatter):
         reference = ''
         # TODO -- Outstanding issue
         #if self.msgType in ['Update', 'Cancel']:
-        #    reference = 'w-nws.webmaster@noaa.gov, '+self.identifier + ', '+prodDict.get('sentTimeLocal')
+        #    reference = 'w-nws.webmaster@noaa.gov, '+self.identifier + ', '+productDict.get('sentTimeLocal')
         return reference
 
-    def createEvent(self, prodDict, segDict, sectionDict, infoDict):
+    def createEvent(self, productDict, segDict, sectionDict, infoDict):
         '''
         e.g. Flash Flood Warning
         '''
         self.event = self._tpc.getVal(segDict, "headlines")[0]
         return self.event
     
-    def createOnset(self, prodDict, segDict, sectionDict, infoDict):
+    def createOnset(self, productDict, segDict, sectionDict, infoDict):
         '''
         Create onset entry 
         '''
         dt = self._tpc.getVal(infoDict, 'onset_datetime')
         return self._tpc.formatDatetime(dt, timeZone=self._tz)
 
-    def createExpires(self, prodDict, segDict, sectionDict, infoDict):
+    def createExpires(self, productDict, segDict, sectionDict, infoDict):
         '''
         Create expires entry
         '''
@@ -491,7 +497,7 @@ class Format(FormatTemplate.Formatter):
         return self._tpc.formatDatetime(dt, timeZone=self._tz)
     
     
-    def createHeadline(self, prodDict, segDict, sectionDict, infoDict):
+    def createHeadline(self, productDict, segDict, sectionDict, infoDict):
         # TODO Outstanding issue: Handle multiple events per segment
         '''
         "Flash Flood Warning issued January 25 at 3:37PM EST expiring January 25 at 4:30PM EST by NWS Tampa Bay"
@@ -520,13 +526,13 @@ class Format(FormatTemplate.Formatter):
             et = '' 
         return infoDict.get('event') + ' issued ' + st + et + ' by NWS ' + infoDict.get('sentBy')
     
-    def createCallsToAction(self, prodDict, segDict, sectionDict, infoDict):
+    def createCallsToAction(self, productDict, segDict, sectionDict, infoDict):
         '''        
         '''
+        text = ''
         if 'callsToAction' in segDict and segDict['callsToAction']:
             callsToAction = segDict['callsToAction']
-            text = ''
-            for cta in callsToAction['callToAction']:
+            for cta in callsToAction:
                 text += cta + '\n'
         return text
     

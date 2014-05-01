@@ -699,7 +699,7 @@ HazardTypes = {
               'defaultDuration': 8 * 3600000,
               'durationIncrement': 60, 
               },
-    'HY.S' : {'headline': '',  # No headline for this VTEC
+    'HY.S' : {'headline': 'FORECAST INFORMATION',  # No headline for this VTEC
               '_override_lock_': ['headline','combinableSegments', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True],
               'combinableSegments': False,
               'allowAreaChange': False,

@@ -43,14 +43,14 @@ from KeyInfo import KeyInfo
 
 class Format(FormatTemplate.Formatter):
     
-    def execute(self, data):
+    def execute(self, productDict):
         '''
         Main method of execution to generate XML
-        @param data: dictionary values provided by the product generator
+        @param productDict: dictionary values provided by the product generator
         @return: Returns the dictionary in XML format.
         '''
         xml = Element('product')
-        self.dictionary(xml, data)
+        self.dictionary(xml, productDict)
         return ProductUtils.prettyXML(tostring(xml), True)
     
     def xmlKeys(self): 
@@ -80,7 +80,7 @@ class Format(FormatTemplate.Formatter):
         'subArea',
         'ugcHeader',
         'areaString',
-        'cities',
+        'cityList',
         'areaType',
         'expireTime',
         'vtecRecords',
@@ -131,15 +131,15 @@ class Format(FormatTemplate.Formatter):
         'sentTimeLocal',
         ]
     
-    def dictionary(self, xml, data):
+    def dictionary(self, xml, productDict):
         '''
         Returns the dictionary in XML format.
-        @param data: dictionary values
+        @param productDict: dictionary values
         @return: Returns the dictionary in XML format.
         '''   
-        if data is not None:
-            for key in data:
-                value = data[key]
+        if productDict is not None:
+            for key in productDict:
+                value = productDict[key]
                 editable = False
                 if isinstance(key, KeyInfo):
                     editable = key.isEditable()
@@ -147,13 +147,12 @@ class Format(FormatTemplate.Formatter):
                 
                 if key not in self.xmlKeys():
                     continue
-
                 if isinstance(value, dict):
                     subElement = SubElement(xml,key)
                     self.dictionary(subElement, value)
                 elif isinstance(value, list):
-                    if key == 'cities':
-                        subElement = SubElement(xml,'cities')               
+                    if key == 'cityList':
+                        subElement = SubElement(xml,'cityList')               
                         if editable:
                             subElement.attrib['editable'] = 'true'
                         self.list(subElement, 'city', value) 
@@ -177,6 +176,7 @@ class Format(FormatTemplate.Formatter):
             key = key.getName()  
         if data is not None:
             for value in data:
+
                 subElement = SubElement(xml, key)
                 if editable:
                     subElement.attrib['editable'] = 'true'

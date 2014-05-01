@@ -22,21 +22,12 @@
 """
 import os, types, copy, sys, json
 import Legacy_ProductGenerator
+from HydroProductParts import HydroProductParts
 
 class Product(Legacy_ProductGenerator.Product):
     
     def __init__(self):
         super(Product, self).__init__()       
-        self._productCategory = "ESF"
-        self._areaName = "" 
-        # Number of hours past issuance time for expireTime
-        # If -1, use the end time of the hazard
-        # NOTE: In PV2, this will gathered as part of the Hazard Information Dialog
-        self._purgeHours = 8
-        self._ESF_ProductName = "Hydrologic Outlook"
-        self._includeAreaNames = False
-        self._includeCityNames = False
-        self._vtecProduct = False
                 
     def getScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -50,6 +41,21 @@ class Product(Legacy_ProductGenerator.Product):
         @return: dialog definition to solicit user input before running tool
         """  
         return {}
+
+    def _initialize(self):
+        # TODO Fix problem in framework which does not re-call the constructor
+        self.initialize()
+        self._productCategory = "ESF"
+        self._areaName = "" 
+        # Number of hours past issuance time for expireTime
+        # If -1, use the end time of the hazard
+        # TODO gather this as part of the Hazard Information Dialog
+        self._purgeHours = 8
+        self._ESF_ProductName = "Hydrologic Outlook"
+        self._includeAreaNames = False
+        self._includeCityNames = False
+        self._vtecProduct = False
+        self._hydroProductParts = HydroProductParts()
                 
     def execute(self, eventSet, dialogInputMap):          
         '''
@@ -64,6 +70,7 @@ class Product(Legacy_ProductGenerator.Product):
              Also, returned is a set of hazard events, updated with product information.
 
         '''
+        self._initialize() 
         self.logger.info("Start ProductGeneratorTemplate:execute ESF")
         
         # Extract information for execution
@@ -81,28 +88,16 @@ class Product(Legacy_ProductGenerator.Product):
         productDicts, hazardEvents = self._makeProducts_FromHazardEvents(self._inputHazardEvents) 
         return productDicts, hazardEvents        
     
-    
-    def _productParts(self, productID):
-        '''
-        List of product parts in the order they appear in the product
-        Orders and defines the Product Parts for the given productID
-        '''
-        return ['wmoHeader_noCR',
-                'ugcHeader',
-                'CR',
-                'productHeader',
-                'narrativeForecastInformation',
-                'end',
-            ]
-            
+                
     def _groupSegments(self, segments):
         '''
         Group the segments into the products
         
-         ESF products are not segmented, so make a product from each segment
+         ESF products are not segmented, so make a product from each 'segment' i.e. HY.O event
         '''        
         productSegmentGroups = []
         for segment in segments:
+            vtecRecords = self.getVtecRecords(segment)
             segmentGroup = {
                        "productID": "ESF",
                        "productName": self._ESF_ProductName,
@@ -111,16 +106,21 @@ class Product(Legacy_ProductGenerator.Product):
                        "mapType": "counties",
                        "segmented": False,
                        "segments": [segment],
+                       'segment_vtecRecords_tuples': [(segment, vtecRecords)],
                        }
-            productSegmentGroups.append(segmentGroup)
+            productSegmentGroups.append(segmentGroup)            
+        for productSegmentGroup in productSegmentGroups:
+            self._addProductParts(productSegmentGroup)
         return productSegmentGroups
     
-    def _addToProductDict(self, productDict):
-        '''
-        This method can be overridden by the Product Generators to add specific product information to the productDict
-        '''
-        productDict['ugcHeader'] = self._ugcHeader
-        productDict['narrativeForecastInformation'] = '''
+    def _addProductParts(self, productSegmentGroup):
+        segment_vtecRecords_tuples = productSegmentGroup.get('segment_vtecRecords_tuples')
+        productSegmentGroup['productParts'] = self._hydroProductParts._productParts_ESF(segment_vtecRecords_tuples)
+        del productSegmentGroup['segment_vtecRecords_tuples'] 
+
+    
+    def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):        
+        segmentDict['narrativeForecastInformation'] = '''
          |* 
          Headline defining the type of flooding being addressed 
               (e.g., flash flooding, main stem
@@ -142,7 +142,9 @@ class Product(Legacy_ProductGenerator.Product):
          '''
 
     def executeFrom(self, dataList):
-        # TODO update the issue time, VTEC ETN, etc.
+        # NOTE -- To properly update the VTEC and ETN's properly it is necessary to call the
+        #  execute method.
+        # This method should not be called for when the user wants to Issue.
         return dataList
         
 

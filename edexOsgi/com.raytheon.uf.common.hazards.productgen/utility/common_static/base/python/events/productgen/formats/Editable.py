@@ -18,7 +18,7 @@
 # further licensing information.   
 # #
 
-#    Formats a dictionary 'data' and generates watch, warning, advidsory legacy text. The dictionary values
+#    Formats a dictionary 'data' and generates watch, warning, advisory legacy text. The dictionary values
 #    will be extracted and managed appropriately based on their keys. 
 #
 #

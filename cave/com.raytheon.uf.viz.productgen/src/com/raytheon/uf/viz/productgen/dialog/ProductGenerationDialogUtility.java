@@ -236,13 +236,8 @@ public class ProductGenerationDialogUtility {
         ProductLevelData productLevel = new ProductLevelData(tempData);
         decodedData.add(productLevel);
 
-        // TODO Will need to be replaced with an interface to make
-        // refactoring of the python dictionary easier
-        LinkedHashMap<KeyInfo, Serializable> segmentsMap = (LinkedHashMap<KeyInfo, Serializable>) data
+        List<Serializable> list = (List<Serializable>) data
                 .get(SegmentData.PARENT_PATH.get(0));
-
-        List<Serializable> list = (List<Serializable>) segmentsMap
-                .get(SegmentData.PARENT_PATH.get(1));
 
         int counter = 0;
         for (Serializable item : list) {

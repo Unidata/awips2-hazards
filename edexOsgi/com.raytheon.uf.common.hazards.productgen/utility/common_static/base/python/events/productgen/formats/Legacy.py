@@ -39,89 +39,84 @@ from KeyInfo import KeyInfo
 
 class Format(FormatTemplate.Formatter):
     
-    def execute(self, data):
+    def execute(self, productDict):
         '''
         Main method of execution to generate Legacy text
-        @param data: dictionary values provided by the product generator
+        @param productDict: dictionary values provided by the product generator
         @return: Returns the dictionary in Legacy format.
         '''     
         from TextProductCommon import TextProductCommon
-        self._tpc = TextProductCommon() 
-        self.data = data
-        text = self._processProductParts(data, self._tpc.getVal(data, 'productParts', []))
+        self._tpc = TextProductCommon()        
+        self.productDict = productDict
+        productParts = self._tpc.getVal(productDict, 'productParts', [])
+        text = self._processProductParts(productDict, productParts.get('partsList'))
         return ProductUtils.wrapLegacy(str(text))
     
-    def _processProductParts(self, dataDict, productParts, skipParts=[]):
+    def _processProductParts(self, productDict, productParts, skipParts=[]):
         '''
         Adds the product parts to the product
-        @param dataDict -- dictionary of information -- could be the product dictionary or a sub-part such as a segment
+        @param productDict -- dictionary of information -- could be the product dictionary or a sub-part such as a segment
         @param skipParts -- necessary to avoid repetition when calling this method recursively
         @param productParts -- list of instances of the ProductPart class with information about how to format each product part
         @return text -- product string
         '''
         text = ''
-        for part in productParts: 
+        for part in productParts:             
             valtype = type(part)
             if valtype is str:
                 name = part
             elif valtype is tuple:
                 name = part[0]
-            elif valtype is list:
-                # TODO THIS SHOULD BE REMOVED AFTER THE REFACTOR OF HazardServicesProductGenerationHandler.JAVA
-                tup = (part[0], part[1])
-                part = tup
-                name = part[0]
-            if name == 'wmoHeader': text += self.processWmoHeader(dataDict['wmoHeader']) + '\n'
-            elif name == 'wmoHeader_noCR': text += self.processWmoHeader(dataDict['wmoHeader'])
+                infoDicts = part[1]
+            if name == 'wmoHeader': text += self.processWmoHeader(productDict['wmoHeader']) + '\n'
+            elif name == 'wmoHeader_noCR': text += self.processWmoHeader(productDict['wmoHeader'])
             elif name == 'easMessage':
-                easMessage = self.processEAS(dataDict)
+                easMessage = self.processEAS(productDict)
                 if easMessage is not None:
                     text += easMessage + '\n'
             elif name == 'productHeader':
-                text += self._tpc.getVal(dataDict, 'productName', altDict=self.data) + '\n'
-                text += self._tpc.getVal(dataDict, 'senderName', altDict=self.data) + '\n'
-                text += self._tpc.getVal(dataDict, 'issuedByString', default='', altDict=self.data)
+                text += self._tpc.getVal(productDict, 'productName', altDict=self.productDict) + '\n'
+                text += self._tpc.getVal(productDict, 'senderName', altDict=self.productDict) + '\n'
+                text += self._tpc.getVal(productDict, 'issuedByString', default='', altDict=self.productDict)
                 text += self.formatIssueTime()
             elif name == 'overview':
                 text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
             elif name == 'segments':
-                text += self.processSegments(dataDict['segments'], part[1]) 
+                text += self.processSubParts(productDict['segments'], infoDicts) 
             elif name == 'sections':
-                text += self.processSections(dataDict['sections'], part[1])
+                text += self.processSubParts(productDict['sections'], infoDicts)
             elif name == 'vtecRecords':
-                if 'vtecRecords' in dataDict:
-                    vtecRecords = dataDict['vtecRecords']
+                if 'vtecRecords' in productDict:
+                    vtecRecords = productDict['vtecRecords']
                     for vtecRecord in vtecRecords:
                         text += vtecRecord['vtecString'] + '\n'
             elif name == 'issuanceTimeDate':
                 text += self.formatIssueTime()
             elif name == 'callsToAction':
-                if 'callsToAction' in dataDict and dataDict['callsToAction']:
-                    callsToAction = dataDict['callsToAction']
-                    if callsToAction['callToAction']:
-                        text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
-                        for cta in callsToAction['callToAction']:
-                            text += cta + '\n\n'
+                callsToAction = productDict['callsToAction']
+                if callsToAction:
+                    text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
+                    for cta in callsToAction:
+                        text += cta + '\n\n'
+                    text += '&&\n\n'
             elif name == 'polygonText':
-                if 'polygonText' in dataDict and dataDict['polygonText']:
-                    text += dataDict['polygonText'] + '\n\n'
+                if 'polygonText' in productDict and productDict['polygonText']:
+                    text += productDict['polygonText'] + '\n\n'
             elif name == 'endSegment':
-                text += '&&\n\n' 
+                text += '\n$$' 
             elif name == 'CR':
                 text += '\n'
-            elif name == 'cities':
-                #self._cityString = 'INCLUDING THE CITIES OF ' + self._tpc.formatUGC_cities(self._ugcs)
-                cities = ''
-                elements = KeyInfo.getElements('cities', dataDict)
-                cityList = dataDict[elements[0]]
+            elif name == 'cityList':
+                cities = 'INCLUDING THE CITIES OF '
+                elements = KeyInfo.getElements('cityList', productDict)
+                cityList = productDict[elements[0]]
                 for city in cityList:
                     cities += city + '...'
                 text += cities + '\n'
             else:               
-                textStr = self._tpc.getVal(dataDict, name)
+                textStr = self._tpc.getVal(productDict, name)
                 if textStr:
-                    text += textStr + '\n'
-                    
+                    text += textStr + '\n'               
         return text
         
     def processWmoHeader(self, wmoHeader):
@@ -129,12 +124,11 @@ class Format(FormatTemplate.Formatter):
         text += wmoHeader['awipsIdentifierLine'] + '\n'
         return text
     
-    def processEAS(self, data):
-        request = self._tpc.getVal(data, 'easActivationRequested', altDict=self.data)
+    def processEAS(self, productDict):
+        request = self._tpc.getVal(productDict, 'easActivationRequested', altDict=self.productDict)
         if request == 'true':
-            segments = self._tpc.getVal(data, 'segments', altDict=self.data)
-            segmentList = segments['segment']
-            for segment in segmentList:
+            segments = self._tpc.getVal(productDict, 'segments', altDict=self.productDict)
+            for segment in segments:
                 vtecRecords = segment['vtecRecords']
                 for vtecRecord in vtecRecords:
                     if vtecRecord.get('pvtecRecordType') == 'pvtecRecord' and vtecRecord.get('significance') is 'A':
@@ -144,46 +138,33 @@ class Format(FormatTemplate.Formatter):
     
     def formatIssueTime(self):  
         text = ''  
-        sentTimeZ = self._tpc.getVal(self.data, 'sentTimeZ_datetime')
-        timeZones = self._tpc.getVal(self.data, 'timeZones')
+        sentTimeZ = self._tpc.getVal(self.productDict, 'sentTimeZ_datetime')
+        timeZones = self._tpc.getVal(self.productDict, 'timeZones')
         for timeZone in timeZones:
             text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %e %b %Y', timeZone) + '\n'
         return text + '\n'
         
-    def processSegments(self, segments, segmentParts):
+    def processSubParts(self, subParts, infoDicts):
         """
-        Generates Legacy text from a list of segments
-        @param segments: a list of dictionaries 
-        @param segmentParts: a list of Product Parts for each segment
-        @return: Returns the legacy text of the segments.
+        Generates Legacy text from a list of subParts e.g. segments or sections
+        @param subParts: a list of dictionaries for each subPart
+        @param partsLists: a list of Product Parts for each segment
+        @return: Returns the legacy text of the subParts
         """
-        text = ''  
-        for segment in segments['segment']:
-            text += self._processProductParts(segment, segmentParts)
-            text += '$$\n\n'
-        return text
-
-    def processSections(self, sections, sectionParts):
-        """
-        Generates Legacy text from a list of sections
-        @param sections: a list of dictionaries 
-        @param sectionParts: a list of Product Parts for each section
-        @return: Returns the legacy text of the segments.
-        """
-        text = ''  
-        for section in sections['section']:
-            text += self._processProductParts(section, sectionParts)
+        text = '' 
+        for i in range(len(subParts)):
+            text += self._processProductParts(subParts[i], infoDicts[i].get('partsList'))
         return text
       
-    def cleanDictKeys(self, data):
+    def cleanDictKeys(self, productDict):
         '''
         Remove annotations (e.g. :editable) from the dictionary keys
-        @param data -- dictionary
+        @param productDict -- dictionary
         @return -- cleaned dictionary
         '''
         temp = collections.OrderedDict()
-        for key in data:
-            d = data[key]
+        for key in productDict:
+            d = productDict[key]
             if isinstance(d, dict):
                 d = self.cleanDictKeys(d)
             elif isinstance(d, list):

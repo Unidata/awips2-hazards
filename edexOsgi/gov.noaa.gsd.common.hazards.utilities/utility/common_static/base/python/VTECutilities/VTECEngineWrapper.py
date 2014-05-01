@@ -121,13 +121,8 @@ class VTECEngineWrapper(object):
         self._issueTime = issueTime
 
         # Get the list of allowedHazards from the ProductGeneratorTable
-        try:
-            pgtKey = "{p}_ProductGenerator".format(p=productCategory)
-            allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
-        except:
-            pgtKey = "{p}_Tool".format(p=productCategory)
-            allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']
-            
+        pgtKey = "{p}_ProductGenerator".format(p=productCategory)
+        allowedHazards = ProductGeneratorTable[pgtKey]['allowedHazards']            
 
         # Assemble a tuple containing the hazardTypes, upgrade table,
         # and downgrade table.

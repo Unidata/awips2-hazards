@@ -942,7 +942,7 @@ class VTECEngine(VTECTableUtil):
 
         return vtecRecs
 
-    def _seperateMarineCountyZone(self, rec):
+    def _separateMarineCountyZone(self, rec):
         '''Separates out the ugcs by marine, county, and zone designators.
 
         Keyword Arguments:
@@ -980,14 +980,14 @@ class VTECEngine(VTECTableUtil):
         if not combinableSegments:
             outCombo = []   # start with an empty list
             for rec in vtecRecords:
-                for ids in self._seperateMarineCountyZone(rec):
+                for ids in self._separateMarineCountyZone(rec):
                     if (ids, rec['eventID']) not in outCombo:
                         outCombo.append((ids, rec['eventID']))
         else:
             # start with a complete list
             outCombo = [zoneList]
             for rec in vtecRecords:
-                for ids in self._seperateMarineCountyZone(rec):
+                for ids in self._separateMarineCountyZone(rec):
                     for i, c in enumerate(outCombo):
                         if c == ids:
                             break
