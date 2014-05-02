@@ -6,7 +6,7 @@
  * This software product contains export-restricted data whose
  * export/transfer/disclosure is restricted by U.S. law. Dissemination
  * to non-U.S. persons whether in the United States or abroad requires
- * an export license or other authorization.
+ * an export license or other authorization*.
  * 
  * Contractor Name:        Raytheon Company
  * Contractor Address:     6825 Pine Street, Suite 340
@@ -74,9 +74,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.Puntal;
@@ -133,6 +133,7 @@ import com.vividsolutions.jts.geom.Puntal;
  */
 
 public class SessionProductManager implements ISessionProductManager {
+
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionProductManager.class);
 
@@ -169,6 +170,8 @@ public class SessionProductManager implements ISessionProductManager {
 
     private final SessionManager sessionManager;
 
+    private final PartsOfCounty partsOfCounty;
+
     private String vtecMode;
 
     private boolean vtecTestMode;
@@ -176,7 +179,7 @@ public class SessionProductManager implements ISessionProductManager {
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
-            ISessionEventManager eventManager,
+            ISessionEventManager<ObservedHazardEvent> eventManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.sessionManager = sessionManager;
         this.timeManager = timeManager;
@@ -185,6 +188,8 @@ public class SessionProductManager implements ISessionProductManager {
         this.notificationSender = notificationSender;
         this.productGen = new ProductGeneration();
         this.messenger = messenger;
+        this.partsOfCounty = new PartsOfCounty();
+
         this.vtecMode = "O";
         this.vtecTestMode = false;
     }
@@ -332,152 +337,175 @@ public class SessionProductManager implements ISessionProductManager {
     public boolean generate(ProductInformation information, boolean issue,
             boolean confirm) {
 
-        if (validateSelectedHazardsForProductGeneration()
-                && eventManager.clipSelectedHazardGeometries()) {
-
-            eventManager.reduceSelectedHazardGeometries();
-
-            /*
-             * Update the UGC information in the Hazard Event
-             */
-            eventManager.updateSelectedHazardUGCs();
-
-            if (issue && confirm) {
-                boolean answer = messenger
-                        .getQuestionAnswerer()
-                        .getUserAnswerToQuestion(
-                                "Are you sure "
-                                        + "you want to issue the hazard event(s)?");
-                if (!answer) {
-                    sessionManager.setIssueOngoing(false);
-                    return false;
-                }
-            }
-            EventSet<IEvent> events = new EventSet<IEvent>();
-            events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
-                    .getCurrentTime().getTime());
-            events.addAttribute(HazardConstants.SITE_ID,
-                    configManager.getSiteID());
-            events.addAttribute(HazardConstants.BACKUP_SITEID,
-                    LocalizationManager.getInstance().getCurrentSite());
-            String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
-                    .toString() : HazardEventManager.Mode.OPERATIONAL
-                    .toString();
-            events.addAttribute(HAZARD_MODE, mode);
-            String runMode = CAVEMode.getMode().toString();
-            events.addAttribute("runMode", runMode);
-
-            String vtecModeToUse = "O";
-            if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
-                vtecModeToUse = vtecMode;
-            }
-            events.addAttribute("vtecMode", vtecModeToUse);
-
-            boolean vtecTestModeToUse = false;
-            if (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode())) {
-                vtecTestModeToUse = false;
-            } else if (CAVEMode.TEST.equals(CAVEMode.getMode())) {
-                vtecTestModeToUse = true;
-            } else {
-                vtecTestModeToUse = vtecTestMode;
-            }
-            events.addAttribute("vtecTestMode", vtecTestModeToUse);
-
-            if (issue) {
-                events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
-            } else {
-                events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
-            }
-
-            HashMap<String, String> sessionDict = new HashMap<String, String>();
-            // TODO
-            // There is no operational database currently.
-            // When this is fixed, then the correct CAVEMode needs to
-            // be entered into the sessionDict.
-            // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
-            // .toString());
-            sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
-            events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
-
-            if (information.getDialogSelections() != null) {
-                for (Entry<String, Serializable> entry : information
-                        .getDialogSelections().entrySet()) {
-                    events.addAttribute(entry.getKey(), entry.getValue());
-                }
-            }
-            for (IHazardEvent event : information.getProductEvents()) {
-                event = new BaseHazardEvent(event);
-                for (Entry<String, Serializable> entry : event
-                        .getHazardAttributes().entrySet()) {
-                    if (entry.getValue() instanceof Date) {
-                        entry.setValue(((Date) entry.getValue()).getTime());
-                    }
-                }
-                String headline = configManager.getHeadline(event);
-                event.addHazardAttribute(HazardConstants.HEADLINE, headline);
-                if (event.getHazardAttribute(HazardConstants.FORECAST_POINT) != null) {
-                    event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                            HazardConstants.POINT_TYPE);
-                } else {
-                    Geometry geometryCollection = event.getGeometry();
-
-                    for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
-                        Geometry geometry = geometryCollection.getGeometryN(i);
-
-                        if (geometry instanceof Puntal) {
-                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                    HazardConstants.POINT_TYPE);
-                        } else if (geometry instanceof Lineal) {
-                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                    HazardConstants.LINE_TYPE);
-                        } else if (geometry instanceof Polygonal) {
-                            event.addHazardAttribute(HazardConstants.GEO_TYPE,
-                                    HazardConstants.AREA_TYPE);
-                        } else {
-                            statusHandler
-                                    .warn("SessionProductManager: Geometry type "
-                                            + geometry.getClass()
-                                            + " not supported. GEO_TYPE hazard attribute not set.");
-                        }
-                    }
-                }
-                event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
-
-                /*
-                 * Need to re-initialize product information when issuing
-                 */
-                if (issue) {
-                    event.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
-                    event.removeHazardAttribute(HazardConstants.ISSUE_TIME);
-                    event.removeHazardAttribute(HazardConstants.VTEC_CODES);
-                    event.removeHazardAttribute(HazardConstants.ETNS);
-                    event.removeHazardAttribute(HazardConstants.PILS);
-                }
-                event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
-                event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
-                event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
-                event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
-
-                events.add(event);
-            }
-
-            String product = information.getProductGeneratorName();
-            String[] formats = information.getProductFormats()
-                    .getPreviewFormats().toArray(new String[0]);
-            IPythonJobListener<GeneratedProductList> listener = new JobListener(
-                    issue, notificationSender, information);
-            productGen.generate(product, events,
-                    information.getDialogSelections(), formats, listener);
-        } else {
+        /*
+         * Just terminate ongoing operation and return if there is nothing to
+         * do.
+         */
+        if (!validateSelectedHazardsForProductGeneration()
+                || !eventManager.clipSelectedHazardGeometries()) {
             if (issue) {
                 sessionManager.setIssueOngoing(false);
             } else {
                 sessionManager.setPreviewOngoing(false);
             }
+            return false;
         }
 
+        eventManager.reduceSelectedHazardGeometries();
+
+        /*
+         * Update the UGC information in the Hazard Event
+         */
+        eventManager.updateSelectedHazardUGCs();
+
+        if (issue && confirm) {
+            boolean answer = messenger.getQuestionAnswerer()
+                    .getUserAnswerToQuestion(
+                            "Are you sure "
+                                    + "you want to issue the hazard event(s)?");
+            if (!answer) {
+                sessionManager.setIssueOngoing(false);
+                return false;
+            }
+        }
+        String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
+        EventSet<IEvent> events = new EventSet<IEvent>();
+        events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
+                .getCurrentTime().getTime());
+        events.addAttribute(HazardConstants.SITE_ID, configManager.getSiteID());
+        events.addAttribute(HazardConstants.BACKUP_SITEID, locMgrSite);
+        String mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
+                .toString() : HazardEventManager.Mode.OPERATIONAL.toString();
+        events.addAttribute(HAZARD_MODE, mode);
+        String runMode = CAVEMode.getMode().toString();
+        events.addAttribute("runMode", runMode);
+        events.addAttribute("vtecMode", "O");
+
+        if (issue) {
+            events.addAttribute(HazardConstants.ISSUE_FLAG, "True");
+        } else {
+            events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
+        }
+
+        String vtecModeToUse = "O";
+        if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
+            vtecModeToUse = vtecMode;
+        }
+        events.addAttribute("vtecMode", vtecModeToUse);
+
+        boolean vtecTestModeToUse = false;
+        if (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode())) {
+            vtecTestModeToUse = false;
+        } else if (CAVEMode.TEST.equals(CAVEMode.getMode())) {
+            vtecTestModeToUse = true;
+        } else {
+            vtecTestModeToUse = vtecTestMode;
+        }
+        events.addAttribute("vtecTestMode", vtecTestModeToUse);
+
+        HashMap<String, String> sessionDict = new HashMap<String, String>();
+        // TODO
+        // There is no operational database currently.
+        // When this is fixed, then the correct CAVEMode needs to
+        // be entered into the sessionDict.
+        // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
+        // .toString());
+        sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
+        events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
+
+        if (information.getDialogSelections() != null) {
+            for (Entry<String, Serializable> entry : information
+                    .getDialogSelections().entrySet()) {
+                events.addAttribute(entry.getKey(), entry.getValue());
+            }
+        }
+        for (IHazardEvent event : information.getProductEvents()) {
+            event = new BaseHazardEvent(event);
+            for (Entry<String, Serializable> entry : event
+                    .getHazardAttributes().entrySet()) {
+                if (entry.getValue() instanceof Date) {
+                    entry.setValue(((Date) entry.getValue()).getTime());
+                }
+            }
+
+            /* Make an ArrayList of any polygon geometries we encounter. */
+            /* Later, if non-zero length, will make GeometryCollection with it. */
+            Geometry geometryCollection = null;
+            List<Geometry> polygonGeometries = new ArrayList<Geometry>();
+
+            String headline = configManager.getHeadline(event);
+            event.addHazardAttribute(HazardConstants.HEADLINE, headline);
+            if (event.getHazardAttribute(HazardConstants.FORECAST_POINT) != null) {
+                event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        HazardConstants.POINT_TYPE);
+            } else {
+                geometryCollection = event.getGeometry();
+
+                for (int i = 0; i < geometryCollection.getNumGeometries(); ++i) {
+                    Geometry geometry = geometryCollection.getGeometryN(i);
+
+                    if (geometry instanceof Puntal) {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.POINT_TYPE);
+                    } else if (geometry instanceof Lineal) {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.LINE_TYPE);
+                    } else if (geometry instanceof Polygonal) {
+                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                                HazardConstants.AREA_TYPE);
+                        polygonGeometries.add(geometry);
+                    } else {
+                        statusHandler
+                                .warn("SessionProductManager: Geometry type "
+                                        + geometry.getClass()
+                                        + " not supported. GEO_TYPE hazard attribute not set.");
+                    }
+
+                }/* end loop over geometryCollection */
+
+            }/* if not a polygon event type */
+            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
+
+            /* Make descriptions of portions of counties if we have any polygon */
+            /* geometries for this event. */
+            if (polygonGeometries.size() > 0) {
+                if (polygonGeometries.size() < geometryCollection
+                        .getNumGeometries()) {
+                    geometryCollection = new GeometryFactory()
+                            .buildGeometry(polygonGeometries);
+                }
+                this.partsOfCounty.addPortionsDescriptionToEvent(
+                        geometryCollection, event, locMgrSite);
+            }
+
+            /*
+             * Need to re-initialize product information when issuing
+             */
+            if (issue) {
+                event.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
+                event.removeHazardAttribute(HazardConstants.ISSUE_TIME);
+                event.removeHazardAttribute(HazardConstants.VTEC_CODES);
+                event.removeHazardAttribute(HazardConstants.ETNS);
+                event.removeHazardAttribute(HazardConstants.PILS);
+            }
+            event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
+            event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
+            event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+            event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+
+            events.add(event);
+        }/* end loop over information.getProductEvents */
+
+        String product = information.getProductGeneratorName();
+        String[] formats = information.getProductFormats().getPreviewFormats()
+                .toArray(new String[0]);
+        IPythonJobListener<GeneratedProductList> listener = new JobListener(
+                issue, notificationSender, information);
+        productGen.generate(product, events, information.getDialogSelections(),
+                formats, listener);
+
         return true;
-    }
+    }/* end generate() method */
 
     @Override
     public void issue(ProductInformation information) {
@@ -574,57 +602,6 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         return hasConflicts;
-    }
-
-    // @Override
-    public void issue_old(ProductInformation information) {
-
-        for (IHazardEvent selectedEvent : information.getProductEvents()) {
-            if (selectedEvent.getState() != HazardState.ENDED) {
-                Serializable previewState = selectedEvent
-                        .getHazardAttribute(HazardConstants.PREVIEW_STATE);
-                if (previewState != null
-                        && previewState.toString().equalsIgnoreCase(
-                                HazardState.ENDED.toString())) {
-                    selectedEvent.setState(HazardState.ENDED);
-                } else {
-                    for (IEvent ev : information.getProducts().getEventSet()) {
-                        IHazardEvent event = (IHazardEvent) ev;
-                        if (selectedEvent.getEventID().equals(
-                                event.getEventID())) {
-                            ObservedHazardEvent newEvent = new ObservedHazardEvent(
-                                    event, (SessionEventManager) eventManager);
-                            SessionEventUtilities.mergeHazardEvents(newEvent,
-                                    selectedEvent);
-                            break;
-                        }
-                    }
-
-                    // disseminates the legacy product
-                    for (IGeneratedProduct product : information.getProducts()) {
-                        List<Serializable> objs = product.getEntry("Legacy");
-                        if (objs != null) {
-                            for (Serializable obj : objs) {
-                                ProductUtils.disseminate(String.valueOf(obj),
-                                        false);
-                            }
-                        }
-                    }
-
-                    /*
-                     * This ensures that the "replaces" string is removed for
-                     * the next generation of a product.
-                     */
-                    selectedEvent
-                            .removeHazardAttribute(HazardConstants.REPLACES);
-                    selectedEvent.setState(HazardState.ISSUED);
-                }
-                /*
-                 * Clear the undo/redo events.
-                 */
-                ((IUndoRedoable) selectedEvent).clearUndoRedo();
-            }
-        }
     }
 
     /**

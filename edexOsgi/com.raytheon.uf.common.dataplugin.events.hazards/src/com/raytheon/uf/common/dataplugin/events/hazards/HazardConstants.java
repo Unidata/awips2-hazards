@@ -860,4 +860,6 @@ public final class HazardConstants {
 
     public static final String PYTHON_LOCALIZATION_LOG_UTILITIES_DIR = "logUtilities";
 
+    public static String UGC_PORTIONS = "ugcPortions";
+
 }

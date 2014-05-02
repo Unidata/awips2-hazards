@@ -21,6 +21,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.raytheon.uf.common.serialization.JAXBManager
 import com.raytheon.uf.common.time.SimulatedTime
@@ -65,7 +66,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     HazardSessionAlertsManager alertsManager;
     ISessionConfigurationManager sessionConfigurationManager;
     BoundedReceptionEventBus<Object> eventBus;
-    HazardEventForAlertsTesting event0
+    IHazardEvent event0
     BlockingQueue<Runnable> queue = new LinkedBlockingDeque<>();
 
     static String EVENT_O = "event_0"
@@ -121,7 +122,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
     def "An event with superceded alerts is issued"() {
 
         when: "The hazard is issued"
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
         hazardEvent.setPhenomenon("SV")
         hazardEvent.setSubType(null)
@@ -185,7 +186,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is issued"
 
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
 
         HazardNotification hazardNotification = new HazardNotification(hazardEvent, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
@@ -213,7 +214,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is issued"
 
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 16, 1, 0, 0))
         hazardEvent.setPhenomenon("SV")
         hazardEvent.setSubType(null)
@@ -240,7 +241,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is issued"
 
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 1, 0, 0))
         hazardEvent.setPhenomenon("FL")
         hazardEvent.setSubType(null)
@@ -260,7 +261,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is issued"
 
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 1, 0, 0))
         hazardEvent.setPhenomenon("FA")
         hazardEvent.setSubType(null)
@@ -281,7 +282,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
         when: "The hazard is issued"
 
-        HazardEventForAlertsTesting hazardEvent = buildHazardEvent(EVENT_1,
+        IHazardEvent hazardEvent = buildHazardEvent(EVENT_1,
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
         hazardEvent.setPhenomenon("WS")
 
@@ -390,8 +391,8 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
 
 
 
-    private HazardEventForAlertsTesting buildHazardEvent(String eventID, DateTime dateTime) {
-        HazardEventForAlertsTesting hazardEvent = new HazardEventForAlertsTesting()
+    private IHazardEvent buildHazardEvent(String eventID, DateTime dateTime) {
+        IHazardEvent hazardEvent = new BaseHazardEvent()
         hazardEvent.setEventID(eventID)
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance("W")
