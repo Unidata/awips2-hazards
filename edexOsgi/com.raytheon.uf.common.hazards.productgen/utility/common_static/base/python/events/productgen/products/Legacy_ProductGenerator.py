@@ -972,11 +972,6 @@ class Product(ProductTemplate.Product):
                 key, self._productCategory, productID, segment, eventIDs 
         If not found, use the default value provided         
         '''   
-        
-        # Temporarily bypassing editable functionality to allow for further
-        # testing and debugging of Product Editor Dialog
-        prodDict[key] = default
-        return
      
         # Converts a list of string integers into a list of integers
         tmp = []

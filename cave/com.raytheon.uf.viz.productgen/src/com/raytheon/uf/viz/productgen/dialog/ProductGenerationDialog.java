@@ -291,6 +291,11 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                     dataEditor = new DataEditor(this, leftComp, offset
                             + folderIndex);
                 } else {
+                    /*
+                     * Makes sure the segmentComboList size matches with the
+                     * number of generated products.
+                     */
+                    addSegmentCombo(null);
                     setLayoutInfo(sashForm, 1, true, SWT.FILL, SWT.FILL, true,
                             true, null);
                 }
@@ -595,7 +600,9 @@ public class ProductGenerationDialog extends CaveSWTDialog {
 
     private void notifySegmentCombosList() {
         for (Combo segmentCombos : segmentsComboList) {
-            segmentCombos.notifyListeners(SWT.Selection, new Event());
+            if (segmentCombos != null) {
+                segmentCombos.notifyListeners(SWT.Selection, new Event());
+            }
         }
     }
 
