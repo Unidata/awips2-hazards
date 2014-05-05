@@ -9,8 +9,6 @@
  */
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender;
 import junit.framework.TestCase;
 
@@ -18,6 +16,10 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 import org.junit.Test;
+
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
 
 /**
  * Description: TODO
@@ -28,6 +30,7 @@ import org.junit.Test;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * MMM DD, YYYY            bryon.lawrence      Initial creation
+ * May 1, 2014  3581       bkowal      Updated to use common hazards hydro
  * 
  * </pre>
  * 
@@ -61,8 +64,10 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
             }
         });
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
                 new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+                riverProDataManager);
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NR", recordStatus);
@@ -94,8 +99,10 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
             }
         });
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
                 new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+                riverProDataManager);
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NR", recordStatus);
@@ -127,8 +134,10 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
             }
         });
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
                 new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+                riverProDataManager);
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("NO", recordStatus);
@@ -161,8 +170,10 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
             }
         });
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
                 new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+                riverProDataManager);
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("UU", recordStatus);
@@ -195,8 +206,10 @@ public class RiverFloodRecommenderRecordTest extends TestCase {
             }
         });
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
                 new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(
+                riverProDataManager);
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings,
                 forecastPoint);
         assertEquals("UU", recordStatus);

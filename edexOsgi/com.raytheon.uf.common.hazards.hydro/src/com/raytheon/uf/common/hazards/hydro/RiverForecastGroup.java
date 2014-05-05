@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.util.Date;
 import java.util.List;
@@ -16,6 +16,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * June 2011               Bryon.Lawrence      Initial creation
+ * Apr 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * 
  * </pre>
  * 

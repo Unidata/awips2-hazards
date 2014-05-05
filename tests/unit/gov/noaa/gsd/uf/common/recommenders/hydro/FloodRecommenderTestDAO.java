@@ -7,12 +7,6 @@
  */
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.CountyForecastGroup;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.IFloodRecommenderDAO;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastGroup;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -21,6 +15,11 @@ import java.util.List;
 import java.util.TimeZone;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.hazards.hydro.CountyForecastGroup;
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
 
 /**
  * Description: Flood Recommender DAO for use with unit tests. This allows the
@@ -31,7 +30,7 @@ import com.google.common.collect.Lists;
  * @author bryon.lawrence
  * @version 1.0
  */
-public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
+public class FloodRecommenderTestDAO implements IFloodDAO {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss");
 
@@ -182,7 +181,7 @@ public class FloodRecommenderTestDAO implements IFloodRecommenderDAO {
     }
 
     @Override
-    public HazardSettings retrieveRecommenderSettings() {
+    public HazardSettings retrieveSettings() {
 
         return this.hazardSettings;
 

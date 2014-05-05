@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.text.ParseException;
 import java.util.Date;
@@ -20,6 +20,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * June 2011               Bryon.Lawrence    Initial creation
  * March 1, 2013           Bryon.Lawrence    Prep for code review
+ * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * 
  * </pre>
  * 
@@ -88,7 +89,7 @@ public class Hydrograph {
     /**
      * Flood data access object.
      */
-    private IFloodRecommenderDAO floodDAO;
+    private IFloodDAO floodDAO;
 
     /**
      * Default constructor
@@ -112,7 +113,7 @@ public class Hydrograph {
      *            - end time of observations
      */
     public Hydrograph(String lid, String physicalElement, String typeSource,
-            long obsBeginTime, long obsEndTime, IFloodRecommenderDAO floodDAO) {
+            long obsBeginTime, long obsEndTime, IFloodDAO floodDAO) {
         this();
         this.lid = lid;
         this.physicalElement = physicalElement;
@@ -143,7 +144,7 @@ public class Hydrograph {
      */
     public Hydrograph(String lid, String physicalElement, String typeSource,
             long endValidTime, long basisBTime, boolean useLatestForecast,
-            IFloodRecommenderDAO floodDAO) {
+            IFloodDAO floodDAO) {
         this();
         this.lid = lid;
         this.physicalElement = physicalElement;

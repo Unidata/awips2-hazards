@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.util.Date;
 import java.util.Map;
@@ -19,6 +19,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 9, 2012            Bryon.Lawrence    Initial creation
+ * May 1, 2014  3581       bkowal       Relocate to common hazards hydro
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -150,7 +151,7 @@ public class HydroEvent {
      */
     public HydroEvent(RiverForecastPoint forecastPoint,
             HazardSettings hazardSettings, Map<String, Object> eventDict,
-            IFloodRecommenderDAO floodDAO) {
+            IFloodDAO floodDAO) {
         this();
         this.forecastPoint = forecastPoint;
 
@@ -266,7 +267,7 @@ public class HydroEvent {
      * @return The previous event (now inactive) for this forecast point.
      */
     private Map<String, Object> getPreviousInactiveEvent(String geoId,
-            Map<String, Object> eventDict, IFloodRecommenderDAO floodDAO,
+            Map<String, Object> eventDict, IFloodDAO floodDAO,
             String significance) {
         String activeETN = null;
 
@@ -459,7 +460,7 @@ public class HydroEvent {
      * @return true - the event is active, false - the event is not active.
      */
     public boolean checkIfEventActive(long previousEndtimeInMilliseconds,
-            IFloodRecommenderDAO floodDAO) {
+            IFloodDAO floodDAO) {
 
         if (previousEndtimeInMilliseconds == 0) {
             return true;
@@ -481,7 +482,7 @@ public class HydroEvent {
      * @return true - the event is active, false - the event is not active
      */
     static public boolean checkIfEventActive(HydroEvent event,
-            IFloodRecommenderDAO floodDAO) {
+            IFloodDAO floodDAO) {
         boolean active = false;
 
         Vtecevent vtecInfo = event.getPreviousFLW().getVtecInfo();

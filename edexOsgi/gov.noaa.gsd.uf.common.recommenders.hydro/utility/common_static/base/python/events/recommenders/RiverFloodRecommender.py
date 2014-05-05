@@ -12,6 +12,7 @@ recommender framework
                                                  from this file and placed it in its own
                                                  RiverFloodRecommenderSideEffects.py file,
                                                  which is localized.
+    Apr 1, 2014  3581        bkowal     Updated to use common hazards hydro
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -25,6 +26,7 @@ import JUtil
 from EventSet import EventSet
 from LocalizationInterface import LocalizationInterface
 
+from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
 
 #
@@ -135,7 +137,8 @@ class Recommender(RecommenderTemplate.Recommender):
         sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
         dialogMap = JUtil.pyDictToJavaMap(dialogInputMap)
         spatialMap = JUtil.pyDictToJavaMap(spatialInputMap)
-        riverProFloodRecommender = RiverProFloodRecommender()
+        riverProDataManager = RiverProDataManager()
+        riverProFloodRecommender = RiverProFloodRecommender(riverProDataManager)
         javaEventList = riverProFloodRecommender.getRecommendation(sessionMap,
                                                                    dialogMap,
                                                                    spatialMap)

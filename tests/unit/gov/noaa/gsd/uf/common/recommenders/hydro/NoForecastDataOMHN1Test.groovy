@@ -10,12 +10,13 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
 import static org.junit.Assert.*
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 
 
 /**
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2012            bryon.lawrence      Initial creation
  * Sep 30, 2013            bryon.lawrence      Fixed test failure
+ * May 1, 2014  3581       bkowal      Updated to use common hazards hydro
  * 
  * </pre>
  * 
@@ -624,7 +626,7 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
                 defaultStageWindow, forecastPointsInCounty, observations,
                 forecasts, stateName);
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(floodDAO)
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(floodDAO))
 
         Map<String, Object> sessionAttributeMap = new HashMap<String, Object>();
         Map<String, Object> dialogInputMap = new HashMap<String, Object>();

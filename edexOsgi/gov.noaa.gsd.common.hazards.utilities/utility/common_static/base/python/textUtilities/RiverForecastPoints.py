@@ -22,8 +22,9 @@
  Date         Ticket#    Engineer    Description
  ------------ ---------- ----------- --------------------------
  Jan 25, 2014  2394      blawrenc     Initial Coding
+ May 1, 2014   3581      bkowal       Updated to use common hazards hydro
 '''
-from gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender import RiverProFloodRecommender
+from com.raytheon.uf.common.hazards.hydro import RiverProDataManager
 from sets import Set
 
 import math
@@ -68,9 +69,9 @@ class RiverForecastPoints:
                                        hydro database.
         '''
         if floodDataAccessObject is not None:
-            self.riverProFloodRecommender = RiverProFloodRecommender(floodDataAccessObject)
+            self.riverProDataManager = RiverProDataManager(floodDataAccessObject)
         else:
-            self.riverProFloodRecommender = RiverProFloodRecommender()
+            self.riverProDataManager = RiverProDataManager()
             
     ###############################################################
     #
@@ -127,7 +128,7 @@ class RiverForecastPoints:
         
         @return: The list of rivers in the recommendation
         '''
-        forecastPointList = JUtil.javaObjToPyVal(self.riverProFloodRecommender.getForecastPointList())
+        forecastPointList = JUtil.javaObjToPyVal(self.riverProDataManager.getForecastPointList())
         riverSet = Set()
         
         for forecastPoint in forecastPointList:
@@ -161,7 +162,7 @@ class RiverForecastPoints:
         @return: A string describing the river groups and the forecast points
                  on them
         '''
-        riverGroupList = JUtil.javaObjToPyVal(self.riverProFloodRecommender.getRiverGroupList())
+        riverGroupList = JUtil.javaObjToPyVal(self.riverProDataManager.getRiverGroupList())
         includedRiverGroups = {}
         
         for riverGroup in riverGroupList:
@@ -649,7 +650,7 @@ class RiverForecastPoints:
         @param forecastPointID: The river forecast point identifier.
         @return: The river point state identifier
         '''
-        floodDAO = self.riverProFloodRecommender.getFloodDAO()
+        floodDAO = self.riverProDataManager.getFloodDAO()
         stateAbbreviation = self.getRiverPointStateIdentifier(forecastPointID)
         stateName = floodDAO.getStateNameForAbbreviation(stateAbbreviation)
         return stateName
@@ -913,7 +914,7 @@ class RiverForecastPoints:
         @return: The zero datum (base elevation for flood values)
                  associated with the river point
         '''
-        floodDAO = self.riverProFloodRecommender.getFloodDAO()
+        floodDAO = self.riverProDataManager.getFloodDAO()
         riverStatRecord = self.getRiverStatRecord(forecastPointID)
         zeroDatum = riverStatRecord[self.RIVERSTAT_ZERO_DATUM_FIELD_POSITION]
         return zeroDatum
@@ -1538,7 +1539,7 @@ class RiverForecastPoints:
         @return:  The maximum forecast flood category name for this river forecast point.
         '''
         riverForecastPoint = self.getRiverForecastPoint(forecastPointID)
-        forecastPointEventMap = self.riverProFloodRecommender.getForecastPointEventMap()
+        forecastPointEventMap = self.riverProDataManager.getForecastPointEventMap()
         category = riverForecastPoint.getMaximumForecastCategory()
         categoryName = RiverForecastPoints.FLOOD_CATEGORY_VALUE_DICT.get(category, 'UNKNOWN')
         return categoryName
@@ -2134,7 +2135,7 @@ class RiverForecastPoints:
         @return: The forecast point data structure for a given forecast
                  point id. 
         '''
-        forecastPointEventMap = self.riverProFloodRecommender.getForecastPointEventMap()
+        forecastPointEventMap = self.riverProDataManager.getForecastPointEventMap()
         hydroEvent = forecastPointEventMap.get(forecastPointID)
         return hydroEvent.getForecastPoint()
     
@@ -2147,7 +2148,7 @@ class RiverForecastPoints:
         @param forecastPointID: The forecast point identifier
         @return: The riverstat record corresponding to the forecast point.
         '''
-        floodDAO = self.riverProFloodRecommender.getFloodDAO()
+        floodDAO = self.riverProDataManager.getFloodDAO()
         riverStatRecord = JUtil.javaObjToPyVal(floodDAO.getRiverStationInfo(forecastPointID))
         return riverStatRecord[0]
     
@@ -2172,5 +2173,5 @@ class RiverForecastPoints:
         '''
         @return: The list of available river groups.
         '''
-        return JUtil.javaObjToPyVal(self.riverProFloodRecommender.getRiverGroupList())
+        return JUtil.javaObjToPyVal(self.riverProDataManager.getRiverGroupList())
 

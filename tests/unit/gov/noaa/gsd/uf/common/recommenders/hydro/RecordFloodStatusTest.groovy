@@ -1,8 +1,11 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro
 import static org.junit.Assert.*
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint
+
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
+
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
 class RecordFloodStatusTest extends spock.lang.Specification {
@@ -23,7 +26,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status should be Near Record"
@@ -43,7 +46,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status Should be near record (NR)"
@@ -64,7 +67,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The flood status should be no record (NO)"
@@ -90,7 +93,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The flood status should be no period of record (UU)"
@@ -110,7 +113,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status should be no period of record (UU)"
@@ -136,7 +139,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status should be near record flood (NR)"
@@ -162,7 +165,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status should be near record flood (NR)"
@@ -188,7 +191,7 @@ class RecordFloodStatusTest extends spock.lang.Specification {
 
         when: "The River Flood Recommender is Run"
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new FloodRecommenderDCTN1TestDAO());
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(new FloodRecommenderDCTN1TestDAO()));
         String recordStatus = recommender.retrieveFloodRecord(hazardSettings, forecastPoint);
 
         then: "The Flood Status should be no record flood (NO)"

@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.text.ParseException;
 import java.util.Calendar;
@@ -20,6 +20,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * July 2012               Bryon.Lawrence    Initial creation
+ * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * 
  * </pre>
  * 
@@ -534,7 +535,7 @@ public class RiverForecastPoint {
     /**
      * The flood recommender data accessor object.
      */
-    private IFloodRecommenderDAO floodDAO;
+    private IFloodDAO floodDAO;
 
     /**
      * Default constructor
@@ -551,7 +552,7 @@ public class RiverForecastPoint {
      *            data accessor object
      */
     public RiverForecastPoint(Object[] forecastPointInfo,
-            IFloodRecommenderDAO floodDAO) {
+            IFloodDAO floodDAO) {
         this.floodDAO = floodDAO;
         loadForecastPointData(forecastPointInfo);
     }

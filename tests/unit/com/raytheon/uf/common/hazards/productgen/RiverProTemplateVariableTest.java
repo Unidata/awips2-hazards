@@ -18,6 +18,8 @@ import org.junit.Test;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 7, 2012            bryon.lawrence      Initial creation
+ * May 5, 2014  3581      bkowal       Update Python Path to include the correct location
+ *                                     of RiverForecastPoints.py.
  * 
  * </pre>
  * 
@@ -32,7 +34,7 @@ public class RiverProTemplateVariableTest {
      * For these tests, we only care about the base version of the
      * RiverForecastPoints module.
      */
-    private static final String PYTHON_PATHS = "/awips2/edex/data/utility/common_static/base/python/events/productgen/riverPointUtilities:/awips2/edex/data/utility/common_static/base/python";
+    private static final String PYTHON_PATHS = "/awips2/edex/data/utility/common_static/base/python/textUtilities:/awips2/edex/data/utility/common_static/base/python";
 
     @BeforeClass
     static public void setUp() throws Exception {

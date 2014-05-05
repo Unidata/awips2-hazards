@@ -10,11 +10,12 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
 import static org.junit.Assert.*
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 
 
 /**
@@ -29,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2012            bryon.lawrence      Initial creation
  * Sep 30, 2013            bryon.lawrence      Fixed test failure
+ * May 1, 2014  3581       bkowal      Updated to use common hazards hydro
  * 
  * </pre>
  * 
@@ -590,7 +592,7 @@ class EndTime0ShiftHoursTest extends spock.lang.Specification {
                 forecasts, stateName);
 
 
-        RiverProFloodRecommender recommender = new RiverProFloodRecommender(floodDAO)
+        RiverProFloodRecommender recommender = new RiverProFloodRecommender(new RiverProDataManager(floodDAO))
 
         when:"The Flood Recommender is Run"
 

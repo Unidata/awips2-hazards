@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 /**
  * Description: Contains settings which affect the operation and output of the
@@ -9,6 +9,7 @@ package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * June 2011               Bryon.Lawrence    Initial creation
+ * May 1, 2014  3581       bkowal       Relocate to common hazards hydro
  * </pre>
  * 
  * @author Bryon.Lawrence

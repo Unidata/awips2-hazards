@@ -1,8 +1,6 @@
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
 import static org.junit.Assert.assertEquals;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.IFloodRecommenderDAO;
 import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProFloodRecommender;
 
 import java.io.Serializable;
@@ -15,6 +13,9 @@ import org.junit.Test;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
+import com.raytheon.uf.common.hazards.hydro.RiverProDataManager;
 
 /**
  * Description: Tests the hazard recommendation based on a complex hydrograph
@@ -26,6 +27,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 7, 2012            bryon.lawrence      Initial creation
+ * May 1, 2014  3581      bkowal       Updated to use common hazards hydro
  * 
  * </pre>
  * 
@@ -34,7 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  */
 public class RiverFloodRecommenderBRON1Test {
 
-    private IFloodRecommenderDAO floodDAO;
+    private IFloodDAO floodDAO;
 
     @Before
     public void setUp() throws Exception {
@@ -222,8 +224,10 @@ public class RiverFloodRecommenderBRON1Test {
      */
     @Test
     public void testRiverFloodRecommender() {
+        RiverProDataManager riverProDataManager = new RiverProDataManager(
+                this.floodDAO);
         RiverProFloodRecommender recommender = new RiverProFloodRecommender(
-                floodDAO);
+                riverProDataManager);
 
         Map<String, Object> sessionAttributeMap = new HashMap<String, Object>();
         Map<String, Object> dialogInputMap = new HashMap<String, Object>();

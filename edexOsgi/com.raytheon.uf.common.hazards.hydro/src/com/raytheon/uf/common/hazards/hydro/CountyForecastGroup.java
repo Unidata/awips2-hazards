@@ -1,4 +1,4 @@
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.util.Date;
 import java.util.List;
@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
  * ------------ ---------- ----------- --------------------------
  * June 2011               Bryon.Lawrence    Initial creation
  * March 1 2013            Bryon.Lawrence    Preparing for code review
+ * May 1, 2014  3581       bkowal            Relocate to common hazards hydro
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -52,7 +53,7 @@ public final class CountyForecastGroup {
     /*
      * Injected data accessor object.
      */
-    private final IFloodRecommenderDAO floodDAO;
+    private final IFloodDAO floodDAO;
 
     /**
      * Construct an instance of a county forecast group.
@@ -69,7 +70,7 @@ public final class CountyForecastGroup {
     public CountyForecastGroup(
             final List<RiverForecastPoint> forecastPointList,
             final Object[] countyRecord, String hsaId,
-            final IFloodRecommenderDAO floodDAO) {
+            final IFloodDAO floodDAO) {
         forecastPointsInCountyList = Lists.newArrayList();
         this.floodDAO = floodDAO;
         loadCountyData(forecastPointList, countyRecord, hsaId);

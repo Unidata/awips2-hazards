@@ -5,7 +5,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
 
 /**
  * Description: Product data accessor implementation of the
- * IFloodRecommenderDAO.
+ * IFloodDAO.
  * 
  * <pre>
  * 
@@ -34,13 +34,15 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * June 2011               bryon.lawrence      Initial creation
  * April 17, 2013          bryon.lawrence      Made a Singleton based on 
  *                                             code review feedback.
+ * May 1, 2014  3581       bkowal              Relocate to common hazards hydro
+ * 
  * 
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public class FloodRecommenderDAO implements IFloodRecommenderDAO {
+public class FloodDAO implements IFloodDAO {
 
     private static final String IHFS = "ihfs";
 
@@ -48,7 +50,7 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
      * For logging...
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(FloodRecommenderDAO.class);
+            .getHandler(FloodDAO.class);
 
     /**
      * Standard date format for hydro data.
@@ -165,7 +167,7 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
     /**
      * Singleton instance of this flood data access object
      */
-    private static IFloodRecommenderDAO floodDAOInstance = null;
+    private static IFloodDAO floodDAOInstance = null;
 
     /**
      * Private constructor. This prevents it from being called and helps to
@@ -174,7 +176,7 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
      * The getInstance method must be used to retrieve an instance of this
      * class.
      */
-    private FloodRecommenderDAO() {
+    private FloodDAO() {
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         getHourValues();
     }
@@ -187,10 +189,10 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
      * 
      * @return An instance of this flood recommender data access object
      */
-    public static IFloodRecommenderDAO getInstance() {
+    public static IFloodDAO getInstance() {
 
         if (floodDAOInstance == null) {
-            floodDAOInstance = new FloodRecommenderDAO();
+            floodDAOInstance = new FloodDAO();
         }
 
         return floodDAOInstance;
@@ -337,7 +339,7 @@ public class FloodRecommenderDAO implements IFloodRecommenderDAO {
      * @return A HazardSettings object.
      */
     @Override
-    public HazardSettings retrieveRecommenderSettings() {
+    public HazardSettings retrieveSettings() {
         /*
          * Create the SQL Query for the IHFS RpfParams table.
          */

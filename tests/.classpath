@@ -44,6 +44,7 @@
 	<classpathentry kind="lib" path="/tests/lib/swt_gtk_linux_x86.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.eventbus"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.warning"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.hydro"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.configuration"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

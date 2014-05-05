@@ -7,12 +7,6 @@
  */
 package gov.noaa.gsd.uf.common.recommenders.hydro;
 
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.CountyForecastGroup;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.HazardSettings;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.IFloodRecommenderDAO;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastGroup;
-import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverForecastPoint;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -20,6 +14,11 @@ import java.util.Date;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+import com.raytheon.uf.common.hazards.hydro.CountyForecastGroup;
+import com.raytheon.uf.common.hazards.hydro.HazardSettings;
+import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastGroup;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastPoint;
 
 /**
  * Description: TODO
@@ -30,13 +29,14 @@ import com.google.common.collect.Lists;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * MMM DD, YYYY            bryon.lawrence      Initial creation
+ * May 1, 2014  3581       bkowal      Updated for hazards hydro refactor
  * 
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public class FloodRecommenderDCTN1TestDAO implements IFloodRecommenderDAO {
+public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss");
 
@@ -168,7 +168,7 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodRecommenderDAO {
     }
 
     @Override
-    public HazardSettings retrieveRecommenderSettings() {
+    public HazardSettings retrieveSettings() {
         HazardSettings hazardSettings = new HazardSettings();
 
         hazardSettings.setRvsExpirationHours(24);

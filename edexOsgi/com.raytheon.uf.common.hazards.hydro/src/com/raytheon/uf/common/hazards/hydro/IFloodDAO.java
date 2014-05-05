@@ -7,7 +7,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender;
+package com.raytheon.uf.common.hazards.hydro;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -16,9 +16,9 @@ import java.util.List;
 /**
  * Description:
  * 
- * The Data Accessor Object (DAO) interface for the Flood Recommender. The DAO
- * should provide methods for retrieving all of the data required by the Flood
- * Recommender. The Flood Recommender should retrieve all of its data from the
+ * The Data Accessor Object (DAO) interface for the River Data Manager. The DAO
+ * should provide methods for retrieving all of the data required by the River
+ * Data Manager. The River Data Manager should retrieve all of its data from the
  * DAO. The DAO abstracts the details of how data are retrieved. It also allows
  * for easier testing, i.e. test and production DAOs can be created. Also, the
  * DAO can more easily be mocked or stubbed using tools such as JMock, EasyStub,
@@ -30,13 +30,15 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 27, 2012            bryon.lawrence      Initial creation
+ * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
+ * 
  * 
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public interface IFloodRecommenderDAO {
+public interface IFloodDAO {
     /**
      * Retrieves a list of river forecast points.
      * 
@@ -126,7 +128,7 @@ public interface IFloodRecommenderDAO {
      * @param
      * @return A HazardSettings object.
      */
-    public HazardSettings retrieveRecommenderSettings();
+    public HazardSettings retrieveSettings();
 
     /**
      * Retrieves the observed hydrograph for a river forecast point.
