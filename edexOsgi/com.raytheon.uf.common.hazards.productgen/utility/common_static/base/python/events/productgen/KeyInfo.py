@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    04/07/14                      jsanchez        Initial Creation.
+#    04/21/14        2336          Chris.Golden    Added capitalization of labels.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
@@ -45,9 +46,9 @@ class KeyInfo(JUtil.JavaWrapperClass):
         self.editable = editable
         self.displayable = displayable     
         if label == None:
-            self.label = self.name
+            self.label = self.name.title()
         else:
-            self.label = label
+            self.label = label.title()
     
     def getName(self):
         return self.name

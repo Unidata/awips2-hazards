@@ -10,9 +10,12 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.collect.ClassKeyedMap;
+import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +24,6 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Description: Parameters editor factory, capable of constructing GUI-based
@@ -35,9 +36,10 @@ import com.google.common.collect.Maps;
  * which returns a {@link MegawidgetManager}. Each megawidget managed by the
  * latter is given as its identifier the label with which the corresponding
  * parameter is associated. Note that the labels passed to the editor should not
- * include colons (:) or greater-than signs (>), since these have special
+ * include colons (:) or greater-than signs (&gt;), since these have special
  * meanings when used as stateful megawidget identifiers. When actually used as
  * labels for the megawidgets, a colon (:) is appended to each such label.
+ * </p>
  * 
  * <pre>
  * 
@@ -50,6 +52,10 @@ import com.google.common.collect.Maps;
  *                                           for Dates and Longs.
  * Dec 16, 2013    2545    Chris.Golden      Added current time provider for
  *                                           megawidget use.
+ * Apr 10, 2014    2336    Chris.Golden      Changed to parameterize builder
+ *                                           method to allow objects of other
+ *                                           classes besides String to be used
+ *                                           as keys.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,14 +71,17 @@ public class ParametersEditorFactory {
      */
     private static final Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
 
-    // Initialized the map of default specification parameters for stateful
-    // megawidget specifiers.
+    /*
+     * Initialized the map of default specification parameters for stateful
+     * megawidget specifiers.
+     */
     static {
-        Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = Maps
-                .newHashMap();
+        Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = new HashMap<>();
 
-        // Add default values for text megawidgets.
-        Map<String, Object> defaults = Maps.newHashMap();
+        /*
+         * Add default values for text megawidgets.
+         */
+        Map<String, Object> defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
         defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
@@ -80,8 +89,10 @@ public class ParametersEditorFactory {
         defaults.put(TextSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         map.put(TextSpecifier.class, defaults);
 
-        // Add default values for integer spinner megawidgets.
-        defaults = Maps.newHashMap();
+        /*
+         * Add default values for integer spinner megawidgets.
+         */
+        defaults = new HashMap<>();
         defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_TYPE, "IntegerSpinner");
         defaults.put(IntegerSpinnerSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(IntegerSpinnerSpecifier.EXPAND_HORIZONTALLY, true);
@@ -95,8 +106,10 @@ public class ParametersEditorFactory {
                 false);
         map.put(IntegerSpinnerSpecifier.class, defaults);
 
-        // Add default values for fraction spinner megawidgets.
-        defaults = Maps.newHashMap();
+        /*
+         * Add default values for fraction spinner megawidgets.
+         */
+        defaults = new HashMap<>();
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_TYPE,
                 "FractionSpinner");
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_SPACING, 5);
@@ -112,16 +125,20 @@ public class ParametersEditorFactory {
                 false);
         map.put(FractionSpinnerSpecifier.class, defaults);
 
-        // Add default values for unbounded list builder megawidgets.
-        defaults = Maps.newHashMap();
+        /*
+         * Add default values for unbounded list builder megawidgets.
+         */
+        defaults = new HashMap<>();
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_TYPE,
                 "UnboundedListBuilder");
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(UnboundedListBuilderSpecifier.MEGAWIDGET_VISIBLE_LINES, 5);
         map.put(UnboundedListBuilderSpecifier.class, defaults);
 
-        // Add default values for time megawidgets.
-        defaults = Maps.newHashMap();
+        /*
+         * Add default values for time megawidgets.
+         */
+        defaults = new HashMap<>();
         defaults.put(TimeSpecifier.MEGAWIDGET_TYPE, "Time");
         defaults.put(TimeSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(TimeSpecifier.MEGAWIDGET_SEND_EVERY_STATE_CHANGE, false);
@@ -136,7 +153,15 @@ public class ParametersEditorFactory {
     /**
      * Megawidget manager used as a parameters editor.
      */
-    private class ParametersEditor extends MegawidgetManager {
+    private class ParametersEditor<K extends IParameterInfo> extends
+            MegawidgetManager {
+
+        // Private Variables
+
+        /**
+         * Map pairing keys with their associated parameters.
+         */
+        private final Map<String, K> parametersForKeys;
 
         // Public Constructors
 
@@ -153,14 +178,17 @@ public class ParametersEditorFactory {
          * @param state
          *            State to be viewed and/or modified via the megawidgets
          *            that are constructed. Each megawidget specifier defined by
-         *            <code>
-         *            specifiers</code> should have an entry in this map,
+         *            <code>specifiers</code> should have an entry in this map,
          *            mapping the specifier's identifier to the value that the
          *            megawidget will take on (with conversions between
          *            megawidget state and state element being performed by
-         *            <code>
-         *            convertStateElementToMegawidgetState()</code> and <code>
-         *            convertMegawidgetStateToStateElement()</code>).
+         *            {@link #convertStateElementToMegawidgetState(String, Object)}
+         *            and
+         *            {@link #convertMegawidgetStateToStateElement(String, Object)}
+         *            ).
+         * @param parametersForKeys
+         *            Map pairing keys (megawidget identifiers) to the
+         *            associated parameters.
          * @param minTime
          *            Minimum time for any time megawidgets specified within
          *            <code>specifiers</code>. If no time megawidgets are
@@ -182,11 +210,13 @@ public class ParametersEditorFactory {
          */
         public ParametersEditor(Composite parent,
                 List<Map<String, Object>> specifiers,
-                Map<String, Object> state, long minTime, long maxTime,
+                Map<String, Object> state, Map<String, K> parametersForKeys,
+                long minTime, long maxTime,
                 ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
             super(parent, specifiers, state, minTime, maxTime, minTime,
                     maxTime, currentTimeProvider);
+            this.parametersForKeys = parametersForKeys;
         }
 
         // Public Methods
@@ -197,17 +227,19 @@ public class ParametersEditorFactory {
             // No action.
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         protected void stateElementChanged(String identifier, Object state) {
-            listenersForParents.get(getParent()).parameterValueChanged(
-                    identifier, state);
+            ((IParametersEditorListener<K>) listenersForParents
+                    .get(getParent())).parameterValueChanged(
+                    parametersForKeys.get(identifier), state);
         }
 
         @Override
         protected Object convertStateElementToMegawidgetState(
                 String identifier, Object value) {
-            IConverter converter = convertersForIdentifiersForParents.get(
-                    getParent()).get(identifier);
+            IConverter converter = convertersForKeysForParents.get(getParent())
+                    .get(identifier);
             if (converter != null) {
                 return converter.toSecond(value);
             }
@@ -217,8 +249,8 @@ public class ParametersEditorFactory {
         @Override
         protected Object convertMegawidgetStateToStateElement(
                 String identifier, Object value) {
-            IConverter converter = convertersForIdentifiersForParents.get(
-                    getParent()).get(identifier);
+            IConverter converter = convertersForKeysForParents.get(getParent())
+                    .get(identifier);
             if (converter != null) {
                 return converter.toFirst(value);
             }
@@ -233,15 +265,15 @@ public class ParametersEditorFactory {
      * for the megawidgets that are to be used to allow manipulation of values
      * that are instances of these parameter classes.
      */
-    private final ClassKeyedMap<Map<String, Object>> megawidgetSpecifiersForParameterClasses = new ClassKeyedMap<Map<String, Object>>();
+    private final ClassKeyedMap<Map<String, Object>> megawidgetSpecifiersForParameterClasses = new ClassKeyedMap<>();
 
     /**
      * Map of parameter classes to the converters, if any, that must be used to
      * convert between values of these types and the types expected by the
-     * corresponding megawidgets (that is, the values within <code>
-     * megawidgetSpecifiersForParameterClasses</code>).
+     * corresponding megawidgets (that is, the values within
+     * {@link #megawidgetSpecifiersForParameterClasses}).
      */
-    private final ClassKeyedMap<IConverter> convertersForParameterClasses = new ClassKeyedMap<IConverter>();
+    private final ClassKeyedMap<IConverter> convertersForParameterClasses = new ClassKeyedMap<>();
 
     /**
      * Map of parent composites to nested maps, with each nested map pairing
@@ -250,14 +282,12 @@ public class ParametersEditorFactory {
      * of their associated megawidget states. If a mapping has a value of
      * <code>null</code>, it means no conversion is required for that parameter.
      */
-    private final Map<Composite, Map<String, IConverter>> convertersForIdentifiersForParents = Maps
-            .newHashMap();
+    private final Map<Composite, Map<String, IConverter>> convertersForKeysForParents = new HashMap<>();
 
     /**
      * Map of parent composites to their listeners.
      */
-    private final Map<Composite, IParametersEditorListener> listenersForParents = Maps
-            .newHashMap();
+    private final Map<Composite, IParametersEditorListener<? extends IParameterInfo>> listenersForParents = new HashMap<>();
 
     // Public Constructors
 
@@ -267,12 +297,14 @@ public class ParametersEditorFactory {
      */
     public ParametersEditorFactory() {
 
-        // Register some default mappings: strings are edited with multiline
-        // text megawidgets, integers and floating-point numbers with spinners,
-        // longs and date objects with time scales, and lists of strings with
-        // unbounded list builders. Floats and dates need converters, since
-        // their associated megawidgets expect their state values to be
-        // specified as doubles or longs, respectively.
+        /*
+         * Register some default mappings: strings are edited with multiline
+         * text megawidgets, integers and floating-point numbers with spinners,
+         * longs and date objects with time scales, and lists of strings with
+         * unbounded list builders. Floats and dates need converters, since
+         * their associated megawidgets expect their state values to be
+         * specified as doubles or longs, respectively.
+         */
         registerParameterType(String.class, TextSpecifier.class);
         registerParameterType(Integer.class, IntegerSpinnerSpecifier.class);
         registerParameterType(Long.class, TimeSpecifier.class);
@@ -396,21 +428,24 @@ public class ParametersEditorFactory {
             Class<? extends IStatefulSpecifier> megawidgetClass,
             Map<String, ?> megawidgetOptions, IConverter converter) {
 
-        // Create a map to act as a megawidget specifier, and fill it with
-        // default values if such exist for this type of megawidget; other-
-        // wise, make it simply a map containing the megawidget type speci-
-        // fier.
+        /*
+         * Create a map to act as a megawidget specifier, and fill it with
+         * default values if such exist for this type of megawidget; otherwise,
+         * make it simply a map containing the megawidget type specifier.
+         */
         Map<String, Object> specifierMap;
         if (DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
                 .containsKey(megawidgetClass)) {
-            specifierMap = Maps
-                    .newHashMap(DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
+            specifierMap = new HashMap<>(
+                    DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS
                             .get(megawidgetClass));
         } else {
-            specifierMap = Maps.newHashMap();
+            specifierMap = new HashMap<>();
 
-            // Get the type of the megawidget from the specifier class
-            // name, and add that to the map as the megawidget type.
+            /*
+             * Get the type of the megawidget from the specifier class name, and
+             * add that to the map as the megawidget type.
+             */
             String specifierClassName = megawidgetClass.getSimpleName();
             int index = specifierClassName.lastIndexOf("Specifier");
             if (index == -1) {
@@ -422,14 +457,18 @@ public class ParametersEditorFactory {
                     specifierClassName.substring(0, index));
         }
 
-        // Place the option key-value pairs in the specifier map, over-
-        // riding any default values that exist for such parameters.
+        /*
+         * Place the option key-value pairs in the specifier map, overriding any
+         * default values that exist for such parameters.
+         */
         for (String key : megawidgetOptions.keySet()) {
             specifierMap.put(key, megawidgetOptions.get(key));
         }
 
-        // Associate the resulting specifier map with the parameter type,
-        // and if a converter was supplied, remember that as well.
+        /*
+         * Associate the resulting specifier map with the parameter type, and if
+         * a converter was supplied, remember that as well.
+         */
         megawidgetSpecifiersForParameterClasses.put(parameterClass,
                 specifierMap);
         convertersForParameterClasses.put(parameterClass, converter);
@@ -438,17 +477,28 @@ public class ParametersEditorFactory {
     /**
      * Instantiate megawidgets for the specified parameters in the given
      * composite.
+     * <p>
+     * The parameter <code>K</code> specifies the type of class to be used for
+     * the labels/identifiers of the parameters. Note that <code>K</code> must
+     * implement <code>toString()</code> to return a {@link String} that, when
+     * compared to other <code>String</code> instances returned by other
+     * instances of <code>K.toString()</code>, adheres to the contract that the
+     * <code>K.equals()</code> uses. That is, if to instances of <code>K</code>
+     * are considered equivalent by <code>equals()</code>, their <code>
+     * toString()</code> should return the same <code>String</code>; and if they
+     * are not considered equivalent, their <code>toString()</code> should
+     * return different <code>String</code>s.
+     * </p>
      * 
      * @param parent
      *            Parent composite in which to create the megawidgets.
-     * @param labels
-     *            List of labels for the megawidgets to be created, in the order
-     *            in which they should be displayed top to bottom.
-     * @param parametersForLabels
-     *            Map of labels identifying the parameters to their starting
-     *            values. Each label is used as a visual label as well. Note
-     *            that each time a value is changed by the editor, the value
-     *            will be changed within this map to match.
+     * @param parameters
+     *            List of parameters for the megawidgets to be created, in the
+     *            order in which they should be displayed top to bottom.
+     * @param valuesForParameters
+     *            Map of parameters to their starting values. Note that each
+     *            time a value is changed by the editor, the value will be
+     *            changed within this map to match.
      * @param minimumTime
      *            Minimum time for any time megawidgets.
      * @param maximumTime
@@ -461,80 +511,105 @@ public class ParametersEditorFactory {
      *            Listener to be notified each time the one of the parameter
      *            values has changed, if any. If no listener is desired, the
      *            caller may track the life of <code>parent</code> and simply
-     *            check the parameters within <code>parametersForLabels</code>
-     *            to see their updated values once <code>parent</code> is
-     *            disposed.
+     *            check the values within <code>valuesForParameters</code> to
+     *            see their updated values once <code>parent</code> is disposed.
      * @return Megawidget manager that is acting as the parameters editor.
      * @throws MegawidgetSpecificationException
      *             If the megawidgets cannot be constructed.
      */
-    public MegawidgetManager buildParametersEditor(Composite parent,
-            List<String> labels, Map<String, Object> parametersForLabels,
-            long minimumTime, long maximumTime,
-            ICurrentTimeProvider currentTimeProvider,
-            IParametersEditorListener listener) throws MegawidgetException {
+    public <K extends IParameterInfo> MegawidgetManager buildParametersEditor(
+            Composite parent, List<K> parameters,
+            Map<K, Object> valuesForParameters, long minimumTime,
+            long maximumTime, ICurrentTimeProvider currentTimeProvider,
+            IParametersEditorListener<K> listener) throws MegawidgetException {
 
-        // Assemble a list of the megawidget specifiers, and any
-        // converters required as well.
-        List<Map<String, Object>> specifiers = Lists.newArrayList();
-        Map<String, IConverter> convertersForLabels = Maps.newHashMap();
-        for (String label : labels) {
+        /*
+         * Assemble a list of the megawidget specifiers, and any converters
+         * required as well.
+         */
+        List<Map<String, Object>> specifiers = new ArrayList<>();
+        Map<String, IConverter> convertersForKeys = new HashMap<>();
+        Map<String, K> parametersForKeys = new HashMap<>();
+        Map<String, Object> valuesForKeys = new HashMap<>();
+        for (K parameter : parameters) {
 
-            // Get the base specifier for this parameter type.
-            Object parameter = parametersForLabels.get(label);
-            if (parameter == null) {
-                throw new MegawidgetException(label, null, null,
-                        "no associated parameter");
+            /*
+             * Get the key and the label for this parameter.
+             */
+            String key = parameter.getKey();
+            String label = parameter.getLabel();
+
+            /*
+             * Get the base specifier for this parameter type.
+             */
+            Object value = valuesForParameters.get(parameter);
+            valuesForKeys.put(key, value);
+            if (value == null) {
+                throw new MegawidgetException(key, null, null,
+                        "no associated parameter value");
             }
-            Class<?> parameterClass = parameter.getClass();
+            Class<?> parameterClass = value.getClass();
             Map<String, Object> baseSpecifier = megawidgetSpecifiersForParameterClasses
                     .getProximate(parameterClass);
             if (baseSpecifier == null) {
-                throw new MegawidgetException(label, null, null,
+                throw new MegawidgetException(key, null, null,
                         "no megawidget specifier associated with type \""
-                                + parameter.getClass() + "\"");
+                                + parameterClass + "\"");
             }
 
-            // Modify the base specifier by adding the label as both
-            // the megawidget label and its identifier, and add it
-            // to the list.
-            Map<String, Object> specifier = Maps.newHashMap(baseSpecifier);
+            /*
+             * Create an association between this parameter's key and this
+             * parameter object, as the megawidget manager needs this.
+             */
+            parametersForKeys.put(key, parameter);
+
+            /*
+             * Modify the base specifier by adding the label as the megawidget
+             * label and the key as its identifier, and add it to the list.
+             */
+            Map<String, Object> specifier = new HashMap<>(baseSpecifier);
             specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
-            specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, label);
+            specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
             specifiers.add(specifier);
 
-            // If a converter exists for this parameter class, asso-
-            // ciate it with this megawidget identifier.
-            convertersForLabels.put(label,
+            /*
+             * If a converter exists for this parameter class, associate it with
+             * this megawidget identifier.
+             */
+            convertersForKeys.put(key,
                     convertersForParameterClasses.getProximate(parameterClass));
         }
 
-        // Associate the parent composite with the converters map
-        // created above, as well as the specified listener. This
-        // is done so as to allow the megawidget manager that is
-        // about to be created to have access to these items when
-        // it is constructing itself.
-        convertersForIdentifiersForParents.put(parent, convertersForLabels);
+        /*
+         * Associate the parent composite with the converters map created above,
+         * as well as the specified listener. This is done so as to allow the
+         * megawidget manager that is about to be created to have access to
+         * these items when it is constructing itself.
+         */
+        convertersForKeysForParents.put(parent, convertersForKeys);
         listenersForParents.put(parent, listener);
 
-        // Ensure that when the parent composite is disposed of,
-        // the associations just created between the parent and the
-        // converter map and listener are removed, so that garbage
-        // collection of the parent and the associated objects may
-        // be done.
+        /*
+         * Ensure that when the parent composite is disposed of, the
+         * associations just created between the parent and the converter map
+         * and listener are removed, so that garbage collection of the parent
+         * and the associated objects may be done.
+         */
         parent.addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
-                convertersForIdentifiersForParents.remove(e.widget);
+                convertersForKeysForParents.remove(e.widget);
                 listenersForParents.remove(e.widget);
             }
         });
 
-        // Create and return a megawidget manager to be used as a
-        // parameters editor. The former creates all the megawidgets
-        // that are specified and notifies the listener of any para-
-        // meter value changes.
-        return new ParametersEditor(parent, specifiers, parametersForLabels,
-                minimumTime, maximumTime, currentTimeProvider);
+        /*
+         * Create and return a megawidget manager to be used as a parameters
+         * editor. The former creates all the megawidgets that are specified and
+         * notifies the listener of any parameter value changes.
+         */
+        return new ParametersEditor<K>(parent, specifiers, valuesForKeys,
+                parametersForKeys, minimumTime, maximumTime,
+                currentTimeProvider);
     }
 }

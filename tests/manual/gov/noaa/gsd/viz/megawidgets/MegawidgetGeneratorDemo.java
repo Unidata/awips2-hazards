@@ -7,7 +7,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
+
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +25,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Description: Functional testbed for the megawidget package's parameters
@@ -44,6 +46,29 @@ import com.google.common.collect.Maps;
  */
 @SuppressWarnings("unused")
 public class MegawidgetGeneratorDemo extends Dialog {
+
+    /**
+     * Implementation of parameter info in which the key and the label are one
+     * and the same.
+     */
+    private static class SimpleParameterInfo implements IParameterInfo {
+
+        private final String identifier;
+
+        public SimpleParameterInfo(String identifier) {
+            this.identifier = identifier;
+        }
+
+        @Override
+        public String getKey() {
+            return identifier;
+        }
+
+        @Override
+        public String getLabel() {
+            return identifier;
+        }
+    }
 
     private static final long serialVersionUID = 1L;
 
@@ -87,31 +112,36 @@ public class MegawidgetGeneratorDemo extends Dialog {
         long minTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2);
         long maxTime = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(2);
 
-        List<String> labels = Lists.newArrayList("Sample String",
-                "Sample Integer", "Sample Long", "Sample Float",
-                "Sample Double", "Sample Date", "Sample List");
-        Map<String, Object> parametersForLabels = Maps.newHashMap();
-        parametersForLabels.put("Sample String", "Hello there!");
-        parametersForLabels.put("Sample Integer", 100);
-        parametersForLabels.put("Sample Long", System.currentTimeMillis());
-        parametersForLabels.put("Sample Float", 0.5f);
-        parametersForLabels.put("Sample Double", 0.25);
-        parametersForLabels.put("Sample Date",
+        List<SimpleParameterInfo> parameters = Lists.newArrayList(
+                new SimpleParameterInfo("Sample String"),
+                new SimpleParameterInfo("Sample Integer"),
+                new SimpleParameterInfo("Sample Long"),
+                new SimpleParameterInfo("Sample Float"),
+                new SimpleParameterInfo("Sample Double"),
+                new SimpleParameterInfo("Sample Date"),
+                new SimpleParameterInfo("Sample List"));
+        Map<SimpleParameterInfo, Object> valuesForParameters = new HashMap<>();
+        valuesForParameters.put(parameters.get(0), "Hello there!");
+        valuesForParameters.put(parameters.get(1), 100);
+        valuesForParameters.put(parameters.get(2), System.currentTimeMillis());
+        valuesForParameters.put(parameters.get(3), 0.5f);
+        valuesForParameters.put(parameters.get(4), 0.25);
+        valuesForParameters.put(parameters.get(5),
                 new Date(System.currentTimeMillis()));
-        parametersForLabels.put("Sample List",
+        valuesForParameters.put(parameters.get(6),
                 Lists.newArrayList("One", "Two", "Three"));
 
         try {
             ParametersEditorFactory factory = new ParametersEditorFactory();
-            factory.buildParametersEditor(top, labels, parametersForLabels,
+            factory.buildParametersEditor(top, parameters, valuesForParameters,
                     System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
-                    null, new IParametersEditorListener() {
+                    null, new IParametersEditorListener<SimpleParameterInfo>() {
                         @Override
-                        public void parameterValueChanged(String label,
-                                Object value) {
-                            System.err.println("Parameter \"" + label
-                                    + "\" changed to "
+                        public void parameterValueChanged(
+                                SimpleParameterInfo parameter, Object value) {
+                            System.err.println("Parameter \""
+                                    + parameter.getKey() + "\" changed to "
                                     + value.getClass().getSimpleName() + ": "
                                     + value);
                         }

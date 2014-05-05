@@ -75,7 +75,11 @@ import com.raytheon.uf.viz.productgen.dialog.listener.GenerateListener;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 11, 2014            jsanchez     Initial creation
- * 
+ * Apr 20, 2014  2336      Chris.Golden Changed to use improved version of
+ *                                      ParametersEditorFactory that allows
+ *                                      specification of keys as KeyInfo
+ *                                      objects instead of requiring keys
+ *                                      to be String instances.
  * </pre>
  * 
  * @author jsanchez
@@ -119,9 +123,9 @@ public class DataEditor {
      */
     public final Listener formatListener = createGenerateListener();
 
-    private ProductGenerationDialog dialog;
+    private final ProductGenerationDialog dialog;
 
-    private GenerateListener generateListener;
+    private final GenerateListener generateListener;
 
     public DataEditor(ProductGenerationDialog dialog, Composite composite,
             int folderIndex) {
@@ -189,6 +193,7 @@ public class DataEditor {
 
         segmentsCombo.addSelectionListener(new SelectionAdapter() {
 
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 // Clear out composite's contents
                 for (Control control : unformattedComp.getChildren()) {
@@ -224,6 +229,7 @@ public class DataEditor {
 
         dataFolder.setSelection(0);
         dataFolder.addSelectionListener(new SelectionAdapter() {
+            @Override
             public void widgetSelected(SelectionEvent e) {
                 // removes the highlighting
                 ProductGenerationDialogUtility.clearHighlighting(dialog
@@ -246,32 +252,31 @@ public class DataEditor {
             return;
         }
 
-        List<String> labels = new ArrayList<String>();
-        Map<String, Object> parametersForLabels = new HashMap<String, Object>();
+        List<KeyInfo> keyInfos = new ArrayList<>();
+        Map<KeyInfo, Object> valuesForKeyInfos = new HashMap<>();
         for (KeyInfo key : segment.getEditableKeys()) {
-            labels.add(key.getLabel());
-            parametersForLabels.put(key.getLabel(), segment.getValue(key));
+            keyInfos.add(key);
+            valuesForKeyInfos.put(key, segment.getValue(key));
         }
 
         try {
             // Use factory to create megawidgets
             ParametersEditorFactory factory = new ParametersEditorFactory();
-            manager = factory.buildParametersEditor(comp, labels,
-                    parametersForLabels, System.currentTimeMillis()
+            manager = factory.buildParametersEditor(comp, keyInfos,
+                    valuesForKeyInfos, System.currentTimeMillis()
                             - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
-                    currentTimeProvider, new IParametersEditorListener() {
+                    currentTimeProvider,
+                    new IParametersEditorListener<KeyInfo>() {
                         @Override
-                        public void parameterValueChanged(String key,
+                        public void parameterValueChanged(KeyInfo keyInfo,
                                 Object value) {
                             Combo segmentsCombo = dialog
                                     .getCurrentSegmentCombo();
                             int segmentNumber = segmentsCombo
                                     .getSelectionIndex() - 1;
-                            KeyInfo keyInfo = KeyInfo.getElements(key,
-                                    segment.getEditableKeys());
-                            ArrayList<KeyInfo> path = new ArrayList<KeyInfo>(
-                                    segment.getPath(keyInfo));
+                            List<KeyInfo> path = new ArrayList<>(segment
+                                    .getPath(keyInfo));
                             path.add(keyInfo);
                             ProductGenerationDialogUtility.updateData(path,
                                     dialog.getCurrentGeneratedProduct()
@@ -348,8 +353,8 @@ public class DataEditor {
                 for (KeyInfo key : segment.getEditableKeys()) {
                     Serializable value = segment.revertValue(key);
                     if (value != null) {
-                        ArrayList<KeyInfo> path = new ArrayList<KeyInfo>(
-                                segment.getPath(key));
+                        List<KeyInfo> path = new ArrayList<>(segment
+                                .getPath(key));
                         path.add(key);
                         ProductGenerationDialogUtility.updateData(path, dialog
                                 .getCurrentGeneratedProduct().getData(),
@@ -388,12 +393,12 @@ public class DataEditor {
                 ProductGeneration generation = new ProductGeneration();
                 for (GeneratedProductList products : dialog
                         .getGeneratedProductListStorage()) {
-                    List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
+                    List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<>();
                     for (IGeneratedProduct product : products) {
                         dataList.add(product.getData());
                     }
-                    List<String> formats = new ArrayList<String>(products
-                            .get(0).getEntries().keySet());
+                    List<String> formats = new ArrayList<>(products.get(0)
+                            .getEntries().keySet());
                     generation.update(products.getProductInfo(), dataList,
                             formats.toArray(new String[formats.size()]),
                             generateListener);
@@ -430,7 +435,8 @@ public class DataEditor {
         for (GeneratedProductList products : dialog
                 .getGeneratedProductListStorage()) {
             int index = 0;
-            for (IGeneratedProduct product : products) {
+            for (@SuppressWarnings("unused")
+            IGeneratedProduct product : products) {
                 ProductGenerationDialogUtility.save(dialog
                         .getDecodedDataList(offset + index));
                 index++;

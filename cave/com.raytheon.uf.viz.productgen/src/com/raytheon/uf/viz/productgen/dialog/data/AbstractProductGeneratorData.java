@@ -21,11 +21,10 @@ package com.raytheon.uf.viz.productgen.dialog.data;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.eclipse.swt.custom.StyledText;
 
@@ -41,7 +40,10 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 25, 2014            jsanchez     Initial creation
- * 
+ * Apr 21, 2014  2336      Chris.Golden Added explicit ordering to the key info
+ *                                      map so that when its keys are iterated
+ *                                      over, they will be consistent in their
+ *                                      order.
  * </pre>
  * 
  * @author jsanchez
@@ -50,7 +52,7 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 public abstract class AbstractProductGeneratorData {
 
-    private Map<KeyInfo, Serializable> data;
+    private final Map<KeyInfo, Serializable> data;
 
     protected String segmentID;
 
@@ -67,7 +69,7 @@ public abstract class AbstractProductGeneratorData {
         Serializable previousValue;
     }
 
-    private Map<KeyInfo, EditableKeyInfo> editableKeyInfoMap = new HashMap<KeyInfo, EditableKeyInfo>();
+    private final Map<KeyInfo, EditableKeyInfo> editableKeyInfoMap = new LinkedHashMap<>();
 
     public AbstractProductGeneratorData(Map<KeyInfo, Serializable> data,
             String segmentID) {
@@ -85,16 +87,23 @@ public abstract class AbstractProductGeneratorData {
     abstract public void highlight(StyledText styledText);
 
     /**
-     * Returns the set of editable keys of the data dictionary
+     * Returns the list of editable keys of the data dictionary.
      * 
      * @return
      */
-    public Set<KeyInfo> getEditableKeys() {
-        return editableKeyInfoMap.keySet();
+    public List<KeyInfo> getEditableKeys() {
+
+        /*
+         * The list will always be in the same order for a given map between
+         * calls to determineEditableKeyPaths(); a list is created and returned
+         * instead of simply returning the key set in order to indicate that
+         * ordering will be maintained.
+         */
+        return new ArrayList<>(editableKeyInfoMap.keySet());
     }
 
     public List<KeyInfo> getDisplayableKeys() {
-        List<KeyInfo> displayableKeys = new ArrayList<KeyInfo>();
+        List<KeyInfo> displayableKeys = new ArrayList<>();
         for (Entry<KeyInfo, EditableKeyInfo> entry : editableKeyInfoMap
                 .entrySet()) {
             if (entry.getValue().isDisplayable) {
@@ -119,7 +128,7 @@ public abstract class AbstractProductGeneratorData {
     }
 
     public List<KeyInfo> getPath(KeyInfo editableKey) {
-        List<KeyInfo> path = new ArrayList<KeyInfo>();
+        List<KeyInfo> path = new ArrayList<>();
         EditableKeyInfo info = editableKeyInfoMap.get(editableKey);
         if (info != null && info.path != null) {
             path.addAll(info.path);
@@ -185,6 +194,7 @@ public abstract class AbstractProductGeneratorData {
      * @param data
      * @param isParentEditable
      */
+    @SuppressWarnings("unchecked")
     private void determineEditableKeyPaths(List<KeyInfo> parentPath,
             Map<KeyInfo, Serializable> data, boolean isParentEditable) {
 
@@ -204,18 +214,18 @@ public abstract class AbstractProductGeneratorData {
                 if (entry.getValue() instanceof Map<?, ?>) {
                     Map<KeyInfo, Serializable> subdata = (Map<KeyInfo, Serializable>) entry
                             .getValue();
-                    List<KeyInfo> path = new ArrayList<KeyInfo>();
+                    List<KeyInfo> path = new ArrayList<>();
                     if (parentPath != null) {
                         path.addAll(parentPath);
                     }
                     path.add(entry.getKey());
                     determineEditableKeyPaths(path, subdata, isEditable);
                 } else if (entry.getValue() instanceof ArrayList) {
-                    ArrayList<?> list = (ArrayList<?>) entry.getValue();
+                    List<?> list = (ArrayList<?>) entry.getValue();
                     if (list != null && !list.isEmpty()) {
                         Object firstItem = list.get(0);
                         if (firstItem instanceof Map<?, ?>) {
-                            List<KeyInfo> path = new ArrayList<KeyInfo>();
+                            List<KeyInfo> path = new ArrayList<>();
                             if (parentPath != null) {
                                 path.addAll(parentPath);
                             }

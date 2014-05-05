@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.hazards.productgen;
 
+import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -35,14 +37,14 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 1, 2014            jsanchez     Initial creation
- * 
+ * Apr 10, 2014  2336     Chris.Golden Added implementation of IParameterInfo.
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
 
-public class KeyInfo {
+public class KeyInfo implements IParameterInfo {
 
     private String name;
 
@@ -120,6 +122,12 @@ public class KeyInfo {
         this.displayable = displayable;
     }
 
+    @Override
+    public String getKey() {
+        return toString();
+    }
+
+    @Override
     public String getLabel() {
         return label;
     }
@@ -150,38 +158,51 @@ public class KeyInfo {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         KeyInfo other = (KeyInfo) obj;
         if (eventIDs == null) {
-            if (other.eventIDs != null)
+            if (other.eventIDs != null) {
                 return false;
-        } else if (!eventIDs.equals(other.eventIDs))
+            }
+        } else if (!eventIDs.equals(other.eventIDs)) {
             return false;
+        }
         if (name == null) {
-            if (other.name != null)
+            if (other.name != null) {
                 return false;
-        } else if (!name.equals(other.name))
+            }
+        } else if (!name.equals(other.name)) {
             return false;
+        }
         if (productCategory == null) {
-            if (other.productCategory != null)
+            if (other.productCategory != null) {
                 return false;
-        } else if (!productCategory.equals(other.productCategory))
+            }
+        } else if (!productCategory.equals(other.productCategory)) {
             return false;
+        }
         if (productID == null) {
-            if (other.productID != null)
+            if (other.productID != null) {
                 return false;
-        } else if (!productID.equals(other.productID))
+            }
+        } else if (!productID.equals(other.productID)) {
             return false;
+        }
         if (segment == null) {
-            if (other.segment != null)
+            if (other.segment != null) {
                 return false;
-        } else if (!segment.equals(other.segment))
+            }
+        } else if (!segment.equals(other.segment)) {
             return false;
+        }
         return true;
     }
 

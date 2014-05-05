@@ -9,9 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
 /**
- * Description: Listener for parameters editor events.
+ * Description: Listener for parameters editor events. The generic parameter
+ * <code>K</code> indicates the class of the labels being used, and must be
+ * identical to the <code>K</code> used in the call to
+ * {@link ParametersEditorFactory#buildParametersEditor(org.eclipse.swt.widgets.Composite, java.util.List, java.util.Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
+ * .
  * 
  * <pre>
  * 
@@ -19,12 +24,15 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 18, 2013    2336    Chris.Golden      Initial creation
+ * Apr 10, 2014    2336    Chris.Golden      Augmented by using a generic
+ *                                           parameter to specify the type of
+ *                                           key being used.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IParametersEditorListener {
+public interface IParametersEditorListener<K extends IParameterInfo> {
 
     /**
      * Receive notification of a parameter value change.
@@ -34,5 +42,5 @@ public interface IParametersEditorListener {
      * @param value
      *            New value of the parameter.
      */
-    public void parameterValueChanged(String label, Object value);
+    public void parameterValueChanged(K label, Object value);
 }
