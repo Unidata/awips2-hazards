@@ -28,6 +28,9 @@ import java.util.Map;
  *                                           restriction on what superclass
  *                                           is expected of which the result
  *                                           should be an instance.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,7 +51,7 @@ public interface IMegawidgetSpecifierFactory {
      * @param superClass
      *            Class that must be the superclass of the created megawidget
      *            specifier. This allows specifiers of only a certain subclass
-     *            of <code>ISpecifier</code> to be required.
+     *            of {@link ISpecifier} to be required.
      * @param parameters
      *            Map holding parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value

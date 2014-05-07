@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,6 +30,7 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -52,6 +55,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                     in these cases better
  *                                     encapsulated in the
  *                                     event manager.
+ * Apr 09, 2014 2925       Chris.Golden Added method to set event type, and anotherto get the
+ *                                      megawidget specifier manager for a given hazard event.
  * 
  * </pre>
  * 
@@ -142,6 +147,45 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public E getEventById(String eventId);
+
+    /**
+     * Set the specified event to have the specified type. If the former cannot
+     * change its type, a new event will be created as a result.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param phenomenon
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            type.
+     * @param significance
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            type.
+     * @param subType
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            subtype.
+     * @param originator
+     *            Originator of this change.
+     * @return True if the event type was set, or false if the attempt resulted
+     *         in the creation of a new event with the new type, and the
+     *         original event has not had its type changed.
+     */
+    public boolean setEventType(E event, String phenomenon,
+            String significance, String subType, IOriginator originator);
+
+    /**
+     * Get the megawidget specifier manager for the specified event. Note that
+     * this method must be implemented to return a cached manager if
+     * appropriate, unlike the
+     * {@link ISessionConfigurationManager#getMegawidgetSpecifiersForHazardEvent(IHazardEvent)}
+     * method.
+     * 
+     * @param event
+     *            Hazard event for which to retrieve the manager.
+     * @return Megawidget specifier manager, holding specifiers for the
+     *         megawidgets as well as any side effects applier to be used with
+     *         the megawidgets.
+     */
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(E event);
 
     /**
      * Get all events with the given state from the session. This will never

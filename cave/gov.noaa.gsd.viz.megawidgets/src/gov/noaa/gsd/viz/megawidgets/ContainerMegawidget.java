@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,8 +21,6 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 /**
  * Container megawidget, a megawidget that itself contains other megawidgets.
@@ -39,6 +39,9 @@ import com.google.common.collect.Sets;
  *                                           alignment with call to existing
  *                                           superclass method, and implemented
  *                                           new IControl interface.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,7 +58,7 @@ public abstract class ContainerMegawidget extends Megawidget implements
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets.newHashSet(Megawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(Megawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -111,7 +114,9 @@ public abstract class ContainerMegawidget extends Megawidget implements
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -135,7 +140,9 @@ public abstract class ContainerMegawidget extends Megawidget implements
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -146,12 +153,14 @@ public abstract class ContainerMegawidget extends Megawidget implements
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
     public final List<IControl> getChildren() {
-        return Lists.newArrayList(children);
+        return new ArrayList<>(children);
     }
 
     // Protected Methods
@@ -172,7 +181,9 @@ public abstract class ContainerMegawidget extends Megawidget implements
      */
     protected final void gridContainerPanel(Composite composite) {
 
-        // Place the widget in the grid.
+        /*
+         * Place the widget in the grid.
+         */
         @SuppressWarnings("unchecked")
         ContainerMegawidgetSpecifier<IControlSpecifier> specifier = (ContainerMegawidgetSpecifier<IControlSpecifier>) getSpecifier();
         GridData gridData = new GridData(SWT.FILL, SWT.FILL,
@@ -211,8 +222,9 @@ public abstract class ContainerMegawidget extends Megawidget implements
             List<? extends IControlSpecifier> childMegawidgetSpecifiers,
             Map<String, Object> creationParams) throws MegawidgetException {
 
-        // Create the layout manager for the composite, and
-        // configure it.
+        /*
+         * Create the layout manager for the composite, and configure it.
+         */
         @SuppressWarnings("unchecked")
         ContainerMegawidgetSpecifier<IControlSpecifier> specifier = (ContainerMegawidgetSpecifier<IControlSpecifier>) getSpecifier();
         GridLayout layout = new GridLayout(columnCount, false);
@@ -224,9 +236,11 @@ public abstract class ContainerMegawidget extends Megawidget implements
         layout.horizontalSpacing = specifier.getColumnSpacing();
         composite.setLayout(layout);
 
-        // Create the child megawidgets, align their elements, and
-        // return the former.
-        List<IControl> childMegawidgets = Lists.newArrayList();
+        /*
+         * Create the child megawidgets, align their elements, and return the
+         * former.
+         */
+        List<IControl> childMegawidgets = new ArrayList<>();
         for (IControlSpecifier childSpecifier : childMegawidgetSpecifiers) {
             childMegawidgets.add(childSpecifier.createMegawidget(composite,
                     IControl.class, creationParams));

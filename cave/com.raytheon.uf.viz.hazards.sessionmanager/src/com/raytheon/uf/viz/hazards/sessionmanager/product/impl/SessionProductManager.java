@@ -126,6 +126,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                           when they should be enabled.
  * Apr 29, 2014 3558       bkowal       The generate method now returns a boolean.
  * Apr 18, 2014  696       dgilling     Add support for selectable VTEC format.
+ * Apr 29, 2014 2925       Chris.Golden Added protection against null values for checking
+ *                                      the selection state of a hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -213,9 +215,9 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
-                        if (e.getHazardAttribute(
-                                ISessionEventManager.ATTR_SELECTED)
-                                .equals(true)) {
+                        if (Boolean.TRUE
+                                .equals(e
+                                        .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
                             productEvents.add(e);
                         } else if (e.getState() != HazardState.POTENTIAL
                                 && e.getState() != HazardState.ENDED
@@ -283,8 +285,9 @@ public class SessionProductManager implements ISessionProductManager {
                 }
             }
             if (!found
-                    && e.getHazardAttribute(ISessionEventManager.ATTR_SELECTED)
-                            .equals(true)) {
+                    && Boolean.TRUE
+                            .equals(e
+                                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
                 unsupportedHazards.add(key);
             }
         }

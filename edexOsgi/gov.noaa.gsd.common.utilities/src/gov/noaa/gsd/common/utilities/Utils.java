@@ -22,6 +22,7 @@ import java.util.List;
  * Mar 04, 2013            daniel.s.schaffer Initial creation
  * Nov 25, 2013    2336    Chris.Golden      Moved to gov.noaa.gsd.common.utilities,
  *                                           and removed unused methods and variables.
+ * Apr 09, 2014    2925    Chris.Golden      Fixed typo in method name.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -171,7 +172,7 @@ public class Utils {
      * @return True if the value is an instance of at least one of the classes,
      *         false otherwise.
      */
-    public static boolean isValueIsInstanceOfAtLeastOneClass(Object value,
+    public static boolean isValueInstanceOfAtLeastOneClass(Object value,
             Collection<Class<?>> classes) {
         for (Class<?> valueClass : classes) {
             if (valueClass.isAssignableFrom(value.getClass())) {

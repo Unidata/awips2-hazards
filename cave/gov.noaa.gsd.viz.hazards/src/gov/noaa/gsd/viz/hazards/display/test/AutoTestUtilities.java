@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -54,6 +56,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added code for test of settings-based filtering
  * Feb 07, 2014 2890        bkowal     Product Generation JSON refactor.
+ * Apr 09, 2014    2925       Chris.Golden Fixed to work with new HID event propagation.
  * 
  * </pre>
  * 
@@ -193,24 +196,22 @@ public class AutoTestUtilities {
     }
 
     void assignSelectedEventType(String eventType) {
-        IHazardEvent selectedEvent = getSelectedEvent();
-        assignEventType(eventType, selectedEvent);
+        ObservedHazardEvent selectedEvent = getSelectedEvent();
+
+        String[] phenSigSubType = HazardEventUtilities
+                .getHazardPhenSigSubType(eventType);
+
+        getEventManager().setEventType(selectedEvent, phenSigSubType[0],
+                phenSigSubType[1], phenSigSubType[2],
+                UIOriginator.HAZARD_INFORMATION_DIALOG);
     }
 
-    void assignEventType(String eventType, IHazardEvent selectedEvent) {
-        Map<String, Serializable> eventTypeSelection = buildEventTypeSelection(
-                selectedEvent, eventType);
-
-        HazardDetailAction hazardDetailAction = new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_EVENT_TYPE);
-        hazardDetailAction.setParameters(eventTypeSelection);
-        appBuilder.getEventBus().publishAsync(hazardDetailAction);
+    ISessionEventManager<ObservedHazardEvent> getEventManager() {
+        return appBuilder.getSessionManager().getEventManager();
     }
 
-    IHazardEvent getSelectedEvent() {
-        ObservedHazardEvent selectedEvent = appBuilder.getSessionManager()
-                .getEventManager().getSelectedEvents().iterator().next();
-        return selectedEvent;
+    ObservedHazardEvent getSelectedEvent() {
+        return getEventManager().getSelectedEvents().iterator().next();
     }
 
     Settings buildEventFilterCriteria(Set<String> visibleTypes,

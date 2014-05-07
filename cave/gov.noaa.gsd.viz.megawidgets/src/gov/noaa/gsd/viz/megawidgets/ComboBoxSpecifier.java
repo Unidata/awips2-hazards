@@ -9,10 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleChoiceValidatorHelper;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Combo box megawidget specifier.
@@ -33,14 +32,18 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see ComboBoxMegawidget
  */
-public class ComboBoxSpecifier extends FlatBoundedChoicesMegawidgetSpecifier
-        implements ISingleLineSpecifier {
+public class ComboBoxSpecifier extends
+        FlatBoundedChoicesMegawidgetSpecifier<String> implements
+        ISingleLineSpecifier {
 
     // Private Variables
 
@@ -69,13 +72,18 @@ public class ComboBoxSpecifier extends FlatBoundedChoicesMegawidgetSpecifier
      */
     public ComboBoxSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new SingleChoiceValidatorHelper(
+                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER));
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
     }
 
     // Public Methods
@@ -103,14 +111,5 @@ public class ComboBoxSpecifier extends FlatBoundedChoicesMegawidgetSpecifier
     @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(String.class);
-        return classes;
     }
 }

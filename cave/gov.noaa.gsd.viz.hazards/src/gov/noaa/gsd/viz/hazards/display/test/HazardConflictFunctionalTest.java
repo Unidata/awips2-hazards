@@ -11,7 +11,6 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
@@ -24,7 +23,10 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -41,13 +43,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                     hazard conflict detection.
  * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
  *                                     without modifying any data or the state.
- * 
+ * Apr 29, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public class HazardConflictFunctionalTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private static final double FIRST_EVENT_CENTER_Y = 41.0;
 
@@ -76,6 +81,15 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
     public HazardConflictFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
+    }
+
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
     }
 
     @Override
@@ -126,13 +140,14 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
                 /*
                  * Create the first hazard.
                  */
+                stepCompleted();
                 this.step = Steps.CREATE_FIRST_HAZARD_AREA;
                 autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
                         FIRST_EVENT_CENTER_Y);
             } else {
                 assertTrue(!appBuilder.getSessionManager()
                         .isAutoHazardCheckingOn());
-
+                stepCompleted();
                 testSuccess();
             }
         }
@@ -146,28 +161,20 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      * @return
      */
     @Handler(priority = -1)
-    public void handleNewHazard(SessionEventAdded action) {
+    public void sessionEventAddedOccurred(SessionEventAdded action) {
 
         try {
-
-            Collection<ObservedHazardEvent> selectedEvents = appBuilder
-                    .getSessionManager().getEventManager().getSelectedEvents();
             switch (step) {
             case CREATE_FIRST_HAZARD_AREA:
+                stepCompleted();
                 this.step = Steps.ASSIGN_AREAL_FLOOD_WATCH;
-
-                assertTrue(selectedEvents.size() == 1);
-
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.AREAL_FLOOD_WATCH_FULLTYPE);
                 break;
 
             case CREATE_SECOND_HAZARD_AREA:
-
+                stepCompleted();
                 this.step = Steps.ASSIGN_FLASH_FLOOD_WATCH;
-
-                assertTrue(selectedEvents.size() == 1);
-
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
                 break;
@@ -180,47 +187,44 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
         }
     }
 
-    /**
-     * Listens for actions generated from the Hazard Information Dialog.
-     * Performs the appropriate tests based on the current test step.
-     * 
-     * @param hazardDetailAction
-     *            The action originating from the Hazard Information Dialog.
-     * @return
-     */
     @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
+    public void sessionEventModifiedOccurred(SessionEventModified action) {
         try {
-            if (hazardDetailAction.getActionType().equals(
-                    HazardDetailAction.ActionType.UPDATE_EVENT_TYPE)) {
-
-                if (step == Steps.ASSIGN_AREAL_FLOOD_WATCH) {
-
-                    checkArealFloodWatch();
-
-                    /*
-                     * Create the second event.
-                     */
-                    this.step = Steps.CREATE_SECOND_HAZARD_AREA;
-                    autoTestUtilities.createEvent(SECOND_EVENT_CENTER_X,
-                            SECOND_EVENT_CENTER_Y);
-                } else if (step == Steps.ASSIGN_FLASH_FLOOD_WATCH) {
-
-                    checkHazardConflicts();
-
-                    this.step = Steps.TOGGLE_OFF_HAZARD_DETECTION;
-                    ConsoleAction consoleAction = new ConsoleAction(
-                            ConsoleAction.ActionType.CHANGE_MODE,
-                            ConsoleAction.AUTO_CHECK_CONFLICTS);
-                    eventBus.publishAsync(consoleAction);
+            if (step == Steps.ASSIGN_AREAL_FLOOD_WATCH) {
+                ObservedHazardEvent event = autoTestUtilities
+                        .getSelectedEvent();
+                if (!"FA".equals(event.getPhenomenon())
+                        || !"A".equals(event.getSignificance())) {
+                    return;
                 }
 
+                checkArealFloodWatch();
+
+                /*
+                 * Create the second event.
+                 */
+                stepCompleted();
+                this.step = Steps.CREATE_SECOND_HAZARD_AREA;
+                autoTestUtilities.createEvent(SECOND_EVENT_CENTER_X,
+                        SECOND_EVENT_CENTER_Y);
+            } else if (step == Steps.ASSIGN_FLASH_FLOOD_WATCH) {
+                ObservedHazardEvent event = autoTestUtilities
+                        .getSelectedEvent();
+                if (!"FF".equals(event.getPhenomenon())
+                        || !"A".equals(event.getSignificance())) {
+                    return;
+                }
+                checkHazardConflicts();
+                stepCompleted();
+                this.step = Steps.TOGGLE_OFF_HAZARD_DETECTION;
+                ConsoleAction consoleAction = new ConsoleAction(
+                        ConsoleAction.ActionType.CHANGE_MODE,
+                        ConsoleAction.AUTO_CHECK_CONFLICTS);
+                eventBus.publishAsync(consoleAction);
             }
         } catch (Exception e) {
             handleException(e);
         }
-
     }
 
     @Override

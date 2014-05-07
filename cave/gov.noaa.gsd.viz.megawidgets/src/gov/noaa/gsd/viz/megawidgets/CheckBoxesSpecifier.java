@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.MultiFlatChoiceValidatorHelper;
+
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
-
-import com.google.common.collect.Sets;
 
 /**
  * Checkboxes megawidget specifier. Each checkbox may have zero or more detail
@@ -32,6 +31,9 @@ import com.google.common.collect.Sets;
  *                                           specified in abstract superclass.
  * Jan 28, 2014    2161    Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,7 +41,7 @@ import com.google.common.collect.Sets;
  * @see CheckBoxesMegawidget
  */
 public class CheckBoxesSpecifier extends
-        FlatChoicesWithDetailMegawidgetSpecifier {
+        FlatChoicesWithDetailMegawidgetSpecifier<Collection<String>> {
 
     // Public Constructors
 
@@ -55,14 +57,8 @@ public class CheckBoxesSpecifier extends
      */
     public CheckBoxesSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
-    }
-
-    // Protected Methods
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        return Sets.newHashSet(Collection.class, String.class);
+        super(parameters,
+                new MultiFlatChoiceValidatorHelper(MEGAWIDGET_VALUE_CHOICES,
+                        CHOICE_NAME, CHOICE_IDENTIFIER, false));
     }
 }

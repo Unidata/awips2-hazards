@@ -19,6 +19,7 @@ Export-Package: gov.noaa.gsd.viz.megawidgets;
    org.eclipse.swt.widgets,
    org.eclipse.nebula.cwt.base,
    org.eclipse.nebula.widgets.cdatetime",
+ gov.noaa.gsd.viz.megawidgets.validators,
  org.eclipse.nebula.cwt.base;
   uses:="org.eclipse.nebula.cwt.v,
    org.eclipse.swt.events,

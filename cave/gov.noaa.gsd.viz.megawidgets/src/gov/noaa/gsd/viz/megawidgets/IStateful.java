@@ -9,12 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Map;
+
 /**
  * Interface describing the methods to be implemented by a megawidget that holds
  * state that may be set or queried externally, and that may be altered via
  * user-GUI interaction. When the latter occurs, it notifies an
- * <code>IStateChangeListener</code> that its state is changing. Any subclasses
- * of <code>Megawidget</code> must implement this interface if they are to have
+ * {@link IStateChangeListener} that its state is changing. Any subclasses of
+ * {@link Megawidget} must implement this interface if they are to have
  * accessible state and issue such notifications.
  * 
  * <pre>
@@ -24,6 +26,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,8 +43,9 @@ public interface IStateful extends IMegawidget {
 
     /**
      * State change listener megawidget creation time parameter name; if
-     * specified in the map passed to <code>createMegawidget()</code>, its value
-     * must be an object of type <code>IStateChangeListener</code>.
+     * specified in the map passed to
+     * {@link ISpecifier#createMegawidget(org.eclipse.swt.widgets.Widget, Class, Map)}
+     * , its value must be an object of type {@link IStateChangeListener}.
      */
     public static final String STATE_CHANGE_LISTENER = "stateChangeListener";
 
@@ -83,8 +89,8 @@ public interface IStateful extends IMegawidget {
      * @return Description of the specified state.
      * @throws MegawidetStateException
      *             If the specified state is not of a valid type for this
-     *             <code>IStateful</code> implementation, or if the supplied
-     *             state identifier is not valid.
+     *             class's implementation, or if the supplied state identifier
+     *             is not valid.
      */
     public String getStateDescription(String identifier, Object state)
             throws MegawidgetStateException;

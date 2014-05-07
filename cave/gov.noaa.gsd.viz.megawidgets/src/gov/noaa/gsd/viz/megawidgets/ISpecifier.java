@@ -15,16 +15,13 @@ import org.eclipse.swt.widgets.Widget;
 
 /**
  * Description: Interface describing the methods that must be implemented by a
- * megawidget specifier.
- * <p>
- * Megawidget specifier base class, from which specific types of megawidget
- * specifiers may be derived. A megawidget specifier allows the specification of
- * megawidgets for later creation; the type and configuration of each such
- * megawidget is specified via a <code>Map</code> containing key-value pairs,
- * with each key being a string chosen from one of the string constants defined
- * within this class or within a subclass, and the value being something
- * appropriate to that key, as specified by that key's description. Some
- * key-value pairs are mandatory, and others are optional, again as described.
+ * megawidget specifier. The latter allows the specification of megawidgets for
+ * later creation; the type and configuration of each such megawidget is
+ * specified via a {@link Map} containing key-value pairs, with each key being a
+ * string chosen from one of the string constants defined within this class or
+ * within a subclass, and the value being something appropriate to that key, as
+ * specified by that key's description. Some key-value pairs are mandatory, and
+ * others are optional, again as described.
  * 
  * <pre>
  * 
@@ -32,6 +29,9 @@ import org.eclipse.swt.widgets.Widget;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 22, 2013    2168    Chris.Golden      Initial creation
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,8 +54,8 @@ public interface ISpecifier {
      * Megawidget class package parameter name; each megawidget may include a
      * value associated with this name. A valid value is the fully-qualified
      * package name (for example, "gov.noaa.gsd.viz.megawidgets") of which the
-     * megawidget specifier for this <code>MEGAWIDGET_TYPE
-     * </code> is a part. If not specified, it defaults to this class's package.
+     * megawidget specifier for this {@link #MEGAWIDGET_TYPE} is a part. If not
+     * specified, it defaults to this class's package.
      */
     public static final String MEGAWIDGET_CLASS_PACKAGE = "classPackage";
 
@@ -120,8 +120,8 @@ public interface ISpecifier {
      *            Parent widget in which to place the megawidget.
      * @param superClass
      *            Class that must be the superclass of the created megawidget.
-     *            This allows megawidgets of only a certain subclass of <code>
-     *            IMegawidget</code> to be required.
+     *            This allows megawidgets of only a certain subclass of
+     *            {@link IMegawidget} to be required.
      * @param creationParams
      *            Hash table mapping identifiers to values that subclasses might
      *            require when creating a megawidget.

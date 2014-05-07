@@ -60,6 +60,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Nov 15, 2013 2182       daniel.s.schaffer@noaa.gov      Refactoring JSON - ProductStagingDialog
  * Nov 25, 2013 2336       Chris.Golden                    Altered to handle new location
  *                                                         of utility classes.
+ * Apr 09, 2014 2925       Chris.Golden                    Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -139,6 +140,8 @@ public abstract class FunctionalTest {
 
     }
 
+    protected abstract String getCurrentStep();
+
     private void registerForEvents() {
         this.eventBus.subscribe(this);
     }
@@ -147,6 +150,8 @@ public abstract class FunctionalTest {
         resetEvents();
         mockViews();
         checkForFloodSettings();
+        statusHandler.debug(String.format("Starting %s...", this.getClass()
+                .getSimpleName()));
         runFirstStep();
     }
 
@@ -217,6 +222,14 @@ public abstract class FunctionalTest {
         appBuilder.setQuestionAnswerer(questionAnswerer);
     }
 
+    protected ISessionEventManager<ObservedHazardEvent> getEventManager() {
+        return appBuilder.getSessionManager().getEventManager();
+    }
+
+    protected ObservedHazardEvent getEvent(String eventId) {
+        return getEventManager().getEventById(eventId);
+    }
+
     protected void assertEquals(Object actual, Object expected) {
         if (!actual.equals(expected)) {
             String message = String.format("Expected %s, got %s", expected,
@@ -246,7 +259,7 @@ public abstract class FunctionalTest {
 
     protected void handleException(Exception e) {
         StringBuilder sb = new StringBuilder();
-        sb.append(TEST_ERROR + "\n");
+        sb.append(TEST_ERROR + " at step " + getCurrentStep() + "\n");
         sb.append(e.getMessage() + "\n");
         if (e.getCause() != null) {
             sb.append(Utils.stackTraceAsString(e.getCause()));

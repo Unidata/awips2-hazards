@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+
 import java.util.Map;
 
 /**
@@ -24,6 +26,9 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2013    2545    Chris.Golden      Initial creation
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,11 +59,16 @@ public class TimeSpecifier extends TimeMegawidgetSpecifier implements
      */
     public TimeSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new BoundedComparableValidator<Long>(parameters,
+                null, null, Long.class, 0L, Long.MAX_VALUE / 2L));
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
     }
 
     // Public Methods

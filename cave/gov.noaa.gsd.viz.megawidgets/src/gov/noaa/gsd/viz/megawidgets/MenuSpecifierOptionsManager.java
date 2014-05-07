@@ -22,6 +22,9 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2013    2168    Chris.Golden      Initial creation.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,13 +65,19 @@ public class MenuSpecifierOptionsManager {
             Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
 
-        // Record the value of the on parent menu flag.
-        onParentMenu = specifier.getSpecifierBooleanValueFromObject(
+        /*
+         * Record the value of the on parent menu flag.
+         */
+        onParentMenu = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IMenuSpecifier.MEGAWIDGET_ON_PARENT_MENU),
                 IMenuSpecifier.MEGAWIDGET_ON_PARENT_MENU, false);
 
-        // Record the value of the show separator flag.
-        showSeparator = specifier.getSpecifierBooleanValueFromObject(
+        /*
+         * Record the value of the show separator flag.
+         */
+        showSeparator = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IMenuSpecifier.MEGAWIDGET_SHOW_SEPARATOR),
                 IMenuSpecifier.MEGAWIDGET_SHOW_SEPARATOR, false);
     }

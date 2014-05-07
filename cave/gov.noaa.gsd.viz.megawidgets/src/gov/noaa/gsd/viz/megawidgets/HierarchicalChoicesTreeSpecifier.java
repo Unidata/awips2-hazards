@@ -37,6 +37,9 @@ import java.util.Map;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -83,23 +86,27 @@ public class HierarchicalChoicesTreeSpecifier extends
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
-        // Ensure that the visible lines count, if present,
-        // is acceptable, and if not present is assigned a
-        // default value.
-        numVisibleLines = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_VISIBLE_LINES),
-                MEGAWIDGET_VISIBLE_LINES, 6);
+        /*
+         * Ensure that the visible lines count, if present, is acceptable, and
+         * if not present is assigned a default value.
+         */
+        numVisibleLines = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_VISIBLE_LINES),
+                        MEGAWIDGET_VISIBLE_LINES, 6);
         if (numVisibleLines < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
                     "must be positive integer");
         }
 
-        // Record the value of the show all/none buttons
-        // flag.
-        showAllNoneButtons = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SHOW_ALL_NONE_BUTTONS),
-                MEGAWIDGET_SHOW_ALL_NONE_BUTTONS, true);
+        /*
+         * Record the value of the show all/none buttons flag.
+         */
+        showAllNoneButtons = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_SHOW_ALL_NONE_BUTTONS),
+                        MEGAWIDGET_SHOW_ALL_NONE_BUTTONS, true);
     }
 
     // Public Methods

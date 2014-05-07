@@ -57,6 +57,8 @@ import gov.noaa.gsd.viz.megawidgets.TimeMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleMegawidget;
 import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleStateValidator;
+import gov.noaa.gsd.viz.megawidgets.validators.StateValidator;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -185,6 +187,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           megawidgets. Also corrected Javadoc, and
  *                                           added code to support TimeMegawidget in
  *                                           addition to TimeScaleMegawidget.
+ * Apr 09, 2014   2925     Chris.Golden      Minor changes to support first round of
+ *                                           class-based metadata changes, as well as
+ *                                           to conform to new event propagation
+ *                                           scheme.
  * </pre>
  * 
  * @author Chris.Golden
@@ -591,6 +597,50 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             table.setBackground(helper
                     .getBackgroundColor(editable, table, null));
         }
+
+        @Override
+        protected void doSynchronizeComponentWidgetsToState() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * State validator for the points table; essentially does nothing.
+     * 
+     * <pre>
+     * 
+     * SOFTWARE HISTORY
+     * Date         Ticket#    Engineer    Description
+     * ------------ ---------- ----------- --------------------------
+     * MMM DD, YYYY            TBD_USER      Initial creation
+     * 
+     * </pre>
+     * 
+     * @author TBD_USER
+     * @version 1.0
+     */
+    private class PointsTableStateValidator extends
+            SingleStateValidator<Object> {
+
+        @Override
+        public <V extends StateValidator> V copyOf() {
+            throw new UnsupportedOperationException("not implemented");
+        }
+
+        @Override
+        public Object convertToStateValue(Object object)
+                throws MegawidgetException {
+            return object;
+        }
+
+        @Override
+        protected void doInitialize() throws MegawidgetSpecificationException {
+
+            /*
+             * No action.
+             */
+        }
+
     }
 
     /**
@@ -623,7 +673,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          */
         public PointsTableSpecifier(Map<String, Object> parameters)
                 throws MegawidgetSpecificationException {
-            super(parameters);
+            super(parameters, new PointsTableStateValidator());
             optionsManager = new ControlSpecifierOptionsManager(this,
                     parameters,
                     ControlSpecifierOptionsManager.BooleanSource.TRUE);
@@ -686,15 +736,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             // Return the created megawidget.
             return (M) new PointsTableMegawidget(this, (Composite) parent,
                     megawidgetCreationParams);
-        }
-
-        // Protected Methods
-
-        @Override
-        protected final Set<Class<?>> getClassesOfState() {
-            Set<Class<?>> classes = new HashSet<>();
-            classes.add(Object.class);
-            return classes;
         }
     }
 
@@ -1499,9 +1540,27 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         categoryCombo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                populateHazardTypesList(categoryCombo.getText());
+                String category = categoryCombo.getText();
+
+                /*
+                 * TODO: This should be done by the presenter.
+                 */
+                populateHazardTypesList(category);
                 primaryParamValues.get(visibleHazardIndex).put(
-                        HAZARD_EVENT_CATEGORY, categoryCombo.getText());
+                        HAZARD_EVENT_CATEGORY, category);
+
+                /*
+                 * TODO: This should actually be executed as a callback provided
+                 * by the presenter.
+                 */
+                hazardDetailView.getPresenter().setHazardAttribute(
+                        (String) primaryParamValues.get(visibleHazardIndex)
+                                .get(HAZARD_EVENT_IDENTIFIER),
+                        HAZARD_EVENT_CATEGORY, category);
+
+                /*
+                 * TODO: This should be done by the session manager.
+                 */
                 typeCombo.select(0);
                 typeCombo.notifyListeners(SWT.Selection, new Event());
             }
@@ -1536,24 +1595,28 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 primaryParamValues.get(visibleHazardIndex).put(
                         HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
 
-                /**
-                 * TODO For now, just cast until we change the instance
-                 * variables to Map<String, Serializable>
+                /*
+                 * Change the title text for the tab.
                  */
-                Map<String, Serializable> eventInfo = new HashMap<>();
-                eventInfo.put(
-                        HAZARD_EVENT_IDENTIFIER,
-                        (Serializable) primaryParamValues.get(
-                                visibleHazardIndex)
-                                .get(HAZARD_EVENT_IDENTIFIER));
-                eventInfo.put(HAZARD_EVENT_CATEGORY, categoryCombo.getText());
-                eventInfo.put(HAZARD_EVENT_FULL_TYPE, typeCombo.getText());
+                setTabText(eventTabFolder.getItem(visibleHazardIndex),
+                        (String) primaryParamValues.get(visibleHazardIndex)
+                                .get(HAZARD_EVENT_IDENTIFIER), typeCombo
+                                .getText());
 
-                // Send off the JSON to notify listeners of
-                // the change.
-                fireHIDAction(new HazardDetailAction(
-                        HazardDetailAction.ActionType.UPDATE_EVENT_TYPE,
-                        eventInfo));
+                /*
+                 * The type change may mean that the button states require
+                 * changing.
+                 */
+                setButtonsEnabledState();
+
+                /*
+                 * TODO: This should actually be executed as a callback provided
+                 * by the presenter.
+                 */
+                hazardDetailView.getPresenter().setHazardType(
+                        (String) primaryParamValues.get(visibleHazardIndex)
+                                .get(HAZARD_EVENT_IDENTIFIER),
+                        typeCombo.getText());
             }
         });
 
@@ -1686,9 +1749,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // date the value for the corresponding point;
         // otherwise, just update the main event's
         // corresponding value.
-        String eventID;
+        String eventId;
         if (isPointMegawidget) {
-            eventID = (String) pointsParamValues
+            eventId = (String) pointsParamValues
                     .get(visibleHazardIndex)
                     .get(((PointsTableMegawidget) megawidgetsForIds
                             .get(POINTS_TABLE_IDENTIFIER))
@@ -1700,7 +1763,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             .get(POINTS_TABLE_IDENTIFIER))
                             .getSelectedRowIndex()).put(identifier, state);
         } else {
-            eventID = (String) primaryParamValues.get(visibleHazardIndex).get(
+            eventId = (String) primaryParamValues.get(visibleHazardIndex).get(
                     HAZARD_EVENT_IDENTIFIER);
             primaryParamValues.get(visibleHazardIndex).put(identifier, state);
 
@@ -1712,14 +1775,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             }
         }
 
-        // Put together an action to be sent along to indicate
-        // that the appropriate key's value has changed for this
-        // event, and send it off.
-        Map<String, Serializable> eventInfo = new HashMap<>();
-        eventInfo.put(HAZARD_EVENT_IDENTIFIER, eventID);
-        eventInfo.put(identifier, (Serializable) state);
-        fireHIDAction(new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_EVENT_METADATA, eventInfo));
+        /*
+         * TODO: This should actually be executed as a callback provided by the
+         * presenter.
+         */
+        hazardDetailView.getPresenter().setHazardAttribute(eventId, identifier,
+                (Serializable) state);
     }
 
     /**
@@ -2017,10 +2078,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void initializeMegawidgetCreationParams() {
         megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER, this);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER, this);
-        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MINIMUM_TIME,
-                HazardConstants.MIN_TIME);
-        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MAXIMUM_TIME,
-                HazardConstants.MAX_TIME);
         megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minimumVisibleTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
@@ -2876,6 +2933,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         // megawidget. Otherwise, at least one of the
         // times has changed, so get the times and save
         // them.
+        String eventId = (String) primaryParamValues.get(visibleHazardIndex)
+                .get(HAZARD_EVENT_IDENTIFIER);
         if (untilFurtherNoticeToggled) {
             try {
                 Boolean untilFurtherNotice = (Boolean) endTimeUntilFurtherNoticeMegawidget
@@ -2894,56 +2953,68 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         + "could not set state editability mutable property "
                         + "for time range megawidget.", e);
             }
+            hazardDetailView.getPresenter().setHazardAttribute(
+                    eventId,
+                    HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                    (Serializable) primaryParamValues.get(visibleHazardIndex)
+                            .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
         } else {
+
+            /*
+             * Get the old and new start and end times, and determine whether
+             * either or both have changed.
+             */
+            Long oldStartTime = (Long) primaryParamValues.get(
+                    visibleHazardIndex).get(HAZARD_EVENT_START_TIME);
+            Long oldEndTime = (Long) primaryParamValues.get(visibleHazardIndex)
+                    .get(HAZARD_EVENT_END_TIME);
+            Long startTime = null, endTime = null;
             try {
-                Long oldStartTime = (Long) primaryParamValues.get(
-                        visibleHazardIndex).get(HAZARD_EVENT_START_TIME);
-                Long oldEndTime = (Long) primaryParamValues.get(
-                        visibleHazardIndex).get(HAZARD_EVENT_END_TIME);
-                Long startTime = (Long) timeRangeMegawidget
+                startTime = (Long) timeRangeMegawidget
                         .getState(START_TIME_STATE);
-                if (startTime == null) {
-                    return;
-                }
-                Long endTime = (Long) timeRangeMegawidget
-                        .getState(END_TIME_STATE);
-                if ((endTime == null)
-                        || ((oldStartTime != null)
-                                && oldStartTime.equals(startTime)
-                                && (oldEndTime != null) && oldEndTime
-                                    .equals(endTime))) {
-                    return;
-                }
-                primaryParamValues.get(visibleHazardIndex).put(
-                        HAZARD_EVENT_START_TIME, startTime);
-                primaryParamValues.get(visibleHazardIndex).put(
-                        HAZARD_EVENT_END_TIME, endTime);
+                endTime = (Long) timeRangeMegawidget.getState(END_TIME_STATE);
             } catch (Exception e) {
                 statusHandler.error("HazardDetailViewPart.timeRangeChanged(): "
                         + "could not get state from time range megawidget.", e);
             }
-        }
+            boolean startTimeChanged = ((startTime != null) && (startTime
+                    .equals(oldStartTime) == false));
+            if (startTimeChanged) {
+                primaryParamValues.get(visibleHazardIndex).put(
+                        HAZARD_EVENT_START_TIME, startTime);
+            }
+            boolean endTimeChanged = ((endTime != null) && (endTime
+                    .equals(oldEndTime) == false));
+            if (endTimeChanged) {
+                primaryParamValues.get(visibleHazardIndex).put(
+                        HAZARD_EVENT_END_TIME, endTime);
+            }
 
-        // Generate a HID action and fire it off.
-        Map<String, Serializable> eventInfo = new HashMap<>();
-        eventInfo.put(
-                HAZARD_EVENT_IDENTIFIER,
-                (Serializable) primaryParamValues.get(visibleHazardIndex).get(
-                        HAZARD_EVENT_IDENTIFIER));
-        if (untilFurtherNoticeToggled) {
-            eventInfo.put(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    (Serializable) primaryParamValues.get(visibleHazardIndex)
-                            .get(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
-        } else {
-            eventInfo.put(HAZARD_EVENT_START_TIME,
-                    (Serializable) primaryParamValues.get(visibleHazardIndex)
-                            .get(HAZARD_EVENT_START_TIME));
-            eventInfo.put(HAZARD_EVENT_END_TIME,
-                    (Serializable) primaryParamValues.get(visibleHazardIndex)
-                            .get(HAZARD_EVENT_END_TIME));
+            /*
+             * If both times changed, set them in the proper order so as to
+             * avoid the start time temporarily being greater than or equal to
+             * the end time; otherwise, just set whichever one changed.
+             */
+            if (startTimeChanged && endTimeChanged) {
+                if (startTime >= oldEndTime) {
+                    hazardDetailView.getPresenter().setHazardEndTime(eventId,
+                            endTime);
+                    hazardDetailView.getPresenter().setHazardStartTime(eventId,
+                            startTime);
+                } else {
+                    hazardDetailView.getPresenter().setHazardStartTime(eventId,
+                            startTime);
+                    hazardDetailView.getPresenter().setHazardEndTime(eventId,
+                            endTime);
+                }
+            } else if (startTimeChanged) {
+                hazardDetailView.getPresenter().setHazardStartTime(eventId,
+                        startTime);
+            } else if (endTimeChanged) {
+                hazardDetailView.getPresenter().setHazardEndTime(eventId,
+                        endTime);
+            }
         }
-        fireHIDAction(new HazardDetailAction(
-                HazardDetailAction.ActionType.UPDATE_TIME_RANGE, eventInfo));
     }
 
     /**

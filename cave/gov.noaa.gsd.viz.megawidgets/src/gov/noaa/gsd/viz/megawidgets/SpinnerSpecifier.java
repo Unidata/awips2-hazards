@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedNumberValidator;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Spinner specifier, for manipulating numbers.
@@ -34,6 +34,9 @@ import com.google.common.collect.Sets;
  *                                           state changes caused by
  *                                           ongoing thumb drags or spinner
  *                                           button presses.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -84,11 +87,6 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
     private final boolean sendingEveryChange;
 
     /**
-     * Value increment.
-     */
-    private final T incrementDelta;
-
-    /**
      * Flag indicating whether or not a scale widget should be shown as well.
      */
     private final boolean showScale;
@@ -102,50 +100,56 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
-     * @param boundedValueClass
-     *            Class of the bounded value; required in order to provide
-     *            proper exception messages in situations where the bounding
-     *            values are illegal.
-     * @param lowest
-     *            If not <code>null</code>, the lowest possible value for
-     *            <code>MEGAWIDGET_MIN_VALUE</code>.
-     * @param highest
-     *            If not <code>null</code>, the highest possible value for
-     *            <code>MEGAWIDGET_MAX_VALUE</code>.
+     * @param stateValidator
+     *            State validator.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
     public SpinnerSpecifier(Map<String, Object> parameters,
-            Class<T> boundedValueClass, T lowest, T highest)
+            BoundedComparableValidator<T> stateValidator)
             throws MegawidgetSpecificationException {
-        super(parameters, boundedValueClass, lowest, highest);
+        super(parameters, stateValidator);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the rapid change notification flag, if
-        // provided, is appropriate.
-        sendingEveryChange = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
-                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+        /*
+         * Ensure that the rapid change notification flag, if provided, is
+         * appropriate.
+         */
+        sendingEveryChange = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                        MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
 
-        // If the increment delta is present, ensure that it
-        // is a positive integer.
-        incrementDelta = getSpecifierIncrementDeltaObjectFromObject(
-                parameters.get(MEGAWIDGET_INCREMENT_DELTA),
-                MEGAWIDGET_INCREMENT_DELTA);
-
-        // If the show-scale flag is present, ensure that it
-        // is a boolean value.
-        showScale = getSpecifierBooleanValueFromObject(
+        /*
+         * If the show-scale flag is present, ensure that it is a boolean value.
+         */
+        showScale = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(),
                 parameters.get(MEGAWIDGET_SHOW_SCALE), MEGAWIDGET_SHOW_SCALE,
                 false);
     }
 
     // Public Methods
+
+    /**
+     * Get the increment delta.
+     * 
+     * @return Increment delta.
+     */
+    @SuppressWarnings("unchecked")
+    public final T getIncrementDelta() {
+        return ((BoundedNumberValidator<T>) getStateValidator())
+                .getIncrementDelta();
+    }
 
     @Override
     public final boolean isEditable() {
@@ -160,9 +164,11 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
     @Override
     public final boolean isFullWidthOfColumn() {
 
-        // Unlike most megawidgets, the integer spinner requires the full
-        // width of its parent's column if it is showing a scale, but does not
-        // otherwise.
+        /*
+         * Unlike most megawidgets, the integer spinner requires the full width
+         * of its parent's column if it is showing a scale, but does not
+         * otherwise.
+         */
         return showScale;
     }
 
@@ -182,15 +188,6 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
     }
 
     /**
-     * Get the increment delta.
-     * 
-     * @return Increment delta.
-     */
-    public final T getIncrementDelta() {
-        return incrementDelta;
-    }
-
-    /**
      * Determine whether or not a scale widget is to be shown below the label
      * and spinner widgets.
      * 
@@ -199,29 +196,4 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
     public final boolean isShowScale() {
         return showScale;
     }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(Number.class);
-        return classes;
-    }
-
-    /**
-     * Get the specifier increment delta object from the specified object.
-     * 
-     * @param object
-     *            Object holding the increment delta value.
-     * @param paramName
-     *            Name of the parameter for which <code>object</code> is the
-     *            value.
-     * @return Increment delta object.
-     * @throws MegawidgetSpecSpinnerificationException
-     *             If the megawidget specifier parameter is invalid.
-     */
-    protected abstract T getSpecifierIncrementDeltaObjectFromObject(
-            Object object, String paramName)
-            throws MegawidgetSpecificationException;
 }

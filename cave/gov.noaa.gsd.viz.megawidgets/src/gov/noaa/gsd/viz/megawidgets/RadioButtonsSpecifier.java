@@ -9,10 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleChoiceValidatorHelper;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Radio buttons megawidget specifier. Each radio button may have zero or more
@@ -28,6 +27,9 @@ import com.google.common.collect.Sets;
  * Apr 30, 2013    1277    Chris.Golden      Added support for mutable properties.
  * Sep 25, 2013    2168    Chris.Golden      Added support for optional detail
  *                                           fields next to the choice buttons.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -35,7 +37,7 @@ import com.google.common.collect.Sets;
  * @see RadioButtonsMegawidget
  */
 public class RadioButtonsSpecifier extends
-        FlatChoicesWithDetailMegawidgetSpecifier {
+        FlatChoicesWithDetailMegawidgetSpecifier<String> {
 
     // Public Constructors
 
@@ -51,15 +53,7 @@ public class RadioButtonsSpecifier extends
      */
     public RadioButtonsSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(String.class);
-        return classes;
+        super(parameters, new SingleChoiceValidatorHelper(
+                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER));
     }
 }

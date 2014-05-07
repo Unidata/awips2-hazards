@@ -20,7 +20,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2013    2168    Chris.Golden      Initial creation.
- * 
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -28,7 +30,9 @@ package gov.noaa.gsd.viz.megawidgets;
  */
 public interface IMenu extends IMegawidget {
 
-    // Marker interface, at least for now; future augmentations may require
-    // that menu-based megawidgets have common methods that will need to be
-    // specified by this interface.
+    /*
+     * Marker interface, at least for now; future augmentations may require that
+     * menu-based megawidgets have common methods that will need to be specified
+     * by this interface.
+     */
 }

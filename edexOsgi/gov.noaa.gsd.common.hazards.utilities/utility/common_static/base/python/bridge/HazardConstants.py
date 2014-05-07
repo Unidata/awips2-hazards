@@ -7,6 +7,8 @@
     April 5, 2013            Tracy.L.Hansen      Initial creation
     April 19, 2013           blawrenc            Added constants for 
                                                  Bridge
+    April 09, 2014 2925     Chris.Golden         Added constants for
+                                                 class-based metadata.
     
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -131,6 +133,8 @@ FIELDS_KEY = "fields"
 FILTER_KEY = "filter"
 RETURN_TYPE_KEY = "returnType"
 GRID_PARAM_KEY = "gridParm"
+METADATA_KEY = "metadata"
+SIDE_EFFECTS_SCRIPT_KEY = "sideEffects"
 
 
 #################################

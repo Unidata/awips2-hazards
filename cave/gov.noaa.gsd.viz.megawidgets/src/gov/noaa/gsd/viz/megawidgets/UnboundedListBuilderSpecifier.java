@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,6 +25,9 @@ import java.util.Map;
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -69,12 +68,14 @@ public class UnboundedListBuilderSpecifier extends
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
-        // Ensure that the visible lines count, if present,
-        // is acceptable, and if not present is assigned a
-        // default value.
-        numVisibleLines = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_VISIBLE_LINES),
-                MEGAWIDGET_VISIBLE_LINES, 6);
+        /*
+         * Ensure that the visible lines count, if present, is acceptable, and
+         * if not present is assigned a default value.
+         */
+        numVisibleLines = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_VISIBLE_LINES),
+                        MEGAWIDGET_VISIBLE_LINES, 6);
         if (numVisibleLines < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
@@ -107,34 +108,5 @@ public class UnboundedListBuilderSpecifier extends
     @Override
     public final int getNumVisibleLines() {
         return numVisibleLines;
-    }
-
-    @Override
-    protected String getChoicesDataStructureDescription() {
-        return "list";
-    }
-
-    @Override
-    protected IllegalChoicesProblem evaluateChoicesMapLegality(
-            String parameterName, Map<?, ?> map, int index) {
-        return NO_ILLEGAL_CHOICES_PROBLEM;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected List<Object> createChoicesCopy(Collection<?> list) {
-
-        // Create a new list, and copy each element into it from
-        // the old list. If an element is a map, then make a
-        // copy of the map instead of using the original.
-        List<Object> listCopy = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Map) {
-                listCopy.add(new HashMap<>((Map<String, Object>) item));
-            } else {
-                listCopy.add(item);
-            }
-        }
-        return listCopy;
     }
 }

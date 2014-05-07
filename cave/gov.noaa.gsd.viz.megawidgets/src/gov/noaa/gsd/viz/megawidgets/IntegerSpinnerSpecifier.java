@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedIntegerValidator;
+
 import java.util.Map;
 
 /**
@@ -25,6 +27,9 @@ import java.util.Map;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 21, 2013   2168     Chris.Golden      Changed to extend new SpinnerSpecifier
  *                                           class.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,21 +52,9 @@ public class IntegerSpinnerSpecifier extends SpinnerSpecifier<Integer> {
      */
     public IntegerSpinnerSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters, Integer.class, null, null);
-    }
-
-    // Protected Methods
-
-    @Override
-    protected Integer getSpecifierIncrementDeltaObjectFromObject(Object object,
-            String paramName) throws MegawidgetSpecificationException {
-        Integer incrementDelta = getSpecifierIntegerObjectFromObject(object,
-                paramName, 1);
-        if (incrementDelta < 1) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), paramName, incrementDelta,
-                    "must be positive integer");
-        }
-        return incrementDelta;
+        super(parameters, new BoundedIntegerValidator(parameters,
+                MEGAWIDGET_MIN_VALUE, MEGAWIDGET_MAX_VALUE,
+                MEGAWIDGET_INCREMENT_DELTA, Integer.MIN_VALUE,
+                Integer.MAX_VALUE));
     }
 }

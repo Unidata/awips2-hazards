@@ -25,6 +25,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,10 +47,9 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -68,6 +69,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           class names.
  * Nov 29, 2013    2380    daniel.s.schaffer@noaa.gov Minor cleanup
  * Feb 19, 2014    2915    bkowal            JSON settings re-factor.
+ * Apr 09, 2014    2925    Chris.Golden      Changed to ensure that method is called
+ *                                           within the UI thread.
  * </pre>
  * 
  * @author Chris.Golden
@@ -134,8 +137,10 @@ public class SettingsView implements
                     presenter.showSettingDetail();
                 } else if (event.widget.getData() != null) {
 
-                    // Remember the newly selected setting name and fire off
-                    // the action.
+                    /*
+                     * Remember the newly selected setting name and fire off the
+                     * action.
+                     */
                     String settingsID = (String) event.widget.getData();
                     presenter.fireAction(new StaticSettingsAction(
                             StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
@@ -169,40 +174,38 @@ public class SettingsView implements
 
         // Protected Methods
 
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
         @Override
         public Menu doGetMenu(Control parent, Menu menu) {
 
-            // If the menu has not yet been created, do so now.
+            /*
+             * If the menu has not yet been created, do so now.
+             */
             if (menu == null) {
                 menu = new Menu(parent);
 
-                // Iterate through the command items, if any,
-                // creating a menu item for each.
+                /*
+                 * Iterate through the command items, if any, creating a menu
+                 * item for each.
+                 */
                 for (String text : SETTINGS_DROPDOWN_MENU_ITEMS) {
                     MenuItem item = new MenuItem(menu, SWT.PUSH);
                     item.setText(text);
                     item.addSelectionListener(listener);
                 }
 
-                // Add a separator.
+                /*
+                 * Add a separator.
+                 */
                 new MenuItem(menu, SWT.SEPARATOR);
             }
 
-            // If settings have changed, delete the existing settings
-            // (if any) and recreate according to the new list. FOR
-            // NOW, JUST POPULATE WITH THE FULL SETTINGS LIST INSTEAD
-            // OF MOST RECENTLY USED.
+            /*
+             * If settings have changed, delete the existing settings (if any)
+             * and recreate according to the new list. For now, just populate
+             * with the full settings list instead of most recently used.
+             * 
+             * TODO: Change to populate with most recently used.
+             */
             if (settingsChanged) {
                 for (MenuItem item : menu.getItems()) {
                     if (item.getData() != null) {
@@ -219,7 +222,9 @@ public class SettingsView implements
                 settingsChanged = false;
             }
 
-            // Return the menu.
+            /*
+             * Return the menu.
+             */
             return menu;
         }
     }
@@ -254,9 +259,6 @@ public class SettingsView implements
 
         // Public Methods
 
-        /**
-         * Dispose of the action.
-         */
         @Override
         public void dispose() {
             super.dispose();
@@ -272,21 +274,12 @@ public class SettingsView implements
 
         // Protected Methods
 
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
         @Override
         public Menu doGetMenu(Control parent, Menu menu) {
 
-            // If the menu has not yet been created, create it now.
+            /*
+             * If the menu has not yet been created, create it now.
+             */
             if (menu == null) {
                 menu = new Menu(parent);
                 try {
@@ -298,7 +291,9 @@ public class SettingsView implements
                         protected void commandInvoked(String identifier,
                                 String extraCallback) {
 
-                            // No action.
+                            /*
+                             * No action.
+                             */
                         }
 
                         @Override
@@ -309,8 +304,10 @@ public class SettingsView implements
                                     .updateSettingsUsingMap(currentSettings,
                                             this.getState());
 
-                            // Forward the current setting change to the
-                            // presenter.
+                            /*
+                             * Forward the current setting change to the
+                             * presenter.
+                             */
                             try {
                                 presenter.fireAction(new CurrentSettingsAction(
                                         currentSettings));
@@ -335,8 +332,9 @@ public class SettingsView implements
                 }
             }
 
-            // If the filters may have changed, update the megawidget
-            // states.
+            /*
+             * If the filters may have changed, update the megawidget states.
+             */
             if (filtersChanged) {
                 try {
                     megawidgetManager
@@ -355,7 +353,9 @@ public class SettingsView implements
                 filtersChanged = false;
             }
 
-            // Return the menu.
+            /*
+             * Return the menu.
+             */
             return menu;
         }
     }
@@ -370,14 +370,16 @@ public class SettingsView implements
     /**
      * List of setting names.
      */
-    private final List<String> settingNames = Lists.newArrayList();
+    private final List<String> settingNames = new ArrayList<>();
 
     /**
      * Map of setting names to their associated identifiers.
      */
-    private final Map<String, String> settingIdentifiersForNames = Maps
-            .newHashMap();
+    private final Map<String, String> settingIdentifiersForNames = new HashMap<>();
 
+    /**
+     * List of filter maps.
+     */
     private List<Map<String, Object>> filterMapList;
 
     /**
@@ -425,8 +427,8 @@ public class SettingsView implements
     public static void translateHazardCategoriesAndTypesToOldLists(Dict map) {
         List<Object> treeState = map
                 .getDynamicallyTypedValue(SETTING_HAZARD_CATEGORIES_AND_TYPES);
-        List<String> categories = Lists.newArrayList();
-        Set<String> typesSet = Sets.newHashSet();
+        List<String> categories = new ArrayList<>();
+        Set<String> typesSet = new HashSet<>();
         for (int j = 0; j < treeState.size(); j++) {
             Map<?, ?> category = (Map<?, ?>) treeState.get(j);
             categories
@@ -443,7 +445,7 @@ public class SettingsView implements
                 }
             }
         }
-        List<String> types = Lists.newArrayList();
+        List<String> types = new ArrayList<>();
         for (String type : typesSet) {
             types.add(type);
         }
@@ -458,22 +460,13 @@ public class SettingsView implements
      */
     public SettingsView() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Public Methods
 
-    /**
-     * Initialize the view.
-     * 
-     * @param presenter
-     *            Presenter managing this view.
-     * @param settings
-     * @param jsonFilters
-     *            JSON string providing a list of dictionaries, each specifying
-     *            a filter megawidget.
-     * @param currentSettings
-     */
     @Override
     public final void initialize(SettingsPresenter presenter,
             List<Settings> settings, Field[] fields, Settings currentSettings) {
@@ -490,9 +483,6 @@ public class SettingsView implements
         }
     }
 
-    /**
-     * Prepare for disposal.
-     */
     @Override
     public final void dispose() {
         if (settingDialog != null) {
@@ -501,17 +491,6 @@ public class SettingsView implements
         }
     }
 
-    /**
-     * Contribute to the main UI, if desired. Note that this method may be
-     * called multiple times per <code>type</code> to (re)populate the main UI
-     * with the specified <code>type</code>; implementations are responsible for
-     * cleaning up after contributed items that may exist from a previous call
-     * with the same <code>type</code>.
-     * 
-     * @param type
-     *            Type of contribution to be made to the main user interface.
-     * @return List of contributions; this may be empty if none are to be made.
-     */
     @Override
     public final List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type) {
@@ -524,12 +503,6 @@ public class SettingsView implements
         return Collections.emptyList();
     }
 
-    /**
-     * Show the settings detail subview.
-     * 
-     * @param settingsConfig
-     * @param settings
-     */
     @Override
     public final void showSettingDetail(SettingsConfig settingsConfig,
             Settings settings) {
@@ -545,18 +518,15 @@ public class SettingsView implements
         settingDialog.getShell().addDisposeListener(dialogDisposeListener);
     }
 
-    /**
-     * Set the settings to those specified.
-     * 
-     * @param availableSettings
-     */
     @Override
     public final void setSettings(List<Settings> availableSettings) {
         if ((availableSettings == null) || (availableSettings.size() < 1)) {
             return;
         }
 
-        // Get the names and identifiers of the settings.
+        /*
+         * Get the names and identifiers of the settings.
+         */
         settingNames.clear();
         settingIdentifiersForNames.clear();
         for (Settings settings : availableSettings) {
@@ -566,24 +536,27 @@ public class SettingsView implements
             settingIdentifiersForNames.put(name, identifier);
         }
 
-        // Notify the settings pulldown that the settings have
-        // changed.
+        /*
+         * Notify the settings pulldown that the settings have changed.
+         */
         if (settingsPulldownAction != null) {
             settingsPulldownAction.settingsChanged();
         }
     }
 
-    /**
-     * @param currentSettings
-     */
     @Override
-    public final void setCurrentSettings(Settings currentSettings) {
-        this.currentSettings = currentSettings;
-        if (filtersPulldownAction != null) {
-            filtersPulldownAction.filtersChanged();
-        }
-        if (settingDialog != null) {
-            settingDialog.setState(currentSettings);
-        }
+    public final void setCurrentSettings(final Settings currentSettings) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                SettingsView.this.currentSettings = currentSettings;
+                if (filtersPulldownAction != null) {
+                    filtersPulldownAction.filtersChanged();
+                }
+                if (settingDialog != null) {
+                    settingDialog.setState(currentSettings);
+                }
+            }
+        });
     }
 }

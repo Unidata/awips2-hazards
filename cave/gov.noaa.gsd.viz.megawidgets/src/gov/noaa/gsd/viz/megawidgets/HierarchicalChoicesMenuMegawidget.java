@@ -41,6 +41,9 @@ import org.eclipse.swt.widgets.MenuItem;
  *                                           can be added) choice megawidgets.
  * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
  *                                           to new JDK 1.7 features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,7 +90,9 @@ public class HierarchicalChoicesMenuMegawidget extends
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
 
-        // Create the checked menu item selection listener.
+        /*
+         * Create the checked menu item selection listener.
+         */
         listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -98,17 +103,19 @@ public class HierarchicalChoicesMenuMegawidget extends
             }
         };
 
-        // Put in a separator if called for.
+        /*
+         * Put in a separator if called for.
+         */
         if (specifier.shouldShowSeparator()) {
             new MenuItem(parent, SWT.SEPARATOR);
         }
 
-        // If the menu items are to be shown on their own
-        // separate submenu, create the top-level menu item
-        // with the given label, and then create a menu that
-        // springs off of it holding all the choices as menu
-        // items. Otherwise, just use the parent menu as the
-        // place for the menu items.
+        /*
+         * If the menu items are to be shown on their own separate submenu,
+         * create the top-level menu item with the given label, and then create
+         * a menu that springs off of it holding all the choices as menu items.
+         * Otherwise, just use the parent menu as the place for the menu items.
+         */
         Menu menu;
         if (specifier.shouldBeOnParentMenu() == false) {
             topItem = new MenuItem(parent, SWT.CASCADE);
@@ -121,12 +128,19 @@ public class HierarchicalChoicesMenuMegawidget extends
             menu = parent;
         }
 
-        // Create menu items and any nested submenus required
-        // for the hierarchical state choices.
+        /*
+         * Create menu items and any nested submenus required for the
+         * hierarchical state choices.
+         */
         items = new ArrayList<>();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             items.add(convertStateToMenuItem(menu, -1, choice, listener));
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Protected Methods
@@ -145,37 +159,55 @@ public class HierarchicalChoicesMenuMegawidget extends
     @Override
     protected final void prepareForChoicesChange() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
 
-        // Find the parent menu of the items, and if the parent menu is not
-        // a submenu build explicitly for this megawidget, the index at
-        // which to start adding new menu items.
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * Find the parent menu of the items, and if the parent menu is not a
+         * submenu build explicitly for this megawidget, the index at which to
+         * start adding new menu items.
+         */
         Menu menu = (topItem == null ? items.get(0).getParent() : topItem
                 .getMenu());
         int index = (topItem == null ? menu.indexOf(items.get(0)) : -1);
 
-        // Dispose of the old menu items.
+        /*
+         * Dispose of the old menu items.
+         */
         for (MenuItem item : items) {
             item.dispose();
         }
         items.clear();
 
-        // Create the new menu items.
-        for (Object choice : choices) {
+        /*
+         * Create the new menu items.
+         */
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             items.add(convertStateToMenuItem(menu,
                     (index == -1 ? -1 : index++), choice, listener));
         }
 
-        // Ensure that the new menu items are synced with the old state.
-        synchronizeWidgetsToState();
+        /*
+         * Ensure that the new menu items are synced with the old state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         synchronizeMenuToState(items.toArray(new MenuItem[items.size()]), state);
     }
 
@@ -195,9 +227,11 @@ public class HierarchicalChoicesMenuMegawidget extends
      */
     private void synchronizeMenuToState(MenuItem[] items, List<?> state) {
 
-        // Iterate through the state list, recording each selected item's
-        // identifier paired with its sub-list (if it is a branch node in
-        // the state tree) or with nothing (if it is a leaf).
+        /*
+         * Iterate through the state list, recording each selected item's
+         * identifier paired with its sub-list (if it is a branch node in the
+         * state tree) or with nothing (if it is a leaf).
+         */
         Map<String, List<?>> subListsForSelectedIdentifiers = new HashMap<>();
         if (state != null) {
             for (Object element : state) {
@@ -219,11 +253,13 @@ public class HierarchicalChoicesMenuMegawidget extends
             }
         }
 
-        // Iterate through the menu items, setting the selection of each
-        // leaf item to be true (checked) only if it was found in the state
-        // list above, and recursively calling this method on the submenu
-        // of any branch item to synchronize the submenu with that branch's
-        // state subtree.
+        /*
+         * Iterate through the menu items, setting the selection of each leaf
+         * item to be true (checked) only if it was found in the state list
+         * above, and recursively calling this method on the submenu of any
+         * branch item to synchronize the submenu with that branch's state
+         * subtree.
+         */
         for (MenuItem item : items) {
             if (item.getStyle() == SWT.CHECK) {
                 item.setSelection(subListsForSelectedIdentifiers
@@ -285,10 +321,11 @@ public class HierarchicalChoicesMenuMegawidget extends
      */
     private List<Object> convertMenuItemsToState(MenuItem[] items) {
 
-        // Iterate through the child items, adding each
-        // one that is checked or grayed to the state
-        // hierarchy, as well as any descendants that are
-        // checked or grayed.
+        /*
+         * Iterate through the child items, adding each one that is checked or
+         * grayed to the state hierarchy, as well as any descendants that are
+         * checked or grayed.
+         */
         List<Object> children = new ArrayList<>();
         for (MenuItem item : items) {
             if (item.getStyle() == SWT.CHECK) {

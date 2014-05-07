@@ -51,6 +51,9 @@ import com.google.common.collect.Lists;
  *                                           widgets.
  * Feb 08, 2014    2161    Chris.Golden      Broke out some code into a new
  *                                           method.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -198,12 +201,14 @@ public class UiBuilder {
      *             megawidgets acting as detail fields for the various choices.
      */
     public static List<Button> buildChoiceButtons(Composite parent,
-            FlatChoicesWithDetailMegawidgetSpecifier specifier,
+            FlatChoicesWithDetailMegawidgetSpecifier<?> specifier,
             int buttonFlags,
             BoundedChoicesDetailChildrenManager detailChildrenManager,
             SelectionListener listener) throws MegawidgetException {
 
-        // For each value, add a choice button.
+        /*
+         * For each value, add a choice button.
+         */
         int buttonWidth = -1;
         boolean radioButtons = ((buttonFlags & SWT.RADIO) != 0);
         List<Button> buttons = new ArrayList<>();
@@ -212,11 +217,11 @@ public class UiBuilder {
         int greatestHeight = 0;
         for (Object choice : specifier.getChoices()) {
 
-            // If there are additional megawidgets to be
-            // placed to the right of the choice button,
-            // create a composite to act as a parent for
-            // both the choice button and the additional
-            // megawidgets.
+            /*
+             * If there are additional megawidgets to be placed to the right of
+             * the choice button, create a composite to act as a parent for both
+             * the choice button and the additional megawidgets.
+             */
             String identifier = specifier.getIdentifierOfNode(choice);
             List<IControlSpecifier> detailSpecifiers = specifier
                     .getDetailFieldsForChoice(identifier);
@@ -224,14 +229,13 @@ public class UiBuilder {
                     detailSpecifiers, parent,
                     (radioButtons ? SWT.NO_RADIO_GROUP : SWT.NONE));
 
-            // Create the choice button. The grid data
-            // for the button must grab excess vertical
-            // space because its minimumHeight may end
-            // up being used below. If the button width
-            // has not yet been calculated, compute it
-            // so that it may be used when indenting
-            // any additional megawidgets that are on
-            // a row below the button.
+            /*
+             * Create the choice button. The grid data for the button must grab
+             * excess vertical space because its minimumHeight may end up being
+             * used below. If the button width has not yet been calculated,
+             * compute it so that it may be used when indenting any additional
+             * megawidgets that are on a row below the button.
+             */
             Button button = new Button(choiceParent, buttonFlags);
             if (buttonWidth == -1) {
                 buttonWidth = button.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
@@ -245,11 +249,11 @@ public class UiBuilder {
             buttonsGridData.add(buttonGridData);
             buttons.add(button);
 
-            // If there are additional megawidgets, lay
-            // out the composite in which the choice
-            // button and the first row of said mega-
-            // widgets are found, and create the mega-
-            // widgets.
+            /*
+             * If there are additional megawidgets, lay out the composite in
+             * which the choice button and the first row of said megawidgets are
+             * found, and create the megawidgets.
+             */
             if (choiceParent != parent) {
                 choiceParent.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
                         true, false));
@@ -267,11 +271,11 @@ public class UiBuilder {
             }
         }
 
-        // Determine which detail megawidgets that were
-        // created take up the full width of this mega-
-        // widget, and align all such megawidgets' com-
-        // ponents to bring some visual order to the
-        // widget soup.
+        /*
+         * Determine which detail megawidgets that were created take up the full
+         * width of this megawidget, and align all such megawidgets' components
+         * to bring some visual order to the widget soup.
+         */
         if (detailChildrenManager != null) {
             List<IControl> fullWidthDetailMegawidgets = new ArrayList<>();
             for (IControl detailMegawidget : detailChildrenManager
@@ -285,28 +289,34 @@ public class UiBuilder {
                     .alignMegawidgetsElements(fullWidthDetailMegawidgets);
         }
 
-        // Set the tab ordering; this is needed because
-        // having additional widgets next to any of the
-        // choice buttons messes up SWT's tab ordering.
+        /*
+         * Set the tab ordering; this is needed because having additional
+         * widgets next to any of the choice buttons messes up SWT's tab
+         * ordering.
+         */
         parent.setTabList(controls.toArray(new Control[controls.size()]));
 
-        // If at least one choice has additional mega-
-        // widgets, use the greatest height of any one
-        // row for all rows.
+        /*
+         * If at least one choice has additional megawidgets, use the greatest
+         * height of any one row for all rows.
+         */
         if (greatestHeight > 0) {
             for (GridData buttonGridData : buttonsGridData) {
                 buttonGridData.minimumHeight = greatestHeight;
             }
         }
 
-        // Bind each choice button selection event to
-        // trigger a change in the record of the state
-        // for the widget.
+        /*
+         * Bind each choice button selection event to trigger a change in the
+         * record of the state for the widget.
+         */
         for (Button button : buttons) {
             button.addSelectionListener(listener);
         }
 
-        // Return the list of choice buttons.
+        /*
+         * Return the list of choice buttons.
+         */
         return ImmutableList.copyOf(buttons);
     }
 
@@ -335,11 +345,11 @@ public class UiBuilder {
             List<IControlSpecifier> detailSpecifiers,
             Composite originalComposite, int flags) {
 
-        // If there are additional megawidgets to be
-        // placed to the right of the choice button,
-        // create a composite to act as a parent for
-        // both the choice button and the additional
-        // megawidgets.
+        /*
+         * If there are additional megawidgets to be placed to the right of the
+         * choice button, create a composite to act as a parent for both the
+         * choice button and the additional megawidgets.
+         */
         Composite choiceParent = originalComposite;
         int additionalMegawidgetsCount = (detailSpecifiers == null ? 0
                 : detailSpecifiers.size());

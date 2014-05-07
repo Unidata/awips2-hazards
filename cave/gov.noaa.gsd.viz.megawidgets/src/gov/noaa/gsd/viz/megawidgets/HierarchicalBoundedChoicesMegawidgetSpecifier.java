@@ -9,13 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
+import gov.noaa.gsd.viz.megawidgets.validators.MultiHierarchicalChoiceValidatorHelper;
+
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Base class for megawidget specifiers that include a closed hierarchical list
@@ -51,6 +48,9 @@ import java.util.Set;
  *                                           can be added) choice megawidgets.
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -58,7 +58,7 @@ import java.util.Set;
  * @see HierarchicalBoundedChoicesMegawidget
  */
 public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
-        BoundedChoicesMegawidgetSpecifier {
+        BoundedChoicesMegawidgetSpecifier<Collection<Object>> {
 
     // Public Static Constants
 
@@ -85,96 +85,8 @@ public class HierarchicalBoundedChoicesMegawidgetSpecifier extends
     public HierarchicalBoundedChoicesMegawidgetSpecifier(
             Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = new HashSet<>();
-        classes.add(Collection.class);
-        return classes;
-    }
-
-    @Override
-    protected final String getChoicesDataStructureDescription() {
-        return "tree";
-    }
-
-    @Override
-    protected final IllegalChoicesProblem evaluateChoicesMapLegality(
-            String parameterName, Map<?, ?> map, int index) {
-
-        // If the map has something other than a
-        // collection for a children entry, it is
-        // illegal.
-        Object children = map.get(CHOICE_CHILDREN);
-        if ((children != null) && ((children instanceof Collection) == false)) {
-            return new IllegalChoicesProblem(parameterName, "[" + index + "]",
-                    CHOICE_CHILDREN, children, "must be collection of children");
-        }
-
-        // Check the children lists of the tree for
-        // legality, and to ensure that siblings
-        // always have unique identifiers.
-        if (children != null) {
-            IllegalChoicesProblem eval = evaluateChoicesLegality(parameterName,
-                    (Collection<?>) children);
-            if (eval != NO_ILLEGAL_CHOICES_PROBLEM) {
-                eval.addParentToBadElementLocation("[" + index + "]");
-                return eval;
-            }
-        }
-        return NO_ILLEGAL_CHOICES_PROBLEM;
-    }
-
-    @Override
-    protected final boolean isNodeSubset(Object node1, Object node2) {
-
-        // If the subset node has children and the superset does not, the
-        // former is not a subset. If both have children, then check their
-        // respective lists of children to ensure that the one is a subset
-        // of the other.
-        if ((node1 instanceof Map)
-                && (((Map<?, ?>) node1).get(CHOICE_CHILDREN) != null)) {
-            if (node2 instanceof String) {
-                return false;
-            }
-            if (isSubset(
-                    (Collection<?>) ((Map<?, ?>) node1).get(CHOICE_CHILDREN),
-                    (List<?>) ((Map<?, ?>) node2).get(CHOICE_CHILDREN)) == false) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    protected final List<Object> createChoicesCopy(Collection<?> list) {
-
-        // Create a new list, and copy each element into it from
-        // the old list. If an element is a map, then make a
-        // copy of the map instead of using the original, and
-        // also copy the child list within that map.
-        List<Object> listCopy = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) item;
-                Map<String, Object> mapCopy = new HashMap<>();
-                for (Object key : map.keySet()) {
-                    if (key.equals(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN)) {
-                        mapCopy.put((String) key,
-                                createChoicesCopy((Collection<?>) map.get(key)));
-                    } else {
-                        mapCopy.put((String) key, map.get(key));
-                    }
-                }
-                listCopy.add(mapCopy);
-            } else {
-                listCopy.add(item);
-            }
-        }
-        return listCopy;
+        super(parameters, new MultiHierarchicalChoiceValidatorHelper(
+                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER,
+                CHOICE_CHILDREN, false));
     }
 }

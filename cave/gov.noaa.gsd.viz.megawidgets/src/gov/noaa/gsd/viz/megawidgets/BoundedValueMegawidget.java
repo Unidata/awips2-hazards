@@ -9,11 +9,13 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Bounded value megawidget, a base class for megawidgets that allow the
@@ -25,10 +27,13 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 30, 2013   1277     Chris.Golden      Initial creation.
- * Sep 26, 2013    2168    Chris.Golden      Changed erroneous "widget"
+ * Sep 26, 2013   2168     Chris.Golden      Changed erroneous "widget"
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new
+ *                                           validator package, updated
+ *                                           Javadoc and other comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,8 +50,8 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE);
         names.add(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -62,14 +67,9 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
     // Private Variables
 
     /**
-     * Minimum value.
+     * State validator.
      */
-    private T minimumValue;
-
-    /**
-     * Maximum value.
-     */
-    private T maximumValue;
+    private final BoundedComparableValidator<T> stateValidator;
 
     // Protected Constructors
 
@@ -82,12 +82,13 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
+    @SuppressWarnings("unchecked")
     protected BoundedValueMegawidget(
             BoundedValueMegawidgetSpecifier<T> specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
-        minimumValue = specifier.getMinimumValue();
-        maximumValue = specifier.getMaximumValue();
+        stateValidator = specifier.getStateValidator().copyOf();
+        state = (T) specifier.getStartingState(specifier.getIdentifier());
     }
 
     // Public Methods
@@ -109,21 +110,14 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
         return super.getMutableProperty(name);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE)) {
-            setMinimumValue(getPropertyDynamicallyTypedObjectFromObject(value,
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                    ((BoundedValueMegawidgetSpecifier<T>) getSpecifier())
-                            .getBoundedValueClass(), null));
+            doSetMinimumValue(value);
         } else if (name
                 .equals(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE)) {
-            setMaximumValue(getPropertyDynamicallyTypedObjectFromObject(value,
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                    ((BoundedValueMegawidgetSpecifier<T>) getSpecifier())
-                            .getBoundedValueClass(), null));
+            doSetMaximumValue(value);
         } else {
             super.setMutableProperty(name, value);
         }
@@ -133,73 +127,29 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
     public void setMutableProperties(Map<String, Object> properties)
             throws MegawidgetPropertyException {
 
-        // If the minimum or maximum values are being set, set them first,
-        // ensuring that the two boundaries are set in the order that will
-        // allow the set to occur without error (assuming that they are
-        // allowable). This also ensures that if the state is being set,
-        // it is done after the boundaries are set, so it will be allowed
-        // assuming it is within the boundaries.
-        BoundedValueMegawidgetSpecifier<T> specifier = getSpecifier();
+        /*
+         * If the minimum or maximum values are being set, set them before any
+         * other mutable properties so that any state setting will occur after
+         * this. Set them together as a range if both are changing; otherwise,
+         * set whichever one is changing.
+         */
         Object minValueObj = properties
                 .get(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE);
-        T minValue = (minValueObj == null ? null
-                : getPropertyDynamicallyTypedObjectFromObject(minValueObj,
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                        specifier.getBoundedValueClass(), null));
         Object maxValueObj = properties
                 .get(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE);
-        T maxValue = (maxValueObj == null ? null
-                : getPropertyDynamicallyTypedObjectFromObject(maxValueObj,
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                        specifier.getBoundedValueClass(), null));
-
-        // If at least one of the two boundary values are being set, and
-        // the minimum is less than the maximum, make sure that the re-
-        // sulting range is representable. (If the minimum is not less
-        // than the maximum, that will be caught further down; this
-        // representability check is done first because it has to occur
-        // before anything is set.)
-        if ((minValue != null) || (maxValue != null)) {
-            T min = (minValue != null ? minValue : minimumValue);
-            T max = (maxValue != null ? maxValue : maximumValue);
-            if (min.compareTo(max) < 0) {
-                ensureValueRangeRepresentable(min, max);
-            }
+        if ((minValueObj != null) && (maxValueObj != null)) {
+            doSetRange(minValueObj, maxValueObj);
+        } else if (minValueObj != null) {
+            doSetMinimumValue(minValueObj);
+        } else if (maxValueObj != null) {
+            doSetMaximumValue(maxValueObj);
         }
 
-        // If both boundary values are being changed, set them in the
-        // order that will not cause a problem (lower bound must always
-        // be less than upper bound). Otherwise, just set whichever one
-        // is being changed.
-        if ((minValue != null) && (maxValue != null)) {
-            if (minValue.compareTo(maximumValue) >= 0) {
-                setMutableProperty(
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                        maxValue);
-                setMutableProperty(
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                        minValue);
-            } else {
-                setMutableProperty(
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                        minValue);
-                setMutableProperty(
-                        BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                        maxValue);
-            }
-        } else if (minValue != null) {
-            setMutableProperty(
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                    minValue);
-        } else if (maxValue != null) {
-            setMutableProperty(
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                    maxValue);
-        }
-
-        // Do what would have been done by the superclass method, except for
-        // ignoring any min or max value setting, as that has already been
-        // done above.
+        /*
+         * Do what would have been done by the superclass method, except for
+         * ignoring any minimum or maximum value setting, as that has already
+         * been done above.
+         */
         for (String name : properties.keySet()) {
             if (!name
                     .equals(BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE)
@@ -215,7 +165,7 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      * @return Minimum value.
      */
     public final T getMinimumValue() {
-        return minimumValue;
+        return stateValidator.getMinimumValue();
     }
 
     /**
@@ -224,7 +174,7 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      * @return Maximum value.
      */
     public final T getMaximumValue() {
-        return maximumValue;
+        return stateValidator.getMaximumValue();
     }
 
     /**
@@ -238,46 +188,7 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      */
     public final void setMinimumValue(T value)
             throws MegawidgetPropertyException {
-
-        // Ensure that the value is not null.
-        BoundedValueMegawidgetSpecifier<T> specifier = getSpecifier();
-        if (value == null) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                    specifier.getType(), value, "must be instance of "
-                            + specifier.getBoundedValueClass(),
-                    new NullPointerException());
-        }
-
-        // Ensure that the value is not lower than the lowest allowable
-        // value for the lower end of the range, if any.
-        T lowest = specifier.getLowestAllowableValue();
-        if ((lowest != null) && (lowest.compareTo(value) > 0)) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                    specifier.getType(), value, "must be no less than "
-                            + lowest);
-        }
-
-        // Ensure the value is less than the maximum value before using it.
-        if (value.compareTo(maximumValue) >= 0) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MIN_VALUE,
-                    specifier.getType(), value,
-                    "minimum value must be less than maximum (minimum = "
-                            + value + ", maximum = " + maximumValue);
-        }
-        minimumValue = value;
-
-        // Synchronize the widgets to the new boundaries.
-        synchronizeWidgetsToBounds();
-
-        // If the state is less than the new minimum, set it to the minimum
-        // and synchronize the widgets to the new state.
-        if ((state == null) || (state.compareTo(minimumValue) < 0)) {
-            state = minimumValue;
-            synchronizeWidgetsToState();
-        }
+        doSetMinimumValue(value);
     }
 
     /**
@@ -291,75 +202,146 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
      */
     public final void setMaximumValue(T value)
             throws MegawidgetPropertyException {
+        doSetMaximumValue(value);
+    }
 
-        // Ensure that the value is not null.
-        BoundedValueMegawidgetSpecifier<T> specifier = getSpecifier();
-        if (value == null) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                    specifier.getType(), value, "must be instance of "
-                            + specifier.getBoundedValueClass(),
-                    new NullPointerException());
-        }
-
-        // Ensure that the value is not higher than the highest allowable
-        // value for the upper end of the range, if any.
-        T highest = specifier.getHighestAllowableValue();
-        if ((highest != null) && (highest.compareTo(value) < 0)) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                    specifier.getType(), value, "must be no greater than "
-                            + highest);
-        }
-
-        // Ensure the value is greater than the minimum value before using it.
-        if (value.compareTo(minimumValue) <= 0) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedValueMegawidgetSpecifier.MEGAWIDGET_MAX_VALUE,
-                    specifier.getType(), value,
-                    "maximum value must be greater than minimum (minimum = "
-                            + minimumValue + ", maximum = " + value);
-        }
-        maximumValue = value;
-
-        // Synchronize the widgets to the new boundaries.
-        synchronizeWidgetsToBounds();
-
-        // If the state is greater than the new maximum, set it to the maximum
-        // and synchronize the widgets to the new state.
-        if ((state == null) || (state.compareTo(maximumValue) > 0)) {
-            state = maximumValue;
-            synchronizeWidgetsToState();
-        }
+    /**
+     * Set the minimum and maximum values.
+     * 
+     * @param minimumValue
+     *            New minimum value; must be less than <code>maximumValue</code>
+     *            .
+     * @param maximumValue
+     *            New maximum value; must be greater than
+     *            <code>minimumValue</code>.
+     * @throws MegawidgetPropertyException
+     *             If the new values are not valid.
+     */
+    public final void setRange(T minimumValue, T maximumValue)
+            throws MegawidgetPropertyException {
+        doSetRange(minimumValue, maximumValue);
     }
 
     // Protected Methods
 
     /**
-     * Ensure that the specified minimum to maximum value range is
-     * representable.
+     * Synchronize the user-facing component widgets making up this megawidget
+     * to the current boundaries.
+     */
+    protected abstract void synchronizeComponentWidgetsToBounds();
+
+    /**
+     * Get the state validator.
      * 
-     * @param minimum
-     *            Minimum value to be checked.
-     * @param maximum
-     *            Maximum value to be checked.
+     * @return State validator.
+     */
+    @SuppressWarnings("unchecked")
+    protected final <V extends BoundedComparableValidator<T>> V getStateValidator() {
+        return (V) stateValidator;
+    }
+
+    /**
+     * Perform the actual work of setting the minimum value.
+     * 
+     * @param value
+     *            New minimum value.
      * @throws MegawidgetPropertyException
-     *             If the range is not representable.
+     *             If the value is not valid.
      */
-    protected abstract void ensureValueRangeRepresentable(T minimum, T maximum)
-            throws MegawidgetPropertyException;
+    protected final void doSetMinimumValue(Object value)
+            throws MegawidgetPropertyException {
+
+        /*
+         * Set the new minimum value, ensuring it is valid.
+         */
+        stateValidator.setMinimumValue(value);
+
+        /*
+         * Synchronize the widgets to the new boundaries.
+         */
+        synchronizeComponentWidgetsToBounds();
+
+        /*
+         * If the state is less than the new minimum, set it to the minimum and
+         * synchronize the widgets to the new state.
+         */
+        if ((state == null)
+                || (state.compareTo(stateValidator.getMinimumValue()) < 0)) {
+            state = stateValidator.getMinimumValue();
+            synchronizeComponentWidgetsToState();
+        }
+    }
 
     /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current boundaries.
+     * Perform the actual work of setting the maximum value.
+     * 
+     * @param value
+     *            New maximum value.
+     * @throws MegawidgetPropertyException
+     *             If the value is not valid.
      */
-    protected abstract void synchronizeWidgetsToBounds();
+    protected final void doSetMaximumValue(Object value)
+            throws MegawidgetPropertyException {
+
+        /*
+         * Set the new maximum value, ensuring it is valid.
+         */
+        stateValidator.setMaximumValue(value);
+
+        /*
+         * Synchronize the widgets to the new boundaries.
+         */
+        synchronizeComponentWidgetsToBounds();
+
+        /*
+         * If the state is greater than the new maximum, set it to the maximum
+         * and synchronize the widgets to the new state.
+         */
+        if ((state == null)
+                || (state.compareTo(stateValidator.getMinimumValue()) < 0)) {
+            state = stateValidator.getMinimumValue();
+            synchronizeComponentWidgetsToState();
+        }
+    }
 
     /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
+     * Perform the actual work of setting the minimum and maximum values.
+     * 
+     * @param minimumValue
+     *            New minimum value; must be less than <code>maximumValue</code>
+     *            .
+     * @param maximumValue
+     *            New maximum value; must be greater than
+     *            <code>minimumValue</code>.
+     * @throws MegawidgetPropertyException
+     *             If the new values are not valid.
      */
-    protected abstract void synchronizeWidgetsToState();
+    protected final void doSetRange(Object minimumValue, Object maximumValue)
+            throws MegawidgetPropertyException {
+
+        /*
+         * Set the new range, ensuring it is valid.
+         */
+        stateValidator.setRange(minimumValue, maximumValue);
+
+        /*
+         * Synchronize the widgets to the new boundaries.
+         */
+        synchronizeComponentWidgetsToBounds();
+
+        /*
+         * If the state is outside the new boundaries, set it to whichever
+         * boundary is closest and synchronize the widgets to the new state.
+         */
+        if ((state == null)
+                || (state.compareTo(stateValidator.getMinimumValue()) < 0)) {
+            state = stateValidator.getMinimumValue();
+            synchronizeComponentWidgetsToState();
+        } else if (state.compareTo(stateValidator.getMaximumValue()) > 0) {
+            state = stateValidator.getMaximumValue();
+            synchronizeComponentWidgetsToState();
+        }
+    }
 
     @Override
     protected Object doGetState(String identifier) {
@@ -370,21 +352,19 @@ public abstract class BoundedValueMegawidget<T extends Comparable<T>> extends
     protected void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Ensure that the new state is within bounds and of the correct
-        // type.
-        BoundedValueMegawidgetSpecifier<T> specifier = getSpecifier();
-        T value = getStateDynamicallyTypedObjectFromObject(state, identifier,
-                specifier.getBoundedValueClass(), minimumValue);
-        if ((value.compareTo(minimumValue) < 0)
-                || (value.compareTo(maximumValue) > 0)) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    value, "out of bounds (minimum = " + minimumValue
-                            + ", maximum = " + maximumValue + " (inclusive))");
+        /*
+         * Validate the new state and remember it.
+         */
+        try {
+            this.state = stateValidator.convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
-        this.state = value;
 
-        // Synchronize the widgets to the new state.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize the widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override

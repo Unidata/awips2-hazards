@@ -25,6 +25,9 @@ import org.eclipse.swt.widgets.Composite;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 22, 2013   2168     Chris.Golden      Changed to extend the new
  *                                           SpinnerMegawidget superclass.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -54,13 +57,6 @@ public class IntegerSpinnerMegawidget extends SpinnerMegawidget<Integer> {
     // Protected Methods
 
     @Override
-    protected void ensureValueRangeRepresentable(Integer minimum,
-            Integer maximum) throws MegawidgetPropertyException {
-
-        // No action; any integer range is always representable.
-    }
-
-    @Override
     protected int getSpinnerPrecision() {
         return 0;
     }
@@ -79,19 +75,5 @@ public class IntegerSpinnerMegawidget extends SpinnerMegawidget<Integer> {
     @Override
     protected Integer convertSpinnerToValue(int value) {
         return value;
-    }
-
-    @Override
-    protected Integer getPropertyIncrementDeltaObjectFromObject(Object object,
-            String name) throws MegawidgetPropertyException {
-        Integer incrementDelta = getPropertyIntegerObjectFromObject(object,
-                SpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA, null);
-        if (incrementDelta < 1) {
-            IntegerSpinnerSpecifier specifier = getSpecifier();
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    SpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA,
-                    specifier.getType(), object, "must be positive integer");
-        }
-        return incrementDelta;
     }
 }

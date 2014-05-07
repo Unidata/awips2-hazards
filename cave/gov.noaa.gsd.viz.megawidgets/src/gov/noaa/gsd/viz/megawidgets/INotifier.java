@@ -9,11 +9,13 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.Map;
+
 /**
  * Interface describing the methods to be implemented by a megawidget that
- * notifies an <code>INotificationListener</code> when it is invoked. Any
- * subclasses of <code>Megawidget</code> must implement this interface if they
- * are to issue such notifications.
+ * notifies an {@link INotificationListener} when it is invoked. Any subclasses
+ * of {@link Megawidget} must implement this interface if they are to issue such
+ * notifications.
  * 
  * <pre>
  * 
@@ -21,7 +23,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -36,8 +40,9 @@ public interface INotifier extends IMegawidget {
 
     /**
      * Notification listener megawidget creation time parameter name; if
-     * specified in the map passed to <code>createMegawidget()</code>, its value
-     * must be an object of type <code>INotificationListener</code>.
+     * specified in the map passed to
+     * {@link ISpecifier#createMegawidget(org.eclipse.swt.widgets.Widget, Class, Map)}
+     * , its value must be an object of type <code>INotificationListener</code>.
      */
     public static final String NOTIFICATION_LISTENER = "notificationListener";
 }

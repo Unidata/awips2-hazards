@@ -41,22 +41,20 @@ class TestIncOverride(unittest.TestCase):
         setUpCore()
 
     def test_case_python_data(self) :
-        testLocFile = "hazardServices/hazardMetaData/CAP_Fields.py"
+        testLocFile = "hazardServices/hazardTypes/HazardTypes.py"
         sys.stdout.write("Testing python data incremental override.\n")
 
         baseData = myLI.getLocData(testLocFile, 'COMMON_STATIC', 'Base')
-        if not isinstance(baseData, list) :
+        if not isinstance(baseData, dict) :
             sys.stderr.write("Could not read base for: "+testLocFile+"\n")
             self.assertEqual("TEST_CASE","OK")
 
         overrideData = '''
-CAP_Fields = [ \
-"_override_by_key_fieldName_",
-           { 
-            'fieldName': 'severity',
-            'choices': ['Biblical']
-            }
-]
+HazardTypes = { \
+    'AF.W' :  { 'hazardConflictList': ['AF.A'],
+                'expirationTime': (-60, 60),
+                 'inclusionTest' : False }
+}
 '''
         isOK = myLI.putLocFile(overrideData, testLocFile, \
                                'COMMON_STATIC', 'User', '')
@@ -65,7 +63,7 @@ CAP_Fields = [ \
             self.assertEqual("TEST_CASE","OK")
 
         overrideData = myLI.getLocData(testLocFile, 'COMMON_STATIC')
-        if not isinstance(baseData, list) :
+        if not isinstance(baseData, dict) :
             sys.stderr.write("Could not read: "+testLocFile+"\n")
             self.assertEqual("TEST_CASE","OK")
 
@@ -75,11 +73,24 @@ CAP_Fields = [ \
             sys.stderr.write("Override ineffective for: "+testLocFile+"\n")
             self.assertEqual("TEST_CASE","OK")
 
-        for member in overrideData :
-            if member['fieldName'] != 'severity' :
-                continue
-            if 'Biblical' in member['choices'] :
-                member['choices'].remove('Biblical')
+        overrideAFW = overrideData['AF.W']
+        baseAFW = baseData['AF.W']
+        if baseAFW['expirationTime'] != overrideAFW['expirationTime'] :
+            sys.stderr.write("Lock on expirationTime failed for: "+ \
+                             testLocFile+"\n")
+            self.assertEqual("TEST_CASE","OK")
+        if baseAFW['hazardConflictList'] == overrideAFW['hazardConflictList'] :
+            sys.stderr.write("Update on hazardConflictList failed for: "+ \
+                             testLocFile+"\n")
+            self.assertEqual("TEST_CASE","OK")
+        if baseAFW['inclusionTest'] == overrideAFW['inclusionTest'] :
+            sys.stderr.write("Update on inclusionTest failed for: "+ \
+                             testLocFile+"\n")
+            self.assertEqual("TEST_CASE","OK")
+       
+        del overrideAFW['hazardConflictList'][1];
+        overrideAFW['inclusionTest'] =  True;
+        overrideData['AF.W'] = overrideAFW;
 
         if baseData != overrideData :
             sys.stderr.write("Override worked incorrectly for: "+ \

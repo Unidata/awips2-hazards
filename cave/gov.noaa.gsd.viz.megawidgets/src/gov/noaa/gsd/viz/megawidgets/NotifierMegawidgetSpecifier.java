@@ -28,6 +28,9 @@ import java.util.Map;
  *                                           (variable names, comments, etc.) to
  *                                           "widget" with "megawidget" to avoid
  *                                           confusion.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,8 +65,9 @@ public abstract class NotifierMegawidgetSpecifier extends MegawidgetSpecifier
             throws MegawidgetSpecificationException {
         super(parameters);
 
-        // Ensure that the extra callback data, if present, is
-        // acceptable.
+        /*
+         * Ensure that the extra callback data, if present, is acceptable.
+         */
         try {
             extraCallback = (String) parameters.get(MEGAWIDGET_CALLBACK_DATA);
         } catch (Exception e) {

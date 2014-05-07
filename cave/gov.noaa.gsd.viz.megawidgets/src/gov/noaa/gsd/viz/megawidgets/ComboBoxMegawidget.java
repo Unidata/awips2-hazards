@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,8 +24,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Combo box megawidget, providing a dropdown combo box allowing the selection
@@ -47,6 +47,9 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,8 +66,8 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(SingleBoundedChoiceMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
+        Set<String> names = new HashSet<>(
+                SingleBoundedChoiceMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -84,14 +87,12 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
     /**
      * Map of choice identifiers to their names.
      */
-    private final Map<String, String> choiceNamesForIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, String> choiceNamesForIdentifiers = new HashMap<>();
 
     /**
      * Map of choice names to their identifiers.
      */
-    private final Map<String, String> choiceIdentifiersForNames = Maps
-            .newHashMap();
+    private final Map<String, String> choiceIdentifiersForNames = new HashMap<>();
 
     /**
      * Control component helper.
@@ -116,8 +117,10 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create the composite holding the components, and
-        // the label if appropriate.
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
         boolean expandHorizontally = specifier.isHorizontalExpander();
@@ -126,12 +129,16 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = expandHorizontally;
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create the combo box.
+        /*
+         * Create the combo box.
+         */
         comboBox = new Combo(panel, SWT.READ_ONLY);
         populateComboBoxWithChoices();
         comboBox.setEnabled(specifier.isEnabled());
 
-        // Place the combo box in the grid.
+        /*
+         * Place the combo box in the grid.
+         */
         GridData gridData = new GridData((expandHorizontally ? SWT.FILL
                 : SWT.LEFT), SWT.CENTER, true, false);
         if (expandHorizontally) {
@@ -140,9 +147,10 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
         gridData.horizontalSpan = (label == null ? 2 : 1);
         comboBox.setLayoutData(gridData);
 
-        // Bind the combo box selection event to trigger
-        // a change in the record of the state for the
-        // widget.
+        /*
+         * Bind the combo box selection event to trigger a change in the record
+         * of the state for the widget.
+         */
         comboBox.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -159,10 +167,17 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
             }
         });
 
-        // Render the combo box uneditable if necessary.
+        /*
+         * Render the combo box uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -185,7 +200,9 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -222,16 +239,9 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
-    }
-
-    /**
-     * Get the available choices hierarchy.
-     * 
-     * @return Available choices hierarchy.
-     */
-    public final List<?> getChoices() {
-        return doGetChoices();
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -258,21 +268,35 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
     @Override
     protected final void prepareForChoicesChange() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
 
-        // Populate the combo box with the new choices.
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * Populate the combo box with the new choices.
+         */
         populateComboBoxWithChoices();
 
-        // Ensure that the combo box has the right element selected.
-        synchronizeWidgetsToState();
+        /*
+         * Ensure that the combo box has the right element selected.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         String selected = choiceNamesForIdentifiers.get(state);
         if (selected != null) {
             for (int j = 0; j < comboBox.getItemCount(); j++) {
@@ -314,12 +338,14 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
      */
     private void populateComboBoxWithChoices() {
 
-        // Create bidirectional associations between the choice
-        // names and their identifiers, and compile a list of
-        // the names.
+        /*
+         * Create bidirectional associations between the choice names and their
+         * identifiers, and compile a list of the names.
+         */
         choiceNamesForIdentifiers.clear();
         choiceIdentifiersForNames.clear();
         ComboBoxSpecifier specifier = getSpecifier();
+        List<?> choices = getStateValidator().getAvailableChoices();
         String[] names = new String[choices.size()];
         int index = 0;
         for (Object choice : choices) {
@@ -330,8 +356,9 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
             names[index++] = name;
         }
 
-        // Set the combo box's choices to the list of names
-        // compiled above.
+        /*
+         * Set the combo box's choices to the list of names compiled above.
+         */
         comboBox.setItems(names);
     }
 }

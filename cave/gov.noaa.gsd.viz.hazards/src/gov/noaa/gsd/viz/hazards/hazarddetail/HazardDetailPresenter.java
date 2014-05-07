@@ -10,24 +10,31 @@
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.mvp.Presenter;
 
+import java.io.Serializable;
 import java.util.Collection;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
 import net.engio.mbassy.listener.Handler;
 
+import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 
 /**
  * Hazard detail presenter, used to mediate between the model and the hazard
@@ -53,6 +60,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view
  *                                           during initialization.
+ * Apr 09, 2014    2925    Chris.Golden      Refactored extensively to support new
+ *                                           class-based metadata, as well as to
+ *                                           conform to new event propagation scheme.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,10 +74,10 @@ public class HazardDetailPresenter extends
     // Private Variables
 
     /**
-     * Flag indicating whether or not an event change notification is being
-     * processed.
+     * Map of selected event identifiers to the events with which they conflict,
+     * if any, as last fetched.
      */
-    private boolean eventChange = false;
+    private Map<String, Collection<IHazardEvent>> oldConflictingEventsForSelectedEvents;
 
     // Public Constructors
 
@@ -89,33 +99,81 @@ public class HazardDetailPresenter extends
 
     // Public Methods
 
+    /**
+     * TODO: This method will be removed altogether from the {@link Presenter}
+     * in the future, when all needed notifications are subscribed to directly
+     * by each <code>Presenter</code>. For now, this method simply does nothing,
+     * as other member methods marked with {@link Subscribe} are being used to
+     * receive needed notifications. This subclass of <code>Presenter</code> is
+     * thus closer to what is planned for all <code>Presenter</code>s in the
+     * future.
+     */
+    @Deprecated
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        if (changed.contains(HazardConstants.Element.VISIBLE_TIME_RANGE)) {
-            TimeRange timeRange = timeManager.getVisibleRange();
-            getView().setVisibleTimeRange(timeRange.getStart().getTime(),
-                    timeRange.getEnd().getTime());
-        }
-        if (changed.contains(HazardConstants.Element.EVENTS)
-                && (eventChange == false)) {
-            eventChange = true;
 
-            DictList eventsAsDictList = adaptEventsForDisplay();
-            getView().updateHazardDetail(eventsAsDictList,
-                    eventManager.getLastSelectedEventID(),
-                    getConflictingEventsForSelectedEvents());
-            eventChange = false;
-        }
-
+        // No action
     }
 
     /**
-     * TODO This is how Matt, Chris and Dan think model changes should be
-     * handled. We should move
-     * {@link HazardDetailPresenter#modelChanged(EnumSet)} into here.
+     * Respond to the visible time range changing.
+     * 
+     * @param event
+     *            Event that occurred.
      */
     @Handler
-    public void sessionModified(SessionModified event) {
+    public void visibleTimeRangeChanged(final VisibleTimeRangeChanged event) {
+        TimeRange timeRange = timeManager.getVisibleRange();
+        getView().setVisibleTimeRange(timeRange.getStart().getTime(),
+                timeRange.getEnd().getTime());
+    }
+
+    /**
+     * Respond to the hazard events changing in some way.
+     * 
+     * @param event
+     *            Event that occurred.
+     */
+    @Handler
+    public void sessionEventsModified(final SessionEventsModified event) {
+
+        /*
+         * TODO: Because conflicting events are not tracked dynamically by the
+         * session event manager, and thus cannot be checked at any time without
+         * specifically querying said manager (as opposed to, for example, the
+         * set of events that allow until further notice), they must be checked
+         * each time through here. Ideally, what should occur is the conflicting
+         * events set should be tracked dynamically, and notifications sent out
+         * specifically indicating that the set has changed when it does. This
+         * way, this code wouldn't be required.
+         */
+        Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEvents = getConflictingEventsForSelectedEvents();
+        if ((event.getOriginator() == UIOriginator.HAZARD_INFORMATION_DIALOG)
+                && conflictingEventsForSelectedEvents
+                        .equals(oldConflictingEventsForSelectedEvents)) {
+            return;
+        }
+        oldConflictingEventsForSelectedEvents = conflictingEventsForSelectedEvents;
+
+        /*
+         * TODO: This is a brute-force approach to updating the HID; a better
+         * implementation would allow more fine-grained changes to be processed.
+         */
+        DictList eventsAsDictList = adaptEventsForDisplay();
+        getView().updateHazardDetail(eventsAsDictList,
+                eventManager.getLastSelectedEventID(),
+                conflictingEventsForSelectedEvents);
+    }
+
+    /**
+     * Respond to session modifications by determining whether an issue or
+     * preview are ongoing.
+     * 
+     * @param event
+     *            Event that occurred.
+     */
+    @Handler
+    public void sessionModified(final SessionModified event) {
         getView().setPreviewOngoing(getModel().isPreviewOngoing());
         getView().setIssueOngoing(getModel().isIssueOngoing());
     }
@@ -130,8 +188,10 @@ public class HazardDetailPresenter extends
      */
     public final void showHazardDetail(boolean force) {
 
-        // Get the hazard events to be displayed in detail, and
-        // determine which event should be foregrounded.
+        /*
+         * Get the hazard events to be displayed in detail, and determine which
+         * event should be foregrounded.
+         */
         DictList eventsAsDictList = adaptEventsForDisplay();
         if ((force == false)
                 && ((eventsAsDictList == null) || (eventsAsDictList.size() == 0))) {
@@ -139,9 +199,12 @@ public class HazardDetailPresenter extends
         }
         String topEventID = eventManager.getLastSelectedEventID();
 
-        // Have the view open the alert detail subview.
+        /*
+         * Have the view open the alert detail subview.
+         */
+        oldConflictingEventsForSelectedEvents = getConflictingEventsForSelectedEvents();
         getView().showHazardDetail(eventsAsDictList, topEventID,
-                getConflictingEventsForSelectedEvents(), force);
+                oldConflictingEventsForSelectedEvents, force);
     }
 
     /**
@@ -156,7 +219,9 @@ public class HazardDetailPresenter extends
     @Override
     public void initialize(IHazardDetailView<?, ?> view) {
 
-        // Get the basic initialization info for the subview.
+        /*
+         * Get the basic initialization info for the subview.
+         */
         String basicInfo = jsonConverter.toJson(configurationManager
                 .getHazardInfoConfig());
         String metadataMegawidgets = jsonConverter.toJson(configurationManager
@@ -166,14 +231,104 @@ public class HazardDetailPresenter extends
                 timeRange.getStart().getTime(), timeRange.getEnd().getTime(),
                 eventManager.getEventIdsAllowingUntilFurtherNotice());
 
-        // Update the view with the currently selected hazard events,
-        // if any.
+        /*
+         * Update the view with the currently selected hazard events, if any.
+         */
         DictList eventsAsDictList = adaptEventsForDisplay();
-
+        oldConflictingEventsForSelectedEvents = getConflictingEventsForSelectedEvents();
         getView().updateHazardDetail(eventsAsDictList,
                 eventManager.getLastSelectedEventID(),
-                getConflictingEventsForSelectedEvents());
+                oldConflictingEventsForSelectedEvents);
     }
+
+    // Package Methods
+
+    /**
+     * Set the type of the specified event.
+     * <p>
+     * TODO: Should be private.
+     * 
+     * @param eventId
+     *            Identifier of the hazard event to have its type changed.
+     * @param fullType
+     *            New full type for the hazard event.
+     */
+    void setHazardType(String eventId, String fullType) {
+        ObservedHazardEvent event = eventManager.getEventById(eventId);
+        if (event != null) {
+            String[] phenSig;
+            if (!fullType.isEmpty()) {
+                phenSig = fullType.split(" ")[0].split("\\.");
+                String subType = null;
+                if (phenSig.length > 2) {
+                    subType = phenSig[2];
+                }
+                eventManager.setEventType(event, phenSig[0], phenSig[1],
+                        subType, UIOriginator.HAZARD_INFORMATION_DIALOG);
+            } else {
+                eventManager.setEventType(event, null, null, null,
+                        UIOriginator.HAZARD_INFORMATION_DIALOG);
+            }
+        }
+    }
+
+    /**
+     * Change the start time of the specified event.
+     * <p>
+     * TODO: Should be private.
+     * 
+     * @param eventId
+     *            Identifier of the hazard event to have its start time changed.
+     * @param startTime
+     *            New start time.
+     */
+    void setHazardStartTime(String eventId, long startTime) {
+        ObservedHazardEvent event = eventManager.getEventById(eventId);
+        if (event != null) {
+            event.setStartTime(new Date(startTime),
+                    UIOriginator.HAZARD_INFORMATION_DIALOG);
+        }
+    }
+
+    /**
+     * Change the end time of the specified event.
+     * <p>
+     * TODO: Should be private.
+     * 
+     * @param eventId
+     *            Identifier of the hazard event to have its end time changed.
+     * @param endTime
+     *            New end time.
+     */
+    void setHazardEndTime(String eventId, long endTime) {
+        ObservedHazardEvent event = eventManager.getEventById(eventId);
+        if (event != null) {
+            event.setEndTime(new Date(endTime),
+                    UIOriginator.HAZARD_INFORMATION_DIALOG);
+        }
+    }
+
+    /**
+     * Change the specified attribute of the specified event.
+     * <p>
+     * TODO: Should be private.
+     * 
+     * @param eventId
+     *            Identifier of the hazard event to have its attribute changed.
+     * @param key
+     *            Key of the attribute to be changed.
+     * @param value
+     *            New value of the attribute.
+     */
+    void setHazardAttribute(String eventId, String key, Serializable value) {
+        ObservedHazardEvent event = eventManager.getEventById(eventId);
+        if (event != null) {
+            event.addHazardAttribute(key, value,
+                    UIOriginator.HAZARD_INFORMATION_DIALOG);
+        }
+    }
+
+    // Private Methods
 
     private DictList adaptEventsForDisplay() {
         Collection<ObservedHazardEvent> selectedEvents = eventManager

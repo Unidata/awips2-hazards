@@ -42,7 +42,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * Oct 1, 2012             mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
- * 
+ * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
+ *                                      set the type components atomically, or
+ *                                      the start and end time atomically.
  * </pre>
  * 
  * @author mnash
@@ -102,13 +104,18 @@ public interface IHazardEvent extends IEvent {
 
     public String getHazardType();
 
+    public void setHazardType(String phenomenon, String significance,
+            String subtype);
+
     public Date getCreationTime();
 
     public void setCreationTime(Date date);
 
+    public void setStartTime(Date date);
+
     public void setEndTime(Date date);
 
-    public void setStartTime(Date date);
+    public void setTimeRange(Date startTime, Date endTime);
 
     public void setGeometry(Geometry geom);
 

@@ -10,6 +10,9 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.megawidgets.validators.MultiStateValidator;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleStateValidator;
+import gov.noaa.gsd.viz.megawidgets.validators.StateValidator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,8 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.ImmutableList;
 
@@ -48,6 +49,13 @@ import com.google.common.collect.ImmutableList;
  *                                           class for subclasses.
  * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
  *                                           to new JDK 1.7 features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, and added code to ensure
+ *                                           that all stateful megawidget specifiers
+ *                                           start with a default state if no state
+ *                                           is given within their specification
+ *                                           parameters. Also updated Javadoc and
+ *                                           other comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -92,7 +100,7 @@ public abstract class StatefulMegawidgetSpecifier extends
                 throws IllegalArgumentException {
             int value;
             try {
-                value = getIntegerValueFromObject(object);
+                value = ConversionUtilities.getIntegerValueFromObject(object);
             } catch (Exception e) {
                 value = -1;
             }
@@ -141,7 +149,12 @@ public abstract class StatefulMegawidgetSpecifier extends
      * Map pairing state identifiers with starting values for each state, if
      * any.
      */
-    private final Map<String, Object> valuesForStateIdentifiers;
+    private final Map<String, ?> valuesForStateIdentifiers;
+
+    /**
+     * State validator.
+     */
+    private final StateValidator stateValidator;
 
     // Public Constructors
 
@@ -152,17 +165,21 @@ public abstract class StatefulMegawidgetSpecifier extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
+     * @param stateValidator
+     *            State Validator.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public StatefulMegawidgetSpecifier(Map<String, Object> parameters)
+    public StatefulMegawidgetSpecifier(Map<String, Object> parameters,
+            StateValidator stateValidator)
             throws MegawidgetSpecificationException {
         super(parameters);
 
-        // Populate the state identifiers set in order to
-        // determine which state identifiers are legal, and
-        // ensure that no repeating or zero-length state
-        // identifiers were supplied.
+        /*
+         * Populate the state identifiers set in order to determine which state
+         * identifiers are legal, and ensure that no repeating or zero-length
+         * state identifiers were supplied.
+         */
         List<String> stateIdentifiers = new ArrayList<>();
         String[] identifiers = getIdentifier().split(":");
         for (String identifier : identifiers) {
@@ -189,22 +206,25 @@ public abstract class StatefulMegawidgetSpecifier extends
         }
         this.stateIdentifiers = ImmutableList.copyOf(stateIdentifiers);
 
-        // Ensure that the state labels, if present, are
-        // acceptable.
+        /*
+         * Ensure that the state labels, if present, are acceptable.
+         */
         Set<Class<?>> classes = new HashSet<>();
         classes.add(String.class);
         labelsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_LABELS, "string", classes, "",
                 null, null, true);
 
-        // Ensure that the short state labels, if present,
-        // are acceptable.
+        /*
+         * Ensure that the short state labels, if present, are acceptable.
+         */
         shortLabelsForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_SHORT_LABELS, "string", classes,
                 "", labelsForStateIdentifiers, null, true);
 
-        // Ensure that the relative state weights, if pre-
-        // sent, are acceptable.
+        /*
+         * Ensure that the relative state weights, if present, are acceptable.
+         */
         classes.clear();
         classes.add(Number.class);
         relativeWeightsForStateIdentifiers = getStateMappedParametersFromObject(
@@ -212,11 +232,22 @@ public abstract class StatefulMegawidgetSpecifier extends
                 "positive integer", classes, new Integer(1), null,
                 POSITIVE_INTEGER_VALUE_CONVERTER, true);
 
-        // Ensure that the starting state values, if present, are
-        // acceptable.
-        valuesForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_VALUES, "state value",
-                getClassesOfState(), null, null, null, true);
+        /*
+         * Initialize the state validator.
+         */
+        if (stateValidator instanceof SingleStateValidator) {
+            ((SingleStateValidator<?>) stateValidator).initialize(getType(),
+                    stateIdentifiers.get(0));
+        } else {
+            ((MultiStateValidator<?>) stateValidator).initialize(getType(),
+                    stateIdentifiers);
+        }
+        this.stateValidator = stateValidator;
+
+        /*
+         * Ensure that the starting state values, if present, are acceptable.
+         */
+        valuesForStateIdentifiers = validateStartingState(parameters);
     }
 
     // Public Methods
@@ -247,24 +278,58 @@ public abstract class StatefulMegawidgetSpecifier extends
     }
 
     @Override
-    public <P extends Widget, M extends IMegawidget> M createMegawidget(
-            P parent, Class<M> superClass, Map<String, Object> creationParams)
-            throws MegawidgetException {
-        M megawidget = super.createMegawidget(parent, superClass,
-                creationParams);
-        setToDefaultState((IStateful) megawidget);
-        return megawidget;
+    public void validateAndCorrectStates(Map<String, Object> map) {
+
+        /*
+         * Handle this differently depending upon whether the specifier has a
+         * single or multiple states.
+         */
+        if (stateValidator instanceof SingleStateValidator) {
+
+            /*
+             * For single-state specifiers, replace the value in the map with a
+             * corrected version, and if that fails, use a default value.
+             */
+            String identifier = stateIdentifiers.get(0);
+            try {
+                map.put(identifier, ((SingleStateValidator<?>) stateValidator)
+                        .convertToStateValue(map.get(identifier)));
+            } catch (Exception e) {
+                try {
+                    map.put(identifier,
+                            ((SingleStateValidator<?>) stateValidator)
+                                    .convertToStateValue(map.get(null)));
+                } catch (Exception e2) {
+                    throw new IllegalStateException(
+                            "unexpected failure to get default value for state",
+                            e2);
+                }
+            }
+        } else {
+
+            /*
+             * For multi-state specifiers, replace the values in the map with
+             * corrected versions, and if that fails, use default values.
+             */
+            Map<String, ?> correctedMap;
+            try {
+                correctedMap = ((MultiStateValidator<?>) stateValidator)
+                        .convertToStateValues(map);
+            } catch (Exception e) {
+                try {
+                    correctedMap = ((MultiStateValidator<?>) stateValidator)
+                            .convertToStateValues(null);
+                } catch (Exception e2) {
+                    throw new IllegalStateException(
+                            "unexpected failure to get default values for states",
+                            e2);
+                }
+            }
+            map.putAll(correctedMap);
+        }
     }
 
     // Protected Methods
-
-    /**
-     * Get the set of classes, one of which must be implemented by any state
-     * value.
-     * 
-     * @return Set of classes for any state value.
-     */
-    protected abstract Set<Class<?>> getClassesOfState();
 
     /**
      * Get the maximum number of state identifiers that may be associated with
@@ -282,6 +347,16 @@ public abstract class StatefulMegawidgetSpecifier extends
      */
     protected int getMaximumStateIdentifierCount() {
         return 1;
+    }
+
+    /**
+     * Get the state validator.
+     * 
+     * @return State validator.
+     */
+    @SuppressWarnings("unchecked")
+    protected final <V extends StateValidator> V getStateValidator() {
+        return (V) stateValidator;
     }
 
     /**
@@ -334,18 +409,20 @@ public abstract class StatefulMegawidgetSpecifier extends
             boolean ensureMappingForEveryIdentifier)
             throws MegawidgetSpecificationException {
 
-        // If no object is given to provide the mapping,
-        // return a default mapping; otherwise, if it is
-        // a map, iterate through the list's values and
-        // add them to the mapping; otherwise, just add
-        // the single value to the mapping.
+        /*
+         * If no object is given to provide the mapping, return a default
+         * mapping; otherwise, if it is a map, iterate through the list's values
+         * and add them to the mapping; otherwise, just add the single value to
+         * the mapping.
+         */
         Object object = parameters.get(key);
         Map<String, T> map = null;
         if (object == null) {
 
-            // If no default mapping was supplied, create
-            // a new mapping for all keys to the default
-            // parameter value.
+            /*
+             * If no default mapping was supplied, create a new mapping for all
+             * keys to the default parameter value.
+             */
             if (defaultMap == null) {
                 map = new HashMap<>();
                 for (String identifier : stateIdentifiers) {
@@ -356,8 +433,9 @@ public abstract class StatefulMegawidgetSpecifier extends
             }
         } else if (object instanceof Map) {
 
-            // Ensure that the map has the right number
-            // of values within it.
+            /*
+             * Ensure that the map has the right number of values within it.
+             */
             Map<?, ?> providedMap = (Map<?, ?>) object;
             if (ensureMappingForEveryIdentifier
                     && (providedMap.size() != stateIdentifiers.size())) {
@@ -367,23 +445,24 @@ public abstract class StatefulMegawidgetSpecifier extends
                                 + "as megawidget has state identifiers");
             }
 
-            // Create the mapping based on the list's
-            // values, associating each value with the
-            // state identifier at the corresponding
-            // index, ensuring that each value is of the
-            // correct type.
+            /*
+             * Create the mapping based on the list's values, associating each
+             * value with the state identifier at the corresponding index,
+             * ensuring that each value is of the correct type.
+             */
             map = new HashMap<>();
             for (String identifier : stateIdentifiers) {
                 Object providedValue = providedMap.get(identifier);
                 if (providedValue == null) {
                     map.put(identifier, defaultValue);
                 } else {
-                    if (Utils.isValueIsInstanceOfAtLeastOneClass(providedValue,
+                    if (Utils.isValueInstanceOfAtLeastOneClass(providedValue,
                             valueClasses) == false) {
                         throw new MegawidgetSpecificationException(
                                 getIdentifier(), getType(), key, providedMap,
                                 "map value for state identifier \""
-                                        + identifier + "is of incorrect type");
+                                        + identifier
+                                        + "\" is of incorrect type");
                     }
                     map.put(identifier,
                             convertValue(identifier, providedValue,
@@ -392,8 +471,9 @@ public abstract class StatefulMegawidgetSpecifier extends
             }
         } else {
 
-            // Ensure that there is only one state
-            // identifier.
+            /*
+             * Ensure that there is only one state identifier.
+             */
             if (stateIdentifiers.size() != 1) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), key, object,
@@ -401,9 +481,10 @@ public abstract class StatefulMegawidgetSpecifier extends
                                 + "as megawidget has state identifiers");
             }
 
-            // If the object is of the incorrect type,
-            // throw an error.
-            if (Utils.isValueIsInstanceOfAtLeastOneClass(object, valueClasses) == false) {
+            /*
+             * If the object is of the incorrect type, throw an error.
+             */
+            if (Utils.isValueInstanceOfAtLeastOneClass(object, valueClasses) == false) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
                         getType(), key, object,
                         "map value for state identifier \""
@@ -411,56 +492,62 @@ public abstract class StatefulMegawidgetSpecifier extends
                                 + "\" is of incorrect type");
             }
 
-            // Create the mapping of the single state
-            // identifier to the given value.
+            /*
+             * Create the mapping of the single state identifier to the given
+             * value.
+             */
             map = new HashMap<>();
             map.put(stateIdentifiers.get(0),
                     convertValue(stateIdentifiers.get(0), object,
                             valueConverter, key, description));
         }
 
-        // Return the result.
+        /*
+         * Return the result.
+         */
         return map;
     }
 
+    // Private Methods
+
     /**
-     * Set the specified megawidget to use the default state, if any.
+     * Validate the starting state provided by the specification.
      * 
-     * @param megawidget
-     *            Megawidget to be set to the default state.
-     * @throws MegawidgetStateException
-     *             If the default state is invalid.
+     * @param parameters
+     *            Specification parameters that may contain the starting state.
+     * @return Specified starting state, or default starting state if none was
+     *         found specified.
+     * @throws MegawidgetSpecificationException
+     *             If the specified starting state was found to be invalid.
      */
-    protected final void setToDefaultState(IStateful megawidget)
-            throws MegawidgetStateException {
+    @SuppressWarnings("unchecked")
+    private Map<String, ?> validateStartingState(Map<String, Object> parameters)
+            throws MegawidgetSpecificationException {
 
-        // Iterate through the state identifiers, set-
-        // ting each corresponding state to its de-
-        // fault value, if any. If the megawidget can
-        // have state changes committed later, then
-        // wait on the commit until afterward.
-        boolean toBeCommitted = false;
-        for (String identifier : stateIdentifiers) {
-            Object defaultValue = getStartingState(getIdentifier());
-            if (defaultValue != null) {
-                if (megawidget instanceof IExplicitCommitStateful) {
-                    ((IExplicitCommitStateful) megawidget).setUncommittedState(
-                            identifier, defaultValue);
-                    toBeCommitted = true;
-                } else {
-                    megawidget.setState(identifier, defaultValue);
-                }
+        /*
+         * Convert the given starting state values into valid states if
+         * possible.
+         */
+        try {
+            Object object = parameters.get(MEGAWIDGET_STATE_VALUES);
+            if ((stateIdentifiers.size() == 1) && (object instanceof Map)) {
+                object = ((Map<?, ?>) object).get(stateIdentifiers.get(0));
             }
-        }
-
-        // If the megawidget has state changes that
-        // are to be committed, commit them now.
-        if (toBeCommitted) {
-            ((IExplicitCommitStateful) megawidget).commitStateChanges();
+            if (stateValidator instanceof SingleStateValidator) {
+                Map<String, Object> map = new HashMap<>();
+                map.put(stateIdentifiers.get(0),
+                        ((SingleStateValidator<?>) stateValidator)
+                                .convertToStateValue(object));
+                return map;
+            } else {
+                return ((MultiStateValidator<?>) stateValidator)
+                        .convertToStateValues((Map<String, Object>) object);
+            }
+        } catch (MegawidgetException e) {
+            throw new MegawidgetSpecificationException(MEGAWIDGET_STATE_VALUES,
+                    e);
         }
     }
-
-    // Private Methods
 
     /**
      * Convert the specified object to a value of the parameterized type, using

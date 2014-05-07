@@ -1,4 +1,5 @@
 import CommonMetaData
+from HazardConstants import *
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -14,7 +15,9 @@ class MetaData(CommonMetaData.MetaData):
                     self.getAdditionalInfo(),
                     self.getCTAs(),                    
                     ] + self.setCAP_Fields()
-        return metaData
+        return {
+                METADATA_KEY: metaData
+                }    
        
     # INCLUDE  
     def includeChoices(self):

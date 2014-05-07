@@ -9,17 +9,19 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidatorHelper;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Maps;
 
 /**
  * Description: Base class for megawidget specifiers that include a flat closed
  * list of choices as part of their state, with each choice having zero or more
  * detail fields (child megawidgets) associated with it. Said choices are always
  * associated with a single state identifier, so the megawidget identifiers for
- * these specifiers must not consist of colon-separated substrings.
+ * these specifiers must not consist of colon-separated substrings. The generic
+ * parameter <code>T</code> indicates the type of state.
  * 
  * <pre>
  * 
@@ -33,24 +35,27 @@ import com.google.common.collect.Maps;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
-        FlatBoundedChoicesMegawidgetSpecifier implements
+public abstract class FlatChoicesWithDetailMegawidgetSpecifier<T> extends
+        FlatBoundedChoicesMegawidgetSpecifier<T> implements
         IParentSpecifier<IControlSpecifier>, IControlSpecifier {
 
     // Public Static Constants
 
     /**
      * Choice detail fields parameter name; each choice in the list associated
-     * with <code>MEGAWIDGET_VALUE_CHOICES</code> may contain a reference to a
-     * <code>List</code> object associated with this name. The provided list
-     * must contain zero or more child megawidget specifier parameter maps, each
-     * in the form of a <code>Map</code>, from which a megawidget specifier will
-     * be constructed.
+     * with {@link #MEGAWIDGET_VALUE_CHOICES} may contain a reference to a
+     * {@link List} object associated with this name. The provided list must
+     * contain zero or more child megawidget specifier parameter maps, each in
+     * the form of a {@link Map}, from which a megawidget specifier will be
+     * constructed.
      */
     public static final String DETAIL_FIELDS = "detailFields";
 
@@ -70,8 +75,7 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
      * Map of choice identifiers to the lists of detail field megawidget
      * specifiers.
      */
-    private final Map<String, List<IControlSpecifier>> fieldListsForChoices = Maps
-            .newHashMap();
+    private final Map<String, List<IControlSpecifier>> fieldListsForChoices = new HashMap<>();
 
     // Public Constructors
 
@@ -82,17 +86,22 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
+     * @param stateValidatorHelper
+     *            State validator helper.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
     public FlatChoicesWithDetailMegawidgetSpecifier(
-            Map<String, Object> parameters)
+            Map<String, Object> parameters,
+            BoundedChoiceValidatorHelper<T> stateValidatorHelper)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, stateValidatorHelper);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
-        // Ensure that the factory is present and acceptable.
+        /*
+         * Ensure that the factory is present and acceptable.
+         */
         IMegawidgetSpecifierFactory factory = null;
         try {
             factory = (IMegawidgetSpecifierFactory) parameters
@@ -108,18 +117,23 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
                     getType(), MEGAWIDGET_SPECIFIER_FACTORY, null, null);
         }
 
-        // Create the children manager.
+        /*
+         * Create the children manager.
+         */
         childManager = new ChildSpecifiersManager<IControlSpecifier>(
                 IControlSpecifier.class, factory);
 
-        // Iterate through the choices, extracting from each one
-        // any detail megawidgets.
-        List<?> choices = getChoices();
+        /*
+         * Iterate through the choices, extracting from each one any detail
+         * megawidgets.
+         */
+        List<?> choices = (List<?>) parameters.get(MEGAWIDGET_VALUE_CHOICES);
         for (int j = 0; j < choices.size(); j++) {
             Object choice = choices.get(j);
 
-            // If this choice is not a map or has no detail fields,
-            // skip it.
+            /*
+             * If this choice is not a map or has no detail fields, skip it.
+             */
             if ((choice instanceof Map) == false) {
                 continue;
             }
@@ -129,25 +143,29 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
                 continue;
             }
 
-            // Remove the detail fields, as they should not be left
-            // in the map.
+            /*
+             * Remove the detail fields, as they should not be left in the map.
+             */
             map.remove(DETAIL_FIELDS);
 
-            // Convert the maps to child megawidget specifiers.
+            /*
+             * Convert the maps to child megawidget specifiers.
+             */
             List<IControlSpecifier> children = null;
             try {
                 children = getChildManager().createMegawidgetSpecifiers(fields,
                         fields.size());
             } catch (MegawidgetSpecificationException e) {
-                throw (new IllegalChoicesProblem(MEGAWIDGET_VALUE_CHOICES, "["
-                        + j + "]", DETAIL_FIELDS, fields,
-                        "bad child megawidget specifier", e))
-                        .toSpecificationException(this);
+                throw new MegawidgetSpecificationException(getIdentifier(),
+                        getType(), MEGAWIDGET_VALUE_CHOICES + "[" + j + "]",
+                        fields, "bad child megawidget specifier", e);
             }
 
-            // Add the child megawidget specifiers for this choice
-            // to the list of all children, and remember the para-
-            // meters for this choice's detail fields.
+            /*
+             * Add the child megawidget specifiers for this choice to the list
+             * of all children, and remember the parameters for this choice's
+             * detail fields.
+             */
             getChildManager().addChildMegawidgetSpecifiers(children);
             fieldListsForChoices.put(getIdentifierOfNode(map), children);
         }
@@ -194,22 +212,6 @@ public abstract class FlatChoicesWithDetailMegawidgetSpecifier extends
     }
 
     // Protected Methods
-
-    @Override
-    protected IllegalChoicesProblem evaluateChoicesMapLegality(
-            String parameterName, Map<?, ?> map, int index) {
-
-        // If the map has something other than a list for a detail
-        // fields entry, it is illegal. If nothing is there, then
-        // there are no detail fields for this choice.
-        Object fields = map.get(DETAIL_FIELDS);
-        if ((fields == null) || (fields instanceof List)) {
-            return NO_ILLEGAL_CHOICES_PROBLEM;
-        }
-        return new IllegalChoicesProblem(MEGAWIDGET_VALUE_CHOICES, "[" + index
-                + "]", DETAIL_FIELDS, fields,
-                "must be list of detail megawidget specifiers");
-    }
 
     /**
      * Get the container child specifiers manager.

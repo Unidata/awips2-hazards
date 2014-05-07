@@ -27,7 +27,9 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2013    2168    Chris.Golden      Initial creation.
- * 
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,9 +68,11 @@ public class ControlComponentHelper {
     public static void alignMegawidgetsElements(
             Collection<? extends IControl> megawidgets) {
 
-        // Determine which megawidgets have, respectively, the largest left
-        // and right decoration widths, and set all the megawidgets to have
-        // those widths for their respective left and right decorations.
+        /*
+         * Determine which megawidgets have, respectively, the largest left and
+         * right decoration widths, and set all the megawidgets to have those
+         * widths for their respective left and right decorations.
+         */
         int maxLeftDecorationWidth = 0, maxRightDecorationWidth = 0;
         for (IControl megawidget : megawidgets) {
             int leftDecorationWidth = megawidget.getLeftDecorationWidth();
@@ -142,11 +146,11 @@ public class ControlComponentHelper {
     public Color getBackgroundColor(boolean editable, Control control,
             Label label) {
 
-        // If the colors have not yet been cached, fetch
-        // them now. These colors do not need to be disposed
-        // of upon widget destruction, since they are being
-        // provided by stock SWT widgets and are therefore
-        // system colors.
+        /*
+         * If the colors have not yet been cached, fetch them now. These colors
+         * do not need to be disposed of upon widget destruction, since they are
+         * being provided by stock SWT widgets and are therefore system colors.
+         */
         if (editableBackgroundColor == null) {
             editableBackgroundColor = control.getBackground();
             if (label != null) {
@@ -158,7 +162,9 @@ public class ControlComponentHelper {
             }
         }
 
-        // Return the appropriate color.
+        /*
+         * Return the appropriate color.
+         */
         return (editable ? editableBackgroundColor : readOnlyBackgroundColor);
     }
 

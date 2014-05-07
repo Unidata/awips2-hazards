@@ -14,14 +14,14 @@ import java.util.List;
 /**
  * Description: Interface describing the methods to be implemented by a
  * megawidget specifier that is a parent of other megawidget specifiers. Any
- * subclasses of <code>MegawidgetSpecifier</code> must implement this interface
- * if they are to hold other megawidget specifiers. Also, any such subclasses
- * must only produce <code>Megawidget</code> objects that implement the
- * <code>IParent</code> interface. The <code>C</code> parameter indicates what
- * type of <code>ISpecifier</code> each child specifier must be.
+ * subclasses of {@link MegawidgetSpecifier} must implement this interface if
+ * they are to hold other megawidget specifiers. Also, any such subclasses must
+ * only produce {@link Megawidget} objects that implement the {@link IParent}
+ * interface. The <code>C</code> parameter indicates what type of
+ * {@link ISpecifier} each child specifier must be.
  * <p>
- * Note that each instance of this interface should use an instance of <code>
- * ChildSpecifiersManager</code> to manage its child specifiers.
+ * Note that each instance of this interface should use an instance of
+ * {@link ChildSpecifiersManager} to manage its child specifiers.
  * 
  * <pre>
  * 
@@ -29,7 +29,9 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 24, 2013    2168    Chris.Golden      Initial creation
- * 
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -42,8 +44,8 @@ public interface IParentSpecifier<C extends ISpecifier> extends ISpecifier {
 
     /**
      * Megawidget specifier factory parameter name; each parent megawidget
-     * specifier must contain a reference to an <code>
-     * IMegawidgetSpecifierFactory</code> object associated with this name. The
+     * specifier must contain a reference to an
+     * {@link IMegawidgetSpecifierFactory} object associated with this name. The
      * provided factory will be used to construct any child megawidget
      * specifiers of the parent.
      */

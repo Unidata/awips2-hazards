@@ -11,8 +11,8 @@ package gov.noaa.gsd.viz.megawidgets;
 
 /**
  * Interface describing the methods to be implemented by a megawidget specifier
- * that creates a menu-based megawidgets. Any subclasses of <code>
- * MegawidgetSpecifier</code> must implement this interface if they are to
+ * that creates a menu-based megawidgets. Any subclasses of
+ * {@link MegawidgetSpecifier} must implement this interface if they are to
  * create such megawidgets.
  * 
  * <pre>
@@ -23,6 +23,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Mar 27, 2013            Chris.Golden      Initial creation
  * Oct 23, 2013   2168     Chris.Golden      Changed to extend new ISpecifier
  *                                           interface.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

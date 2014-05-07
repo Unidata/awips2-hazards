@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.TimeDeltaSpecifier.Unit;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +32,6 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Time delta megawidget, providing the user a spinner widget with an optional
@@ -54,6 +54,9 @@ import com.google.common.collect.Sets;
  *                                           fying listeners of state changes
  *                                           caused by ongoing spinner button
  *                                           presses.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,8 +73,8 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         names.add(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -138,15 +141,19 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create the composite holding the components, and
-        // the label if appropriate.
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 3, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
         ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = specifier
                 .isHorizontalExpander();
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create the spinner.
+        /*
+         * Create the spinner.
+         */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
         spinner.setTextLimit(Math.max(
@@ -157,18 +164,23 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         setSpinnerParameters(specifier.getCurrentUnit());
         spinner.setEnabled(specifier.isEnabled());
 
-        // Place the spinner in the panel's grid.
+        /*
+         * Place the spinner in the panel's grid.
+         */
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
         spinner.setLayoutData(gridData);
 
-        // If there is more than one possible unit, create the
-        // unit choosing combo box; otherwise, create a label
-        // indicating the unit.
+        /*
+         * If there is more than one possible unit, create the unit choosing
+         * combo box; otherwise, create a label indicating the unit.
+         */
         List<Unit> units = specifier.getUnits();
         if (units.size() > 1) {
 
-            // Create the combo box.
+            /*
+             * Create the combo box.
+             */
             unitLabel = null;
             combo = new Combo(panel, SWT.READ_ONLY);
             String[] unitIdentifiers = new String[units.size()];
@@ -183,36 +195,43 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
             combo.select(selectedIndex);
             combo.setEnabled(specifier.isEnabled());
 
-            // Place the combo box in the panel's grid.
+            /*
+             * Place the combo box in the panel's grid.
+             */
             gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             combo.setLayoutData(gridData);
         } else {
 
-            // Create the label.
+            /*
+             * Create the label.
+             */
             combo = null;
             unitLabel = new Label(panel, SWT.NONE);
             unitLabel.setText(" " + specifier.getCurrentUnit().getIdentifier());
             unitLabel.setEnabled(specifier.isEnabled());
 
-            // Place the combo box in the panel's grid.
+            /*
+             * Place the combo box in the panel's grid.
+             */
             gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             unitLabel.setLayoutData(gridData);
         }
 
-        // Remember the starting unit.
+        /*
+         * Remember the starting unit.
+         */
         this.unit = specifier.getCurrentUnit();
 
-        // If only ending state changes are to result in
-        // notifications, bind spinner focus loss to trigger
-        // a notification if the value has changed in such a
-        // way that the state change listener was not noti-
-        // fied. Do the same for key up and mouse up events,
-        // so that when the user presses and holds a direc-
-        // tional key (arrow up or down, etc.) to change the
-        // value, or presses and holds one of the spinner
-        // buttons with the mouse, the state change will
-        // result in a notification after the key or mouse
-        // is released.
+        /*
+         * If only ending state changes are to result in notifications, bind
+         * spinner focus loss to trigger a notification if the value has changed
+         * in such a way that the state change listener was not notified. Do the
+         * same for key up and mouse up events, so that when the user presses
+         * and holds a directional key (arrow up or down, etc.) to change the
+         * value, or presses and holds one of the spinner buttons with the
+         * mouse, the state change will result in a notification after the key
+         * or mouse is released.
+         */
         if (onlySendEndStateChanges) {
             spinner.addFocusListener(new FocusAdapter() {
                 @Override
@@ -236,8 +255,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
             });
         }
 
-        // Bind the spinner selection event to trigger a
-        // change in the state.
+        /*
+         * Bind the spinner selection event to trigger a change in the state.
+         */
         spinner.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -253,11 +273,12 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
             }
         });
 
-        // Bind the units combo box selection event to
-        // trigger a change in the unit, and to alter the
-        // spinner accordingly, if a combo box was supplied;
-        // if it was not, then there are no unit choices, so
-        // the units remain constant.
+        /*
+         * Bind the units combo box selection event to trigger a change in the
+         * unit, and to alter the spinner accordingly, if a combo box was
+         * supplied; if it was not, then there are no unit choices, so the units
+         * remain constant.
+         */
         if (combo != null) {
             combo.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -267,10 +288,17 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
             });
         }
 
-        // Render the components uneditable if necessary.
+        /*
+         * Render the components uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -296,7 +324,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else if (name
                 .equals(TimeDeltaSpecifier.MEGAWIDGET_CURRENT_UNIT_CHOICE)) {
             setCurrentUnit(value);
@@ -367,8 +397,10 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     public final void setCurrentUnit(Object value)
             throws MegawidgetPropertyException {
 
-        // Ensure a unit is specified, and that said unit is one of the valid
-        // choices for this megawidget.
+        /*
+         * Ensure a unit is specified, and that said unit is one of the valid
+         * choices for this megawidget.
+         */
         Unit newUnit = null;
         if (value instanceof String) {
             newUnit = Unit.get((String) value);
@@ -389,7 +421,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
                             + stringBuilder + "]");
         }
 
-        // Set the unit to the new unit.
+        /*
+         * Set the unit to the new unit.
+         */
         if (newUnit != unit) {
             combo.select(units.indexOf(newUnit));
             unitChanged(false);
@@ -399,19 +433,12 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     // Protected Methods
 
     @Override
-    protected void ensureValueRangeRepresentable(Long minimum, Long maximum)
-            throws MegawidgetPropertyException {
-
-        // No action; any long range is always representable.
-    }
-
-    @Override
-    protected final void synchronizeWidgetsToBounds() {
+    protected final void synchronizeComponentWidgetsToBounds() {
         setSpinnerParameters(unit);
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         spinner.setSelection(unit.convertMillisecondsToUnit(state));
     }
 
@@ -442,21 +469,22 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Ensure that the specified state is a valid long value.
-        TimeDeltaSpecifier specifier = getSpecifier();
-        long value = getStateLongValueFromObject(state, identifier,
-                getMinimumValue());
-        if ((value < getMinimumValue()) || (value > getMaximumValue())) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    value, "out of bounds (minimum = " + getMinimumValue()
-                            + ", maximum = " + getMaximumValue()
-                            + " (inclusive))");
+        /*
+         * Validate and record the new state.
+         */
+        try {
+            this.state = ((TimeDeltaSpecifier) getSpecifier()).getStateUnit()
+                    .convertUnitToMilliseconds(
+                            getStateValidator().convertToStateValue(state));
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
-        this.state = specifier.getStateUnit().convertUnitToMilliseconds(value);
         recordLastNotifiedState();
 
-        // Synchronize the widgets to the new state.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize the widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
@@ -465,7 +493,9 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         TimeDeltaSpecifier specifier = getSpecifier();
         return (state == null ? null : Integer.toString(specifier
                 .getStateUnit().convertMillisecondsToUnit(
-                        getStateLongValueFromObject(state, identifier, null))));
+                        ConversionUtilities.getStateLongValueFromObject(
+                                identifier, getSpecifier().getType(), state,
+                                null))));
     }
 
     // Private Methods
@@ -533,7 +563,7 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
     }
 
     /**
-     * Set the value bounds and the page increment for the pinner using the
+     * Set the value bounds and the page increment for the spinner using the
      * specified unit.
      * 
      * @param unit

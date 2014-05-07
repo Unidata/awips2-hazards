@@ -9,10 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.StateValidator;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Description: Base class for time megawidget specifiers, which provide
@@ -25,6 +24,9 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2013    2545    Chris.Golden      Initial creation
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,29 +40,14 @@ public abstract class TimeMegawidgetSpecifier extends
 
     /**
      * Current time provider megawidget creation time parameter name; if
-     * specified in the map passed to <code>createMegawidget()</code>, its value
-     * must be an object of type {@link ICurrentTimeProvider}, which will be
-     * used by the megawidget when it needs to know what the current time is. If
-     * not specified, the megawidget will use the current system time as the
-     * current time.
+     * specified in the map passed to
+     * {@link #createMegawidget(Object, Class, Map)}, its value must be an
+     * object of type {@link ICurrentTimeProvider}, which will be used by the
+     * megawidget when it needs to know what the current time is. If not
+     * specified, the megawidget will use the current system time as the current
+     * time.
      */
     public static final String CURRENT_TIME_PROVIDER = "currentTimeProvider";
-
-    /**
-     * Minimum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>createMegawidget()</code>, its value must be an
-     * object of type <code>Long</code> indicating the minimum time in
-     * milliseconds that may be specified using the created megawidget.
-     */
-    public static final String MINIMUM_TIME = "minimumTime";
-
-    /**
-     * Maximum time megawidget creation time parameter name; if specified in the
-     * map passed to <code>createMegawidget()</code>, its value must be an
-     * object of type <code>Long</code> indicating the maximum time in
-     * milliseconds that may be specified using the created megawidget.
-     */
-    public static final String MAXIMUM_TIME = "maximumTime";
 
     // Protected Static Constants
 
@@ -96,20 +83,26 @@ public abstract class TimeMegawidgetSpecifier extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
+     * @param stateValidator
+     *            State validator.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public TimeMegawidgetSpecifier(Map<String, Object> parameters)
+    public TimeMegawidgetSpecifier(Map<String, Object> parameters,
+            StateValidator stateValidator)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, stateValidator);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the rapid change notification flag, if
-        // provided, is appropriate.
-        sendingEveryChange = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
-                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+        /*
+         * Ensure that the rapid change notification flag, if provided, is
+         * appropriate.
+         */
+        sendingEveryChange = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                        MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
     }
 
     // Public Methods
@@ -137,14 +130,5 @@ public abstract class TimeMegawidgetSpecifier extends
     @Override
     public final boolean isSendingEveryChange() {
         return sendingEveryChange;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(Number.class);
-        return classes;
     }
 }

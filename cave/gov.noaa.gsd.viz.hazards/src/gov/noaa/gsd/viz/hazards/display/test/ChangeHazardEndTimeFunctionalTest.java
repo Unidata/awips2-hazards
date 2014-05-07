@@ -9,26 +9,24 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXT_VTEC_STRING;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Date;
 
 import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
@@ -44,13 +42,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  *                                     that all product generation is complete.
  * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
  *                                     without modifying any data or the state.
- * 
+ * Apr 29, 2014    2925   Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
 public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private enum Steps {
         START, ISSUE_FLASH_FLOOD_WATCH, PREVIEW_MODIFIED_EVENT
@@ -68,8 +69,41 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
+    }
+
+    private Date endTime = null;
+
     @Handler(priority = -1)
-    public void handleNewHazard(SessionEventAdded action) {
+    public void sessionEventModifiedOccurred(SessionEventModified action) {
+        if (step == Steps.START) {
+            ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
+            if (!"FF".equals(event.getPhenomenon())
+                    || !"A".equals(event.getSignificance())) {
+                return;
+            }
+            stepCompleted();
+            step = Steps.ISSUE_FLASH_FLOOD_WATCH;
+            autoTestUtilities.issueEvent();
+        } else if (step == Steps.ISSUE_FLASH_FLOOD_WATCH) {
+            if (autoTestUtilities.getSelectedEvent().getEndTime()
+                    .equals(endTime) == false) {
+                return;
+            }
+            stepCompleted();
+            step = Steps.PREVIEW_MODIFIED_EVENT;
+            autoTestUtilities.previewEvent();
+        }
+    }
+
+    @Handler(priority = -1)
+    public void sessionEventAddedOccurred(SessionEventAdded action) {
         try {
             switch (step) {
             case START:
@@ -87,30 +121,6 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
     }
 
     @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        try {
-            if (hazardDetailAction.getActionType().equals(
-                    HazardDetailAction.ActionType.ISSUE)
-                    || hazardDetailAction.getActionType().equals(
-                            HazardDetailAction.ActionType.PREVIEW)) {
-                return;
-            }
-            if (step == Steps.START) {
-                step = Steps.ISSUE_FLASH_FLOOD_WATCH;
-                autoTestUtilities.issueEvent();
-            } else if (step == Steps.ISSUE_FLASH_FLOOD_WATCH) {
-                step = Steps.PREVIEW_MODIFIED_EVENT;
-                autoTestUtilities.previewEvent();
-            }
-
-        } catch (Exception e) {
-            handleException(e);
-        }
-
-    }
-
-    @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
@@ -118,18 +128,9 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
 
             case ISSUE_FLASH_FLOOD_WATCH:
                 IHazardEvent event = autoTestUtilities.getSelectedEvent();
-                String eventID = event.getEventID();
-                Long endTimeInMillis = event.getEndTime().getTime();
-                endTimeInMillis += 30 * TimeUtil.MILLIS_PER_HOUR;
-                Map<String, Serializable> updatedMetadata = new HashMap<>();
-                updatedMetadata.put(HAZARD_EVENT_IDENTIFIER, eventID);
-                updatedMetadata.put(HAZARD_EVENT_START_TIME, event
-                        .getStartTime().getTime());
-                updatedMetadata.put(HAZARD_EVENT_END_TIME, endTimeInMillis);
-                HazardDetailAction action = new HazardDetailAction(
-                        HazardDetailAction.ActionType.UPDATE_TIME_RANGE,
-                        updatedMetadata);
-                eventBus.publishAsync(action);
+                endTime = new Date(event.getEndTime().getTime()
+                        + (30 * TimeUtil.MILLIS_PER_HOUR));
+                event.setEndTime(endTime);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:

@@ -13,10 +13,10 @@ import java.util.List;
 
 /**
  * Interface describing the methods to be implemented by a megawidget that is to
- * act as a parent of other megawidgets. Any subclasses of <code>Megawidget
- * </code> must implement this interface if they are to hold other megawidgets.
- * The parameter <code>M</code> provides the superclass of all the child
- * megawidgets that this parent may have.
+ * act as a parent of other megawidgets. Any subclasses of {@link Megawidget}
+ * must implement this interface if they are to hold other megawidgets. The
+ * parameter <code>M</code> provides the superclass of all the child megawidgets
+ * that this parent may have.
  * 
  * <pre>
  * 
@@ -24,6 +24,9 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 25, 2013    2168    Chris.Golden      Initial creation
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

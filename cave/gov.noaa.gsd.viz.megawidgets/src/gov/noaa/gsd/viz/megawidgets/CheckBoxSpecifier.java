@@ -9,10 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.BooleanValidator;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Checkbox megawidget specifier, providing the specification of a simple single
@@ -30,6 +29,9 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 13, 2014    2161    Chris.Golden      Initial creation.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,13 +68,17 @@ public class CheckBoxSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public CheckBoxSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new BooleanValidator());
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
     }
 
     // Public Methods
@@ -100,14 +106,5 @@ public class CheckBoxSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final boolean isHorizontalExpander() {
         return horizontalExpander;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(Boolean.class);
-        return classes;
     }
 }

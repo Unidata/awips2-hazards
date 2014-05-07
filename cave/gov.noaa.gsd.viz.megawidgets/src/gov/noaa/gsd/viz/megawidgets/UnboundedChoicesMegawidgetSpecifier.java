@@ -9,11 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.UnboundedChoiceValidator;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Base class for megawidget specifiers that include open sets of choices as
@@ -30,6 +28,9 @@ import com.google.common.collect.Sets;
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
  * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -52,29 +53,6 @@ public abstract class UnboundedChoicesMegawidgetSpecifier extends
      */
     public UnboundedChoicesMegawidgetSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
-    }
-
-    // Protected Methods
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        return Sets.newHashSet(List.class, String.class);
-    }
-
-    @Override
-    protected final IllegalChoicesProblem getIllegalChoicesProblemForIdentifier(
-            String parameterName, Map<?, ?> node, Exception exception, int index) {
-        return new IllegalChoicesProblem(parameterName, "[" + index + "]",
-                CHOICE_NAME, node.get(CHOICE_NAME), "must be string");
-    }
-
-    @Override
-    protected final String getIdentifierOfNode(Object node) {
-        if (node instanceof String) {
-            return (String) node;
-        }
-        return (String) ((Map<?, ?>) node).get(CHOICE_NAME);
+        super(parameters, new UnboundedChoiceValidator());
     }
 }

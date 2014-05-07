@@ -24,6 +24,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Initial creation
+ * Apr 09, 2014    2925  Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -110,7 +111,6 @@ public class ConsoleViewForTesting implements IConsoleView {
     @Override
     public void setHazardEvents(List hazardEvents, Settings currentSettings) {
         this.hazardEvents = hazardEvents;
-
     }
 
     @SuppressWarnings("unchecked")
@@ -128,8 +128,7 @@ public class ConsoleViewForTesting implements IConsoleView {
                 matchedEvent = event;
             }
         }
-        hazardEvents.remove(matchedEvent);
-        hazardEvents.add(updatedEvent);
+        hazardEvents.set(hazardEvents.indexOf(matchedEvent), updatedEvent);
     }
 
     @Override

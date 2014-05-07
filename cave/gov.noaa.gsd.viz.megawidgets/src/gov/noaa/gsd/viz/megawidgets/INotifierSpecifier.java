@@ -11,8 +11,8 @@ package gov.noaa.gsd.viz.megawidgets;
 
 /**
  * Interface describing the methods to be implemented by a megawidget specifier
- * that creates an <code>INotifier</code> megawidget. Any subclasses of
- * <code>MegawidgetSpecifier</code> must implement this interface if they are to
+ * that creates an {@link INotifier} megawidget. Any subclasses of
+ * {@link MegawidgetSpecifier} must implement this interface if they are to
  * create such megawidgets.
  * 
  * <pre>
@@ -23,6 +23,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Oct 22, 2013    2168    Chris.Golden      Changed to extend new
  *                                           ISpecifier interface.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,9 +41,8 @@ public interface INotifierSpecifier extends ISpecifier {
     /**
      * Megawidget callback parameter name; a megawidget may include an arbitrary
      * string value associated with this name as extra information to be passed
-     * back with a notification. If <code>MEGAWIDGET_NOTIFY</code> is false,
-     * then any value given for this parameter is ignored. If this parameter is
-     * not specified, the default value is <code>null</code>.
+     * back with a notification. If this parameter is not specified, the default
+     * value is <code>null</code>.
      */
     public static final String MEGAWIDGET_CALLBACK_DATA = "callback";
 

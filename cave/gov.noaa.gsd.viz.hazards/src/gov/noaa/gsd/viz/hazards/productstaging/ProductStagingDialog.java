@@ -65,6 +65,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Apr 11, 2014   2819     Chris G.    Fixed bugs with the Preview and Issue
  *                                     buttons in the HID remaining grayed out
  *                                     when they should be enabled.
+ * Apr 14, 2014   2925     Chris G.    Minor changes to support megawidget framework
+ *                                     changes.
  * </pre>
  * 
  * @author shouming.wei
@@ -166,7 +168,7 @@ class ProductStagingDialog extends BasicDialog {
          */
         public DialogMegawidgetManager(Composite parent, List<Dict> specifiers,
                 Dict state, Product stagingProduct) throws MegawidgetException {
-            super(parent, specifiers, state, 0L, 0L, 0L, 0L, null);
+            super(parent, specifiers, state, 0L, 0L, null);
             this.stagingProduct = stagingProduct;
         }
 
@@ -176,7 +178,9 @@ class ProductStagingDialog extends BasicDialog {
         protected final void commandInvoked(String identifier,
                 String extraCallback) {
 
-            // No action.
+            /*
+             * No action.
+             */
         }
 
         @Override
@@ -324,7 +328,9 @@ class ProductStagingDialog extends BasicDialog {
                 SWT.V_SCROLL);
         Composite tabFolderPage = new Composite(scrolledComposite, SWT.NONE);
 
-        // Create the layout for the main panel.
+        /*
+         * Create the layout for the main panel.
+         */
         GridLayout tabLayout = new GridLayout(1, true);
         tabLayout.marginRight = 5;
         tabLayout.marginLeft = 5;
@@ -335,7 +341,9 @@ class ProductStagingDialog extends BasicDialog {
 
         stagingMegawidgetManager = buildMegawidgets(tabFolderPage, product);
 
-        // Configure the scrolled composite.
+        /*
+         * Configure the scrolled composite.
+         */
         scrolledComposite.setContent(tabFolderPage);
         scrolledComposite.setExpandHorizontal(true);
         scrolledComposite.setShowFocusedControl(true);
@@ -357,13 +365,17 @@ class ProductStagingDialog extends BasicDialog {
      */
     private MegawidgetManager buildMegawidgets(Composite panel, Product product) {
 
-        // Get the dictionary holding the values for the megawidgets.
+        /*
+         * Get the dictionary holding the values for the megawidgets.
+         */
         Dict values = new Dict();
         values.put(HazardConstants.HAZARD_EVENT_IDS,
                 product.getSelectedEventIDs());
 
-        // Create the megawidget manager, which will in turn create the mega-
-        // widgets and bind them to the values dictionary, and return it.
+        /*
+         * Create the megawidget manager, which will in turn create the
+         * megawidgets and bind them to the values dictionary, and return it.
+         */
         List<Dict> specifiersList = product.fieldsAsDicts();
 
         try {

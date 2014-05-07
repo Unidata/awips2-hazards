@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.Lists;
 
 /**
  * Stateful megawidget created by a megawidget specifier that has a set of zero
@@ -33,6 +32,9 @@ import com.google.common.collect.Lists;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,7 +42,7 @@ import com.google.common.collect.Lists;
  * @see BoundedChoicesMegawidgetSpecifier
  */
 public abstract class MultipleBoundedChoicesMegawidget extends
-        BoundedChoicesMegawidget {
+        BoundedChoicesMegawidget<Collection<String>> {
 
     // Protected Variables
 
@@ -48,7 +50,7 @@ public abstract class MultipleBoundedChoicesMegawidget extends
      * List of strings making up the current state; the strings are the choices
      * currently selected.
      */
-    protected final List<String> state = Lists.newArrayList();
+    protected final List<String> state = new ArrayList<>();
 
     // Protected Constructors
 
@@ -61,45 +63,42 @@ public abstract class MultipleBoundedChoicesMegawidget extends
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
+    @SuppressWarnings("unchecked")
     protected MultipleBoundedChoicesMegawidget(
-            BoundedChoicesMegawidgetSpecifier specifier,
+            BoundedChoicesMegawidgetSpecifier<Collection<String>> specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        state.addAll((Collection<String>) specifier.getStartingState(specifier
+                .getIdentifier()));
     }
 
     // Protected Methods
 
     @Override
     protected final Object doGetState(String identifier) {
-        return Lists.newArrayList(state);
+        return new ArrayList<>(state);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Set the state to that supplied.
+        /*
+         * Convert the provided state to a valid value, and record it.
+         */
+        Collection<String> newState;
+        try {
+            newState = getStateValidator().convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
+        }
         this.state.clear();
-        if (state instanceof String) {
-            this.state.add((String) state);
-        } else if (state != null) {
-            try {
-                this.state.addAll((Collection<? extends String>) state);
-            } catch (Exception e) {
-                throw new MegawidgetStateException(identifier, getSpecifier()
-                        .getType(), state, "must be list of choices");
-            }
-        }
-        if (getChoiceIdentifiers().containsAll(this.state) == false) {
-            this.state.clear();
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be subset of ["
-                    + getChoicesAsString() + "]");
-        }
+        this.state.addAll(newState);
 
-        // Synchronize the widgets to the new state.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize the widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override

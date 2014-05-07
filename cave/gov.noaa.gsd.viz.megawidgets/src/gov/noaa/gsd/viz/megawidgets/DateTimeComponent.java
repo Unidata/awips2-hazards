@@ -55,6 +55,9 @@ import org.eclipse.swt.widgets.Spinner;
  *                                           time megawidgets that caused unexpected
  *                                           date-times to be selected when the user
  *                                           manipulated the drop-down calendar.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,17 +68,15 @@ public class DateTimeComponent {
     // Private Static Constants
 
     /**
-     * Formatter for date-time strings.
-     */
-    private static final SimpleDateFormat SHORT_DATE_FORMATTER = new SimpleDateFormat(
-            "HH:mm dd-MM-yy");
-
-    /**
      * Time zone.
      */
     private static final TimeZone TIME_ZONE = TimeZone.getTimeZone("GMT");
 
-    // Configure the date-time formatter.
+    /**
+     * Formatter for date-time strings.
+     */
+    private static final SimpleDateFormat SHORT_DATE_FORMATTER = new SimpleDateFormat(
+            "HH:mm dd-MM-yy");
     static {
         SHORT_DATE_FORMATTER.setTimeZone(TIME_ZONE);
     }
@@ -149,11 +150,12 @@ public class DateTimeComponent {
         @Override
         public void addKeyListener(KeyListener listener) {
 
-            // This listener is added to the component text field,
-            // and then the text field's other listeners are re-
-            // added, since the latter removes them and adds them
-            // again, allowing the listener specified here to fire
-            // before the built-in listeners do.
+            /*
+             * This listener is added to the component text field, and then the
+             * text field's other listeners are re-added, since the latter
+             * removes them and adds them again, allowing the listener specified
+             * here to fire before the built-in listeners do.
+             */
             text.getControl().addKeyListener(listener);
             addTextListener();
         }
@@ -237,11 +239,13 @@ public class DateTimeComponent {
          */
         private Control getSpinner() {
 
-            // This roundabout way of getting the spinner is required so as
-            // to allow access to what is a package-private object within
-            // CDateTime. The alternative would be to make our own copy of
-            // CDateTime and just make all the mods there, but that seemed
-            // messier.
+            /*
+             * This roundabout way of getting the spinner is required so as to
+             * allow access to what is a package-private object within
+             * CDateTime. The alternative would be to make our own copy of
+             * CDateTime and just make all the mods there, but that seemed
+             * messier.
+             */
             Control[] children = panel.getComposite().getChildren();
             for (Control child : children) {
                 if (child instanceof Spinner) {
@@ -375,18 +379,20 @@ public class DateTimeComponent {
         this.holder = holder;
         lastForwardedState = state = startingValue;
 
-        // Set up the calendar to be used for finding the
-        // closest previous midnight of any given epoch time.
+        /*
+         * Set up the calendar to be used for finding the closest previous
+         * midnight of any given epoch time.
+         */
         calendar.setTimeZone(TIME_ZONE);
 
-        // Create the composite holding the components, and
-        // the label if appropriate. Remove any horizontal
-        // spacing from the panel, as it would be too much
-        // space between the date and time widgets; instead,
-        // remember the spacing that was going to be used so
-        // as to use it to the left of the date widget to
-        // visually separate it from the label (if the label
-        // is used).
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate. Remove any horizontal spacing from the panel, as it
+         * would be too much space between the date and time widgets; instead,
+         * remember the spacing that was going to be used so as to use it to the
+         * left of the date widget to visually separate it from the label (if
+         * the label is used).
+         */
         Composite panel = UiBuilder.buildComposite(parent, 3, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
         GridData panelLayoutData = (GridData) panel.getLayoutData();
@@ -398,16 +404,18 @@ public class DateTimeComponent {
         label = (text == null ? null : UiBuilder.buildLabel(panel, text,
                 specifier));
 
-        // Set up the timestamp trackers and determine
-        // whether or not only ending state changes are
-        // to be sent along to listeners.
+        /*
+         * Set up the timestamp trackers and determine whether or not only
+         * ending state changes are to be sent along to listeners.
+         */
         synchronizeTimestampTrackersToState();
         this.onlySendEndStateChanges = onlySendEndStateChanges;
 
-        // Create the date selector, calculating the min-
-        // imum width required for it to ensure that it
-        // stays at least that wide regardless of what
-        // text is displayed by it.
+        /*
+         * Create the date selector, calculating the minimum width required for
+         * it to ensure that it stays at least that wide regardless of what text
+         * is displayed by it.
+         */
         date = new DateTime(panel, CDT.BORDER | CDT.DROP_DOWN | CDT.TAB_FIELDS
                 | CDT.COMPACT);
         date.setNullText(LONGEST_DATE_TEXT);
@@ -419,7 +427,9 @@ public class DateTimeComponent {
         date.setSelection(dateTimestamp);
         date.setEnabled(specifier.isEnabled());
 
-        // Place the date selector in the panel's grid.
+        /*
+         * Place the date selector in the panel's grid.
+         */
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
         gridData.minimumWidth = dateWidth;
@@ -429,10 +439,10 @@ public class DateTimeComponent {
         }
         date.setLayoutData(gridData);
 
-        // Create the time selector; as with the date
-        // selector, the minimum width is calculated
-        // and applied so that it stays at least that
-        // wide.
+        /*
+         * Create the time selector; as with the date selector, the minimum
+         * width is calculated and applied so that it stays at least that wide.
+         */
         time = new DateTime(panel, CDT.BORDER | CDT.SPINNER | CDT.TAB_FIELDS);
         time.setNullText(LONGEST_TIME_TEXT);
         time.setSelection(null);
@@ -443,22 +453,23 @@ public class DateTimeComponent {
         time.setSelection(timeTimestamp);
         time.setEnabled(specifier.isEnabled());
 
-        // Place the time selector in the panel's grid.
+        /*
+         * Place the time selector in the panel's grid.
+         */
         gridData = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gridData.minimumWidth = timeWidth;
         gridData.widthHint = timeWidth;
         time.setLayoutData(gridData);
 
-        // If only ending state changes are to result
-        // in notifications, bind the date-time
-        // increment and decrement key presses to indi-
-        // cate that a rapid state change is starting,
-        // and corresponding key releases to mean that
-        // the rapid state change has ended, and that
-        // any ending state change should result in a
-        // notification for the state change listener.
-        // Do the same for mouse presses and releases
-        // on the time widget's Up and Down buttons.
+        /*
+         * If only ending state changes are to result in notifications, bind the
+         * date-time increment and decrement key presses to indicate that a
+         * rapid state change is starting, and corresponding key releases to
+         * mean that the rapid state change has ended, and that any ending state
+         * change should result in a notification for the state change listener.
+         * Do the same for mouse presses and releases on the time widget's Up
+         * and Down buttons.
+         */
         if (onlySendEndStateChanges) {
             KeyListener keyListener = new KeyListener() {
                 @Override
@@ -492,12 +503,12 @@ public class DateTimeComponent {
             });
         }
 
-        // Bind changes to the widgets to trigger state
-        // changes and corresponding notifications, and
-        // if only ending state changes are to result in
-        // notifications of state changes, fire off such
-        // a notification when the default selection
-        // (Enter key) occurs.
+        /*
+         * Bind changes to the widgets to trigger state changes and
+         * corresponding notifications, and if only ending state changes are to
+         * result in notifications of state changes, fire off such a
+         * notification when the default selection (Enter key) occurs.
+         */
         SelectionListener selectionListener = new SelectionListener() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -620,14 +631,20 @@ public class DateTimeComponent {
      */
     public void setState(long value) {
 
-        // Record the state.
+        /*
+         * Record the state.
+         */
         state = value;
         recordLastNotifiedState();
 
-        // Synchronize the timestamp trackers to the new state.
+        /*
+         * Synchronize the timestamp trackers to the new state.
+         */
         synchronizeTimestampTrackersToState();
 
-        // Set the date and time widgets to match the new state.
+        /*
+         * Set the date and time widgets to match the new state.
+         */
         date.setSelection(dateTimestamp);
         time.setSelection(timeTimestamp);
     }
@@ -651,8 +668,10 @@ public class DateTimeComponent {
      */
     private void synchronizeStateToWidgets(DateTime changed) {
 
-        // If the selection is now null, undo the change, as this
-        // is not a valid selection.
+        /*
+         * If the selection is now null, undo the change, as this is not a valid
+         * selection.
+         */
         if (changed.getSelection() == null) {
             if (changed == date) {
                 date.setSelection(dateTimestamp);
@@ -662,15 +681,17 @@ public class DateTimeComponent {
             return;
         }
 
-        // Remember the previous state in case the new state is
-        // rejected.
+        /*
+         * Remember the previous state in case the new state is rejected.
+         */
         long oldState = state;
 
-        // If the new value is a midnight value, then add the
-        // delta between the previous date and the value of the
-        // time widget to get the new state. Otherwise, use the
-        // new value for the new state, and recalculate the delta
-        // between it and the closest previous midnight.
+        /*
+         * If the new value is a midnight value, then add the delta between the
+         * previous date and the value of the time widget to get the new state.
+         * Otherwise, use the new value for the new state, and recalculate the
+         * delta between it and the closest previous midnight.
+         */
         boolean synchTimeWidget = false, synchDateWidget = false;
         long rawState = (changed == date ? date : time).getSelection()
                 .getTime();
@@ -687,9 +708,10 @@ public class DateTimeComponent {
             dateTimestamp.setTime(state - stateDeltaSinceMidnight);
         }
 
-        // If the holder does not like the new state, restore
-        // the old state; if it modified the new state, update
-        // the components to reflect this.
+        /*
+         * If the holder does not like the new state, restore the old state; if
+         * it modified the new state, update the components to reflect this.
+         */
         rawState = state;
         state = holder.renderValueChangeAcceptable(identifier, rawState);
         if (state == -1L) {
@@ -702,8 +724,10 @@ public class DateTimeComponent {
             synchDateWidget = synchTimeWidget = true;
         }
 
-        // Set the date widget and/or time widget to match the
-        // now-current state as necessary.
+        /*
+         * Set the date widget and/or time widget to match the now-current state
+         * as necessary.
+         */
         if (synchDateWidget) {
             date.setSelection(dateTimestamp);
         }

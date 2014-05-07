@@ -47,10 +47,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 10, 2014            mnash     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 10, 2014            mnash        Initial creation
+ * May 05, 2014    2925    Chris.Golden Removed requirement that an
+ *                                      issued event be unmodified to
+ *                                      warrant inclusion of the
+ *                                      end-selected-hazards menu item.
  * </pre>
  * 
  * @author mnash
@@ -59,9 +62,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 
 public class ContextMenuHelper {
 
-    private ISessionManager<ObservedHazardEvent> manager;
+    private final ISessionManager<ObservedHazardEvent> manager;
 
-    private HazardServicesPresenter<?> presenter;
+    private final HazardServicesPresenter<?> presenter;
 
     /**
      * 
@@ -97,13 +100,8 @@ public class ContextMenuHelper {
                 items.add(new Separator());
                 items.add(newAction("Delete Selected"));
             }
-            for (ObservedHazardEvent event : manager.getEventManager()
-                    .getSelectedEvents()) {
-                if (event.isModified() == false
-                        && states.contains(HazardState.ISSUED)) {
-                    items.add(newAction(HazardConstants.END_SELECTED_HAZARDS));
-                    break;
-                }
+            if (states.contains(HazardState.ISSUED)) {
+                items.add(newAction(HazardConstants.END_SELECTED_HAZARDS));
             }
         }
         if (includeGlobal) {

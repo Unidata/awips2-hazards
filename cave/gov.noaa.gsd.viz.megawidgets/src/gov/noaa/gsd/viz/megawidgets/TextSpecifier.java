@@ -9,10 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
 
-import com.google.common.collect.Sets;
+import java.util.Map;
 
 /**
  * Text megawidget specifier, providing the specification of a text editing
@@ -37,6 +36,9 @@ import com.google.common.collect.Sets;
  *                                           caused by ongoing text alterations, but
  *                                           instead to save them for when the mega-
  *                                           widget loses focus.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,8 +66,8 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * the maximum number of characters that should be visible at once, which is
      * to say that the megawidget text field will sized to show this many
      * average-sized characters. If not specified, the default is the same as
-     * the value of <code>MEGAWIDGET_MAX_CHARS</code> unless the latter is
-     * <code>0</code>, in which case this defaults to <code>20</code>.
+     * the value of {@link #MEGAWIDGET_MAX_CHARS} unless the latter is <code>
+     * 0</code>, in which case this defaults to <code>20</code>.
      */
     public static final String MEGAWIDGET_VISIBLE_CHARS = "visibleChars";
 
@@ -87,11 +89,6 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * rapid changes are to result in notifications to the listener.
      */
     private final boolean sendingEveryChange;
-
-    /**
-     * Maximum character length.
-     */
-    private final int maxLength;
 
     /**
      * Visible character length.
@@ -118,52 +115,57 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public TextSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new TextValidator(parameters, MEGAWIDGET_MAX_CHARS));
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the rapid change notification flag, if
-        // provided, is appropriate.
-        sendingEveryChange = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
-                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+        /*
+         * Ensure that the rapid change notification flag, if provided, is
+         * appropriate.
+         */
+        sendingEveryChange = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                        MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
-        // Ensure that the maximum length, if present, is
-        // acceptable.
-        maxLength = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_MAX_CHARS), MEGAWIDGET_MAX_CHARS, 0);
-        if (maxLength < 0) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_MAX_CHARS, maxLength,
-                    "must be non-negative integer");
-        }
-
-        // Ensure that the visible lines count, if present,
-        // is acceptable, and if not present is assigned a
-        // default value.
-        numVisibleLines = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_VISIBLE_LINES),
-                MEGAWIDGET_VISIBLE_LINES, 1);
+        /*
+         * Ensure that the visible lines count, if present, is acceptable, and
+         * if not present is assigned a default value.
+         */
+        numVisibleLines = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_VISIBLE_LINES),
+                        MEGAWIDGET_VISIBLE_LINES, 1);
         if (numVisibleLines < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
                     "must be positive integer");
         }
 
-        // Ensure that the visible length, if present, is
-        // acceptable.
-        visibleLength = getSpecifierIntegerValueFromObject(
+        /*
+         * Ensure that the visible length, if present, is acceptable.
+         */
+        TextValidator validator = getStateValidator();
+        visibleLength = ConversionUtilities.getSpecifierIntegerValueFromObject(
+                getIdentifier(),
+                getType(),
                 parameters.get(MEGAWIDGET_VISIBLE_CHARS),
-                MEGAWIDGET_VISIBLE_CHARS, (maxLength == 0 ? 20 : maxLength));
+                MEGAWIDGET_VISIBLE_CHARS,
+                (validator.getMaxCharacters() == 0 ? 20 : validator
+                        .getMaxCharacters()));
         if (visibleLength < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_VISIBLE_CHARS, maxLength,
-                    "must be positive integer");
+                    getType(), MEGAWIDGET_VISIBLE_CHARS,
+                    validator.getMaxCharacters(), "must be positive integer");
         }
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
     }
 
     // Public Methods
@@ -199,7 +201,7 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * @return Maximum text length.
      */
     public final int getMaxTextLength() {
-        return maxLength;
+        return ((TextValidator) getStateValidator()).getMaxCharacters();
     }
 
     /**
@@ -219,14 +221,5 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     @Override
     public final int getNumVisibleLines() {
         return numVisibleLines;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(String.class);
-        return classes;
     }
 }

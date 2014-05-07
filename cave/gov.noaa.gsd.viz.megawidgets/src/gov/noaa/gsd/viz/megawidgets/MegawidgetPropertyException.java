@@ -21,6 +21,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Mar 24, 2013   1277     Chris.Golden      Initial creation
  * Feb 12, 2014   2161     Chris.Golden      Added nested cause's description to
  *                                           toString().
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -94,6 +97,21 @@ public class MegawidgetPropertyException extends MegawidgetException {
     public MegawidgetPropertyException(String identifier, String name,
             String type, Object badValue, String message, Throwable cause) {
         super(identifier, type, badValue, message, cause);
+        this.name = name;
+    }
+
+    /**
+     * Construct a standard instance based upon the specified exception.
+     * 
+     * @param name
+     *            Property name.
+     * @param exception
+     *            Exception upon which to base this instance.
+     */
+    public MegawidgetPropertyException(String name,
+            MegawidgetException exception) {
+        super(exception.getIdentifier(), exception.getType(), exception
+                .getBadValue(), exception.getMessage(), exception.getCause());
         this.name = name;
     }
 

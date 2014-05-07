@@ -55,6 +55,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           defensive copying of the state when
  *                                           notifying a state change listener of
  *                                           a change.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -121,7 +124,9 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create and lay out the label and checkbox widgets.
+        /*
+         * Create and lay out the label and checkbox widgets.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
                 UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_CONSTRAINED,
                 specifier);
@@ -146,10 +151,17 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
         this.checkBoxes = UiBuilder.buildChoiceButtons(panel, specifier,
                 SWT.CHECK, childManager, listener);
 
-        // Make the widgets read-only if the megawidget is not editable.
+        /*
+         * Make the widgets read-only if the megawidget is not editable.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -172,7 +184,9 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -197,7 +211,9 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -208,7 +224,9 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -231,13 +249,19 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
         throw new UnsupportedOperationException(
                 "cannot change choices for checkboxes megawidget");
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void synchronizeComponentWidgetsToChoices() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for checkboxes megawidget");
+    }
+
+    @Override
+    protected final void doSynchronizeComponentWidgetsToState() {
         for (Button checkBox : checkBoxes) {
             checkBox.setSelection(state.contains(checkBox.getData()));
         }

@@ -1,6 +1,5 @@
-
-
 import CommonMetaData
+from HazardConstants import *
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -16,7 +15,10 @@ class MetaData(CommonMetaData.MetaData):
                     self.getBasis(),
                     self.getCTAs(),                    
                     ] + self.setCAP_Fields()
-        return metaData
+        return {
+                METADATA_KEY: metaData,
+                SIDE_EFFECTS_SCRIPT_KEY: self.getSideEffectsFromLocalizedFile("RiseCrestFallUntilFurtherNoticeSideEffects.py")
+                }    
                 
     # BASIS
     def getBasis(self):

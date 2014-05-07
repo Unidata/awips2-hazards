@@ -72,6 +72,9 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           a change. Also fixed Javadoc and
  *                                           took advantage of new JDK 1.7
  *                                           features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -250,18 +253,23 @@ public class BoundedListBuilderMegawidget extends
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create the panel that will contain the components,
-        // and customize its horizontal spacing to be more
-        // appropriate for this megawidget.
+        /*
+         * Create the panel that will contain the components, and customize its
+         * horizontal spacing to be more appropriate for this megawidget.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 4, SWT.NONE,
                 UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
                 specifier);
         ((GridLayout) panel.getLayout()).horizontalSpacing = 13;
 
-        // Create the button images supplier.
+        /*
+         * Create the button images supplier.
+         */
         imagesSupplier = new ButtonImages(panel);
 
-        // Determine which labels are needed.
+        /*
+         * Determine which labels are needed.
+         */
         String availableText = ((specifier.getLabel() != null)
                 && (specifier.getLabel().length() > 0) ? specifier.getLabel()
                 : null);
@@ -269,32 +277,34 @@ public class BoundedListBuilderMegawidget extends
                 && (specifier.getSelectedLabel().length() > 0) ? specifier
                 .getSelectedLabel() : null);
 
-        // Add a label for the available items list if one
-        // is required.
+        /*
+         * Add a label for the available items list if one is required.
+         */
         availableLabel = (availableText != null ? UiBuilder.buildLabel(panel,
                 availableText, specifier) : null);
 
-        // If at least one label is being used, add a
-        // spacer to fill the space between the labels,
-        // or to the right of the available items label
-        // if only that is showing, or to the left of
-        // the selected items label if only that is
-        // showing.
+        /*
+         * If at least one label is being used, add a spacer to fill the space
+         * between the labels, or to the right of the available items label if
+         * only that is showing, or to the left of the selected items label if
+         * only that is showing.
+         */
         if ((availableText != null) || (selectedText != null)) {
 
-            // Create a spacer widget.
+            /*
+             * Create a spacer widget.
+             */
             Composite spacer = new Composite(panel, SWT.NONE);
 
-            // Place the spacer in the grid; if both the
-            // available and selected lists are labeled,
-            // the spacer only needs to be between them;
-            // otherwise, if only the available list is
-            // labeled, then the spacer needs to span
-            // three columns (all columns to the right
-            // of the available list); otherwise, only
-            // the seledcted list is labeled, meaning
-            // the two columns to the left of that label
-            // must be filled by the spacer.
+            /*
+             * Place the spacer in the grid; if both the available and selected
+             * lists are labeled, the spacer only needs to be between them;
+             * otherwise, if only the available list is labeled, then the spacer
+             * needs to span three columns (all columns to the right of the
+             * available list); otherwise, only the seledcted list is labeled,
+             * meaning the two columns to the left of that label must be filled
+             * by the spacer.
+             */
             GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             gridData.horizontalSpan = ((availableText != null)
                     && (selectedText != null) ? 1 : (availableText != null ? 3
@@ -303,18 +313,26 @@ public class BoundedListBuilderMegawidget extends
             spacer.setLayoutData(gridData);
         }
 
-        // Add a label for the selected items list and a
-        // spacer to its right if the label is appropriate.
+        /*
+         * Add a label for the selected items list and a spacer to its right if
+         * the label is appropriate.
+         */
         if (selectedText != null) {
 
-            // Create the label.
+            /*
+             * Create the label.
+             */
             selectedLabel = UiBuilder
                     .buildLabel(panel, selectedText, specifier);
 
-            // Create a spacer widget.
+            /*
+             * Create a spacer widget.
+             */
             Composite spacer = new Composite(panel, SWT.NONE);
 
-            // Place the spacer in the grid.
+            /*
+             * Place the spacer in the grid.
+             */
             GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
             gridData.widthHint = gridData.heightHint = 1;
             spacer.setLayoutData(gridData);
@@ -322,10 +340,14 @@ public class BoundedListBuilderMegawidget extends
             selectedLabel = null;
         }
 
-        // Associate choice identifiers with their names.
+        /*
+         * Associate choice identifiers with their names.
+         */
         associateChoiceIdentifiersWithNames();
 
-        // Create the table selection listener.
+        /*
+         * Create the table selection listener.
+         */
         SelectionListener listListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -335,26 +357,33 @@ public class BoundedListBuilderMegawidget extends
             }
         };
 
-        // Create the available items table.
+        /*
+         * Create the available items table.
+         */
         availableTable = buildTable(panel, listListener, specifier);
         TableColumn column = availableTable.getColumn(0);
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             TableItem item = new TableItem(availableTable, SWT.NONE);
             item.setText(0, specifier.getNameOfNode(choice));
             item.setData(specifier.getIdentifierOfNode(choice));
         }
         column.pack();
 
-        // Create a panel to hold the buttons between the
-        // two lists.
+        /*
+         * Create a panel to hold the buttons between the two lists.
+         */
         Composite middlePanel = buildButtonPanel(panel);
 
-        // Create the button listener.
+        /*
+         * Create the button listener.
+         */
         SelectionListener buttonListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                // Perform the appropriate action.
+                /*
+                 * Perform the appropriate action.
+                 */
                 if (e.widget == addAll) {
                     addAll();
                 } else if (e.widget == addSelected) {
@@ -371,16 +400,21 @@ public class BoundedListBuilderMegawidget extends
                     return;
                 }
 
-                // Enable and disable buttons as appro-
-                // priate.
+                /*
+                 * Enable and disable buttons as appropriate.
+                 */
                 enableOrDisableButtons();
 
-                // Change the state accordingly.
+                /*
+                 * Change the state accordingly.
+                 */
                 megawidgetWidgetsChanged();
             }
         };
 
-        // Create the add and remove buttons.
+        /*
+         * Create the add and remove buttons.
+         */
         addAll = buildButton(middlePanel, ButtonImages.ButtonImage.AddAll,
                 buttonListener);
         addSelected = buildButton(middlePanel, ButtonImages.ButtonImage.Add,
@@ -390,35 +424,43 @@ public class BoundedListBuilderMegawidget extends
         removeAll = buildButton(middlePanel,
                 ButtonImages.ButtonImage.RemoveAll, buttonListener);
 
-        // Create the selected items list. As with the
-        // available items list, a table is used instead
-        // of a list due to the additional functionality
-        // provided in SWT by tables over lists.
+        /*
+         * Create the selected items list. As with the available items list, a
+         * table is used instead of a list due to the additional functionality
+         * provided in SWT by tables over lists.
+         */
         selectedTable = buildTable(panel, listListener, specifier);
 
-        // Create a panel to hold the buttons to the right
-        // of the selected list.
+        /*
+         * Create a panel to hold the buttons to the right of the selected list.
+         */
         Composite rightPanel = buildButtonPanel(panel);
 
-        // Create the move up and down buttons.
+        /*
+         * Create the move up and down buttons.
+         */
         moveUp = buildButton(rightPanel, ButtonImages.ButtonImage.Up,
                 buttonListener);
         moveDown = buildButton(rightPanel, ButtonImages.ButtonImage.Down,
                 buttonListener);
 
-        // Set the state of the buttons appropriately.
+        /*
+         * Set the state of the buttons appropriately.
+         */
         enableOrDisableButtons();
 
-        // Create a drag listener that will listen for
-        // drag events occurring in either list, and
-        // respond to them appropriately.
+        /*
+         * Create a drag listener that will listen for drag events occurring in
+         * either list, and respond to them appropriately.
+         */
         DragSourceListener dragListener = new DragSourceListener() {
             @Override
             public void dragStart(DragSourceEvent event) {
 
-                // Do not initiate a drag if nothing
-                // is selected. Otherwise, remember
-                // which list is the source.
+                /*
+                 * Do not initiate a drag if nothing is selected. Otherwise,
+                 * remember which list is the source.
+                 */
                 Table sourceList = (event.widget == selectedListDragSource ? selectedTable
                         : availableTable);
                 if (sourceList.getSelectionCount() == 0) {
@@ -431,23 +473,21 @@ public class BoundedListBuilderMegawidget extends
             @Override
             public void dragSetData(DragSourceEvent event) {
 
-                // Only set the data if the data type
-                // asked for is text.
+                /*
+                 * Only set the data if the data type asked for is text.
+                 */
                 if ((dragSourceList != null)
                         && TextTransfer.getInstance().isSupportedType(
                                 event.dataType)) {
 
-                    // Supply an small string if the
-                    // drop target is one of the lists
-                    // within this megawidget, as they
-                    // handle drops themselves. Only
-                    // supply a text list of all se-
-                    // lected items if the drop target
-                    // is elsewhere. The small (non-
-                    // zero-length) string is required
-                    // in the former case because an
-                    // empty string causes an excep-
-                    // tion to be thrown.
+                    /*
+                     * Supply an small string if the drop target is one of the
+                     * lists within this megawidget, as they handle drops
+                     * themselves. Only supply a text list of all selected items
+                     * if the drop target is elsewhere. The small
+                     * (non-zero-length) string is required in the former case
+                     * because an empty string causes an exception to be thrown.
+                     */
                     if (dropTargetList == null) {
                         StringBuilder buffer = new StringBuilder();
                         for (String choice : getItemsFromList(dragSourceList,
@@ -467,40 +507,43 @@ public class BoundedListBuilderMegawidget extends
             @Override
             public void dragFinished(DragSourceEvent event) {
 
-                // Clear the source list reference.
+                /*
+                 * Clear the source list reference.
+                 */
                 dragSourceList = null;
             }
         };
 
-        // Create a drop listener that will listen for
-        // drop events occurring in either list, and
-        // respond accordingly.
+        /*
+         * Create a drop listener that will listen for drop events occurring in
+         * either list, and respond accordingly.
+         */
         DropTargetListener dropListener = new DropTargetListener() {
             @Override
             public void dragEnter(DropTargetEvent event) {
 
-                // If the source of the drag is the
-                // other list, or the source and the
-                // target list are both the selected
-                // list, then accept this as a poten-
-                // tial drop; otherwise, reject it.
+                /*
+                 * If the source of the drag is the other list, or the source
+                 * and the target list are both the selected list, then accept
+                 * this as a potential drop; otherwise, reject it.
+                 */
                 event.detail = DND.DROP_NONE;
                 Table dropList = (event.widget == selectedListDropTarget ? selectedTable
                         : availableTable);
                 if ((dragSourceList != null)
                         && ((dropList == selectedTable) || (dragSourceList == selectedTable))) {
 
-                    // Find the right data type for
-                    // transfer before proceeding.
+                    /*
+                     * Find the right data type for transfer before proceeding.
+                     */
                     for (TransferData dataType : event.dataTypes) {
                         if (DRAG_AND_DROP_TRANSFER_TYPES[0]
                                 .isSupportedType(dataType)) {
 
-                            // Note what sort of drop
-                            // is permitted, the data
-                            // type allowed, and
-                            // which list is the drop
-                            // target.
+                            /*
+                             * Note what sort of drop is permitted, the data
+                             * type allowed, and which list is the drop target.
+                             */
                             event.detail = DND.DROP_MOVE;
                             event.currentDataType = dataType;
                             dropTargetList = dropList;
@@ -513,25 +556,29 @@ public class BoundedListBuilderMegawidget extends
             @Override
             public void dragLeave(DropTargetEvent event) {
 
-                // Clear the drop target list reference.
+                /*
+                 * Clear the drop target list reference.
+                 */
                 dropTargetList = null;
             }
 
             @Override
             public void dragOperationChanged(DropTargetEvent event) {
 
-                // No action.
+                /*
+                 * No action.
+                 */
             }
 
             @Override
             public void dragOver(DropTargetEvent event) {
 
-                // If the drop target is the selected
-                // list, allow it to scroll if the
-                // drag is close to its top or bottom,
-                // and indicate via visuals that the
-                // potential drop point would be after
-                // the current item.
+                /*
+                 * If the drop target is the selected list, allow it to scroll
+                 * if the drag is close to its top or bottom, and indicate via
+                 * visuals that the potential drop point would be after the
+                 * current item.
+                 */
                 if (dropTargetList == selectedTable) {
                     event.feedback = DND.FEEDBACK_INSERT_AFTER
                             + DND.FEEDBACK_SCROLL;
@@ -541,31 +588,31 @@ public class BoundedListBuilderMegawidget extends
             @Override
             public void drop(DropTargetEvent event) {
 
-                // Make sure there is still a drop
-                // target list; the drop could have
-                // been cancelled due to an asyn-
-                // chronous setting of state, etc.
+                /*
+                 * Make sure there is still a drop target list; the drop could
+                 * have been cancelled due to an asynchronous setting of state,
+                 * etc.
+                 */
                 if (dropTargetList == null) {
                     return;
                 }
 
-                // If target list is the selected
-                // list, add items to it; otherwise,
-                // remove items from the selected
-                // list, since the source is always
-                // the selected list if the target is
-                // the available list.
+                /*
+                 * If target list is the selected list, add items to it;
+                 * otherwise, remove items from the selected list, since the
+                 * source is always the selected list if the target is the
+                 * available list.
+                 */
                 if (dropTargetList == selectedTable) {
                     int index = (event.item == null ? selectedTable
                             .getItemCount() - 1 : selectedTable
                             .indexOf((TableItem) event.item));
 
-                    // If the source is also the se-
-                    // lected list, move the list's
-                    // selected items from the old
-                    // position to the new one;
-                    // otherwise, add the items to
-                    // the selected list.
+                    /*
+                     * If the source is also the selected list, move the list's
+                     * selected items from the old position to the new one;
+                     * otherwise, add the items to the selected list.
+                     */
                     if (dragSourceList == selectedTable) {
                         moveToIndex(index);
                     } else {
@@ -575,30 +622,37 @@ public class BoundedListBuilderMegawidget extends
                     removeSelected();
                 }
 
-                // Clear the drop target list reference.
+                /*
+                 * Clear the drop target list reference.
+                 */
                 dropTargetList = null;
 
-                // Enable and disable buttons as appro-
-                // priate.
+                /*
+                 * Enable and disable buttons as appropriate.
+                 */
                 enableOrDisableButtons();
 
-                // Change the state accordingly.
+                /*
+                 * Change the state accordingly.
+                 */
                 megawidgetWidgetsChanged();
             }
 
             @Override
             public void dropAccept(DropTargetEvent event) {
 
-                // Remember which list is being dropped
-                // over.
+                /*
+                 * Remember which list is being droppedover.
+                 */
                 dropTargetList = (event.widget == selectedListDropTarget ? selectedTable
                         : availableTable);
             }
         };
 
-        // Create a drag source for each of the lists,
-        // so that they may act as sources for drag and
-        // drop actions.
+        /*
+         * Create a drag source for each of the lists, so that they may act as
+         * sources for drag and drop actions.
+         */
         availableListDragSource = new DragSource(availableTable, DND.DROP_MOVE
                 + DND.DROP_COPY);
         availableListDragSource.setTransfer(DRAG_AND_DROP_TRANSFER_TYPES);
@@ -611,9 +665,10 @@ public class BoundedListBuilderMegawidget extends
         selectedTable.setDragDetect(true);
         selectedListDragSource.addDragListener(dragListener);
 
-        // Create a drop target for each of the lists,
-        // so that they may act as targets for drag and
-        // drop actions.
+        /*
+         * Create a drop target for each of the lists, so that they may act as
+         * targets for drag and drop actions.
+         */
         availableListDropTarget = new DropTarget(availableTable, DND.DROP_MOVE);
         availableListDropTarget.setTransfer(DRAG_AND_DROP_TRANSFER_TYPES);
         availableListDropTarget.addDropListener(dropListener);
@@ -622,10 +677,17 @@ public class BoundedListBuilderMegawidget extends
         selectedListDropTarget.setTransfer(DRAG_AND_DROP_TRANSFER_TYPES);
         selectedListDropTarget.addDropListener(dropListener);
 
-        // Render the widgets uneditable if necessary.
+        /*
+         * Render the widgets uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -648,7 +710,9 @@ public class BoundedListBuilderMegawidget extends
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -673,7 +737,9 @@ public class BoundedListBuilderMegawidget extends
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -684,16 +750,9 @@ public class BoundedListBuilderMegawidget extends
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
-    }
-
-    /**
-     * Get the available choices hierarchy.
-     * 
-     * @return Available choices hierarchy.
-     */
-    public final List<?> getChoices() {
-        return doGetChoices();
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -720,14 +779,18 @@ public class BoundedListBuilderMegawidget extends
     @Override
     protected final void prepareForChoicesChange() {
 
-        // Remember the scrollbar positions so that they can be approximately
-        // restored.
+        /*
+         * Remember the scrollbar positions so that they can be approximately
+         * restored.
+         */
         availableScrollPosition = availableTable.getVerticalBar()
                 .getSelection();
         selectedScrollPosition = selectedTable.getVerticalBar().getSelection();
 
-        // Remember the identifiers of the currently selected choices for
-        // each table, if any.
+        /*
+         * Remember the identifiers of the currently selected choices for each
+         * table, if any.
+         */
         getItemsFromList(availableTable, true, true,
                 selectedAvailableChoiceIdentifiers);
         getItemsFromList(selectedTable, true, true,
@@ -735,21 +798,35 @@ public class BoundedListBuilderMegawidget extends
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
+        selectedAvailableChoiceIdentifiers.clear();
+        selectedSelectedChoiceIdentifiers.clear();
+    }
 
-        // If a drag is mid-process, cancel it.
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * If a drag is mid-process, cancel it.
+         */
         dragSourceList = dropTargetList = null;
 
-        // Create the mapping of choice identifiers to names.
+        /*
+         * Create the mapping of choice identifiers to names.
+         */
         associateChoiceIdentifiersWithNames();
 
-        // Synchronize the widgets with the current state, as this will
-        // populate the two tables appropriately.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize the widgets with the current state, as this will populate
+         * the two tables appropriately.
+         */
+        synchronizeComponentWidgetsToState();
 
-        // For each of the tables, see what items were selected previously
-        // that are present in the new item list for that table, and select
-        // those items.
+        /*
+         * For each of the tables, see what items were selected previously that
+         * are present in the new item list for that table, and select those
+         * items.
+         */
         Table[] tables = { availableTable, selectedTable };
         for (Table table : tables) {
             List<String> selectedChoiceIdentifiers = (table == availableTable ? selectedAvailableChoiceIdentifiers
@@ -766,23 +843,31 @@ public class BoundedListBuilderMegawidget extends
             }
         }
 
-        // Clear the selected choices lists, as they are no longer needed.
+        /*
+         * Clear the selected choices lists, as they are no longer needed.
+         */
         selectedAvailableChoiceIdentifiers.clear();
         selectedSelectedChoiceIdentifiers.clear();
 
-        // Set the scrollbar positions to be similar to what it was before.
+        /*
+         * Set the scrollbar positions to be similar to what it was before.
+         */
         availableTable.getVerticalBar().setSelection(availableScrollPosition);
         selectedTable.getVerticalBar().setSelection(selectedScrollPosition);
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
 
-        // If a drag is mid-process, cancel it.
+        /*
+         * If a drag is mid-process, cancel it.
+         */
         dragSourceList = dropTargetList = null;
 
-        // Get a list of the choice identifiers, and set the
-        // selected list's contents to match it.
+        /*
+         * Get a list of the choice identifiers, and set the selected list's
+         * contents to match it.
+         */
         selectedTable.removeAll();
         for (String choice : state) {
             TableItem item = new TableItem(selectedTable, SWT.NONE);
@@ -791,11 +876,13 @@ public class BoundedListBuilderMegawidget extends
         }
         selectedTable.getColumn(0).pack();
 
-        // Determine which choices are left over, and
-        // set the available list's contents to match.
+        /*
+         * Determine which choices are left over, and set the available list's
+         * contents to match.
+         */
         availableTable.removeAll();
         BoundedListBuilderSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             String identifier = specifier.getIdentifierOfNode(choice);
             if (state.contains(identifier) == false) {
                 TableItem item = new TableItem(availableTable, SWT.NONE);
@@ -805,7 +892,9 @@ public class BoundedListBuilderMegawidget extends
         }
         availableTable.getColumn(0).pack();
 
-        // Enable or disable buttons as appropriate.
+        /*
+         * Enable or disable buttons as appropriate.
+         */
         enableOrDisableButtons();
     }
 
@@ -855,9 +944,10 @@ public class BoundedListBuilderMegawidget extends
     private Table buildTable(Composite parent, SelectionListener listener,
             BoundedListBuilderSpecifier specifier) {
 
-        // Create the list. A table is used because tables
-        // offer functionality like being able to determine
-        // what row lies under a given point.
+        /*
+         * Create the list. A table is used because tables offer functionality
+         * like being able to determine what row lies under a given point.
+         */
         Table table = new Table(parent, SWT.BORDER + SWT.MULTI
                 + SWT.FULL_SELECTION);
         table.setHeaderVisible(false);
@@ -868,19 +958,20 @@ public class BoundedListBuilderMegawidget extends
         GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, true);
         table.setLayoutData(gridData);
 
-        // Determine the height of the list. This must
-        // be done after the above to ensure it will have
-        // the right height. Unfortunately using either
-        // computeSize() or computeTrim() to try to get
-        // the extra vertical space required for the
-        // borders, etc. seems to return a bizarrely high
-        // value (20 even without a header showing), so
-        // an arbitrary number of pixels is added in this
-        // case as a cheesy workaround.
+        /*
+         * Determine the height of the list. This must be done after the above
+         * to ensure it will have the right height. Unfortunately using either
+         * computeSize() or computeTrim() to try to get the extra vertical space
+         * required for the borders, etc. seems to return a bizarrely high value
+         * (20 even without a header showing), so an arbitrary number of pixels
+         * is added in this case as a cheesy workaround.
+         */
         gridData.heightHint = (specifier.getNumVisibleLines() * table
                 .getItemHeight()) + 7;
 
-        // Return the result.
+        /*
+         * Return the result.
+         */
         return table;
     }
 
@@ -927,7 +1018,7 @@ public class BoundedListBuilderMegawidget extends
     private void associateChoiceIdentifiersWithNames() {
         choiceNamesForIdentifiers.clear();
         BoundedListBuilderSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             choiceNamesForIdentifiers.put(
                     specifier.getIdentifierOfNode(choice),
                     specifier.getNameOfNode(choice));
@@ -940,11 +1031,11 @@ public class BoundedListBuilderMegawidget extends
      */
     private void enableOrDisableButtons() {
 
-        // If the megawidget is disabled or read-
-        // only, disable all the buttons; other-
-        // wise, enable or disable each one as
-        // appropriate given the items selected
-        // in the lists.
+        /*
+         * If the megawidget is disabled or read-only, disable all the buttons;
+         * otherwise, enable or disable each one as appropriate given the items
+         * selected in the lists.
+         */
         if ((isEnabled() == false) || (isEditable() == false)) {
             addAll.setEnabled(false);
             addSelected.setEnabled(false);
@@ -954,35 +1045,40 @@ public class BoundedListBuilderMegawidget extends
             moveDown.setEnabled(false);
         } else {
 
-            // If there are items in the avail-
-            // able list, enable the Add All
-            // button.
+            /*
+             * If there are items in the available list, enable the Add All
+             * button.
+             */
             addAll.setEnabled(availableTable.getItemCount() > 0);
 
-            // If there are selected items in
-            // the available list, enable the
-            // Add Selected button.
+            /*
+             * If there are selected items in the available list, enable the Add
+             * Selected button.
+             */
             addSelected.setEnabled(availableTable.getSelectionCount() > 0);
 
-            // If there are items in the se-
-            // lected list, enable the Remove
-            // All button.
+            /*
+             * If there are items in the selected list, enable the Remove All
+             * button.
+             */
             removeAll.setEnabled(selectedTable.getItemCount() > 0);
 
-            // If there are selected items in
-            // the selected list, enable the
-            // Remove Selected button.
+            /*
+             * If there are selected items in the selected list, enable the
+             * Remove Selected button.
+             */
             removeSelected.setEnabled(selectedTable.getSelectionCount() > 0);
 
-            // If items are selected within the
-            // selected list, enable the up and
-            // down buttons as appropriate;
-            // otherwise, disable them.
+            /*
+             * If items are selected within the selected list, enable the up and
+             * down buttons as appropriate; otherwise, disable them.
+             */
             if ((selectedTable.getItemCount() > 0)
                     && (selectedTable.getSelectionCount() > 0)) {
 
-                // Find the highest and lowest
-                // selected indices.
+                /*
+                 * Find the highest and lowest selected indices.
+                 */
                 int[] selected = selectedTable.getSelectionIndices();
                 int highestIndex = -1, lowestIndex = selectedTable
                         .getItemCount();
@@ -995,13 +1091,11 @@ public class BoundedListBuilderMegawidget extends
                     }
                 }
 
-                // Enable the Move Up button if
-                // the lowest selected index is
-                // not at the start of the
-                // list, and enable the Move
-                // Down button if the highest
-                // selected index is not at the
-                // end of the list.
+                /*
+                 * Enable the Move Up button if the lowest selected index is not
+                 * at the start of the list, and enable the Move Down button if
+                 * the highest selected index is not at the end of the list.
+                 */
                 moveUp.setEnabled(lowestIndex > 0);
                 moveDown.setEnabled(highestIndex < selectedTable.getItemCount() - 1);
             } else {
@@ -1016,15 +1110,20 @@ public class BoundedListBuilderMegawidget extends
      */
     private void addAll() {
 
-        // Add all available items to the selected list.
+        /*
+         * Add all available items to the selected list.
+         */
         addItems(getItemsFromList(availableTable, false, true, null),
                 getLastSelectedIndex());
 
-        // Remove all available items from the available
-        // list.
+        /*
+         * Remove all available items from the available list.
+         */
         availableTable.removeAll();
 
-        // Show the selection in the selected list.
+        /*
+         * Show the selection in the selected list.
+         */
         selectedTable.showSelection();
     }
 
@@ -1037,33 +1136,41 @@ public class BoundedListBuilderMegawidget extends
      */
     private void addSelectedAtIndex(int index) {
 
-        // Get the index to be selected in the available
-        // list after the selected items are removed, if
-        // any, as well as getting a list of the items
-        // to be removed in ascending index order.
+        /*
+         * Get the index to be selected in the available list after the selected
+         * items are removed, if any, as well as getting a list of the items to
+         * be removed in ascending index order.
+         */
         List<String> identifiers = new ArrayList<>();
         int firstUnselectedAfterSelected = getIndexOfFirstUnselectedAfterSelected(
                 availableTable, identifiers);
 
-        // Add the items to the selected list.
+        /*
+         * Add the items to the selected list.
+         */
         addItems(identifiers, index);
 
-        // Get the indices that are currently selected,
-        // so that they may be removed.
+        /*
+         * Get the indices that are currently selected, so that they may be
+         * removed.
+         */
         int[] indices = availableTable.getSelectionIndices();
 
-        // If an item was found to be selected, select
-        // it now.
+        /*
+         * If an item was found to be selected, select it now.
+         */
         if (firstUnselectedAfterSelected > -1) {
             availableTable.setSelection(firstUnselectedAfterSelected);
         }
 
-        // Remove all the items that were moved from
-        // the available list.
+        /*
+         * Remove all the items that were moved from the available list.
+         */
         availableTable.remove(indices);
 
-        // Show the selection in the available and se-
-        // lected lists.
+        /*
+         * Show the selection in the available and selected lists.
+         */
         availableTable.showSelection();
         selectedTable.showSelection();
     }
@@ -1073,23 +1180,28 @@ public class BoundedListBuilderMegawidget extends
      */
     private void removeAll() {
 
-        // Get the indices of where the items that were
-        // in the selected list are found in the choices
-        // list.
+        /*
+         * Get the indices of where the items that were in the selected list are
+         * found in the choices list.
+         */
         int[] indices = getSelectedItemsChoiceIndices(getItemsFromList(
                 selectedTable, false, false, null));
 
-        // Repopulate the available list with all possible
-        // choices, and select the items that were added
-        // to it.
+        /*
+         * Repopulate the available list with all possible choices, and select
+         * the items that were added to it.
+         */
         addAllItemsToAvailableList();
         availableTable.setSelection(indices);
 
-        // Remove all available items from the available
-        // list.
+        /*
+         * Remove all available items from the available list.
+         */
         selectedTable.removeAll();
 
-        // Show the selection in the available list.
+        /*
+         * Show the selection in the available list.
+         */
         availableTable.showSelection();
     }
 
@@ -1098,53 +1210,61 @@ public class BoundedListBuilderMegawidget extends
      */
     private void removeSelected() {
 
-        // Get the indices of where the items that were
-        // selected in the selected list are found in the
-        // choices list.
+        /*
+         * Get the indices of where the items that were selected in the selected
+         * list are found in the choices list.
+         */
         int[] indices = getSelectedItemsChoiceIndices(getItemsFromList(
                 selectedTable, true, false, null));
 
-        // Repopulate the available list with all possible
-        // choices, and select the items that were added
-        // to it. The items that are still in the selected
-        // list will be removed later on; doing it this
-        // way is a bit of a kludge, but makes it easier
-        // to ensure that the right items (the ones just
-        // put back in the available list) are selected.
+        /*
+         * Repopulate the available list with all possible choices, and select
+         * the items that were added to it. The items that are still in the
+         * selected list will be removed later on; doing it this way is a bit of
+         * a kludge, but makes it easier to ensure that the right items (the
+         * ones just put back in the available list) are selected.
+         */
         addAllItemsToAvailableList();
         availableTable.setSelection(indices);
 
-        // Get the index to be selected in the selected
-        // list after the selected items are removed, if
-        // any.
+        /*
+         * Get the index to be selected in the selected list after the selected
+         * items are removed, if any.
+         */
         int firstUnselectedAfterSelected = getIndexOfFirstUnselectedAfterSelected(
                 selectedTable, null);
 
-        // Get the indices of the selected items in the
-        // selected list so that they may be removed
-        // later.
+        /*
+         * Get the indices of the selected items in the selected list so that
+         * they may be removed later.
+         */
         indices = selectedTable.getSelectionIndices();
 
-        // If an item was found to be selected, select
-        // it now.
+        /*
+         * If an item was found to be selected, select it now.
+         */
         if (firstUnselectedAfterSelected > -1) {
             selectedTable.setSelection(firstUnselectedAfterSelected);
         }
 
-        // Remove all selected items from the selected
-        // list.
+        /*
+         * Remove all selected items from the selected list.
+         */
         selectedTable.remove(indices);
         selectedTable.getColumn(0).pack();
 
-        // Remove any items that were just added to the
-        // available list that should not be there, be-
-        // cause they are still part of the selected list.
+        /*
+         * Remove any items that were just added to the available list that
+         * should not be there, because they are still part of the selected
+         * list.
+         */
         availableTable.remove(getSelectedItemsChoiceIndices(getItemsFromList(
                 selectedTable, false, false, null)));
         availableTable.getColumn(0).pack();
 
-        // Show the selection in the available and se-
-        // lected lists.
+        /*
+         * Show the selection in the available and selected lists.
+         */
         availableTable.showSelection();
         selectedTable.showSelection();
     }
@@ -1154,10 +1274,11 @@ public class BoundedListBuilderMegawidget extends
      */
     private void moveUp() {
 
-        // Iterate through the selected items
-        // starting with the lowest-indexed, re-
-        // moving and reinserting each one at an
-        // index one lower than it had before.
+        /*
+         * Iterate through the selected items starting with the lowest-indexed,
+         * removing and reinserting each one at an index one lower than it had
+         * before.
+         */
         int[] indices = selectedTable.getSelectionIndices();
         Arrays.sort(indices);
         for (int j = 0; j < indices.length; j++) {
@@ -1172,11 +1293,14 @@ public class BoundedListBuilderMegawidget extends
         }
         selectedTable.getColumn(0).pack();
 
-        // Select the just-moved items.
+        /*
+         * Select the just-moved items.
+         */
         selectedTable.setSelection(indices);
 
-        // Show the selection in the selected
-        // list.
+        /*
+         * Show the selection in the selected list.
+         */
         selectedTable.showSelection();
     }
 
@@ -1185,10 +1309,11 @@ public class BoundedListBuilderMegawidget extends
      */
     private void moveDown() {
 
-        // Iterate through the selected items
-        // starting with the highest-indexed, re-
-        // moving and reinserting each one at an
-        // index one higher than it had before.
+        /*
+         * Iterate through the selected items starting with the highest-indexed,
+         * removing and reinserting each one at an index one higher than it had
+         * before.
+         */
         int[] indices = selectedTable.getSelectionIndices();
         Arrays.sort(indices);
         for (int j = indices.length - 1; j >= 0; j--) {
@@ -1201,11 +1326,14 @@ public class BoundedListBuilderMegawidget extends
             item.setData(identifier);
         }
 
-        // Select the just-moved items.
+        /*
+         * Select the just-moved items.
+         */
         selectedTable.setSelection(indices);
 
-        // Show the selection in the selected
-        // list.
+        /*
+         * Show the selection in the selected list.
+         */
         selectedTable.showSelection();
     }
 
@@ -1221,36 +1349,40 @@ public class BoundedListBuilderMegawidget extends
      */
     private void moveToIndex(int index) {
 
-        // Populate the list of selected items in
-        // the order they occur, and find the index
-        // that is unselected that is closest to
-        // the provided index, either the index it-
-        // self if it is unselected, or the closest
-        // one above it that is unselected, or just
-        // -1 if the selection includes the first
-        // item in the list.
+        /*
+         * Populate the list of selected items in the order they occur, and find
+         * the index that is unselected that is closest to the provided index,
+         * either the index itself if it is unselected, or the closest one above
+         * it that is unselected, or just -1 if the selection includes the first
+         * item in the list.
+         */
         List<String> identifiers = new ArrayList<>();
         index = getClosestUnselectedIndexAtOrAboveIndex(selectedTable, index,
                 identifiers);
 
-        // If a valid index was found, get the item
-        // at that index; it will need to be found
-        // after the removal of the selected items
-        // in order to find its index at that point,
-        // so that the insertion may be done just
-        // after it.
+        /*
+         * If a valid index was found, get the item at that index; it will need
+         * to be found after the removal of the selected items in order to find
+         * its index at that point, so that the insertion may be done just after
+         * it.
+         */
         TableItem insertionIndexItem = (index == -1 ? null : selectedTable
                 .getItem(index));
 
-        // Remove all selected items from the selected
-        // list.
+        /*
+         * Remove all selected items from the selected list.
+         */
         selectedTable.remove(selectedTable.getSelectionIndices());
 
-        // Add the items back at the appropriate index.
+        /*
+         * Add the items back at the appropriate index.
+         */
         addItems(identifiers,
                 (index == -1 ? -1 : selectedTable.indexOf(insertionIndexItem)));
 
-        // Show the selection.
+        /*
+         * Show the selection.
+         */
         selectedTable.showSelection();
     }
 
@@ -1291,17 +1423,18 @@ public class BoundedListBuilderMegawidget extends
     private int getClosestUnselectedIndexAtOrAboveIndex(Table table, int index,
             List<String> list) {
 
-        // Get an array of the selected indices, and
-        // sort it so that lower indices precede
-        // higher ones.
+        /*
+         * Get an array of the selected indices, and sort it so that lower
+         * indices precede higher ones.
+         */
         int[] indices = table.getSelectionIndices();
         Arrays.sort(indices);
 
-        // Iterate through the indices, finding the
-        // one that matches the target index, if
-        // the target is indeed selected. If an
-        // items list was provided, fill in the
-        // items as well.
+        /*
+         * Iterate through the indices, finding the one that matches the target
+         * index, if the target is indeed selected. If an items list was
+         * provided, fill in the items as well.
+         */
         int indexIntoSelected = -1;
         for (int j = 0; j < indices.length; j++) {
             if (list != null) {
@@ -1315,18 +1448,19 @@ public class BoundedListBuilderMegawidget extends
             }
         }
 
-        // If the target index was not found to be
-        // selected, return it.
+        /*
+         * If the target index was not found to be selected, return it.
+         */
         if (indexIntoSelected == -1) {
             return index;
         }
 
-        // Iterate backwards through the selected
-        // indices to find the first unselected index
-        // between them, or if none is found, the
-        // first unselected index before the start of
-        // the selected indices. If that yields -1,
-        // that is not a problem.
+        /*
+         * Iterate backwards through the selected indices to find the first
+         * unselected index between them, or if none is found, the first
+         * unselected index before the start of the selected indices. If that
+         * yields -1, that is not a problem.
+         */
         while (indexIntoSelected-- > 0) {
             if (indices[indexIntoSelected] + 1 < indices[indexIntoSelected + 1]) {
                 break;
@@ -1353,17 +1487,18 @@ public class BoundedListBuilderMegawidget extends
     private int getIndexOfFirstUnselectedAfterSelected(Table table,
             List<String> list) {
 
-        // Get an array of the selected indices, and
-        // sort it so that lower indices precede
-        // higher ones.
+        /*
+         * Get an array of the selected indices, and sort it so that lower
+         * indices precede higher ones.
+         */
         int[] indices = table.getSelectionIndices();
         Arrays.sort(indices);
 
-        // Iterate through the indices, finding the
-        // first unselected index after the first
-        // contiguous grouping of selected indices.
-        // If an items list was provided, fill in
-        // the items as well.
+        /*
+         * Iterate through the indices, finding the first unselected index after
+         * the first contiguous grouping of selected indices. If an items list
+         * was provided, fill in the items as well.
+         */
         int firstUnselectedAfterSelected = -1;
         for (int j = 0; j < indices.length; j++) {
             if (list != null) {
@@ -1375,11 +1510,11 @@ public class BoundedListBuilderMegawidget extends
             }
         }
 
-        // If no index was found, see if there is
-        // an unselected item following all the
-        // selected indices, and if not, see if
-        // one exists before the first selected
-        // index.
+        /*
+         * If no index was found, see if there is an unselected item following
+         * all the selected indices, and if not, see if one exists before the
+         * first selected index.
+         */
         if (firstUnselectedAfterSelected == -1) {
             firstUnselectedAfterSelected = indices[indices.length - 1] + 1;
             if (firstUnselectedAfterSelected >= table.getItemCount()) {
@@ -1387,7 +1522,9 @@ public class BoundedListBuilderMegawidget extends
             }
         }
 
-        // Return the result.
+        /*
+         * Return the result.
+         */
         return firstUnselectedAfterSelected;
     }
 
@@ -1402,18 +1539,19 @@ public class BoundedListBuilderMegawidget extends
      */
     private void addItems(List<String> identifiers, int index) {
 
-        // Ensure that the items are added at the
-        // beginning of the list if the index is
-        // out of bounds; otherwise, add them just
-        // after the index.
+        /*
+         * Ensure that the items are added at the beginning of the list if the
+         * index is out of bounds; otherwise, add them just after the index.
+         */
         if (index < 0) {
             index = 0;
         } else {
             index++;
         }
 
-        // Iterate through the items, adding each
-        // in turn, one after the next.
+        /*
+         * Iterate through the items, adding each in turn, one after the next.
+         */
         int startIndex = index;
         for (String choice : identifiers) {
             TableItem item = new TableItem(selectedTable, SWT.NONE, index++);
@@ -1422,8 +1560,9 @@ public class BoundedListBuilderMegawidget extends
         }
         selectedTable.getColumn(0).pack();
 
-        // Set the selection to include all the
-        // items just added.
+        /*
+         * Set the selection to include all the items just added.
+         */
         selectedTable.setSelection(startIndex, index - 1);
     }
 
@@ -1433,7 +1572,7 @@ public class BoundedListBuilderMegawidget extends
     private void addAllItemsToAvailableList() {
         availableTable.removeAll();
         BoundedListBuilderSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             TableItem item = new TableItem(availableTable, SWT.NONE);
             item.setText(0, specifier.getNameOfNode(choice));
             item.setData(specifier.getIdentifierOfNode(choice));
@@ -1451,13 +1590,14 @@ public class BoundedListBuilderMegawidget extends
      */
     private int[] getSelectedItemsChoiceIndices(List<String> items) {
 
-        // Iterate through the items, finding for
-        // each the index indicating where it lives
-        // in the choices list.
+        /*
+         * Iterate through the items, finding for each the index indicating
+         * where it lives in the choices list.
+         */
         int[] indices = new int[items.size()];
         List<String> choiceNames = new ArrayList<>();
         BoundedListBuilderSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             choiceNames.add(specifier.getNameOfNode(choice));
         }
         for (int j = 0; j < items.size(); j++) {
@@ -1467,7 +1607,9 @@ public class BoundedListBuilderMegawidget extends
             }
         }
 
-        // Return the indices found above.
+        /*
+         * Return the indices found above.
+         */
         return indices;
     }
 

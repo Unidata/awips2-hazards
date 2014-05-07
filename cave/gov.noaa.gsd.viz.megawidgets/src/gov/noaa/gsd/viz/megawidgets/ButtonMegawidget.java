@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,7 +21,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Megawidget providing a simple push button.
@@ -33,6 +33,8 @@ import com.google.common.collect.Sets;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Changed to implement new IControl interface.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator package,
+ *                                           updated Javadoc and other comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,8 +50,8 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -84,19 +86,25 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create a button widget.
+        /*
+         * Create a button widget.
+         */
         button = new Button(parent, SWT.PUSH);
         button.setText(specifier.getLabel());
         button.setEnabled(specifier.isEnabled());
 
-        // Place the widget in the grid.
+        /*
+         * Place the widget in the grid.
+         */
         GridData gridData = new GridData(SWT.CENTER, SWT.CENTER, false, false);
         gridData.horizontalSpan = specifier.getWidth();
         gridData.verticalIndent = specifier.getSpacing();
         button.setLayoutData(gridData);
 
-        // Set up a selection listener that notifies a listener when
-        // the button is invoked.
+        /*
+         * Set up a selection listener that notifies a listener when the button
+         * is invoked.
+         */
         button.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -104,7 +112,9 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
             }
         });
 
-        // Disable the button if not editable.
+        /*
+         * Disable the button if not editable.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
@@ -130,7 +140,9 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -155,7 +167,9 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -166,7 +180,9 @@ public class ButtonMegawidget extends NotifierMegawidget implements IControl {
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods

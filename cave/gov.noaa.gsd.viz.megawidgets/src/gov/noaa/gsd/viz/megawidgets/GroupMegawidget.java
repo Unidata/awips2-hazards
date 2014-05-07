@@ -29,6 +29,9 @@ import org.eclipse.swt.widgets.Group;
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new
+ *                                           validator package, updated
+ *                                           Javadoc and other comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,8 +60,10 @@ public class GroupMegawidget extends ContainerMegawidget {
             Map<String, Object> paramMap) throws MegawidgetException {
         super(specifier);
 
-        // Create the group panel in which to place the child
-        // megawidgets, and give it its title if it has one.
+        /*
+         * Create the group panel in which to place the child megawidgets, and
+         * give it its title if it has one.
+         */
         Group panel = new Group(parent, SWT.NONE);
         if (specifier.getLabel() != null) {
             panel.setText(specifier.getLabel());
@@ -67,7 +72,9 @@ public class GroupMegawidget extends ContainerMegawidget {
         gridContainerPanel(panel);
         composite = panel;
 
-        // Create its child megawidgets.
+        /*
+         * Create its child megawidgets.
+         */
         children = createChildMegawidgets(panel, specifier.getColumnCount(),
                 specifier.getChildMegawidgetSpecifiers(), paramMap);
     }

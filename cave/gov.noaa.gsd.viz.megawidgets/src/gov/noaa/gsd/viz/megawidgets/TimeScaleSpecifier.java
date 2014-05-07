@@ -9,7 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.ChoicesMegawidgetSpecifier.IllegalChoicesProblem;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedMultiLongValidator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.widgets.Widget;
 
@@ -54,6 +53,9 @@ import com.google.common.collect.ImmutableMap;
  *                                           widgets for each state value. Also added
  *                                           custom strings to be displayed in place
  *                                           of date-time values for specified values.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -143,11 +145,6 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
     private final Map<String, List<IControlSpecifier>> fieldListsForStates = new HashMap<>();
 
     /**
-     * Minimum interval allowed between adjacent values.
-     */
-    private final long minimumInterval;
-
-    /**
      * Map pairing state identifier keys with editability flags as values.
      */
     private final Map<String, Boolean> editabilityForStateIdentifiers;
@@ -179,34 +176,24 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
     @SuppressWarnings("unchecked")
     public TimeScaleSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new BoundedMultiLongValidator(parameters,
+                MEGAWIDGET_MINIMUM_TIME_INTERVAL, 0L, Long.MAX_VALUE / 2L));
 
-        // Ensure that the minmum interval, if present, is
-        // acceptable.
-        long minimumInterval = getSpecifierLongValueFromObject(
-                parameters.get(MEGAWIDGET_MINIMUM_TIME_INTERVAL),
-                MEGAWIDGET_MINIMUM_TIME_INTERVAL, TimeUnit.MINUTES.toMillis(1L));
-        if (minimumInterval < 1L) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_MINIMUM_TIME_INTERVAL,
-                    parameters.get(MEGAWIDGET_MINIMUM_TIME_INTERVAL),
-                    "must be positive long");
-        }
-        this.minimumInterval = minimumInterval;
-
-        // Ensure that the editability flags, if present, are
-        // acceptable.
+        /*
+         * Ensure that the editability flags, if present, are acceptable.
+         */
         Set<Class<?>> classes = new HashSet<>();
         classes.add(Boolean.class);
         editabilityForStateIdentifiers = getStateMappedParametersFromObject(
                 parameters, MEGAWIDGET_STATE_EDITABLES, "boolean", classes,
                 new Boolean(true), null, null, true);
 
-        // Ensure that the descriptive strings for dates map,
-        // if present, is acceptable. Note that a conversion
-        // is done from strings to longs for the map keys,
-        // since maps are sometimes allowed only strings as
-        // keys (e.g. within JSON).
+        /*
+         * Ensure that the descriptive strings for dates map, if present, is
+         * acceptable. Note that a conversion is done from strings to longs for
+         * the map keys, since maps are sometimes allowed only strings as keys
+         * (e.g. within JSON).
+         */
         try {
             Map<?, String> map = (Map<?, String>) parameters
                     .get(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS);
@@ -227,8 +214,10 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
                     "must be map of longs (or longs in string form) to strings");
         }
 
-        // Compile a mapping of state identifiers to their
-        // indices (giving their ordering).
+        /*
+         * Compile a mapping of state identifiers to their indices (giving their
+         * ordering).
+         */
         Map<String, Integer> indicesForIds = new HashMap<>();
         List<String> stateIdentifiers = getStateIdentifiers();
         for (int j = 0; j < stateIdentifiers.size(); j++) {
@@ -236,7 +225,9 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
         }
         this.indicesForIds = ImmutableMap.copyOf(indicesForIds);
 
-        // Ensure that the factory is present and acceptable.
+        /*
+         * Ensure that the factory is present and acceptable.
+         */
         IMegawidgetSpecifierFactory factory = null;
         try {
             factory = (IMegawidgetSpecifierFactory) parameters
@@ -252,16 +243,20 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
                     getType(), MEGAWIDGET_SPECIFIER_FACTORY, null, null);
         }
 
-        // Create the children manager.
+        /*
+         * Create the children manager.
+         */
         childManager = new ChildSpecifiersManager<IControlSpecifier>(
                 IControlSpecifier.class, factory);
 
-        // If detail fields are included, ensure they are
-        // specified correctly.
+        /*
+         * If detail fields are included, ensure they are specified correctly.
+         */
         if (parameters.containsKey(MEGAWIDGET_DETAIL_FIELDS)) {
 
-            // Ensure the detail fields map is in fact a
-            // map.
+            /*
+             * Ensure the detail fields map is in fact a map.
+             */
             classes = new HashSet<>();
             classes.add(List.class);
             Map<String, ? extends List<Map<String, Object>>> detailFieldsForStateIdentifiers = getStateMappedParametersFromObject(
@@ -269,33 +264,40 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
                     "list of detail megawidget specifiers", classes,
                     new ArrayList<Map<String, Object>>(), null, null, false);
 
-            // Iterate through the state identifiers, getting
-            // any detail megawidgets for each of them.
+            /*
+             * Iterate through the state identifiers, getting any detail
+             * megawidgets for each of them.
+             */
             for (String identifier : stateIdentifiers) {
 
-                // If this state identifier has no detail fields,
-                // skip it.
+                /*
+                 * If this state identifier has no detail fields, skip it.
+                 */
                 List<Map<String, Object>> fields = detailFieldsForStateIdentifiers
                         .get(identifier);
                 if ((fields == null) || fields.isEmpty()) {
                     continue;
                 }
 
-                // Convert the maps to child megawidget specifiers.
+                /*
+                 * Convert the maps to child megawidget specifiers.
+                 */
                 List<IControlSpecifier> children = null;
                 try {
                     children = childManager.createMegawidgetSpecifiers(fields,
                             fields.size());
                 } catch (MegawidgetSpecificationException e) {
-                    throw (new IllegalChoicesProblem(MEGAWIDGET_DETAIL_FIELDS,
-                            "[" + identifier + "]", null, fields,
-                            "bad child megawidget specifier", e))
-                            .toSpecificationException(this);
+                    throw new MegawidgetSpecificationException(getIdentifier(),
+                            getType(), MEGAWIDGET_DETAIL_FIELDS + "["
+                                    + identifier + "]", fields,
+                            "bad child megawidget specifier", e);
                 }
 
-                // Add the child megawidget specifiers for this choice
-                // to the list of all children, and remember the para-
-                // meters for this choice's detail fields.
+                /*
+                 * Add the child megawidget specifiers for this choice to the
+                 * list of all children, and remember the parameters for this
+                 * choice's detail fields.
+                 */
                 childManager.addChildMegawidgetSpecifiers(children);
                 fieldListsForStates.put(identifier, children);
             }
@@ -315,7 +317,8 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
      * @return Minimum interval in milliseconds.
      */
     public final long getMinimumInterval() {
-        return minimumInterval;
+        return ((BoundedMultiLongValidator) getStateValidator())
+                .getMinimumInterval();
     }
 
     /**
@@ -374,8 +377,9 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
     @Override
     protected int getMaximumStateIdentifierCount() {
 
-        // Return an absurdly (for GUI purposes) large
-        // number.
+        /*
+         * Return an absurdly (for GUI purposes) large number.
+         */
         return Integer.MAX_VALUE;
     }
 }

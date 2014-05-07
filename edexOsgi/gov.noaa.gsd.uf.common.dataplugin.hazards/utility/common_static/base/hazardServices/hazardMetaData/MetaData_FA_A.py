@@ -1,4 +1,5 @@
 import CommonMetaData
+from HazardConstants import *
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -8,7 +9,9 @@ class MetaData(CommonMetaData.MetaData):
                     self.getImmediateCause(),
                     self.getCTAs(),
                     ] + self.setCAP_Fields()
-        return metaData    
+        return {
+                METADATA_KEY: metaData
+                }    
 
     # CALLS TO ACTION
     def getCTA_Choices(self):

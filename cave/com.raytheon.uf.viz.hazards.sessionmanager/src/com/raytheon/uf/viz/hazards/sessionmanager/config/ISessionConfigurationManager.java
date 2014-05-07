@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+
 import java.util.List;
 
 import com.raytheon.uf.common.colormap.Color;
@@ -33,6 +35,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptions
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 
 /**
  * Manages all settings and configuration files for a session.
@@ -47,7 +50,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
  * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
  *                                     configuration plugin.
- * 
+ * Apr 29, 2014 2925       Chris.Golden Added method to get a megawidget specifier
+ *                                      manager for a given hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -121,6 +125,24 @@ public interface ISessionConfigurationManager {
      * @return
      */
     public HazardInfoOptions getHazardInfoOptions();
+
+    /**
+     * Get the megawidget specifier manager for the specified hazard event.
+     * <p>
+     * <strong>Note</strong>: This method does not ever return a cached manager;
+     * it creates a manager each time it is invoked. The method
+     * {@link ISessionEventManager#getMegawidgetSpecifiers(IHazardEvent)} should
+     * be used instead if caching behavior is desired.
+     * </p>
+     * 
+     * @param hazardEvent
+     *            Hazard event for which to retrieve the manager.
+     * @return Megawidget specifier manager, holding specifiers for the
+     *         megawidgets as well as any side effects applier to be used with
+     *         the megawidgets.
+     */
+    public MegawidgetSpecifierManager getMegawidgetSpecifiersForHazardEvent(
+            IHazardEvent hazardEvent);
 
     /**
      * Get the HazardAlertConfig

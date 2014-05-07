@@ -12,7 +12,7 @@ package gov.noaa.gsd.viz.megawidgets;
 /**
  * State change listener, an interface that describes the methods that must be
  * implemented by any class that wishes to be notified when the state of an
- * <code>IStateful</code> is changing.
+ * {@link IStateful} is changing.
  * 
  * <pre>
  * 
@@ -24,6 +24,9 @@ package gov.noaa.gsd.viz.megawidgets;
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

@@ -73,6 +73,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
  * Dec     2013 2368       thansen   Added getHazardType
+ * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
+ *                                      set the type components atomically, or
+ *                                      the start and end time atomically.
  * </pre>
  * 
  * @author mnash
@@ -328,6 +331,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return HazardEventUtilities.getHazardType(this);
     }
 
+    @Override
+    public void setHazardType(String phenomenon, String significance,
+            String subtype) {
+        setPhenomenon(phenomenon);
+        setSignificance(significance);
+        setSubType(subtype);
+    }
+
     /**
      * @return the startTime
      */
@@ -360,6 +371,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public void setEndTime(Date endTime) {
         this.endTime = new Date(endTime.getTime());
+    }
+
+    @Override
+    public void setTimeRange(Date startTime, Date endTime) {
+        setStartTime(startTime);
+        setEndTime(endTime);
     }
 
     /**

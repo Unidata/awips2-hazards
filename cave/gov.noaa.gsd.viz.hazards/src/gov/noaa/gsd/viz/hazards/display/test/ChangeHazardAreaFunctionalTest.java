@@ -13,7 +13,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CON_VTEC_S
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EXA_VTEC_STRING;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLASH_FLOOD_WATCH_PHEN_SIG;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import net.engio.mbassy.listener.Handler;
@@ -21,8 +20,13 @@ import net.engio.mbassy.listener.Handler;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -41,12 +45,16 @@ import com.vividsolutions.jts.geom.Geometry;
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using new utility
  * Jan 10, 2014  2890      bkowal      Now subscribes to a notification indicating that
  *                                     all product generation is complete.
+ * Apr 09, 2014    2925       Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
 public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private enum Steps {
         START, ISSUE_FLASH_FLOOD_WATCH, READY_FOR_PREVIEW, PREVIEW_MODIFIED_EVENT
@@ -61,12 +69,20 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
     @Override
     protected void runFirstStep() {
         step = Steps.START;
-
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
+    }
+
     @Handler(priority = -1)
-    public void handleNewHazard(SessionEventAdded action) {
+    public void sessionEventAddedOccurred(SessionEventAdded action) {
         try {
             switch (step) {
             case START:
@@ -81,7 +97,25 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         } catch (Exception e) {
             handleException(e);
         }
+    }
 
+    @Handler(priority = -1)
+    public void sessionEventModifiedOccurred(SessionEventModified action) {
+        try {
+            if (step == Steps.START) {
+                ObservedHazardEvent event = autoTestUtilities
+                        .getSelectedEvent();
+                if (!"FF".equals(event.getPhenomenon())
+                        || !"A".equals(event.getSignificance())) {
+                    return;
+                }
+                stepCompleted();
+                step = Steps.ISSUE_FLASH_FLOOD_WATCH;
+                autoTestUtilities.issueEvent();
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     @Handler(priority = -1)
@@ -92,6 +126,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
             switch (step) {
 
             case READY_FOR_PREVIEW:
+                stepCompleted();
                 step = Steps.PREVIEW_MODIFIED_EVENT;
                 autoTestUtilities.previewEvent();
                 break;
@@ -106,18 +141,14 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        try {
-            if (step == Steps.START) {
-                step = Steps.ISSUE_FLASH_FLOOD_WATCH;
-                autoTestUtilities.issueEvent();
-            }
-        } catch (Exception e) {
-            handleException(e);
-        }
+    boolean productEditorHasBeenUpdated = false;
 
+    @Handler(priority = -1)
+    public void sessionModifiedOccurred(final SessionModified action) {
+        if ((step == Steps.PREVIEW_MODIFIED_EVENT)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)) {
+            productEditorHasBeenUpdated = true;
+        }
     }
 
     @Handler(priority = -1)
@@ -135,12 +166,15 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                 modifiedPoint.y = 42.0;
                 SessionEventGeometryModified action = new SessionEventGeometryModified(
                         eventManager, event, null);
+                stepCompleted();
                 step = Steps.READY_FOR_PREVIEW;
                 eventBus.publishAsync(action);
                 break;
 
             case PREVIEW_MODIFIED_EVENT:
-
+                if (productEditorHasBeenUpdated == false) {
+                    return;
+                }
                 Dict products = autoTestUtilities
                         .productsFromEditorView(mockProductEditorView);
                 String legacy = products
@@ -149,6 +183,7 @@ public class ChangeHazardAreaFunctionalTest extends FunctionalTest {
                         + FLASH_FLOOD_WATCH_PHEN_SIG));
                 assertTrue(legacy.contains(CON_VTEC_STRING + "."
                         + FLASH_FLOOD_WATCH_PHEN_SIG));
+                stepCompleted();
                 testSuccess();
 
                 break;

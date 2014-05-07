@@ -9,17 +9,18 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.Collection;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidator;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidatorHelper;
+
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * Base class for megawidget specifiers that include closed sets of choices as
  * part of their state. Said choices are always associated with a single state
  * identifier, so the megawidget identifiers for these specifiers must not
- * consist of colon-separated substrings.
+ * consist of colon-separated substrings. The generic parameter <code>T</code>
+ * indicates the type of the state.
  * 
  * <pre>
  * 
@@ -30,13 +31,16 @@ import com.google.common.collect.ImmutableList;
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of
  *                                           collections instead of only
  *                                           lists for the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see BoundedChoicesMegawidget
  */
-public abstract class BoundedChoicesMegawidgetSpecifier extends
+public abstract class BoundedChoicesMegawidgetSpecifier<T> extends
         ChoicesMegawidgetSpecifier {
 
     // Public Static Constants
@@ -63,13 +67,6 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
      */
     public static final String CHOICE_IDENTIFIER = "identifier";
 
-    // Private Variables
-
-    /**
-     * Choices structure.
-     */
-    private final List<?> choicesList;
-
     // Public Constructors
 
     /**
@@ -79,138 +76,58 @@ public abstract class BoundedChoicesMegawidgetSpecifier extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
+     * @param stateValidatorHelper
+     *            State validator helper.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public BoundedChoicesMegawidgetSpecifier(Map<String, Object> parameters)
+    public BoundedChoicesMegawidgetSpecifier(Map<String, Object> parameters,
+            BoundedChoiceValidatorHelper<T> stateValidatorHelper)
             throws MegawidgetSpecificationException {
-        super(parameters);
-
-        // Ensure that the possible values are present as a list
-        // of objects.
-        List<?> choicesList = null;
-        try {
-            choicesList = getChoicesFromObject(parameters
-                    .get(MEGAWIDGET_VALUE_CHOICES));
-        } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(e.getIdentifier(),
-                    e.getType(), MEGAWIDGET_VALUE_CHOICES, e.getBadValue(),
-                    e.getMessage());
-        }
-
-        // Evaluate the legality of the choices list.
-        IllegalChoicesProblem eval = evaluateChoicesLegality(
-                MEGAWIDGET_VALUE_CHOICES, choicesList);
-        if (eval != NO_ILLEGAL_CHOICES_PROBLEM) {
-            throw eval.toSpecificationException(this);
-        }
-        this.choicesList = ImmutableList.copyOf(choicesList);
-    }
-
-    // Public Methods
-
-    /**
-     * Get the list of choices associated with this specifier. The returned list
-     * is identical in structure to that provided to the specifier as the
-     * {@link #MEGAWIDGET_VALUE_CHOICES} parameter.
-     * 
-     * @return List of choices; this list is not modifiable.
-     */
-    public final List<?> getChoices() {
-        return choicesList;
+        super(parameters, new BoundedChoiceValidator<T>(parameters,
+                stateValidatorHelper));
     }
 
     // Protected Methods
 
     /**
-     * Determine whether or not the first specified node, taken from the choices
-     * list, is a subset of the second based upon subclass-specific details. It
-     * is assumed that the name and/or identifier of the first node has been
-     * found to be the same as that of the second when this method is called.
-     * Implementations must determine whether any subclass-specific details of
-     * the nodes allow the first to be a subset of the second.
+     * Get the list of available choices.
      * 
-     * @param node1
-     *            Node to be checked to see if it is a subset of the other node.
-     *            This must be either a {@link String} giving an identifier or
-     *            else a {@link Map}, with the latter holding the usual elements
-     *            for a choice element map.
-     * @param node2
-     *            Node to be checked to see if it is a superset of the other
-     *            node. This must be either a {@link String} giving an
-     *            identifier or else a {@link Map}, with the latter holding the
-     *            usual elements for a choice element map.
-     * @return True if the first node is a subset of the second, false
-     *         otherwise.
+     * @return List of available choices.
      */
-    protected abstract boolean isNodeSubset(Object node1, Object node2);
+    @SuppressWarnings("unchecked")
+    protected final List<?> getChoices() {
+        return ((BoundedChoiceValidator<T>) getStateValidator())
+                .getAvailableChoices();
+    }
 
     /**
-     * Determine whether the first choices list specified is a subset of the
-     * second.
+     * Get the name of the specified choices list element.
      * 
-     * @param list1
-     *            Choices list to be checked to see if it is a subset of the
-     *            other list.
-     * @param list2
-     *            Choices list to be checked to see if it is a superset of the
-     *            other list.
-     * @return True if the first choices list is a subset of the second, false
-     *         otherwise.
+     * @param node
+     *            Choices list element; must be of type {@link String} or of
+     *            type {@link Map}; if the latter, it must have a {@link String}
+     *            as a value paired with the key {@link #CHOICE_NAME}.
+     * @return Identifier of the state hierarchy node.
      */
-    protected final boolean isSubset(Collection<?> list1, List<?> list2) {
-
-        // If the subset is null, it is indeed a subset.
-        if (list1 == null) {
-            return true;
-        }
-
-        // For each node in the subset, find the equivalent
-        // node in the other list, and ensure that the super-
-        // set one has at least all the nodes of the subset
-        // one.
-        for (Object node1 : list1) {
-
-            // Find the superset node equivalent to this
-            // subset node; if not found, it is not a subset.
-            String identifier = getIdentifierOfNode(node1);
-            int supersetIndex;
-            for (supersetIndex = 0; supersetIndex < list2.size(); supersetIndex++) {
-                if (identifier.equals(getIdentifierOfNode(list2
-                        .get(supersetIndex)))) {
-                    break;
-                }
-            }
-            if (supersetIndex == list2.size()) {
-                return false;
-            }
-
-            // Ensure that subclass-specific details allow
-            // the first node to be a subset of the second.
-            if (isNodeSubset(node1, list2.get(supersetIndex)) == false) {
-                return false;
-            }
-        }
-        return true;
+    @SuppressWarnings("unchecked")
+    protected final String getNameOfNode(Object node) {
+        return ((BoundedChoiceValidator<T>) getStateValidator())
+                .getNameOfNode(node);
     }
 
-    @Override
-    protected final IllegalChoicesProblem getIllegalChoicesProblemForIdentifier(
-            String parameterName, Map<?, ?> node, Exception exception, int index) {
-        return new IllegalChoicesProblem(parameterName, "[" + index + "]",
-                CHOICE_IDENTIFIER, node.get(CHOICE_NAME), "must be string");
-    }
-
-    @Override
+    /**
+     * Get the name of the specified choices list element.
+     * 
+     * @param node
+     *            Choices list element; must be of type {@link String} or of
+     *            type {@link Map}; if the latter, it must have a {@link String}
+     *            as a value paired with the key {@link #CHOICE_NAME}.
+     * @return Identifier of the state hierarchy node.
+     */
+    @SuppressWarnings("unchecked")
     protected final String getIdentifierOfNode(Object node) {
-        if (node instanceof String) {
-            return (String) node;
-        } else {
-            Map<?, ?> map = (Map<?, ?>) node;
-            if (map.containsKey(CHOICE_IDENTIFIER)) {
-                return (String) map.get(CHOICE_IDENTIFIER);
-            }
-            return (String) map.get(CHOICE_NAME);
-        }
+        return ((BoundedChoiceValidator<T>) getStateValidator())
+                .getIdentifierOfNode(node);
     }
 }

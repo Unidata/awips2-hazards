@@ -39,6 +39,8 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 
 /**
@@ -50,13 +52,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 11, 2013 2182       daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Apr 09, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
 public class StormTrackFunctionalTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private Settings savedCurrentSettings;
 
@@ -80,6 +85,15 @@ public class StormTrackFunctionalTest extends FunctionalTest {
         savedCurrentSettings = appBuilder.getCurrentSettings();
         autoTestUtilities.changeStaticSettings(CANNED_TORNADO_SETTING);
 
+    }
+
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
     }
 
     @Handler(priority = -1)
@@ -115,6 +129,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     SpatialDisplayAction modifyAction = new SpatialDisplayAction(
                             SpatialDisplayAction.ActionType.RUN_TOOL,
                             MODIFY_STORM_TRACK_TOOL, toolParameters);
+                    stepCompleted();
                     step = Steps.MODIFY_TOOL;
                     eventBus.publishAsync(modifyAction);
                 } else {
@@ -162,6 +177,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                 break;
 
             case MODIFY_TOOL:
+                stepCompleted();
                 step = Steps.CHANGE_BACK_CURRENT_SETTINGS;
                 autoTestUtilities.changeCurrentSettings(savedCurrentSettings);
                 break;
@@ -181,6 +197,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
     public void currrentSettingsActionOccurred(
             final CurrentSettingsAction settingsAction) {
         try {
+            stepCompleted();
             testSuccess();
 
         } catch (Exception e) {

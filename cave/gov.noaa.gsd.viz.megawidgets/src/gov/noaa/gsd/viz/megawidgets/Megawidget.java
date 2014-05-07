@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
 
 /**
  * Base class for any megawidget created by a megawidget specifier.
@@ -50,6 +50,9 @@ import com.google.common.collect.Maps;
  *                                           Also added helper methods for
  *                                           getting floats and doubles from
  *                                           arbitrary property value objects.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -121,7 +124,9 @@ public abstract class Megawidget implements IMegawidget {
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(MegawidgetSpecifier.MEGAWIDGET_ENABLED)) {
-            setEnabled(getPropertyBooleanValueFromObject(value, name, null));
+            setEnabled(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             throw new MegawidgetPropertyException(specifier.getIdentifier(),
                     name, specifier.getType(), null, "nonexistent property");
@@ -130,7 +135,7 @@ public abstract class Megawidget implements IMegawidget {
 
     @Override
     public final Map<String, Object> getMutableProperties() {
-        Map<String, Object> map = Maps.newHashMap();
+        Map<String, Object> map = new HashMap<>();
         try {
             for (String name : getMutablePropertyNames()) {
                 map.put(name, getMutableProperty(name));
@@ -173,351 +178,4 @@ public abstract class Megawidget implements IMegawidget {
      *            enabled or disabled.
      */
     protected abstract void doSetEnabled(boolean enable);
-
-    /**
-     * Get an integer from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code>null</code>), or an object of type
-     * <code>Number</code>. This method is used to ensure that any value
-     * specified as a number, but within the bounds of a standard integer, is
-     * properly handled.
-     * 
-     * @param object
-     *            Object holding the integer value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Integer value.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final int getPropertyIntegerValueFromObject(Object object,
-            String name, Integer defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getIntegerValueFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get an integer object from the specified object as a value for the
-     * specified property name. The object must be either <code>null</code>
-     * (only allowed if <code>defValue</code> is not <code> null</code>), or an
-     * object of type <code>Number</code>. This method is used to ensure that
-     * any value specified as a number, but within the bounds of a standard
-     * integer, is properly handled. If the object is a <code>Integer</code>, it
-     * is simply cast to this type and returned.
-     * 
-     * @param object
-     *            Object holding the integer value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Integer object.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final Integer getPropertyIntegerObjectFromObject(Object object,
-            String name, Integer defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getIntegerObjectFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a long integer from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code>null</code>), or an object of type
-     * <code>Number</code>. This method is used to ensure that any value
-     * specified as a number, but within the bounds of a standard long integer,
-     * is properly handled.
-     * 
-     * @param object
-     *            Object holding the long integer value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Long integer value.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final long getPropertyLongValueFromObject(Object object,
-            String name, Long defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getLongValueFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a long integer object from the specified object as a value for the
-     * specified property name. The object must be either <code>null</code>
-     * (only allowed if <code>defValue</code> is not <code>null</code>), or an
-     * object of type <code>Number</code>. This method is used to ensure that
-     * any value specified as a number, but within the bounds of a standard long
-     * integer, is properly handled. If the object is a <code>Long</code>, it is
-     * simply cast to this type and returned.
-     * 
-     * @param object
-     *            Object holding the long integer value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Long integer object.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final Long getPropertyLongObjectFromObject(Object object,
-            String name, Long defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getLongObjectFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a float from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code>null</code>), or an object of type
-     * <code>Number</code>. This method is used to ensure that any value
-     * specified as a number, but within the bounds of a standard float, is
-     * properly handled.
-     * 
-     * @param object
-     *            Object holding the float value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Float value.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final float getPropertyFloatValueFromObject(Object object,
-            String name, Float defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getFloatValueFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a float object from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code> null</code>), or an object of type
-     * <code>Number</code>. This method is used to ensure that any value
-     * specified as a number, but within the bounds of a standard float, is
-     * properly handled. If the object is a <code>Float</code>, it is simply
-     * cast to this type and returned.
-     * 
-     * @param object
-     *            Object holding the float value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Float object.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final Float getPropertyFloatObjectFromObject(Object object,
-            String name, Float defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getFloatObjectFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a double from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code>null</code>), or an object of type
-     * <code>Number</code>. This method is used to ensure that any value
-     * specified as a number is properly handled.
-     * 
-     * @param object
-     *            Object holding the double value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Double value.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final double getPropertyDoubleValueFromObject(Object object,
-            String name, Double defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getDoubleValueFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a double object from the specified object as a value for the
-     * specified property name. The object must be either <code>null</code>
-     * (only allowed if <code>defValue</code> is not <code>null</code>), or an
-     * object of type <code>Number</code>. This method is used to ensure that
-     * any value specified as a number is properly handled. If the object is a
-     * <code>Double</code>, it is simply cast to this type and returned.
-     * 
-     * @param object
-     *            Object holding the double value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Double object.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final Double getPropertyDoubleObjectFromObject(Object object,
-            String name, Double defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getDoubleObjectFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a boolean from the specified object as a value for the specified
-     * property name. The object must be either <code>null</code> (only allowed
-     * if <code>defValue</code> is not <code>null</code>), or an object of type
-     * <code>Boolean</code>, <code>Integer</code> or <code>Long</code>. This
-     * method is used to ensure that any value specified as a boolean, or as a
-     * long or integer of either 0 or 1, is properly handled.
-     * 
-     * @param object
-     *            Object holding the boolean value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Boolean value.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final boolean getPropertyBooleanValueFromObject(Object object,
-            String name, Boolean defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getBooleanValueFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a boolean object from the specified object as a value for the
-     * specified property name. The object must be either <code>null</code>
-     * (only allowed if <code>defValue</code> is not <code>null</code>), or an
-     * object of type <code>Boolean</code>, <code>Integer</code> or <code>
-     * Long</code>. This method is used to ensure that any value specified as a
-     * boolean, or as a long or integer of either 0 or 1, is properly handled.
-     * If the object is a <code>Boolean</code>, it is simply cast to this type
-     * and returned.
-     * 
-     * @param object
-     *            Object holding the boolean value.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Boolean object.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final Boolean getPropertyBooleanObjectFromObject(Object object,
-            String name, Boolean defValue) throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getBooleanObjectFromObject(object, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
-
-    /**
-     * Get a dynamically typed object from the specified object as a value for
-     * the specified property name. The object must be either <code>null</code>
-     * (only allowed if <code>defValue</code> is not <code>null</code>), or an
-     * object of dynamic type <code>T</code>.
-     * 
-     * @param object
-     *            Object to be cast or converted.
-     * @param name
-     *            Property name for which this object could be the value.
-     * @param requiredClass
-     *            Class to which this object must be cast or converted.
-     * @param defValue
-     *            If present, this is the default value to be returned if <code>
-     *            object</code> is <code>null</code>; if this parameter is
-     *            <code>null</code>, then finding no value for <code>object
-     *            </code> causes an exception.
-     * @return Object of the specified dynamic type.
-     * @throws MegawidgetPropertyException
-     *             If the property value is invalid.
-     */
-    protected final <T> T getPropertyDynamicallyTypedObjectFromObject(
-            Object object, String name, Class<T> requiredClass, T defValue)
-            throws MegawidgetPropertyException {
-        try {
-            return getSpecifier().getDynamicallyTypedObjectFromObject(object,
-                    requiredClass, defValue);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(), name,
-                    e.getType(), e.getBadValue(), e.getMessage(), e.getCause());
-        }
-    }
 }

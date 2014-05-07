@@ -11,10 +11,10 @@ package gov.noaa.gsd.viz.megawidgets;
 
 /**
  * Interface describing the methods to be implemented by a megawidget specifier
- * that creates a <code>IStateful</code> megawidget that allows rapid changing
- * of its state. An example would be a text entry megawidget that changes its
- * state each time the user types something. Any subclasses of <code>
- * MegawidgetSpecifier</code> must implement this interface if they are to
+ * that creates a {@link IStateful} megawidget that allows rapid changing of its
+ * state. An example would be a text entry megawidget that changes its state
+ * each time the user types something. Any subclasses of
+ * {@link MegawidgetSpecifier} must implement this interface if they are to
  * create such megawidgets.
  * 
  * <pre>
@@ -23,6 +23,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 05, 2013    2336    Chris.Golden      Initial creation.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.MultiFlatChoiceValidatorHelper;
+
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
-
-import com.google.common.collect.Sets;
 
 /**
  * Checkboxes menu megawidget specifier.
@@ -36,6 +35,9 @@ import com.google.common.collect.Sets;
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collec-
  *                                           tions instead of only lists for
  *                                           the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,7 +45,8 @@ import com.google.common.collect.Sets;
  * @see CheckBoxesMenuMegawidget
  */
 public class CheckBoxesMenuSpecifier extends
-        FlatBoundedChoicesMegawidgetSpecifier implements IMenuSpecifier {
+        FlatBoundedChoicesMegawidgetSpecifier<Collection<String>> implements
+        IMenuSpecifier {
 
     // Private Variables
 
@@ -66,7 +69,9 @@ public class CheckBoxesMenuSpecifier extends
      */
     public CheckBoxesMenuSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters,
+                new MultiFlatChoiceValidatorHelper(MEGAWIDGET_VALUE_CHOICES,
+                        CHOICE_NAME, CHOICE_IDENTIFIER, false));
         optionsManager = new MenuSpecifierOptionsManager(this, parameters);
     }
 
@@ -80,13 +85,5 @@ public class CheckBoxesMenuSpecifier extends
     @Override
     public final boolean shouldShowSeparator() {
         return optionsManager.shouldShowSeparator();
-    }
-
-    // Protected Methods
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        return Sets.newHashSet(Collection.class, String.class);
     }
 }

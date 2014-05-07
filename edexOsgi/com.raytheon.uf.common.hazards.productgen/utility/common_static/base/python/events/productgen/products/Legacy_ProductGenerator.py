@@ -18,7 +18,7 @@
     Jan  7, 2014   2367      jsanchez            Replaced ProductParts with a native python objects.
     Apr 11, 2014   3422      bkowal              Use getHazardTypes in bridge.py
     Apr 18, 2014   696       dgilling            Add support for selectable VTEC mode.
-    
+    Apr 20, 2014   2925      Chris.Golden        Changed to work with new hazard event metadata.
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -1297,7 +1297,7 @@ class Product(ProductTemplate.Product):
             
             if type(metaData) is not types.ListType:
                 metaData = metaData.execute(hazardEvent, {})
-            metaDataList.append((metaData, hazardEvent))
+            metaDataList.append((metaData[HazardConstants.METADATA_KEY], hazardEvent))
             
         return metaDataList, segmentEvents
         

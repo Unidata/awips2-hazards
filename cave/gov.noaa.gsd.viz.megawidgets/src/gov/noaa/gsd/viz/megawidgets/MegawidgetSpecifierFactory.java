@@ -27,6 +27,9 @@ import java.util.Map;
  *                                           restriction on what superclass
  *                                           is expected of which the result
  *                                           should be an instance.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,8 +46,9 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
             Class<S> superClass, Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
 
-        // Determine the name of the class of megawidget to be
-        // constructed.
+        /*
+         * Determine the name of the class of megawidget to be constructed.
+         */
         Object specifierName = parameters
                 .get(MegawidgetSpecifier.MEGAWIDGET_TYPE);
         if ((specifierName == null)
@@ -62,14 +66,18 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
         }
         String className = ((String) specifierName) + "Specifier";
 
-        // Get the fully qualified class path and name.
+        /*
+         * Get the fully qualified class path and name.
+         */
         String classPackage = (String) parameters
                 .get(MegawidgetSpecifier.MEGAWIDGET_CLASS_PACKAGE);
         String classPathAndName = (classPackage == null ? MegawidgetSpecifierFactory.class
                 .getPackage().getName() : classPackage)
                 + "." + className;
 
-        // Get the class.
+        /*
+         * Get the class.
+         */
         Class<?> specifierClass = null;
         try {
             specifierClass = Class.forName(classPathAndName);
@@ -81,8 +89,9 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
                             + classPathAndName + ")");
         }
 
-        // If the class is not a subclass of MegawidgetSpecifier,
-        // complain.
+        /*
+         * If the class is not a subclass of MegawidgetSpecifier, complain.
+         */
         if (superClass.isAssignableFrom(specifierClass) == false) {
             throw new MegawidgetSpecificationException(
                     getIdentifierForException(parameters),
@@ -91,17 +100,18 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
                             + " is not a subclass of " + superClass + ")");
         }
 
-        // If a factory is not specified in the parameters, put
-        // this instance in as the factory, so that any megawidget
-        // specifiers that need to themselves construct child
-        // megawidget specifiers will be able to do so.
+        /*
+         * If a factory is not specified in the parameters, put this instance in
+         * as the factory, so that any megawidget specifiers that need to
+         * themselves construct child megawidget specifiers will be able to do
+         * so.
+         */
         if (parameters.get(IContainerSpecifier.MEGAWIDGET_SPECIFIER_FACTORY) == null) {
             parameters.put(IContainerSpecifier.MEGAWIDGET_SPECIFIER_FACTORY,
                     this);
         }
 
-        // Construct an instance of the class using the passed-
-        // in parameters.
+        /* Construct an instance of the class using the passed-in parameters. */
         Class<?>[] constructorArgTypes = { Map.class };
         Object[] constructorArgValues = { parameters };
         S megawidgetSpecifier = null;
@@ -157,7 +167,9 @@ public class MegawidgetSpecifierFactory implements IMegawidgetSpecifierFactory {
             }
         }
 
-        // Return the result.
+        /*
+         * Return the result.
+         */
         return megawidgetSpecifier;
     }
 

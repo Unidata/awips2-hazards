@@ -12,15 +12,15 @@ package gov.noaa.gsd.viz.megawidgets;
 /**
  * Interface describing the methods to be implemented by a megawidget specifier
  * that is a container for other megawidget specifiers, providing configurable
- * padding and column layout for its children. Any subclasses of <code>
- * MegawidgetSpecifier</code> must implement this interface if they are to hold
+ * padding and column layout for its children. Any subclasses of
+ * {@link MegawidgetSpecifier} must implement this interface if they are to hold
  * other megawidget specifiers and offer such configurable layout options. Also,
- * any such subclasses must only produce <code>Megawidget</code> objects that
- * implement the <code>IParent</code> interface. The <code>C</code> parameter
- * indicates what type of <code>ISpecifier</code> each child specifier must be.
+ * any such subclasses must only produce {@link Megawidget} objects that
+ * implement the {@link IContainer} interface. The <code>C</code> parameter
+ * indicates what type of {@link ISpecifier} each child specifier must be.
  * <p>
- * Note that each instance of this interface should use an instance of <code>
- * ChildSpecifiersManager</code> to manage its child specifiers.
+ * Note that each instance of this interface should use an instance of
+ * {@link ChildSpecifiersManager} to manage its child specifiers.
  * 
  * <pre>
  * 
@@ -33,6 +33,9 @@ package gov.noaa.gsd.viz.megawidgets;
  *                                           IParentSpecifier and to have
  *                                           the generic C parameter.
  * Nov 06, 2013    2336    Chris.Golden      Cleaned up comment typo.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

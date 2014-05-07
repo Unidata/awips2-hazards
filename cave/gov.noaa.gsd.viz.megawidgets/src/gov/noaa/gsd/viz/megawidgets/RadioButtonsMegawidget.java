@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +24,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Radio buttons megawidget, providing a series of radio buttons from which the
@@ -52,6 +52,9 @@ import com.google.common.collect.Sets;
  *                                           to erroneously allow deselection by
  *                                           the user, and changed from single-
  *                                           line to multi-line comment style.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,8 +71,8 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
+        Set<String> names = new HashSet<>(
+                MultipleBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_WITHOUT_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -168,6 +171,11 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -190,7 +198,9 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -215,7 +225,9 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -226,7 +238,9 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -249,13 +263,19 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
         throw new UnsupportedOperationException(
                 "cannot change choices for radio buttons megawidget");
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void synchronizeComponentWidgetsToChoices() {
+        throw new UnsupportedOperationException(
+                "cannot change choices for radio buttons megawidget");
+    }
+
+    @Override
+    protected final void doSynchronizeComponentWidgetsToState() {
         for (Button radioButton : radioButtons) {
             radioButton.setSelection(radioButton.getData().equals(state));
         }

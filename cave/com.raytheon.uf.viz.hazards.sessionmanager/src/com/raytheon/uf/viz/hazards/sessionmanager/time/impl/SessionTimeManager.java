@@ -30,10 +30,11 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 
 /**
  * Implementation of ISessionTimeManager
@@ -46,6 +47,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
  * ------------ ---------- ----------- --------------------------
  * May 20, 2013 1257       bsteffen    Initial creation
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
+ * Mar 19, 2014 2925       C. Golden   Changed to fire off notification when
+ *                                     visible time range changes.
  * </pre>
  * 
  * @author bsteffen
@@ -91,7 +94,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         if (!selectedTimeRange.isValid()) {
             selectedTimeRange = new TimeRange(selectedTime, selectedTime);
         }
-        notificationSender.postNotification(new SelectedTimeChanged(this));
+        notificationSender.postNotificationAsync(new SelectedTimeChanged(this));
     }
 
     @Override
@@ -109,7 +112,7 @@ public class SessionTimeManager implements ISessionTimeManager {
             return;
         }
         this.selectedTimeRange = selectedTimeRange;
-        notificationSender.postNotification(new SelectedTimeChanged(this));
+        notificationSender.postNotificationAsync(new SelectedTimeChanged(this));
     }
 
     @Override
@@ -120,12 +123,15 @@ public class SessionTimeManager implements ISessionTimeManager {
     @Override
     public void setVisibleRange(TimeRange visibleRange) {
         this.visibleRange = visibleRange;
+        notificationSender.postNotificationAsync(new VisibleTimeRangeChanged(
+                this));
     }
 
     @Handler
-    public void eventSelected(SessionEventAttributeModified notification) {
-        if (notification.isAttrbute(ISessionEventManager.ATTR_SELECTED)) {
-            if (Boolean.TRUE.equals(notification.getAttributeValue())) {
+    public void eventSelected(SessionEventAttributesModified notification) {
+        if (notification.containsAttribute(ISessionEventManager.ATTR_SELECTED)) {
+            if (Boolean.TRUE.equals(notification.getEvent().getHazardAttribute(
+                    ISessionEventManager.ATTR_SELECTED))) {
                 IEvent event = notification.getEvent();
                 TimeRange eventRange = new TimeRange(event.getStartTime(),
                         event.getEndTime());

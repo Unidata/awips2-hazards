@@ -19,6 +19,19 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REPLACED_BY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -55,6 +68,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -73,10 +87,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -134,6 +151,19 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Mar 3, 2014  3034       bkowal      Constant for GFE interoperability flag
  * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
  *                                     configuration plugin.
+ * Apr 29, 2014 2925       Chris.Golden Moved business logic that was scattered
+ *                                      elsewhere into here where it belongs. Also
+ *                                      changed notifications being posted to be
+ *                                      asynchronous, added notification posting for
+ *                                      for when the allowable "until further notice"
+ *                                      set has changed, and changed logic of "until
+ *                                      further notice" to use the old value for the
+ *                                      corresponding attribute or end time when
+ *                                      possible when "until further notice" is
+ *                                      toggled off. Also added fetching and caching
+ *                                      of megawidget specifier managers for hazard
+ *                                      events, in support of class-based metadata
+ *                                      work.
  * </pre>
  * 
  * @author bsteffen
@@ -145,8 +175,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
     /**
      * Default duration for hazard events that do not have a type.
      */
-    private static final long NULL_HAZARD_TYPE_DEFAULT_DURATION = TimeUnit.HOURS
+    private static final long DEFAULT_HAZARD_DURATION = TimeUnit.HOURS
             .toMillis(8);
+
+    /**
+     * Default interval between two attributes for when the second attribute's
+     * "until further notice" is toggled off.
+     */
+    private static final long DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE = TimeUnit.HOURS
+            .toMillis(1);
 
     /**
      * Contains the mappings between geodatabase table names and the UGCBuilders
@@ -208,6 +245,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
 
+    private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
+
     /*
      * The messenger for displaying questions and warnings to the user and
      * retrieving answers. This allows the viz side (App Builder) to be
@@ -249,32 +288,481 @@ public class SessionEventManager extends AbstractSessionEventManager {
         return result;
     }
 
+    @Override
+    public boolean setEventType(ObservedHazardEvent event, String phenomenon,
+            String significance, String subType, IOriginator originator) {
+        ObservedHazardEvent oldEvent = null;
+
+        /*
+         * If the event cannot change type, create a new event with the new
+         * type.
+         */
+        if (!canChangeType(event)) {
+            oldEvent = event;
+            IHazardEvent baseEvent = new BaseHazardEvent(event);
+            baseEvent.setEventID("");
+            baseEvent.setState(HazardState.PENDING);
+            baseEvent.addHazardAttribute(HazardConstants.REPLACES,
+                    configManager.getHeadline(oldEvent));
+
+            /*
+             * New event should not have product information.
+             */
+            baseEvent.removeHazardAttribute(EXPIRATION_TIME);
+            baseEvent.removeHazardAttribute(ISSUE_TIME);
+            baseEvent.removeHazardAttribute(VTEC_CODES);
+            baseEvent.removeHazardAttribute(ETNS);
+            baseEvent.removeHazardAttribute(PILS);
+
+            /*
+             * The originator should be the session manager, since the addition
+             * of a new event is occurring.
+             */
+            originator = Originator.OTHER;
+
+            /*
+             * Add the event, and add it to the selection as well. The old
+             * selection is fetched before the addition, because the addition
+             * will change the selection.
+             */
+            Collection<ObservedHazardEvent> selection = getSelectedEvents();
+            event = addEvent(baseEvent, originator);
+            selection.add(event);
+            setSelectedEvents(selection, originator);
+        }
+
+        /*
+         * Change the event type as specified, whether it is being set or
+         * cleared.
+         */
+        if (phenomenon != null) {
+
+            /*
+             * This is tricky, but in replace-by operations you need to make
+             * sure that modifications to the old event are completed before
+             * modifications to the new event. This puts the new event at the
+             * top of the modification queue which ultimately controls things
+             * like which event tab gets focus in the HID. The originator is
+             * also changed to the session manager, since any changes to the
+             * type of the new event are being done by the session manager, not
+             * by the original originator.
+             */
+            if (oldEvent != null) {
+                IHazardEvent tempEvent = new BaseHazardEvent();
+                tempEvent.setPhenomenon(phenomenon);
+                tempEvent.setSignificance(significance);
+                tempEvent.setSubType(subType);
+                oldEvent.addHazardAttribute(REPLACED_BY,
+                        configManager.getHeadline(tempEvent), originator);
+                oldEvent.addHazardAttribute(PREVIEW_STATE,
+                        HazardConstants.HazardState.ENDED.getValue(),
+                        originator);
+            }
+
+            /*
+             * Assign the new type.
+             */
+            event.setHazardType(phenomenon, significance, subType, originator);
+
+            /*
+             * Make sure the updated hazard type is a part of the visible types
+             * in the current setting. If not, add it.
+             * 
+             * TODO: ObservedSettings should use defensive copying and return a
+             * copy of the visibleTypes, but since it doesn't, the copying is
+             * done here. Once the lack of defensive copying is addressed, this
+             * copying can be removed.
+             */
+            Set<String> visibleTypes = new HashSet<>(configManager
+                    .getSettings().getVisibleTypes());
+            visibleTypes.add(HazardEventUtilities.getHazardType(event));
+            configManager.getSettings().setVisibleTypes(visibleTypes);
+        } else {
+            event.setHazardType(null, null, null, originator);
+        }
+        return (originator != Originator.OTHER);
+    }
+
     /**
-     * Ensure that toggles of "until further notice" flags result in the
-     * appropriate time being set to "until further notice".
+     * Respond to a hazard event's type change by firing off a notification that
+     * the event may have new metadata.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
-    public void hazardAttributesChanged(SessionEventAttributeModified change) {
-        if (change.getAttributeKey().equals(
-                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-            change.getEvent().setEndTime(
-                    getTimeResultingFromUntilFurtherNoticeToggle(change
-                            .getEvent(), (Boolean) change.getAttributeValue(),
-                            change.getEvent().getStartTime(), 1L));
-        } else if (change.getAttributeKey().equals(
-                HazardConstants.FALL_BELOW_UNTIL_FURTHER_NOTICE)) {
-            Object crestTime = change.getEvent().getHazardAttribute(
-                    HazardConstants.CREST);
-            Date date = (crestTime instanceof Date ? (Date) crestTime
-                    : new Date(((Number) crestTime).longValue()));
-            change.getEvent().addHazardAttribute(
-                    HazardConstants.FALL_BELOW,
-                    getTimeResultingFromUntilFurtherNoticeToggle(
-                            change.getEvent(),
-                            (Boolean) change.getAttributeValue(), date, 2L));
+    public void hazardTypeChanged(SessionEventTypeModified change) {
+        updateEventMetadata(change.getEvent());
+    }
+
+    /**
+     * Respond to a hazard event's state change by firing off a notification
+     * that the event may have new metadata.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardStateChanged(SessionEventStateModified change) {
+        updateEventMetadata(change.getEvent());
+    }
+
+    @Override
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(
+            ObservedHazardEvent event) {
+        return megawidgetSpecifiersForEventIdentifiers.get(event.getEventID());
+    }
+
+    /**
+     * Update the specified event's metadata in response to some sort of change
+     * (creation of the event, updating of state or hazard type) that may result
+     * in the available metadata changing.
+     * 
+     * @param event
+     *            Event for which metadata may need updating.
+     */
+    private void updateEventMetadata(IHazardEvent event) {
+
+        /*
+         * Get a new megawidget specifier manager for this event, and store it
+         * in the cache.
+         */
+        MegawidgetSpecifierManager manager = configManager
+                .getMegawidgetSpecifiersForHazardEvent(event);
+        megawidgetSpecifiersForEventIdentifiers
+                .put(event.getEventID(), manager);
+
+        /*
+         * Fire off a notification that the metadata may have changed for this
+         * event.
+         */
+        notificationSender
+                .postNotificationAsync(new SessionEventMetadataModified(this,
+                        event, Originator.OTHER));
+
+        /*
+         * Get a copy of the current attributes of the hazard event, so that
+         * they may be modified as required to work with the new metadata
+         * specifiers. Then add any missing specifiers' starting states (and
+         * correct those that are not valid for these specifiers), and assign
+         * the modified attributes back to the event.
+         * 
+         * TODO: ObservedHazardEvent should probably return a defensive copy of
+         * the attributes, or better yet, an unmodifiable view (i.e. using
+         * Collections.unmodifiableMap()), so that the original within the
+         * ObservedHazardEvent cannot be modified. This should be done with any
+         * other mutable objects returned by ObservedXXXX instances, since they
+         * need to know when their components are modified so that they can send
+         * out notifications in response.
+         * 
+         * TODO: Consider making megawidgets take Serializable states, instead
+         * of using states of type Object. This is a bit complex, since those
+         * states that are of various types of Collection subclasses are not
+         * serializable; in those cases it might be difficult to pull this off.
+         * For now, copying back and forth between maps holding Object values
+         * and those holding Serializable values must be done.
+         */
+        boolean eventModified = ((ObservedHazardEvent) event).isModified();
+        Map<String, Serializable> attributes = event.getHazardAttributes();
+        Map<String, Object> newAttributes = new HashMap<>(attributes.size());
+        for (String name : attributes.keySet()) {
+            newAttributes.put(name, attributes.get(name));
+        }
+        populateTimeAttributesStartingStates(manager.getSpecifiers(),
+                newAttributes, event.getStartTime().getTime(), event
+                        .getEndTime().getTime());
+        manager.populateWithStartingStates(newAttributes);
+        attributes = new HashMap<>(newAttributes.size());
+        for (String name : newAttributes.keySet()) {
+            attributes.put(name, (Serializable) newAttributes.get(name));
+        }
+        event.setHazardAttributes(attributes);
+        ((ObservedHazardEvent) event).setModified(eventModified);
+    }
+
+    /**
+     * Find any time-based megawidget specifiers in the specified list and, for
+     * each one, if the given attributes map does not include values for all of
+     * its state identifiers, fill in default states for those identifiers.
+     * 
+     * @param specifiers
+     *            Megawidget specifiers.
+     * @param attributes
+     *            Map of hazard attribute names to their values.
+     * @param mininumTime
+     *            Minimum time to use when coming up with default values.
+     * @param maximumTime
+     *            Maximum time to use when coming up with default values.
+     */
+    @SuppressWarnings("unchecked")
+    private void populateTimeAttributesStartingStates(
+            List<ISpecifier> specifiers, Map<String, Object> attributes,
+            long minimumTime, long maximumTime) {
+
+        /*
+         * Iterate through the specifiers, looking for any that are time
+         * specifiers and filling in default values for those, and for any that
+         * are parent specifiers to as to be able to search their descendants
+         * for the same reason.
+         */
+        for (ISpecifier specifier : specifiers) {
+            if (specifier instanceof TimeMegawidgetSpecifier) {
+
+                /*
+                 * Determine whether or not the attributes handled by this
+                 * specifier already have valid values, meaning that they must
+                 * have non-null values that are in increasing order.
+                 */
+                TimeMegawidgetSpecifier timeSpecifier = ((TimeMegawidgetSpecifier) specifier);
+                List<String> identifiers = timeSpecifier.getStateIdentifiers();
+                long lastValue = -1L;
+                boolean populate = false;
+                for (String identifier : identifiers) {
+                    Number valueObj = (Number) attributes.get(identifier);
+                    if ((valueObj == null)
+                            || ((lastValue != -1L) && (lastValue >= valueObj
+                                    .longValue()))) {
+                        populate = true;
+                        break;
+                    }
+                    lastValue = valueObj.longValue();
+                }
+
+                /*
+                 * If the values are not valid, create default values for them,
+                 * equally spaced between the given minimum and maximum times,
+                 * unless there is only one attribute for this specifier, in
+                 * which case simply make it the same as the minimum time.
+                 */
+                if (populate) {
+                    long interval = (identifiers.size() == 1 ? 0L
+                            : (maximumTime - minimumTime)
+                                    / (identifiers.size() - 1L));
+                    long defaultValue = (identifiers.size() == 1 ? (minimumTime + maximumTime) / 2L
+                            : minimumTime);
+                    for (int j = 0; j < identifiers.size(); j++, defaultValue += interval) {
+                        String identifier = identifiers.get(j);
+                        attributes.put(identifier, defaultValue);
+                    }
+                }
+            }
+            if (specifier instanceof IParentSpecifier) {
+
+                /*
+                 * Ensure that any descendant time specifiers' attributes have
+                 * proper default values as well.
+                 */
+                populateTimeAttributesStartingStates(
+                        ((IParentSpecifier<ISpecifier>) specifier)
+                                .getChildMegawidgetSpecifiers(),
+                        attributes, minimumTime, maximumTime);
+            }
+        }
+    }
+
+    /**
+     * Ensure that toggles of "until further notice" flags result in the
+     * appropriate time being set to "until further notice" or, if the flag has
+     * been set to false, an appropriate default time.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardAttributesChanged(SessionEventAttributesModified change) {
+
+        /*
+         * If the end time "until further notice" flag has changed value but was
+         * not removed, change the end time in a corresponding manner.
+         */
+        if (change
+                .containsAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
+                && change
+                        .getEvent()
+                        .getHazardAttributes()
+                        .containsKey(
+                                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+            setEventEndTimeForUntilFurtherNotice(
+                    change.getEvent(),
+                    Boolean.TRUE
+                            .equals(change
+                                    .getEvent()
+                                    .getHazardAttribute(
+                                            HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+        }
+
+        /*
+         * For any attribute with the "until further notice" suffix that has
+         * changed value, find the corresponding attribute in a time scale
+         * specifier, and change its value appropriately.
+         */
+        for (String key : change.getAttributeKeys()) {
+            if (key.endsWith(HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX)
+                    && (key.equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE) == false)) {
+
+                /*
+                 * Get the name of the attribute that should have its value
+                 * changed as a result of the "until further notice" toggle.
+                 */
+                int endIndex = key.length()
+                        - HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX.length();
+                if (endIndex < 1) {
+                    statusHandler.error("Illegal to use \""
+                            + HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX
+                            + "\" as complete metadata identifier; must be "
+                            + "suffix for identifier to which until "
+                            + "further notice may be applied.");
+                    continue;
+                }
+                String attributeBeingChanged = key.substring(0, endIndex);
+
+                /*
+                 * Find the time scale specifier that includes this attribute.
+                 * It may be the last attribute in a multi-state specifier, or
+                 * its only state.
+                 */
+                String megawidgetIdentifierSuffix = ":" + attributeBeingChanged;
+                MegawidgetSpecifierManager specifierManager = megawidgetSpecifiersForEventIdentifiers
+                        .get(change.getEvent().getEventID());
+                ISpecifier targetSpecifier = null;
+                boolean singleStateSpecifier = false;
+                for (ISpecifier specifier : specifierManager.getSpecifiers()) {
+                    if (specifier.getIdentifier().endsWith(
+                            megawidgetIdentifierSuffix)
+                            || specifier.getIdentifier().equals(
+                                    attributeBeingChanged)) {
+                        singleStateSpecifier = specifier.getIdentifier()
+                                .equals(attributeBeingChanged);
+                        targetSpecifier = specifier;
+                        break;
+                    }
+                }
+                if ((targetSpecifier instanceof TimeScaleSpecifier) == false) {
+                    statusHandler.warn("Unable to find time scale specifier "
+                            + "for attribute \"" + attributeBeingChanged
+                            + "\" that may be manipulated by toggling of "
+                            + "attribute \"" + key + "\".");
+                    continue;
+                }
+                TimeScaleSpecifier timeScaleSpecifier = (TimeScaleSpecifier) targetSpecifier;
+
+                /*
+                 * Get the name of the attribute used to store the information
+                 * concerning the previous value of the attribute to be changed.
+                 */
+                String lastValueKey = HazardConstants.BEFORE_UNTIL_FURTHER_NOTICE_PREFIX
+                        + attributeBeingChanged;
+
+                /*
+                 * If the specifier has only one state, just use the last-value
+                 * attribute as the last value before "until further notice" was
+                 * toggled on; if it has multiple states, use the last-value
+                 * attribute to hold the interval between the value of the
+                 * attribute to be changed, and the previous attribute within
+                 * the specifier.
+                 */
+                boolean untilFurtherNotice = Boolean.TRUE.equals(change
+                        .getEvent().getHazardAttribute(key));
+                boolean untilFurtherNoticeWasOn = ((change.getEvent()
+                        .getHazardAttribute(attributeBeingChanged) instanceof Long) && ((Long) change
+                        .getEvent().getHazardAttribute(attributeBeingChanged) == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
+                if (singleStateSpecifier) {
+
+                    /*
+                     * If "until further notice" has been toggled on, remember
+                     * the old value for this attribute before giving it the
+                     * special "until further notice" value. If instead it was
+                     * toggled off, use the old value stored when it was toggled
+                     * on to set its new current value. In the latter case,
+                     * check to ensure that the old value stored is indeed a
+                     * Date, since it is possible (although very unlikely) that
+                     * the metadata may have changed for this event, making it
+                     * have a single-state time scale specifier where it used to
+                     * have a multi-state one.
+                     */
+                    if (untilFurtherNotice) {
+                        if (change.getEvent().getHazardAttribute(lastValueKey) == null) {
+                            change.getEvent().addHazardAttribute(
+                                    lastValueKey,
+                                    new Date((Long) change.getEvent()
+                                            .getHazardAttribute(
+                                                    attributeBeingChanged)));
+                        }
+                        change.getEvent()
+                                .addHazardAttribute(
+                                        attributeBeingChanged,
+                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+                    } else if (untilFurtherNoticeWasOn) {
+                        Object savedValue = change.getEvent()
+                                .getHazardAttribute(lastValueKey);
+                        change.getEvent().removeHazardAttribute(lastValueKey);
+                        change.getEvent().addHazardAttribute(
+                                attributeBeingChanged,
+                                (savedValue instanceof Date ? (Date) savedValue
+                                        : change.getEvent().getEndTime())
+                                        .getTime());
+                    }
+                } else {
+
+                    /*
+                     * If "until further notice" has been toggled on, remember
+                     * the interval between this attribute and the previous
+                     * attribute in the time scale specifier. If instead it was
+                     * toggled off, find the old value that was stored. If it is
+                     * a Date object (which is very unlikely, but would occur if
+                     * the metadata has changed for this event since the last
+                     * toggle, and it changed from a single-state specifier to a
+                     * multi-state one at that time), use that as the time if
+                     * possible, or if too early, use a time one hour after the
+                     * previous attribute's time. However, it will generally be
+                     * a long integer interval; in that case, add said interval
+                     * to the previous attribute's value to get a new Date and
+                     * use that.
+                     */
+                    String previousAttribute = timeScaleSpecifier
+                            .getStateIdentifiers().get(
+                                    timeScaleSpecifier.getStateIdentifiers()
+                                            .size() - 2);
+                    if (untilFurtherNotice) {
+                        if (change.getEvent().getHazardAttribute(lastValueKey) == null) {
+                            long interval = ((Long) change.getEvent()
+                                    .getHazardAttribute(attributeBeingChanged))
+                                    - ((Long) change.getEvent()
+                                            .getHazardAttribute(
+                                                    previousAttribute));
+                            change.getEvent().addHazardAttribute(lastValueKey,
+                                    interval);
+                        }
+                        change.getEvent()
+                                .addHazardAttribute(
+                                        attributeBeingChanged,
+                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+                    } else if (untilFurtherNoticeWasOn) {
+                        Object savedValue = change.getEvent()
+                                .getHazardAttribute(lastValueKey);
+                        change.getEvent().removeHazardAttribute(lastValueKey);
+                        Long newValue;
+                        if (savedValue instanceof Long) {
+                            newValue = ((Long) change.getEvent()
+                                    .getHazardAttribute(previousAttribute))
+                                    + (Long) savedValue;
+                        } else {
+                            Long previousAttributeValue = (Long) change
+                                    .getEvent().getHazardAttribute(
+                                            previousAttribute);
+                            if ((savedValue == null)
+                                    || (((Date) savedValue).getTime() <= previousAttributeValue)) {
+                                newValue = previousAttributeValue
+                                        + DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE;
+                            } else {
+                                newValue = ((Date) savedValue).getTime();
+                            }
+                        }
+                        change.getEvent().addHazardAttribute(
+                                attributeBeingChanged, newValue);
+                    }
+                }
+            }
         }
     }
 
@@ -285,42 +773,48 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     /**
-     * Get the time to be used as a result of an "until further notice" toggle.
+     * Set the end time for the specified event with respect to the specified
+     * value for "until further notice".
      * 
      * @param event
-     *            Event that had its "until further notice" toggle changed.
-     * @param value
-     *            New value of the "until further notice" toggle; if <code>
-     *            null</code>, it is considered false.
-     * @param baseTime
-     *            Base time to which to add the default duration if
-     *            "until further notice" was toggled off.
-     * @param denominator
-     *            Number by which to divide the default duration when applying
-     *            it if "until further notice" has been toggled off.
-     * @return Time to be used as a result of an "until further notice" toggle.
+     *            Event to have its end time set.
+     * @param untilFurtherNotice
+     *            Flag indicating whether or not the end time should be
+     *            "until further notice".
      */
-    private Date getTimeResultingFromUntilFurtherNoticeToggle(
-            IHazardEvent event, Boolean value, Date baseTime, long denominator) {
+    private void setEventEndTimeForUntilFurtherNotice(IHazardEvent event,
+            boolean untilFurtherNotice) {
 
         /*
-         * If "until further notice" was toggled on, use the time value that
-         * indicates "until further notice".
+         * If "until further notice" has been toggled on for the end time, save
+         * the current end time for later (in case it is toggled off again), and
+         * change the end time to the "until further notice" value; otherwise,
+         * change the end time to be the same interval distant from the start
+         * time as it was before "until further notice" was toggled on. (If no
+         * interval was saved, perhaps due to a metadata change, just use 4
+         * hours as the default interval; this is an edge case.)
          */
-        if (Boolean.TRUE.equals(value)) {
-            return new Date(
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+        if (untilFurtherNotice) {
+            if (event
+                    .getHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE) == null) {
+                long interval = event.getEndTime().getTime()
+                        - event.getStartTime().getTime();
+                event.addHazardAttribute(
+                        HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
+                        interval);
+            }
+            event.setEndTime(new Date(
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
+        } else if ((event.getEndTime() != null)
+                && (event.getEndTime().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
+            Long interval = (Long) event
+                    .getHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            if (interval == null) {
+                interval = DEFAULT_HAZARD_DURATION;
+            }
+            event.setEndTime(new Date(event.getStartTime().getTime() + interval));
         }
-
-        /*
-         * Since "until further notice" was toggled off, use the time value
-         * resulting from adding the default duration to the base time.
-         */
-        HazardTypes hts = configManager.getHazardTypes();
-        HazardTypeEntry ht = hts.get(HazardEventUtilities.getHazardType(event));
-        long defaultDuration = (ht != null ? ht.getDefaultDuration()
-                : NULL_HAZARD_TYPE_DEFAULT_DURATION) / denominator;
-        return new Date(baseTime.getTime() + defaultDuration);
     }
 
     /**
@@ -351,23 +845,34 @@ public class SessionEventManager extends AbstractSessionEventManager {
             }
         }
 
+        /*
+         * Make the change required; if this actually results in a change to the
+         * set, fire off a notification.
+         */
+        boolean changed;
         if (allowsUntilFurtherNotice) {
-            identifiersOfEventsAllowingUntilFurtherNotice.add(event
+            changed = identifiersOfEventsAllowingUntilFurtherNotice.add(event
                     .getEventID());
         } else {
-            identifiersOfEventsAllowingUntilFurtherNotice.remove(event
-                    .getEventID());
+            changed = identifiersOfEventsAllowingUntilFurtherNotice
+                    .remove(event.getEventID());
+        }
+        if (changed) {
+            notificationSender
+                    .postNotificationAsync(new SessionEventAllowUntilFurtherNoticeModified(
+                            this, event, Originator.OTHER));
         }
     }
 
     /**
-     * Ensure that the "until further notice" mode, if present in the specified
-     * event, is appropriate; if it is not, remove it.
+     * Ensure that the end time "until further notice" mode, if present in the
+     * specified event, is appropriate; if it is not, remove it.
      * 
      * @param event
      *            Event to be checked.
      */
-    private void ensureEventUntilFurtherNoticeAppropriate(IHazardEvent event) {
+    private void ensureEventEndTimeUntilFurtherNoticeAppropriate(
+            IHazardEvent event) {
 
         /*
          * If this event cannot have "until further notice", ensure it is not
@@ -378,16 +883,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
             /*
              * If the attributes contains the flag, remove it. If it was set
-             * high, then reset the end time to the start time plus the default
-             * duration for this event type.
+             * high, then reset the end time to an appropriate non-"until
+             * further notice" value.
              */
             Boolean untilFurtherNotice = (Boolean) event
                     .getHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
             if (untilFurtherNotice != null) {
                 event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
                 if (untilFurtherNotice.equals(Boolean.TRUE)) {
-                    event.setEndTime(getTimeResultingFromUntilFurtherNoticeToggle(
-                            event, Boolean.FALSE, event.getStartTime(), 1L));
+                    setEventEndTimeForUntilFurtherNotice(event, false);
                 }
             }
         }
@@ -628,8 +1132,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
         oevent.addHazardAttribute(ATTR_CHECKED, true);
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
-        notificationSender.postNotification(new SessionEventAdded(this, oevent,
-                originator));
+        notificationSender.postNotificationAsync(new SessionEventAdded(this,
+                oevent, originator));
         return oevent;
     }
 
@@ -663,8 +1167,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 }
                 updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event,
                         true);
-                notificationSender.postNotification(new SessionEventRemoved(
-                        this, event, originator));
+                megawidgetSpecifiersForEventIdentifiers.remove(event
+                        .getEventID());
+                notificationSender
+                        .postNotificationAsync(new SessionEventRemoved(this,
+                                event, originator));
             }
         }
     }
@@ -701,8 +1208,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
             ((ObservedHazardEvent) event).setModified(true);
         }
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event, false);
-        ensureEventUntilFurtherNoticeAppropriate(event);
-        notificationSender.postNotification(notification);
+        ensureEventEndTimeUntilFurtherNoticeAppropriate(event);
+        notificationSender.postNotificationAsync(notification);
     }
 
     /**
@@ -716,10 +1223,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * be run whenever an event is so modified.
      */
     protected void hazardEventAttributeModified(
-            SessionEventAttributeModified notification) {
+            SessionEventAttributesModified notification) {
         IHazardEvent event = notification.getEvent();
         addModification(event.getEventID());
-        notificationSender.postNotification(notification);
+        notificationSender.postNotificationAsync(notification);
     }
 
     /**
@@ -774,7 +1281,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
 
         addModification(notification.getEvent().getEventID());
-        notificationSender.postNotification(notification);
+        notificationSender.postNotificationAsync(notification);
     }
 
     /**
@@ -1313,9 +1820,19 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void proposeEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.setState(HazardState.PROPOSED, true, true, originator);
-        clearUndoRedo(event);
-        event.setModified(false);
+
+        /*
+         * Only propose events that are not already proposed, and are not issued
+         * or ended, and that have a valid type.
+         */
+        HazardState state = event.getState();
+        if ((state != HazardState.ISSUED) && (state != HazardState.ENDED)
+                && (state != HazardState.PROPOSED)
+                && (event.getPhenomenon() != null)) {
+            event.setState(HazardState.PROPOSED, true, true, originator);
+            clearUndoRedo(event);
+            event.setModified(false);
+        }
     }
 
     @Override

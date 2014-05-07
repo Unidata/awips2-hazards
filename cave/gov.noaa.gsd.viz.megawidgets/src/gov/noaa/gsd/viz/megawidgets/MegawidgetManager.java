@@ -30,7 +30,8 @@ import com.google.common.collect.Lists;
  * specifiers and to manage their state changes.
  * <p>
  * The manager is instantiated using parameters that include a list of maps,
- * each defining a megawidget specifier; a maps providing the state that the
+ * each defining a megawidget specifier (or optionally, a
+ * {@link MegawidgetSpecifierManager}; a map providing the state that the
  * megawidgets will allow the user to view and/or manipulate; and time boundary
  * values for any time scale megawidgets that will be created. The state map's
  * elements are known as <i>state elements</i>, as distinguished from
@@ -75,8 +76,8 @@ import com.google.common.collect.Lists;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 1, 2013             Chris.Golden      Initial creation.
- * May 6, 2013     1277    Chris.Golden      Added support for mutable properties,
+ * Mar 01, 2013            Chris.Golden      Initial creation.
+ * May 06, 2013    1277    Chris.Golden      Added support for mutable properties,
  *                                           and side effect application execution.
  * Sep 25, 2013    2168    Chris.Golden      Switched to using IParent instead of
  *                                           IContainer, and made compatible with
@@ -92,6 +93,12 @@ import com.google.common.collect.Lists;
  *                                           if the state of one or more megawidgets
  *                                           is changed programmatically, not just
  *                                           via the GUI.
+ * Mar 07, 2014    2925    Chris.Golden      Changed to use the new megawidget
+ *                                           specifier manager to do construction
+ *                                           and validation of the specifiers.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,7 +143,7 @@ public abstract class MegawidgetManager {
      * Side effects applier, or <code>null</code> if there are no side effects
      * to be applied.
      */
-    private final ISideEffectsApplier sideEffectsApplier;
+    private ISideEffectsApplier sideEffectsApplier;
 
     /**
      * Flag indicating whether or not the managed megawidgets are currently
@@ -158,12 +165,14 @@ public abstract class MegawidgetManager {
         @Override
         public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
 
-            // If a side effects applier is available and the invoked mega-
-            // widget is not stateful, apply side effects before sending
-            // along the notification of the invocation. Stateful mega-
-            // widgets do not get side effects applied here because the
-            // latter has already been done when they experienced the
-            // state change that preceded this notification.
+            /*
+             * If a side effects applier is available and the invoked megawidget
+             * is not stateful, apply side effects before sending along the
+             * notification of the invocation. Stateful megawidgets do not get
+             * side effects applied here because the latter has already been
+             * done when they experienced the state change that preceded this
+             * notification.
+             */
             if ((sideEffectsApplier != null)
                     && ((megawidget instanceof IStateful) == false)) {
                 applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
@@ -182,14 +191,20 @@ public abstract class MegawidgetManager {
         public void megawidgetStateChanged(IStateful megawidget,
                 String identifier, Object state) {
 
-            // Do any preprocessing of the state required by a subclass.
+            /*
+             * Do any preprocessing of the state required by a subclass.
+             */
             state = convertMegawidgetStateToStateElement(identifier, state);
 
-            // Remember the new state.
+            /*
+             * Remember the new state.
+             */
             commitStateElementChange(identifier, state);
 
-            // If a side effects applier is available, apply side effects
-            // before sending along the notification of the state change.
+            /*
+             * If a side effects applier is available, apply side effects before
+             * sending along the notification of the state change.
+             */
             if (sideEffectsApplier != null) {
                 applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
                         .getIdentifier()), true);
@@ -265,8 +280,40 @@ public abstract class MegawidgetManager {
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state, ISideEffectsApplier sideEffectsApplier)
             throws MegawidgetException {
-        this.sideEffectsApplier = sideEffectsApplier;
-        construct(parent, IMenu.class, specifiers, state, 0L, 0L, 0L, 0L, null);
+        construct(parent, IMenu.class, new MegawidgetSpecifierManager(
+                specifiers, IMenuSpecifier.class, sideEffectsApplier), state,
+                0L, 0L, null);
+    }
+
+    /**
+     * Construct a standard instance for managing megawidgets that exist within
+     * a menu widget.
+     * 
+     * @param parent
+     *            Parent menu in which the megawidgets are to be created.
+     * @param specifierManager
+     *            Megawidget specifier manager holding the specifiers that are
+     *            to govern the creation of the megawidgets.
+     * @param state
+     *            State to be viewed and/or modified via the megawidgets that
+     *            are constructed. Each megawidget specifier defined by <code>
+     *            specifiers</code> should have an entry in this map, mapping
+     *            the specifier's identifier to the value that the megawidget
+     *            will take on (with conversions between megawidget state and
+     *            state element being performed by
+     *            {@link #convertStateElementToMegawidgetState(String, Object)}
+     *            and
+     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
+     *            ).
+     * @throws MegawidgetException
+     *             If one of the megawidget specifiers is invalid, or if an
+     *             error occurs while creating or initializing one of the
+     *             megawidgets.
+     */
+    public MegawidgetManager(Menu parent,
+            MegawidgetSpecifierManager specifierManager,
+            Map<String, Object> state) throws MegawidgetException {
+        construct(parent, IMenu.class, specifierManager, state, 0L, 0L, null);
     }
 
     /**
@@ -290,16 +337,6 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
-     * @param minTime
-     *            Minimum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
-     * @param maxTime
-     *            Maximum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -320,12 +357,11 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minTime, long maxTime,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider)
+            Map<String, Object> state, long minVisibleTime,
+            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetException {
-        this(parent, specifiers, state, minTime, maxTime, minVisibleTime,
-                maxVisibleTime, currentTimeProvider, null);
+        this(parent, specifiers, state, minVisibleTime, maxVisibleTime,
+                currentTimeProvider, null);
     }
 
     /**
@@ -349,16 +385,6 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
-     * @param minTime
-     *            Minimum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
-     * @param maxTime
-     *            Maximum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -382,13 +408,61 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minTime, long maxTime,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider,
+            Map<String, Object> state, long minVisibleTime,
+            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
-        this.sideEffectsApplier = sideEffectsApplier;
+        this(parent, new MegawidgetSpecifierManager(specifiers,
+                IControlSpecifier.class, sideEffectsApplier), state,
+                minVisibleTime, maxVisibleTime, currentTimeProvider);
+    }
 
-        // Ensure that the parent has the properly configured layout manager.
+    /**
+     * Construct a standard instance for managing megawidgets that exist within
+     * a composite widget.
+     * 
+     * @param parent
+     *            Parent composite in which the megawidgets are to be created.
+     * @param specifierManager
+     *            Megawidget specifier manager holding the specifiers that are
+     *            to govern the creation of the megawidgets.
+     * @param state
+     *            State to be viewed and/or modified via the megawidgets that
+     *            are constructed. Each megawidget specifier defined by <code>
+     *            specifiers</code> should have an entry in this map, mapping
+     *            the specifier's identifier to the value that the megawidget
+     *            will take on (with conversions between megawidget state and
+     *            state element being performed by
+     *            {@link #convertStateElementToMegawidgetState(String, Object)}
+     *            and
+     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
+     *            ).
+     * @param minVisibleTime
+     *            Minimum visible time for any time scale megawidgets specified
+     *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param maxVisibleTime
+     *            Maximum visible time for any time scale megawidgets specified
+     *            within <code>specifiers</code>. If no time scale megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @throws MegawidgetException
+     *             If one of the megawidget specifiers is invalid, or if an
+     *             error occurs while creating or initializing one of the
+     *             megawidgets.
+     */
+    public MegawidgetManager(Composite parent,
+            MegawidgetSpecifierManager specifierManager,
+            Map<String, Object> state, long minVisibleTime,
+            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
+            throws MegawidgetException {
+
+        /*
+         * Ensure that the parent has the properly configured layout manager.
+         */
         Layout layout = parent.getLayout();
         if ((layout instanceof GridLayout) == false) {
             parent.setLayout(new GridLayout(1, false));
@@ -396,13 +470,17 @@ public abstract class MegawidgetManager {
             ((GridLayout) layout).numColumns = 1;
         }
 
-        // Do the heavy lifting for construction.
+        /*
+         * Do the heavy lifting for construction.
+         */
         Set<IControl> baseMegawidgets = construct(parent, IControl.class,
-                specifiers, state, minTime, maxTime, minVisibleTime,
-                maxVisibleTime, currentTimeProvider);
+                specifierManager, state, minVisibleTime, maxVisibleTime,
+                currentTimeProvider);
 
-        // Align the base megawidgets' component elements to one another
-        // visually.
+        /*
+         * Align the base megawidgets' component elements to one another
+         * visually.
+         */
         ControlComponentHelper.alignMegawidgetsElements(baseMegawidgets);
     }
 
@@ -481,14 +559,18 @@ public abstract class MegawidgetManager {
             Map<String, Map<String, Object>> mutableProperties)
             throws MegawidgetPropertyException {
 
-        // Iterate through the mutable properties map, setting the properties
-        // for each megawidget in turn, keeping track of which megawidgets, if
-        // any, are having state set as part of their mutable property changes.
+        /*
+         * Iterate through the mutable properties map, setting the properties
+         * for each megawidget in turn, keeping track of which megawidgets, if
+         * any, are having state set as part of their mutable property changes.
+         */
         List<String> megawidgetsWithStateChanged = (sideEffectsApplier != null ? new ArrayList<String>(
                 mutableProperties.size()) : null);
         for (String identifier : mutableProperties.keySet()) {
 
-            // Ensure that the megawidget exists.
+            /*
+             * Ensure that the megawidget exists.
+             */
             IMegawidget megawidget = megawidgetsForIdentifiers.get(identifier);
             if (megawidget == null) {
                 throw new MegawidgetPropertyException(identifier, null, null,
@@ -496,13 +578,17 @@ public abstract class MegawidgetManager {
                                 + "\"");
             }
 
-            // Set the megawidget's mutable properties.
+            /*
+             * Set the megawidget's mutable properties.
+             */
             Map<String, Object> megawidgetMutableProperties = mutableProperties
                     .get(identifier);
             megawidget.setMutableProperties(megawidgetMutableProperties);
 
-            // Ensure that the state, if changed, is kept track of within
-            // this instance's state variable.
+            /*
+             * Ensure that the state, if changed, is kept track of within this
+             * instance's state variable.
+             */
             if (megawidgetMutableProperties
                     .containsKey(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
                 Map<String, Object> map = null;
@@ -515,28 +601,35 @@ public abstract class MegawidgetManager {
                             + "megawidget.setMutableProperties()");
                 }
 
-                // Iterate through the state identifiers, setting each
-                // value as the state for the corresponding identifier.
+                /*
+                 * Iterate through the state identifiers, setting each value as
+                 * the state for the corresponding identifier.
+                 */
                 for (String stateIdentifier : map.keySet()) {
                     Object value = convertMegawidgetStateToStateElement(
                             stateIdentifier, map.get(stateIdentifier));
                     commitStateElementChange(stateIdentifier, value);
                 }
 
-                // If the mutable properties to be changed include state,
-                // note this.
+                /*
+                 * If the mutable properties to be changed include state, note
+                 * this.
+                 */
                 if (megawidgetsWithStateChanged != null) {
                     megawidgetsWithStateChanged.add(identifier);
                 }
             }
 
-            // Remember the fact that properties were programmatically
-            // changed.
+            /*
+             * Remember the fact that properties were programmatically changed.
+             */
             propertyProgrammaticallyChanged = true;
         }
 
-        // If one or more megawidgets experienced state change as a result
-        // of the property changes, apply side effects.
+        /*
+         * If one or more megawidgets experienced state change as a result of
+         * the property changes, apply side effects.
+         */
         if ((megawidgetsWithStateChanged != null)
                 && (megawidgetsWithStateChanged.size() > 0)) {
             applySideEffects(megawidgetsWithStateChanged, true);
@@ -568,18 +661,21 @@ public abstract class MegawidgetManager {
     public final Object getStateElement(String identifier)
             throws MegawidgetStateException {
 
-        // Split up the identifier by greater-thans (>) it contains. It
-        // is assumed that each string preceding a greater-than is a
-        // map, nested within another map if it also has a greater-than
-        // before it, and only the last string following the last
-        // greater-than is the name of the actual key to the value.
-        // This allows the values map to include values nested within
-        // other maps within it.
+        /*
+         * Split up the identifier by greater-thans (>) it contains. It is
+         * assumed that each string preceding a greater-than is a map, nested
+         * within another map if it also has a greater-than before it, and only
+         * the last string following the last greater-than is the name of the
+         * actual key to the value. This allows the values map to include values
+         * nested within other maps within it.
+         */
         String[] keys = identifier.split(">");
 
-        // Iterate through the keys for the nested maps, treating the
-        // value for each as a map except for the last one, which is
-        // the value for the megawidget's state.
+        /*
+         * Iterate through the keys for the nested maps, treating the value for
+         * each as a map except for the last one, which is the value for the
+         * megawidget's state.
+         */
         Map<?, ?> map = state;
         for (int j = 0; j < keys.length; j++) {
             if (map == null) {
@@ -590,9 +686,10 @@ public abstract class MegawidgetManager {
                 return value;
             } else {
 
-                // Get ready for the next iteration through the loop by
-                // using this value as the nested map to look in for
-                // the next step.
+                /*
+                 * Get ready for the next iteration through the loop by using
+                 * this value as the nested map to look in for the next step.
+                 */
                 if (value instanceof Map) {
                     map = (Map<?, ?>) value;
                 } else {
@@ -697,7 +794,9 @@ public abstract class MegawidgetManager {
     protected void sideEffectMutablePropertyChangeErrorOccurred(
             MegawidgetPropertyException exception) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -755,10 +854,9 @@ public abstract class MegawidgetManager {
      *            Class that must be the superclass of the created megawidgets.
      *            This allows megawidgets of only a certain subclass of
      *            {@link IMegawidget} to be required.
-     * @param specifiers
-     *            List of maps, each of the latter holding the parameters of a
-     *            megawidget specifier. Each megawidget specifier must have an
-     *            identifier that is unique within this list.
+     * @param specifierManager
+     *            Megawidget specifier manager from which to fetch the
+     *            specifiers that are to govern megawidget construction.
      * @param state
      *            State to be viewed and/or modified via the megawidgets that
      *            are constructed. Each megawidget specifier defined by <code>
@@ -770,16 +868,6 @@ public abstract class MegawidgetManager {
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
      *            ).
-     * @param minTime
-     *            Minimum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
-     * @param maxTime
-     *            Maximum time that may be used by any time megawidgets
-     *            specified within <code>specifiers</code>. If no time
-     *            megawidgets are included in <code>specifiers</code>, this is
-     *            ignored.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -802,28 +890,29 @@ public abstract class MegawidgetManager {
      */
     private <P extends Widget, M extends IMegawidget> Set<M> construct(
             P parent, Class<M> superClass,
-            List<? extends Map<String, Object>> specifiers,
-            Map<String, Object> state, long minTime, long maxTime,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider)
+            MegawidgetSpecifierManager specifierManager,
+            Map<String, Object> state, long minVisibleTime,
+            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
             throws MegawidgetException {
 
-        // Remember the parent and state values.
+        /*
+         * Remember the parent and state values, and the side effects applier,
+         * if any.
+         */
         this.parent = parent;
         this.state = state;
+        this.sideEffectsApplier = specifierManager.getSideEffectsApplier();
 
-        // Fill in the megawidget creation parameters map, used to provide para-
-        // meters to megawidgets created via megawidget specifiers at the mega-
-        // widgets' creation time.
+        /*
+         * Fill in the megawidget creation parameters map, used to provide
+         * parameters to megawidgets created via megawidget specifiers at the
+         * megawidgets' creation time.
+         */
         Map<String, Object> megawidgetCreationParams = new HashMap<>();
         megawidgetCreationParams.put(INotifier.NOTIFICATION_LISTENER,
                 notificationListener);
         megawidgetCreationParams.put(IStateful.STATE_CHANGE_LISTENER,
                 stateChangeListener);
-        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MINIMUM_TIME,
-                minTime);
-        megawidgetCreationParams.put(TimeMegawidgetSpecifier.MAXIMUM_TIME,
-                maxTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MINIMUM_VISIBLE_TIME,
                 minVisibleTime);
         megawidgetCreationParams.put(TimeScaleSpecifier.MAXIMUM_VISIBLE_TIME,
@@ -832,30 +921,17 @@ public abstract class MegawidgetManager {
                 TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
                 currentTimeProvider);
 
-        // Iterate through the megawidget specifiers, instantiating each one
-        // in turn, and then instantiating the corresponding megawidget.
-        MegawidgetSpecifierFactory factory = new MegawidgetSpecifierFactory();
-        Set<String> identifiers = new HashSet<>();
+        /*
+         * Iterate through the megawidget specifiers, instantiating each one in
+         * turn, and then instantiating the corresponding megawidget.
+         */
         Set<M> baseMegawidgets = new HashSet<>();
-        for (Map<String, Object> specifierMap : specifiers) {
+        for (ISpecifier specifier : specifierManager.getSpecifiers()) {
 
-            // Create the megawidget specified as instructed.
-            ISpecifier specifier = factory.createMegawidgetSpecifier(
-                    (parent instanceof Menu ? IMenuSpecifier.class
-                            : IControlSpecifier.class), specifierMap);
-
-            // Ensure that any created megawidget specifiers do not have du-
-            // plicate identifiers of megawidgets created earlier.
-            if (parent instanceof Menu) {
-                ensureMegawidgetIdentifiersAreUnique(
-                        (IMenuSpecifier) specifier, identifiers);
-            } else {
-                ensureMegawidgetIdentifiersAreUnique(
-                        (IControlSpecifier) specifier, identifiers);
-            }
-
-            // Create the megawidget based on the specifications, and set its
-            // starting state if it has state, also recording it if stateful.
+            /*
+             * Create the megawidget based on the specifications, and set its
+             * starting state if it has state, also recording it if stateful.
+             */
             M megawidget = specifier.createMegawidget(parent, superClass,
                     megawidgetCreationParams);
             baseMegawidgets.add(megawidget);
@@ -863,12 +939,16 @@ public abstract class MegawidgetManager {
             setState(megawidget, true);
         }
 
-        // Apply side effects to the megawidgets to finish initializing them.
+        /*
+         * Apply side effects to the megawidgets to finish initializing them.
+         */
         if (sideEffectsApplier != null) {
             applySideEffects(null, true);
         }
 
-        // Return the resulting base megawidgets.
+        /*
+         * Return the resulting base megawidgets.
+         */
         return baseMegawidgets;
     }
 
@@ -902,31 +982,39 @@ public abstract class MegawidgetManager {
     @SuppressWarnings("unchecked")
     private void commitStateElementChange(String identifier, Object value) {
 
-        // Split up the identifier by greater-thans (>) it contains. It is
-        // assumed that each string preceding a greater-than is a map,
-        // nested within another map if it also has a greater-than before
-        // it, and only the last string following the last greater-than is
-        // the name of the actual key to the value. This allows the values
-        // map to include values nested within other maps within it.
+        /*
+         * Split up the identifier by greater-thans (>) it contains. It is
+         * assumed that each string preceding a greater-than is a map, nested
+         * within another map if it also has a greater-than before it, and only
+         * the last string following the last greater-than is the name of the
+         * actual key to the value. This allows the values map to include values
+         * nested within other maps within it.
+         */
         String[] keys = identifier.split(">");
 
-        // Iterate through the keys for the nested maps, treating the
-        // value for each as a map except for the last one, which is the
-        // one which is to be set to the new value.
+        /*
+         * Iterate through the keys for the nested maps, treating the value for
+         * each as a map except for the last one, which is the one which is to
+         * be set to the new value.
+         */
         Map<String, Object> map = state;
         for (int j = 0; j < keys.length; j++) {
             if (map == null) {
                 return;
             } else if (j == keys.length - 1) {
 
-                // Set the map value to match the new value.
+                /*
+                 * Set the map value to match the new value.
+                 */
                 map.put(keys[j], value);
             } else {
 
-                // Get ready for the next iteration through the loop by us-
-                // ing this value as the nested map to look in for the next
-                // step. If the value does not exist or is not itself a
-                // map, create it as a map and add it.
+                /*
+                 * Get ready for the next iteration through the loop by using
+                 * this value as the nested map to look in for the next step. If
+                 * the value does not exist or is not itself a map, create it as
+                 * a map and add it.
+                 */
                 Object mapObj = map.get(keys[j]);
                 if ((mapObj != null) && (mapObj instanceof Map)) {
                     map = (Map<String, Object>) mapObj;
@@ -937,49 +1025,6 @@ public abstract class MegawidgetManager {
                 }
             }
         }
-    }
-
-    /**
-     * Ensure that the provided megawidget specifier and any child specifiers it
-     * has have identifiers that are unique with respect to one another and are
-     * not found in the provided set of identifiers, and if they are indeed
-     * unique, add them to the identifiers set.
-     * 
-     * @param specifier
-     *            Megawidget specifier to be checked.
-     * @param identifiers
-     *            Set of megawidget specifier identifiers collected so far.
-     * @throws MegawidgetSpecificationException
-     *             If the megawidget specifier parameters are invalid.
-     */
-    @SuppressWarnings("unchecked")
-    private <S extends ISpecifier> boolean ensureMegawidgetIdentifiersAreUnique(
-            S specifier, Set<String> identifiers)
-            throws MegawidgetSpecificationException {
-
-        // Ensure that this specifier's identifier is unique.
-        if (identifiers.contains(specifier.getIdentifier())) {
-            throw new MegawidgetSpecificationException(
-                    specifier.getIdentifier(), specifier.getType(), null, null,
-                    "duplicate " + MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER
-                            + " value");
-        }
-
-        // Add the identifier of this specifier to the set.
-        identifiers.add(specifier.getIdentifier());
-
-        // If this specifier is a container, recursively check all its
-        // children's identifiers.
-        if (specifier instanceof IContainerSpecifier) {
-            for (S childSpecifier : ((IContainerSpecifier<S>) specifier)
-                    .getChildMegawidgetSpecifiers()) {
-                if (ensureMegawidgetIdentifiersAreUnique(childSpecifier,
-                        identifiers) == false) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     /**
@@ -999,29 +1044,35 @@ public abstract class MegawidgetManager {
     private void setState(IMegawidget megawidget, boolean isStart)
             throws MegawidgetStateException {
 
-        // Determine the specifier for this megawidget.
+        /*
+         * Determine the specifier for this megawidget.
+         */
         MegawidgetSpecifier specifier = megawidget.getSpecifier();
 
-        // If the megawidget is stateful and state has been specified for
-        // it, assign it that state.
+        /*
+         * If the megawidget is stateful and state has been specified for it,
+         * assign it that state.
+         */
         if (megawidget instanceof IStateful) {
 
-            // For each state identifier associated with this megawidget,
-            // assign the megawidget the proper state associated with that
-            // identifier. If the megawidget is of the explicit-commit
-            // type, set the states in an uncommitted fashion and then
-            // commit them all at once.
+            /*
+             * For each state identifier associated with this megawidget, assign
+             * the megawidget the proper state associated with that identifier.
+             * If the megawidget is of the explicit-commit type, set the states
+             * in an uncommitted fashion and then commit them all at once.
+             */
             boolean toBeCommitted = false;
             List<String> identifiers = ((IStatefulSpecifier) specifier)
                     .getStateIdentifiers();
             for (String identifier : identifiers) {
 
-                // Remember that this megawidget is associated with this
-                // state identifier, if this is the first time this mega-
-                // widget has had its state set. Additionally, if it is a
-                // time scale megawidget, put it in the set of such mega-
-                // widgets as well, so that it may be notified of visible
-                // time range changes.
+                /*
+                 * Remember that this megawidget is associated with this state
+                 * identifier, if this is the first time this megawidget has had
+                 * its state set. Additionally, if it is a time scale
+                 * megawidget, put it in the set of such megawidgets as well, so
+                 * that it may be notified of visible time range changes.
+                 */
                 if (isStart) {
                     statefulMegawidgetsForIdentifiers.put(identifier,
                             (IStateful) megawidget);
@@ -1034,12 +1085,16 @@ public abstract class MegawidgetManager {
                 Object value = getStateElement(identifier);
                 if (value != null) {
 
-                    // Do any conversion of this state element to prepare
-                    // it to be used as the state of a megawidget.
+                    /*
+                     * Do any conversion of this state element to prepare it to
+                     * be used as the state of a megawidget.
+                     */
                     value = convertStateElementToMegawidgetState(identifier,
                             value);
 
-                    // Set the megawidget state to match the value.
+                    /*
+                     * Set the megawidget state to match the value.
+                     */
                     if (megawidget instanceof IExplicitCommitStateful) {
                         ((IExplicitCommitStateful) megawidget)
                                 .setUncommittedState(identifier, value);
@@ -1050,15 +1105,19 @@ public abstract class MegawidgetManager {
                 }
             }
 
-            // If the megawidget has state changes that are to be committed,
-            // commit them now.
+            /*
+             * If the megawidget has state changes that are to be committed,
+             * commit them now.
+             */
             if (toBeCommitted) {
                 ((IExplicitCommitStateful) megawidget).commitStateChanges();
             }
         }
 
-        // If the megawidget is a container, iterate through its children,
-        // recursively calling this method for each one.
+        /*
+         * If the megawidget is a container, iterate through its children,
+         * recursively calling this method for each one.
+         */
         if (megawidget instanceof IParent) {
             for (IMegawidget childMegawidget : ((IParent<? extends IMegawidget>) megawidget)
                     .getChildren()) {
@@ -1066,7 +1125,9 @@ public abstract class MegawidgetManager {
             }
         }
 
-        // Disable the megawidget if necessary.
+        /*
+         * Disable the megawidget if necessary.
+         */
         if (enabled == false) {
             megawidget.setEnabled(false);
         }

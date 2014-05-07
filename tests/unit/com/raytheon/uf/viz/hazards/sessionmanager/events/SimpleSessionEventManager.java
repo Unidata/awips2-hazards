@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -80,6 +81,18 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
         this.canChangeGeometry = canChangeGeometry;
         this.canChangeTimeRange = canChangeTimeRange;
         this.canChangeType = canChangeType;
+    }
+
+    @Override
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(
+            ObservedHazardEvent hazardEvent) {
+        return null;
+    }
+
+    @Override
+    public boolean setEventType(ObservedHazardEvent event, String phenomenon,
+            String significance, String subType, IOriginator originator) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -199,5 +212,4 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     public void updateSelectedHazardUGCs() {
         throw new UnsupportedOperationException();
     }
-
 }

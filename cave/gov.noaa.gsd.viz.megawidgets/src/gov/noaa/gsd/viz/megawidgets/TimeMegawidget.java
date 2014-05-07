@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -16,8 +18,6 @@ import java.util.Set;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Range;
-import com.google.common.collect.Ranges;
 
 /**
  * Time megawidget, providing the user the ability to select a single date-time
@@ -35,6 +35,9 @@ import com.google.common.collect.Ranges;
  *                                           time megawidgets that caused unexpected
  *                                           date-times to be selected when the user
  *                                           manipulated the drop-down calendar.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,7 +54,7 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = new HashSet<>(
-                NotifierMegawidget.MUTABLE_PROPERTY_NAMES);
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -62,11 +65,6 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
      * Current value in milliseconds since the epoch.
      */
     private long state;
-
-    /**
-     * Range of state that are allowed, from minimum to maximum.
-     */
-    private final Range<Long> bounds;
 
     /**
      * Current time provider.
@@ -95,8 +93,8 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
 
         @Override
         public long renderValueChangeAcceptable(String identifier, long value) {
-            return Math.max(Math.min(value, bounds.upperEndpoint()),
-                    bounds.lowerEndpoint());
+            return Math.max(Math.min(value, stateValidator.getMaximumValue()),
+                    stateValidator.getMinimumValue());
         }
 
         @Override
@@ -114,6 +112,11 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * State validator.
+     */
+    private final BoundedComparableValidator<Long> stateValidator;
+
     // Protected Constructors
 
     /**
@@ -130,35 +133,41 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
     protected TimeMegawidget(TimeSpecifier specifier, Composite parent,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        stateValidator = specifier.getStateValidator().copyOf();
+        state = (Long) specifier.getStartingState(specifier.getIdentifier());
 
-        // Set up the control helper, get the minimum and
-        // maximum allowable values and the current time
-        // provider, and set the initial state to midway
-        // between the bounds.
+        /*
+         * Set up the control helper and get the current time provider.
+         */
         helper = new ControlComponentHelper(specifier);
-        bounds = Ranges.closed((Long) paramMap.get(TimeSpecifier.MINIMUM_TIME),
-                (Long) paramMap.get(TimeSpecifier.MAXIMUM_TIME));
         ICurrentTimeProvider provider = (ICurrentTimeProvider) paramMap
                 .get(TimeSpecifier.CURRENT_TIME_PROVIDER);
         if (provider == null) {
             provider = TimeMegawidgetSpecifier.DEFAULT_CURRENT_TIME_PROVIDER;
         }
         currentTimeProvider = provider;
-        state = ((bounds.upperEndpoint() - bounds.lowerEndpoint()) / 2L)
-                + bounds.lowerEndpoint();
 
-        // Create the date-time component that constructs
-        // and manages the component widgets.
+        /*
+         * Create the date-time component that constructs and manages the
+         * component widgets.
+         */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         dateTime = new DateTimeComponent(null, parent, specifier.getLabel(),
                 specifier, state, specifier.isHorizontalExpander(),
                 specifier.getSpacing(), !specifier.isSendingEveryChange(),
                 dateTimeManager);
 
-        // Render the widget uneditable if necessary.
+        /*
+         * Render the widget uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -181,7 +190,9 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -219,7 +230,9 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods
@@ -238,30 +251,33 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Ensure the new state is within the allowable value bounds.
-        TimeSpecifier specifier = getSpecifier();
-        long value = getStateLongValueFromObject(state, identifier,
-                bounds.lowerEndpoint());
-        if (bounds.contains(value) == false) {
-            throw new MegawidgetStateException(identifier, specifier.getType(),
-                    value, "out of bounds (minimum = " + bounds.lowerEndpoint()
-                            + ", maximum = " + bounds.upperEndpoint()
-                            + " (inclusive))");
+        /*
+         * Validate and record the new state.
+         */
+        try {
+            this.state = stateValidator.convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
 
-        // Record the state.
-        this.state = value;
-
-        // Notify the date-time component of the updated state.
-        dateTime.setState(value);
+        /*
+         * Synchronize user-facing widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
         return (state == null ? null : DateTimeComponent
-                .getStateDescription(getStateLongValueFromObject(state,
-                        identifier, null)));
+                .getStateDescription(ConversionUtilities
+                        .getStateLongValueFromObject(identifier, getSpecifier()
+                                .getType(), state, null)));
+    }
+
+    @Override
+    protected final void doSynchronizeComponentWidgetsToState() {
+        dateTime.setState(this.state);
     }
 
     // Private Methods

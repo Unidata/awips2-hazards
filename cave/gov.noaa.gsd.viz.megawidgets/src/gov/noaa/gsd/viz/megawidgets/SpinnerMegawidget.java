@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedNumberValidator;
+
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,7 +31,6 @@ import org.eclipse.swt.widgets.Scale;
 import org.eclipse.swt.widgets.Spinner;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Spinner megawidget, allowing the manipulation of numbers.
@@ -46,6 +48,9 @@ import com.google.common.collect.Sets;
  *                                           notifying listeners of state
  *                                           changes caused by ongoing thumb
  *                                           drags and spinner button presses.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,8 +67,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                BoundedValueMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         names.add(SpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
@@ -92,11 +97,6 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      * directional key press, should be forwarded or not.
      */
     private final boolean onlySendEndStateChanges;
-
-    /**
-     * Increment delta.
-     */
-    private T incrementDelta;
 
     /**
      * Flag indicating whether or not a programmatic change to component values
@@ -132,8 +132,10 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create the composite holding the components, and
-        // the label if appropriate.
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 2, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
         boolean expandHorizontally = (specifier.isHorizontalExpander() || specifier
@@ -141,7 +143,9 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         ((GridData) panel.getLayoutData()).grabExcessHorizontalSpace = expandHorizontally;
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create the spinner.
+        /*
+         * Create the spinner.
+         */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
         spinner.setTextLimit(Math.max(
@@ -149,28 +153,36 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                 getDigitsForValue(specifier.getMaximumValue())));
         spinner.setMinimum(convertValueToSpinner(specifier.getMinimumValue()));
         spinner.setMaximum(convertValueToSpinner(specifier.getMaximumValue()));
-        incrementDelta = specifier.getIncrementDelta();
+        T incrementDelta = specifier.getIncrementDelta();
         spinner.setPageIncrement(convertValueToSpinner(incrementDelta));
         spinner.setDigits(getSpinnerPrecision());
         spinner.setEnabled(specifier.isEnabled());
 
-        // Place the spinner in the parent's grid.
+        /*
+         * Place the spinner in the parent's grid.
+         */
         GridData gridData = new GridData((expandHorizontally ? SWT.FILL
                 : SWT.LEFT), SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
         spinner.setLayoutData(gridData);
 
-        // Add a scale, if one is desired.
+        /*
+         * Add a scale, if one is desired.
+         */
         if (specifier.isShowScale()) {
 
-            // Create the scale.
+            /*
+             * Create the scale.
+             */
             scale = new Scale(panel, SWT.HORIZONTAL);
             scale.setMinimum(convertValueToSpinner(specifier.getMinimumValue()));
             scale.setMaximum(convertValueToSpinner(specifier.getMaximumValue()));
             scale.setPageIncrement(convertValueToSpinner(incrementDelta));
             scale.setEnabled(specifier.isEnabled());
 
-            // Place the spinner in the parent's grid.
+            /*
+             * Place the spinner in the parent's grid.
+             */
             gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
             gridData.horizontalSpan = 2;
             scale.setLayoutData(gridData);
@@ -178,18 +190,16 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
             scale = null;
         }
 
-        // If only ending state changes are to result
-        // in notifications, bind spinner focus loss
-        // to trigger a notification if the value has
-        // changed in such a way that the state change
-        // listener was not notified. Do the same for
-        // key up and mouse up events, so that when
-        // the user presses and holds a directional
-        // key (arrow up or down, etc.) to change the
-        // value, or presses and holds one of the
-        // spinner buttons with the mouse, the state
-        // change will result in a notification after
-        // the key or mouse is released.
+        /*
+         * If only ending state changes are to result in notifications, bind
+         * spinner focus loss to trigger a notification if the value has changed
+         * in such a way that the state change listener was not notified. Do the
+         * same for key up and mouse up events, so that when the user presses
+         * and holds a directional key (arrow up or down, etc.) to change the
+         * value, or presses and holds one of the spinner buttons with the
+         * mouse, the state change will result in a notification after the key
+         * or mouse is released.
+         */
         if (onlySendEndStateChanges) {
             spinner.addFocusListener(new FocusAdapter() {
                 @Override
@@ -213,25 +223,31 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
             });
         }
 
-        // Bind the spinner selection event to trigger
-        // a change in the state, and to alter the
-        // scale's value if one is present.
+        /*
+         * Bind the spinner selection event to trigger a change in the state,
+         * and to alter the scale's value if one is present.
+         */
         spinner.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                // If this is a result of a programmatic
-                // change, do nothing with it.
+                /*
+                 * If this is a result of a programmatic change, do nothing with
+                 * it.
+                 */
                 if (changeInProgress) {
                     return;
                 }
 
-                // Indicate that a change is in progress.
+                /*
+                 * Indicate that a change is in progress.
+                 */
                 changeInProgress = true;
 
-                // If the state is changing, make a record
-                // of the change and alter the scale, if
-                // any, to match.
+                /*
+                 * If the state is changing, make a record f the change and
+                 * alter the scale, if any, to match.
+                 */
                 int state = SpinnerMegawidget.this.spinner.getSelection();
                 if ((SpinnerMegawidget.this.state == null)
                         || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
@@ -243,25 +259,27 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                     notifyListenersOfRapidStateChange();
                 }
 
-                // Reset the in-progress flag.
+                /*
+                 * Reset the in-progress flag.
+                 */
                 changeInProgress = false;
             }
         });
 
-        // If a scale is supplied, add listeners to it.
+        /*
+         * If a scale is supplied, add listeners to it.
+         */
         if (scale != null) {
 
-            // If only ending state changes are to result
-            // in notifications, bind scale focus loss
-            // to trigger a notification if the value has
-            // changed in such a way that the state change
-            // listener was not notified. Do the same for
-            // key up and mouse up events, so that when
-            // the user presses and holds a key to change
-            // the value, or drags the thumb with the
-            // mouse, the state change will result in a
-            // notification after the key or mouse is
-            // released.
+            /*
+             * If only ending state changes are to result in notifications, bind
+             * scale focus loss to trigger a notification if the value has
+             * changed in such a way that the state change listener was not
+             * notified. Do the same for key up and mouse up events, so that
+             * when the user presses and holds a key to change the value, or
+             * drags the thumb with the mouse, the state change will result in a
+             * notification after the key or mouse is released.
+             */
             if (onlySendEndStateChanges) {
                 scale.addFocusListener(new FocusAdapter() {
                     @Override
@@ -283,26 +301,31 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                 });
             }
 
-            // Bind the scale selection event to trigger
-            // a change in the state, and to alter the
-            // spinner's value as well.
+            /*
+             * Bind the scale selection event to trigger a change in the state,
+             * and to alter the spinner's value as well.
+             */
             scale.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
 
-                    // If this is a result of a program-
-                    // matic change, do nothing with it.
+                    /*
+                     * If this is a result of a programmatic change, do nothing
+                     * with it.
+                     */
                     if (changeInProgress) {
                         return;
                     }
 
-                    // Indicate that a change is in pro-
-                    // gress.
+                    /*
+                     * Indicate that a change is in progress.
+                     */
                     changeInProgress = true;
 
-                    // If the state is changing, make a
-                    // record of the change and alter the
-                    // spinner to match.
+                    /*
+                     * If the state is changing, make a record of the change and
+                     * alter the spinner to match.
+                     */
                     int state = SpinnerMegawidget.this.scale.getSelection();
                     if ((SpinnerMegawidget.this.state == null)
                             || (state != convertValueToSpinner(SpinnerMegawidget.this.state))) {
@@ -311,16 +334,25 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                         notifyListenersOfRapidStateChange();
                     }
 
-                    // Reset the in-progress flag.
+                    /*
+                     * Reset the in-progress flag.
+                     */
                     changeInProgress = false;
                 }
             });
         }
 
-        // Render the spinner uneditable if necessary.
+        /*
+         * Render the spinner uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -345,9 +377,12 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else if (name.equals(SpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA)) {
-            setIncrementDelta(value);
+            ((BoundedNumberValidator<T>) getStateValidator())
+                    .setIncrementDelta(value);
         } else {
             super.setMutableProperty(name, value);
         }
@@ -384,7 +419,9 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -393,7 +430,8 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      * @return Increment delta.
      */
     public final T getIncrementDelta() {
-        return incrementDelta;
+        return ((BoundedNumberValidator<T>) getStateValidator())
+                .getIncrementDelta();
     }
 
     /**
@@ -406,8 +444,10 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      */
     public final void setIncrementDelta(Object value)
             throws MegawidgetPropertyException {
-        incrementDelta = getPropertyIncrementDeltaObjectFromObject(value,
-                SpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA);
+        ((BoundedNumberValidator<T>) getStateValidator())
+                .setIncrementDelta(value);
+        T incrementDelta = ((BoundedNumberValidator<T>) getStateValidator())
+                .getIncrementDelta();
         int spinnerDelta = convertValueToSpinner(incrementDelta);
         spinner.setPageIncrement(spinnerDelta);
         if (scale != null) {
@@ -418,7 +458,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     // Protected Methods
 
     @Override
-    protected final void synchronizeWidgetsToBounds() {
+    protected final void synchronizeComponentWidgetsToBounds() {
         int minValue = convertValueToSpinner(getMinimumValue());
         int maxValue = convertValueToSpinner(getMaximumValue());
         spinner.setMinimum(minValue);
@@ -432,7 +472,7 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         spinner.setSelection(convertValueToSpinner(state));
         if (scale != null) {
             scale.setSelection(convertValueToSpinner(state));
@@ -495,21 +535,6 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
      * @return Megawidget state value equivalent.
      */
     protected abstract T convertSpinnerToValue(int value);
-
-    /**
-     * Get the property increment delta object from the specified object.
-     * 
-     * @param object
-     *            Object holding the increment delta value.
-     * @param name
-     *            Name of the parameter for which <code>object</code> is the
-     *            value.
-     * @return Increment delta object.
-     * @throws MegawidgetPropertyException
-     *             If the megawidget specifier parameter is invalid.
-     */
-    protected abstract T getPropertyIncrementDeltaObjectFromObject(
-            Object object, String name) throws MegawidgetPropertyException;
 
     // Private Methods
 

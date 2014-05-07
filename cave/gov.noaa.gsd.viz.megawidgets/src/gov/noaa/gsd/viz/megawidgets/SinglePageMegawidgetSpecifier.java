@@ -25,6 +25,9 @@ import java.util.Map;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Sep 24, 2013    2168    Chris.Golden      Changed to work with new
  *                                           child specifier manager.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,10 +49,10 @@ public abstract class SinglePageMegawidgetSpecifier extends
 
     /**
      * Child megawidget specifiers parameter name; each single page megawidget
-     * may contain a reference to a <code>List</code> object associated with
-     * this name. The provided list must contain zero or more child megawidget
-     * specifier parameter maps, each in the form of a <code>Map</code> from
-     * which a megawidget specifier will be constructed.
+     * may contain a reference to a {@link List} object associated with this
+     * name. The provided list must contain zero or more child megawidget
+     * specifier parameter maps, each in the form of a {@link Map} from which a
+     * megawidget specifier will be constructed.
      */
     public static final String CHILD_MEGAWIDGETS = "fields";
 
@@ -77,10 +80,12 @@ public abstract class SinglePageMegawidgetSpecifier extends
             throws MegawidgetSpecificationException {
         super(IControlSpecifier.class, parameters);
 
-        // Ensure that the column count, if present, is accep-
-        // table, and if not present is assigned a default
-        // value.
-        columnCount = getSpecifierIntegerValueFromObject(
+        /*
+         * Ensure that the column count, if present, is acceptable, and if not
+         * present is assigned a default value.
+         */
+        columnCount = ConversionUtilities.getSpecifierIntegerValueFromObject(
+                getIdentifier(), getType(),
                 parameters.get(MEGAWIDGET_COLUMN_COUNT),
                 MEGAWIDGET_COLUMN_COUNT, 1);
         if (columnCount < 1) {
@@ -89,8 +94,9 @@ public abstract class SinglePageMegawidgetSpecifier extends
                     "must be positive integer");
         }
 
-        // Ensure that child list, if present, is acceptable,
-        // and store it.
+        /*
+         * Ensure that child list, if present, is acceptable, and store it.
+         */
         List<?> childrenObject = null;
         try {
             childrenObject = (List<?>) parameters.get(CHILD_MEGAWIDGETS);

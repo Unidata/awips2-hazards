@@ -28,6 +28,9 @@ import java.util.Map;
  *                                           ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
  * Nov 04, 2013    2336    Chris.Golden      Added bold and italic options.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -104,15 +107,22 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the wrap flag, if present, is acceptable.
-        wrap = getSpecifierBooleanValueFromObject(parameters.get(LABEL_WRAP),
+        /*
+         * Ensure that the wrap flag, if present, is acceptable.
+         */
+        wrap = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(LABEL_WRAP),
                 LABEL_WRAP, false);
 
-        // Ensure that the bold and italic flags, if present, are acceptable.
-        bold = getSpecifierBooleanValueFromObject(parameters.get(LABEL_BOLD),
+        /*
+         * Ensure that the bold and italic flags, if present, are acceptable.
+         */
+        bold = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(LABEL_BOLD),
                 LABEL_BOLD, false);
-        italic = getSpecifierBooleanValueFromObject(
-                parameters.get(LABEL_ITALIC), LABEL_ITALIC, false);
+        italic = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(), parameters.get(LABEL_ITALIC),
+                LABEL_ITALIC, false);
     }
 
     // Public Methods

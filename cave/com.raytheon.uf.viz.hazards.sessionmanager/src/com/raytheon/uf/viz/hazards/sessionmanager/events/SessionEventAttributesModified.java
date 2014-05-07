@@ -19,8 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import java.io.Serializable;
+import java.util.Set;
 
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -28,44 +29,51 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
- * components that an attribute of an event in the session has changed.
+ * components that one or more attributes of an event in the session have
+ * changed.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 11, 2013 1257       bsteffen     Initial creation
+ * Apr 23, 2014 2925       Chris.Golden Changed to attributes (plural), and added
+ *                                      set of attributes that actually changed
+ *                                      so that the changes can be pinpointed by
+ *                                      receivers of this notification.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionEventAttributeModified extends SessionEventModified
+public class SessionEventAttributesModified extends SessionEventModified
         implements ISessionNotification {
 
-    private final String attributeKey;
+    private final Set<String> attributeKeys;
 
-    public SessionEventAttributeModified(
+    public SessionEventAttributesModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
             IHazardEvent event, String attributeKey, IOriginator originator) {
         super(eventManager, event, originator);
-        this.attributeKey = attributeKey;
+        this.attributeKeys = Sets.newHashSet(attributeKey);
     }
 
-    public boolean isAttrbute(String key) {
-        return attributeKey.equals(key);
+    public SessionEventAttributesModified(
+            ISessionEventManager<ObservedHazardEvent> eventManager,
+            IHazardEvent event, Set<String> attributeKeys,
+            IOriginator originator) {
+        super(eventManager, event, originator);
+        this.attributeKeys = attributeKeys;
     }
 
-    public String getAttributeKey() {
-        return attributeKey;
+    public boolean containsAttribute(String key) {
+        return attributeKeys.contains(key);
     }
 
-    public Serializable getAttributeValue() {
-        return getEvent().getHazardAttribute(attributeKey);
+    public Set<String> getAttributeKeys() {
+        return attributeKeys;
     }
-
 }

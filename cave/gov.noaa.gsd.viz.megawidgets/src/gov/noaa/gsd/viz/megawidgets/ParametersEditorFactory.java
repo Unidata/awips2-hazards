@@ -32,9 +32,10 @@ import com.google.common.collect.ImmutableMap;
  * parameters with certain megawidgets, and thus are an easy way to get
  * megawidget-based GUIs to manipulate values.
  * <p>
- * Megawidgets are build using the <code>buildParametersEditor()</code> method
- * which returns a {@link MegawidgetManager}. Each megawidget managed by the
- * latter is given as its identifier the label with which the corresponding
+ * Megawidgets are build using the
+ * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
+ * method which returns a {@link MegawidgetManager}. Each megawidget managed by
+ * the latter is given as its identifier the label with which the corresponding
  * parameter is associated. Note that the labels passed to the editor should not
  * include colons (:) or greater-than signs (&gt;), since these have special
  * meanings when used as stateful megawidget identifiers. When actually used as
@@ -56,6 +57,9 @@ import com.google.common.collect.ImmutableMap;
  *                                           method to allow objects of other
  *                                           classes besides String to be used
  *                                           as keys.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,15 +70,20 @@ public class ParametersEditorFactory {
     // Private Static Constants
 
     /**
+     * Minimum fraction value allowed.
+     */
+    private static final Double MIN_FRACTION_VALUE = -10000.0;
+
+    /**
+     * Maximum fraction value allowed.
+     */
+    private static final Double MAX_FRACTION_VALUE = 10000.0;
+
+    /**
      * Mapping of commonly used stateful megawidget specifiers to nested maps,
      * the latter holding default specification parameters for those maps.
      */
     private static final Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> DEFAULT_SPECIFICATION_PARAMETERS_FOR_MEGAWIDGETS;
-
-    /*
-     * Initialized the map of default specification parameters for stateful
-     * megawidget specifiers.
-     */
     static {
         Map<Class<? extends IStatefulSpecifier>, Map<String, Object>> map = new HashMap<>();
 
@@ -115,9 +124,9 @@ public class ParametersEditorFactory {
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_SPACING, 5);
         defaults.put(FractionSpinnerSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_MIN_VALUE,
-                Integer.MIN_VALUE / 100.0);
+                MIN_FRACTION_VALUE);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_MAX_VALUE,
-                Integer.MAX_VALUE / 100.0);
+                MAX_FRACTION_VALUE);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_INCREMENT_DELTA, 1);
         defaults.put(FractionSpinnerSpecifier.MEGAWIDGET_DECIMAL_PRECISION, 2);
         defaults.put(
@@ -214,8 +223,8 @@ public class ParametersEditorFactory {
                 long minTime, long maxTime,
                 ICurrentTimeProvider currentTimeProvider)
                 throws MegawidgetException {
-            super(parent, specifiers, state, minTime, maxTime, minTime,
-                    maxTime, currentTimeProvider);
+            super(parent, specifiers, state, minTime, maxTime,
+                    currentTimeProvider);
             this.parametersForKeys = parametersForKeys;
         }
 
@@ -224,7 +233,9 @@ public class ParametersEditorFactory {
         @Override
         protected void commandInvoked(String identifier, String extraCallback) {
 
-            // No action.
+            /*
+             * No action.
+             */
         }
 
         @SuppressWarnings("unchecked")

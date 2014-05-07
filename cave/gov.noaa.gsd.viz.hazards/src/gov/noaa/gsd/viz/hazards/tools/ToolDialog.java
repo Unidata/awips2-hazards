@@ -22,6 +22,7 @@ import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +34,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -63,14 +63,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * when invoked, if any.</dd>
  * <dt><code>title</code></dt>
  * <dd>Optional string giving the dialog title.</dd>
- * <dt><code>minimumTime</code></dt>
- * <dd>Minimum time as required by
- * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
- * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
- * <dt><code>maximumTime</code></dt>
- * <dd>Maximum time as required by
- * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
- * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
  * <dt><code>minimumVisibleTime</code></dt>
  * <dd>Minimum visible time as required by
  * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
@@ -97,6 +89,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 21, 2013   1921     daniel.s.schaffer@noaa.gov  Call recommender framework directly
  * Dec 16, 2013   2545     Chris.Golden      Added current time provider
  *                                           for megawidget use.
+ * Apr 14, 2014   2925     Chris.Golden      Minor changes to work with megawidget
+ *                                           framework changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -197,8 +191,10 @@ class ToolDialog extends BasicDialog {
         setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE);
         setBlockOnOpen(false);
 
-        // Parse the strings into the dialog dictionary and various
-        // values found within the dictionary.
+        /*
+         * Parse the strings into the dialog dictionary and various values found
+         * within the dictionary.
+         */
         try {
             dialogDict = Dict.getInstance(jsonParams);
         } catch (Exception e) {
@@ -226,7 +222,7 @@ class ToolDialog extends BasicDialog {
         try {
             triggers = dialogDict.getDynamicallyTypedValue("runToolTriggers");
             if (triggers == null) {
-                triggers = Lists.newArrayList();
+                triggers = new ArrayList<>();
             }
         } catch (Exception e) {
             statusHandler
@@ -291,11 +287,14 @@ class ToolDialog extends BasicDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
 
-        // Let the superclass create the area.
+        /*
+         * Let the superclass create the area.
+         */
         Composite top = (Composite) super.createDialogArea(parent);
 
-        // Get the list of megawidget specifiers from the para-
-        // meters.
+        /*
+         * Get the list of megawidget specifiers from the parameters.
+         */
         Object megawidgetSpecifiersObj = dialogDict.get(HazardConstants.FIELDS);
         DictList megawidgetSpecifiers = null;
         if (megawidgetSpecifiersObj == null) {
@@ -314,28 +313,10 @@ class ToolDialog extends BasicDialog {
             megawidgetSpecifiers.add(megawidgetSpecifiersObj);
         }
 
-        // Get the minimum and maximum time for any time scale mega-
-        // widgets that might be created.
-        long minTime = 0L;
-        try {
-            minTime = ((Number) dialogDict.get(TimeScaleSpecifier.MINIMUM_TIME))
-                    .longValue();
-        } catch (Exception e) {
-            statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
-                    + TimeScaleSpecifier.MINIMUM_TIME + " specified in dialog "
-                    + "dictionary.");
-            minTime = TimeUtil.currentTimeMillis();
-        }
-        long maxTime = 0L;
-        try {
-            maxTime = ((Number) dialogDict.get(TimeScaleSpecifier.MAXIMUM_TIME))
-                    .longValue();
-        } catch (Exception e) {
-            statusHandler.info("ToolDialog.createDialogArea(): Warning: No "
-                    + TimeScaleSpecifier.MAXIMUM_TIME + " specified in dialog "
-                    + "dictionary.");
-            maxTime = minTime + TimeUnit.DAYS.toMillis(1);
-        }
+        /*
+         * Get the minimum and maximum visible times for any time scale
+         * megawidgets that might be created.
+         */
         long minVisibleTime = 0L;
         try {
             minVisibleTime = ((Number) dialogDict
@@ -357,15 +338,16 @@ class ToolDialog extends BasicDialog {
             maxVisibleTime = minVisibleTime + TimeUnit.DAYS.toMillis(1);
         }
 
-        // Create a megawidget manager, which will create the mega-
-        // widgets and manage their displaying, and allowing of mani-
-        // pulation, of the the dictionary values. Invocations are
-        // interpreted as tools to be run, with the tool name being
-        // contained within the extra callback information. If a
-        // Python side effects script was supplied as part of the
-        // dialog parameters, create a Python side effects applier
-        // object and pass it to the megawidget manager.
-        List<Dict> megawidgetSpecifiersList = Lists.newArrayList();
+        /*
+         * Create a megawidget manager, which will create the megawidgets and
+         * manage their displaying, and allowing of manipulation, of the the
+         * dictionary values. Invocations are interpreted as tools to be run,
+         * with the tool name being contained within the extra callback
+         * information. If a Python side effects script was supplied as part of
+         * the dialog parameters, create a Python side effects applier object
+         * and pass it to the megawidget manager.
+         */
+        List<Dict> megawidgetSpecifiersList = new ArrayList<>();
         for (Object specifier : megawidgetSpecifiers) {
             megawidgetSpecifiersList.add((Dict) specifier);
         }
@@ -373,15 +355,16 @@ class ToolDialog extends BasicDialog {
             PythonSideEffectsApplier sideEffectsApplier = (pythonSideEffectsScript == null ? null
                     : new PythonSideEffectsApplier(pythonSideEffectsScript));
             megawidgetManager = new MegawidgetManager(top,
-                    megawidgetSpecifiersList, valuesDict, minTime, maxTime,
-                    minVisibleTime, maxVisibleTime, currentTimeProvider,
-                    sideEffectsApplier) {
+                    megawidgetSpecifiersList, valuesDict, minVisibleTime,
+                    maxVisibleTime, currentTimeProvider, sideEffectsApplier) {
                 @Override
                 protected void commandInvoked(String identifier,
                         String extraCallback) {
 
-                    // Fire off the action if the invoked megawidget
-                    // is a tool-running trigger.
+                    /*
+                     * Fire off the action if the invoked megawidget is a
+                     * tool-running trigger.
+                     */
                     if (runToolTriggerIdentifiers.contains(identifier)) {
                         fireAction(new ToolAction(
                                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
@@ -393,7 +376,9 @@ class ToolDialog extends BasicDialog {
                 protected void stateElementChanged(String identifier,
                         Object state) {
 
-                    // No action.
+                    /*
+                     * No action.
+                     */
                 }
 
                 @Override
@@ -412,7 +397,9 @@ class ToolDialog extends BasicDialog {
                             e);
         }
 
-        // Return the created area.
+        /*
+         * Return the created area.
+         */
         return top;
     }
 

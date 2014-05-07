@@ -15,7 +15,8 @@ import java.util.Map;
 /**
  * Container megawidget specifier base class, from which specific types of
  * container megawidget specifiers may be derived. The <code>C</code> parameter
- * indicates what type of <code>ISpecifier</code> each child specifier must be.
+ * indicates what type of {@link IControlSpecifier} each child specifier must
+ * be.
  * 
  * <pre>
  * 
@@ -31,6 +32,9 @@ import java.util.Map;
  *                                           are not derived from this one.
  *                                           Finally, implemented new
  *                                           IControlSpecifier interface.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,15 +48,15 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
     // Private Static Constants
 
     /**
-     * Array of margins in the order they are specified in the
-     * <code>margins</code> member variable.
+     * Array of margins in the order they are specified in the {@link #margins}
+     * member variable.
      */
     private static final String[] MARGIN_NAMES = { LEFT_MARGIN, TOP_MARGIN,
             RIGHT_MARGIN, BOTTOM_MARGIN };
 
     /**
      * Array of expand flags in the order they are specified in the
-     * <code>expander</code> member variable.
+     * {@link #expander} member variable.
      */
     private static final String[] EXPANDER_NAMES = { EXPAND_HORIZONTALLY,
             EXPAND_VERTICALLY };
@@ -102,7 +106,9 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
             throws MegawidgetSpecificationException {
         super(parameters);
 
-        // Ensure that the factory is present and acceptable.
+        /*
+         * Ensure that the factory is present and acceptable.
+         */
         IMegawidgetSpecifierFactory factory = null;
         try {
             factory = (IMegawidgetSpecifierFactory) parameters
@@ -118,25 +124,36 @@ public abstract class ContainerMegawidgetSpecifier<C extends IControlSpecifier>
                     getType(), MEGAWIDGET_SPECIFIER_FACTORY, null, null);
         }
 
-        // Create the children manager.
+        /*
+         * Create the children manager.
+         */
         childManager = new ChildSpecifiersManager<C>(superClass, factory);
 
-        // Ensure that the margins, if present, are acceptable.
+        /*
+         * Ensure that the margins, if present, are acceptable.
+         */
         for (int j = 0; j < MARGIN_NAMES.length; j++) {
-            margins[j] = getSpecifierIntegerValueFromObject(
-                    parameters.get(MARGIN_NAMES[j]), MARGIN_NAMES[j], 0);
+            margins[j] = ConversionUtilities
+                    .getSpecifierIntegerValueFromObject(getIdentifier(),
+                            getType(), parameters.get(MARGIN_NAMES[j]),
+                            MARGIN_NAMES[j], 0);
         }
 
-        // Ensure that the column spacing, if present, is
-        // acceptable.
-        columnSpacing = getSpecifierIntegerValueFromObject(
-                parameters.get(COLUMN_SPACING), COLUMN_SPACING, 15);
+        /*
+         * Ensure that the column spacing, if present, is acceptable.
+         */
+        columnSpacing = ConversionUtilities.getSpecifierIntegerValueFromObject(
+                getIdentifier(), getType(), parameters.get(COLUMN_SPACING),
+                COLUMN_SPACING, 15);
 
-        // Ensure that the expand flags, if present, are
-        // acceptable.
+        /*
+         * Ensure that the expand flags, if present, are acceptable.
+         */
         for (int j = 0; j < EXPANDER_NAMES.length; j++) {
-            expander[j] = getSpecifierBooleanValueFromObject(
-                    parameters.get(EXPANDER_NAMES[j]), EXPANDER_NAMES[j], false);
+            expander[j] = ConversionUtilities
+                    .getSpecifierBooleanValueFromObject(getIdentifier(),
+                            getType(), parameters.get(EXPANDER_NAMES[j]),
+                            EXPANDER_NAMES[j], false);
         }
     }
 

@@ -77,11 +77,13 @@ import com.vividsolutions.jts.geom.Geometry;
  * ------------ ---------- ----------- --------------------------
  * Oct 1, 2012             mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Remove ISerializableObject. Renamed hazard subtype to subType.
- * 
  * Oct 1, 2012            mnash     Initial creation
  * Dec 2013      2368    thansen    Added getHazardType
  * Apr 24, 2014  3539    bkowal     Fix attribute delete cascade. Set columns lengths.
  *                                  Fix PersistableDataObject warning.
+ * Apr 27, 2014 2925       Chris.Golden Augmented with additional methods to
+ *                                      set the type components atomically, or
+ *                                      the start and end time atomically.
  * </pre>
  * 
  * @author mnash
@@ -327,6 +329,14 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         return HazardEventUtilities.getHazardType(this);
     }
 
+    @Override
+    public void setHazardType(String phenomenon, String significance,
+            String subtype) {
+        setPhenomenon(phenomenon);
+        setSignificance(significance);
+        setSubType(subtype);
+    }
+
     /**
      * @return the startTime
      */
@@ -359,6 +369,12 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     @Override
     public void setEndTime(Date endTime) {
         this.endTime = endTime;
+    }
+
+    @Override
+    public void setTimeRange(Date startTime, Date endTime) {
+        setStartTime(startTime);
+        setEndTime(endTime);
     }
 
     /**

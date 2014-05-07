@@ -11,8 +11,8 @@ package gov.noaa.gsd.viz.megawidgets;
 
 /**
  * Notification listener, an interface that describes the methods that must be
- * implemented by any class that wishes to be notified when an <code>INotifier
- * </code> is invoked.
+ * implemented by any class that wishes to be notified when an {@link INotifier}
+ * is invoked.
  * 
  * <pre>
  * 
@@ -24,6 +24,9 @@ package gov.noaa.gsd.viz.megawidgets;
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

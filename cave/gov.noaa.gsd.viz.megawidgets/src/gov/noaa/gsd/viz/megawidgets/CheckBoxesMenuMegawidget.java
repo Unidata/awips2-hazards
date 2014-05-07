@@ -43,6 +43,9 @@ import org.eclipse.swt.widgets.MenuItem;
  *                                           notifying a state change listener of
  *                                           a change. Also took advantage of new
  *                                           JDK 1.7 features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -88,7 +91,9 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
             Menu parent, Map<String, Object> paramMap) {
         super(specifier, paramMap);
 
-        // Create the checked menu item selection listener.
+        /*
+         * Create the checked menu item selection listener.
+         */
         listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -105,17 +110,19 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
             }
         };
 
-        // Put in a separator if called for.
+        /*
+         * Put in a separator if called for.
+         */
         if (specifier.shouldShowSeparator()) {
             new MenuItem(parent, SWT.SEPARATOR);
         }
 
-        // If the menu items are to be shown on their own
-        // separate submenu, create the top-level menu item
-        // with the given label, and then create a menu that
-        // springs off of it holding all the choices as menu
-        // items. Otherwise, just use the parent menu as the
-        // place for the menu items.
+        /*
+         * If the menu items are to be shown on their own separate submenu,
+         * create the top-level menu item with the given label, and then create
+         * a menu that springs off of it holding all the choices as menu items.
+         * Otherwise, just use the parent menu as the place for the menu items.
+         */
         Menu menu;
         if (specifier.shouldBeOnParentMenu() == false) {
             topItem = new MenuItem(parent, SWT.CASCADE);
@@ -129,21 +136,19 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
             new MenuItem(menu, SWT.SEPARATOR);
         }
 
-        // Create the menu items.
+        /*
+         * Create the menu items.
+         */
         items = new ArrayList<>();
         createMenuItemsForChoices(menu, -1);
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
-
-    /**
-     * Get the available choices hierarchy.
-     * 
-     * @return Available choices hierarchy.
-     */
-    public final List<?> getChoices() {
-        return doGetChoices();
-    }
 
     /**
      * Set the choices to those specified. If the current state is not a subset
@@ -169,34 +174,51 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     protected final void prepareForChoicesChange() {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
+        /*
+         * No action.
+         */
+    }
 
-        // Find the parent menu of the items, and if the parent menu is not
-        // a submenu build explicitly for this megawidget, the index at
-        // which to start adding new menu items.
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * Find the parent menu of the items, and if the parent menu is not a
+         * submenu build explicitly for this megawidget, the index at which to
+         * start adding new menu items.
+         */
         Menu menu = (topItem == null ? items.get(0).getParent() : topItem
                 .getMenu());
         int index = (topItem == null ? menu.indexOf(items.get(0)) : -1);
 
-        // Dispose of the old menu items.
+        /*
+         * Dispose of the old menu items.
+         */
         for (MenuItem item : items) {
             item.dispose();
         }
         items.clear();
 
-        // Create the new menu items.
+        /*
+         * Create the new menu items.
+         */
         createMenuItemsForChoices(menu, index);
 
-        // Ensure that the new menu items are synced with the old state.
-        synchronizeWidgetsToState();
+        /*
+         * Ensure that the new menu items are synced with the old state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         for (MenuItem item : items) {
             item.setSelection(state.contains(item.getData()));
         }
@@ -226,7 +248,7 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
      */
     private void createMenuItemsForChoices(Menu menu, int index) {
         CheckBoxesMenuSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             MenuItem item = (index == -1 ? new MenuItem(menu, SWT.CHECK)
                     : new MenuItem(menu, SWT.CHECK, index++));
             item.setText(specifier.getNameOfNode(choice));

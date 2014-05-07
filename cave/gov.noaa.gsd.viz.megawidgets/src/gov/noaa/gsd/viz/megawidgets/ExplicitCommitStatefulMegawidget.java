@@ -9,9 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.HashMap;
 import java.util.Map;
-
-import com.google.common.collect.Maps;
 
 /**
  * Explicit-commit stateful megawidget created by a megawidget specifier. Such
@@ -27,6 +26,9 @@ import com.google.common.collect.Maps;
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Minor cleanup.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -58,7 +60,7 @@ public abstract class ExplicitCommitStatefulMegawidget extends
     protected ExplicitCommitStatefulMegawidget(
             StatefulMegawidgetSpecifier specifier, Map<String, Object> paramMap) {
         super(specifier, paramMap);
-        uncommittedStatesForIds = Maps.newHashMap();
+        uncommittedStatesForIds = new HashMap<>();
     }
 
     // Public Methods
@@ -67,17 +69,22 @@ public abstract class ExplicitCommitStatefulMegawidget extends
     public final void setUncommittedState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Ensure that the state identifier is valid.
+        /*
+         * Ensure that the state identifier is valid.
+         */
         ((StatefulMegawidgetSpecifier) getSpecifier())
                 .ensureStateIdentifierIsValid(identifier);
 
-        // Ensure that the supplied state is valid.
+        /*
+         * Ensure that the supplied state is valid.
+         */
         ensureStateIsValid(identifier, state);
 
-        // Compare with the old state, the uncommitted
-        // one if one exists for this identifier, or
-        // the previously-committed one if not; if they
-        // are the same, do nothing more.
+        /*
+         * Compare with the old state, the uncommitted one if one exists for
+         * this identifier, or the previously-committed one if not; if they are
+         * the same, do nothing more.
+         */
         Object oldState = uncommittedStatesForIds.get(identifier);
         if (oldState == null) {
             oldState = doGetState(identifier);
@@ -88,30 +95,34 @@ public abstract class ExplicitCommitStatefulMegawidget extends
             return;
         }
 
-        // Add the state to the mapping of uncommitted
-        // changes.
+        /*
+         * Add the state to the mapping of uncommitted changes.
+         */
         uncommittedStatesForIds.put(identifier, state);
     }
 
     @Override
     public final void commitStateChanges() throws MegawidgetStateException {
 
-        // Ensure that the state is not being set al-
-        // ready before actually committing accumulated
-        // state changes.
+        /*
+         * Ensure that the state is not being set already before actually
+         * committing accumulated state changes.
+         */
         if (isSettingState) {
             return;
         }
 
-        // If there are no uncommitted state changes,
-        // do nothing.
+        /*
+         * If there are no uncommitted state changes, do nothing.
+         */
         if (uncommittedStatesForIds.isEmpty()) {
             return;
         }
 
-        // Commit uncommitted state changes, ensuring
-        // that the flag that indicates state is being
-        // set is high for the duration of the commit.
+        /*
+         * Commit uncommitted state changes, ensuring that the flag that
+         * indicates state is being set is high for the duration of the commit.
+         */
         isSettingState = true;
         doCommitStateChanges(uncommittedStatesForIds);
         uncommittedStatesForIds.clear();
@@ -160,13 +171,41 @@ public abstract class ExplicitCommitStatefulMegawidget extends
             Map<String, Object> newStatesForIds)
             throws MegawidgetStateException;
 
+    /**
+     * Synchronize the component widgets with the current state of the specified
+     * state identifier. This method is called by {@link
+     * synchronizeComponentWidgetsWithState(String)} after the latter ensures
+     * that a note has been made of the state changing. Subclasses must
+     * implement this method to set their component widgets to reflect the
+     * current state; they do not have to be concerned that such settings will
+     * trigger a notification of state change, as the calling method will not
+     * allow that to occur.
+     */
+    protected abstract void doSynchronizeComponentWidgetsToState(
+            String identifier);
+
+    /**
+     * Synchronize the component widgets with the current state of the specified
+     * identifier. This method should be called by a subclass whenever the
+     * latter experiences a programmatic state change. It ensures that
+     * notifications of state changes are not generated by such
+     * synchronizations.
+     */
+    protected final void synchronizeComponentWidgetsToState(String identifier) {
+        isSettingState = true;
+        doSynchronizeComponentWidgetsToState(identifier);
+        isSettingState = false;
+    }
+
     @Override
     protected void setStates(Map<String, Object> states)
             throws MegawidgetPropertyException {
 
-        // Iterate through the pairs, setting each value as the uncommitted
-        // state for the corresponding identifier, and then committing them
-        // all at once.
+        /*
+         * Iterate through the pairs, setting each value as the uncommitted
+         * state for the corresponding identifier, and then committing them all
+         * at once.
+         */
         try {
             for (String identifier : states.keySet()) {
                 setUncommittedState(identifier, states.get(identifier));

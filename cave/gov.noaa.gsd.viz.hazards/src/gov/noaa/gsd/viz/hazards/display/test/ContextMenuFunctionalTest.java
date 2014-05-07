@@ -23,6 +23,8 @@ import net.engio.mbassy.listener.Handler;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
@@ -38,12 +40,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 23, 2013 2474       blawrenc    Initial Coding
+ * Apr 09, 2014    2925    Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author blawrenc
  * @version 1.0
  */
 public class ContextMenuFunctionalTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private static final double FIRST_EVENT_CENTER_Y = 41.0;
 
@@ -73,12 +79,22 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
 
     @Override
     protected void runFirstStep() {
+
         /*
          * Create a new hazard area.
          */
         this.step = Steps.START;
         autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
                 FIRST_EVENT_CENTER_Y);
+    }
+
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
     }
 
     /**
@@ -94,6 +110,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
             final SpatialDisplayAction spatialDisplayAction) {
 
         try {
+            stepCompleted();
             this.step = Steps.CREATE_NEW_NODE_HAZARD_AREA;
             List<String> contextMenuEntries = convertContextMenuToString(this.toolLayer
                     .getFlatContextMenuActions());
@@ -119,6 +136,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
 
             case START:
 
+                stepCompleted();
                 this.step = Steps.CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE;
 
                 /*
@@ -142,6 +160,7 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
 
                 assertTrue(!contextMenuEntries
                         .contains(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+                stepCompleted();
                 this.testSuccess();
                 break;
 

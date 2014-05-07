@@ -39,6 +39,9 @@ import org.eclipse.swt.widgets.Event;
  * Feb 12, 2014    2161    Chris.Golden      Changed to delegate most of its
  *                                           work to the new DetailChildren-
  *                                           Manager.
+ * Apr 23, 2014    2925     Chris.Golden     Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -149,9 +152,11 @@ public class BoundedChoicesDetailChildrenManager implements
             int buttonWidth, List<IControlSpecifier> detailSpecifiers)
             throws MegawidgetException {
 
-        // Delegate the work of creating the detail megawidgets, then
-        // iterate through the created megawidgets, associating each in
-        // turn with its button.
+        /*
+         * Delegate the work of creating the detail megawidgets, then iterate
+         * through the created megawidgets, associating each in turn with its
+         * button.
+         */
         DetailChildrenManager.CompositesAndMegawidgets compositesAndMegawidgets = detailChildrenManager
                 .createDetailChildMegawidgets(adjacentComposite,
                         overallComposite, buttonWidth, detailSpecifiers);
@@ -166,17 +171,20 @@ public class BoundedChoicesDetailChildrenManager implements
     @Override
     public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
 
-        // If the invoked megawidget is not stateful, first fire
-        // off a selection event for the choice button associated
-        // with this detail child megawidget. Stateful megawidgets
-        // do not cause a selection event because the latter has
-        // already been fired off when they experienced the state
-        // change that preceded this notification.
+        /*
+         * If the invoked megawidget is not stateful, first fire off a selection
+         * event for the choice button associated with this detail child
+         * megawidget. Stateful megawidgets do not cause a selection event
+         * because the latter has already been fired off when they experienced
+         * the state change that preceded this notification.
+         */
         if ((megawidget instanceof IStateful) == false) {
             fireSelectionEventForDetailMegawidget(megawidget);
         }
 
-        // Notify the real notification listener of the invocation.
+        /*
+         * Notify the real notification listener of the invocation.
+         */
         notificationListener.megawidgetInvoked(megawidget, extraCallback);
     }
 
@@ -184,11 +192,12 @@ public class BoundedChoicesDetailChildrenManager implements
     public void megawidgetStateChanged(IStateful megawidget, String identifier,
             Object state) {
 
-        // Fire off a selection event for the choice button asso-
-        // ciated with this detail child megawidget so that the
-        // button's choice is selected. Only after this has been
-        // done is the state change forwarded onto the real
-        // listener.
+        /*
+         * Fire off a selection event for the choice button associated with this
+         * detail child megawidget so that the button's choice is selected. Only
+         * after this has been done is the state change forwarded onto the real
+         * listener.
+         */
         fireSelectionEventForDetailMegawidget(megawidget);
         stateChangeListener.megawidgetStateChanged(megawidget, identifier,
                 state);

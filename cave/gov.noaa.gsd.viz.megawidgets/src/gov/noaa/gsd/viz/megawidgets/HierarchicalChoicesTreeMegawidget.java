@@ -54,6 +54,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           can be added) choice megawidgets.
  * Jan 28, 2014   2161     Chris.Golden      Minor fix to Javadoc and adaptation
  *                                           to new JDK 1.7 features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -172,15 +175,19 @@ public class HierarchicalChoicesTreeMegawidget extends
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create the composite holding the components, and
-        // the label if appropriate.
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
                 UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
                 specifier);
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create a tree to hold the checkable choices hier-
-        // archy, and add said choices.
+        /*
+         * Create a tree to hold the checkable choices hierarchy, and add said
+         * choices.
+         */
         tree = new Tree(panel, SWT.BORDER + SWT.CHECK);
         tree.setLinesVisible(false);
         tree.setHeaderVisible(false);
@@ -189,17 +196,19 @@ public class HierarchicalChoicesTreeMegawidget extends
         gridData.heightHint = (specifier.getNumVisibleLines() * tree
                 .getItemHeight()) + 7;
         tree.setLayoutData(gridData);
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             convertStateToTree(tree, choice, null);
         }
 
-        // Add the Select All and Select None buttons if appropriate.
+        /*
+         * Add the Select All and Select None buttons if appropriate.
+         */
         List<Button> buttons = UiBuilder.buildAllNoneButtons(panel, specifier,
                 new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
                         state.clear();
-                        state.addAll(choices);
+                        state.addAll(getStateValidator().getAvailableChoices());
                         setAllItemsCheckedState(
                                 HierarchicalChoicesTreeMegawidget.this.tree
                                         .getItems(), true);
@@ -222,21 +231,25 @@ public class HierarchicalChoicesTreeMegawidget extends
             allButton = noneButton = null;
         }
 
-        // Bind check events to trigger a change in the
-        // record of the state for the megawidget.
+        /*
+         * Bind check events to trigger a change in the record of the state for
+         * the megawidget.
+         */
         tree.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                // If this is not a check event, do
-                // nothing.
+                /*
+                 * If this is not a check event, do nothing.
+                 */
                 if (e.detail != SWT.CHECK) {
                     return;
                 }
 
-                // If the megawidget is editable, record
-                // the state change; otherwise, undo
-                // what was just done.
+                /*
+                 * If the megawidget is editable, record the state change;
+                 * otherwise, undo what was just done.
+                 */
                 if (isEditable()) {
                     TreeItem item = (TreeItem) e.item;
                     item.setGrayed(false);
@@ -260,10 +273,17 @@ public class HierarchicalChoicesTreeMegawidget extends
             }
         });
 
-        // Render the tree uneditable if necessary.
+        /*
+         * Render the tree uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -286,7 +306,9 @@ public class HierarchicalChoicesTreeMegawidget extends
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -311,7 +333,9 @@ public class HierarchicalChoicesTreeMegawidget extends
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -322,7 +346,9 @@ public class HierarchicalChoicesTreeMegawidget extends
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods
@@ -342,12 +368,16 @@ public class HierarchicalChoicesTreeMegawidget extends
     @Override
     protected final void prepareForChoicesChange() {
 
-        // Remember the scrollbar position so that it can be approximately
-        // restored.
+        /*
+         * Remember the scrollbar position so that it can be approximately
+         * restored.
+         */
         scrollPosition = tree.getVerticalBar().getSelection();
 
-        // Remember the identifiers in hierarchical order of the selected
-        // node, if any.
+        /*
+         * Remember the identifiers in hierarchical order of the selected node,
+         * if any.
+         */
         TreeItem[] selectedItems = tree.getSelection();
         if (selectedItems.length > 0) {
             for (TreeItem item = selectedItems[0]; item != null; item = item
@@ -357,26 +387,39 @@ public class HierarchicalChoicesTreeMegawidget extends
             Collections.reverse(selectedNodeIdentifiers);
         }
 
-        // Determine what nodes from the soon-to-be-removed hierarchy are
-        // expanded, so that any nodes with the same identifiers at the
-        // same levels in the new hierarchy may be expanded at creation
-        // time.
+        /*
+         * Determine what nodes from the soon-to-be-removed hierarchy are
+         * expanded, so that any nodes with the same identifiers at the same
+         * levels in the new hierarchy may be expanded at creation time.
+         */
         recordExpandedNodes(tree.getItems(), expandedNodes);
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
+        selectedNodeIdentifiers.clear();
+        expandedNodes.clear();
+    }
 
-        // Remove all the previous tree items.
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * Remove all the previous tree items.
+         */
         tree.removeAll();
 
-        // Create the new tree items.
-        for (Object choice : choices) {
+        /*
+         * Create the new tree items.
+         */
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             convertStateToTree(tree, choice, expandedNodes);
         }
 
-        // Select the appropriate node, if one that has the same place in
-        // the old hierarchy is found.
+        /*
+         * Select the appropriate node, if one that has the same place in the
+         * old hierarchy is found.
+         */
         TreeItem itemToSelect = null;
         for (String identifier : selectedNodeIdentifiers) {
             TreeItem[] items = (itemToSelect == null ? tree.getItems()
@@ -400,30 +443,41 @@ public class HierarchicalChoicesTreeMegawidget extends
             tree.setSelection(itemToSelect);
         }
 
-        // Clear the expanded nodes map and selected node list, as they
-        // are no longer needed.
+        /*
+         * Clear the expanded nodes map and selected node list, as they are no
+         * longer needed.
+         */
         expandedNodes.clear();
         selectedNodeIdentifiers.clear();
 
-        // Ensure that the new tree items are synced with the old state.
-        synchronizeWidgetsToState();
+        /*
+         * Ensure that the new tree items are synced with the old state.
+         */
+        synchronizeComponentWidgetsToState();
 
-        // Set the scrollbar position to be similar to what it was before.
+        /*
+         * Set the scrollbar position to be similar to what it was before.
+         */
         tree.getVerticalBar().setSelection(scrollPosition);
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
 
-        // Clear the tree items' selection states.
+        /*
+         * Clear the tree items' selection states.
+         */
         clearSelection(tree);
 
-        // Set the leaf tree items' selection states to
-        // match the state.
+        /*
+         * Set the leaf tree items' selection states to match the state.
+         */
         setLeafSelectionToMatchState(tree, state);
 
-        // Update the non-leaf tree items' selections to
-        // reflect their children's states.
+        /*
+         * Update the non-leaf tree items' selections to reflect their
+         * children's states.
+         */
         updateNonLeafStates(tree);
     }
 
@@ -455,7 +509,9 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private void clearSelection(Widget tree) {
 
-        // Get the children of the tree or tree item.
+        /*
+         * Get the children of the tree or tree item.
+         */
         TreeItem[] items = null;
         if (tree instanceof Tree) {
             items = ((Tree) tree).getItems();
@@ -463,8 +519,10 @@ public class HierarchicalChoicesTreeMegawidget extends
             items = ((TreeItem) tree).getItems();
         }
 
-        // Iterate through the children, clearing the se-
-        // lection state of each in turn.
+        /*
+         * Iterate through the children, clearing the selection state of each in
+         * turn.
+         */
         for (TreeItem item : items) {
             item.setChecked(false);
             item.setGrayed(false);
@@ -493,7 +551,9 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private void setLeafSelectionToMatchState(Widget tree, List<?> state) {
 
-        // Get the children of the tree or tree item.
+        /*
+         * Get the children of the tree or tree item.
+         */
         TreeItem[] items = null;
         if (tree instanceof Tree) {
             items = ((Tree) tree).getItems();
@@ -501,11 +561,12 @@ public class HierarchicalChoicesTreeMegawidget extends
             items = ((TreeItem) tree).getItems();
         }
 
-        // Iterate through the state hierarchy's children,
-        // finding the corresponding tree item for each
-        // and telling that item to update its leaf selec-
-        // tions to match this state (if it is not a leaf),
-        // or to set itself as checked (if it is a leaf).
+        /*
+         * Iterate through the state hierarchy's children, finding the
+         * corresponding tree item for each and telling that item to update its
+         * leaf selections to match this state (if it is not a leaf), or to set
+         * itself as checked (if it is a leaf).
+         */
         HierarchicalChoicesTreeSpecifier specifier = getSpecifier();
         for (Object node : state) {
             String identifier = specifier.getIdentifierOfNode(node);
@@ -565,32 +626,41 @@ public class HierarchicalChoicesTreeMegawidget extends
     private TreeItem convertStateToTree(Widget parent, Object tree,
             NodesMap expandedMap) {
 
-        // If the node is a string, just create a leaf; otherwise, create a node
-        // that may be a leaf or a branch, depending upon whether or not it has
-        // children.
+        /*
+         * If the node is a string, just create a leaf; otherwise, create a node
+         * that may be a leaf or a branch, depending upon whether or not it has
+         * children.
+         */
         if (tree instanceof String) {
             return createTreeItem(parent, (String) tree, null);
         } else {
 
-            // Get the name and/or identifier of the node.
+            /*
+             * Get the name and/or identifier of the node.
+             */
             Map<?, ?> dict = (Map<?, ?>) tree;
             String name = (String) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_NAME);
             String identifier = (String) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_IDENTIFIER);
 
-            // Create the tree item for the node.
+            /*
+             * Create the tree item for the node.
+             */
             TreeItem item = createTreeItem(parent, name, identifier);
 
-            // If the newly-created node should have children, create them.
+            /*
+             * If the newly-created node should have children, create them.
+             */
             List<?> children = (List<?>) dict
                     .get(HierarchicalChoicesTreeSpecifier.CHOICE_CHILDREN);
             if (children != null) {
 
-                // Determine whether or not an old node at this level in the
-                // old hierarchy with the same identifier was expanded, and
-                // if so, expand the new node after creating the node's
-                // children.
+                /*
+                 * Determine whether or not an old node at this level in the old
+                 * hierarchy with the same identifier was expanded, and if so,
+                 * expand the new node after creating the node's children.
+                 */
                 String key = (identifier == null ? name : identifier);
                 boolean expanded = (expandedMap == null ? false : expandedMap
                         .containsKey(key));
@@ -615,7 +685,9 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private List<Object> convertTreeToState(Widget tree) {
 
-        // Get the child items from this tree or tree item.
+        /*
+         * Get the child items from this tree or tree item.
+         */
         TreeItem[] items = null;
         if (tree instanceof Tree) {
             items = ((Tree) tree).getItems();
@@ -623,10 +695,11 @@ public class HierarchicalChoicesTreeMegawidget extends
             items = ((TreeItem) tree).getItems();
         }
 
-        // Iterate through the child items, adding each
-        // one that is checked or grayed to the state
-        // hierarchy, as well as any descendants that are
-        // checked or grayed.
+        /*
+         * Iterate through the child items, adding each one that is checked or
+         * grayed to the state hierarchy, as well as any descendants that are
+         * checked or grayed.
+         */
         List<Object> children = new ArrayList<>();
         for (TreeItem item : items) {
             if ((item.getChecked() == false) && (item.getGrayed() == false)) {
@@ -681,8 +754,9 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private void updateNonLeafStates(Widget tree) {
 
-        // Get the child items from this tree or tree
-        // item.
+        /*
+         * Get the child items from this tree or tree item.
+         */
         TreeItem[] items = null;
         if (tree instanceof Tree) {
             items = ((Tree) tree).getItems();
@@ -690,16 +764,18 @@ public class HierarchicalChoicesTreeMegawidget extends
             items = ((TreeItem) tree).getItems();
         }
 
-        // If there are no child items, this is a leaf,
-        // so do nothing.
+        /*
+         * If there are no child items, this is a leaf, so do nothing.
+         */
         if (items.length == 0) {
             return;
         }
 
-        // Iterate through the children, ensuring each
-        // has the right state based upon its descen-
-        // dants, and then, if this "tree" is actually
-        // a node, update the node's state as well.
+        /*
+         * Iterate through the children, ensuring each has the right state based
+         * upon its descendants, and then, if this "tree" is actually a node,
+         * update the node's state as well.
+         */
         boolean checked = false, unchecked = false;
         for (TreeItem item : items) {
             updateNonLeafStates(item);
@@ -731,8 +807,10 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private void updateAncestorStates(TreeItem item) {
 
-        // Iterate upwards through the hierarchy from
-        // this item, updating each ancestor in turn.
+        /*
+         * Iterate upwards through the hierarchy from this item, updating each
+         * ancestor in turn.
+         */
         for (item = item.getParentItem(); item != null; item = item
                 .getParentItem()) {
             updateItemStateBasedUponChildrenStates(item);
@@ -751,17 +829,19 @@ public class HierarchicalChoicesTreeMegawidget extends
      */
     private boolean updateItemStateBasedUponChildrenStates(TreeItem item) {
 
-        // If the item has no children, do nothing.
+        /*
+         * If the item has no children, do nothing.
+         */
         if (item.getItemCount() == 0) {
             return false;
         }
 
-        // Iterate through the item's children to find
-        // out whether they are mixed in state. If they
-        // are, make the parent item grayed in state;
-        // otherwise, make the parent item checked or
-        // unchecked depending upon which state the
-        // children all have.
+        /*
+         * Iterate through the item's children to find out whether they are
+         * mixed in state. If they are, make the parent item grayed in state;
+         * otherwise, make the parent item checked or unchecked depending upon
+         * which state the children all have.
+         */
         boolean checked = false, unchecked = false;
         for (int j = 0; j < item.getItemCount(); j++) {
             if (item.getItem(j).getGrayed()) {

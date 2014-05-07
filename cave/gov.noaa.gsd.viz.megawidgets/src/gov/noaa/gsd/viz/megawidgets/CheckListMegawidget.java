@@ -56,6 +56,9 @@ import com.google.common.collect.ImmutableSet;
  *                                           a change. Also fixed Javadoc and
  *                                           took advantage of new JDK 1.7
  *                                           features.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -140,14 +143,18 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
 
-        // Create a panel in which to place the widgets and
-        // a label, if appropriate.
+        /*
+         * Create a panel in which to place the widgets and a label, if
+         * appropriate.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
                 UiBuilder.CompositeType.MULTI_ROW_VERTICALLY_EXPANDING,
                 specifier);
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create a table to hold the checkable choices.
+        /*
+         * Create a table to hold the checkable choices.
+         */
         table = new Table(panel, SWT.CHECK | SWT.BORDER | SWT.FULL_SELECTION);
         table.setLinesVisible(false);
         table.setHeaderVisible(false);
@@ -156,29 +163,33 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
         table.setLayoutData(gridData);
         new TableColumn(table, SWT.NONE);
 
-        // Add all the choices to the table.
+        /*
+         * Add all the choices to the table.
+         */
         createTableItemsForChoices();
 
-        // Determine the height of the table. This must
-        // be done after the above to ensure it will have
-        // the right height. Unfortunately using either
-        // computeSize() or computeTrim() to try to get
-        // the extra vertical space required for the
-        // borders, etc. seems to return a bizarrely high
-        // value (20 even without a header showing), so
-        // an arbitrary number of pixels is added in this
-        // case as a cheesy workaround.
+        /*
+         * Determine the height of the table. This must be done after the above
+         * to ensure it will have the right height. Unfortunately using either
+         * computeSize() or computeTrim() to try to get the extra vertical space
+         * required for the borders, etc. seems to return a bizarrely high value
+         * (20 even without a header showing), so an arbitrary number of pixels
+         * is added in this case as a cheesy workaround.
+         */
         gridData.heightHint = (specifier.getNumVisibleLines() * table
                 .getItemHeight()) + 7;
 
-        // Add the Select All and Select None buttons if appropriate.
+        /*
+         * Add the Select All and Select None buttons if appropriate.
+         */
         List<Button> buttons = UiBuilder.buildAllNoneButtons(panel, specifier,
                 new SelectionAdapter() {
                     @Override
                     public void widgetSelected(SelectionEvent e) {
-                        BoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
+                        BoundedChoicesMegawidgetSpecifier<?> specifier = getSpecifier();
                         state.clear();
-                        for (Object choice : choices) {
+                        for (Object choice : getStateValidator()
+                                .getAvailableChoices()) {
                             state.add(specifier.getIdentifierOfNode(choice));
                         }
                         setAllItemsCheckedState(true);
@@ -199,22 +210,25 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
             allButton = noneButton = null;
         }
 
-        // Bind check events to trigger a change in the
-        // record of the state for the widget if
-        // editable, or to undo the change if read-only.
+        /*
+         * Bind check events to trigger a change in the record of the state for
+         * the widget if editable, or to undo the change if read-only.
+         */
         table.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
 
-                // If this is not a check event, do
-                // nothing.
+                /*
+                 * If this is not a check event, do nothing.
+                 */
                 if (e.detail != SWT.CHECK) {
                     return;
                 }
 
-                // If the widget is editable, record
-                // the state change; otherwise, undo
-                // what was just done.
+                /*
+                 * If the widget is editable, record the state change;
+                 * otherwise, undo what was just done.
+                 */
                 if (isEditable()) {
                     String choice = (String) ((TableItem) e.item).getData();
                     int index = state.indexOf(choice);
@@ -235,10 +249,17 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
             }
         });
 
-        // Render the check list uneditable if necessary.
+        /*
+         * Render the check list uneditable if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -261,7 +282,9 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -286,7 +309,9 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     public final void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -297,16 +322,9 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
-    }
-
-    /**
-     * Get the available choices hierarchy.
-     * 
-     * @return Available choices hierarchy.
-     */
-    public final List<?> getChoices() {
-        return doGetChoices();
+        /*
+         * No action.
+         */
     }
 
     /**
@@ -333,27 +351,45 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
     @Override
     protected final void prepareForChoicesChange() {
 
-        // Remember the scrollbar position so that it can be approximately
-        // restored.
+        /*
+         * Remember the scrollbar position so that it can be approximately
+         * restored.
+         */
         scrollPosition = table.getVerticalBar().getSelection();
 
-        // Remember the identifier of the currently selected choice, if any.
+        /*
+         * Remember the identifier of the currently selected choice, if any.
+         */
         TableItem[] selectedItems = table.getSelection();
         selectedChoiceIdentifier = (selectedItems.length > 0 ? (String) selectedItems[0]
                 .getData() : null);
     }
 
     @Override
-    protected final void synchronizeWidgetsToChoices() {
+    protected void cancelPreparationForChoicesChange() {
 
-        // Remove all the previous table items.
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    protected final void synchronizeComponentWidgetsToChoices() {
+
+        /*
+         * Remove all the previous table items.
+         */
         table.removeAll();
 
-        // Create the new table items.
+        /*
+         * Create the new table items.
+         */
         createTableItemsForChoices();
 
-        // Select the appropriate choice, if one with the same identifier
-        // as the one selected before is found.
+        /*
+         * Select the appropriate choice, if one with the same identifier as the
+         * one selected before is found.
+         */
         if (selectedChoiceIdentifier != null) {
             for (TableItem item : table.getItems()) {
                 if (item.getData().equals(selectedChoiceIdentifier)) {
@@ -363,15 +399,19 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
             }
         }
 
-        // Ensure that the new table items are synced with the old state.
-        synchronizeWidgetsToState();
+        /*
+         * Ensure that the new table items are synced with the old state.
+         */
+        synchronizeComponentWidgetsToState();
 
-        // Set the scrollbar position to be similar to what it was before.
+        /*
+         * Set the scrollbar position to be similar to what it was before.
+         */
         table.getVerticalBar().setSelection(scrollPosition);
     }
 
     @Override
-    protected final void synchronizeWidgetsToState() {
+    protected final void doSynchronizeComponentWidgetsToState() {
         for (int line = 0; line < table.getItemCount(); line++) {
             TableItem item = table.getItem(line);
             item.setChecked(state.contains(item.getData()));
@@ -413,7 +453,7 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
      */
     private void createTableItemsForChoices() {
         CheckListSpecifier specifier = getSpecifier();
-        for (Object choice : choices) {
+        for (Object choice : getStateValidator().getAvailableChoices()) {
             TableItem item = new TableItem(table, SWT.NONE);
             item.setText(0, specifier.getNameOfNode(choice));
             item.setData(specifier.getIdentifierOfNode(choice));

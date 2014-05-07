@@ -9,17 +9,16 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidatorHelper;
+
 import java.util.Map;
 
 /**
  * Base class for megawidget specifiers that include a flat closed list of
  * choices as part of their state. Said choices are always associated with a
  * single state identifier, so the megawidget identifiers for these specifiers
- * must not consist of colon-separated substrings.
+ * must not consist of colon-separated substrings. The generic parameter
+ * <code>T</code> indicates the type of the state.
  * 
  * <pre>
  * 
@@ -36,13 +35,16 @@ import java.util.Map;
  *                                           can be added) choice megawidgets.
  * Jan 28, 2014   2161     Chris.Golden      Changed to support use of collections
  *                                           instead of only lists for the state.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class FlatBoundedChoicesMegawidgetSpecifier extends
-        BoundedChoicesMegawidgetSpecifier {
+public abstract class FlatBoundedChoicesMegawidgetSpecifier<T> extends
+        BoundedChoicesMegawidgetSpecifier<T> {
 
     // Public Constructors
 
@@ -53,47 +55,15 @@ public abstract class FlatBoundedChoicesMegawidgetSpecifier extends
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
+     * @param stateValidatorHelper
+     *            State validator helper.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public FlatBoundedChoicesMegawidgetSpecifier(Map<String, Object> parameters)
+    public FlatBoundedChoicesMegawidgetSpecifier(
+            Map<String, Object> parameters,
+            BoundedChoiceValidatorHelper<T> stateValidatorHelper)
             throws MegawidgetSpecificationException {
-        super(parameters);
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final String getChoicesDataStructureDescription() {
-        return "list";
-    }
-
-    @Override
-    protected IllegalChoicesProblem evaluateChoicesMapLegality(
-            String parameterName, Map<?, ?> map, int index) {
-        return NO_ILLEGAL_CHOICES_PROBLEM;
-    }
-
-    @Override
-    protected final boolean isNodeSubset(Object node1, Object node2) {
-        return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected List<Object> createChoicesCopy(Collection<?> list) {
-
-        // Create a new list, and copy each element into it from
-        // the old list. If an element is a map, then make a
-        // copy of the map instead of using the original.
-        List<Object> listCopy = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Map) {
-                listCopy.add(new HashMap<>((Map<String, Object>) item));
-            } else {
-                listCopy.add(item);
-            }
-        }
-        return listCopy;
+        super(parameters, stateValidatorHelper);
     }
 }

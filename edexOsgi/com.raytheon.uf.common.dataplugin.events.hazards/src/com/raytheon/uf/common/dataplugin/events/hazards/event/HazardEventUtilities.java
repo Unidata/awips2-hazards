@@ -80,6 +80,17 @@ public class HazardEventUtilities {
         return str.toString();
     }
 
+    public static String[] getHazardPhenSigSubType(String type) {
+        String[] phenSigSubType = new String[3], phenSig;
+        if (!type.isEmpty()) {
+            phenSig = type.split(" ")[0].split("\\.");
+            for (int j = 0; j < phenSigSubType.length; j++) {
+                phenSigSubType[j] = (j < phenSig.length ? phenSig[j] : null);
+            }
+        }
+        return phenSigSubType;
+    }
+
     public static void populateEventForHazardType(IHazardEvent event,
             String hazardType) {
         int endPhen = hazardType.indexOf('.');

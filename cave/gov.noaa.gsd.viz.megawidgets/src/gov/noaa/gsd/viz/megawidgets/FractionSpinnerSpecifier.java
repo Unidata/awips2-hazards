@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedFractionValidator;
+
 import java.util.Map;
 
 /**
@@ -23,6 +25,9 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 23, 2013   2168     Chris.Golden      Initial creation.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -42,22 +47,6 @@ public class FractionSpinnerSpecifier extends SpinnerSpecifier<Double> {
      */
     public static final String MEGAWIDGET_DECIMAL_PRECISION = "precision";
 
-    // Private Static Constants
-
-    /**
-     * Error message indicating that the increment delta is too small.
-     */
-    private static final String INCREMENT_DELTA_TOO_SMALL_ERROR_MESSAGE = "must "
-            + "be positive number no smaller than 10 raised to the power of P, "
-            + "where P is precision";
-
-    // Private Variables
-
-    /**
-     * Precision, that is, number of digits following the decimal point.
-     */
-    private final int precision;
-
     // Public Constructors
 
     /**
@@ -72,38 +61,10 @@ public class FractionSpinnerSpecifier extends SpinnerSpecifier<Double> {
      */
     public FractionSpinnerSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters, Double.class, null, null);
-
-        // If the precision is present, ensure that it is a positive integer
-        // between 1 and 10.
-        precision = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_DECIMAL_PRECISION),
-                MEGAWIDGET_DECIMAL_PRECISION, 1);
-        if ((precision < 1) || (precision > 10)) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_DECIMAL_PRECISION, precision,
-                    "must be positive number between 1 and 10 inclusive");
-        }
-
-        // Ensure that the range specified is representable by a megawidget
-        // this specifier could construct.
-        try {
-            FractionSpinnerMegawidget
-                    .ensureParametersWithinRepresentableBounds(
-                            getMinimumValue(), getMaximumValue(), precision);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), null, null, e.getMessage(), e.getCause());
-        }
-
-        // Ensure that the increment delta is not too small.
-        try {
-            ensureIncrementDeltaNotTooSmall(getIncrementDelta(), precision);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetSpecificationException(e.getIdentifier(),
-                    e.getType(), MEGAWIDGET_INCREMENT_DELTA, e.getBadValue(),
-                    e.getMessage(), e.getCause());
-        }
+        super(parameters, new BoundedFractionValidator(parameters,
+                MEGAWIDGET_MIN_VALUE, MEGAWIDGET_MAX_VALUE,
+                MEGAWIDGET_INCREMENT_DELTA, MEGAWIDGET_DECIMAL_PRECISION,
+                -Double.MAX_VALUE, Double.MAX_VALUE));
     }
 
     // Public Methods
@@ -114,45 +75,6 @@ public class FractionSpinnerSpecifier extends SpinnerSpecifier<Double> {
      * @return Decimal precision.
      */
     public final int getDecimalPrecision() {
-        return precision;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected Double getSpecifierIncrementDeltaObjectFromObject(Object object,
-            String paramName) throws MegawidgetSpecificationException {
-        Double incrementDelta = getSpecifierDoubleObjectFromObject(object,
-                paramName, 0.0);
-        if (incrementDelta < 0.0) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), paramName, incrementDelta,
-                    INCREMENT_DELTA_TOO_SMALL_ERROR_MESSAGE);
-        }
-        return incrementDelta;
-    }
-
-    /**
-     * Ensure that the specified increment delta is not too small to make a
-     * difference when incrementing or decrementing, given the specified
-     * precision.
-     * 
-     * @param incrementDelta
-     *            Increment delta.
-     * @param precision
-     *            Precision after the decimal place.
-     * @throws MegawidgetException
-     *             If the increment delta is too small to make a difference when
-     *             incrementing or decrementing.
-     */
-    protected final void ensureIncrementDeltaNotTooSmall(double incrementDelta,
-            int precision) throws MegawidgetException {
-        if (incrementDelta < Math.pow(10, -precision)) {
-            throw new MegawidgetException(
-                    getIdentifier(),
-                    getType(),
-                    incrementDelta,
-                    FractionSpinnerSpecifier.INCREMENT_DELTA_TOO_SMALL_ERROR_MESSAGE);
-        }
+        return ((BoundedFractionValidator) getStateValidator()).getPrecision();
     }
 }

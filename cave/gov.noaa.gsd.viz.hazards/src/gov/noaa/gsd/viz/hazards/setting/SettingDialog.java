@@ -56,7 +56,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Dec 16, 2013   2545     Chris.Golden    Added current time provider for megawidget
  *                                         use.
  * Feb 19, 2014   2915     bkowal          JSON settings re-factor
- * 
+ * Apr 14, 2014   2925     Chris.Golden    Minor changes to work with megawidget
+ *                                         framework changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -103,11 +104,11 @@ class SettingDialog extends BasicDialog {
     // Private Constants
 
     /**
-     * File menu item actions; each is either a <code>SettingsAction</code>,
-     * meaning it is forwarded to the presenter; a <code>String</code>, meaning
-     * it is handled internally; a <code>Runnable</code>, which is is used to
-     * implement non-standard behavior; or <code>null</code> for any menu item
-     * that has no effect.
+     * File menu item actions; each is either a {@link StaticSettingsAction},
+     * meaning it is forwarded to the presenter; a {@link String}, meaning it is
+     * handled internally; a {@link Runnable}, which is is used to implement
+     * non-standard behavior; or <code>null</code> for any menu item that has no
+     * effect.
      */
     private final List<?> FILE_MENU_ITEM_ACTIONS = Lists.newArrayList(
             new StaticSettingsAction(StaticSettingsAction.ActionType.NEW),
@@ -144,11 +145,11 @@ class SettingDialog extends BasicDialog {
             null, "Close");
 
     /**
-     * Edit menu item actions; each is either a <code>SettingsAction</code>,
-     * meaning it is forwarded to the presenter; a <code>String</code>, meaning
-     * it is handled internally; a <code>Runnable</code>, which is is used to
-     * implement non-standard behavior; or <code>null</code> for any menu item
-     * that has no effect.
+     * Edit menu item actions; each is either a {@link StaticSettingsAction},
+     * meaning it is forwarded to the presenter; a {@link String}, meaning it is
+     * handled internally; a {@link Runnable}, which is is used to implement
+     * non-standard behavior; or <code>null</code> for any menu item that has no
+     * effect.
      */
     private final List<?> EDIT_MENU_ITEM_ACTIONS = ImmutableList
             .of(new StaticSettingsAction(StaticSettingsAction.ActionType.REVERT));
@@ -286,26 +287,32 @@ class SettingDialog extends BasicDialog {
     @Override
     protected Control createDialogArea(Composite parent) {
 
-        // Let the superclass create the area, and set up its layout.
+        /*
+         * Let the superclass create the area, and set up its layout.
+         */
         Composite top = (Composite) super.createDialogArea(parent);
         top.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        // Create a megawidget manager, which will create the mega-
-        // widgets and manage their displaying, and allowing of mani-
-        // pulation, of the the dictionary values. Since setting
-        // megawidgets are assumed to not be firing off commands,
-        // the command invocation response method is empty. State
-        // changes cause the entire setting definition to be sent as
-        // part of a settings change action.
+        /*
+         * Create a megawidget manager, which will create the megawidgets and
+         * manage their displaying, and allowing of manipulation, of the the
+         * dictionary values. Since setting megawidgets are assumed to not be
+         * firing off commands, the command invocation response method is empty.
+         * State changes cause the entire setting definition to be sent as part
+         * of a settings change action.
+         */
         try {
-            // convert the SettingsConfig POJO to a Map.
+
+            /*
+             * convert the SettingsConfig POJO to a Map.
+             */
             List<Map<String, Object>> listForMegawidget = new ArrayList<Map<String, Object>>();
             listForMegawidget.add(MegawidgetSettingsConversionUtils
                     .settingsConfigPOJOToMap(this.fields));
 
             megawidgetManager = new MegawidgetManager(top, listForMegawidget,
                     MegawidgetSettingsConversionUtils
-                            .settingsPOJOToMap(this.values), 0L, 0L, 0L, 0L,
+                            .settingsPOJOToMap(this.values), 0L, 0L,
                     currentTimeProvider) {
                 @Override
                 protected void commandInvoked(String identifier,
@@ -336,7 +343,9 @@ class SettingDialog extends BasicDialog {
                     "Failed to convert the Current Settings to a Java Map!", e);
         }
 
-        // Return the created client area.
+        /*
+         * Return the created client area.
+         */
         return top;
     }
 
@@ -382,9 +391,9 @@ class SettingDialog extends BasicDialog {
      *            Array of menu item actions for the cascade, with each being
      *            paired with the item at the same index in the <code>
      *                    itemNames</code> array. Each is either a
-     *            <code>String</code>, in which case the item is handled by the
-     *            dialog itself, or a <code>SettingsAction</code>, in which case
-     *            it is passed to the presenter.
+     *            {@link String}, in which case the item is handled by the
+     *            dialog itself, or a {@link StaticSettingsAction}, in which
+     *            case it is passed to the presenter.
      */
     private void createCascadeMenu(Menu menuBar, String name,
             List<String> itemNames, List<?> itemActions) {

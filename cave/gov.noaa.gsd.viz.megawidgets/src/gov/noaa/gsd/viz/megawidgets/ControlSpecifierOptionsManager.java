@@ -13,7 +13,7 @@ import java.util.Map;
 
 /**
  * Description: Manager of any options associated with megawidget specifiers
- * that implement @{link IControlSpecifierj}. This class may be used by such
+ * that implement @{link IControlSpecifier}. This class may be used by such
  * classes to handle the setting and getting of such options.
  * 
  * <pre>
@@ -22,6 +22,9 @@ import java.util.Map;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2013    2168    Chris.Golden      Initial creation.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -84,22 +87,31 @@ public class ControlSpecifierOptionsManager {
             BooleanSource howToSetFullWidthOption)
             throws MegawidgetSpecificationException {
 
-        // Ensure that the editable flag, if present, is
-        // acceptable.
-        editable = specifier.getSpecifierBooleanValueFromObject(
+        /*
+         * Ensure that the editable flag, if present, is acceptable.
+         */
+        editable = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IControlSpecifier.MEGAWIDGET_EDITABLE),
                 IControlSpecifier.MEGAWIDGET_EDITABLE, true);
 
-        // Get the number of columns available within the
-        // parent.
-        int parentColumnCount = specifier.getSpecifierIntegerValueFromObject(
-                parameters
-                        .get(IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT),
-                IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT, 1);
+        /*
+         * Get the number of columns available within the parent.
+         */
+        int parentColumnCount = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(
+                        specifier.getIdentifier(),
+                        specifier.getType(),
+                        parameters
+                                .get(IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT),
+                        IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT, 1);
 
-        // Ensure that the width, if present, is acceptable,
-        // and if not present is assigned a default value.
-        width = specifier.getSpecifierIntegerValueFromObject(
+        /*
+         * Ensure that the width, if present, is acceptable, and if not present
+         * is assigned a default value.
+         */
+        width = ConversionUtilities.getSpecifierIntegerValueFromObject(
+                specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IControlSpecifier.MEGAWIDGET_WIDTH),
                 IControlSpecifier.MEGAWIDGET_WIDTH, 1);
         if ((width < 1) || (width > parentColumnCount)) {
@@ -110,12 +122,15 @@ public class ControlSpecifierOptionsManager {
                             + " (inclusive)");
         }
 
-        // Ensure that the full-width-of-column flag, if
-        // present, is acceptable.
+        /*
+         * Ensure that the full-width-of-column flag, if present, is acceptable.
+         */
         switch (howToSetFullWidthOption) {
         case USE_PARAMETER_VALUE:
-            fullWidthOfColumn = specifier
+            fullWidthOfColumn = ConversionUtilities
                     .getSpecifierBooleanValueFromObject(
+                            specifier.getIdentifier(),
+                            specifier.getType(),
                             parameters
                                     .get(IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_COLUMN),
                             IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_COLUMN,
@@ -125,9 +140,12 @@ public class ControlSpecifierOptionsManager {
             fullWidthOfColumn = (howToSetFullWidthOption == BooleanSource.TRUE);
         }
 
-        // Ensure that the spacing, if present, is acceptable,
-        // and if not present is assigned a default value.
-        spacing = specifier.getSpecifierIntegerValueFromObject(
+        /*
+         * Ensure that the spacing, if present, is acceptable, and if not
+         * present is assigned a default value.
+         */
+        spacing = ConversionUtilities.getSpecifierIntegerValueFromObject(
+                specifier.getIdentifier(), specifier.getType(),
                 parameters.get(IControlSpecifier.MEGAWIDGET_SPACING),
                 IControlSpecifier.MEGAWIDGET_SPACING, 0);
         if (spacing < 0) {

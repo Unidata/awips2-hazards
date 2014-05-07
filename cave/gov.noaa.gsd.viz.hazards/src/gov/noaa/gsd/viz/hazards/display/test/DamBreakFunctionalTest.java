@@ -33,6 +33,9 @@ import net.engio.mbassy.listener.Handler;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 
 /**
  * Description: {@link FunctionalTest} of the Dam Break Flood recommender. This
@@ -45,7 +48,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 12, 2013 2560       blawrenc    Initial creation
- * 
+ * Apr 09, 2014    2925       Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author blawrenc
@@ -53,14 +56,26 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
  */
 class DamBreakFunctionalTest extends FunctionalTest {
 
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
+
     private enum Steps {
-        RUN_DAM_BREAK_LOW_CONFIDENCE, RUN_DAM_BREAK_HIGH_CONFIDENCE, RUN_DAM_BREAK_DAM_FAILED, TEST_ENDED
+        RUN_DAM_BREAK_LOW_CONFIDENCE, RECEIVE_DAM_BREAK_LOW_CONFIDENCE_EVENTS, RUN_DAM_BREAK_HIGH_CONFIDENCE, RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS, RUN_DAM_BREAK_DAM_FAILED, RECEIVE_DAM_BREAK_DAM_FAILED_EVENTS, TEST_ENDED
     }
 
     private Steps step;
 
     DamBreakFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
+    }
+
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
     }
 
     @Override
@@ -76,6 +91,7 @@ class DamBreakFunctionalTest extends FunctionalTest {
 
     @Override
     protected void runFirstStep() {
+
         /*
          * Create a new hazard area.
          */
@@ -85,9 +101,78 @@ class DamBreakFunctionalTest extends FunctionalTest {
     }
 
     @Handler(priority = -1)
+    public void sessionEventAddedOccurred(final SessionEventAdded action) {
+        List<Dict> hazards;
+        switch (step) {
+        case RECEIVE_DAM_BREAK_LOW_CONFIDENCE_EVENTS:
+            DictList hidContents;
+            hazards = mockConsoleView.getHazardEvents();
+            assertEquals(hazards.size(), 1);
+
+            Dict event = hazards.get(0);
+            checkDamBreakRecommendationLowConfidence(event);
+
+            hidContents = mockHazardDetailView.getContents();
+
+            assertEquals(hidContents.size(), 1);
+            Dict hidEvent = (Dict) hidContents.get(0);
+            checkDamBreakRecommendationLowConfidence(hidEvent);
+
+            stepCompleted();
+            step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
+            eventBus.publishAsync(new ToolAction(
+                    ToolAction.ToolActionEnum.RUN_TOOL,
+                    DAM_BREAK_FLOOD_RECOMMENDER));
+            break;
+
+        case RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS:
+            hazards = mockConsoleView.getHazardEvents();
+            assertEquals(hazards.size(), 2);
+
+            event = hazards.get(1);
+            checkDamBreakRecommendationHighConfidence(event);
+
+            hidContents = mockHazardDetailView.getContents();
+
+            assertEquals(hidContents.size(), 1);
+            hidEvent = (Dict) hidContents.get(0);
+            checkDamBreakRecommendationHighConfidence(hidEvent);
+
+            stepCompleted();
+            step = Steps.RUN_DAM_BREAK_DAM_FAILED;
+            eventBus.publishAsync(new ToolAction(
+                    ToolAction.ToolActionEnum.RUN_TOOL,
+                    DAM_BREAK_FLOOD_RECOMMENDER));
+
+            break;
+
+        case RECEIVE_DAM_BREAK_DAM_FAILED_EVENTS:
+            hazards = mockConsoleView.getHazardEvents();
+            assertEquals(hazards.size(), 3);
+
+            event = hazards.get(2);
+            checkDamBreakRecommendationDamFailed(event);
+
+            hidContents = mockHazardDetailView.getContents();
+
+            assertEquals(hidContents.size(), 1);
+            hidEvent = (Dict) hidContents.get(0);
+            checkDamBreakRecommendationDamFailed(hidEvent);
+
+            stepCompleted();
+            step = Steps.TEST_ENDED;
+            testSuccess();
+            break;
+
+        default:
+            testError();
+            break;
+        }
+    }
+
+    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
-            List<Dict> hazards;
             switch (action.getActionType()) {
             case RUN_TOOL:
                 switch (step) {
@@ -118,60 +203,18 @@ class DamBreakFunctionalTest extends FunctionalTest {
             case TOOL_RECOMMENDATIONS:
                 switch (step) {
                 case RUN_DAM_BREAK_LOW_CONFIDENCE:
-                    DictList hidContents;
-                    hazards = mockConsoleView.getHazardEvents();
-                    assertEquals(hazards.size(), 1);
-
-                    Dict event = hazards.get(0);
-                    checkDamBreakRecommendationLowConfidence(event);
-
-                    hidContents = mockHazardDetailView.getContents();
-
-                    assertEquals(hidContents.size(), 1);
-                    Dict hidEvent = (Dict) hidContents.get(0);
-                    checkDamBreakRecommendationLowConfidence(hidEvent);
-
-                    step = Steps.RUN_DAM_BREAK_HIGH_CONFIDENCE;
-                    eventBus.publishAsync(new ToolAction(
-                            ToolAction.ToolActionEnum.RUN_TOOL,
-                            DAM_BREAK_FLOOD_RECOMMENDER));
+                    stepCompleted();
+                    step = Steps.RECEIVE_DAM_BREAK_LOW_CONFIDENCE_EVENTS;
                     break;
 
                 case RUN_DAM_BREAK_HIGH_CONFIDENCE:
-                    hazards = mockConsoleView.getHazardEvents();
-                    assertEquals(hazards.size(), 2);
-
-                    event = hazards.get(1);
-                    checkDamBreakRecommendationHighConfidence(event);
-
-                    hidContents = mockHazardDetailView.getContents();
-
-                    assertEquals(hidContents.size(), 1);
-                    hidEvent = (Dict) hidContents.get(0);
-                    checkDamBreakRecommendationHighConfidence(hidEvent);
-
-                    step = Steps.RUN_DAM_BREAK_DAM_FAILED;
-                    eventBus.publishAsync(new ToolAction(
-                            ToolAction.ToolActionEnum.RUN_TOOL,
-                            DAM_BREAK_FLOOD_RECOMMENDER));
-
+                    stepCompleted();
+                    step = Steps.RECEIVE_DAM_BREAK_HIGH_CONFIDENCE_EVENTS;
                     break;
 
                 case RUN_DAM_BREAK_DAM_FAILED:
-                    hazards = mockConsoleView.getHazardEvents();
-                    assertEquals(hazards.size(), 3);
-
-                    event = hazards.get(2);
-                    checkDamBreakRecommendationDamFailed(event);
-
-                    hidContents = mockHazardDetailView.getContents();
-
-                    assertEquals(hidContents.size(), 1);
-                    hidEvent = (Dict) hidContents.get(0);
-                    checkDamBreakRecommendationDamFailed(hidEvent);
-
-                    step = Steps.TEST_ENDED;
-                    testSuccess();
+                    stepCompleted();
+                    step = Steps.RECEIVE_DAM_BREAK_DAM_FAILED_EVENTS;
                     break;
 
                 default:

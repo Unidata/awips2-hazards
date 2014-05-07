@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BooleanValidator;
+
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,7 +23,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Checkbox megawidget, providing a single checkbox.
@@ -28,8 +30,8 @@ import com.google.common.collect.Sets;
  * If multiple checkboxes are desired, grouped together under a label, the
  * {@link CheckBoxesMegawidget} may be more appropriate. However, this
  * megawidget allows the setting of a single option to a boolean value, unlike
- * the <code>CheckBoxesMegawidget</code>, which holds a list of selected choices
- * as its state.
+ * the {@link CheckBoxesMegawidget}, which holds a list of selected choices as
+ * its state.
  * </p>
  * 
  * <pre>
@@ -38,6 +40,9 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 13, 2014    2161    Chris.Golden      Initial creation.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,8 +58,8 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -76,6 +81,11 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
      */
     private final ControlComponentHelper helper;
 
+    /**
+     * State validator.
+     */
+    private final BooleanValidator stateValidator;
+
     // Protected Constructors
 
     /**
@@ -93,12 +103,18 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
+        stateValidator = specifier.getStateValidator().copyOf();
+        state = (Boolean) specifier.getStartingState(specifier.getIdentifier());
 
-        // Create the composite holding the checkbox.
+        /*
+         * Create the composite holding the checkbox.
+         */
         Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
                 UiBuilder.CompositeType.SINGLE_ROW, specifier);
 
-        // Create the checkbox component.
+        /*
+         * Create the checkbox component.
+         */
         checkBox = new Button(panel, SWT.CHECK);
         checkBox.setText(specifier.getLabel() == null ? "" : specifier
                 .getLabel());
@@ -116,11 +132,17 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
                 false);
         checkBox.setLayoutData(buttonGridData);
 
-        // Set the editability of the megawidget to false
-        // if necessary.
+        /*
+         * Set the editability of the megawidget to false if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -143,7 +165,9 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -168,7 +192,9 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public void setLeftDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     @Override
@@ -179,7 +205,9 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods
@@ -197,24 +225,23 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
-        Boolean value = null;
         try {
-            value = (Boolean) state;
-        } catch (Exception e) {
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be boolean");
+            this.state = stateValidator.convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
-        if (value == null) {
-            value = Boolean.FALSE;
-        }
-        this.state = value;
-        checkBox.setSelection(value);
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
         return (state == null ? null : state.toString());
+    }
+
+    @Override
+    protected final void doSynchronizeComponentWidgetsToState() {
+        checkBox.setSelection(this.state);
     }
 
     // Private Methods

@@ -16,7 +16,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.FLOOD_WATC
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 
 import java.util.List;
 
@@ -30,9 +29,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
 /**
@@ -47,13 +50,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Using renamed utility
  * Jan 10, 2014  2890      bkowal      Now subscribes to a notification that
  *                                     indicates all product generation is complete.
- * 
+ * Apr 09, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
 public class ProductStagingDialogTest extends FunctionalTest {
+
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(getClass());
 
     private static final double FIRST_EVENT_CENTER_Y = 41.0;
 
@@ -76,8 +82,17 @@ public class ProductStagingDialogTest extends FunctionalTest {
 
     }
 
+    @Override
+    protected String getCurrentStep() {
+        return step.toString();
+    }
+
+    private void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
+    }
+
     @Handler(priority = -1)
-    public void handleNewHazard(SessionEventAdded action) {
+    public void sessionEventAddedOccurred(SessionEventAdded action) {
 
         try {
             switch (step) {
@@ -88,6 +103,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
                 break;
 
             case EVENT0:
+                stepCompleted();
                 step = Steps.EVENT1;
                 autoTestUtilities
                         .assignSelectedEventType(AutoTestUtilities.FLASH_FLOOD_WATCH_FULLTYPE);
@@ -104,29 +120,34 @@ public class ProductStagingDialogTest extends FunctionalTest {
     }
 
     @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
+    public void sessionEventModifiedOccurred(SessionEventModified action) {
         try {
-            switch (step) {
-            case START:
+            if (step == Steps.START) {
+                ObservedHazardEvent event = autoTestUtilities
+                        .getSelectedEvent();
+                if (!"FA".equals(event.getPhenomenon())
+                        || !"A".equals(event.getSignificance())) {
+                    return;
+                }
+                stepCompleted();
                 step = Steps.EVENT0;
                 autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
                         FIRST_EVENT_CENTER_Y + 3 * EVENT_BUILDER_OFFSET);
-                break;
-
-            case EVENT1:
+            } else if (step == Steps.EVENT1) {
+                ObservedHazardEvent event = autoTestUtilities
+                        .getSelectedEvent();
+                if (!"FF".equals(event.getPhenomenon())
+                        || !"A".equals(event.getSignificance())) {
+                    return;
+                }
+                stepCompleted();
                 step = Steps.PREVIEW;
                 autoTestUtilities.previewEvent();
-                break;
-
-            default:
-                break;
-
             }
+
         } catch (Exception e) {
             handleException(e);
         }
-
     }
 
     @Handler(priority = -1)
@@ -157,8 +178,8 @@ public class ProductStagingDialogTest extends FunctionalTest {
         assertEquals(event.getPhenomenon(), "FF");
         assertEquals(event.getSignificance(), "A");
         assertEquals(event.getState(), HazardConstants.HazardState.PENDING);
+        stepCompleted();
         testSuccess();
-
     }
 
     private void checkChoice(Choice choice) {

@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +40,9 @@ import java.util.Map;
  *                                           defensive copying of the state when
  *                                           notifying a state change listener of
  *                                           a change.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,7 +50,7 @@ import java.util.Map;
  * @see HierarchicalBoundedChoicesMegawidgetSpecifier
  */
 public abstract class HierarchicalBoundedChoicesMegawidget extends
-        BoundedChoicesMegawidget {
+        BoundedChoicesMegawidget<Collection<Object>> {
 
     // Protected Variables
 
@@ -70,18 +74,11 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
             HierarchicalBoundedChoicesMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        state.addAll((Collection<?>) specifier.getStartingState(specifier
+                .getIdentifier()));
     }
 
     // Public Methods
-
-    /**
-     * Get the available choices hierarchy.
-     * 
-     * @return Available choices hierarchy.
-     */
-    public final List<?> getChoices() {
-        return doGetChoices();
-    }
 
     /**
      * Set the choices to those specified. If the current state is not a subset
@@ -106,68 +103,49 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
 
     @Override
     protected final Object doGetState(String identifier) {
-        return ((HierarchicalBoundedChoicesMegawidgetSpecifier) getSpecifier())
-                .createChoicesCopy(state);
+        return createChoicesCopy(state);
     }
 
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // If the state is not a collection, an error has occurred.
-        if ((state != null) && ((state instanceof Collection) == false)) {
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be list of choices");
+        /*
+         * Convert the provided state to a valid value, and record it.
+         */
+        Collection<?> hierarchy;
+        try {
+            hierarchy = getStateValidator().convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
+        this.state.clear();
+        this.state.addAll(createChoicesCopy(hierarchy));
 
-        // Ensure that the provided hierarchy is legal.
-        Collection<?> hierarchy = (Collection<?>) state;
-        if (hierarchy != null) {
-            HierarchicalBoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
-            ChoicesMegawidgetSpecifier.IllegalChoicesProblem eval = specifier
-                    .evaluateChoicesLegality(identifier, hierarchy);
-            if (eval != HierarchicalBoundedChoicesMegawidgetSpecifier.NO_ILLEGAL_CHOICES_PROBLEM) {
-                throw new MegawidgetStateException(identifier,
-                        specifier.getType(), hierarchy,
-                        (eval.getDepth() == 0 ? "" : "parameter \""
-                                + eval.getSubParameterName() + "\" ")
-                                + eval.getProblem());
-            }
-
-            // Ensure that the provided hierarchy is a subset
-            // of the choices hierarchy.
-            if (specifier.isSubset(hierarchy, choices) == false) {
-                throw new MegawidgetStateException(identifier,
-                        specifier.getType(), hierarchy,
-                        "not a subset of the choices hierarchy");
-            }
-
-            // Set the state to match the provided state.
-            this.state.clear();
-            this.state.addAll(specifier.createChoicesCopy(hierarchy));
-        } else {
-            this.state.clear();
-        }
-
-        // Synchronize user-facing widgets to the new state.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize user-facing widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // If the state is not a list and is not null, an error
-        // has occurred.
+        /*
+         * If the state is not a list and is not null, an error has occurred.
+         */
         if (state == null) {
             return "";
         } else if ((state instanceof List) == false) {
             throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be list of choices");
+                    .getType(), state, "must be list or set of choices");
         }
 
-        // Iterate through the elements of the provided state,
-        // concatenating the description of each to the buffer.
+        /*
+         * Iterate through the elements of the provided state, concatenating the
+         * description of each to the buffer.
+         */
         StringBuilder buffer = new StringBuilder();
         addElementsDescriptionsToBuffer(buffer, (List<?>) state);
         return buffer.toString();
@@ -177,14 +155,46 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
      * Notify any listeners of a state change and invocation.
      */
     protected final void notifyListeners() {
-        notifyListener(
-                getSpecifier().getIdentifier(),
-                ((HierarchicalBoundedChoicesMegawidgetSpecifier) getSpecifier())
-                        .createChoicesCopy(state));
+        notifyListener(getSpecifier().getIdentifier(), createChoicesCopy(state));
         notifyListener();
     }
 
     // Private Methods
+
+    /**
+     * Create a copy of the specified choices collection.
+     * 
+     * @param choices
+     *            Collection to be copied.
+     * @return Copy of the specified choices.
+     */
+    private List<?> createChoicesCopy(Collection<?> choices) {
+
+        /*
+         * Create a new list, and copy each element into it from the old list.
+         * If an element is a map, then make a copy of the map instead of using
+         * the original, and also copy the child list within that map.
+         */
+        List<Object> listCopy = new ArrayList<>();
+        for (Object item : choices) {
+            if (item instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) item;
+                Map<String, Object> mapCopy = new HashMap<>();
+                for (Object key : map.keySet()) {
+                    if (key.equals(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN)) {
+                        mapCopy.put((String) key,
+                                createChoicesCopy((Collection<?>) map.get(key)));
+                    } else {
+                        mapCopy.put((String) key, map.get(key));
+                    }
+                }
+                listCopy.add(mapCopy);
+            } else {
+                listCopy.add(item);
+            }
+        }
+        return listCopy;
+    }
 
     /**
      * Get a text string describing the specified choice state element.
@@ -194,9 +204,10 @@ public abstract class HierarchicalBoundedChoicesMegawidget extends
      *            parameters governing the choice.
      * @return Text string describing the specified choice state element.
      */
+    @SuppressWarnings("unchecked")
     private String getStateElementDescription(Object element) {
         StringBuilder buffer = new StringBuilder(
-                ((BoundedChoicesMegawidgetSpecifier) getSpecifier())
+                ((BoundedChoicesMegawidgetSpecifier<Collection<?>>) getSpecifier())
                         .getNameOfNode(element));
         if (element instanceof Map) {
             List<?> children = (List<?>) ((Map<?, ?>) element)

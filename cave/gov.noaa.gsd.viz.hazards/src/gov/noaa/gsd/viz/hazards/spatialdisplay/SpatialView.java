@@ -95,7 +95,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
  * Nov 27, 2013  1462      bryon.lawrence    Updated to support 
  *                                           display of hazard hatched areas.
- * 
+ * Apr 09, 2014    2925    Chris.Golden      Changed to ensure that method is called
+ *                                           within the UI thread.
  * </pre>
  * 
  * @author Chris.Golden
@@ -634,9 +635,14 @@ public class SpatialView implements
     }
 
     @Override
-    public void setSettings(Settings settings) {
-        ((ToolLayerResourceData) spatialDisplay.getResourceData())
-                .setSettings(settings);
+    public void setSettings(final Settings settings) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                ((ToolLayerResourceData) spatialDisplay.getResourceData())
+                        .setSettings(settings);
+            }
+        });
     }
 
     @Override

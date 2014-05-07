@@ -9,16 +9,15 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-
 /**
  * Description: Parent specifier children's manager, used to create and keep
  * track of child megawidget specifiers for a parent megawidget specifier. An
- * instance of this class should be used by each <code>IParentSpecifier</code>
+ * instance of this class should be used by each {@link IParentSpecifier}
  * implementation.
  * 
  * <pre>
@@ -27,6 +26,9 @@ import com.google.common.collect.Lists;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 24, 2013    2168    Chris.Golden      Initial creation.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -40,7 +42,7 @@ public class ChildSpecifiersManager<S extends ISpecifier> {
     /**
      * Child megawidget specifiers.
      */
-    private final List<S> childMegawidgetSpecifiers = Lists.newArrayList();
+    private final List<S> childMegawidgetSpecifiers = new ArrayList<>();
 
     /**
      * Superclass of any child specifiers to be managed.
@@ -97,7 +99,7 @@ public class ChildSpecifiersManager<S extends ISpecifier> {
     @SuppressWarnings("unchecked")
     public final List<S> createMegawidgetSpecifiers(List<?> parameters,
             int numColumns) throws MegawidgetSpecificationException {
-        List<S> specifiers = Lists.newArrayList();
+        List<S> specifiers = new ArrayList<>();
         for (Object object : parameters) {
             Map<String, Object> map = (Map<String, Object>) object;
             map.put(IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT,
@@ -110,9 +112,9 @@ public class ChildSpecifiersManager<S extends ISpecifier> {
     /**
      * Add the specified child megawidget specifier to the end of the list of
      * all child megawidget specifiers for the managed container. This method or
-     * the method <code>addChildMegawidgetSpecifiers()</code> should be used to
-     * expose child megawidget specifiers they have created via <code>
-     * getChildMegawidgetSpecifiers()</code>.
+     * the method {@link #addChildMegawidgetSpecifiers(Collection)} should be
+     * used to expose child megawidget specifiers they have created via
+     * {@link #getChildMegawidgetSpecifiers()}.
      * 
      * @param specifier
      *            Child megawidget specifier to be added.
@@ -124,9 +126,9 @@ public class ChildSpecifiersManager<S extends ISpecifier> {
     /**
      * Add the specified child megawidget specifiers to the end of the list of
      * all child megawidget specifiers for the managed container. This method or
-     * the method <code>addChildMegawidgetSpecifier()</code> should be used by
-     * subclasses to expose child megawidget specifiers they have created via
-     * <code>getChildMegawidgetSpecifiers()</code>.
+     * the method {@link #addChildMegawidgetSpecifier(ISpecifier)} should be
+     * used by subclasses to expose child megawidget specifiers they have
+     * created via {@link #getChildMegawidgetSpecifiers()}.
      * 
      * @param specifiers
      *            Child megawidget specifiers to be added.

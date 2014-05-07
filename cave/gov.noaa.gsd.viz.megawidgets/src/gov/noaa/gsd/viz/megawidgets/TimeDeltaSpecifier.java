@@ -9,27 +9,29 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 /**
  * Time delta specifier, used to create a spinner-based megawidget that allows
  * manipulation of time deltas. megawidget created by this specifier expresses
  * its state as a standard integer (not a long integer) in milliseconds, or if
- * given a parameter value keyed to the <code>MEGAWIDGET_STATE_UNIT</code> key,
- * in the specified unit. The <code>MEGAWIDGET_MIN_VALUE</code> and <code>
- * MEGAWIDGET_MAX_VALUE</code> are expressed in the state unit, so if for
- * example the <code>MEGAWIDGET_STATE_UNIT</code> is given as "minutes", then
- * the minimum and maximum values are treated as minutes.
+ * given a parameter value keyed to the {@link #MEGAWIDGET_STATE_UNIT} key, in
+ * the specified unit. The {@link #MEGAWIDGET_MIN_VALUE} and
+ * {@link #MEGAWIDGET_MAX_VALUE} are expressed in the state unit, so if for
+ * example the {@link #MEGAWIDGET_STATE_UNIT} is given as "minutes", then the
+ * minimum and maximum values are treated as minutes.
  * 
  * <pre>
  * 
@@ -46,6 +48,9 @@ import com.google.common.collect.Sets;
  *                                           to offer option of not notifying
  *                                           listeners of state changes caused by
  *                                           ongoing spinner button presses.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,8 +76,8 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
     /**
      * Current value unit parameter name; a megawidget may include a string
      * associated with this name. The string may be any string specified in the
-     * array associated with <code>MEGAWIDGET_UNIT_CHOICES</code>. If not
-     * specified, it is assumed to be the smallest unit provided in said array.
+     * array associated with {@link #MEGAWIDGET_UNIT_CHOICES}. If not specified,
+     * it is assumed to be the smallest unit provided in said array.
      */
     public static final String MEGAWIDGET_CURRENT_UNIT_CHOICE = "currentUnit";
 
@@ -80,16 +85,16 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * Megawidget state unit parameter name; a megawidget may include one of the
      * following strings associated with this name: "ms", "seconds", "minutes",
      * "hours", or "days". The specified unit is the one in which the state will
-     * be specified when queried via a created megawidget's <code>getState()
-     * </code> or passed via callback to a state change listener. If not
-     * specified, it is assumed to be "ms", meaning the state value will always
-     * be given in milliseconds. If the unit is anything other than "ms", then
-     * any remainders will be dropped when the state value is converted to the
-     * specified unit; for example, if the state is 1500 and the state unit is
-     * "seconds", the provided state will be 1. Note that the time slice
-     * represented by the state unit must be less than or equal to the time
-     * slice represented by the smallest unit provided in the <code>
-     * MEGAWIDGET_UNIT_CHOICES</code> list.
+     * be specified when queried via a created megawidget's
+     * {@link TimeDeltaMegawidget#getState()} or passed via callback to a state
+     * change listener. If not specified, it is assumed to be "ms", meaning the
+     * state value will always be given in milliseconds. If the unit is anything
+     * other than "ms", then any remainders will be dropped when the state value
+     * is converted to the specified unit; for example, if the state is 1500 and
+     * the state unit is "seconds", the provided state will be 1. Note that the
+     * time slice represented by the state unit must be less than or equal to
+     * the time slice represented by the smallest unit provided in the
+     * {@link #MEGAWIDGET_UNIT_CHOICES} list.
      */
     public static final String MEGAWIDGET_STATE_UNIT = "valueUnit";
 
@@ -101,6 +106,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
     enum Unit {
 
         // Values
+
         MILLISECOND("ms", 1L, 100), SECOND("seconds", TimeUnit.SECONDS
                 .toMillis(1), 10), MINUTE("minutes", TimeUnit.MINUTES
                 .toMillis(1), 60), HOUR("hours", TimeUnit.HOURS.toMillis(1), 24), DAY(
@@ -112,10 +118,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
          * Hash table mapping identifiers to their units with which they are
          * associated.
          */
-        private static final Map<String, Unit> UNITS_FOR_IDENTIFIERS = Maps
-                .newHashMap();
-
-        // Initialize the hash table.
+        private static final Map<String, Unit> UNITS_FOR_IDENTIFIERS = new HashMap<>();
         static {
             for (Unit unit : EnumSet.allOf(Unit.class)) {
                 UNITS_FOR_IDENTIFIERS.put(unit.getIdentifier(), unit);
@@ -210,8 +213,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
          * unit. Any remainder will be dropped.
          * 
          * @param value
-         *            Value in milliseconds, or <code>
-         *               null</code>.
+         *            Value in milliseconds, or <code>null</code>.
          * @return Value converted to this unit, with remainders dropped, or
          *         <code>null</code> if the pre-converted value was also
          *         <code>null</code>.
@@ -303,22 +305,32 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      */
     public TimeDeltaSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters, Long.class, 0L, null);
+        super(parameters, new BoundedComparableValidator<Long>(parameters,
+                MEGAWIDGET_MIN_VALUE, MEGAWIDGET_MAX_VALUE, Long.class, 0L,
+                Long.MAX_VALUE));
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.FALSE);
 
-        // Ensure that the rapid change notification flag, if
-        // provided, is appropriate.
-        sendingEveryChange = getSpecifierBooleanValueFromObject(
-                parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
-                MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
+        /*
+         * Ensure that the rapid change notification flag, if provided, is
+         * appropriate.
+         */
+        sendingEveryChange = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_SEND_EVERY_STATE_CHANGE),
+                        MEGAWIDGET_SEND_EVERY_STATE_CHANGE, true);
 
-        // Get the horizontal expansion flag if available.
-        horizontalExpander = getSpecifierBooleanValueFromObject(
-                parameters.get(EXPAND_HORIZONTALLY), EXPAND_HORIZONTALLY, false);
+        /*
+         * Get the horizontal expansion flag if available.
+         */
+        horizontalExpander = ConversionUtilities
+                .getSpecifierBooleanValueFromObject(getIdentifier(), getType(),
+                        parameters.get(EXPAND_HORIZONTALLY),
+                        EXPAND_HORIZONTALLY, false);
 
-        // Ensure that the possible units are present as an
-        // array of strings.
+        /*
+         * Ensure that the possible units are present as an array of strings.
+         */
         List<?> choicesList = null;
         try {
             choicesList = (List<?>) parameters.get(MEGAWIDGET_UNIT_CHOICES);
@@ -332,7 +344,7 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_UNIT_CHOICES, null, null);
         }
-        Set<Unit> unitSet = Sets.newHashSet();
+        Set<Unit> unitSet = new HashSet<>();
         for (int j = 0; j < choicesList.size(); j++) {
             Unit unit = Unit.get((String) choicesList.get(j));
             if (unit == null) {
@@ -342,12 +354,13 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             }
             unitSet.add(unit);
         }
-        List<Unit> units = Lists.newArrayList(unitSet);
+        List<Unit> units = new ArrayList<>(unitSet);
         Collections.sort(units);
         this.units = ImmutableList.copyOf(units);
 
-        // Ensure that if a current unit choice was given,
-        // it is valid.
+        /*
+         * Ensure that if a current unit choice was given, it is valid.
+         */
         String value = null;
         try {
             value = (String) parameters.get(MEGAWIDGET_CURRENT_UNIT_CHOICE);
@@ -374,7 +387,9 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             }
         }
 
-        // Ensure that if a state unit was given, it is valid.
+        /*
+         * Ensure that if a state unit was given, it is valid.
+         */
         value = null;
         try {
             value = (String) parameters.get(MEGAWIDGET_STATE_UNIT);
@@ -395,8 +410,10 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
             }
         }
 
-        // Ensure that the state unit is smaller than or equal
-        // in size to all the possible units.
+        /*
+         * Ensure that the state unit is smaller than or equal in size to all
+         * the possible units.
+         */
         for (Unit unit : units) {
             if (stateUnit.ordinal() > unit.ordinal()) {
                 throw new MegawidgetSpecificationException(getIdentifier(),
@@ -466,14 +483,5 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      */
     public final Unit getStateUnit() {
         return stateUnit;
-    }
-
-    // Protected Methods
-
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        Set<Class<?>> classes = Sets.newHashSet();
-        classes.add(Number.class);
-        return classes;
     }
 }

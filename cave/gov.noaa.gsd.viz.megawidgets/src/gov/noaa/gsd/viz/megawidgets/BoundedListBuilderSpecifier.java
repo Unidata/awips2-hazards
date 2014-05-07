@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import gov.noaa.gsd.viz.megawidgets.validators.MultiFlatChoiceValidatorHelper;
 
-import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.Map;
 
 /**
  * List builder megawidget specifier, used to create megawidgets that allow the
@@ -37,6 +36,9 @@ import com.google.common.collect.Sets;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Mar 11, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,16 +46,16 @@ import com.google.common.collect.Sets;
  * @see BoundedListBuilderMegawidget
  */
 public class BoundedListBuilderSpecifier extends
-        FlatBoundedChoicesMegawidgetSpecifier implements IControlSpecifier,
-        IMultiLineSpecifier {
+        FlatBoundedChoicesMegawidgetSpecifier<Collection<String>> implements
+        IControlSpecifier, IMultiLineSpecifier {
 
     // Public Static Constants
 
     /**
      * Megawidget selected items label parameter name; a megawidget may include
      * a value associated with this name, in which case it will be used to label
-     * the selected items list. (The <code>MEGAWIDGET_LABEL</code> value is used
-     * to label the available items list.) Any string is valid as a value.
+     * the selected items list. (The {@link #MEGAWIDGET_LABEL} value is used to
+     * label the available items list.) Any string is valid as a value.
      */
     public static final String MEGAWIDGET_SELECTED_LABEL = "selectedLabel";
 
@@ -88,12 +90,14 @@ public class BoundedListBuilderSpecifier extends
      */
     public BoundedListBuilderSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
-        super(parameters);
+        super(parameters, new MultiFlatChoiceValidatorHelper(
+                MEGAWIDGET_VALUE_CHOICES, CHOICE_NAME, CHOICE_IDENTIFIER, true));
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 ControlSpecifierOptionsManager.BooleanSource.TRUE);
 
-        // Ensure that the selected items label, if present,
-        // is acceptable.
+        /*
+         * Ensure that the selected items label, if present, is acceptable.
+         */
         try {
             selectedLabel = (String) parameters.get(MEGAWIDGET_SELECTED_LABEL);
         } catch (Exception e) {
@@ -102,12 +106,14 @@ public class BoundedListBuilderSpecifier extends
                     parameters.get(MEGAWIDGET_SELECTED_LABEL), "must be string");
         }
 
-        // Ensure that the visible lines count, if present,
-        // is acceptable, and if not present is assigned a
-        // default value.
-        numVisibleLines = getSpecifierIntegerValueFromObject(
-                parameters.get(MEGAWIDGET_VISIBLE_LINES),
-                MEGAWIDGET_VISIBLE_LINES, 6);
+        /*
+         * Ensure that the visible lines count, if present, is acceptable, and
+         * if not present is assigned a default value.
+         */
+        numVisibleLines = ConversionUtilities
+                .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_VISIBLE_LINES),
+                        MEGAWIDGET_VISIBLE_LINES, 6);
         if (numVisibleLines < 1) {
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), MEGAWIDGET_VISIBLE_LINES, numVisibleLines,
@@ -149,13 +155,5 @@ public class BoundedListBuilderSpecifier extends
      */
     public final String getSelectedLabel() {
         return selectedLabel;
-    }
-
-    // Protected Methods
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected final Set<Class<?>> getClassesOfState() {
-        return Sets.newHashSet(List.class, String.class);
     }
 }

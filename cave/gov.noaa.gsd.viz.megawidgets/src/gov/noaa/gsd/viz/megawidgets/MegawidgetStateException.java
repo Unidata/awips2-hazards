@@ -22,6 +22,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Feb 12, 2014   2161     Chris.Golden      Added nested cause's description to
  *                                           toString().
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +84,17 @@ public class MegawidgetStateException extends MegawidgetException {
     public MegawidgetStateException(String identifier, String type,
             Object badState, String message, Throwable cause) {
         super(identifier, type, badState, message, cause);
+    }
+
+    /**
+     * Construct a standard instance based upon the specified exception.
+     * 
+     * @param exception
+     *            Exception upon which to base this instance.
+     */
+    public MegawidgetStateException(MegawidgetException exception) {
+        super(exception.getIdentifier(), exception.getType(), exception
+                .getBadValue(), exception.getMessage(), exception.getCause());
     }
 
     // Public Methods

@@ -16,9 +16,10 @@ package gov.noaa.gsd.viz.megawidgets;
  * subclasses of <code>MegawidgetSpecifier</code> must implement this interface
  * if they are to create such megawidgets.
  * <p>
- * For window-based megawidgets (those that require a <code>Composite</code> as
- * their parent), megawidgets expect that the parent is using an instance of
- * <code>GridLayout</code>.
+ * For window-based megawidgets (those that require a
+ * {@link org.eclipse.swt.widgets.Composite} as their parent), megawidgets
+ * expect that the parent is using an instance of
+ * {@link org.eclipse.swt.layout.GridLayout}.
  * 
  * <pre>
  * 
@@ -26,7 +27,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2013    2168    Chris.Golden      Initial creation.
- * 
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden

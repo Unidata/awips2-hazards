@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,8 +17,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.widgets.Composite;
-
-import com.google.common.collect.Lists;
 
 /**
  * Tabbed composite megawidget, a megawidget that contains tabs, each associated
@@ -34,6 +33,9 @@ import com.google.common.collect.Lists;
  *                                           in comments and variable
  *                                           names, and to use new IControl
  *                                           interface.
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,8 +62,9 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
             throws MegawidgetException {
         super(specifier);
 
-        // Create the tab folder to put the tabs in, and
-        // grid it.
+        /*
+         * Create the tab folder to put the tabs in, and grid it.
+         */
         CTabFolder tabFolder = new CTabFolder(parent, SWT.NONE);
         tabFolder.setBorderVisible(true);
         tabFolder.setTabHeight(tabFolder.getTabHeight() + 8);
@@ -69,10 +72,11 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
         gridContainerPanel(tabFolder);
         composite = tabFolder;
 
-        // Iterate through the tabs, creating for each a page
-        // with its child megawidgets, and assigning each to the
-        // corresponding tab.
-        List<IControl> allChildren = Lists.newArrayList();
+        /*
+         * Iterate through the tabs, creating for each a page with its child
+         * megawidgets, and assigning each to the corresponding tab.
+         */
+        List<IControl> allChildren = new ArrayList<>();
         for (String pageName : specifier.getPageNames()) {
             CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
             tabItem.setText(" " + pageName + " ");
@@ -85,7 +89,9 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
         }
         this.children = allChildren;
 
-        // Select the first tab.
+        /*
+         * Select the first tab.
+         */
         tabFolder.setSelection(0);
     }
 }

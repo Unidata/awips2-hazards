@@ -34,7 +34,7 @@
 #
 
 import JUtil, datetime
-import shapely
+from shapely import wkt
 
 from Event import Event
 
@@ -214,7 +214,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         else :
             self.setHazardMode(None)
         if javaClass.getGeometry() is not None :
-            self.setGeometry(shapely.wkt.loads(javaClass.getGeometry().toText()))
+            self.setGeometry(wkt.loads(javaClass.getGeometry().toText()))
         else :
             self.setGeometry(None)
         self.setHazardAttributes(JUtil.javaObjToPyVal(javaClass.getHazardAttributes()))

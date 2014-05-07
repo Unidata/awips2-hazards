@@ -25,10 +25,19 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
+import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import jep.Jep;
@@ -41,6 +50,8 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
@@ -98,15 +109,18 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 21, 2013 1257       bsteffen    Initial creation
+ * May 21, 2013  1257      bsteffen    Initial creation
  * Aug 01, 2013  1325      daniel.s.schaffer@noaa.gov     Added support for alerting
- * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
+ * Nov 14, 2013  1472      bkowal      Renamed hazard subtype to subType
  * Nov 23, 2013  1462      blawrenc    Changed default polygon border width from 1 to 3.
- * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Minor cleanup
+ * Nov 29, 2013  2380      daniel.s.schaffer@noaa.gov Minor cleanup
  * Nov 30, 2013            blawrenc    Added hazard color retrieval from style rules.
  * Feb 24, 2014  2161      Chris.Golden Added VTECutilities to Python include path.
  * Apr 28, 2014  3556      bkowal      Updated to use the new hazards common 
  *                                     configuration plugin.
+ * Apr 29, 2014  2925      Chris.Golden Changed to support loading of class-based metadata
+ *                                      for HID dynamically, instead of all at once at
+ *                                      startup.
  * </pre>
  * 
  * @author bsteffen
@@ -115,6 +129,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 
 public class SessionConfigurationManager implements
         ISessionConfigurationManager {
+
+    /**
+     * Empty map standing in for an environment map, which will be needed in the
+     * future to specify information not specific to a hazard event that affects
+     * the generation of metadata for an event.
+     */
+    private static final Map<String, Serializable> ENVIRONMENT = new HashMap<>();
 
     public static final String ALERTS_CONFIG_PATH = FileUtil.join(
             "hazardServices", "alerts", "HazardAlertsConfig.xml");
@@ -125,6 +146,8 @@ public class SessionConfigurationManager implements
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
 
     private static final String BRIDGE = "bridge";
+
+    private static final String EVENTS = "events";
 
     private ISessionNotificationSender notificationSender;
 
@@ -241,6 +264,7 @@ public class SessionConfigurationManager implements
                     PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
             String logUtilitiesPath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+            String eventsPath = FileUtil.join(pythonPath, EVENTS);
             String bridgePath = FileUtil.join(pythonPath, BRIDGE);
 
             /**
@@ -253,7 +277,7 @@ public class SessionConfigurationManager implements
             String includePath = PyUtil.buildJepIncludePath(pythonPath,
                     localizationUtilitiesPath, logUtilitiesPath,
                     tbdWorkaroundToUEngineInLocalizationPath,
-                    vtecUtilitiesPath, bridgePath);
+                    vtecUtilitiesPath, eventsPath, bridgePath);
             ClassLoader cl = this.getClass().getClassLoader();
             Jep result = new Jep(false, includePath, cl);
             result.eval("import JavaImporter");
@@ -442,9 +466,17 @@ public class SessionConfigurationManager implements
                 types.add(typeAsString);
 
                 optEnt.setHazardTypes(types);
-                String metaDataAsString = getHazardMetaData(type[0], type[1],
-                        subType);
-                JsonNode metaData = asJsonNode(metaDataAsString);
+                IHazardEvent hazardEvent = new BaseHazardEvent();
+                hazardEvent.setPhenomenon(type[0]);
+                hazardEvent.setSignificance(type[1]);
+                hazardEvent.setSubType(subType);
+
+                getMegawidgetSpecifiersForHazardEvent(hazardEvent);
+
+                String metaDataInfoAsString = getHazardMetaData(hazardEvent,
+                        new HashMap<String, Serializable>());
+                JsonNode metaData = asJsonNode(metaDataInfoAsString).get(
+                        HazardConstants.METADATA_KEY);
                 optEnt.setMetaData(metaData);
                 opt.add(optEnt);
             }
@@ -453,20 +485,71 @@ public class SessionConfigurationManager implements
 
     }
 
-    private String getHazardMetaData(String phenomenon, String significance,
-            String subType) {
+    @SuppressWarnings("unchecked")
+    @Override
+    public MegawidgetSpecifierManager getMegawidgetSpecifiersForHazardEvent(
+            IHazardEvent hazardEvent) {
+
+        /*
+         * Get the metadata, which is a map with at least one entry holding the
+         * list of megawidget specifiers that applies, as well as an optional
+         * entry for a Python side effects script. For now, just pass an empty
+         * environment map.
+         * 
+         * TODO: Substitute an actual map of environmental parameters for the
+         * empty placeholder.
+         */
+        String metaData = getHazardMetaData(hazardEvent, ENVIRONMENT);
+        JSONConverter converter = new JSONConverter();
+        Map<String, Object> result;
+        try {
+            result = converter.fromJson(metaData);
+        } catch (Exception e) {
+            statusHandler.error("Could not get hazard metadata: "
+                    + e.getMessage());
+            return null;
+        }
+
+        /*
+         * Build a megawidget specifier manager out of the metadata.
+         */
+        MegawidgetSpecifierManager manager;
+        ISideEffectsApplier sideEffectsApplier = null;
+        if (result.containsKey(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY)) {
+            sideEffectsApplier = new PythonSideEffectsApplier(
+                    (String) result
+                            .get(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY));
+        }
+        try {
+            manager = new MegawidgetSpecifierManager(
+                    (List<Map<String, Object>>) result
+                            .get(HazardConstants.METADATA_KEY),
+                    IControlSpecifier.class, sideEffectsApplier);
+        } catch (MegawidgetSpecificationException e) {
+            statusHandler.error("Could not get hazard metadata: "
+                    + e.getMessage());
+            return null;
+        }
+        return manager;
+    }
+
+    /**
+     * Get the hazard metadata for the specified hazard event.
+     * 
+     * @param hazardEvent
+     *            Event for which to fetch metadata.
+     * @param environment
+     *            Map of environmental information.
+     * @return Metadata as a JSON-encoded string.
+     */
+    private String getHazardMetaData(IHazardEvent hazardEvent,
+            Map<String, Serializable> environment) {
 
         try {
             jep.eval("import HazardServicesMetaDataRetriever");
-            StringBuilder sb = new StringBuilder();
-            sb.append(String
-                    .format("result = HazardServicesMetaDataRetriever.getMetaData('%s', '%s'",
-                            phenomenon, significance));
-            if (subType != null) {
-                sb.append(String.format(", '%s'", subType));
-            }
-            sb.append(")");
-            jep.eval(sb.toString());
+            jep.set("hazardEvent", hazardEvent);
+            jep.set("metaDict", environment);
+            jep.eval("result = HazardServicesMetaDataRetriever.getMetaData(hazardEvent, metaDict)");
             String result = (String) jep.getValue("result");
             return result;
         } catch (JepException e) {
@@ -643,7 +726,7 @@ public class SessionConfigurationManager implements
     }
 
     protected void settingsChanged(SettingsModified notification) {
-        notificationSender.postNotification(notification);
+        notificationSender.postNotificationAsync(notification);
     }
 
     private String getHeadline(String id) {

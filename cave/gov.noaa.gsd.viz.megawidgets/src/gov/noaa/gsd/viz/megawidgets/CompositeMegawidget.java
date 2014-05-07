@@ -28,6 +28,9 @@ import org.eclipse.swt.widgets.Composite;
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new
+ *                                           validator package, updated
+ *                                           Javadoc and other comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -57,7 +60,9 @@ public class CompositeMegawidget extends ContainerMegawidget {
             throws MegawidgetException {
         super(specifier);
 
-        // Create a composite widget and its child megawidgets.
+        /*
+         * Create a composite widget and its child megawidgets.
+         */
         composite = new Composite(parent, SWT.NONE);
         composite.setEnabled(specifier.isEnabled());
         gridContainerPanel(composite);

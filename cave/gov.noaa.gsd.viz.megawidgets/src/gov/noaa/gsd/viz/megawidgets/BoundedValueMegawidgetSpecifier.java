@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
+
 import java.util.Map;
 
 /**
@@ -28,6 +30,9 @@ import java.util.Map;
  *                                           references to "megawidget"
  *                                           in comments and variable
  *                                           names.
+ * Apr 24, 2014    2925     Chris.Golden     Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,7 +49,7 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      * a value of type <code>T</code> as the value associated with this name.
      * The provided value acts as the minimum value that the state is allowed to
      * take on. It must be less than the value associated with the parameter
-     * <code>MEGAWIDGET_MAX_VALUE</code>.
+     * {@link #MEGAWIDGET_MAX_VALUE}.
      */
     public static final String MEGAWIDGET_MIN_VALUE = "minValue";
 
@@ -53,38 +58,9 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      * a value of type <code>T</code> as the value associated with this name.
      * The provided value acts as the maximum value that the state is allowed to
      * take on. It must be greater than the value associated with the parameter
-     * <code>MEGAWIDGET_MIN_VALUE</code>.
+     * {@link #MEGAWIDGET_MIN_VALUE}.
      */
     public static final String MEGAWIDGET_MAX_VALUE = "maxValue";
-
-    // Private Variables
-
-    /**
-     * Lowest allowable value that <code>minimumValue</code> can take on, or
-     * <code>null</code> if there is no lower bound.
-     */
-    private final T lowestAllowableValue;
-
-    /**
-     * Highest allowable value that <code>maximumValue</code> can take on, or
-     * <code>null</code> if there is no upper bound.
-     */
-    private final T highestAllowableValue;
-
-    /**
-     * Minimum value.
-     */
-    private final T minimumValue;
-
-    /**
-     * Maximum value.
-     */
-    private final T maximumValue;
-
-    /**
-     * Bounded value class, the class of <code>T</code>.
-     */
-    private final Class<T> boundedValueClass;
 
     // Public Constructors
 
@@ -95,89 +71,28 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      *            Map holding the parameters that will be used to configure a
      *            megawidget created by this specifier as a set of key-value
      *            pairs.
-     * @param boundedValueClass
-     *            Class of the bounded value; required in order to provide
-     *            proper exception messages in situations where the bounding
-     *            values are illegal.
-     * @param lowest
-     *            If not <code>null</code>, the lowest possible value for
-     *            <code>MEGAWIDGET_MIN_VALUE</code>.
-     * @param highest
-     *            If not <code>null</code>, the highest possible value for
-     *            <code>MEGAWIDGET_MAX_VALUE</code>.
+     * @param stateValidator
+     *            State validator.
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
     public BoundedValueMegawidgetSpecifier(Map<String, Object> parameters,
-            Class<T> boundedValueClass, T lowest, T highest)
+            BoundedComparableValidator<T> stateValidator)
             throws MegawidgetSpecificationException {
-        super(parameters);
-        this.boundedValueClass = boundedValueClass;
-        this.lowestAllowableValue = lowest;
-        this.highestAllowableValue = highest;
-
-        // Get the minimum value allowed.
-        minimumValue = getSpecifierDynamicallyTypedObjectFromObject(
-                parameters.get(MEGAWIDGET_MIN_VALUE), MEGAWIDGET_MIN_VALUE,
-                boundedValueClass, null);
-        if ((lowest != null) && (lowest.compareTo(minimumValue) > 0)) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_MIN_VALUE, minimumValue,
-                    "must be no less than " + lowest);
-        }
-
-        // Get the maximum value allowed.
-        maximumValue = getSpecifierDynamicallyTypedObjectFromObject(
-                parameters.get(MEGAWIDGET_MAX_VALUE), MEGAWIDGET_MAX_VALUE,
-                boundedValueClass, null);
-        if ((highest != null) && (highest.compareTo(maximumValue) < 0)) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), MEGAWIDGET_MAX_VALUE, maximumValue,
-                    "must be no greater than " + highest);
-        }
-
-        // Ensure that the minimum and maximum values are
-        // valid relative to one another.
-        if (minimumValue.compareTo(maximumValue) >= 0) {
-            throw new MegawidgetSpecificationException(getIdentifier(),
-                    getType(), null, null,
-                    "minimum value must be less than maximum (minimum = "
-                            + minimumValue + ", maximum = " + maximumValue
-                            + ")");
-        }
+        super(parameters, stateValidator);
     }
 
     // Public Methods
-
-    /**
-     * Get the lowest allowable value that <code>getMinimumValue()</code> could
-     * ever provide for this object, or <code>null</code> if there is no lower
-     * bound.
-     * 
-     * @return Lowest allowable value.
-     */
-    public final T getLowestAllowableValue() {
-        return lowestAllowableValue;
-    }
-
-    /**
-     * Get the highest allowable value that <code>getMaximumValue()</code> could
-     * ever provide for this object, or <code>null</code> if there is no upper
-     * bound.
-     * 
-     * @return Highest allowable value.
-     */
-    public final T getHighestAllowableValue() {
-        return highestAllowableValue;
-    }
 
     /**
      * Get the minimum value.
      * 
      * @return Minimum value.
      */
+    @SuppressWarnings("unchecked")
     public final T getMinimumValue() {
-        return minimumValue;
+        return ((BoundedComparableValidator<T>) getStateValidator())
+                .getMinimumValue();
     }
 
     /**
@@ -185,8 +100,10 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      * 
      * @return Maximum value.
      */
+    @SuppressWarnings("unchecked")
     public final T getMaximumValue() {
-        return maximumValue;
+        return ((BoundedComparableValidator<T>) getStateValidator())
+                .getMaximumValue();
     }
 
     /**
@@ -194,7 +111,9 @@ public abstract class BoundedValueMegawidgetSpecifier<T extends Comparable<T>>
      * 
      * @return Bounded value's class.
      */
+    @SuppressWarnings("unchecked")
     public final Class<T> getBoundedValueClass() {
-        return boundedValueClass;
+        return ((BoundedComparableValidator<T>) getStateValidator())
+                .getStateType();
     }
 }

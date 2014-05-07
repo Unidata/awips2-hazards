@@ -308,7 +308,12 @@ public final class HazardConstants {
 
     public static final String STREAM_NAME = "streamName";
 
-    public static final String FALL_BELOW_UNTIL_FURTHER_NOTICE = "fallBelowUntilFurtherNotice";
+    public static final String UNTIL_FURTHER_NOTICE_SUFFIX = "UntilFurtherNotice";
+
+    public static final String BEFORE_UNTIL_FURTHER_NOTICE_PREFIX = "__beforeUntilFurtherNotice__";
+
+    public static final String FALL_BELOW_UNTIL_FURTHER_NOTICE = "fallBelow"
+            + UNTIL_FURTHER_NOTICE_SUFFIX;
 
     /**
      * Event identifier key
@@ -382,9 +387,16 @@ public final class HazardConstants {
     public static final String GFE_INTEROPERABILITY = "interoperability-gfe";
 
     /**
-     * End time "until further notice" key in hazard
+     * Attribute name for storing interval between start and end time before the
+     * end time "until further notice" was set.
      */
-    public static final String HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE = "endTimeUntilFurtherNotice";
+    public static final String END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE = "__beforeUntilFurtherNoticeEndTimeInterval__";
+
+    /**
+     * End time "until further notice" key in hazard.
+     */
+    public static final String HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE = "endTime"
+            + UNTIL_FURTHER_NOTICE_SUFFIX;
 
     /**
      * Event tracking numbers
@@ -506,6 +518,13 @@ public final class HazardConstants {
     public static final String FIELD_TYPE = "fieldType";
 
     public static final String EXPAND_HORIZONTALLY = "expandHorizontally";
+
+    /*
+     * The following are related to hazard event metadata.
+     */
+    public static final String METADATA_KEY = "metadata";
+
+    public static final String SIDE_EFFECTS_SCRIPT_KEY = "sideEffects";
 
     /*
      * The following are related to hazard geometries and their supporting meta

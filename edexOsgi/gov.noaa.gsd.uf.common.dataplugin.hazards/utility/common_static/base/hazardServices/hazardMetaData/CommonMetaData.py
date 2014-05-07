@@ -4,6 +4,8 @@
 """
 
 import VTECConstants
+from LocalizationInterface import LocalizationInterface
+
 class MetaData:
     
     def initialize(self, hazardEvent, metaDict):    
@@ -15,6 +17,11 @@ class MetaData:
         else:
             self.hazardState = "pending"
             self.previewState = ""
+            
+    # SIDE EFFECTS SCRIPT FROM A SEPARATE FILE
+    def getSideEffectsFromLocalizedFile(self, scriptFileName):
+        localizationInterface = LocalizationInterface()
+        return localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/" + scriptFileName, "common")
     
     # POINT ID
     def getPointID(self):

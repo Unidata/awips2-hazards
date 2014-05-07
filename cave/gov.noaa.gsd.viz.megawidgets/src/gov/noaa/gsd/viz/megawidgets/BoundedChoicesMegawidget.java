@@ -9,19 +9,21 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.BoundedChoiceValidator;
+
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 /**
  * Stateful megawidget created by a megawidget specifier that has a closed set
  * of choices available from which the state may be chosen. Subclasses may allow
  * the selection of a single choice, of zero or more choices, etc. The choices
- * list may be flat or hierarchical in nature.
+ * list may be flat or hierarchical in nature. The generic parameter
+ * <code>T</code> is the type of state.
  * 
  * <pre>
  * 
@@ -29,13 +31,16 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 31, 2013   2336     Chris.Golden      Initial creation.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see BoundedChoicesMegawidgetSpecifier
  */
-public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
+public abstract class BoundedChoicesMegawidget<T> extends StatefulMegawidget {
 
     // Protected Static Constants
 
@@ -51,18 +56,18 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES;
     static {
-        Set<String> names = Sets
-                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES);
         MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES = ImmutableSet.copyOf(names);
     };
 
-    // Protected Variables
+    // Private Variables
 
     /**
-     * Choices list.
+     * State validator.
      */
-    protected final List<Object> choices;
+    private final BoundedChoiceValidator<T> stateValidator;
 
     // Protected Constructors
 
@@ -76,13 +81,22 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
      *            identifiers to values.
      */
     protected BoundedChoicesMegawidget(
-            BoundedChoicesMegawidgetSpecifier specifier,
+            BoundedChoicesMegawidgetSpecifier<T> specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
-        choices = specifier.createChoicesCopy(specifier.getChoices());
+        stateValidator = specifier.getStateValidator().copyOf();
     }
 
     // Public Methods
+
+    /**
+     * Get the available choices hierarchy.
+     * 
+     * @return Available choices hierarchy.
+     */
+    public final List<?> getChoices() {
+        return stateValidator.getAvailableChoices();
+    }
 
     @Override
     public Set<String> getMutablePropertyNames() {
@@ -95,7 +109,7 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
             throws MegawidgetPropertyException {
         if (isChoicesListMutable()
                 && name.equals(BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES)) {
-            return doGetChoices();
+            return getChoices();
         }
         return super.getMutableProperty(name);
     }
@@ -115,9 +129,11 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
     public void setMutableProperties(Map<String, Object> properties)
             throws MegawidgetPropertyException {
 
-        // If the choices list is one of the properties being set, do it first;
-        // this ensures that if the state is being set as well, it is set after
-        // the choices list.
+        /*
+         * If the choices list is one of the properties being set, do it first;
+         * this ensures that if the state is being set as well, it is set after
+         * the choices list.
+         */
         Object choicesObj = properties
                 .get(BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES);
         if (choicesObj != null) {
@@ -126,8 +142,10 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
                     choicesObj);
         }
 
-        // Do what would have been done by the superclass method, except for
-        // ignoring any choice setting, as that has already been done above.
+        /*
+         * Do what would have been done by the superclass method, except for
+         * ignoring any choice setting, as that has already been done above.
+         */
         for (String name : properties.keySet()) {
             if (!name
                     .equals(BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES)) {
@@ -150,42 +168,38 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
 
     /**
      * Prepare for the choices list to be changed. For any given subclass, this
-     * method will never be called unless <code>isChoicesListMutable()</code>
+     * method will never be called unless {@link #isChoicesListMutable()}.
      * returns true.
      */
     protected abstract void prepareForChoicesChange();
 
     /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current choices. For any given subclass, this method will never be called
-     * unless <code>isChoicesListMutable()</code> returns true.
+     * Cancel any preparations made for the choices list to be changed by a
+     * previous invocation of {@link #prepareForChoicesChange()}.
      */
-    protected abstract void synchronizeWidgetsToChoices();
+    protected abstract void cancelPreparationForChoicesChange();
 
     /**
-     * Synchronize the user-facing widgets making up this megawidget to the
-     * current state.
+     * Synchronize the user-facing component widgets making up this megawidget
+     * to the current choices. For any given subclass, this method will never be
+     * called unless {@link #isChoicesListMutable()} returns true.
      */
-    protected abstract void synchronizeWidgetsToState();
+    protected abstract void synchronizeComponentWidgetsToChoices();
 
     /**
-     * Get the available choices hierarchy. This method is protected so that it
-     * may be called by subclasses with mutable choices lists when they
-     * implement a method such as <code>getChoices()</code>.
+     * Get the state validator.
      * 
-     * @return Available choices hierarchy.
+     * @return State validator.
      */
-    protected final List<?> doGetChoices() {
-        return ((BoundedChoicesMegawidgetSpecifier) getSpecifier())
-                .createChoicesCopy(choices);
+    protected final BoundedChoiceValidator<T> getStateValidator() {
+        return stateValidator;
     }
 
     /**
      * Set the choices to those specified. If the current state is not a subset
-     * of the new choices, the state will be set to <code>null</code>. This
-     * method is protected so that it may be called by subclasses with mutable
-     * choices lists when they implement a method such as <code>
-     * setChoices()</code>.
+     * of the new choices, the state will be set to a default value. This method
+     * is protected so that it may be called by subclasses with mutable choices
+     * lists when they implement a method to set choices.
      * 
      * @param value
      *            List of new choices.
@@ -195,98 +209,49 @@ public abstract class BoundedChoicesMegawidget extends StatefulMegawidget {
     protected final void doSetChoices(Object value)
             throws MegawidgetPropertyException {
 
-        // Ensure that the possible values are present as an array of
-        // choices.
-        List<?> choicesList = null;
-        BoundedChoicesMegawidgetSpecifier specifier = (BoundedChoicesMegawidgetSpecifier) getSpecifier();
-        try {
-            choicesList = specifier.getChoicesFromObject(value);
-        } catch (MegawidgetException e) {
-            throw new MegawidgetPropertyException(e.getIdentifier(),
-                    BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES,
-                    e.getType(), e.getBadValue(), e.getMessage());
-        }
-
-        // Evaluate the legality of the choices hierarchy.
-        BoundedChoicesMegawidgetSpecifier.IllegalChoicesProblem eval = specifier
-                .evaluateChoicesLegality(
-                        BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES,
-                        choicesList);
-        if (eval != BoundedChoicesMegawidgetSpecifier.NO_ILLEGAL_CHOICES_PROBLEM) {
-            throw new MegawidgetPropertyException(specifier.getIdentifier(),
-                    BoundedChoicesMegawidgetSpecifier.MEGAWIDGET_VALUE_CHOICES
-                            + eval.getBadElementLocation(),
-                    specifier.getType(), eval.getSubParameterValue(),
-                    (eval.getDepth() == 0 ? "" : "parameter \""
-                            + eval.getSubParameterName() + "\" ")
-                            + eval.getProblem());
-        }
-
-        // Ensure that the current state is a subset of the new choices;
-        // if not, set it to nothing.
-        try {
-            Object state = getState(specifier.getIdentifier());
-            List<?> list = null;
-            if (state instanceof String) {
-                List<Object> objectList = Lists.newArrayList();
-                objectList.add(state);
-                list = objectList;
-            } else {
-                list = (List<?>) state;
-            }
-            if (specifier.isSubset(list, choicesList) == false) {
-                setState(specifier.getIdentifier(), null);
-            }
-        } catch (MegawidgetStateException e) {
-            throw new IllegalStateException(
-                    "querying or setting valid mutable property \""
-                            + StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES
-                            + "\" caused internal error", e);
-        }
-
-        // Change the choices to those specified, and alter the component
-        // widgets to match.
+        /*
+         * Do any subclass-specific preparation for the change about to occur.
+         */
         prepareForChoicesChange();
-        choices.clear();
-        choices.addAll(choicesList);
-        synchronizeWidgetsToChoices();
-    }
 
-    /**
-     * Get a text description of the list of all possible choice identifiers.
-     * This method is not used within this class, but is provided for subclasses
-     * that may require it. Note that if said subclasses have hierarchical lists
-     * of choices, they will need to override this method before using it.
-     * 
-     * @return List of choice identifiers as a comma-separated string of text.
-     */
-    protected final String getChoicesAsString() {
-        BoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
-        StringBuilder stringBuilder = new StringBuilder();
-        for (Object choice : choices) {
-            String identifier = specifier.getIdentifierOfNode(choice);
-            if (stringBuilder.length() > 0) {
-                stringBuilder.append(", ");
+        /*
+         * Set the choices as specified; if the attempt fails, do any
+         * subclass-specific cancellation of the preparations made above.
+         */
+        try {
+            stateValidator.setAvailableChoices(value);
+        } catch (MegawidgetPropertyException e) {
+            cancelPreparationForChoicesChange();
+            throw e;
+        }
+
+        /*
+         * Set the state to what it was before to see if it is still valid given
+         * the new choices if possible.
+         */
+        try {
+            doSetState(getSpecifier().getIdentifier(),
+                    stateValidator.convertToStateValue(getState(getSpecifier()
+                            .getIdentifier())));
+        } catch (MegawidgetException e) {
+
+            /*
+             * If an error occurred, the old state is no longer valid; set the
+             * choices to the default value.
+             */
+            try {
+                doSetState(getSpecifier().getIdentifier(),
+                        stateValidator.convertToStateValue(null));
+            } catch (MegawidgetException e2) {
+                throw new IllegalStateException(
+                        "setting default state caused internal error", e);
             }
-            stringBuilder.append(identifier);
         }
-        return stringBuilder.toString();
-    }
 
-    /**
-     * Get a list of all possible choice identifiers. This method is not used
-     * within this class, but is provided for subclasses that may require it.
-     * Note that if said subclasses have hierarchical lists of choices, they
-     * will need to override this method before using it.
-     * 
-     * @return List of choice identifiers.
-     */
-    protected final List<String> getChoiceIdentifiers() {
-        BoundedChoicesMegawidgetSpecifier specifier = getSpecifier();
-        List<String> identifiers = Lists.newArrayList();
-        for (Object choice : choices) {
-            identifiers.add(specifier.getIdentifierOfNode(choice));
-        }
-        return identifiers;
+        /*
+         * Ensure that the component widgets are synchronized with the new
+         * choices.
+         */
+        synchronizeComponentWidgetsToChoices();
     }
 }

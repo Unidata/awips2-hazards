@@ -49,7 +49,9 @@ import com.vividsolutions.jts.io.WKTReader;
  * Jan 24, 2013            mnash       Initial creation
  * Nov 14, 2013 1472       bkowal      Renamed hazard subtype to subType
  * Dec    2013  2368       thansen   Added getHazardType
- * 
+ * Apr 23, 2014 2925       Chris.Golden Augmented with additional methods to
+ *                                      set the type components atomically, or
+ *                                      the start and end time atomically.
  * </pre>
  * 
  * @author mnash
@@ -206,6 +208,14 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
+    public void setHazardType(String phenomenon, String significance,
+            String subtype) {
+        setPhenomenon(phenomenon);
+        setSignificance(significance);
+        setSubType(subtype);
+    }
+
+    @Override
     public Date getCreationTime() {
         return creationTime;
     }
@@ -223,6 +233,12 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public void setStartTime(Date date) {
         this.startTime = date;
+    }
+
+    @Override
+    public void setTimeRange(Date startTime, Date endTime) {
+        setStartTime(startTime);
+        setEndTime(endTime);
     }
 
     @Override

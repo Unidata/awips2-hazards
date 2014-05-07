@@ -52,10 +52,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 13, 2013 1257       bsteffen    Initial creation
- *  
- * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
- * 
- * 
+ * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in
+ *                                     settings-based filtering
+ * Mar 19, 2014 2925       Chris.Golden Added notification firing for
+ *                                      methods that were missing it.
  * </pre>
  * 
  * @author bsteffen
@@ -185,6 +185,7 @@ public class ObservedSettings extends Settings {
     public void setVisibleTypes(Set<String> visibleTypes) {
         if (changed(visibleTypes, getVisibleTypes())) {
             super.setVisibleTypes(visibleTypes);
+            settingsChanged();
         }
     }
 
@@ -192,6 +193,7 @@ public class ObservedSettings extends Settings {
     public void setVisibleStates(Set<String> visibleStates) {
         if (changed(visibleStates, getVisibleStates())) {
             super.setVisibleStates(visibleStates);
+            settingsChanged();
         }
     }
 
@@ -231,6 +233,7 @@ public class ObservedSettings extends Settings {
     public void setVisibleSites(Set<String> visibleSites) {
         if (changed(visibleSites, getVisibleSites())) {
             super.setVisibleSites(visibleSites);
+            settingsChanged();
         }
     }
 

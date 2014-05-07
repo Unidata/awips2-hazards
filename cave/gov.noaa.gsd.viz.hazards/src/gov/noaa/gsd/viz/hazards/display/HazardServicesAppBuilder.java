@@ -137,7 +137,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             H.S. to try to react when it was already
  *                                             closing, leading to null pointer exceptions.
  * Feb 7, 2014  2890       bkowal              Product Generation JSON refactor.
- * 
+ * Apr 09, 2014 2925       Chris.Golden        Changed to support class-based metadata.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -841,9 +841,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Deprecated
     private boolean shouldCall(IOriginator originator,
             HazardServicesPresenter<?> presenter) {
-        if (originator == null) {
-            return true;
-        }
         if (((originator == UIOriginator.HAZARD_INFORMATION_DIALOG) && presenter
                 .getClass().equals(HazardDetailPresenter.class))
                 || ((originator == UIOriginator.CONSOLE) && presenter

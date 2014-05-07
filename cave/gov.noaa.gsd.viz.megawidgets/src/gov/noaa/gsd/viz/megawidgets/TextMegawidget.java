@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.viz.megawidgets.validators.TextValidator;
+
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,7 +30,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Text megawidget.
@@ -56,6 +58,9 @@ import com.google.common.collect.Sets;
  *                                           to provide a component that only
  *                                           shows a vertical scrollbar when
  *                                           needed.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,8 +76,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        Set<String> names = Sets
-                .newHashSet(StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
@@ -107,6 +112,11 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     private final ControlComponentHelper helper;
 
     /**
+     * State validator.
+     */
+    private final TextValidator stateValidator;
+
+    /**
      * Last text value that the state change listener knows about.
      */
     private String lastForwardedValue;
@@ -128,9 +138,13 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
         helper = new ControlComponentHelper(specifier);
+        stateValidator = specifier.getStateValidator().copyOf();
+        state = (String) specifier.getStartingState(specifier.getIdentifier());
 
-        // Create the composite holding the components, and
-        // the label if appropriate.
+        /*
+         * Create the composite holding the components, and the label if
+         * appropriate.
+         */
         boolean multiLine = (specifier.getNumVisibleLines() > 1);
         Composite panel = UiBuilder
                 .buildComposite(
@@ -142,7 +156,9 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                         specifier);
         label = UiBuilder.buildLabel(panel, specifier);
 
-        // Create the text component.
+        /*
+         * Create the text component.
+         */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         text = new StyledText(panel, SWT.BORDER
                 | (multiLine ? SWT.MULTI : SWT.SINGLE)
@@ -154,7 +170,9 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         }
         text.setEnabled(specifier.isEnabled());
 
-        // Place the text component in the grid.
+        /*
+         * Place the text component in the grid.
+         */
         GridData gridData = new GridData((multiLine
                 || specifier.isHorizontalExpander() ? SWT.FILL : SWT.LEFT),
                 (multiLine ? SWT.FILL : SWT.CENTER), true, multiLine);
@@ -172,12 +190,12 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         gc.dispose();
         text.setLayoutData(gridData);
 
-        // If only ending state changes are to result
-        // in notifications, bind entry field focus
-        // loss and default selection (Enter key) to
-        // trigger a notification if the value has
-        // changed in such a way that the state change
-        // listener was not notified.
+        /*
+         * If only ending state changes are to result in notifications, bind
+         * entry field focus loss and default selection (Enter key) to trigger a
+         * notification if the value has changed in such a way that the state
+         * change listener was not notified.
+         */
         if (onlySendEndStateChanges) {
             text.addFocusListener(new FocusAdapter() {
                 @Override
@@ -193,10 +211,10 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             });
         }
 
-        // Bind the text's change event to trigger a
-        // change in the record of the state for the
-        // widget, and a change in the scale component
-        // to match.
+        /*
+         * Bind the text's change event to trigger a change in the record of the
+         * state for the widget, and a change in the scale component to match.
+         */
         text.addModifyListener(new ModifyListener() {
             @Override
             public void modifyText(ModifyEvent e) {
@@ -206,11 +224,17 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             }
         });
 
-        // Set the editability of the megawidget to false
-        // if necessary.
+        /*
+         * Set the editability of the megawidget to false if necessary.
+         */
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Synchronize user-facing widgets to the starting state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     // Public Methods
@@ -233,7 +257,9 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
         if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
-            setEditable(getPropertyBooleanValueFromObject(value, name, null));
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
         } else {
             super.setMutableProperty(name, value);
         }
@@ -271,7 +297,9 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     @Override
     public final void setRightDecorationWidth(int width) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
 
     // Protected Methods
@@ -292,25 +320,24 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
     @Override
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
-        String value = null;
         try {
-            value = (String) state;
-        } catch (Exception e) {
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be string");
+            this.state = stateValidator.convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
-        if (value == null) {
-            value = "";
-        }
-        this.state = value;
-        text.setText(value.toString());
-        recordLastNotifiedState();
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
     protected final String doGetStateDescription(String identifier, Object state)
             throws MegawidgetStateException {
         return (state == null ? null : state.toString());
+    }
+
+    @Override
+    protected final void doSynchronizeComponentWidgetsToState() {
+        text.setText(this.state);
+        recordLastNotifiedState();
     }
 
     // Private Methods

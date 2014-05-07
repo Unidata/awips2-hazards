@@ -32,6 +32,9 @@ import java.util.Map;
  *                                           versus unbounded (sets to which
  *                                           arbitrary user-specified choices
  *                                           can be added) choice megawidgets.
+ * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ *                                           package, updated Javadoc and other
+ *                                           comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,7 +42,7 @@ import java.util.Map;
  * @see BoundedChoicesMegawidgetSpecifier
  */
 public abstract class SingleBoundedChoiceMegawidget extends
-        BoundedChoicesMegawidget {
+        BoundedChoicesMegawidget<String> {
 
     // Protected Variables
 
@@ -60,9 +63,10 @@ public abstract class SingleBoundedChoiceMegawidget extends
      *            identifiers to values.
      */
     protected SingleBoundedChoiceMegawidget(
-            BoundedChoicesMegawidgetSpecifier specifier,
+            BoundedChoicesMegawidgetSpecifier<String> specifier,
             Map<String, Object> paramMap) {
         super(specifier, paramMap);
+        state = (String) specifier.getStartingState(specifier.getIdentifier());
     }
 
     // Protected Methods
@@ -76,23 +80,19 @@ public abstract class SingleBoundedChoiceMegawidget extends
     protected final void doSetState(String identifier, Object state)
             throws MegawidgetStateException {
 
-        // Set the state to that which has been supplied.
+        /*
+         * Convert the provided state to a valid value, and record it.
+         */
         try {
-            this.state = (String) state;
-        } catch (Exception e) {
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be single choice");
-        }
-        if ((this.state != null)
-                && (getChoiceIdentifiers().contains(this.state) == false)) {
-            this.state = null;
-            throw new MegawidgetStateException(identifier, getSpecifier()
-                    .getType(), state, "must be one of ["
-                    + getChoicesAsString() + "]");
+            this.state = getStateValidator().convertToStateValue(state);
+        } catch (MegawidgetException e) {
+            throw new MegawidgetStateException(e);
         }
 
-        // Synchronize the widgets to the new state.
-        synchronizeWidgetsToState();
+        /*
+         * Synchronize user-facing widgets to the new state.
+         */
+        synchronizeComponentWidgetsToState();
     }
 
     @Override
