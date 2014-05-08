@@ -13,7 +13,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.C
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.CAUSE;
@@ -32,7 +32,7 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -235,8 +235,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FLASH_FLOOD_WATCH_PHEN_SIG);
         assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.PENDING.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.PENDING.getValue());
 
         assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
                 1.2971376E12));
@@ -251,8 +251,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FFW_NON_CONVECTIVE_PHEN_SIG);
         assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.PENDING.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.PENDING.getValue());
 
         assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
                 1.2971376E12));
@@ -267,8 +267,8 @@ class DamBreakFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FFW_NON_CONVECTIVE_PHEN_SIG);
         assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.PENDING.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.PENDING.getValue());
 
         assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
                 1.2971376E12));

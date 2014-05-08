@@ -177,7 +177,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
         assertEquals(event.getEventID(), product.getSelectedEventIDs().get(0));
         assertEquals(event.getPhenomenon(), "FF");
         assertEquals(event.getSignificance(), "A");
-        assertEquals(event.getState(), HazardConstants.HazardState.PENDING);
+        assertEquals(event.getStatus(), HazardConstants.HazardStatus.PENDING);
         stepCompleted();
         testSuccess();
     }

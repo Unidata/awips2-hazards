@@ -11,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 import com.raytheon.uf.common.hazards.hydro.IFloodDAO;
@@ -268,7 +268,7 @@ public class RiverFloodRecommenderOMHN1Test {
         assertEquals("OMHN1", attributeMap.get("pointID"));
         assertEquals(27.0, attributeMap.get("actionStage"));
         assertEquals(29.0, attributeMap.get("floodStage"));
-        assertEquals(HazardState.POTENTIAL, recommendation.getState());
+        assertEquals(HazardStatus.POTENTIAL, recommendation.getStatus());
     }
 
 }

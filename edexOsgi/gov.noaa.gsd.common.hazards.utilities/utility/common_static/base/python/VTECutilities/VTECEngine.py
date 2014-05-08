@@ -1224,8 +1224,8 @@ class VTECEngine(VTECTableUtil):
                 d['officeid'] = self._siteID4
                 d['key'] = key   #such as TO.W or FF.W.Convective
 
-                if hazardEvent.getState():
-                    d['state'] = hazardEvent.getState()
+                if hazardEvent.getStatus():
+                    d['state'] = hazardEvent.getStatus()
 
                 d['hvtec'] = hvtec
 

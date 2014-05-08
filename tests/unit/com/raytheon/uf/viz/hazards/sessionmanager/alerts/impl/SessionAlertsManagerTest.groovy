@@ -17,7 +17,7 @@ import spock.lang.*
 import com.raytheon.uf.common.colormap.Color
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.InMemoryHazardEventManager
@@ -311,7 +311,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         when: "The hazard is ended"
 
         HazardNotification hazardNotification = new HazardNotification(event0, HazardNotification.NotificationType.STORE, HazardEventManager.Mode.PRACTICE)
-        event0.setState(HazardState.ENDED);
+        event0.setStatus(HazardStatus.ENDED);
         alertsManager.handleNotification(hazardNotification)
         List<IHazardAlert> activeAlerts = alertsManager.getActiveAlerts()
 
@@ -397,7 +397,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance("W")
         hazardEvent.setSubType("NonConvective")
-        hazardEvent.setState(HazardState.ISSUED)
+        hazardEvent.setStatus(HazardStatus.ISSUED)
         hazardEvent.addHazardAttribute(HazardConstants.EXPIRATION_TIME, dateTime.getMillis())
         return hazardEvent
     }

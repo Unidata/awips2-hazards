@@ -603,7 +603,7 @@ public class SessionConfigurationManager implements
                 } else if (field.getFieldName().equals(SETTING_HAZARD_STATES)) {
                     config[2] = new Field(field);
                     config[2].setFieldType("CheckBoxesMenu");
-                    config[2].setLabel("&States");
+                    config[2].setLabel("&Statuses");
                 }
             }
         }
@@ -683,7 +683,7 @@ public class SessionConfigurationManager implements
 
     @Override
     public LineStyle getBorderStyle(IHazardEvent event) {
-        switch (event.getState()) {
+        switch (event.getStatus()) {
         case PENDING:
             return null;
         case PROPOSED:

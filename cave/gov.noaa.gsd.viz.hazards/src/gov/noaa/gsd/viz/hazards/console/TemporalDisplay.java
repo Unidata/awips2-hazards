@@ -2860,6 +2860,7 @@ class TemporalDisplay {
                             .setText(UNTIL_FURTHER_NOTICE_MENU_TEXT);
                     untilFurtherNoticeMenuItem
                             .addSelectionListener(rowMenuListener);
+                    new MenuItem(rowMenu, SWT.SEPARATOR);
                     createHazardMenu();
                     // Unfortunately, SWT tables fire these events
                     // before the selection events, so at the point

@@ -19,7 +19,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -122,8 +122,8 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
          * Tack on a filter to look for issued hazards.
          */
         HazardQueryBuilder queryBuilder = new HazardQueryBuilder();
-        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATE,
-                HazardState.ISSUED);
+        queryBuilder.addKey(HazardConstants.HAZARD_EVENT_STATUS,
+                HazardStatus.ISSUED);
         filter.putAll(queryBuilder.getQuery());
         Collection<HazardHistoryList> hazardHistories = hazardEventManager
                 .getEventsByFilter(filter).values();
@@ -150,7 +150,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
         case STORE:
             IHazardEvent hazardEvent = hazardNotification.getEvent();
-            if (hazardEvent.getState().equals(HazardState.ISSUED)) {
+            if (hazardEvent.getStatus().equals(HazardStatus.ISSUED)) {
                 if (!alertedEvents.containsKey(hazardEvent.getEventID())) {
                     generateAlertsForIssuedHazardEvent(hazardEvent);
                 } else {
@@ -171,16 +171,16 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
                     }
 
                 }
-            } else if (hazardEvent.getState().equals(HazardState.ENDED)) {
+            } else if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
                 updatesAlertsForDeletedHazard(hazardNotification.getEvent());
             }
 
-            else if (hazardEvent.getState().equals(HazardState.PROPOSED)) {
+            else if (hazardEvent.getStatus().equals(HazardStatus.PROPOSED)) {
                 /*
                  * Nothing to do here
                  */
 
-            } else if (hazardEvent.getState().equals(HazardState.PENDING)
+            } else if (hazardEvent.getStatus().equals(HazardStatus.PENDING)
                     && hazardEvent.getHazardAttributes().containsKey(
                             HazardConstants.GFE_INTEROPERABILITY)) {
                 /*
@@ -192,7 +192,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
 
             else {
                 throw new IllegalArgumentException("Unexpected state "
-                        + hazardEvent.getState());
+                        + hazardEvent.getStatus());
             }
             break;
 

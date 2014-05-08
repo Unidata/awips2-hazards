@@ -133,8 +133,8 @@ public class ObservedSettings extends Settings {
         if (!changed(getVisibleTypes(), persisted.getVisibleTypes())) {
             setVisibleTypes(update.getVisibleTypes());
         }
-        if (!changed(getVisibleStates(), persisted.getVisibleStates())) {
-            setVisibleStates(update.getVisibleStates());
+        if (!changed(getVisibleStatuses(), persisted.getVisibleStatuses())) {
+            setVisibleStatuses(update.getVisibleStatuses());
         }
         if (!changed(getToolbarTools(), persisted.getToolbarTools())) {
             setToolbarTools(update.getToolbarTools());
@@ -190,9 +190,9 @@ public class ObservedSettings extends Settings {
     }
 
     @Override
-    public void setVisibleStates(Set<String> visibleStates) {
-        if (changed(visibleStates, getVisibleStates())) {
-            super.setVisibleStates(visibleStates);
+    public void setVisibleStatuses(Set<String> visibleStatuses) {
+        if (changed(visibleStatuses, getVisibleStatuses())) {
+            super.setVisibleStatuses(visibleStatuses);
             settingsChanged();
         }
     }

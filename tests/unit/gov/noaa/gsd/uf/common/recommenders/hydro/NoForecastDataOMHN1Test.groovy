@@ -14,7 +14,7 @@ import gov.noaa.gsd.uf.common.recommenders.hydro.riverfloodrecommender.RiverProF
 import com.raytheon.uf.common.hazards.hydro.RiverProDataManager
 import spock.lang.*
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
 
@@ -665,6 +665,6 @@ class NoForecastDataOMHN1Test extends spock.lang.Specification {
         attributeMap.pointID == "OMHN1"
         attributeMap.actionStage == 27d
         attributeMap.floodStage == 29d
-        recommendation.getState() == HazardState.POTENTIAL
+        recommendation.getStatus() == HazardStatus.POTENTIAL
     }
 }

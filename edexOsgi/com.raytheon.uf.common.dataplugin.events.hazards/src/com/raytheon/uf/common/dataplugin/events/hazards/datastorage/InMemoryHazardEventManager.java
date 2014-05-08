@@ -11,7 +11,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.G
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PHENOMENON;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SIGNIFICANCE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
@@ -121,9 +121,9 @@ public class InMemoryHazardEventManager extends HazardEventManager {
                 value = internalTruth;
             }
 
-            if (filterName.equals(HAZARD_EVENT_STATE)) {
+            if (filterName.equals(HAZARD_EVENT_STATUS)) {
                 for (Object filterValue : list) {
-                    if (hazardEvent.getState().equals(filterValue)) {
+                    if (hazardEvent.getStatus().equals(filterValue)) {
                         internalTruth = true;
                         break;
                     } else {

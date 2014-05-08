@@ -63,7 +63,7 @@ class TestingUtils {
     static TRUE = "True"
     static ISSUED = "issued"
     static DAM_NAME = "damName"
-    static STATE = "state"
+    static STATE = "status"
     static PENDING = "pending"
     static SELECTED = "selected"
 

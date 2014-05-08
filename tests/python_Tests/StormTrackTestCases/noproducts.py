@@ -145,7 +145,7 @@ TestCaseResults = \
         11
     ], 
     "startTime": 1297137600000, 
-    "state": "pending", 
+    "status": "pending",
     "stormMotion": {
         "bearing": 225, 
         "speed": 10

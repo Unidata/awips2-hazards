@@ -39,11 +39,8 @@ class DatabaseStorage:
     def getData(self, criteria):        
         info = json.loads(criteria)
         dataType = info.get("dataType")
-
-        if dataType == 'events':
-            return self.getEvents(dataType, info)
         
-        elif dataType == "colorTable":
+        if dataType == "colorTable":
             format = info.get("format", "json")
             return self.getColorTable(format)
 
@@ -74,41 +71,6 @@ class DatabaseStorage:
         
     def deleteVtecDatabase(self, vtecDicts):
         self.deleteLocalData(self._dbPath+"vtecRecords", ["oid","key", "etn"], vtecDicts, dataFormat="list")    
-                             
-    def reset(self, criteria):
-        info = json.loads(criteria)
-        dataType = info.get('dataType')
-        if dataType == "events":
-            self.resetEventDatabase()
-            self.resetVtecRecords()
-        else:            
-            try: 
-                cmd = "rm " + self._dbPath + dataType + "_local.json"
-                os.system(cmd)
-            except:
-                pass
-     
-    def resetEventDatabase(self):
-        eventDicts = []  
-        self.writeEventDatabase(eventDicts)
-             
-    
-    def getEvents(self, dataType, info):
-        self.lockEventDatabase()
-        # events is a dictionary of eventDicts with "eventID" as the key in the top level dictionary
-        events = self.readEventDatabase()              
-        if info.get("lock") != "True":
-            self.unlockEventDatabase()
-        # Leave database locked if user has requested read with lock
-        ###Basic filter - filters for visibleTypes and visibleSites
-        filter = info.get("filter")
-        
-        if filter is not None:
-            self.filterEvents(events, "type", filter.get("visibleTypes"))
-            self.filterEvents(events, "siteID", filter.get("visibleSites"))
-            self.filterEvents(events, "state", filter.get("visibleStates"))
-        
-        return json.dumps(events)
     
     def filterEvents(self, events, field, values):
             toRemove = []

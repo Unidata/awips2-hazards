@@ -314,7 +314,7 @@ TestCaseResults = \
             41.29436510183439
         ]]
     ], 
-    "state": "PENDING", 
+    "status": "PENDING",
     "hazardMode": "O", 
     "siteID": "OAX", 
     "significance": "A", 

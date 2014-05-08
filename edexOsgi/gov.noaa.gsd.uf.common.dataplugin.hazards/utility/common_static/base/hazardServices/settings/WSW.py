@@ -35,12 +35,12 @@ WSW = {
     "visibleColumns": [
         "Event ID",
         "Hazard Type", 
-        "State", 
+        "Status",
         "Time Remaining",
         "Start Time", 
         "End Time"
     ], 
-    "visibleStates": [
+    "visibleStatuses": [
         "potential",
         "proposed",
         "pending",
@@ -60,10 +60,10 @@ WSW = {
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
         }, 
-        "State": {
+        "Status": {
              "sortDir": "none", 
             "width": 61, 
-            "fieldName": "state", 
+            "fieldName": "status",
             "type": "string"
         }, 
         "Start Time": {

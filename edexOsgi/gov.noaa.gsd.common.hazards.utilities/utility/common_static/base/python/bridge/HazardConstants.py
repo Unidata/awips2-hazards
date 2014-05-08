@@ -27,7 +27,7 @@ GEOMETRY = 'geometry'
 HAZARD_MODE = "hazardMode"
 
 # State and Values
-STATE = "state"
+STATE = "status"
 POTENTIAL = "potential"
 PENDING = "pending"
 PROPOSED = "proposed"
@@ -122,7 +122,7 @@ LOCALIZATION_LEVEL = "level"
 # Hazard Services Settings
 SETTINGS_ID = "settingsID"
 VISIBLE_TYPES = "visibleTypes"
-VISIBLE_STATES = "visibleStates"
+VISIBLE_STATES = "visibleStatuses"
 VISIBLE_SITES = "visibleSites"
 
 # Dictionary (or map) keys

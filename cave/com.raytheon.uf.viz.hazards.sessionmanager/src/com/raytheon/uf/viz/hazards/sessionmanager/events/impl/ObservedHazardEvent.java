@@ -32,7 +32,7 @@ import org.eclipse.core.runtime.Assert;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -163,8 +163,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public HazardState getState() {
-        return delegate.getState();
+    public HazardStatus getStatus() {
+        return delegate.getStatus();
     }
 
     @Override
@@ -254,9 +254,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void setState(HazardState state) {
-        if (changed(getState(), state)) {
-            setState(state, true, true, Originator.OTHER);
+    public void setStatus(HazardStatus state) {
+        if (changed(getStatus(), state)) {
+            setStatus(state, true, true, Originator.OTHER);
         }
     }
 
@@ -334,8 +334,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setEventID(eventID, true, originator);
     }
 
-    public void setState(HazardState state, IOriginator originator) {
-        setState(state, true, true, originator);
+    public void setStatus(HazardStatus status, IOriginator originator) {
+        setStatus(status, true, true, originator);
     }
 
     public void setPhenomenon(String phenomenon, IOriginator originator) {
@@ -415,9 +415,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setState(HazardState state, boolean notify, boolean persist,
-            IOriginator originator) {
-        delegate.setState(state);
+    protected void setStatus(HazardStatus status, boolean notify,
+            boolean persist, IOriginator originator) {
+        delegate.setStatus(status);
 
         if (notify) {
             eventManager.hazardEventStateModified(

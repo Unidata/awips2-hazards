@@ -46,7 +46,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -119,7 +119,7 @@ public class DeprecatedEvent {
 
     private String modifyCallbackToolName;
 
-    private String state;
+    private String status;
 
     private Long endTime;
 
@@ -183,8 +183,8 @@ public class DeprecatedEvent {
             /*
              * Has it been issued? Otherwise, don't assign an issueTime
              */
-            if (event.getState() == HazardState.ISSUED
-                    || event.getState() == HazardState.ENDED) {
+            if (event.getStatus() == HazardStatus.ISSUED
+                    || event.getStatus() == HazardStatus.ENDED) {
                 issueTime = (Long) event
                         .getHazardAttribute(HazardConstants.ISSUE_TIME);
             }
@@ -216,8 +216,8 @@ public class DeprecatedEvent {
             }
         }
 
-        if (event.getState() != null) {
-            state = event.getState().toString().toLowerCase();
+        if (event.getStatus() != null) {
+            status = event.getStatus().toString().toLowerCase();
         }
 
         if (attr.containsKey(CAUSE)) {
@@ -235,10 +235,10 @@ public class DeprecatedEvent {
         color = "255 255 255";
         selected = (Boolean) attr.get(ISessionEventManager.ATTR_SELECTED);
 
-        if (event.getState() != HazardState.ENDED
+        if (event.getStatus() != HazardStatus.ENDED
                 && Boolean.TRUE.equals(attr
                         .get(ISessionEventManager.ATTR_ISSUED))) {
-            state = HazardState.ISSUED.toString().toLowerCase();
+            status = HazardStatus.ISSUED.toString().toLowerCase();
         }
 
         draggedPoints = new double[0][];
@@ -386,12 +386,12 @@ public class DeprecatedEvent {
         this.modifyCallbackToolName = modifyCallbackToolName;
     }
 
-    public String getState() {
-        return state;
+    public String getStatus() {
+        return status;
     }
 
-    public void setState(String state) {
-        this.state = state;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Long getEndTime() {
@@ -594,8 +594,8 @@ public class DeprecatedEvent {
 
         event.setSubType(subType);
 
-        if (state != null) {
-            event.setState(HazardState.valueOf(state.toUpperCase()));
+        if (status != null) {
+            event.setStatus(HazardStatus.valueOf(status.toUpperCase()));
         }
 
         if (cause != null) {

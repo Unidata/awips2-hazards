@@ -1228,7 +1228,7 @@ TestCaseResults = \
         ]]
     ], 
     "subtype": "NonConvective", 
-    "state": "PENDING", 
+    "status": "PENDING",
     "hazardMode": "O", 
     "siteID": "OAX", 
     "uniqueID": None, 

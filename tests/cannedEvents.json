@@ -31,7 +31,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Additional rainfall expected... (need dialog to specify how much)", 
@@ -71,7 +71,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -124,7 +124,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "startTime": 1297137600000, 
         "fullType": "FL.W (FLOOD WARNING)", 
@@ -164,7 +164,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "RAH", 
         "startTime": 1297137600000, 
         "endTime": 1297166400000, 
@@ -199,7 +199,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "RAH", 
         "startTime": 1297125600000, 
         "endTime": 1297154400000, 
@@ -243,7 +243,7 @@
             }
         ], 
         "containedPoints": [], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "RAH", 
         "startTime": 1297137600000, 
         "endTime": 1297166400000, 
@@ -283,7 +283,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "RAH", 
         "startTime": 1297137600000, 
         "floodRecord": "NR", 
@@ -320,7 +320,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -363,7 +363,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -406,7 +406,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -449,7 +449,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -500,7 +500,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -543,7 +543,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -586,7 +586,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 
@@ -629,7 +629,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Turn around...don't drown", 
@@ -678,7 +678,7 @@
                 ]
             }
         ], 
-        "state": "issued", 
+        "status": "issued", 
         "siteID": "BOU", 
         "cta": [
             "Do not drive into water", 

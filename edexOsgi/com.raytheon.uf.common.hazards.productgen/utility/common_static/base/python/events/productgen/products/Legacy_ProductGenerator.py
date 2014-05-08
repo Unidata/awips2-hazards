@@ -946,7 +946,7 @@ class Product(ProductTemplate.Product):
         else:
             # Reset state if previewing ended
             if hazardEvent.get('previewState') == 'ended':
-                hazardEvent.setState('ISSUED')
+                hazardEvent.setStatus('ISSUED')
 
     def _addToProductDict(self, productDict):
         '''
@@ -1273,7 +1273,7 @@ class Product(ProductTemplate.Product):
             #  IF we are previewing an 'ended' state, temporarily set the state as 'ended'
             #   so that the VTEC processing will be done correctly
             if hazardEvent.get('previewState') == 'ended':
-                hazardEvent.setState('ENDED')
+                hazardEvent.setStatus('ENDED')
             newHazardEvents.append(hazardEvent)
  
         return newHazardEvents
@@ -1318,7 +1318,7 @@ class Product(ProductTemplate.Product):
             for hazardEvent in hazardEvents:
                 vtecCodes = hazardEvent.get('vtecCodes', [])
                 if ('CAN' in vtecCodes or 'EXP' in vtecCodes) and not ['NEW', 'CON', 'EXA', 'EXT', 'EXB', 'UPG', 'ROU'] in vtecCodes:
-                    hazardEvent.setState('ENDED')
+                    hazardEvent.setStatus('ENDED')
                     
     def checkTestMode(self, sessionDict, str):
         # testMode is set, then we are in product test mode.

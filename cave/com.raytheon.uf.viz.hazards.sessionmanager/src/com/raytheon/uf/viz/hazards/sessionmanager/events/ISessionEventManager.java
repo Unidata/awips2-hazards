@@ -28,7 +28,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -194,7 +194,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param state
      * @return
      */
-    public Collection<E> getEventsByState(HazardState state);
+    public Collection<E> getEventsByStatus(HazardStatus state);
 
     /**
      * Remove an event from the session.

@@ -12,7 +12,7 @@ class MetaData:
         self.hazardEvent = hazardEvent
         self.metaDict = metaDict
         if self.hazardEvent:
-            self.hazardState = self.hazardEvent.getState()
+            self.hazardState = self.hazardEvent.getStatus()
             self.previewState = self.hazardEvent.get("previewState")
         else:
             self.hazardState = "pending"

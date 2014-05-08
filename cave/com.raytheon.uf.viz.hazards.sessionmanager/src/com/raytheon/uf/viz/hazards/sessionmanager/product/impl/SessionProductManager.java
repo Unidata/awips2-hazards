@@ -37,7 +37,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -219,8 +219,8 @@ public class SessionProductManager implements ISessionProductManager {
                                 .equals(e
                                         .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
                             productEvents.add(e);
-                        } else if (e.getState() != HazardState.POTENTIAL
-                                && e.getState() != HazardState.ENDED
+                        } else if (e.getStatus() != HazardStatus.POTENTIAL
+                                && e.getStatus() != HazardStatus.ENDED
                                 && isCombinable(e)) {
                             possibleProductEvents.add(e);
                         }
@@ -546,7 +546,7 @@ public class SessionProductManager implements ISessionProductManager {
                     sessionEvent
                             .removeHazardAttribute(HazardConstants.REPLACES);
 
-                    if (updatedEvent.getState().equals(HazardState.ENDED)) {
+                    if (updatedEvent.getStatus().equals(HazardStatus.ENDED)) {
                         eventManager.endEvent(sessionEvent, Originator.OTHER);
                     } else {
                         eventManager.issueEvent(sessionEvent, Originator.OTHER);

@@ -39,7 +39,7 @@ from shapely import wkt
 from Event import Event
 
 from java.util import Date
-from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants, HazardConstants_ProductClass as ProductClass, HazardConstants_HazardState as HazardState
+from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants, HazardConstants_ProductClass as ProductClass, HazardConstants_HazardStatus as HazardStatus
 
 
 class HazardEvent(Event, JUtil.JavaWrapperClass):
@@ -60,20 +60,20 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setEventID(self, eventId):
         self.jobj.setEventID(eventId)
     
-    def getState(self):
-        return self.getHazardState()
+    def getStatus(self):
+        return self.getHazardStatus()
     
-    def setState(self, hazardState):
-        self.setHazardState(hazardState)
+    def setStatus(self, hazardStatus):
+        self.setHazardStatus(hazardStatus)
 
-    def getHazardState(self):
-        return self.jobj.getState().name()
+    def getHazardStatus(self):
+        return self.jobj.getStatus().name()
     
-    def setHazardState(self, hazardState):
-        if hazardState is not None :
-            self.jobj.setState(HazardState.valueOf(str(hazardState).upper()))
+    def setHazardStatus(self, hazardStatus):
+        if hazardStatus is not None :
+            self.jobj.setStatus(HazardStatus.valueOf(str(hazardStatus).upper()))
         else :
-            self.jobj.setState(HazardState.PENDING)
+            self.jobj.setStatus(HazardStatus.PENDING)
             
     def getPhenomenon(self):
         return self.jobj.getPhenomenon()
@@ -190,10 +190,10 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         @summary: Converts a Java HazardEvent to the corresponding Python version
         '''  
         self.setSiteID(javaClass.getSiteID())
-        if javaClass.getState() is not None:    
-            self.setHazardState(javaClass.getState().name())
+        if javaClass.getStatus() is not None:    
+            self.setHazardStatus(javaClass.getStatus().name())
         else :
-            self.setHazardState(HazardState.PENDING)
+            self.setHazardStatus(HazardStatus.PENDING)
         self.setPhenomenon(javaClass.getPhenomenon())
         self.setSignificance(javaClass.getSignificance())
         self.setSubtype(javaClass.getSubType())
@@ -223,8 +223,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         lowerKey = key.lower()
         if lowerKey == 'site':
             return getSiteID()
-        elif lowerKey == 'state':
-            return self.getState()
+        elif lowerKey == 'status':
+            return self.getStatus()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             return self.getPhenomenon()
         elif lowerKey == 'significance' or lowerKey == 'sig':
@@ -252,8 +252,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         lowerKey = key.lower()
         if lowerKey == 'site':
             self.setSiteID(value)
-        elif lowerKey == 'state':
-            self.setState(value)
+        elif lowerKey == 'status':
+            self.setStatus(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             self.setPhenomenon(value)
         elif lowerKey == 'significance' or lowerKey == 'sig':

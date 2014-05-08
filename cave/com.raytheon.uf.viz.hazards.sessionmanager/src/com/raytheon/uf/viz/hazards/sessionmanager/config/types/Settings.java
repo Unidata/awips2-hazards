@@ -65,9 +65,9 @@ public class Settings {
     private Set<String> visibleTypes;
 
     /**
-     * Which states of events should be loaded/displayed
+     * Which statuses of events should be loaded/displayed
      */
-    private Set<String> visibleStates;
+    private Set<String> visibleStatuses;
 
     /**
      * Which product generators can be run
@@ -155,7 +155,7 @@ public class Settings {
     public void apply(Settings other) {
         setSettingsID(other.getSettingsID());
         setVisibleTypes(other.getVisibleTypes());
-        setVisibleStates(other.getVisibleStates());
+        setVisibleStatuses(other.getVisibleStatuses());
         setToolbarTools(other.getToolbarTools());
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration());
         setMapCenter(other.getMapCenter());
@@ -186,12 +186,12 @@ public class Settings {
         this.visibleTypes = visibleTypes;
     }
 
-    public Set<String> getVisibleStates() {
-        return visibleStates;
+    public Set<String> getVisibleStatuses() {
+        return visibleStatuses;
     }
 
-    public void setVisibleStates(Set<String> visibleStates) {
-        this.visibleStates = visibleStates;
+    public void setVisibleStatuses(Set<String> visibleStatuses) {
+        this.visibleStatuses = visibleStatuses;
     }
 
     public List<Tool> getToolbarTools() {

@@ -85,7 +85,7 @@ public class HazardGeometryFactory extends AbstractDataFactory {
 
     private static final String HAZARDMODE = HazardConstants.HAZARD_MODE;
 
-    private static final String STATE = HazardConstants.HAZARD_EVENT_STATE;
+    private static final String STATE = HazardConstants.HAZARD_EVENT_STATUS;
 
     private static final String HAZARD_TYPE = "hazardType";
 

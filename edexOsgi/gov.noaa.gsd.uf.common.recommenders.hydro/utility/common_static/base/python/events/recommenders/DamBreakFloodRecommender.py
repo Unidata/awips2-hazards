@@ -136,7 +136,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         hazardEvent.setEventID("")
         hazardEvent.setSiteID(str(sessionDict["siteID"]))
-        hazardEvent.setHazardState("PENDING")
+        hazardEvent.setHazardStatus("PENDING")
         hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance(significance)

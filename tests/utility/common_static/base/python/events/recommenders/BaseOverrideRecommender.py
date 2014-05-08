@@ -60,7 +60,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def execute(self, eventSet, dialogInputMap, spatialInputMap):
         event = EventFactory.createEvent()
         event.setSiteID("koax")
-        event.setHazardState("PENDING")
+        event.setHazardStatus("PENDING")
         event.setPhenomenon("FZ")
         event.setSignificance("WARNING")
         d = datetime.datetime.now()

@@ -15,12 +15,12 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SIG;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SUB_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_VTEC_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RISE_ABOVE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.hazardStateFromString;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.hazardStatusFromString;
 import gov.noaa.gsd.common.utilities.DateTimes;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
@@ -78,9 +78,9 @@ public class HazardEventsBuilderForTesting {
             for (String key : eventDict.keySet()) {
                 if (key.equals(HAZARD_EVENT_IDENTIFIER)) {
                     event.setEventID(eventId);
-                } else if (key.equals(HAZARD_EVENT_STATE)) {
+                } else if (key.equals(HAZARD_EVENT_STATUS)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
-                    event.setState(hazardStateFromString(value));
+                    event.setStatus(hazardStatusFromString(value));
                 } else if (key.equals(SITE_ID)) {
                     String value = eventDict.getDynamicallyTypedValue(key);
                     event.setSiteID(value);

@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 
 import spock.lang.*
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
 import com.vividsolutions.jts.geom.Polygon
@@ -61,7 +61,7 @@ class HazardEventsBuilderTest extends spock.lang.Specification {
 
         and: "A particular event is correct"
         anEvent.getSiteID() == "BOU"
-        anEvent.getState() == HazardState.ISSUED
+        anEvent.getStatus() == HazardStatus.ISSUED
         anEvent.getPhenomenon() == "FF"
         anEvent.getSignificance() == "W"
         anEvent.getSubType() == "Convective"

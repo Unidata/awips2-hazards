@@ -27,180 +27,262 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
-#    12/3/13         1472          bkowal      subtype is now subType in the Java
-#                                              representation of Hazard Event
+#    01/22/13                      mnash          Initial Creation.
+#    08/20/13        1360          blawrenc       Changed toStr() to __str__() for debugging
+#    12/05/13        2527          bkowal         Removed obsolete conversion methods
 # 
 #
 
 import JUtil, datetime
+import shapely
 
 from Event import Event
 
 from java.util import Date
-from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants
+from com.raytheon.uf.common.dataplugin.events.hazards import HazardConstants, HazardConstants_ProductClass as ProductClass, HazardConstants_HazardStatus as HazardStatus
+
 
 class HazardEvent(Event, JUtil.JavaWrapperClass):
         
     def __init__(self, wrappedObject):
         self.jobj = wrappedObject
-        self.site = None
-        self.eventId = None
-        self.hazardState = None
-        self.creationTime = None
-        self.startTime = None
-        self.endTime = None
-        self.phenomenon = None
-        self.significance = None
-        self.subtype = None
-        self.hazardAttributes = None
-        self.hazardMode = None
-        self.geometry = None
-    
+        self.toPythonObj(wrappedObject)
+        
     def getSiteID(self):
-        return self.site
+        return self.jobj.getSiteID()
 
     def setSiteID(self, site):
-        self.site = site
+        self.jobj.setSiteID(site)
     
     def getEventID(self):
-        return self.eventId
+        return self.jobj.getEventID()
     
     def setEventID(self, eventId):
-        self.eventId = eventId
-        
-    def getHazardState(self):
-        return self.hazardState
+        self.jobj.setEventID(eventId)
     
-    def setHazardState(self, hazardState):
-        self.hazardState = hazardState
-        
-    def getPhenomemon(self):
-        return self.phenomenon
+    def getStatus(self):
+        return self.getHazardStatus()
+    
+    def setStatus(self, hazardStatus):
+        self.setHazardStatus(hazardStatus)
+
+    def getHazardStatus(self):
+        return self.jobj.getStatus().name()
+    
+    def setHazardStatus(self, hazardStatus):
+        if hazardStatus is not None :
+            self.jobj.setStatus(HazardStatus.valueOf(str(hazardStatus).upper()))
+        else :
+            self.jobj.setStatus(HazardStatus.PENDING)
+            
+    def getPhenomenon(self):
+        return self.jobj.getPhenomenon()
     
     def setPhenomenon(self, phenomenon):
-        self.phenomenon = phenomenon
+        self.jobj.setPhenomenon(phenomenon)
         
     def getSignificance(self):
-        return self.significance
+        return self.jobj.getSignificance()
     
     def setSignificance(self, significance):
-        self.significance = significance
+        self.jobj.setSignificance(significance)
         
     def getSubtype(self):
-        return self.subtype
+        return self.jobj.getSubType()
     
     def setSubtype(self, subtype):
-        self.subtype = subtype
+        self.jobj.setSubType(subtype)
+        
+    def getHazardType(self):
+        return self.jobj.getHazardType()
         
     def getCreationTime(self):
-        return self.creationTime
+        return datetime.datetime.fromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
     
     def setCreationTime(self, creationTime):
-        dt = Date(long(self.getMillis(creationTime)))
-        self.creationTime = dt
-            
+        dt = Date(long(self._getMillis(creationTime)))
+        self.jobj.setCreationTime(dt)
+      
+    def getEndTime(self):
+        if self.jobj.getEndTime() is not None :
+            return datetime.datetime.fromtimestamp(self.jobj.getEndTime().getTime() / 1000.0)
+        else :
+            return None
+          
     def setEndTime(self, endTime):
-        dt = Date(long(self.getMillis(endTime)))
-        self.endTime = dt
+        dt = Date(long(self._getMillis(endTime)))
+        self.jobj.setEndTime(dt)
+    
+    def getStartTime(self):
+        return datetime.datetime.fromtimestamp(self.jobj.getStartTime().getTime() / 1000.0)
     
     def setStartTime(self, startTime):
-        dt = Date(long(self.getMillis(startTime)))
-        self.startTime = dt
-        
+        dt = Date(long(self._getMillis(startTime)))
+        self.jobj.setStartTime(dt)
+    
+    def getGeometry(self):
+        return JUtil.javaObjToPyVal(self.jobj.getGeometry())
+    
     def setGeometry(self, geometry):
-        self.geometry = geometry
-        
+        if geometry is not None :
+            self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
+    
     def getHazardMode(self):
-        return self.hazardMode
+        if self.jobj.getHazardMode() is not None :
+            return self.jobj.getHazardMode().name()
+        else :
+            return None
     
     def setHazardMode(self, hazardMode):
-        self.hazardMode = hazardMode
+        try :
+            self.jobj.setHazardMode(HazardConstants.productClassFromAbbreviation(hazardMode))
+        except Exception, e :
+            try :
+                self.jobj.setHazardMode(HazardConstants.productClassFromName(hazardMode))
+            except Exception, e:
+                self.jobj.setHazardMode(ProductClass.TEST)        
         
     def getHazardAttributes(self):
-        return self.hazardAttributes
+        return JUtil.javaObjToPyVal(self.jobj.getHazardAttributes())
     
     def setHazardAttributes(self, hazardAttributes):
-        self.hazardAttributes = hazardAttributes
+        self.jobj.setHazardAttributes(JUtil.pyValToJavaObj(hazardAttributes))
+        
+    def addHazardAttribute(self, key, value):
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(value))
+        
+    def removeHazardAttribute(self, key):
+        self.jobj.removeHazardAttribute(key)
+
+    def get(self, key, default=None):
+        '''
+         Get the value of the hazard attribute with given key.
+         '''
+        value = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
+        if not value:
+            value = default
+        return value
     
-    def getMillis(self, date):
+    def set(self, key, value):
+        '''
+        Set the hazard attribute with given key to given value.
+        '''
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(value))
+
+    def addToList(self, key, value):
+        '''
+        The equivalent of hazardAttributes.setdefault(key, []).append(value)
+        '''
+        currentVal = JUtil.javaObjToPyVal(self.jobj.getHazardAttribute(key))
+        if currentVal:
+            currentVal.append(value)
+        else:
+            currentVal = [value]
+        self.jobj.addHazardAttribute(key, JUtil.pyValToJavaObj(currentVal))
+               
+    def _getMillis(self, date):
         epoch = datetime.datetime.utcfromtimestamp(0)
         delta = date - epoch
-        return delta.total_seconds() * 1000
+        return delta.total_seconds() * 1000.0
+    
+    def toPythonObj(self, javaClass):
+        '''
+        @summary: Converts a Java HazardEvent to the corresponding Python version
+        '''  
+        self.setSiteID(javaClass.getSiteID())
+        if javaClass.getStatus() is not None:    
+            self.setHazardStatus(javaClass.getStatus().name())
+        else :
+            self.setHazardStatus(HazardStatus.PENDING)
+        self.setPhenomenon(javaClass.getPhenomenon())
+        self.setSignificance(javaClass.getSignificance())
+        self.setSubtype(javaClass.getSubType())
+        if javaClass.getCreationTime() is not None:
+            self.setCreationTime(datetime.datetime.fromtimestamp(javaClass.getCreationTime().getTime() / 1000.0))
+        else :
+            self.setCreationTime(datetime.datetime.now())
+        if javaClass.getStartTime() is not None:
+            self.setStartTime(datetime.datetime.fromtimestamp(javaClass.getStartTime().getTime() / 1000.0))
+        else:
+            self.setStartTime(datetime.datetime.now())
+        if javaClass.getEndTime() is not None:
+            self.setEndTime(datetime.datetime.fromtimestamp(javaClass.getEndTime().getTime() / 1000.0))
+        else:
+            self.setEndTime(datetime.datetime.now())
+        if javaClass.getHazardMode() is not None:
+            self.setHazardMode(javaClass.getHazardMode().name())
+        else :
+            self.setHazardMode(None)
+        if javaClass.getGeometry() is not None :
+            self.setGeometry(shapely.wkt.loads(javaClass.getGeometry().toText()))
+        else :
+            self.setGeometry(None)
+        self.setHazardAttributes(JUtil.javaObjToPyVal(javaClass.getHazardAttributes()))
     
     def __getitem__(self, key):
         lowerKey = key.lower()
         if lowerKey == 'site':
             return getSiteID()
-        elif lowerKey == 'state':
-            return getState()
+        elif lowerKey == 'status':
+            return self.getStatus()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
-            return getPhenomenon()
+            return self.getPhenomenon()
         elif lowerKey == 'significance' or lowerKey == 'sig':
-            return getSignificance()
+            return self.getSignificance()
         elif lowerKey == 'subtype':
-            return getSubtype()
+            return self.getSubtype()
         elif lowerKey == 'creationtime':
-            return getCreationTime()
+            return self.getCreationTime()
         elif lowerKey == 'endtime':
-            return getEndTime()
+            return self.getEndTime()
         elif lowerKey == 'starttime': 
-            return getStartTime()
+            return self.getStartTime()
         elif lowerKey == 'geometry' or lowerKey == 'geom':
-            return getGeometry()
+            return self.getGeometry()
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
-            return getHazardMode()
+            return self.getHazardMode()
         elif lowerKey == 'eventid':
-            return getEventID()
+            return self.getEventID()
         elif lowerKey == 'attributes':
-            return getHazardAttributes()
+            return self.getHazardAttributes()
         else :
             raise TypeError()
         
     def __setitem__(self, key, value):
         lowerKey = key.lower()
         if lowerKey == 'site':
-            setSiteID(value)
-        elif lowerKey == 'state':
-            setState(value)
+            self.setSiteID(value)
+        elif lowerKey == 'status':
+            self.setStatus(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
-            setPhenomenon(value)
+            self.setPhenomenon(value)
         elif lowerKey == 'significance' or lowerKey == 'sig':
-            setSignificance(value)
+            self.setSignificance(value)
         elif lowerKey == 'subtype':
-            setSubtype(value)
+            self.setSubtype(value)
         elif lowerKey == 'creationtime':
-            setCreationTime(value)
+            self.setCreationTime(value)
         elif lowerKey == 'endtime':
-            setEndTime(value)
+            self.setEndTime(value)
         elif lowerKey == 'starttime': 
-            setStartTime(value)
+            self.setStartTime(value)
         elif lowerKey == 'geometry' or lowerKey == 'geom':
-            setGeometry(value)
+            self.setGeometry(value)
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
-            setHazardMode(value)
+            self.setHazardMode(value)
         elif lowerKey == 'attributes':
-            setHazardAttributes(value)         
+            self.setHazardAttributes(value)         
     
     def __eq__(self, other):
-        return jobj.equals(other.jobj)
+        return self.jobj.equals(other.jobj)
     
     def __ne__(self, other):
-        return not __eq__(other)
+        return not self.__eq__(other)
+    
+    def __str__(self):
+        string = 'HazardEvent: ' + self.jobj.toString() + \
+            '\ngeometry: ' + str(self.jobj.getGeometry())
+        return string
     
     def toJavaObj(self):
-        self.jobj.setSiteID(self.site)
-        self.jobj.setState(self.hazardState)
-        self.jobj.setPhenomenon(self.phenomenon)
-        self.jobj.setSignificance(self.significance)
-        self.jobj.setSubType(self.subtype)
-        self.jobj.setCreationTime(self.creationTime)
-        self.jobj.setEndTime(self.endTime)
-        self.jobj.setStartTime(self.startTime)
-        self.jobj.setHazardMode(self.hazardMode)
-        if self.geometry is not None:
-            self.jobj.setGeometry(self.geometry.wkt)
-        else :
-            self.jobj.setGeometry(None)
-        self.jobj.setHazardAttributes(JUtil.pyDictToJavaMap(self.hazardAttributes))
-        return self.jobj                                        
+        return self.jobj

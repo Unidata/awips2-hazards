@@ -171,7 +171,7 @@ public class WarningHazardsCreator {
                     event.setHazardMode(HazardConstants
                             .productClassFromAbbreviation(record
                                     .getProductClass()));
-                    event.setState(HazardEventUtilities
+                    event.setStatus(HazardEventUtilities
                             .stateBasedOnAction(record.getAct()));
 
                     // these don't apply to everything so the may be blank, but

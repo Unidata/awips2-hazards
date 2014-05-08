@@ -33,7 +33,7 @@ import org.springframework.util.StringUtils;
 
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
@@ -422,7 +422,7 @@ public class HazardEventHandler {
                 List<IHazardsInteroperabilityRecord> gfeInteroperabilityRecords = new ArrayList<>();
 
                 /* Initialize the hazard state. */
-                HazardState hazardState = HazardState.PENDING;
+                HazardStatus hazardState = HazardStatus.PENDING;
 
                 if (events == null) {
                     // no hazard(s) to update; create a new hazard.
@@ -494,7 +494,7 @@ public class HazardEventHandler {
                      * case new hazards need to be created based on the current
                      * grid.
                      */
-                    hazardState = HazardState.PROPOSED;
+                    hazardState = HazardStatus.PROPOSED;
 
                     // for now this is the only update that will be made to
                     // a hazard based on requirements - so, a list will be
@@ -503,7 +503,7 @@ public class HazardEventHandler {
                     for (IHazardEvent updateCandidateHazardEvent : updateCandidates) {
                         Date creationTime = new Date();
 
-                        if (updateCandidateHazardEvent.getState() == HazardState.PENDING) {
+                        if (updateCandidateHazardEvent.getStatus() == HazardStatus.PENDING) {
                             updateCandidateHazardEvent
                                     .setCreationTime(creationTime);
 
@@ -607,7 +607,7 @@ public class HazardEventHandler {
     }
 
     private IHazardEvent createNewHazard(HazardEventManager hazardEventManager,
-            HazardState hazardState, Date startDate, Date endDate,
+            HazardStatus hazardState, Date startDate, Date endDate,
             String siteID, String hazardType, Geometry hazardMultiPolygon,
             boolean practice) {
         IHazardEvent hazardEvent = hazardEventManager.createEvent();
@@ -622,7 +622,7 @@ public class HazardEventHandler {
         }
 
         // initially set the state to PENDING
-        hazardEvent.setState(hazardState);
+        hazardEvent.setStatus(hazardState);
 
         // start time
         hazardEvent.setStartTime(startDate);

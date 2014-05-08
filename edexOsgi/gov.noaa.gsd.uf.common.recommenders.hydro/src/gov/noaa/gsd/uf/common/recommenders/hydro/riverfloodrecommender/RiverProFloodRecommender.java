@@ -11,7 +11,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HazardSettings;
@@ -153,7 +153,7 @@ public class RiverProFloodRecommender {
                         IHazardEvent riverHazard = new BaseHazardEvent();
                         potentialRiverEventSet.add(riverHazard);
                         riverHazard.setEventID("");
-                        riverHazard.setState(HazardState.POTENTIAL);
+                        riverHazard.setStatus(HazardStatus.POTENTIAL);
 
                         hazardAttributes.put(HazardConstants.POINTID,
                                 riverForecastPoint.getId());

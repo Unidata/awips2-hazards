@@ -26,7 +26,7 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -86,9 +86,9 @@ public interface IHazardEvent extends IEvent {
 
     public void setEventID(String eventId);
 
-    public HazardState getState();
+    public HazardStatus getStatus();
 
-    public void setState(HazardState state);
+    public void setStatus(HazardStatus state);
 
     public String getPhenomenon();
 

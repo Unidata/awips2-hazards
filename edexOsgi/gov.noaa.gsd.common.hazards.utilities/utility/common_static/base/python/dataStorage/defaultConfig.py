@@ -34,7 +34,7 @@ siteIDs = [
                      }
             ]
 
-states = [ 
+statuses = [ 
                      {
                       "displayString": "potential", 
                      },
@@ -63,7 +63,7 @@ columns = [
                       "displayString": "Hazard Type", 
                      },
                      {
-                      "displayString": "State", 
+                      "displayString": "Status",
                      },
                      {
                       "displayString": "Start Time", 
@@ -153,10 +153,10 @@ viewConfig = [
                                           "columnName": "Site ID"
                                          },              
                                          {
-                                          "fieldName": "visibleStates",
+                                          "fieldName": "visibleStatuses",
                                           "label": "State:",
                                           "fieldType": "CheckList",
-                                          "choices": states,
+                                          "choices": statuses,
                                           "lines": 16,
                                           "columnName": "State"
                                          },              

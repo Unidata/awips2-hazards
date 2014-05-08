@@ -58,7 +58,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -1027,7 +1027,7 @@ public final class HazardServicesMessageHandler implements
              */
             appBuilder.showHazardDetail();
         } else if (label.contains(HazardConstants.REMOVE_POTENTIAL_HAZARDS)) {
-            removeEventsWithState(HazardConstants.HazardState.POTENTIAL
+            removeEventsWithState(HazardConstants.HazardStatus.POTENTIAL
                     .getValue());
             notifyModelEventsChanged();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
@@ -1048,9 +1048,9 @@ public final class HazardServicesMessageHandler implements
     }
 
     private void removeEventsWithState(String stateValue) {
-        HazardState state = HazardState.valueOf(stateValue.toUpperCase());
+        HazardStatus state = HazardStatus.valueOf(stateValue.toUpperCase());
         for (ObservedHazardEvent event : sessionEventManager
-                .getEventsByState(state)) {
+                .getEventsByStatus(state)) {
             sessionEventManager.removeEvent(event, null);
         }
     }

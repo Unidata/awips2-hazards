@@ -27,7 +27,7 @@ import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -72,7 +72,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private String eventId;
 
-    private HazardState hazardState;
+    private HazardStatus hazardState;
 
     private String phenomenon;
 
@@ -104,7 +104,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
-        setState(event.getState());
+        setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
             getHazardAttributes().putAll(event.getHazardAttributes());
@@ -158,18 +158,18 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public HazardState getState() {
+    public HazardStatus getStatus() {
         return hazardState;
     }
 
     @Override
-    public void setState(HazardState state) {
+    public void setStatus(HazardStatus state) {
         this.hazardState = state;
     }
 
     @Deprecated
-    public void setState(String state) {
-        setState(HazardState.valueOf(String.valueOf(state).toUpperCase()));
+    public void setStatus(String state) {
+        setStatus(HazardStatus.valueOf(String.valueOf(state).toUpperCase()));
     }
 
     @Override

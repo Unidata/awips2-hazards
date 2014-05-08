@@ -71,7 +71,7 @@ public final class EventDict extends TreeMap<String, Object> {
         this();
 
         put(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventID);
-        put(HazardConstants.HAZARD_EVENT_STATE, state);
+        put(HazardConstants.HAZARD_EVENT_STATUS, state);
         put(HazardConstants.HAZARD_EVENT_TYPE, type);
         put(HazardConstants.HAZARD_EVENT_START_TIME, new Long(startTime));
         put(HazardConstants.HAZARD_EVENT_END_TIME, new Long(endTime));

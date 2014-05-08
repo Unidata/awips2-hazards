@@ -35,7 +35,7 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.annotations.DataURIUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
@@ -442,9 +442,9 @@ public class GFEHazardsCreator {
 
     private boolean updateHazardWithProduct(IHazardEvent event,
             AbstractWarningRecord rec) {
-        HazardState state = HazardEventUtilities.stateBasedOnAction(rec
+        HazardStatus state = HazardEventUtilities.stateBasedOnAction(rec
                 .getAct());
-        if (state == event.getState()) {
+        if (state == event.getStatus()) {
             /*
              * Skip the event if it is already in the correct state.
              */
@@ -452,7 +452,7 @@ public class GFEHazardsCreator {
                     + event.getEventID());
             return false;
         }
-        event.setState(state);
+        event.setStatus(state);
         event.addHazardAttribute(HazardConstants.EXPIRATION_TIME, rec
                 .getPurgeTime().getTime().getTime());
         event.addHazardAttribute(HazardConstants.ETNS, "[" + rec.getEtn() + "]");

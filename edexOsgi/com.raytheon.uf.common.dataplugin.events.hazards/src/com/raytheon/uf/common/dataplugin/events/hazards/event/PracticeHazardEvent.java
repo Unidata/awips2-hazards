@@ -52,7 +52,7 @@ import org.hibernate.annotations.Type;
 
 import com.raytheon.uf.common.dataplugin.events.IValidator;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
@@ -109,13 +109,13 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     private PracticeHazardEventPK key;
 
     /**
-     * The state of the record at this point in time
+     * The status of the record at this point in time
      */
     @Column(length = 15)
     @DynamicSerializeElement
     @XmlElement
     @Enumerated(EnumType.STRING)
-    private HazardState state;
+    private HazardStatus status;
 
     /**
      * Phenomenon that is being recorded
@@ -200,7 +200,7 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         setPhenomenon(event.getPhenomenon());
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
-        setState(event.getState());
+        setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
         if (event.getHazardAttributes() != null) {
             setHazardAttributes(new HashMap<String, Serializable>(
@@ -257,20 +257,20 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
     }
 
     /**
-     * @return the state
+     * @return the status
      */
     @Override
-    public HazardState getState() {
-        return state;
+    public HazardStatus getStatus() {
+        return status;
     }
 
     /**
-     * @param state
-     *            the state to set
+     * @param status
+     *            the status to set
      */
     @Override
-    public void setState(HazardState state) {
-        this.state = state;
+    public void setStatus(HazardStatus state) {
+        this.status = state;
     }
 
     /**
@@ -599,7 +599,7 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
                 + ((significance == null) ? 0 : significance.hashCode());
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
-        result = prime * result + ((state == null) ? 0 : state.hashCode());
+        result = prime * result + ((status == null) ? 0 : status.hashCode());
         result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         return result;
     }
@@ -673,7 +673,7 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         } else if (startTime.getTime() != other.startTime.getTime()) {
             return false;
         }
-        if (state != other.state) {
+        if (status != other.status) {
             return false;
         }
         if (subType == null) {

@@ -218,7 +218,7 @@ public class AutoTestUtilities {
             Set<String> visibleStates, Set<String> visibleSites) {
         Settings result = new Settings();
         result.setVisibleTypes(visibleTypes);
-        result.setVisibleStates(visibleStates);
+        result.setVisibleStatuses(visibleStates);
         result.setVisibleSites(visibleSites);
         return result;
     }

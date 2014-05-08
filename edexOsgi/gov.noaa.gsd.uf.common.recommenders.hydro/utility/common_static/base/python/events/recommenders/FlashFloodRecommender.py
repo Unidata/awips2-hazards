@@ -427,7 +427,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     hazardEvent = EventFactory.createEvent()
                     hazardEvent.setEventID('')
                     hazardEvent.setSiteID(self.sessionAttributes.get('siteID'))
-                    hazardEvent.setHazardState(POTENTIAL_TYPE)
+                    hazardEvent.setHazardStatus(POTENTIAL_TYPE)
                     hazardEvent.setPhenomenon(FFW_PHENOMENON)
                     hazardEvent.setSignificance(FFW_SIGNIFICANCE)
                     hazardEvent.setSubtype(FFW_SUBTYPE)

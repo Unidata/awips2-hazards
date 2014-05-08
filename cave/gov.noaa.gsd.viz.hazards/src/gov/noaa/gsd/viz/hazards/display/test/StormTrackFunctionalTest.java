@@ -37,7 +37,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -107,7 +107,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     IHazardEvent event = (IHazardEvent) events.iterator()
                             .next();
                     assertEquals(event.getHazardType(), "FF.W.Convective");
-                    assertEquals(event.getState(), HazardState.PENDING);
+                    assertEquals(event.getStatus(), HazardStatus.PENDING);
                     Dict consoleEvent = mockConsoleView.getHazardEvents()
                             .get(0);
                     eventID = consoleEvent
@@ -137,7 +137,7 @@ public class StormTrackFunctionalTest extends FunctionalTest {
                     assertEquals(events.size(), 1);
                     IHazardEvent event = (IHazardEvent) events.iterator()
                             .next();
-                    assertEquals(event.getState(), HazardState.PENDING);
+                    assertEquals(event.getStatus(), HazardStatus.PENDING);
                     assertEquals(event.getEventID(), eventID);
                     autoTestUtilities
                             .changeStaticSettings(CANNED_FLOOD_SETTING);

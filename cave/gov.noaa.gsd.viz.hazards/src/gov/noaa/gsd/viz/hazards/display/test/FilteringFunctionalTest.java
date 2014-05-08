@@ -186,9 +186,9 @@ public class FilteringFunctionalTest extends FunctionalTest {
 
         Settings currentSettings = appBuilder.getCurrentSettings();
         savedCurrentSettings = new Settings(currentSettings);
-        Set<String> visibleStates = Sets.newHashSet();
+        Set<String> visibleStatuses = Sets.newHashSet();
         Settings settings = autoTestUtilities.buildEventFilterCriteria(
-                visibleTypes, visibleStates, visibleSites);
+                visibleTypes, visibleStatuses, visibleSites);
         stepCompleted();
         step = Steps.CHANGING_CURRENT_SETTTINGS;
         autoTestUtilities.changeCurrentSettings(settings);

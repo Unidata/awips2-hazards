@@ -17,7 +17,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PROPOSE_SELECTED_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.REMOVE_POTENTIAL_HAZARDS;
@@ -66,7 +66,7 @@ import org.apache.commons.lang.math.NumberUtils;
 
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -251,8 +251,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                         FLASH_FLOOD_WATCH_PHEN_SIG);
                 event = hazards.get(1);
                 assertEquals(event.get(HAZARD_EVENT_TYPE), FLOOD_WATCH_PHEN_SIG);
-                assertEquals(event.get(HAZARD_EVENT_STATE),
-                        HazardState.POTENTIAL.getValue());
+                assertEquals(event.get(HAZARD_EVENT_STATUS),
+                        HazardStatus.POTENTIAL.getValue());
                 assertEquals(event.get(HAZARD_EVENT_COLOR), "191 221 216");
 
                 String e0 = hazards.get(0).getDynamicallyTypedValue(
@@ -425,7 +425,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
             case REPLACEMENT_ISSUE_FIRST_PRODUCT:
                 checkOriginalProductsEnded();
-                checkReplacementEvents(HazardState.ISSUED.getValue());
+                checkReplacementEvents(HazardStatus.ISSUED.getValue());
                 checkEndedEventsGoneFromHid();
                 Map<String, Serializable> metadata = new HashMap<>();
                 metadata.put(INCLUDE, SEV2);
@@ -443,7 +443,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case CONTINUED_ISSUE_FIRST_PRODUCT:
-                checkReplacementEvents(HazardState.ISSUED.getValue());
+                checkReplacementEvents(HazardStatus.ISSUED.getValue());
                 stepCompleted();
                 step = Steps.REMOVING_ENDED_EVENTS;
                 postContextMenuEvent(CONTEXT_MENU_END);
@@ -457,7 +457,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case ENDED_ISSUE_FIRST_PRODUCT:
-                checkReplacementEvents(HazardState.ENDED.getValue());
+                checkReplacementEvents(HazardStatus.ENDED.getValue());
                 stepCompleted();
                 step = Steps.TEST_ENDED;
                 stepCompleted();
@@ -493,19 +493,19 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private void checkReplacementEvents(String state) {
         Dict event;
         event = getEventByType(FLOOD_WARNING_PHEN_SIG);
-        assertEquals(event.get(HAZARD_EVENT_STATE), state);
+        assertEquals(event.get(HAZARD_EVENT_STATUS), state);
         event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
-        assertEquals(event.get(HAZARD_EVENT_STATE), state);
+        assertEquals(event.get(HAZARD_EVENT_STATUS), state);
     }
 
     private void checkOriginalProductsEnded() {
         Dict event;
         event = getEventByType(FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.ENDED.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.ENDED.getValue());
         event = getEventByType(FLASH_FLOOD_WATCH_PHEN_SIG);
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.ENDED.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.ENDED.getValue());
     }
 
     private Dict getEventByType(String eventType) {
@@ -562,8 +562,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         int numIssued = 0;
         for (Dict hazard : hazards) {
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HAZARD_EVENT_STATE);
-            if (stateAsString.equals(HazardState.ISSUED.getValue())) {
+                    .getDynamicallyTypedValue(HAZARD_EVENT_STATUS);
+            if (stateAsString.equals(HazardStatus.ISSUED.getValue())) {
                 numIssued += 1;
             }
 
@@ -647,8 +647,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_TYPE), FLASH_FLOOD_WATCH_PHEN_SIG);
         assertEquals(event.get(SITE_ID), OAX);
         assertEquals(event.get(CAUSE), "Dam Failure");
-        assertEquals(event.get(HAZARD_EVENT_STATE),
-                HazardState.PENDING.getValue());
+        assertEquals(event.get(HAZARD_EVENT_STATUS),
+                HazardStatus.PENDING.getValue());
 
         assertEquals(asDouble(event.get(CREATION_TIME)), new Double(
                 1.2971376E12));
@@ -670,8 +670,8 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         List<Dict> consoleEvents = this.mockConsoleView.getHazardEvents();
         assertEquals(consoleEvents.size(), 4);
         Dict updatedDamBreakEvent = consoleEvents.get(2);
-        assertEquals(updatedDamBreakEvent.get(HAZARD_EVENT_STATE),
-                HazardState.PENDING.getValue());
+        assertEquals(updatedDamBreakEvent.get(HAZARD_EVENT_STATUS),
+                HazardStatus.PENDING.getValue());
         assertEquals(updatedDamBreakEvent.get(HAZARD_EVENT_TYPE),
                 FFW_NON_CONVECTIVE_PHEN_SIG);
 

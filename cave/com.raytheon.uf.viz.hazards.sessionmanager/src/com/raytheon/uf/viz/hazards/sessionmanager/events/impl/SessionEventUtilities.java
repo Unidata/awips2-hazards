@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -85,10 +85,10 @@ public class SessionEventUtilities {
         if (isEnded(oldEvent) == false) {
             if (oldEvent instanceof ObservedHazardEvent) {
                 ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
-                obEvent.setState(newEvent.getState(), true, false,
+                obEvent.setStatus(newEvent.getStatus(), true, false,
                         Originator.OTHER);
             } else {
-                oldEvent.setState(newEvent.getState());
+                oldEvent.setStatus(newEvent.getStatus());
             }
         }
     }
@@ -102,8 +102,8 @@ public class SessionEventUtilities {
      */
     public static boolean isEnded(IHazardEvent event) {
         Date currTime = SimulatedTime.getSystemTime().getTime();
-        if (event.getState() == HazardState.ENDED
-                || (event.getState() == HazardState.ISSUED && (event
+        if (event.getStatus() == HazardStatus.ENDED
+                || (event.getStatus() == HazardStatus.ISSUED && (event
                         .getEndTime().before(currTime)))) {
             return true;
         }

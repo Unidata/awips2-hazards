@@ -264,7 +264,7 @@ class Recommender(RecommenderTemplate.Recommender):
         resultDict["endTime"] = endTime
         # resultDict["draggedPoints"] = \
         #     [ ((latLon0.lon, latLon0.lat), draggedPointTime) ]
-        resultDict["state"] = "pending"
+        resultDict["status"] = "pending"
         resultDict["stormMotion"] = stormMotion
         resultDict["pivots"] = pivotList
         resultDict["pivotTimes"] = pivotTimeList
@@ -320,7 +320,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent = EventFactory.createEvent()
         hazardEvent.setEventID("")
         hazardEvent.setSiteID(str(forJavaObj["SiteID"]))
-        hazardEvent.setHazardState("PENDING")
+        hazardEvent.setHazardStatus("PENDING")
 
         # New recommender framework requires some datetime objects, which must
         # be in units of seconds.

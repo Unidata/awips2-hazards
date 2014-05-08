@@ -22,7 +22,7 @@
 '''
 
 class HazardEvent:
-    def __init__(self, siteID=None, eventID=None, uniqueID=None, state=None, phenomenon=None, 
+    def __init__(self, siteID=None, eventID=None, uniqueID=None, status=None, phenomenon=None,
                  significance=None, subtype=None, startTime=None, endTime=None, creationTime=None,
                  hazardMode=None, geometry=None, hazardAttributes={}):
 
@@ -31,10 +31,10 @@ class HazardEvent:
         self.uniqueID = uniqueID
     
         '''
-         * The state of the record at this point in time
-         HazardState
+         * The status of the record at this point in time
+         HazardStatus
         '''
-        self.state = state
+        self.status = status
     
         '''
          * Phenomenon that is being recorded
@@ -122,17 +122,17 @@ class HazardEvent:
         self.uniqueID = uniqueID
     
     '''
-     * @return the state
+     * @return the status
     '''    
-    def getHazardState(self):
-        return self.state
+    def getHazardStatus(self):
+        return self.status
     
     '''
-     * @param state
-     *            the state to set
+     * @param status
+     *            the status to set
     '''
-    def setHazardState(self, state):
-        self.state = state
+    def setHazardStatus(self, status):
+        self.status = status
     
     '''
      * @return the phenomenon
@@ -291,7 +291,7 @@ class HazardEvent:
         outStr = outStr + "Phensig : " + self.phenomenon  + "." + self.significance  + "\n"
         outStr = outStr + "Start Time : " + str(self.startTime)+ "\n"
         outStr = outStr + "End Time : " +str(self.endTime) + "\n"
-        outStr = outStr + "State : " +self.state + "\n"
+        outStr = outStr + "Status : " + self.status + "\n"
         if self.hazardAttributes:
             outStr = outStr + "--Attributes--\n"
             for key in self.hazardAttributes:

@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -100,12 +100,12 @@ public abstract class AbstractSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsByState(HazardState state) {
+    public Collection<ObservedHazardEvent> getEventsByStatus(HazardStatus state) {
         Collection<ObservedHazardEvent> allEvents = getEvents();
         Collection<ObservedHazardEvent> events = new ArrayList<>(
                 allEvents.size());
         for (ObservedHazardEvent event : allEvents) {
-            if (event.getState().equals(state)) {
+            if (event.getStatus().equals(state)) {
                 events.add(event);
             }
         }
@@ -143,8 +143,8 @@ public abstract class AbstractSessionEventManager implements
              * Once selected, a potential event or set of events should be set
              * to PENDING.
              */
-            if (event.getState() == HazardState.POTENTIAL) {
-                event.setState(HazardState.PENDING, Originator.OTHER);
+            if (event.getStatus() == HazardStatus.POTENTIAL) {
+                event.setStatus(HazardStatus.PENDING, Originator.OTHER);
             }
         }
     }

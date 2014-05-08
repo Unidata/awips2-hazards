@@ -65,7 +65,7 @@ import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -622,7 +622,7 @@ public class ToolLayer extends
              * filtered out by time.
              */
             if (!(HazardServicesDrawableBuilder.forModifyingStormTrack(event) && event
-                    .getState() != HazardState.ISSUED)) {
+                    .getStatus() != HazardStatus.ISSUED)) {
 
                 if (!doesEventOverlapSelectedTime(event, selectedRange,
                         selectedTime)) {

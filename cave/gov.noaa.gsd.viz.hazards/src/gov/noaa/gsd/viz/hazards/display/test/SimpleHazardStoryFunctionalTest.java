@@ -519,8 +519,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         Dict hazard = hazards.get(0);
         String stateAsString = hazard
-                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
-        assertTrue(stateAsString.equals(HazardConstants.HazardState.ISSUED
+                .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATUS);
+        assertTrue(stateAsString.equals(HazardConstants.HazardStatus.ISSUED
                 .getValue()));
     }
 
@@ -546,7 +546,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             String hazardType = hazard
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATUS);
 
             hazardStateMap.put(hazardType, stateAsString);
 
@@ -556,9 +556,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WATCH_PHEN_SIG));
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WARNING_PHEN_SIG));
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WATCH_PHEN_SIG),
-                HazardConstants.HazardState.ENDED.getValue());
+                HazardConstants.HazardStatus.ENDED.getValue());
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WARNING_PHEN_SIG),
-                HazardConstants.HazardState.ISSUED.getValue());
+                HazardConstants.HazardStatus.ISSUED.getValue());
     }
 
     /**
@@ -584,7 +584,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             String hazardType = hazard
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATUS);
 
             hazardStateMap.put(hazardType, stateAsString);
 
@@ -594,9 +594,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WATCH_PHEN_SIG));
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WARNING_PHEN_SIG));
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WATCH_PHEN_SIG),
-                HazardConstants.HazardState.ENDED.getValue());
+                HazardConstants.HazardStatus.ENDED.getValue());
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WARNING_PHEN_SIG),
-                HazardConstants.HazardState.ENDED.getValue());
+                HazardConstants.HazardStatus.ENDED.getValue());
     }
 
     /**
@@ -622,7 +622,7 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
             String hazardType = hazard
                     .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_TYPE);
             String stateAsString = hazard
-                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATE);
+                    .getDynamicallyTypedValue(HazardConstants.HAZARD_EVENT_STATUS);
 
             hazardStateMap.put(hazardType, stateAsString);
 
@@ -632,9 +632,9 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WATCH_PHEN_SIG));
         assertTrue(hazardStateMap.containsKey(AREAL_FLOOD_WARNING_PHEN_SIG));
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WATCH_PHEN_SIG),
-                HazardConstants.HazardState.ENDED.getValue());
+                HazardConstants.HazardStatus.ENDED.getValue());
         assertEquals(hazardStateMap.get(AREAL_FLOOD_WARNING_PHEN_SIG),
-                HazardConstants.HazardState.ISSUED.getValue());
+                HazardConstants.HazardStatus.ISSUED.getValue());
     }
 
 }

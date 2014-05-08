@@ -61,12 +61,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 public final class HazardConstants {
 
     // part of the hazard lifecycle that the user will see
-    public enum HazardState {
+    public enum HazardStatus {
         PENDING("pending"), POTENTIAL("potential"), PROPOSED("proposed"), ISSUED(
                 "issued"), ENDED("ended");
         private final String value;
 
-        private HazardState(String value) {
+        private HazardStatus(String value) {
             this.value = value;
         }
 
@@ -75,13 +75,13 @@ public final class HazardConstants {
         }
     }
 
-    public static HazardState hazardStateFromString(String value) {
-        return HazardState.valueOf(String.valueOf(value).toUpperCase());
+    public static HazardStatus hazardStatusFromString(String value) {
+        return HazardStatus.valueOf(String.valueOf(value).toUpperCase());
     }
 
-    public static List<String> hazardStatesAsStringList() {
+    public static List<String> hazardStatusesAsStringList() {
         List<String> vals = new ArrayList<String>();
-        for (HazardState state : HazardState.values()) {
+        for (HazardStatus state : HazardStatus.values()) {
             vals.add(state.toString().toLowerCase());
         }
         return vals;
@@ -471,7 +471,7 @@ public final class HazardConstants {
     /**
      * State key in hazard
      */
-    public static final String HAZARD_EVENT_STATE = "state";
+    public static final String HAZARD_EVENT_STATUS = "status";
 
     /*
      * The following are used to identify elements in the session state.
@@ -666,7 +666,7 @@ public final class HazardConstants {
      */
     public static final String SETTING_HAZARD_TYPES = "visibleTypes";
 
-    public static final String SETTING_HAZARD_STATES = "visibleStates";
+    public static final String SETTING_HAZARD_STATES = "visibleStatuses";
 
     public static final String SETTING_HAZARD_SITES = "visibleSites";
 

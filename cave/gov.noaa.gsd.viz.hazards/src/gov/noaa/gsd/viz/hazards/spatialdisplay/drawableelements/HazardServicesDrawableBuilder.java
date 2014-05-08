@@ -31,7 +31,7 @@ import java.util.Set;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -416,8 +416,8 @@ public class HazardServicesDrawableBuilder {
         addTextComponent(toolLayer, hazardEvent.getEventID(), result,
                 polygonDrawable);
 
-        if (hazardEvent.getState() != HazardState.ISSUED
-                && hazardEvent.getState() != HazardState.PROPOSED) {
+        if (hazardEvent.getStatus() != HazardStatus.ISSUED
+                && hazardEvent.getStatus() != HazardStatus.PROPOSED) {
             LineString trackLineString = (LineString) hazardEvent
                     .getHazardAttribute(HazardConstants.STORM_TRACK_LINE);
 

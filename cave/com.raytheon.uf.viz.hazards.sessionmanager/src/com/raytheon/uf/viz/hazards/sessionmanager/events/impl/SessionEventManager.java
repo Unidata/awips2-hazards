@@ -63,7 +63,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
@@ -301,7 +301,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             oldEvent = event;
             IHazardEvent baseEvent = new BaseHazardEvent(event);
             baseEvent.setEventID("");
-            baseEvent.setState(HazardState.PENDING);
+            baseEvent.setStatus(HazardStatus.PENDING);
             baseEvent.addHazardAttribute(HazardConstants.REPLACES,
                     configManager.getHeadline(oldEvent));
 
@@ -355,7 +355,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 oldEvent.addHazardAttribute(REPLACED_BY,
                         configManager.getHeadline(tempEvent), originator);
                 oldEvent.addHazardAttribute(PREVIEW_STATE,
-                        HazardConstants.HazardState.ENDED.getValue(),
+                        HazardConstants.HazardStatus.ENDED.getValue(),
                         originator);
             }
 
@@ -901,14 +901,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
         Settings settings = configManager.getSettings();
         Set<String> siteIDs = settings.getVisibleSites();
         Set<String> phenSigs = settings.getVisibleTypes();
-        Set<HazardState> states = EnumSet.noneOf(HazardState.class);
-        for (String state : settings.getVisibleStates()) {
-            states.add(HazardState.valueOf(state.toUpperCase()));
+        Set<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
+        for (String state : settings.getVisibleStatuses()) {
+            states.add(HazardStatus.valueOf(state.toUpperCase()));
         }
         Iterator<? extends IHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
-            if (!states.contains(event.getState())) {
+            if (!states.contains(event.getStatus())) {
                 it.remove();
             } else if (!siteIDs.contains(event.getSiteID())) {
                 it.remove();
@@ -939,15 +939,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
         filters.put(HazardConstants.PHEN_SIG, new ArrayList<Object>(
                 visibleTypes));
-        Set<String> visibleStates = settings.getVisibleStates();
-        if (visibleStates == null || visibleStates.isEmpty()) {
+        Set<String> visibleStatuses = settings.getVisibleStatuses();
+        if (visibleStatuses == null || visibleStatuses.isEmpty()) {
             return;
         }
-        List<Object> states = new ArrayList<Object>(visibleStates.size());
-        for (String state : visibleStates) {
-            states.add(HazardState.valueOf(state.toUpperCase()));
+        List<Object> states = new ArrayList<Object>(visibleStatuses.size());
+        for (String state : visibleStatuses) {
+            states.add(HazardStatus.valueOf(state.toUpperCase()));
         }
-        filters.put(HazardConstants.HAZARD_EVENT_STATE, states);
+        filters.put(HazardConstants.HAZARD_EVENT_STATUS, states);
         Map<String, HazardHistoryList> eventsMap = dbManager
                 .getEventsByFilter(filters);
         synchronized (events) {
@@ -960,7 +960,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 }
                 event = addEvent(event, false, Originator.OTHER);
                 for (IHazardEvent histEvent : list) {
-                    if (histEvent.getState() == HazardState.ISSUED) {
+                    if (histEvent.getStatus() == HazardStatus.ISSUED) {
                         event.addHazardAttribute(ATTR_ISSUED, true);
                         break;
                     }
@@ -975,10 +975,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Override
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
-        HazardState state = event.getState();
-        if (state == null || state == HazardState.PENDING) {
+        HazardStatus state = event.getStatus();
+        if (state == null || state == HazardStatus.PENDING) {
             return addEvent(event, true, originator);
-        } else if (state == HazardState.POTENTIAL) {
+        } else if (state == HazardStatus.POTENTIAL) {
             return addEvent(event, false, originator);
         } else {
             List<IHazardEvent> list = new ArrayList<IHazardEvent>();
@@ -1024,8 +1024,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         // verify that the hazard was not created server-side to fulfill
         // interoperability requirements
-        if ((event.getState() == null
-                || event.getState() == HazardState.PENDING || event.getState() == HazardState.POTENTIAL)
+        if ((event.getStatus() == null
+                || event.getStatus() == HazardStatus.PENDING || event
+                .getStatus() == HazardStatus.POTENTIAL)
                 && event.getHazardAttributes().containsKey(
                         HazardConstants.GFE_INTEROPERABILITY) == false) {
 
@@ -1081,12 +1082,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
             long d = settings.getDefaultDuration();
             oevent.setEndTime(new Date(s + d), false, originator);
         }
-        if (oevent.getState() == null) {
-            oevent.setState(HazardState.PENDING, false, false, originator);
+        if (oevent.getStatus() == null) {
+            oevent.setStatus(HazardStatus.PENDING, false, false, originator);
         }
 
         if (SessionEventUtilities.isEnded(oevent)) {
-            oevent.setState(HazardState.ENDED);
+            oevent.setStatus(HazardStatus.ENDED);
         }
         String sig = oevent.getSignificance();
         if (sig != null) {
@@ -1125,7 +1126,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
         oevent.addHazardAttribute(ATTR_SELECTED, false, false, originator);
         oevent.addHazardAttribute(ATTR_CHECKED, false, false, originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
-                oevent.getState().equals(HazardState.ISSUED), false, originator);
+                oevent.getStatus().equals(HazardStatus.ISSUED), false,
+                originator);
 
         if (localEvent) {
             oevent.addHazardAttribute(ATTR_SELECTED, true);
@@ -1245,7 +1247,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
             ObservedHazardEvent event = (ObservedHazardEvent) notification
                     .getEvent();
-            HazardState newState = event.getState();
+            HazardStatus newState = event.getStatus();
             boolean needsPersist = false;
             switch (newState) {
             case ISSUED:
@@ -1293,7 +1295,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      */
     private void scheduleExpirationTask(final ObservedHazardEvent event) {
         if (eventExpirationTimer != null) {
-            if (event.getState() == HazardState.ISSUED) {
+            if (event.getStatus() == HazardStatus.ISSUED) {
                 final String eventId = event.getEventID();
                 TimerTask existingTask = expirationTasks.get(eventId);
                 if (existingTask != null) {
@@ -1303,7 +1305,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 TimerTask task = new TimerTask() {
                     @Override
                     public void run() {
-                        event.setState(HazardState.ENDED, true, true,
+                        event.setStatus(HazardStatus.ENDED, true, true,
                                 Originator.OTHER);
                         expirationTasks.remove(eventId);
                     }
@@ -1353,8 +1355,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 }
 
                 for (ObservedHazardEvent event : events) {
-                    if (event.getState() == HazardState.ENDED) {
-                        event.setState(HazardState.ISSUED);
+                    if (event.getStatus() == HazardStatus.ENDED) {
+                        event.setStatus(HazardStatus.ISSUED);
                     }
                     scheduleExpirationTask(event);
                 }
@@ -1554,12 +1556,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     }
 
                     hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_STATE,
-                            HazardState.ISSUED);
+                            HazardConstants.HAZARD_EVENT_STATUS,
+                            HazardStatus.ISSUED);
 
                     hazardQueryBuilder.addKey(
-                            HazardConstants.HAZARD_EVENT_STATE,
-                            HazardState.PROPOSED);
+                            HazardConstants.HAZARD_EVENT_STATUS,
+                            HazardStatus.PROPOSED);
 
                     List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(hazardQueryBuilder);
 
@@ -1679,7 +1681,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             IHazardEvent eventFromManager = historyList.get(0);
 
             if (!sessionEventMap.containsKey(eventID)) {
-                if (eventFromManager.getState() != HazardState.ENDED) {
+                if (eventFromManager.getStatus() != HazardStatus.ENDED) {
                     eventsToCheck.add(eventFromManager);
                 }
             }
@@ -1806,14 +1808,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Override
     public void endEvent(ObservedHazardEvent event, IOriginator originator) {
         event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, false);
-        event.setState(HazardState.ENDED, true, true, originator);
+        event.setStatus(HazardStatus.ENDED, true, true, originator);
         clearUndoRedo(event);
         event.setModified(false);
     }
 
     @Override
     public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.setState(HazardState.ISSUED, true, true, originator);
+        event.setStatus(HazardStatus.ISSUED, true, true, originator);
         clearUndoRedo(event);
         event.setModified(false);
     }
@@ -1825,11 +1827,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
          * Only propose events that are not already proposed, and are not issued
          * or ended, and that have a valid type.
          */
-        HazardState state = event.getState();
-        if ((state != HazardState.ISSUED) && (state != HazardState.ENDED)
-                && (state != HazardState.PROPOSED)
+        HazardStatus state = event.getStatus();
+        if ((state != HazardStatus.ISSUED) && (state != HazardStatus.ENDED)
+                && (state != HazardStatus.PROPOSED)
                 && (event.getPhenomenon() != null)) {
-            event.setState(HazardState.PROPOSED, true, true, originator);
+            event.setStatus(HazardStatus.PROPOSED, true, true, originator);
             clearUndoRedo(event);
             event.setModified(false);
         }
@@ -1854,9 +1856,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
                         .getHazardType());
 
-                if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
-                        .getState() != HazardState.ISSUED)
-                        || (selectedEvent.getState() == HazardState.ISSUED
+                if ((selectedEvent.getStatus() != HazardStatus.ENDED && selectedEvent
+                        .getStatus() != HazardStatus.ISSUED)
+                        || (selectedEvent.getStatus() == HazardStatus.ISSUED
                                 && hazardType.isAllowAreaChange() && selectedEvent
                                     .isModified())) {
 
@@ -1917,9 +1919,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
                         .getHazardType());
 
-                if ((selectedEvent.getState() != HazardState.ENDED && selectedEvent
-                        .getState() != HazardState.ISSUED)
-                        || (selectedEvent.getState() == HazardState.ISSUED
+                if ((selectedEvent.getStatus() != HazardStatus.ENDED && selectedEvent
+                        .getStatus() != HazardStatus.ISSUED)
+                        || (selectedEvent.getStatus() == HazardStatus.ISSUED
                                 && hazardType.isAllowAreaChange() && selectedEvent
                                     .isModified())) {
 
@@ -1994,7 +1996,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 .getHazardType());
 
         if (hazardTypeEntry != null
-                && hazardEvent.getState() == HazardState.ISSUED) {
+                && hazardEvent.getStatus() == HazardStatus.ISSUED) {
             return hazardTypeEntry.isAllowAreaChange();
         } else {
             return true;

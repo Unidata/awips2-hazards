@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
@@ -105,16 +105,16 @@ public class HazardEventUtilities {
     }
 
     /**
-     * Returns a {@link HazardState} based on the VTEC action code.
+     * Returns a {@link HazardStatus} based on the VTEC action code.
      * 
      * @param action
      * @return
      */
-    public static HazardState stateBasedOnAction(String action) {
+    public static HazardStatus stateBasedOnAction(String action) {
         if ("CAN".equals(action) || "EXP".equals(action)) {
-            return HazardState.ENDED;
+            return HazardStatus.ENDED;
         } else {
-            return HazardState.ISSUED;
+            return HazardStatus.ISSUED;
         }
     }
 

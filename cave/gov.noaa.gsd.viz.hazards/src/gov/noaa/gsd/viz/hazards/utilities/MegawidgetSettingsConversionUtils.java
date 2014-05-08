@@ -20,14 +20,14 @@
 package gov.noaa.gsd.viz.hazards.utilities;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -145,9 +145,9 @@ public class MegawidgetSettingsConversionUtils {
         currentSettingsMap.put("visibleTypes",
                 observedSettings.getVisibleTypes());
 
-        // Add 'visibleStates' to the map
-        currentSettingsMap.put("visibleStates",
-                observedSettings.getVisibleStates());
+        // Add 'visibleStatuses' to the map
+        currentSettingsMap.put("visibleStatuses",
+                observedSettings.getVisibleStatuses());
 
         // Build the 'toolbarTools' list of maps
         List<Map<String, Object>> toolsMapsList = new LinkedList<Map<String, Object>>();
@@ -224,15 +224,15 @@ public class MegawidgetSettingsConversionUtils {
                 .get("visibleTypes"));
 
         // Update the visible states
-        if (settingsMap.get("visibleStates") instanceof List<?>) {
-            Set<String> visibleStatesSet = new HashSet<String>();
-            for (Object state : (List<?>) settingsMap.get("visibleStates")) {
-                visibleStatesSet.add(state.toString());
+        if (settingsMap.get("visibleStatuses") instanceof List<?>) {
+            Set<String> visibleStatusesSet = new HashSet<String>();
+            for (Object state : (List<?>) settingsMap.get("visibleStatuses")) {
+                visibleStatusesSet.add(state.toString());
             }
-            updatedSettings.setVisibleStates(visibleStatesSet);
+            updatedSettings.setVisibleStatuses(visibleStatusesSet);
         } else {
-            updatedSettings.setVisibleStates((Set<String>) settingsMap
-                    .get("visibleStates"));
+            updatedSettings.setVisibleStatuses((Set<String>) settingsMap
+                    .get("visibleStatuses"));
         }
 
         // Update the visibleSites

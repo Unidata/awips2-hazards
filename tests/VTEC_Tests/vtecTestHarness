@@ -123,7 +123,7 @@ class VTECTestHarness(object):
             event = HazardEvent()
             event.setHazardAttributes({})
             event.setEventID('0')
-            event.setState("ISSUED")
+            event.setStatus("ISSUED")
             attributes = copy.deepcopy(base)
             if geoType == 'area':
                 attributes['ugcs'] = zones
@@ -153,7 +153,7 @@ class VTECTestHarness(object):
                     if k == "eventID":
                         event.setEventID(str(v))
                     elif k== 'state':
-                        event.setState(v.upper())
+                        event.setStatus(v.upper())
                     else:
                         attributes[k] = v
             event.addHazardAttributes(attributes)

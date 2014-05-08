@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -52,7 +52,7 @@ public class SessionEventStateModified extends SessionEventModified implements
         super(eventManager, event, originator);
     }
 
-    public HazardState getState() {
-        return getEvent().getState();
+    public HazardStatus getStatus() {
+        return getEvent().getStatus();
     }
 }

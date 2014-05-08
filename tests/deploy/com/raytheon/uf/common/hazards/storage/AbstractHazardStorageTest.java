@@ -37,7 +37,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
@@ -84,7 +84,7 @@ public abstract class AbstractHazardStorageTest {
 
     private final String sig = "P"; // apocalypse!
 
-    private final HazardState state = HazardState.POTENTIAL;
+    private final HazardStatus state = HazardStatus.POTENTIAL;
 
     private final TimeUnit time = TimeUnit.DAYS;
 
@@ -122,7 +122,7 @@ public abstract class AbstractHazardStorageTest {
         createdEvent.setPhenomenon(phen);
         createdEvent.setSignificance(sig);
         createdEvent.setSiteID(site);
-        createdEvent.setState(state);
+        createdEvent.setStatus(state);
         createdEvent.setStartTime(date);
         createdEvent.setSubType("Biohazard");
 

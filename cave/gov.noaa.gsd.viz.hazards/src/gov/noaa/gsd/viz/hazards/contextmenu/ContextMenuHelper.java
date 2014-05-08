@@ -36,7 +36,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardState;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -86,27 +86,27 @@ public class ContextMenuHelper {
             boolean includeGlobal) {
         List<IContributionItem> items = new ArrayList<>();
 
-        EnumSet<HazardState> states = EnumSet.noneOf(HazardState.class);
+        EnumSet<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
         for (ObservedHazardEvent event : manager.getEventManager()
                 .getSelectedEvents()) {
-            states.add(event.getState());
+            states.add(event.getStatus());
         }
         if (manager.getEventManager().getSelectedEvents().isEmpty() == false) {
-            if (states.contains(HazardState.PROPOSED) == false) {
+            if (states.contains(HazardStatus.PROPOSED) == false) {
                 items.add(newAction(HazardConstants.PROPOSE_SELECTED_HAZARDS));
             }
-            if (states.contains(HazardState.ISSUED) == false) {
+            if (states.contains(HazardStatus.ISSUED) == false) {
                 items.add(newAction("Issue Selected..."));
                 items.add(new Separator());
                 items.add(newAction("Delete Selected"));
             }
-            if (states.contains(HazardState.ISSUED)) {
+            if (states.contains(HazardStatus.ISSUED)) {
                 items.add(newAction(HazardConstants.END_SELECTED_HAZARDS));
             }
         }
         if (includeGlobal) {
             if (manager.getEventManager()
-                    .getEventsByState(HazardState.POTENTIAL).isEmpty() == false) {
+                    .getEventsByStatus(HazardStatus.POTENTIAL).isEmpty() == false) {
                 items.add(newAction(HazardConstants.REMOVE_POTENTIAL_HAZARDS));
             }
         }

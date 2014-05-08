@@ -171,7 +171,7 @@ InputTestCaseData = { \
         1297137600000
     ], 
     "modifyCallbackToolName": "ModifyStormTrackTool", 
-    "state": "pending", 
+    "status": "pending",
     "startTime": 1297137600000, 
     "creationTime": 1297137600000, 
     "endTime": 1297139400000, 
@@ -267,7 +267,7 @@ TestCaseResults = \
     ], 
     "selected": True, 
     "startTime": 1297137600000, 
-    "state": "pending", 
+    "status": "pending",
     "stormMotion": {
         "bearing": 225.0001402222228,
         "speed": 20.00001004989287
