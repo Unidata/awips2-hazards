@@ -18,9 +18,6 @@
    </license>
 
    <requires>
-      <import plugin="org.eclipse.ui"/>
-      <import plugin="org.eclipse.core.runtime"/>
-      <import plugin="com.raytheon.uf.common.monitor"/>
       <import feature="com.raytheon.uf.viz.datadelivery.feature" version="1.0.0.qualifier"/>
       <import feature="com.raytheon.uf.viz.core.feature" version="1.0.0.qualifier"/>
       <import feature="com.raytheon.uf.viz.ncep.displays.feature" version="1.0.0.qualifier"/>
