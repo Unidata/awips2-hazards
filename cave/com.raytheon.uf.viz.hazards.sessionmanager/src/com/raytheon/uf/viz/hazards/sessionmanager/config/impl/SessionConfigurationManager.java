@@ -121,6 +121,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
  * Apr 29, 2014  2925      Chris.Golden Changed to support loading of class-based metadata
  *                                      for HID dynamically, instead of all at once at
  *                                      startup.
+ * May 15, 2014  2925      Chris.Golden Added missing Python path for Jep that was messing
+ *                                      up H.S. startup on some machines.
  * </pre>
  * 
  * @author bsteffen
@@ -148,6 +150,8 @@ public class SessionConfigurationManager implements
     private static final String BRIDGE = "bridge";
 
     private static final String EVENTS = "events";
+
+    private static final String EVENTS_UTILITIES = "events/utilities";
 
     private ISessionNotificationSender notificationSender;
 
@@ -265,6 +269,8 @@ public class SessionConfigurationManager implements
             String logUtilitiesPath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
             String eventsPath = FileUtil.join(pythonPath, EVENTS);
+            String eventsUtilitiesPath = FileUtil.join(pythonPath,
+                    EVENTS_UTILITIES);
             String bridgePath = FileUtil.join(pythonPath, BRIDGE);
 
             /**
@@ -277,7 +283,8 @@ public class SessionConfigurationManager implements
             String includePath = PyUtil.buildJepIncludePath(pythonPath,
                     localizationUtilitiesPath, logUtilitiesPath,
                     tbdWorkaroundToUEngineInLocalizationPath,
-                    vtecUtilitiesPath, eventsPath, bridgePath);
+                    vtecUtilitiesPath, eventsPath, eventsUtilitiesPath,
+                    bridgePath);
             ClassLoader cl = this.getClass().getClassLoader();
             Jep result = new Jep(false, includePath, cl);
             result.eval("import JavaImporter");
