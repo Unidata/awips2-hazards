@@ -18,7 +18,8 @@ import com.google.common.collect.Sets;
 
 /**
  * Description: Validator helper used to ensure that potential choices for
- * instances of {@link BoundedMultiChoiceValidator} are valid.
+ * instances of {@link BoundedChoiceValidator} that allow multiple choices are
+ * valid.
  * 
  * <pre>
  * 

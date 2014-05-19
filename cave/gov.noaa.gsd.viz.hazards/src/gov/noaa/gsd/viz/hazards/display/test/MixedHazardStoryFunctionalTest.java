@@ -14,7 +14,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.C
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.END_SELECTED_HAZARDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
@@ -45,12 +44,10 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.SEV2;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.DamBreakUrgencyLevels;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 
 import java.io.Serializable;
@@ -65,7 +62,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 
 import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -76,6 +72,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
@@ -95,38 +93,45 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now alerts interoperable with DRT
  * Feb 07, 2014 2890       bkowal       Product Generation JSON refactor.
  * Apr 09, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014 2925       Chris.Golden More changes to get it to work with the new HID.
+ *                                      Also changed to ensure that ongoing preview and
+ *                                      ongoing issue flags are set to false at the end
+ *                                      of each test, and moved the steps enum into the
+ *                                      base class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-class MixedHazardStoryFunctionalTest extends FunctionalTest {
+class MixedHazardStoryFunctionalTest extends
+        FunctionalTest<MixedHazardStoryFunctionalTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
-    private enum Steps {
+    protected enum Steps {
         RUN_DAM_BREAK, RUN_FLOOD, SELECT_RECOMMENDED, SELECTION_PREVIEW,
 
         SELECTION_ISSUE, REMOVING_POTENTIAL_EVENTS,
 
         UPDATING_FIRST_EVENT, UPDATING_SECOND_EVENT,
 
-        REPLACEMENT_PREVIEW_FIRST_PRODUCT, REPLACEMENT_PREVIEW_SECOND_PRODUCT, REPLACEMENT_PREVIEW_THIRD_PRODUCT,
+        REPLACEMENT_PREVIEW_PRODUCTS,
 
-        REPLACEMENT_ISSUE_FIRST_PRODUCT, REPLACEMENT_ISSUE_SECOND_PRODUCT, REPLACEMENT_ISSUE_THIRD_PRODUCT,
+        REPLACEMENT_ISSUE_PRODUCTS,
 
         CONTINUING_EVENTS,
 
-        CONTINUED_PREVIEW_FIRST_PRODUCT, CONTINUED_PREVIEW_SECOND_PRODUCT,
+        CONTINUED_PREVIEW_PRODUCTS,
 
-        CONTINUED_ISSUE_FIRST_PRODUCT, CONTINUED_ISSUE_SECOND_PRODUCT,
+        CONTINUED_ISSUE_PRODUCTS,
 
         REMOVING_ENDED_EVENTS,
 
-        ENDED_PREVIEW_FIRST_PRODUCT, ENDED_PREVIEW_SECOND_PRODUCT,
+        ENDED_PREVIEW_PRODUCTS,
 
-        ENDED_ISSUE_FIRST_PRODUCT, ENDED_ISSUE_SECOND_PRODUCT,
+        ENDED_ISSUE_PRODUCTS,
 
         TEST_ENDED
     }
@@ -134,8 +139,6 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     private static final int NUM_EVENTS_GENERATED_BY_FLOOD_RECOMMENDER = 7;
 
     private Set<String> waitingToBeSelected;
-
-    private Steps step;
 
     private int counter;
 
@@ -161,13 +164,123 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 ToolAction.ToolActionEnum.RUN_TOOL, DAM_BREAK_FLOOD_RECOMMENDER));
     }
 
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
+    @Handler(priority = -1)
+    public void sessionModifiedOccurred(final SessionModified action) {
+        if ((step == Steps.REMOVING_ENDED_EVENTS)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && appBuilder.getSessionManager().isPreviewOngoing()) {
+            stepCompleted();
+            step = Steps.ENDED_PREVIEW_PRODUCTS;
+        } else if ((step == Steps.TEST_ENDED)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && (appBuilder.getSessionManager().isPreviewOngoing() == false)) {
+            stepCompleted();
+            testSuccess();
+        }
     }
 
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
+    private int eventStateChangeCount = 0;
+
+    @Handler(priority = -1)
+    public void sessionEventStateModifiedOccurred(
+            final SessionEventStatusModified action) {
+
+        try {
+            switch (step) {
+
+            case SELECTION_ISSUE:
+
+                /*
+                 * TODO: Why does it require 4 firings of the event status
+                 * change notification for 2 events to change state once per
+                 * event? Shouldn't it say "... < 2" here? Determining this
+                 * would required seeing what's going on in the session manager
+                 * with respect to these firings; no time for that now.
+                 */
+                if (++eventStateChangeCount < 4) {
+                    return;
+                }
+                eventStateChangeCount = 0;
+                checkFirstSelectionIssue();
+                List<String> contextMenuEntries = convertContextMenuToString(toolLayer
+                        .getFlatContextMenuActions());
+                assertTrue(contextMenuEntries.contains(END_SELECTED_HAZARDS));
+                assertTrue(contextMenuEntries
+                        .contains(PROPOSE_SELECTED_HAZARDS));
+                assertTrue(contextMenuEntries
+                        .contains(REMOVE_POTENTIAL_HAZARDS));
+                stepCompleted();
+
+                step = Steps.REMOVING_POTENTIAL_EVENTS;
+                postContextMenuEvent(REMOVE_POTENTIAL_HAZARDS);
+                break;
+
+            case REPLACEMENT_ISSUE_PRODUCTS:
+
+                /*
+                 * TODO: Why does it require 8 firings of the event status
+                 * change notification for 4 events to change state once per
+                 * event? Shouldn't it say "... < 4" here? Determining this
+                 * would required seeing what's going on in the session manager
+                 * with respect to these firings; no time for that now.
+                 */
+                if (++eventStateChangeCount < 8) {
+                    return;
+                }
+                eventStateChangeCount = 0;
+                checkOriginalProductsEnded();
+                checkReplacementEvents(HazardStatus.ISSUED.getValue());
+                checkEndedEventsGoneFromHid();
+                Map<String, Serializable> metadata = new HashMap<>();
+                metadata.put(INCLUDE, SEV2);
+                stepCompleted();
+                this.step = Steps.CONTINUING_EVENTS;
+                Dict event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
+                updateEvent(event, metadata);
+                break;
+
+            case CONTINUED_ISSUE_PRODUCTS:
+
+                /*
+                 * TODO: Why does it require 4 firings of the event status
+                 * change notification for 2 events to change state once per
+                 * event? Shouldn't it say "... < 2" here? Determining this
+                 * would required seeing what's going on in the session manager
+                 * with respect to these firings; no time for that now.
+                 */
+                if (++eventStateChangeCount < 4) {
+                    return;
+                }
+                eventStateChangeCount = 0;
+                checkReplacementEvents(HazardStatus.ISSUED.getValue());
+                stepCompleted();
+                step = Steps.REMOVING_ENDED_EVENTS;
+                postContextMenuEvent(CONTEXT_MENU_END);
+                break;
+
+            case ENDED_ISSUE_PRODUCTS:
+
+                /*
+                 * TODO: Why does it require 4 firings of the event status
+                 * change notification for 2 events to change state once per
+                 * event? Shouldn't it say "... < 2" here? Determining this
+                 * would required seeing what's going on in the session manager
+                 * with respect to these firings; no time for that now.
+                 */
+                if (++eventStateChangeCount < 4) {
+                    return;
+                }
+                eventStateChangeCount = 0;
+                checkReplacementEvents(HazardStatus.ENDED.getValue());
+                stepCompleted();
+                step = Steps.TEST_ENDED;
+                break;
+
+            default:
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     @Handler(priority = -1)
@@ -184,7 +297,7 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                     }
                     if (waitingToBeSelected.isEmpty()) {
                         checkConsoleSelections();
-                        checkHidFloodEventAddition();
+                        checkFloodEventAddition();
                         stepCompleted();
                         step = Steps.SELECTION_PREVIEW;
                         autoTestUtilities.previewEvent();
@@ -193,8 +306,11 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             case CONTINUING_EVENTS:
+                if (action.getAttributeKeys().contains(INCLUDE) == false) {
+                    return;
+                }
                 stepCompleted();
-                step = Steps.CONTINUED_PREVIEW_FIRST_PRODUCT;
+                step = Steps.CONTINUED_PREVIEW_PRODUCTS;
                 autoTestUtilities.previewEvent();
                 break;
 
@@ -213,18 +329,16 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             switch (step) {
 
             case RUN_DAM_BREAK:
-                DictList hidContents;
                 hazards = mockConsoleView.getHazardEvents();
                 assertEquals(hazards.size(), 1);
 
                 Dict event = hazards.get(0);
                 checkDamBreakRecommendation(event);
 
-                hidContents = mockHazardDetailView.getContents();
+                List<ObservedHazardEvent> selectedEvents = eventManager
+                        .getSelectedEvents();
 
-                assertEquals(hidContents.size(), 1);
-                Dict hidEvent = (Dict) hidContents.get(0);
-                checkDamBreakRecommendation(hidEvent);
+                assertEquals(selectedEvents.size(), 1);
 
                 /*
                  * Note that it is not possible to check the contents of the
@@ -273,14 +387,14 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             case UPDATING_FIRST_EVENT:
                 stepCompleted();
                 step = Steps.UPDATING_SECOND_EVENT;
-                replaceEvent((Dict) mockHazardDetailView.getContents().get(1),
+                replaceEvent(getEventManager().getSelectedEvents().get(1),
                         FLW_FULL_TEXT);
                 break;
 
             case UPDATING_SECOND_EVENT:
                 checkReplacement();
                 stepCompleted();
-                step = Steps.REPLACEMENT_PREVIEW_FIRST_PRODUCT;
+                step = Steps.REPLACEMENT_PREVIEW_PRODUCTS;
                 autoTestUtilities.previewEvent();
                 break;
 
@@ -334,13 +448,6 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             final SpatialDisplayAction spatialDisplayAction) {
         try {
             switch (step) {
-            case SELECT_RECOMMENDED:
-                // checkConsoleSelections();
-                // checkHidFloodEventAddition();
-                // stepCompleted();
-                // step = Steps.SELECTION_PREVIEW;
-                // autoTestUtilities.previewEvent();
-                break;
 
             case REMOVING_POTENTIAL_EVENTS:
                 List<Dict> hazards = mockConsoleView.getHazardEvents();
@@ -349,18 +456,11 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
 
                 stepCompleted();
                 step = Steps.UPDATING_FIRST_EVENT;
-                replaceEvent((Dict) mockHazardDetailView.getContents().get(0),
+                replaceEvent(getEventManager().getSelectedEvents().get(0),
                         FFW_NON_CONVECTIVE_FULL_TEXT);
                 break;
 
-            case REMOVING_ENDED_EVENTS:
-                stepCompleted();
-                step = Steps.ENDED_PREVIEW_FIRST_PRODUCT;
-                break;
-
             default:
-                testError();
-
             }
         } catch (Exception e) {
             handleException(e);
@@ -391,7 +491,6 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
             final IProductGenerationComplete productGenerationComplete) {
 
         try {
-            Dict event;
 
             switch (step) {
             case SELECTION_PREVIEW:
@@ -401,86 +500,33 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
                 issueEvent();
                 break;
 
-            case SELECTION_ISSUE:
-                checkFirstSelectionIssue();
-                List<String> contextMenuEntries = convertContextMenuToString(toolLayer
-                        .getFlatContextMenuActions());
-                assertTrue(contextMenuEntries.contains(END_SELECTED_HAZARDS));
-                assertTrue(contextMenuEntries
-                        .contains(PROPOSE_SELECTED_HAZARDS));
-                assertTrue(contextMenuEntries
-                        .contains(REMOVE_POTENTIAL_HAZARDS));
-                stepCompleted();
-
-                step = Steps.REMOVING_POTENTIAL_EVENTS;
-                postContextMenuEvent(REMOVE_POTENTIAL_HAZARDS);
-                break;
-
-            case REPLACEMENT_PREVIEW_FIRST_PRODUCT:
+            case REPLACEMENT_PREVIEW_PRODUCTS:
                 checkReplacementPreview();
                 stepCompleted();
-                step = Steps.REPLACEMENT_ISSUE_FIRST_PRODUCT;
+                step = Steps.REPLACEMENT_ISSUE_PRODUCTS;
                 issueEvent();
                 break;
 
-            case REPLACEMENT_ISSUE_FIRST_PRODUCT:
-                checkOriginalProductsEnded();
-                checkReplacementEvents(HazardStatus.ISSUED.getValue());
-                checkEndedEventsGoneFromHid();
-                Map<String, Serializable> metadata = new HashMap<>();
-                metadata.put(INCLUDE, SEV2);
-                stepCompleted();
-                this.step = Steps.CONTINUING_EVENTS;
-                event = getEventByType(FFW_NON_CONVECTIVE_PHEN_SIG);
-                updateEvent(event, metadata);
-                break;
-
-            case CONTINUED_PREVIEW_FIRST_PRODUCT:
+            case CONTINUED_PREVIEW_PRODUCTS:
                 checkContinuedPreview();
                 stepCompleted();
-                step = Steps.CONTINUED_ISSUE_FIRST_PRODUCT;
+                step = Steps.CONTINUED_ISSUE_PRODUCTS;
                 issueEvent();
                 break;
 
-            case CONTINUED_ISSUE_FIRST_PRODUCT:
-                checkReplacementEvents(HazardStatus.ISSUED.getValue());
-                stepCompleted();
-                step = Steps.REMOVING_ENDED_EVENTS;
-                postContextMenuEvent(CONTEXT_MENU_END);
-                break;
-
-            case ENDED_PREVIEW_FIRST_PRODUCT:
+            case ENDED_PREVIEW_PRODUCTS:
                 checkEndedPreview();
                 stepCompleted();
-                step = Steps.ENDED_ISSUE_FIRST_PRODUCT;
+                step = Steps.ENDED_ISSUE_PRODUCTS;
                 issueEvent();
-                break;
-
-            case ENDED_ISSUE_FIRST_PRODUCT:
-                checkReplacementEvents(HazardStatus.ENDED.getValue());
-                stepCompleted();
-                step = Steps.TEST_ENDED;
-                stepCompleted();
-                testSuccess();
                 break;
 
             default:
-                testError();
             }
         } catch (Exception e) {
             handleException(e);
         }
 
-    }
-
-    private void checkMenuContextMenu(List<String> contextMenuEntries,
-            String expected) {
-        for (String entry : contextMenuEntries) {
-            if (entry.equals(expected)) {
-                return;
-            }
-        }
-        assertFalse(true);
     }
 
     private void postContextMenuEvent(String choice) {
@@ -601,15 +647,11 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
     }
 
     private void issueEvent() {
-        ProductEditorAction action = new ProductEditorAction(HazardAction.ISSUE);
-        action.setGeneratedProductsList(mockProductEditorView
-                .getGeneratedProductsList());
-        eventBus.publishAsync(action);
+        mockProductEditorView.invokeIssueButton();
     }
 
-    private void replaceEvent(Dict event, String eventType) {
-        String eventID = event
-                .getDynamicallyTypedValue(HAZARD_EVENT_IDENTIFIER);
+    private void replaceEvent(IHazardEvent event, String eventType) {
+        String eventID = event.getEventID();
         String[] phenSigSubType = HazardEventUtilities
                 .getHazardPhenSigSubType(eventType);
         ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
@@ -659,11 +701,12 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         assertEquals(event.get(HAZARD_EVENT_COLOR), "142 224 209");
     }
 
-    private void checkHidFloodEventAddition() {
-        DictList hidContents = mockHazardDetailView.getContents();
-        assertEquals(hidContents.size(), 2);
-        Dict floodEvent = (Dict) hidContents.get(1);
-        assertEquals(floodEvent.get(HAZARD_EVENT_TYPE), FLOOD_WATCH_PHEN_SIG);
+    private void checkFloodEventAddition() {
+        List<ObservedHazardEvent> selectedEvents = getEventManager()
+                .getSelectedEvents();
+        assertEquals(selectedEvents.size(), 2);
+        ObservedHazardEvent floodEvent = selectedEvents.get(1);
+        assertEquals(floodEvent.getHazardType(), FLOOD_WATCH_PHEN_SIG);
     }
 
     private void checkReplacement() {
@@ -679,23 +722,31 @@ class MixedHazardStoryFunctionalTest extends FunctionalTest {
         assertEquals(updatedRiverFloodEvent.get(HAZARD_EVENT_TYPE),
                 FLOOD_WARNING_PHEN_SIG);
 
-        DictList hidContents = mockHazardDetailView.getContents();
-        assertEquals(hidContents.size(), 4);
-        Dict event = (Dict) hidContents.get(2);
-        String fullType = event
-                .getDynamicallyTypedValue(HAZARD_EVENT_FULL_TYPE);
+        List<String> hidSelectedEvents = mockHazardDetailView
+                .getSelectedEventIdentifiers();
+        assertEquals(hidSelectedEvents.size(), 4);
+        List<ObservedHazardEvent> selectedEvents = getEventManager()
+                .getSelectedEvents();
+        ObservedHazardEvent event = selectedEvents.get(2);
+        assertEquals(event.getEventID(), hidSelectedEvents.get(2));
+        String fullType = event.getHazardType();
         assertTrue(fullType.contains(FFW_NON_CONVECTIVE_PHEN_SIG));
 
-        event = (Dict) hidContents.get(3);
-        fullType = event.getDynamicallyTypedValue(HAZARD_EVENT_FULL_TYPE);
+        event = selectedEvents.get(3);
+        assertEquals(event.getEventID(), hidSelectedEvents.get(3));
+        fullType = event.getHazardType();
         assertTrue(fullType.contains(FLOOD_WARNING_PHEN_SIG));
     }
 
     private void checkEndedEventsGoneFromHid() {
-        DictList hidContents = mockHazardDetailView.getContents();
-        assertEquals(hidContents.size(), 2);
-        Dict floodEvent = (Dict) hidContents.get(1);
-        assertEquals(floodEvent.get(HAZARD_EVENT_TYPE), FLOOD_WARNING_PHEN_SIG);
+        List<String> hidSelectedEvents = mockHazardDetailView
+                .getSelectedEventIdentifiers();
+        assertEquals(hidSelectedEvents.size(), 2);
+        List<ObservedHazardEvent> selectedEvents = getEventManager()
+                .getSelectedEvents();
+        ObservedHazardEvent event = selectedEvents.get(1);
+        assertEquals(event.getEventID(), hidSelectedEvents.get(1));
+        assertEquals(event.getHazardType(), FLOOD_WARNING_PHEN_SIG);
     }
 
     /**

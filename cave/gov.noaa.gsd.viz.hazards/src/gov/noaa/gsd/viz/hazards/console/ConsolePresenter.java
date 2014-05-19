@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
@@ -33,6 +34,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
  * Console presenter, used to manage the console view.
@@ -56,6 +58,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           return false. Also added passing of
  *                                           set of events allowing "until further
  *                                           notice" to the view during initialization.
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Chris.Golden
@@ -73,6 +78,13 @@ public class ConsolePresenter extends
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ConsolePresenter.class);
 
+    // Private Variables
+
+    /**
+     * JSON converter.
+     */
+    private final JSONConverter jsonConverter = new JSONConverter();
+
     // Public Constructors
 
     /**
@@ -80,20 +92,19 @@ public class ConsolePresenter extends
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            Console view to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public ConsolePresenter(ISessionManager<ObservedHazardEvent> model,
-            IConsoleView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
     }
 
     // Public Methods
 
     @Override
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
+        ISessionTimeManager timeManager = getModel().getTimeManager();
         if (changed.contains(HazardConstants.Element.CURRENT_TIME)) {
             getView().updateCurrentTime(timeManager.getCurrentTime());
         }
@@ -101,8 +112,7 @@ public class ConsolePresenter extends
             getView().updateSelectedTime(timeManager.getSelectedTime());
         }
         if (changed.contains(HazardConstants.Element.SELECTED_TIME_RANGE)) {
-            TimeRange range = getModel().getTimeManager()
-                    .getSelectedTimeRange();
+            TimeRange range = timeManager.getSelectedTimeRange();
             String updateTimeRange = jsonConverter.toJson(new String[] {
                     jsonConverter.fromDate(range.getStart()),
                     jsonConverter.fromDate(range.getEnd()) });
@@ -122,9 +132,12 @@ public class ConsolePresenter extends
             getView().updateVisibleTimeRange(earliestTime, latestTime);
         }
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(
-                    configurationManager.getSettings().getSettingsID(),
-                    configurationManager.getAvailableSettings());
+            getView()
+                    .setSettings(
+                            getModel().getConfigurationManager().getSettings()
+                                    .getSettingsID(),
+                            getModel().getConfigurationManager()
+                                    .getAvailableSettings());
         }
         if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
             updateHazardEventsForSettingChange();
@@ -133,7 +146,8 @@ public class ConsolePresenter extends
             updateHazardEventsForEventChange();
         }
         if (changed.contains(HazardConstants.Element.SITE)) {
-            view.updateTitle(configurationManager.getSiteID());
+            getView().updateTitle(
+                    getModel().getConfigurationManager().getSiteID());
         }
     }
 
@@ -145,14 +159,15 @@ public class ConsolePresenter extends
     // Protected Methods
 
     @Override
-    public final void initialize(IConsoleView<?, ?> view) {
+    protected final void initialize(IConsoleView<?, ?> view) {
 
         /*
          * Determine whether the time line navigation buttons should be in the
          * console toolbar, or below the console's table.
          */
         boolean temporalControlsInToolBar = true;
-        StartUpConfig startUpConfig = configurationManager.getStartUpConfig();
+        StartUpConfig startUpConfig = getModel().getConfigurationManager()
+                .getStartUpConfig();
         if (startUpConfig != null) {
             Console console = startUpConfig.getConsole();
             if (console != null) {
@@ -169,25 +184,38 @@ public class ConsolePresenter extends
         /*
          * Initialize the view.
          */
+        ISessionTimeManager timeManager = getModel().getTimeManager();
         view.initialize(this, timeManager.getSelectedTime(), timeManager
-                .getCurrentTime(), configurationManager.getSettings()
-                .getDefaultTimeDisplayDuration(), eventsAsDicts,
-                configurationManager.getSettings(), configurationManager
-                        .getAvailableSettings(), jsonConverter
-                        .toJson(configurationManager.getFilterConfig()),
-                alertsManager.getActiveAlerts(), eventManager
+                .getCurrentTime(), getModel().getConfigurationManager()
+                .getSettings().getDefaultTimeDisplayDuration(), eventsAsDicts,
+                getModel().getConfigurationManager().getSettings(), getModel()
+                        .getConfigurationManager().getAvailableSettings(),
+                jsonConverter.toJson(getModel().getConfigurationManager()
+                        .getFilterConfig()), getModel().getAlertsManager()
+                        .getActiveAlerts(), getModel().getEventManager()
                         .getEventIdsAllowingUntilFurtherNotice(),
                 temporalControlsInToolBar);
     }
 
+    @Override
+    protected final void reinitialize(IConsoleView<?, ?> view) {
+
+        /*
+         * No action.
+         */
+    }
+
+    // Private Methods
+
     private List<Dict> adaptEventsForDisplay() {
-        Collection<ObservedHazardEvent> currentEvents = eventManager
-                .getEventsForCurrentSettings();
+        Collection<ObservedHazardEvent> currentEvents = getModel()
+                .getEventManager().getEventsForCurrentSettings();
 
         DeprecatedEvent[] jsonEvents = DeprecatedUtilities
                 .eventsAsJSONEvents(currentEvents);
         DeprecatedUtilities.adaptJSONEvent(jsonEvents, currentEvents,
-                configurationManager, timeManager);
+                getModel().getConfigurationManager(), getModel()
+                        .getTimeManager());
         List<Dict> result = new ArrayList<>();
         for (DeprecatedEvent event : jsonEvents) {
             Dict dict = Dict.getInstance(jsonConverter.toJson(event));
@@ -213,8 +241,6 @@ public class ConsolePresenter extends
         return result;
     }
 
-    // Private Methods
-
     private void updateHazardEventsForSettingChange() {
         List<Dict> eventsAsDicts = adaptEventsForDisplay();
 
@@ -233,7 +259,7 @@ public class ConsolePresenter extends
          */
 
         getView().setHazardEvents(eventsAsDicts,
-                configurationManager.getSettings());
+                getModel().getConfigurationManager().getSettings());
     }
 
     private void updateHazardEventsForEventChange() {
@@ -281,12 +307,12 @@ public class ConsolePresenter extends
             }
         } else {
             getView().setHazardEvents(eventsAsDicts,
-                    configurationManager.getSettings());
+                    getModel().getConfigurationManager().getSettings());
         }
     }
 
     @Handler
     public void alertsModified(HazardAlertsModified notification) {
-        view.setActiveAlerts(notification.getActiveAlerts());
+        getView().setActiveAlerts(notification.getActiveAlerts());
     }
 }

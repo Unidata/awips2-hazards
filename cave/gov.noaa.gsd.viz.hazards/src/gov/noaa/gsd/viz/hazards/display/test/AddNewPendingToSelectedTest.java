@@ -13,7 +13,6 @@ import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.AREAL_FLOO
 import static gov.noaa.gsd.viz.hazards.display.test.AutoTestUtilities.EVENT_BUILDER_OFFSET;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
@@ -33,6 +32,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
@@ -50,13 +50,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Jan 10, 2014    2890       bkowal      Now subscribes to a notification indicating
  *                                     that all product generation is complete.
  * Apr 09, 2014    2925       Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014    2925       Chris.Golden More changes to get it to work with the new HID.
+ *                                         Also changed to ensure that ongoing preview and
+ *                                         ongoing issue flags are set to false at the end
+ *                                         of each test, and moved the steps enum into the
+ *                                         base class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class AddNewPendingToSelectedTest extends FunctionalTest {
+public class AddNewPendingToSelectedTest extends
+        FunctionalTest<AddNewPendingToSelectedTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
@@ -64,11 +71,9 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
     private static final double FIRST_EVENT_CENTER_X = -96.0;
 
-    private enum Steps {
-        START, EVENT0, EVENT1, PREPARE_TO_RUN_TOOL, RUN_TOOL, PREVIEW, TEAR_DOWN
+    protected enum Steps {
+        START, EVENT0, EVENT1, PREPARE_TO_RUN_TOOL, RUN_TOOL, PREVIEW, TEAR_DOWN, TEST_ENDED
     }
-
-    private Steps step;
 
     public AddNewPendingToSelectedTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -92,13 +97,14 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
                 .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.ON);
     }
 
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
-
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
+    @Handler(priority = -1)
+    public void sessionModifiedOccurred(SessionModified action) {
+        if ((step == Steps.TEST_ENDED)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && (appBuilder.getSessionManager().isPreviewOngoing() == false)) {
+            stepCompleted();
+            testSuccess();
+        }
     }
 
     @Handler(priority = -1)
@@ -115,7 +121,13 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
 
             case TEAR_DOWN:
                 stepCompleted();
-                testSuccess();
+                step = Steps.TEST_ENDED;
+
+                /*
+                 * Preview ongoing needs to be reset, since a preview was
+                 * started but is being canceled.
+                 */
+                mockProductEditorView.invokeDismissButton();
                 break;
 
             default:
@@ -207,25 +219,6 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     }
 
     @Handler(priority = -1)
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        try {
-            switch (step) {
-
-            case PREVIEW:
-                break;
-
-            default:
-                testError();
-
-            }
-        } catch (Exception e) {
-            handleException(e);
-        }
-
-    }
-
-    @Handler(priority = -1)
     public void toolActionOccurred(final ToolAction action) {
         try {
             if ((step == Steps.RUN_TOOL)
@@ -244,15 +237,21 @@ public class AddNewPendingToSelectedTest extends FunctionalTest {
     @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
-        assertEquals(productGenerationComplete.getGeneratedProducts().size(), 1);
-        EventSet<IEvent> eventSet = productGenerationComplete
-                .getGeneratedProducts().get(0).getEventSet();
-        assertEquals(eventSet.size(), 3);
-        stepCompleted();
-        step = Steps.TEAR_DOWN;
-        autoTestUtilities
-                .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.OFF);
-
+        try {
+            if (step == Steps.PREVIEW) {
+                assertEquals(productGenerationComplete.getGeneratedProducts()
+                        .size(), 1);
+                EventSet<IEvent> eventSet = productGenerationComplete
+                        .getGeneratedProducts().get(0).getEventSet();
+                assertEquals(eventSet.size(), 3);
+                stepCompleted();
+                step = Steps.TEAR_DOWN;
+                autoTestUtilities
+                        .setAddToPendingMode(SpatialDisplayAction.ActionIdentifier.OFF);
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     private ObservedHazardEvent skipToJustCreatedEventIfNecessary(

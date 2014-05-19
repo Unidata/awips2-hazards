@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.collect.ClassKeyedMap;
 import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 

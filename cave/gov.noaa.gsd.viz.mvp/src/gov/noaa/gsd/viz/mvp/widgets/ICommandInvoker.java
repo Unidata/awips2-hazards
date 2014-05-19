@@ -12,29 +12,35 @@ package gov.noaa.gsd.viz.mvp.widgets;
 /**
  * Interface describing the methods required in any sort of HMI component that,
  * when invoked, executes a command by notifying its
- * {@link ICommandInvocationHandler} of the invocation.
+ * {@link ICommandInvocationHandler} of the invocation. The generic parameter
+ * <code>I</code> provides the type of widget identifier to be used.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 08, 2014    2925    Chris.Golden Changed to inherit from new IWidget.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface ICommandInvoker {
+public interface ICommandInvoker<I> extends IWidget<I> {
 
     // Public Methods
 
     /**
-     * Set the command invocation handler. The specified handler will be
-     * notified when a command is invoked.
+     * Set the command invocation handler for the specified invoker. The
+     * specified handler will be notified when a command is invoked.
      * 
+     * @param identifier
+     *            Identifier of the invoker to have its handler set. This may be
+     *            <code>null</code> if this object only handles one type of
+     *            invocation.
      * @param handler
      *            Handler to be used.
      */
-    public void setCommandInvocationHandler(ICommandInvocationHandler handler);
+    public void setCommandInvocationHandler(I identifier,
+            ICommandInvocationHandler<I> handler);
 }

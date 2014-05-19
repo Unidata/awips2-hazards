@@ -7,10 +7,11 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.dialogs;
+package gov.noaa.gsd.viz.hazards.ui;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 
+import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.graphics.FontData;
@@ -21,19 +22,26 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.viz.ui.dialogs.CaveJFACEDialog;
 
 /**
- * Base class for dialogs that provides additional functionality over the <code>
- * CaveJFACEDialog</code>, upon which this is based.
+ * Base class for dialogs that provides additional functionality over the
+ * {@link CaveJFACEDialog}, upon which this is based.
  * <p>
  * First, it provides on a per-subclass basis the saving and restoring of dialog
  * sizes and positions. This also functions with modeless dialogs that are
- * hidden and then re-shown (via this class's <code>setVisible()</code> method)
- * as opposed to simply destroyed after being shown once.
+ * hidden and then re-shown (via this class's {@link #setVisible(boolean)}
+ * method) as opposed to simply destroyed after being shown once.
+ * </p>
  * <p>
  * Second, it provides proper sizing of dialogs that include menubars. The
- * <code>Dialog</code> class sizes menubar-clad instances to be bizarrely large.
+ * {@link Dialog} class sizes menubar-clad instances to be bizarrely large.
+ * </p>
  * <p>
  * Third, it horizontally centers the row of buttons at the bottom of the dialog
  * box.
+ * </p>
+ * <p>
+ * TODO: Remove dependency upon {@link HazardServicesActivator} in order to
+ * allow this package to be moved to its own plugin.
+ * </p>
  * 
  * <pre>
  * 
@@ -41,8 +49,9 @@ import com.raytheon.viz.ui.dialogs.CaveJFACEDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Jun 04, 2013            Chris.Golden      Changed to subclass CaveJFACEDialog
- * 
+ * Jun 04, 2013            Chris.Golden      Changed to subclass CaveJFACEDialog.
+ * May 10, 2013    2925    Chris.Godlen      Moved to its own package and cleaned
+ *                                           up the Javadoc and in-method comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,18 +123,23 @@ public class BasicDialog extends CaveJFACEDialog {
      */
     public void setVisible(boolean visible) {
 
-        // If the visibility is already that requested, do nothing.
+        /*
+         * If the visibility is already that requested, do nothing.
+         */
         if (visible == getShell().isVisible()) {
             return;
         }
 
-        // Set the visibility as requested, restoring the saved boundaries
-        // if showing the dialog, and saving the current boundaries if
-        // hiding it.
+        /*
+         * Set the visibility as requested, restoring the saved boundaries if
+         * showing the dialog, and saving the current boundaries if hiding it.
+         */
         if (visible) {
 
-            // This code is copied verbatim from jface Window's
-            // initializeBounds() method.
+            /*
+             * This code is copied verbatim from jface Window's
+             * initializeBounds() method.
+             */
             Point size = getInitialSize();
             Point location = getInitialLocation(size);
             getShell().setBounds(
@@ -133,8 +147,10 @@ public class BasicDialog extends CaveJFACEDialog {
                             location.y, size.x, size.y)));
         } else {
 
-            // This code is copied mostly verbatim from the
-            // org.eclipse.jface.Dialog's saveDialogBounds() method.
+            /*
+             * This code is copied mostly verbatim from the
+             * org.eclipse.jface.Dialog's saveDialogBounds() method.
+             */
             IDialogSettings settings = getDialogBoundsSettings();
             if (settings != null) {
                 Point shellLocation = getShell().getLocation();
@@ -162,7 +178,9 @@ public class BasicDialog extends CaveJFACEDialog {
             }
         }
 
-        // Set the visibility of the shell.
+        /*
+         * Set the visibility of the shell.
+         */
         getShell().setVisible(visible);
     }
 

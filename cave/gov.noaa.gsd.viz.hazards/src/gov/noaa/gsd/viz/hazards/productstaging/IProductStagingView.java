@@ -30,6 +30,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 08, 2014  2925      Chris.Golden      Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -57,7 +58,7 @@ public interface IProductStagingView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return Command invoker.
      */
-    public ICommandInvoker getCommandInvoker();
+    public ICommandInvoker<String> getCommandInvoker();
 
     /**
      * Determine whether or not the product should be issued.

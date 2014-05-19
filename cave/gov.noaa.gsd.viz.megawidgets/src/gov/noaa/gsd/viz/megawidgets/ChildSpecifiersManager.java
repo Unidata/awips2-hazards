@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,9 @@ import java.util.Map;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * May 10, 2014    2925    Chris.Golden      Fixed bug of trying to manipulate
+ *                                           a map that should not be manipulated
+ *                                           instead of copying it first.
  * </pre>
  * 
  * @author Chris.Golden
@@ -101,7 +105,8 @@ public class ChildSpecifiersManager<S extends ISpecifier> {
             int numColumns) throws MegawidgetSpecificationException {
         List<S> specifiers = new ArrayList<>();
         for (Object object : parameters) {
-            Map<String, Object> map = (Map<String, Object>) object;
+            Map<String, Object> map = new HashMap<>(
+                    (Map<String, Object>) object);
             map.put(IControlSpecifier.MEGAWIDGET_PARENT_COLUMN_COUNT,
                     new Integer(numColumns));
             specifiers.add(factory.createMegawidgetSpecifier(superClass, map));

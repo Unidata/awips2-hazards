@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -25,9 +27,11 @@ import com.google.common.collect.ImmutableList;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Mar 07, 2014    2925    Chris.Golden      Initial creation.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Mar 07, 2014    2925    Chris.Golden Initial creation.
+ * May 12, 2014    2925    Chris.Golden Changed to include current time
+ *                                      provider.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,6 +48,11 @@ public class MegawidgetSpecifierManager {
     private final ImmutableList<ISpecifier> specifiers;
 
     /**
+     * Current time provider.
+     */
+    private final ICurrentTimeProvider currentTimeProvider;
+
+    /**
      * Side effects applier, or <code>null</code> if there is none for these
      * megawidgets.
      */
@@ -52,7 +61,8 @@ public class MegawidgetSpecifierManager {
     // Public Constructors
 
     /**
-     * Construct a standard instance with no side effects applier.
+     * Construct a standard instance with a default current time provider and no
+     * side effects applier.
      * 
      * @param specifiers
      *            List of maps, each of the latter holding the parameters of a
@@ -68,7 +78,33 @@ public class MegawidgetSpecifierManager {
             List<? extends Map<String, Object>> specifiers,
             Class<? extends ISpecifier> superClass)
             throws MegawidgetSpecificationException {
-        this(specifiers, superClass, null);
+        this(specifiers, superClass, null, null);
+    }
+
+    /**
+     * Construct a standard instance with no side effects applier.
+     * 
+     * @param specifiers
+     *            List of maps, each of the latter holding the parameters of a
+     *            megawidget specifier. Each megawidget specifier must have an
+     *            identifier that is unique within this list.
+     * @param superClass
+     *            Class that must be the superclass of any megawidget specifiers
+     *            created.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
+     * @throws MegawidgetSpecificationException
+     *             If one of the megawidget specifiers is invalid.
+     */
+    public MegawidgetSpecifierManager(
+            List<? extends Map<String, Object>> specifiers,
+            ICurrentTimeProvider currentTimeProvider,
+            Class<? extends ISpecifier> superClass)
+            throws MegawidgetSpecificationException {
+        this(specifiers, superClass, currentTimeProvider, null);
     }
 
     /**
@@ -81,6 +117,11 @@ public class MegawidgetSpecifierManager {
      * @param superClass
      *            Class that must be the superclass of any megawidget specifiers
      *            created.
+     * @param currentTimeProvider
+     *            Current time provider for any time megawidgets specified
+     *            within <code>specifiers</code>. If <code>null</code>, a
+     *            default current time provider is used. If no time megawidgets
+     *            are included in <code>specifiers</code>, this is ignored.
      * @param sideEffectsApplier
      *            Side effects applier to be used with these megawidgets.
      * @throws MegawidgetSpecificationException
@@ -89,6 +130,7 @@ public class MegawidgetSpecifierManager {
     public MegawidgetSpecifierManager(
             List<? extends Map<String, Object>> specifiers,
             Class<? extends ISpecifier> superClass,
+            ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier)
             throws MegawidgetSpecificationException {
 
@@ -108,6 +150,7 @@ public class MegawidgetSpecifierManager {
         }
 
         this.specifiers = ImmutableList.copyOf(createdSpecifiers);
+        this.currentTimeProvider = currentTimeProvider;
         this.sideEffectsApplier = sideEffectsApplier;
     }
 
@@ -120,6 +163,15 @@ public class MegawidgetSpecifierManager {
      */
     public final ImmutableList<ISpecifier> getSpecifiers() {
         return specifiers;
+    }
+
+    /**
+     * Get the current time provider.
+     * 
+     * @return Current time provider.
+     */
+    public final ICurrentTimeProvider getCurrentTimeProvider() {
+        return currentTimeProvider;
     }
 
     /**

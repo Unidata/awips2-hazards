@@ -40,6 +40,7 @@ class MetaData:
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
             "values": "ER",
+            "expandHorizontally": True,
             "choices": [
                 self.immediateCauseER(),
                 self.immediateCauseSM(),
@@ -1002,6 +1003,7 @@ class MetaData:
                 'fieldName': 'urgency',
                 'fieldType':'ComboBox',
                 'label':'Urgency:',
+                'expandHorizontally': True,
                 'values': 'Immediate',
                 'choices': ['Immediate', 'Expected', 'Future','Past','Unknown']
                 },
@@ -1009,6 +1011,7 @@ class MetaData:
                 'fieldName': 'responseType',
                 'fieldType':'ComboBox',
                 'label':'Response Type:',
+                'expandHorizontally': True,
                 'values': 'Avoid',
                 'choices': ['Shelter','Evacuate','Prepare','Execute','Avoid','Monitor','Assess','AllClear','None']
                 },                    
@@ -1016,6 +1019,7 @@ class MetaData:
                 'fieldName': 'severity',
                 'fieldType':'ComboBox',
                 'label':'Severity:',
+                'expandHorizontally': True,
                 'values': 'Severe',
                 'choices': ['Extreme','Severe','Moderate','Minor','Unknown']
                 },
@@ -1023,6 +1027,7 @@ class MetaData:
                 'fieldName': 'certainty',
                 'fieldType':'ComboBox',
                 'label':'Certainty:',
+                'expandHorizontally': True,
                 'values': 'Likely',
                 'choices': ['Observed','Likely','Possible','Unlikely','Unknown']
                 },

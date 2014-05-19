@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -47,7 +48,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * 
  *  
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
- * 
+ * May 09, 2014 2925       Chris.Golden Changed getSelectedEvents() to return a list, as it
+ *                                      has order, instead of a collection.
  * </pre>
  * 
  * @author bsteffen
@@ -113,10 +115,33 @@ public abstract class AbstractSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getSelectedEvents() {
+    public List<ObservedHazardEvent> getSelectedEvents() {
+
+        /*
+         * TODO: Consider having getEventsForCurrentSettings() return a list as
+         * well. It's questionable as to whether that method should return a
+         * list, because maybe implying an inherent ordering of the events is
+         * incorrect; however, the order is relied upon (since the code here
+         * iterates through all those events) to return a consistently ordered
+         * set of events. Perhaps the order should be set via the GUI, since the
+         * console allows sorting of events, and maybe the order in which those
+         * events occur should provide the order in which the selected events,
+         * which are after all in the console list, occur.
+         * 
+         * TODO: Consider having this list rebuilt each time selection changes
+         * (by doing so before sending off a SessionSelectedEventsModified
+         * message in SessionEventManager), and then simply returning an
+         * unmodifiable version of that list each time this method is called. Or
+         * better yet, simply use the same list each time, modifying it as
+         * appropriate when the selected events are changing, and again simply
+         * returning an unmodifiable view of it to callers of this method. In
+         * this case, any caller that wished to cache the selected events list
+         * for comparison to updates to it later (i.e. classes such as
+         * HazardDetailPresenter) would need to make a copy of what they got
+         * from invoking this method.
+         */
         Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                allEvents.size());
+        List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
         for (ObservedHazardEvent event : allEvents) {
             if (Boolean.TRUE.equals(event.getHazardAttribute(ATTR_SELECTED))) {
                 events.add(event);

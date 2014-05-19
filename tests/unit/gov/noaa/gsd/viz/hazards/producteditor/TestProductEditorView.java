@@ -45,25 +45,26 @@ public class TestProductEditorView implements
     /**
      * Dismiss command invocation handler.
      */
-    private ICommandInvocationHandler dismissHandler = null;
+    private ICommandInvocationHandler<String> dismissHandler = null;
 
     /**
      * Issue command invocation handler.
      */
-    private ICommandInvocationHandler issueHandler = null;
-
-    /**
-     * Shell closed command invocation handler.
-     */
-    private ICommandInvocationHandler shellCloseHandler = null;
+    private ICommandInvocationHandler<String> issueHandler = null;
 
     /**
      * Dismiss command invoker.
      */
-    private final ICommandInvoker dismissInvoker = new ICommandInvoker() {
+    private final ICommandInvoker<String> dismissInvoker = new ICommandInvoker<String>() {
+
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
             dismissHandler = handler;
         }
     };
@@ -71,22 +72,17 @@ public class TestProductEditorView implements
     /**
      * Dismiss command invoker.
      */
-    private final ICommandInvoker issueInvoker = new ICommandInvoker() {
-        @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
-            issueHandler = handler;
-        }
-    };
+    private final ICommandInvoker<String> issueInvoker = new ICommandInvoker<String>() {
 
-    /**
-     * Shell Closed command invoker.
-     */
-    private final ICommandInvoker shellClosedInvoker = new ICommandInvoker() {
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
-            shellCloseHandler = handler;
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
+            issueHandler = handler;
         }
     };
 
@@ -134,15 +130,6 @@ public class TestProductEditorView implements
     }
 
     /**
-     * 
-     * @param
-     * @return
-     */
-    public void shellClosed() {
-        shellCloseHandler.commandInvoked("Shell Closed");
-    }
-
-    /**
      * @param
      * @return
      */
@@ -169,7 +156,7 @@ public class TestProductEditorView implements
      * @return
      */
     @Override
-    public ICommandInvoker getIssueInvoker() {
+    public ICommandInvoker<String> getIssueInvoker() {
         return issueInvoker;
     }
 
@@ -178,7 +165,7 @@ public class TestProductEditorView implements
      * @return
      */
     @Override
-    public ICommandInvoker getDismissInvoker() {
+    public ICommandInvoker<String> getDismissInvoker() {
         return dismissInvoker;
     }
 

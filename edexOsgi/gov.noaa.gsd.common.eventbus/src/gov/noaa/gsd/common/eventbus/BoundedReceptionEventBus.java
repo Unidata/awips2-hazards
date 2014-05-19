@@ -46,7 +46,7 @@ import net.engio.mbassy.listener.Handler;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 04, 2014   3319     Chris.Golden Initial creation.
- * 
+ * May 14, 2014   2925     Chris.Golden Corrected Javadoc.
  * </pre>
  * 
  * @author Chris.Golden
@@ -103,7 +103,7 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
 
     /**
      * Event bus used to post events that were asynchronously published. The
-     * reason that another event bus is used is because {@link #EventWrapper}
+     * reason that another event bus is used is because {@link EventWrapper}
      * cannot implement the generic type <code>T</code>, so there is no way to
      * have the main event bus handle both <code>EventWrapper</code> instances
      * and objects of generic type <code>T</code>.

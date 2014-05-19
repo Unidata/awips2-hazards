@@ -33,6 +33,7 @@ class MetaData(CommonMetaData.MetaData):
             "fieldName": "immediateCause",
             "fieldType":"ComboBox",
             "label":"Immediate Cause:",
+            "expandHorizontally": True,
             "values": "ER",
             "choices": [
                 self.immediateCauseER(),

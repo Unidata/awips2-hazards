@@ -7,7 +7,7 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.display;
+package gov.noaa.gsd.viz.hazards.ui;
 
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
@@ -22,9 +22,10 @@ import org.eclipse.ui.part.ViewPart;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 12, 2013     585    Chris.Golden      Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jul 12, 2013     585    Chris.Golden Initial creation.
+ * May 09, 2014    2925    Chris.Golden Moved to its own package.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,17 +50,18 @@ public abstract class DockTrackingViewPart extends ViewPart {
     @Override
     public void createPartControl(Composite parent) {
 
-        // Remember the parent for use later, and
-        // keep track of resize events to determine
-        // whether or not the part is currently
-        // docked.
+        /*
+         * Remember the parent for use later, and keep track of resize events to
+         * determine whether or not the part is currently docked.
+         */
         this.parent = parent;
         parent.addControlListener(new ControlAdapter() {
             @Override
             public void controlResized(ControlEvent e) {
 
-                // Determine whether or not the part
-                // is now docked.
+                /*
+                 * Determine whether or not the part is now docked.
+                 */
                 boolean docked = determineWhetherDocked();
                 if (docked != DockTrackingViewPart.this.docked) {
                     DockTrackingViewPart.this.docked = docked;
@@ -67,7 +69,9 @@ public abstract class DockTrackingViewPart extends ViewPart {
             }
         });
 
-        // Determine whether or not the view is currently docked.
+        /*
+         * Determine whether or not the view is currently docked.
+         */
         docked = determineWhetherDocked();
     }
 

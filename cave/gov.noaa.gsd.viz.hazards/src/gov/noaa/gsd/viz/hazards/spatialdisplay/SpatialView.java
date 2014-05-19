@@ -639,8 +639,10 @@ public class SpatialView implements
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                ((ToolLayerResourceData) spatialDisplay.getResourceData())
-                        .setSettings(settings);
+                if (spatialDisplay != null) {
+                    ((ToolLayerResourceData) spatialDisplay.getResourceData())
+                            .setSettings(settings);
+                }
             }
         });
     }

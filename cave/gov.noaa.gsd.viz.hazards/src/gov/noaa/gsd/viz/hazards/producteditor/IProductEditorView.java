@@ -31,6 +31,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Apr 11, 2014 2819       Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 08, 2014 2925       Chris.Golden      Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -65,14 +66,14 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return Command invoker associated with the dialog's issue button.
      */
-    public ICommandInvoker getIssueInvoker();
+    public ICommandInvoker<String> getIssueInvoker();
 
     /**
      * Get the command invoker associated with the dialog's dismiss button.
      * 
      * @return Command invoker associated with the dialog's dismiss button.
      */
-    public ICommandInvoker getDismissInvoker();
+    public ICommandInvoker<String> getDismissInvoker();
 
     public void openDialog();
 }

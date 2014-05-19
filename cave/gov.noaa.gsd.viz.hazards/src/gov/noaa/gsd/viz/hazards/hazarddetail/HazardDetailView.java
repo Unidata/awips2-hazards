@@ -9,30 +9,42 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.ChoiceStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
+import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IWidget;
 
-import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 
 /**
@@ -66,6 +78,20 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           class-based metadata changes, as well as
  *                                           to conform to new event propagation
  *                                           scheme.
+ * May 15, 2014    2925    Chris.Golden      Together with changes made in last
+ *                                           2925 changeset, essentially rewritten
+ *                                           to provide far better separation of
+ *                                           concerns between model, view, and
+ *                                           presenter; almost exclusively switch
+ *                                           to scheme whereby the model is changed
+ *                                           directly instead of via messages, and
+ *                                           model changes are detected via various
+ *                                           event-bus-listener methods (the sole
+ *                                           remaining holdouts are the issue,
+ *                                           propose, and preview commands, which
+ *                                           are still sent via message to the
+ *                                           message handler); and preparation for
+ *                                           multithreading in the future.
  * </pre>
  * 
  * @author Chris.Golden
@@ -73,10 +99,34 @@ import com.raytheon.uf.viz.core.VizApp;
  */
 @SuppressWarnings("restriction")
 public class HazardDetailView extends
-        ViewPartDelegatorView<HazardDetailViewPart> implements
-        IHazardDetailView<Action, RCPMainUserInterfaceElement> {
+        ViewPartDelegateView<HazardDetailViewPart> implements
+        IHazardDetailViewDelegate<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
+
+    /**
+     * Scheduler to be used to make {@link IWidget} handlers get get executed on
+     * the main thread. For now, the main thread is the UI thread; when this is
+     * changed, this will be rendered obsolete, as at that point there will need
+     * to be a blocking queue of {@link Runnable} instances available to allow
+     * the new worker thread to be fed jobs. At that point, this should be
+     * replaced with an object that enqueues the <code>Runnable</code>s,
+     * probably a singleton that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and perhaps elsewhere.
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
 
     /**
      * Name of the file holding the image for the alerts toolbar button icon.
@@ -94,18 +144,7 @@ public class HazardDetailView extends
      */
     private static final String USE_PREVIOUS_SIZE_AND_POSITION_KEY_SUFFIX = ".usePreviousHazardDetailViewPartSizeAndPosition";
 
-    /**
-     * Logging mechanism.
-     */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardDetailView.class);
-
     // Private Variables
-
-    /**
-     * Presenter.
-     */
-    private HazardDetailPresenter presenter = null;
 
     /**
      * Hazard detail toggle action.
@@ -113,16 +152,9 @@ public class HazardDetailView extends
     private Action hazardDetailToggleAction = null;
 
     /**
-     * JSON string holding a dictionary that specifies the general widgets for
-     * the dialog.
+     * List of hazard categories.
      */
-    private String jsonGeneralWidgets = null;
-
-    /**
-     * JSON string holding a list of dictionaries specifying megawidgets for the
-     * metadata specific to each hazard type.
-     */
-    private String jsonMetadataWidgets = null;
+    private ImmutableList<String> hazardCategories;
 
     /**
      * Minimum visible time to be shown in the time megawidgets.
@@ -135,12 +167,9 @@ public class HazardDetailView extends
     private long maxVisibleTime = 0L;
 
     /**
-     * Set of identifiers of events that allow "until further notice" mode to be
-     * toggled. The set is kept up to date elsewhere, so it always indicates
-     * which events have this property. It is unmodifiable by the hazard detail
-     * view.
+     * Current time provider.
      */
-    private Set<String> eventIdentifiersAllowingUntilFurtherNotice;
+    private ICurrentTimeProvider currentTimeProvider;
 
     /**
      * View part listener.
@@ -167,8 +196,10 @@ public class HazardDetailView extends
         public void partClosed(IWorkbenchPartReference partRef) {
             if (partRef == getViewPartReference()) {
                 if (hazardDetailToggleAction != null) {
-                    hazardDetailToggleAction.setEnabled(true);
                     hazardDetailToggleAction.setChecked(false);
+                }
+                if (detailViewVisibilityChangeHandler != null) {
+                    detailViewVisibilityChangeHandler.stateChanged(null, false);
                 }
                 viewPartShowing = false;
                 hideViewPart(true);
@@ -195,8 +226,10 @@ public class HazardDetailView extends
         public void partHidden(IWorkbenchPartReference partRef) {
             if (partRef == getViewPartReference()) {
                 if (hazardDetailToggleAction != null) {
-                    hazardDetailToggleAction.setEnabled(true);
                     hazardDetailToggleAction.setChecked(false);
+                }
+                if (detailViewVisibilityChangeHandler != null) {
+                    detailViewVisibilityChangeHandler.stateChanged(null, false);
                 }
                 viewPartShowing = false;
             }
@@ -206,8 +239,10 @@ public class HazardDetailView extends
         public void partVisible(IWorkbenchPartReference partRef) {
             if (partRef == getViewPartReference()) {
                 if (hazardDetailToggleAction != null) {
-                    hazardDetailToggleAction.setEnabled(true);
                     hazardDetailToggleAction.setChecked(true);
+                }
+                if (detailViewVisibilityChangeHandler != null) {
+                    detailViewVisibilityChangeHandler.stateChanged(null, true);
                 }
                 viewPartShowing = true;
             }
@@ -223,6 +258,179 @@ public class HazardDetailView extends
     };
 
     /**
+     * Map of hazard event identifiers to their scroll origins; the latter are
+     * forwarded to this object by the principal each time the latter detects
+     * that one has changed as a result of the user moving the scrollbars.
+     */
+    private final Map<String, Point> scrollOriginsForEventIds = new HashMap<>();
+
+    /**
+     * Scroll origin change handler.
+     */
+    private final IStateChangeHandler<String, Point> scrollOriginChangeHandler = new IStateChangeHandler<String, Point>() {
+
+        @Override
+        public void stateChanged(String identifier, Point value) {
+            scrollOriginsForEventIds.put(identifier, value);
+        }
+    };
+
+    /**
+     * Detail view visibility state change handler.
+     */
+    private IStateChangeHandler<String, Boolean> detailViewVisibilityChangeHandler;
+
+    /**
+     * Detail view visibility state changer.
+     */
+    private final IStateChanger<String, Boolean> detailViewVisibilityChanger = new IStateChanger<String, Boolean>() {
+
+        @Override
+        public void setEnabled(String identifier, boolean enable) {
+            if (hazardDetailToggleAction != null) {
+                hazardDetailToggleAction.setEnabled(enable);
+            }
+        }
+
+        @Override
+        public void setEditable(String identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editability of hazard detail view toggle");
+        }
+
+        @Override
+        public Boolean getState(String identifier) {
+            if (hazardDetailToggleAction != null) {
+                return hazardDetailToggleAction.isChecked();
+            }
+            return false;
+        }
+
+        @Override
+        public void setState(String identifier, Boolean value) {
+            if (hazardDetailToggleAction != null) {
+                hazardDetailToggleAction.setChecked(Boolean.TRUE.equals(value));
+            }
+            setDetailViewVisibility(value, false);
+        }
+
+        @Override
+        public void setStates(Map<String, Boolean> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot change multiple states for hazard detail view toggle");
+        }
+
+        @Override
+        public void setStateChangeHandler(String identifier,
+                IStateChangeHandler<String, Boolean> handler) {
+            detailViewVisibilityChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Detail view visibility state changer delegate.
+     */
+    private final IStateChanger<String, Boolean> detailViewVisibilityChangerDelegate = new StateChangerDelegate<>(
+            new BasicWidgetDelegateHelper<>(detailViewVisibilityChanger),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Visible time range state changer delegate.
+     */
+    private final IStateChanger<String, TimeRange> visibleTimeRangeChanger = new StateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IStateChanger<String, TimeRange>>() {
+
+                        @Override
+                        public IStateChanger<String, TimeRange> call()
+                                throws Exception {
+                            return getViewPart().getVisibleTimeRangeChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Visible event state changer delegate.
+     */
+    private final IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> visibleEventChanger = new ChoiceStateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IChoiceStateChanger<String, String, String, DisplayableEventIdentifier>>() {
+
+                        @Override
+                        public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> call()
+                                throws Exception {
+                            return getViewPart().getVisibleEventChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Category state changer delegate.
+     */
+    private final IChoiceStateChanger<String, String, String, String> categoryChanger = new ChoiceStateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+
+                        @Override
+                        public IChoiceStateChanger<String, String, String, String> call()
+                                throws Exception {
+                            return getViewPart().getCategoryChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Type state changer delegate.
+     */
+    private final IChoiceStateChanger<String, String, String, String> typeChanger = new ChoiceStateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+
+                        @Override
+                        public IChoiceStateChanger<String, String, String, String> call()
+                                throws Exception {
+                            return getViewPart().getTypeChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Time range state changer delegate.
+     */
+    private final IStateChanger<String, TimeRange> timeRangeChanger = new StateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IStateChanger<String, TimeRange>>() {
+
+                        @Override
+                        public IStateChanger<String, TimeRange> call()
+                                throws Exception {
+                            return getViewPart().getTimeRangeChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Metadata state changer delegate.
+     */
+    private final IMetadataStateChanger metadataChanger = new MetadataStateChangerDelegate(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IMetadataStateChanger>() {
+
+                        @Override
+                        public IMetadataStateChanger call() throws Exception {
+                            return getViewPart().getMetadataChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Button invoker delegate.
+     */
+    private final ICommandInvoker<Command> buttonInvoker = new CommandInvokerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<ICommandInvoker<Command>>() {
+
+                        @Override
+                        public ICommandInvoker<Command> call() throws Exception {
+                            return getViewPart().getButtonInvoker();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
      * Flag indicating whether or not the view part is showing (the alternative
      * is that it is minimized).
      */
@@ -233,11 +441,6 @@ public class HazardDetailView extends
      * the view part from the moment it is created.
      */
     private boolean usePreviousSizeAndPosition;
-
-    /**
-     * Flag indicating whether or not actions should be dispatched.
-     */
-    private boolean doNotForwardActions = false;
 
     // Public Constructors
 
@@ -319,20 +522,17 @@ public class HazardDetailView extends
     // Public Methods
 
     @Override
-    public final void initialize(HazardDetailPresenter presenter,
-            String jsonGeneralWidgets, String jsonMetadataWidgets,
+    public final void initialize(ImmutableList<String> hazardCategories,
             long minVisibleTime, long maxVisibleTime,
-            Set<String> eventIdentifiersAllowingUntilFurtherNotice) {
-        this.presenter = presenter;
-        this.jsonGeneralWidgets = jsonGeneralWidgets;
-        this.jsonMetadataWidgets = jsonMetadataWidgets;
+            ICurrentTimeProvider currentTimeProvider) {
+        this.hazardCategories = hazardCategories;
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
         if (minVisibleTime == maxVisibleTime) {
             this.maxVisibleTime = this.minVisibleTime
                     + TimeUnit.DAYS.toMillis(1);
         }
-        this.eventIdentifiersAllowingUntilFurtherNotice = eventIdentifiersAllowingUntilFurtherNotice;
+        this.currentTimeProvider = currentTimeProvider;
 
         /*
          * Execute manipulation of the view part immediately, or delay such
@@ -372,13 +572,20 @@ public class HazardDetailView extends
                 public void run() {
                     boolean showing = isViewPartVisible();
                     if (isChecked() && (showing == false)) {
-                        presenter.showHazardDetail(true);
+                        setDetailViewVisibility(true, true);
+                        if (detailViewVisibilityChangeHandler != null) {
+                            detailViewVisibilityChangeHandler.stateChanged(
+                                    null, true);
+                        }
                     } else if ((isChecked() == false) && showing) {
-                        hideHazardDetail(true);
+                        setDetailViewVisibility(false, true);
+                        if (detailViewVisibilityChangeHandler != null) {
+                            detailViewVisibilityChangeHandler.stateChanged(
+                                    null, false);
+                        }
                     }
                 }
             };
-            hazardDetailToggleAction.setEnabled(showing);
             hazardDetailToggleAction.setChecked(showing);
             return Lists.newArrayList(hazardDetailToggleAction);
         }
@@ -386,235 +593,64 @@ public class HazardDetailView extends
     }
 
     @Override
-    public final void showHazardDetail(final DictList eventValuesList,
-            final String topEventID,
-            final Map<String, Collection<IHazardEvent>> eventConflictMap,
-            final boolean force) {
-
-        /*
-         * If there are no events to be shown, do nothing.
-         */
-        if ((force == false)
-                && ((eventValuesList == null) || (eventValuesList.size() == 0))) {
-            statusHandler
-                    .error("HazardDetailView.showHazardDetail(): No event "
-                            + "dictionaries, so not opening the view.");
-            return;
-        }
-
-        /*
-         * If the view part does not exist, show it.
-         */
-        final boolean needsInitializing = (getViewPart() == null);
-        if (needsInitializing) {
-            viewPartShowing = true;
-            showViewPart();
-        }
-
-        /*
-         * Execute further manipulation of the view part immediately, or delay
-         * such execution until the view part is created if it has not yet been
-         * created yet.
-         */
-        executeOnCreatedViewPart(new Runnable() {
-            @Override
-            public void run() {
-
-                /*
-                 * Set the flag indicating that HID actions should be ignored
-                 * while setting the dialog info and opening it.
-                 */
-                doNotForwardActions = true;
-
-                /*
-                 * Initialize the view part if necessary.
-                 */
-                if (needsInitializing) {
-                    initializeViewPart();
-                }
-
-                /*
-                 * Give the view part the event information.
-                 */
-                if ((eventValuesList != null) && (eventValuesList.size() > 0)) {
-                    getViewPart().setHidEventInfo(eventValuesList,
-                            eventConflictMap, topEventID);
-                }
-                int numEvents = getViewPart().getEventCount();
-
-                /*
-                 * Ensure that the view part is visible.
-                 */
-                if ((isViewPartVisible() == false)
-                        && ((numEvents > 0) || force || isViewPartDocked())) {
-                    setViewPartVisible(true);
-                }
-
-                /*
-                 * Enable and check the hazard detail checkbox.
-                 */
-                if (hazardDetailToggleAction != null) {
-                    hazardDetailToggleAction.setEnabled(true);
-                    hazardDetailToggleAction.setChecked(true);
-                }
-
-                /*
-                 * Reset the ignore HID actions flag, indicating that actions
-                 * from the dialog should no longer be ignored.
-                 */
-                doNotForwardActions = false;
-            }
-        });
+    public IStateChanger<String, Boolean> getDetailViewVisibilityChanger() {
+        return detailViewVisibilityChangerDelegate;
     }
 
     @Override
-    public final void updateHazardDetail(final DictList eventValuesList,
-            final String topEventID,
-            final Map<String, Collection<IHazardEvent>> eventConflictMap) {
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-
-                /*
-                 * If the view part exists, update it; otherwise, if there is at
-                 * least one event to show, show the view part.
-                 */
-                if (getViewPart() != null) {
-
-                    /*
-                     * Set the flag indicating that HID actions should be
-                     * ignored while setting the view part info and opening it.
-                     */
-                    doNotForwardActions = true;
-
-                    /*
-                     * Give the view part the event information.
-                     */
-                    getViewPart().setHidEventInfo(eventValuesList,
-                            eventConflictMap, topEventID);
-
-                    /*
-                     * Reset the ignore HID actions flag, indicating that
-                     * actions from the view part should no longer be ignored.
-                     */
-                    doNotForwardActions = false;
-
-                    /*
-                     * If the event values list is empty and the view part is
-                     * not docked, hide the view.
-                     */
-                    if (((eventValuesList == null) || (eventValuesList.size() == 0))
-                            && (isViewPartDocked() == false)) {
-                        hideHazardDetail(false);
-                    }
-                } else if ((eventValuesList != null)
-                        && (eventValuesList.size() > 0)) {
-                    showHazardDetail(eventValuesList, topEventID,
-                            eventConflictMap, true);
-                }
-            }
-        });
+    public IStateChanger<String, TimeRange> getVisibleTimeRangeChanger() {
+        return visibleTimeRangeChanger;
     }
 
     @Override
-    public final void hideHazardDetail(boolean force) {
-
-        /*
-         * If the view part is not showing, it may have been meant to be
-         * showing, but was unable to because its instantiation was delayed by
-         * another view part with the same identifier already existing. If this
-         * is the case, clear the jobs queue for the view part, as it should now
-         * no longer be brought up once the old view part disappears. Otherwise,
-         * if the view part is showing but the event count is zero or a forced
-         * hide should occur, minimize it if it is docked, or hide it otherwise.
-         */
-        boolean hidden = true;
-        if (getViewPart() == null) {
-            hideViewPart(true);
-        } else if (isViewPartDocked() == false) {
-            hideViewPart(false);
-        } else if (force) {
-            setViewPartVisible(false);
-        } else {
-            hidden = false;
-        }
-        if (hidden && (hazardDetailToggleAction != null)) {
-            hazardDetailToggleAction.setChecked(false);
-        }
+    public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> getVisibleEventChanger() {
+        return visibleEventChanger;
     }
 
     @Override
-    public final void setVisibleTimeRange(final long minVisibleTime,
-            final long maxVisibleTime) {
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                HazardDetailView.this.minVisibleTime = minVisibleTime;
-                HazardDetailView.this.maxVisibleTime = maxVisibleTime;
-
-                /*
-                 * Only set the visible time range of the view part if it
-                 * exists; no need to schedule an execution of this if the view
-                 * part is not yet showing, as when it is shown, it will pick up
-                 * this visible time range from the initialization it undergoes.
-                 */
-                if (getViewPart() != null) {
-                    getViewPart().setVisibleTimeRange(minVisibleTime,
-                            maxVisibleTime);
-                }
-            }
-        });
+    public IChoiceStateChanger<String, String, String, String> getCategoryChanger() {
+        return categoryChanger;
     }
 
     @Override
-    public void setPreviewOngoing(final boolean previewOngoing) {
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                if (getViewPart() != null) {
-                    getViewPart().setPreviewOngoing(previewOngoing);
-                }
-            }
-        });
+    public IChoiceStateChanger<String, String, String, String> getTypeChanger() {
+        return typeChanger;
     }
 
     @Override
-    public void setIssueOngoing(final boolean issueOngoing) {
-        VizApp.runAsync(new Runnable() {
-            @Override
-            public void run() {
-                if (getViewPart() != null) {
-                    getViewPart().setIssueOngoing(issueOngoing);
-                }
-            }
-        });
+    public IStateChanger<String, TimeRange> getTimeRangeChanger() {
+        return timeRangeChanger;
     }
 
-    // Package Methods
+    @Override
+    public IMetadataStateChanger getMetadataChanger() {
+        return metadataChanger;
+    }
+
+    @Override
+    public ICommandInvoker<Command> getButtonInvoker() {
+        return buttonInvoker;
+    }
+
+    // Protected Methods
 
     /**
-     * Get the presenter.
+     * Respond to an attempt to execute some action via
+     * {@link #executeOnCreatedViewPart(Runnable)} upon a view part when the
+     * view part is not in existence and no attempt has been made to create it.
+     * Since the view part may have been closed between the scheduling of an
+     * action for execution and said execution occurring, and this is not a
+     * problem, nothing needs to be done.
      * 
-     * @return Presenter.
+     * @param job
+     *            Action for which execution was attempted.
      */
-    @Deprecated
-    HazardDetailPresenter getPresenter() {
-        return presenter;
-    }
+    @Override
+    protected void actionExecutionAttemptedUponNonexistentViewPart(Runnable job) {
 
-    /**
-     * Fire an action event to its listener.
-     * 
-     * @param action
-     *            Action.
-     * @param force
-     *            Flag indicating whether or not the firing should be forced
-     *            even if normally the event would not be forwarded.
-     */
-    void fireAction(HazardDetailAction action, boolean force) {
-        if (force || (doNotForwardActions == false)) {
-            presenter.fireAction(action);
-        }
+        /*
+         * No action.
+         */
     }
 
     // Private Methods
@@ -623,9 +659,105 @@ public class HazardDetailView extends
      * Initialize the view part.
      */
     private void initializeViewPart() {
-        getViewPart().initialize(this, jsonGeneralWidgets, jsonMetadataWidgets,
-                minVisibleTime, maxVisibleTime,
-                eventIdentifiersAllowingUntilFurtherNotice);
+
+        /*
+         * Do the basic initialization.
+         */
+        getViewPart().initialize(hazardCategories, minVisibleTime,
+                maxVisibleTime, currentTimeProvider);
+
+        /*
+         * Register the scroll origin change handler with the view part, so that
+         * notifications of scroll origin changes for event identifiers are sent
+         * to this object and they can be recorded to be available for a new
+         * view part if the old one is closed. Then send the accumulated scroll
+         * origins to the new view part to initialize it.
+         */
+        getViewPart().getScrollOriginChanger().setStateChangeHandler(null,
+                scrollOriginChangeHandler);
+        getViewPart().getScrollOriginChanger().setStates(
+                scrollOriginsForEventIds);
+    }
+
+    /**
+     * Set the detail view visibility as specified.
+     * 
+     * @param visible
+     *            Flag indicating whether or not the detail view should be
+     *            visible.
+     * @param force
+     *            Flag indicating whether, if the view is to be hidden, it
+     *            should be forced to be hidden regardless of whether it is
+     *            docked or not, or instead should only be hidden if undocked.
+     */
+    private void setDetailViewVisibility(boolean visible, boolean force) {
+
+        /*
+         * If the view part should be made visible, or it should be made
+         * invisible but it is not forced to be so and it is docked, then make
+         * it visible. Otherwise, hide it.
+         */
+        if (visible || ((force == false) && isViewPartDocked())) {
+
+            /*
+             * If the view part does not exist, show it. If it is already
+             * showing and was to be hidden, but because it is docked it will
+             * not be, notify the visibility change handler of this.
+             */
+            final boolean needsInitializing = (getViewPart() == null);
+            if (needsInitializing) {
+                viewPartShowing = true;
+                showViewPart();
+            } else if ((visible == false) && viewPartShowing) {
+                if (hazardDetailToggleAction != null) {
+                    hazardDetailToggleAction.setChecked(true);
+                }
+                detailViewVisibilityChangeHandler.stateChanged(null, true);
+            }
+
+            /*
+             * Execute further manipulation of the view part immediately, or
+             * delay such execution until the view part is created if it has not
+             * yet been created yet.
+             */
+            executeOnCreatedViewPart(new Runnable() {
+                @Override
+                public void run() {
+
+                    /*
+                     * Initialize the view part if necessary.
+                     */
+                    if (needsInitializing) {
+                        initializeViewPart();
+                    }
+
+                    /*
+                     * Ensure that the view part is visible.
+                     */
+                    if (isViewPartVisible() == false) {
+                        setViewPartVisible(true);
+                    }
+                }
+            });
+        } else {
+
+            /*
+             * If the view part is not showing, it may have been meant to be
+             * showing, but was unable to because its instantiation was delayed
+             * by another view part with the same identifier already existing.
+             * If this is the case, clear the jobs queue for the view part, as
+             * it should now no longer be brought up once the old view part
+             * disappears. Otherwise, if the view part is showing and docked,
+             * minimize it; otherwise, hide it.
+             */
+            if (getViewPart() == null) {
+                hideViewPart(true);
+            } else if (isViewPartDocked() == false) {
+                hideViewPart(false);
+            } else {
+                setViewPartVisible(false);
+            }
+        }
     }
 
     /**

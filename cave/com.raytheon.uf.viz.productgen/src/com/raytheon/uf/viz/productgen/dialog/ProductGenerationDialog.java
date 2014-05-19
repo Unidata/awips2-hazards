@@ -63,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Apr 11, 2014 2819       Chris.Golden Fixed bugs with the Preview and Issue
  *                                      buttons in the HID remaining grayed out
  *                                      when they should be enabled.
+ * May 08, 2014 2925       Chris.Golden Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author mnash
@@ -149,37 +150,55 @@ public class ProductGenerationDialog extends CaveSWTDialog {
 
     private boolean notHighlighting = true;
 
-    /*
-     * TODO, the following need to be looked into whether they are necessary
+    /**
+     * Issuance command invocation handler. Using these handlers, together with
+     * invokers, allows handlers to be registered with this view by the
+     * presenter, thus in turn allowing the view to know nothing about the
+     * presenter and remain stupid, as it should. These handlers and invoker
+     * interfaces also allow the use of delegates that will, when a separate
+     * worker thread is used in addition to the main UI thread, do the work of
+     * safely going between the two threads.
      */
-    /*
-     * TODO Continue command invocation handler, is this needed this way?
-     */
-    private ICommandInvocationHandler issueHandler = null;
+    private ICommandInvocationHandler<String> issueHandler = null;
 
-    /*
-     * TODO, Continue command invoker, is this needed this way?
+    /**
+     * Issuance command invoker; see comment for {@link #issueHandler} for an
+     * explanation of the presenter-view communication scheme being used.
      */
-    private final ICommandInvoker issueInvoker = new ICommandInvoker() {
+    private final ICommandInvoker<String> issueInvoker = new ICommandInvoker<String>() {
+
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
             issueHandler = handler;
         }
     };
 
-    /*
-     * TODO Dismiss command invocation handler, is this needed this way?
+    /**
+     * Dismiss command invocation handler; see comment for {@link #issueHandler}
+     * for an explanation of the presenter-view communication scheme being used.
      */
-    private ICommandInvocationHandler dismissHandler = null;
+    private ICommandInvocationHandler<String> dismissHandler = null;
 
-    /*
-     * TODO Dismiss command invoker, is this needed this way?
+    /**
+     * Dismiss command invoker; see comment for {@link #issueHandler} for an
+     * explanation of the presenter-view communication scheme being used.
      */
-    private final ICommandInvoker dismissInvoker = new ICommandInvoker() {
+    private final ICommandInvoker<String> dismissInvoker = new ICommandInvoker<String>() {
+
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
             dismissHandler = handler;
         }
     };
@@ -211,7 +230,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
             @Override
             public void handleEvent(Event event) {
                 if (dismissHandler != null) {
-                    dismissHandler.commandInvoked(DISMISS_LABEL);
+                    dismissHandler.commandInvoked(null);
                 }
             }
         });
@@ -502,9 +521,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
                                 "Are you sure?",
                                 "Are you sure you want to 'Dismiss'? Your products will NOT be issued and will remain in a PENDING state.");
                 if (dismiss) {
-                    // TODO should reevaluate why we need a String passed in
-                    // here
-                    dismissHandler.commandInvoked(DISMISS_LABEL);
+                    dismissHandler.commandInvoked(null);
                 }
             }
         });
@@ -700,7 +717,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
     }
 
     public void invokeIssue() {
-        issueHandler.commandInvoked(ISSUE_LABEL);
+        issueHandler.commandInvoked(null);
     }
 
     /**
@@ -708,7 +725,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * 
      * @return Continue command invoker.
      */
-    public ICommandInvoker getIssueInvoker() {
+    public ICommandInvoker<String> getIssueInvoker() {
         return issueInvoker;
     }
 
@@ -718,7 +735,7 @@ public class ProductGenerationDialog extends CaveSWTDialog {
      * @param
      * @return The Dismiss command invoker
      */
-    public ICommandInvoker getDismissInvoker() {
+    public ICommandInvoker<String> getDismissInvoker() {
         return dismissInvoker;
     }
 

@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.tools;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
@@ -35,13 +36,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           singleton.
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
+
+    // Private Variables
+
+    /**
+     * JSON converter.
+     */
+    private final JSONConverter jsonConverter = new JSONConverter();
 
     // Public Constructors
 
@@ -56,8 +66,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            Event bus used to signal changes.
      */
     public ToolsPresenter(ISessionManager<ObservedHazardEvent> model,
-            IToolsView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -71,8 +81,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.TOOLS)) {
-            List<Tool> toolList = configurationManager.getSettings()
-                    .getToolbarTools();
+            List<Tool> toolList = getModel().getConfigurationManager()
+                    .getSettings().getToolbarTools();
             getView().setTools(jsonConverter.toJson(toolList));
         }
     }
@@ -102,9 +112,17 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      *            View to be initialized.
      */
     @Override
-    public void initialize(IToolsView<?, ?> view) {
-        List<Tool> toolList = configurationManager.getSettings()
-                .getToolbarTools();
+    protected void initialize(IToolsView<?, ?> view) {
+        List<Tool> toolList = getModel().getConfigurationManager()
+                .getSettings().getToolbarTools();
         view.initialize(this, jsonConverter.toJson(toolList));
+    }
+
+    @Override
+    protected void reinitialize(IToolsView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 }

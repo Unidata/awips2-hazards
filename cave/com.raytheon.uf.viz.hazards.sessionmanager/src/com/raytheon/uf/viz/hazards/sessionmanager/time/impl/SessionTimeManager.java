@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +34,7 @@ import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
@@ -49,6 +52,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Jul 24, 2013  585       C. Golden   Changed to allow loading from bundles.
  * Mar 19, 2014 2925       C. Golden   Changed to fire off notification when
  *                                     visible time range changes.
+ * May 12, 2014 2925       C. Golden   Added originator to visible time
+ *                                     range change notification, and
+ *                                     added current time provider and
+ *                                     getter.
  * </pre>
  * 
  * @author bsteffen
@@ -56,6 +63,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  */
 
 public class SessionTimeManager implements ISessionTimeManager {
+
+    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+        @Override
+        public long getCurrentTime() {
+            return SimulatedTime.getSystemTime().getMillis();
+        }
+    };
 
     private final ISessionNotificationSender notificationSender;
 
@@ -74,6 +88,11 @@ public class SessionTimeManager implements ISessionTimeManager {
     @Override
     public Date getCurrentTime() {
         return SimulatedTime.getSystemTime().getTime();
+    }
+
+    @Override
+    public ICurrentTimeProvider getCurrentTimeProvider() {
+        return currentTimeProvider;
     }
 
     @Override
@@ -121,10 +140,10 @@ public class SessionTimeManager implements ISessionTimeManager {
     }
 
     @Override
-    public void setVisibleRange(TimeRange visibleRange) {
+    public void setVisibleRange(TimeRange visibleRange, IOriginator originator) {
         this.visibleRange = visibleRange;
         notificationSender.postNotificationAsync(new VisibleTimeRangeChanged(
-                this));
+                this, originator));
     }
 
     @Handler
@@ -149,7 +168,8 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     @Override
     public void shutdown() {
-        /**
+
+        /*
          * Nothing to do right now.
          */
     }

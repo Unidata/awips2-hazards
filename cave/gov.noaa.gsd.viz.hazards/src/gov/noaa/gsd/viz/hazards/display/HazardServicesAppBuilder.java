@@ -598,13 +598,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createConsole(boolean loadedFromBundle) {
         ConsoleView consoleView = new ConsoleView(loadedFromBundle);
         if (consolePresenter == null) {
-            consolePresenter = new ConsolePresenter(sessionManager,
-                    consoleView, eventBus);
+            consolePresenter = new ConsolePresenter(sessionManager, eventBus);
             presenters.add(consolePresenter);
-        } else {
-            consolePresenter.setView(consoleView);
         }
-        consolePresenter.initialize(consoleView);
+        consolePresenter.setView(consoleView);
     }
 
     /**
@@ -629,9 +626,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
             AlertsConfigView alertsConfigView = new AlertsConfigView();
             alertsConfigPresenter = new AlertsConfigPresenter(sessionManager,
-                    alertsConfigView, eventBus);
-            alertsConfigPresenter.initialize(alertsConfigView);
+                    eventBus);
             presenters.add(alertsConfigPresenter);
+            alertsConfigPresenter.setView(alertsConfigView);
         }
     }
 
@@ -656,9 +653,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 }
 
             };
-            alertVizPresenter = new AlertVizPresenter(sessionManager,
-                    alertVizView, eventBus);
-            alertVizPresenter.initialize(alertVizView);
+            alertVizPresenter = new AlertVizPresenter(sessionManager, eventBus);
+            alertVizPresenter.setView(alertVizView);
         }
     }
 
@@ -674,13 +670,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 loadedFromBundle);
         if (hazardDetailPresenter == null) {
             hazardDetailPresenter = new HazardDetailPresenter(sessionManager,
-                    hazardDetailView, eventBus);
+                    eventBus);
             presenters.add(hazardDetailPresenter);
-        } else {
-
-            hazardDetailPresenter.setView(hazardDetailView);
         }
-        hazardDetailPresenter.initialize(hazardDetailView);
+        hazardDetailPresenter.setView(hazardDetailView);
     }
 
     /**
@@ -693,10 +686,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (settingsPresenter == null) {
 
             SettingsView settingsView = new SettingsView();
-            settingsPresenter = new SettingsPresenter(sessionManager,
-                    settingsView, eventBus);
-            settingsPresenter.initialize(settingsView);
+            settingsPresenter = new SettingsPresenter(sessionManager, eventBus);
             presenters.add(settingsPresenter);
+            settingsPresenter.setView(settingsView);
         }
     }
 
@@ -706,10 +698,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createToolsDisplay() {
         if (toolsPresenter == null) {
             ToolsView toolsView = new ToolsView();
-            toolsPresenter = new ToolsPresenter(sessionManager, toolsView,
-                    eventBus);
-            toolsPresenter.initialize(toolsView);
+            toolsPresenter = new ToolsPresenter(sessionManager, eventBus);
             presenters.add(toolsPresenter);
+            toolsPresenter.setView(toolsView);
+
         }
     }
 
@@ -721,14 +713,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createSpatialDisplay(ToolLayer toolLayer) {
         SpatialView spatialView = new SpatialView(toolLayer);
         if (spatialPresenter == null) {
-            spatialPresenter = new SpatialPresenter(sessionManager,
-                    spatialView, eventBus);
+            spatialPresenter = new SpatialPresenter(sessionManager, eventBus);
             presenters.add(spatialPresenter);
         } else {
             spatialPresenter.getView().dispose();
-            spatialPresenter.setView(spatialView);
         }
-        spatialPresenter.initialize(spatialView);
+        spatialPresenter.setView(spatialView);
     }
 
     /**
@@ -738,14 +728,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         ProductStagingView productStagingView = new ProductStagingView();
         if (productStagingPresenter == null) {
             productStagingPresenter = new ProductStagingPresenter(
-                    sessionManager, productStagingView, eventBus);
+                    sessionManager, eventBus);
             presenters.add(productStagingPresenter);
         } else {
             productStagingPresenter.getView().dispose();
-
-            productStagingPresenter.setView(productStagingView);
         }
-        productStagingPresenter.initialize(productStagingView);
+        productStagingPresenter.setView(productStagingView);
     }
 
     /**
@@ -755,14 +743,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         ProductEditorView productEditorView = new ProductEditorView();
         if (productEditorPresenter == null) {
             productEditorPresenter = new ProductEditorPresenter(sessionManager,
-                    productEditorView, eventBus);
+                    eventBus);
             presenters.add(productEditorPresenter);
         } else {
             productEditorPresenter.getView().dispose();
-
-            productEditorPresenter.setView(productEditorView);
         }
-        productEditorPresenter.initialize(productEditorView);
+        productEditorPresenter.setView(productEditorView);
     }
 
     /**
@@ -778,7 +764,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public void ensureViewsVisible() {
         consolePresenter.getView().ensureVisible();
-        hazardDetailPresenter.showHazardDetail(false);
+        hazardDetailPresenter.showHazardDetail();
     }
 
     /**
@@ -883,7 +869,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Show the hazard detail subview.
      */
     public void showHazardDetail() {
-        hazardDetailPresenter.showHazardDetail(false);
+        hazardDetailPresenter.showHazardDetail();
     }
 
     /**

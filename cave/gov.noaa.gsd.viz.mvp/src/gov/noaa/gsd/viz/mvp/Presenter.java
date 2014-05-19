@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.mvp;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Superclass from which to derive presenters for specific types of views. Its
@@ -31,6 +33,13 @@ import java.util.EnumSet;
  *                                        singleton.
  * Aug  9, 2013    1921    daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Aug 22, 2013    1936    Chris.Golden   Added console countdown timers.
+ * May 17, 2014    2925    Chris.Golden   Changed to initialize a view when that
+ *                                        view is first attached, or reinitialize
+ *                                        it if it is reattached later. Also
+ *                                        removed setView() from constructor, so
+ *                                        that views are not set before the
+ *                                        constructor, and subclass constructors,
+ *                                        finish executing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -43,7 +52,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * View.
      */
-    protected V view;
+    private V view;
 
     /**
      * Model.
@@ -53,7 +62,12 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * Event bus used to signal changes.
      */
-    protected final BoundedReceptionEventBus<Object> eventBus;
+    private final BoundedReceptionEventBus<Object> eventBus;
+
+    /**
+     * Set of views that have been attached to this presenter at least once.
+     */
+    private final Set<V> previouslyAttachedViews = new HashSet<>();
 
     // Public Constructors
 
@@ -62,23 +76,21 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            View to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public Presenter(M model, V view, BoundedReceptionEventBus<Object> eventBus) {
+    public Presenter(M model, BoundedReceptionEventBus<Object> eventBus) {
 
-        // Remember the model and the event bus.
+        /*
+         * Remember the model and the event bus.
+         */
         this.model = model;
         this.eventBus = eventBus;
 
-        // Set the view to that specified and initialize it.
-        setView(view);
-
-        // Register for notifications.
+        /*
+         * Register for notifications.
+         */
         eventBus.subscribe(this);
-
     }
 
     // Public Methods
@@ -100,9 +112,18 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
      */
     public final void setView(V view) {
 
-        // Remember this view, and notify the view that it will be handled
-        // by this presenter.
+        /*
+         * Remember this view, and initialize the view if this is its first time
+         * attaching to this presenter; if it has been attached to this
+         * presenter previously, reinitialize it instead.
+         */
         this.view = view;
+        if (previouslyAttachedViews.contains(view)) {
+            reinitialize(view);
+        } else {
+            previouslyAttachedViews.add(view);
+            initialize(view);
+        }
     }
 
     /**
@@ -118,7 +139,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * Receive notification of a model change.
      * 
-     * @param changes
+     * @param changed
      *            Set of elements within the model that have changed.
      */
     public abstract void modelChanged(EnumSet<E> changed);
@@ -132,12 +153,25 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     // Protected Methods
 
     /**
-     * Initialize the specified view in a subclass-specific manner.
+     * Initialize the specified view in a subclass-specific manner. This is
+     * invoked the first time a view is attached to a presenter, and only the
+     * first time.
      * 
      * @param view
      *            View to be initialized.
      */
-    public abstract void initialize(V view);
+    protected abstract void initialize(V view);
+
+    /**
+     * Reinitialize the specified view in a subclass-specific manner. This is
+     * invoked whenever a view is reattached to a presenter, meaning that it has
+     * previously been attached and has had {@link #initialize(IView)} called
+     * upon it once previously.
+     * 
+     * @param view
+     *            View to be initialized.
+     */
+    protected abstract void reinitialize(V view);
 
     /**
      * Get the model.

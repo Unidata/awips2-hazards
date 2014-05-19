@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedComparableValidator;
 
 import java.util.HashSet;

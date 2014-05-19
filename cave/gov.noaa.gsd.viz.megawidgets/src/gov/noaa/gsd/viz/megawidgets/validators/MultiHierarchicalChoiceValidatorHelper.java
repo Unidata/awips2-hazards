@@ -47,8 +47,7 @@ public class MultiHierarchicalChoiceValidatorHelper extends
     // Public Constructors
 
     /**
-     * Construct a standard instance for a
-     * {@link BoundedMultiHierarchicalChoiceValidator}.
+     * Construct a standard instance for a {@link BoundedChoiceValidator}.
      * 
      * @param choicesKey
      *            Key within the specifier parameters or mutable properties for

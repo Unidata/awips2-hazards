@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.console;
 import gov.noaa.gsd.viz.hazards.actions.ChangeVtecFormatAction;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.ViewPartDelegatorView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
@@ -20,6 +19,7 @@ import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 
 import java.util.ArrayList;
@@ -87,7 +87,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * @version 1.0
  */
 @SuppressWarnings("restriction")
-public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
+public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
         implements IConsoleView<Action, RCPMainUserInterfaceElement> {
 
     // Public Static Constants
@@ -880,6 +880,26 @@ public class ConsoleView extends ViewPartDelegatorView<ConsoleViewPart>
     @Override
     public void updateTitle(String title) {
         getViewPart().updateSite(title);
+    }
+
+    // Protected Methods
+
+    /**
+     * Respond to an attempt to execute some action via
+     * {@link #executeOnCreatedViewPart(Runnable)} upon a view part when the
+     * view part is not in existence and no attempt has been made to create it.
+     * This should never occur, so an exception is thrown.
+     * 
+     * @param job
+     *            Action for which execution was attempted.
+     * @throws IllegalStateException
+     *             Whenever this method is invoked.
+     */
+    @Override
+    protected void actionExecutionAttemptedUponNonexistentViewPart(Runnable job) {
+        throw new IllegalStateException(
+                "view part creation not attempted before invocation of action: "
+                        + job);
     }
 
     // Private Methods

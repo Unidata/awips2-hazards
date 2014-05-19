@@ -7,12 +7,16 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.hazards.display;
+package gov.noaa.gsd.viz.hazards.ui;
 
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.swt.widgets.Display;
@@ -30,7 +34,6 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.internal.WorkbenchPage;
 import org.eclipse.ui.part.ViewPart;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -38,12 +41,12 @@ import com.raytheon.uf.common.status.UFStatus;
  * View that delegates to an Eclipse view part.
  * <p>
  * The managed view part, specified by the view part identifier and class
- * parameters passed to this class's constructor, is to be shown via the <code>
- * showViewPart()</code>, and hidden via the <code>hideViewPart()</code> method.
- * Any manipulation of the view part, including the invocation of this class's
- * protected methods that manipulate said view part, should not be called
- * directly; instead such calls should occur within a <code>Runnable</code> that
- * is passed to <code>executeOnCreatedViewPart()</code>.
+ * parameters passed to this class's constructor, is to be shown via the
+ * {@link #showViewPart()}, and hidden via the {@link #hideViewPart(boolean)}
+ * method. Any manipulation of the view part, including the invocation of this
+ * class's protected methods that manipulate said view part, should not be
+ * called directly; instead such calls should occur within a {@link Runnable}
+ * that is passed to {@link #executeOnCreatedViewPart(Runnable)}.
  * </p>
  * <p>
  * This is the case because only at most one instance of a view part with a
@@ -51,8 +54,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * time, and if two Hazard Services instances exist simultaneously, and one
  * instance has a view part showing, the other instance must wait until that
  * view part disappears before showing its own. By encapsulating any view part
- * manipulation within a <code>Runnable</code> and passing it to an invocation
- * of <code>executeOnCreatedViewPart()</code>, such manipulation may be delayed
+ * manipulation within a {@link Runnable} and passing it to an invocation of
+ * <code>executeOnCreatedViewPart()</code>, such manipulation may be delayed
  * until the view part is created for this view, and then executed once it is
  * created.
  * </p>
@@ -60,22 +63,28 @@ import com.raytheon.uf.common.status.UFStatus;
  * The exception to the above rule is if this view knows for certain that it has
  * a view part it is managing, in which case direct manipulation may occur.
  * </p>
+ * <p>
+ * TODO: Remove dependency on {@link RCPMainUserInterfaceElement} in order to
+ * move this package to its own plugin.
+ * </p>
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 08, 2013            Chris.Golden      Initial creation
- * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
- * Aug 22, 2013   1936     Chris.Golden      Added console countdown timers.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 08, 2013            Chris.Golden Initial creation
+ * Jul 12, 2013    585     Chris.Golden Changed to support loading from bundle.
+ * Aug 22, 2013   1936     Chris.Golden Added console countdown timers.
+ * May 08, 2014   2925     Chris.Golden Added notification callbacks to creation
+ *                                      listeners, and moved to its own package.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 @SuppressWarnings("restriction")
-public abstract class ViewPartDelegatorView<V extends ViewPart> implements
+public abstract class ViewPartDelegateView<V extends ViewPart> implements
         IView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
@@ -84,7 +93,7 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ViewPartDelegatorView.class);
+            .getHandler(ViewPartDelegateView.class);
 
     // Private Variables
 
@@ -97,6 +106,11 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      * View part class.
      */
     private final Class<V> viewPartClass;
+
+    /**
+     * View part creation listeners.
+     */
+    private final Set<IViewPartCreationListener<V>> viewPartCreationListeners = new HashSet<>();
 
     /**
      * View part.
@@ -114,18 +128,18 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     private IPartListener2 partListener2 = null;
 
     /**
-     * Perspective listener; this exists only if <code>showViewPart()</code> is
+     * Perspective listener; this exists only if {@link #showViewPart()} is
      * called and an already-existing view part with the same identifier as
-     * <code>viewPartIdentifier</code> is found. In this case, this listener is
-     * used to determine when the old view part is closed, so that the new one
-     * may be opened. If such a notification occurs, <code>showViewPart()</code>
-     * is called, and then any jobs found in the list referenced by <code>
-     * jobsToExecuteWhenViewPartCreated</code> must then be executed.
+     * {@link #viewPartIdentifier} is found. In this case, this listener is used
+     * to determine when the old view part is closed, so that the new one may be
+     * opened. If such a notification occurs, <code>showViewPart()</code> is
+     * called, and then any jobs found in the list referenced by
+     * {@link #jobsToExecuteWhenViewPartCreated} must then be executed.
      */
     private IPerspectiveListener2 perspectiveListener2 = null;
 
     /**
-     * Queue of runnables to execute if <code>perspectiveListener2</code> is
+     * Queue of runnables to execute if {@link #perspectiveListener2} is
      * notified of an old view part belonging to another instance of Hazard
      * Services closing. This is <code>null</code> if the former member variable
      * is <code>null</code>.
@@ -142,7 +156,7 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      * @param viewPartClass
      *            Class of the view part to which to delegate.
      */
-    public ViewPartDelegatorView(String viewPartIdentifier,
+    public ViewPartDelegateView(String viewPartIdentifier,
             Class<V> viewPartClass) {
         this.viewPartIdentifier = viewPartIdentifier;
         this.viewPartClass = viewPartClass;
@@ -153,16 +167,22 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     @Override
     public void dispose() {
 
-        // Remove the perspective listener and queued view part jobs, if any.
+        /*
+         * Remove the perspective listener and queued view part jobs, if any.
+         */
         removePerspectiveListenerAndQueuedViewPartJobs(false);
 
-        // Remove any part listener.
+        /*
+         * Remove any part listener.
+         */
         IWorkbenchPage page = getActiveWorkbenchPage(false);
         if (page != null) {
             removePartListener(page);
         }
 
-        // Hide the view part.
+        /*
+         * Hide the view part.
+         */
         hideViewPart(false);
     }
 
@@ -170,7 +190,33 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     public abstract List<? extends Action> contributeToMainUI(
             RCPMainUserInterfaceElement type);
 
+    /**
+     * Add the specified view part creation listener, to be notified whenever
+     * the view part is created.
+     * 
+     * @param creationListener
+     *            View part creation listener, to be notified if a view part
+     *            creation occurs.
+     */
+    public void addCreationListener(
+            IViewPartCreationListener<V> creationListener) {
+        viewPartCreationListeners.add(creationListener);
+    }
+
     // Protected Methods
+
+    /**
+     * Respond to an attempt to execute some action via
+     * {@link #executeOnCreatedViewPart(Runnable)} upon a view part when the
+     * view part is not in existence and no attempt has been made to create it.
+     * Some subclasses may want to disallow such attempts by throwing an
+     * exception to indicate that an error occurred; others may not care.
+     * 
+     * @param job
+     *            Action for which execution was attempted.
+     */
+    protected abstract void actionExecutionAttemptedUponNonexistentViewPart(
+            Runnable job);
 
     /**
      * Show the view part.
@@ -184,25 +230,33 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      */
     protected final boolean showViewPart() {
 
-        // Do nothing if the view part is already showing.
+        /*
+         * Do nothing if the view part is already showing.
+         */
         if (viewPart != null) {
             return true;
         }
 
-        // Remove any perspective listener and queued view part jobs.
+        /*
+         * Remove any perspective listener and queued view part jobs.
+         */
         removePerspectiveListenerAndQueuedViewPartJobs(true);
 
-        // Get the active workbench page.
+        /*
+         * Get the active workbench page.
+         */
         IWorkbenchPage page = getActiveWorkbenchPage(true);
         if (page == null) {
             return false;
         }
 
-        // If an existing view part with the same identifier is found, this
-        // means that a previous Hazard Services instance is still around.
-        // In this case, register a perspective listener to notify this object
-        // when the old view part goes away so that the new view part can be
-        // instantiated.
+        /*
+         * If an existing view part with the same identifier is found, this
+         * means that a previous Hazard Services instance is still around. In
+         * this case, register a perspective listener to notify this object when
+         * the old view part goes away so that the new view part can be
+         * instantiated.
+         */
         IViewPart oldViewPart = page.findView(viewPartIdentifier);
         if (oldViewPart != null) {
             IWorkbenchWindow window = getActiveWorkbenchWindow(true);
@@ -214,45 +268,55 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
                     if (changeId.equals(IWorkbenchPage.CHANGE_VIEW_HIDE)
                             && partRef.getId().equals(viewPartIdentifier)) {
 
-                        // Schedule the load of the new view part to occur
-                        // later, since the unload of the previous one will
-                        // not have been completed when this listener fires.
+                        /*
+                         * Schedule the load of the new view part to occur
+                         * later, since the unload of the previous one will not
+                         * have been completed when this listener fires.
+                         */
                         Display.getCurrent().asyncExec(new Runnable() {
                             @Override
                             public void run() {
 
-                                // Attempt to create the view part, and if it
-                                // gets created, iterate through the jobs to be
-                                // executed now that the view part exists, run-
-                                // ning each in turn. Do the iteration over a
-                                // copy of the queue, in case one of the jobs
-                                // clears the original queue.
+                                /*
+                                 * Attempt to create the view part, and if it
+                                 * gets created, iterate through the jobs to be
+                                 * executed now that the view part exists,
+                                 * running each in turn. Do the iteration over a
+                                 * copy of the queue, in case one of the jobs
+                                 * clears the original queue. Then notify the
+                                 * listener, if any, of the deferred creation.
+                                 */
                                 IWorkbenchPage page = getActiveWorkbenchPage(true);
                                 if (createViewPart(page)) {
                                     Runnable job;
-                                    Queue<Runnable> jobsQueueCopy = Lists
-                                            .newLinkedList(jobsToExecuteWhenViewPartCreated);
+                                    Queue<Runnable> jobsQueueCopy = new LinkedList<>(
+                                            jobsToExecuteWhenViewPartCreated);
                                     while ((job = jobsQueueCopy.poll()) != null) {
                                         job.run();
                                     }
+                                    notifyCreationListeners(true);
                                 }
 
-                                // Remove the perspective listener and any
-                                // queued view part jobs, since it is no longer
-                                // needed now that the old view part has been
-                                // removed.
+                                /*
+                                 * Remove the perspective listener and any
+                                 * queued view part jobs, since it is no longer
+                                 * needed now that the old view part has been
+                                 * removed.
+                                 */
                                 removePerspectiveListenerAndQueuedViewPartJobs(false);
                             }
                         });
                     }
                 }
             };
-            jobsToExecuteWhenViewPartCreated = Lists.newLinkedList();
+            jobsToExecuteWhenViewPartCreated = new LinkedList<>();
             window.addPerspectiveListener(perspectiveListener2);
             return false;
         }
 
-        // Create the view part.
+        /*
+         * Create the view part.
+         */
         return createViewPart(page);
     }
 
@@ -267,27 +331,29 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      */
     protected final void hideViewPart(boolean alreadyClosed) {
 
-        // Remove any perspective listener and queued view part jobs.
+        /*
+         * Remove any perspective listener and queued view part jobs.
+         */
         removePerspectiveListenerAndQueuedViewPartJobs(true);
 
-        // Remove the view part from the display. Exceptions
-        // are caught in case CAVE is closing, since the work-
-        // bench, window, page, or view part may not be around
-        // at this point.
+        /*
+         * Remove the view part from the display. Exceptions are caught in case
+         * CAVE is closing, since the workbench, window, page, or view part may
+         * not be around at this point.
+         */
         if ((alreadyClosed == false) && (viewPart != null)) {
             try {
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                         .getActivePage().hideView(viewPart);
-                statusHandler
-                        .debug("ViewPartDelegatorView.dispose(): Closing view part.");
+                statusHandler.debug("Closing view part.");
             } catch (Exception e) {
-                statusHandler
-                        .info("ViewPartDelegatorView.dispose(): Could not close view: "
-                                + e);
+                statusHandler.info("Could not close view: " + e);
             }
         }
 
-        // Forget the member data.
+        /*
+         * Forget the member data.
+         */
         viewPart = null;
     }
 
@@ -306,8 +372,7 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
             if (jobsToExecuteWhenViewPartCreated != null) {
                 jobsToExecuteWhenViewPartCreated.add(job);
             } else {
-                throw new IllegalStateException(
-                        "view part creation not attempted before this invocation");
+                actionExecutionAttemptedUponNonexistentViewPart(job);
             }
         } else if (Display.getDefault().getThread() == Thread.currentThread()) {
             job.run();
@@ -319,10 +384,10 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     /**
      * Change the view part's visibility.
      * <p>
-     * <strong>Note</code>: This method should not be called directly; it is
+     * <strong>Note</strong>: This method should not be called directly; it is
      * meant to be used as a helper method, and should be encapsulated within a
-     * <code>Runnable</code> that is then passed as a parameter to <code>
-     * executeOnCreatedViewPart()</code>.
+     * {@link Runnable} that is then passed as a parameter to
+     * {@link #executeOnCreatedViewPart(Runnable)}.
      * 
      * @param visible
      *            Flag indicating whether or not the view should be visible.
@@ -377,9 +442,9 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     /**
      * Get the view part being managed.
      * <p>
-     * <strong>Note</code>: The return value may be <code>null</code> even if
-     * <code>showViewPart()</code> has been called, due to delayed instantiation
-     * of the view part because another view part with the same identifier was
+     * <strong>Note</strong>: The return value may be <code>null</code> even if
+     * {@link #showViewPart()} has been called, due to delayed instantiation of
+     * the view part because another view part with the same identifier was
      * found to exist.
      * 
      * @return View part being managed, or <code>null</code> if no view part is
@@ -412,18 +477,20 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
      */
     protected final IWorkbenchPage getActiveWorkbenchPage(boolean notifyOfError) {
 
-        // Get the active window.
+        /*
+         * Get the active window.
+         */
         IWorkbenchWindow window = getActiveWorkbenchWindow(notifyOfError);
         if (window == null) {
             return null;
         }
 
-        // Get the active page.
+        /*
+         * Get the active page.
+         */
         IWorkbenchPage page = window.getActivePage();
         if ((page == null) && notifyOfError) {
-            statusHandler.error(
-                    "ViewPartDelegatorView.getActiveWorkbenchPage(): window."
-                            + "getActivePage() returned null.",
+            statusHandler.error("window.getActivePage() returned null.",
                     new NullPointerException());
         }
         return page;
@@ -444,8 +511,7 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
         if (window == null) {
             if (notifyOfError) {
                 statusHandler
-                        .error("ViewPartDelegatorView.getActiveWorkbenchWindow(): PlatformUI."
-                                + "getWorkbench().getActiveWorkbenchWindow() returned null.",
+                        .error("PlatformUI.getWorkbench().getActiveWorkbenchWindow() returned null.",
                                 new NullPointerException());
             }
             return null;
@@ -465,29 +531,41 @@ public abstract class ViewPartDelegatorView<V extends ViewPart> implements
     @SuppressWarnings("unchecked")
     private boolean createViewPart(IWorkbenchPage page) {
 
-        // Create and activate the view part.
+        /*
+         * Create and activate the view part.
+         */
         try {
             page.showView(viewPartIdentifier, null,
                     IWorkbenchPage.VIEW_ACTIVATE);
         } catch (PartInitException e) {
-            statusHandler.error(
-                    "ViewPartDelegatorView.<init>: Unable to show view part.",
-                    e);
+            statusHandler.error("Unable to show view part.", e);
             return false;
         }
         IViewPart viewPart = page.findView(viewPartIdentifier);
         if (viewPart == null) {
-            statusHandler
-                    .error("ViewPartDelegatorView.<init>: Unable to find view part.");
+            statusHandler.error("Unable to find view part.");
             return false;
         } else if (viewPartClass.isAssignableFrom(viewPart.getClass()) == false) {
-            statusHandler
-                    .error("ViewPartDelegatorView.<init>: Could not find view part that was "
-                            + "of type " + viewPartClass.getName() + ".");
+            statusHandler.error("Could not find view part that was "
+                    + "of type " + viewPartClass.getName() + ".");
             return false;
         }
         this.viewPart = (V) viewPart;
+        notifyCreationListeners(false);
         return true;
+    }
+
+    /**
+     * Notify any registered view part creation listeners.
+     * 
+     * @param deferred
+     *            Flag indicating whether the creation for which the
+     *            notification is being generated was deferred.
+     */
+    private void notifyCreationListeners(boolean deferred) {
+        for (IViewPartCreationListener<V> listener : viewPartCreationListeners) {
+            listener.viewPartCreated(viewPart, deferred);
+        }
     }
 
     /**

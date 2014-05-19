@@ -27,7 +27,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
- * components that the state of an event in the session has changed.
+ * components that the status of an event in the session has changed.
  * 
  * <pre>
  * 
@@ -36,17 +36,18 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * May 27, 2014 2925       Chris.Golden Changed name to use "status" instead of
+ *                                      "state".
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionEventStateModified extends SessionEventModified implements
+public class SessionEventStatusModified extends SessionEventModified implements
         ISessionNotification {
 
-    public SessionEventStateModified(
+    public SessionEventStatusModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
             IHazardEvent event, IOriginator originator) {
         super(eventManager, event, originator);

@@ -18,6 +18,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * This action is "fired" from the Hazard Information Dialog when its state
  * changes. Registered observers receive this object and act on it.
  * 
+ * TODO: This (and many other XXXAction classes within this same package) should
+ * no longer be needed once refactoring is completed allowing presenters to
+ * directly manipulate the model, instead of they or views having to send
+ * messages to do so.
+ * 
  * <pre>
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
@@ -28,10 +33,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * @author Bryon.Lawrence
  */
+@Deprecated
 public class HazardDetailAction {
 
     public enum ActionType {
-        PREVIEW, PROPOSE, ISSUE, DISMISS, UPDATE_TIME_RANGE, UPDATE_EVENT_TYPE, UPDATE_EVENT_METADATA
+        PREVIEW, PROPOSE, ISSUE, UPDATE_TIME_RANGE, UPDATE_EVENT_TYPE, UPDATE_EVENT_METADATA
     }
 
     private ActionType actionType;

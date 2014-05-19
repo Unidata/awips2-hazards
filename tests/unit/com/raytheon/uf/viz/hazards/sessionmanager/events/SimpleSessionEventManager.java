@@ -90,6 +90,12 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
+    public void setEventCategory(ObservedHazardEvent event, String category,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean setEventType(ObservedHazardEvent event, String phenomenon,
             String significance, String subType, IOriginator originator) {
         throw new UnsupportedOperationException();
@@ -145,6 +151,12 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
+    public void setLastModifiedSelectedEvent(ObservedHazardEvent event,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void shutdown() {
         /**
          * Nothing to do right now.
@@ -185,6 +197,11 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Set<String> getEventIdsAllowingProposal() {
         throw new UnsupportedOperationException();
     }
 

@@ -40,6 +40,10 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 @SuppressWarnings("rawtypes")
 public class ProductEditorViewForTesting implements IProductEditorView {
 
+    private ICommandInvocationHandler<String> issueInvocationHandler;
+
+    private ICommandInvocationHandler<String> dismissInvocationHandler;
+
     private GeneratedProductList generatedProducts;
 
     private List<GeneratedProductList> generatedProductsList;
@@ -62,26 +66,34 @@ public class ProductEditorViewForTesting implements IProductEditorView {
     }
 
     @Override
-    public ICommandInvoker getIssueInvoker() {
-        return new ICommandInvoker() {
+    public ICommandInvoker<String> getIssueInvoker() {
+        return new ICommandInvoker<String>() {
 
             @Override
-            public void setCommandInvocationHandler(
-                    ICommandInvocationHandler handler) {
+            public void setEnabled(String identifier, boolean enable) {
             }
 
+            @Override
+            public void setCommandInvocationHandler(String identifier,
+                    ICommandInvocationHandler<String> handler) {
+                issueInvocationHandler = handler;
+            }
         };
     }
 
     @Override
-    public ICommandInvoker getDismissInvoker() {
-        return new ICommandInvoker() {
+    public ICommandInvoker<String> getDismissInvoker() {
+        return new ICommandInvoker<String>() {
 
             @Override
-            public void setCommandInvocationHandler(
-                    ICommandInvocationHandler handler) {
+            public void setEnabled(String identifier, boolean enable) {
             }
 
+            @Override
+            public void setCommandInvocationHandler(String identifier,
+                    ICommandInvocationHandler<String> handler) {
+                dismissInvocationHandler = handler;
+            }
         };
     }
 
@@ -109,5 +121,17 @@ public class ProductEditorViewForTesting implements IProductEditorView {
         }
 
         return true;
+    }
+
+    public void invokeIssueButton() {
+        if (issueInvocationHandler != null) {
+            issueInvocationHandler.commandInvoked(null);
+        }
+    }
+
+    public void invokeDismissButton() {
+        if (issueInvocationHandler != null) {
+            dismissInvocationHandler.commandInvoked(null);
+        }
     }
 }

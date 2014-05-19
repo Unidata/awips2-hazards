@@ -11,8 +11,6 @@ package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 
 import java.util.Collection;
 import java.util.Map;
@@ -21,12 +19,12 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 /**
@@ -44,13 +42,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
  *                                     without modifying any data or the state.
  * Apr 29, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014 2925       Chris.Golden More changes to get it to work with the new HID.
+ *                                      Also changed to ensure that ongoing preview and
+ *                                      ongoing issue flags are set to false at the end
+ *                                      of each test, and moved the steps enum into the
+ *                                      base class.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public class HazardConflictFunctionalTest extends FunctionalTest {
+public class HazardConflictFunctionalTest extends
+        FunctionalTest<HazardConflictFunctionalTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
@@ -65,14 +70,9 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
     /**
      * Steps defining this test.
      */
-    private enum Steps {
-        TOGGLE_ON_HAZARD_DETECTION, CREATE_FIRST_HAZARD_AREA, ASSIGN_AREAL_FLOOD_WATCH, CREATE_SECOND_HAZARD_AREA, ASSIGN_FLASH_FLOOD_WATCH, TOGGLE_OFF_HAZARD_DETECTION
+    protected enum Steps {
+        TOGGLE_ON_HAZARD_DETECTION, CREATE_FIRST_HAZARD_AREA, ASSIGN_AREAL_FLOOD_WATCH, CREATE_SECOND_HAZARD_AREA, ASSIGN_FLASH_FLOOD_WATCH, CHECK_CONFLICTS, TOGGLE_OFF_HAZARD_DETECTION
     }
-
-    /**
-     * The current step being tested.
-     */
-    private Steps step;
 
     /**
      * The identifier of the first (FA.A) event created.
@@ -81,15 +81,6 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
     public HazardConflictFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
-    }
-
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
-
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
     }
 
     @Override
@@ -128,28 +119,32 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
      */
     @Handler(priority = -1)
     public void consoleActionOccurred(final ConsoleAction action) {
-        if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
+        try {
+            if (action.getId().equals(ConsoleAction.AUTO_CHECK_CONFLICTS)) {
 
-            if (this.step == Steps.TOGGLE_ON_HAZARD_DETECTION) {
-                /*
-                 * Make sure that auto hazard checking really is 'on'
-                 */
-                assertTrue(appBuilder.getSessionManager()
-                        .isAutoHazardCheckingOn());
+                if (this.step == Steps.TOGGLE_ON_HAZARD_DETECTION) {
+                    /*
+                     * Make sure that auto hazard checking really is 'on'
+                     */
+                    assertTrue(appBuilder.getSessionManager()
+                            .isAutoHazardCheckingOn());
 
-                /*
-                 * Create the first hazard.
-                 */
-                stepCompleted();
-                this.step = Steps.CREATE_FIRST_HAZARD_AREA;
-                autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
-                        FIRST_EVENT_CENTER_Y);
-            } else {
-                assertTrue(!appBuilder.getSessionManager()
-                        .isAutoHazardCheckingOn());
-                stepCompleted();
-                testSuccess();
+                    /*
+                     * Create the first hazard.
+                     */
+                    stepCompleted();
+                    this.step = Steps.CREATE_FIRST_HAZARD_AREA;
+                    autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
+                            FIRST_EVENT_CENTER_Y);
+                } else {
+                    assertTrue(!appBuilder.getSessionManager()
+                            .isAutoHazardCheckingOn());
+                    stepCompleted();
+                    testSuccess();
+                }
             }
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 
@@ -214,6 +209,19 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
                         || !"A".equals(event.getSignificance())) {
                     return;
                 }
+                stepCompleted();
+                this.step = Steps.CHECK_CONFLICTS;
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
+    public void sessionSelectedEventConflictsModifiedOccurred(
+            SessionSelectedEventConflictsModified event) {
+        try {
+            if (step == Steps.CHECK_CONFLICTS) {
                 checkHazardConflicts();
                 stepCompleted();
                 this.step = Steps.TOGGLE_OFF_HAZARD_DETECTION;
@@ -254,16 +262,6 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
 
         assertTrue(selectedEvent.getPhenomenon().equals("FA"));
         assertTrue(selectedEvent.getSignificance().equals("A"));
-
-        /*
-         * Check the information passed to the mocked Hazard Information Dialog
-         */
-        DictList hidContents = mockHazardDetailView.getContents();
-        assertTrue(hidContents.size() == 1);
-
-        Dict hidContent = hidContents.getDynamicallyTypedValue(0);
-        assertTrue(hidContent.getDynamicallyTypedValue(
-                HazardConstants.HAZARD_EVENT_IDENTIFIER).equals(firstEventID));
     }
 
     /**
@@ -291,12 +289,11 @@ public class HazardConflictFunctionalTest extends FunctionalTest {
         String selectedEventID = selectedEvents.iterator().next().getEventID();
 
         /*
-         * Check the information passed to the mocked Hazard Information Dialog
+         * Check the conflict information.
          */
-        DictList hidContents = mockHazardDetailView.getContents();
-        assertTrue(hidContents.size() == 1);
-        Map<String, Collection<IHazardEvent>> hazardConflictMap = mockHazardDetailView
-                .getConflictMap();
+        Map<String, Collection<IHazardEvent>> hazardConflictMap = appBuilder
+                .getSessionManager().getEventManager()
+                .getConflictingEventsForSelectedEvents();
 
         assertTrue(hazardConflictMap.size() == 1);
         assertTrue(hazardConflictMap.containsKey(selectedEventID));

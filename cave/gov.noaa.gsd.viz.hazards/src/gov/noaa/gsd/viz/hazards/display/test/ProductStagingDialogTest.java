@@ -34,7 +34,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
@@ -51,13 +52,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Jan 10, 2014  2890      bkowal      Now subscribes to a notification that
  *                                     indicates all product generation is complete.
  * Apr 09, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014 2925       Chris.Golden More changes to get it to work with the new HID.
+ *                                      Also changed to ensure that ongoing preview and
+ *                                      ongoing issue flags are set to false at the end
+ *                                      of each test, and moved the steps enum into the
+ *                                      base class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class ProductStagingDialogTest extends FunctionalTest {
+public class ProductStagingDialogTest extends
+        FunctionalTest<ProductStagingDialogTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
@@ -65,11 +73,9 @@ public class ProductStagingDialogTest extends FunctionalTest {
 
     private static final double FIRST_EVENT_CENTER_X = -96.0;
 
-    private enum Steps {
-        START, EVENT0, EVENT1, PREVIEW
+    protected enum Steps {
+        START, EVENT0, EVENT1, PREVIEW, TEST_ENDED
     }
-
-    private Steps step;
 
     public ProductStagingDialogTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -82,13 +88,14 @@ public class ProductStagingDialogTest extends FunctionalTest {
 
     }
 
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
-
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
+    @Handler(priority = -1)
+    public void sessionModifiedOccurred(SessionModified action) {
+        if ((step == Steps.TEST_ENDED)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && (appBuilder.getSessionManager().isPreviewOngoing() == false)) {
+            stepCompleted();
+            testSuccess();
+        }
     }
 
     @Handler(priority = -1)
@@ -120,7 +127,7 @@ public class ProductStagingDialogTest extends FunctionalTest {
     }
 
     @Handler(priority = -1)
-    public void sessionEventModifiedOccurred(SessionEventModified action) {
+    public void sessionEventTypeModifiedOccurred(SessionEventTypeModified action) {
         try {
             if (step == Steps.START) {
                 ObservedHazardEvent event = autoTestUtilities
@@ -153,33 +160,50 @@ public class ProductStagingDialogTest extends FunctionalTest {
     @Handler(priority = -1)
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
-        ProductStagingInfo productStagingInfo = mockProductStagingView
-                .getProductStagingInfo();
-        assertEquals(productStagingInfo.getProducts().size(), 1);
-        Product product = productStagingInfo.getProducts().get(0);
-        assertEquals(product.getSelectedEventIDs().size(), 1);
-        List<Field> fields = product.getFields();
-        Field field = fields.get(0).getFields().get(0);
-        List<Choice> choices = field.getChoices();
-        assertEquals(choices.size(), 2);
-        checkChoice(choices.get(0));
-        checkChoice(choices.get(1));
-        assertEquals(productGenerationComplete.getGeneratedProducts().size(), 1);
-        GeneratedProductList products = productGenerationComplete
-                .getGeneratedProducts().get(0);
-        assertEquals(products.size(), 1);
-        IGeneratedProduct generatedProduct = products.get(0);
-        assertTrue(generatedProduct.getProductID().equals(
-                FLOOD_WATCH_PRODUCT_ID));
-        EventSet<IEvent> eventSet = products.getEventSet();
-        assertEquals(eventSet.size(), 1);
-        IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
-        assertEquals(event.getEventID(), product.getSelectedEventIDs().get(0));
-        assertEquals(event.getPhenomenon(), "FF");
-        assertEquals(event.getSignificance(), "A");
-        assertEquals(event.getStatus(), HazardConstants.HazardStatus.PENDING);
-        stepCompleted();
-        testSuccess();
+        try {
+            if (step == Steps.PREVIEW) {
+                ProductStagingInfo productStagingInfo = mockProductStagingView
+                        .getProductStagingInfo();
+                assertTrue(productStagingInfo != null);
+                assertTrue(productStagingInfo.getProducts() != null);
+                assertEquals(productStagingInfo.getProducts().size(), 1);
+                Product product = productStagingInfo.getProducts().get(0);
+                assertEquals(product.getSelectedEventIDs().size(), 1);
+                List<Field> fields = product.getFields();
+                Field field = fields.get(0).getFields().get(0);
+                List<Choice> choices = field.getChoices();
+                assertEquals(choices.size(), 2);
+                checkChoice(choices.get(0));
+                checkChoice(choices.get(1));
+                assertEquals(productGenerationComplete.getGeneratedProducts()
+                        .size(), 1);
+                GeneratedProductList products = productGenerationComplete
+                        .getGeneratedProducts().get(0);
+                assertEquals(products.size(), 1);
+                IGeneratedProduct generatedProduct = products.get(0);
+                assertTrue(generatedProduct.getProductID().equals(
+                        FLOOD_WATCH_PRODUCT_ID));
+                EventSet<IEvent> eventSet = products.getEventSet();
+                assertEquals(eventSet.size(), 1);
+                IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
+                assertEquals(event.getEventID(), product.getSelectedEventIDs()
+                        .get(0));
+                assertEquals(event.getPhenomenon(), "FF");
+                assertEquals(event.getSignificance(), "A");
+                assertEquals(event.getStatus(),
+                        HazardConstants.HazardStatus.PENDING);
+                stepCompleted();
+                step = Steps.TEST_ENDED;
+
+                /*
+                 * Preview ongoing needs to be reset, since a preview was
+                 * started but is being canceled.
+                 */
+                mockProductEditorView.invokeDismissButton();
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     private void checkChoice(Choice choice) {

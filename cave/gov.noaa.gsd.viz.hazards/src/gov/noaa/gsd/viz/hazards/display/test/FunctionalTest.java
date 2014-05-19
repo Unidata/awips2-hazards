@@ -16,7 +16,7 @@ import gov.noaa.gsd.viz.hazards.console.IConsoleView;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
-import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailView;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailViewDelegate;
 import gov.noaa.gsd.viz.hazards.producteditor.IProductEditorView;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
 import gov.noaa.gsd.viz.hazards.productstaging.IProductStagingView;
@@ -42,13 +42,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 
 /**
  * Description: Base class for automated testing. The approach is to create mock
- * {@link IView}s that basically beans. When methods are called to render hazard
- * GUIs, the mock versions will, instead, store the information to be displayed
- * into instance fields. The tests then query these instance fields to see if
- * the expected values would have been displayed. The mock {@link IView}s are
- * injected into the corresponding {@link Presenter}s before the test begins.
- * After the test completes, the original {@link IView}s are injected back into
- * the {@link Presenter}s so that Hazards can continue to be run normally.
+ * {@link IView}s that are basically beans. When methods are called to render
+ * hazard GUIs, the mock versions will, instead, store the information to be
+ * displayed into instance fields. The tests then query these instance fields to
+ * see if the expected values would have been displayed. The mock {@link IView}s
+ * are injected into the corresponding {@link Presenter}s before the test
+ * begins. After the test completes, the original {@link IView}s are injected
+ * back into the {@link Presenter}s so that Hazards can continue to be run
+ * normally.
  * 
  * <pre>
  * 
@@ -61,12 +62,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Nov 25, 2013 2336       Chris.Golden                    Altered to handle new location
  *                                                         of utility classes.
  * Apr 09, 2014 2925       Chris.Golden                    Fixed to work with new HID event propagation.
+ * May 18, 2014 2925       Chris.Golden                    More changes to get it to work with the new HID.
+ *                                                         Also moved the subclasses' steps enums into this
+ *                                                         class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public abstract class FunctionalTest {
+public abstract class FunctionalTest<E extends Enum<E>> {
 
     private static final String TEST_ERROR = "Test error";
 
@@ -109,7 +113,7 @@ public abstract class FunctionalTest {
 
     private IProductEditorView<?, ?> realProductEditorView;
 
-    private IHazardDetailView<?, ?> realHazardDetailView;
+    private IHazardDetailViewDelegate<?, ?> realHazardDetailView;
 
     protected ConsoleViewForTesting mockConsoleView;
 
@@ -131,6 +135,8 @@ public abstract class FunctionalTest {
 
     protected final ISessionEventManager<ObservedHazardEvent> eventManager;
 
+    protected E step;
+
     FunctionalTest(HazardServicesAppBuilder appBuilder) {
         this.appBuilder = appBuilder;
         this.eventManager = appBuilder.getSessionManager().getEventManager();
@@ -140,7 +146,13 @@ public abstract class FunctionalTest {
 
     }
 
-    protected abstract String getCurrentStep();
+    protected final String getCurrentStep() {
+        return step.toString();
+    }
+
+    protected final void stepCompleted() {
+        statusHandler.debug("Completed step " + step);
+    }
 
     private void registerForEvents() {
         this.eventBus.subscribe(this);
@@ -160,6 +172,67 @@ public abstract class FunctionalTest {
      */
     protected abstract void runFirstStep();
 
+    protected int issuanceTargetCount;
+
+    protected int issuanceCount;
+
+    protected boolean issuanceProductGenerationComplete;
+
+    /**
+     * Initialize the issuance tracking. This is used for event issue actions to
+     * determine when the issuance is complete, since each issuance may require
+     * multiple hazard status change notifications (that number being specified
+     * by <code>targetCount</code>) as well as a product generation complete
+     * notification.
+     * 
+     * @param targetCount
+     *            Number of event status changes that must occur before the
+     *            tracking can be considered to have reached its target.
+     */
+    protected final void initializeIssuanceTracking(int targetCount) {
+        issuanceTargetCount = targetCount;
+        issuanceCount = 0;
+        issuanceProductGenerationComplete = false;
+    }
+
+    /**
+     * Determine whether or not issuance tracking has reached its target, the
+     * target being that notification of product generation completion was
+     * received, as well as <code>targetCount</code> number of event status
+     * change notifications.
+     * 
+     * @param incrementCount
+     *            Flag indicating whether or not to increment the status change
+     *            notification; if false, this invocation will instead set the
+     *            product generation complete flag high.
+     * @return True if the issuance is complete, false otherwise.
+     */
+    protected final boolean isIssuanceComplete(boolean incrementCount) {
+        if (incrementCount) {
+            issuanceCount++;
+        } else {
+            issuanceProductGenerationComplete = true;
+        }
+        if ((issuanceCount >= issuanceTargetCount)
+                && issuanceProductGenerationComplete) {
+            return true;
+        }
+        statusHandler.debug(getCurrentStep() + ": state change count = "
+                + getIssuanceCount() + " of " + issuanceTargetCount
+                + ", generation complete = "
+                + issuanceProductGenerationComplete);
+        return false;
+    }
+
+    /**
+     * Get the current issuance count.
+     * 
+     * @return Current issuance count.
+     */
+    protected final int getIssuanceCount() {
+        return issuanceCount;
+    }
+
     private void checkForFloodSettings() {
         Settings currentSettings = appBuilder.getSessionManager()
                 .getConfigurationManager().getSettings();
@@ -170,6 +243,7 @@ public abstract class FunctionalTest {
     }
 
     private void resetEvents() {
+        appBuilder.getSessionManager().getEventManager().getEvents();
         eventBus.publish(new ConsoleAction(ConsoleAction.ActionType.RESET,
                 ConsoleAction.RESET_EVENTS));
     }
@@ -297,6 +371,16 @@ public abstract class FunctionalTest {
         productEditorPresenter.setView(realProductEditorView);
 
         appBuilder.setQuestionAnswerer(realQuestionAnswerer);
+
+        if (appBuilder.getSessionManager().isPreviewOngoing()
+                || appBuilder.getSessionManager().isIssueOngoing()) {
+            statusHandler.error("Preview or issue left ongoing by this test.",
+                    new IllegalStateException("Preview ongoing = "
+                            + appBuilder.getSessionManager().isPreviewOngoing()
+                            + ", issue ongoing = "
+                            + appBuilder.getSessionManager().isIssueOngoing()));
+            success = false;
+        }
 
         unRegisterForEvents();
         if (success) {

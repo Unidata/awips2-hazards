@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -57,7 +58,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                     event manager.
  * Apr 09, 2014 2925       Chris.Golden Added method to set event type, and anotherto get the
  *                                      megawidget specifier manager for a given hazard event.
- * 
+ * May 15, 2014 2925       Chris.Golden Added methods to set hazard category, set last modified
+ *                                      event, and get set of hazards for which proposal is
+ *                                      possible. Also changed getSelectedEvents() to return a
+ *                                      list.
  * </pre>
  * 
  * @author bsteffen
@@ -149,6 +153,20 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public E getEventById(String eventId);
 
     /**
+     * Set the specified event to have the specified category. As a side effect,
+     * the event is changed to have no type.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param category
+     *            Category for the event.
+     * @param originator
+     *            Originator of this change.
+     */
+    public void setEventCategory(E event, String category,
+            IOriginator originator);
+
+    /**
      * Set the specified event to have the specified type. If the former cannot
      * change its type, a new event will be created as a result.
      * 
@@ -216,7 +234,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * 
      * @return
      */
-    public Collection<E> getSelectedEvents();
+    public List<E> getSelectedEvents();
 
     /**
      * Return the selected event that was most recently modified.
@@ -224,6 +242,16 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public E getLastModifiedSelectedEvent();
+
+    /**
+     * Set the selected event that was most recently modified.
+     * 
+     * @param event
+     *            New last-modified event.
+     * @param originator
+     *            Originator of the change.
+     */
+    public void setLastModifiedSelectedEvent(E event, IOriginator originator);
 
     /**
      * @return id of the most recently selected event
@@ -327,14 +355,21 @@ public interface ISessionEventManager<E extends IHazardEvent> {
             Geometry geometry, String phenSigSubtype);
 
     /**
-     * Tests the currently selected hazards for conflicts with other hazards.
+     * Get a map of selected event identifiers to any events with which they
+     * conflict. The returned object will be kept current by the instance of
+     * this class, so that it will continue to be valid as long as the session
+     * event manager exists. At any given instant after it is fetched via this
+     * method, it may be queried to determine whether or not a specific selected
+     * hazard event conflicts with others.
+     * <p>
+     * Note that the map is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
      * 
-     * @param
-     * @return A map of selected event ids and corresponding collections of
-     *         events which conflict spatially with them. This list will be
-     *         empty if the are no conflicting hazards.
+     * @return Map of selected event identifiers to any events with which they
+     *         conflict. The latter is an empty collection if there are no
+     *         conflicting hazards.
      */
-    Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
+    public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents();
 
     /**
      * Get a set indicating which hazard event identifiers are allowed to have
@@ -370,6 +405,27 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param originator
      */
     public void issueEvent(E event, IOriginator originator);
+
+    /**
+     * Get a set indicating which hazard event identifiers are allowed to have
+     * their status changed to "proposed".
+     * 
+     * TODO: For now, the set is not kept current, so it is valid only at the
+     * time it is retrieved via this method and should not be cached for future
+     * checks. It would be far less wasteful to have it behave like the "until
+     * further notice" set, and have it be kept current by the instance of this
+     * class, so that it will continue to be valid as long as the session event
+     * manager exists. At any given instant after it is fetched via this method,
+     * it could be queried to determine whether or not a specific hazard event
+     * within this session may have its status changed to "proposed".
+     * <p>
+     * Note that the set is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
+     * 
+     * @return Set of hazard event identifiers indicating which events may have
+     *         their status changed to "proposed".
+     */
+    public Set<String> getEventIdsAllowingProposal();
 
     /**
      * Sets the state of the event to PROPOSED, persists it to the database and

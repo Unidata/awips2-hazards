@@ -7,10 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo;
 import gov.noaa.gsd.viz.hazards.display.ProductStagingInfo.Product;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                     when they should be enabled.
  * Apr 14, 2014   2925     Chris G.    Minor changes to support megawidget framework
  *                                     changes.
+ * May 08, 2014   2925     Chris G.    Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author shouming.wei
@@ -119,15 +120,21 @@ class ProductStagingDialog extends BasicDialog {
     /**
      * Continue command invocation handler.
      */
-    private ICommandInvocationHandler commandHandler = null;
+    private ICommandInvocationHandler<String> commandHandler = null;
 
     /**
      * Command invoker.
      */
-    private final ICommandInvoker commandInvoker = new ICommandInvoker() {
+    private final ICommandInvoker<String> commandInvoker = new ICommandInvoker<String>() {
+
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
             commandHandler = handler;
         }
     };
@@ -233,7 +240,7 @@ class ProductStagingDialog extends BasicDialog {
      * 
      * @return Command invoker.
      */
-    public ICommandInvoker getCommandInvoker() {
+    public ICommandInvoker<String> getCommandInvoker() {
         return commandInvoker;
     }
 

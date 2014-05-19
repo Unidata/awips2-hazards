@@ -41,8 +41,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Sep 09, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
  * 
  * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
- * 
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -55,8 +56,8 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     private IUFStatusHandler statusHandler;
 
     public AlertVizPresenter(ISessionManager<ObservedHazardEvent> model,
-            IView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
 
     }
 
@@ -88,10 +89,17 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     }
 
     @Override
-    public void initialize(IView<?, ?> view) {
+    protected void initialize(IView<?, ?> view) {
         renderedAlerts = Lists.newArrayList();
         statusHandler = UFStatus.getHandler(getClass());
-        eventBus.subscribe(this);
         alertAsNeeded(getModel().getAlertsManager().getActiveAlerts());
+    }
+
+    @Override
+    protected void reinitialize(IView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 }

@@ -40,6 +40,7 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
  * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 08, 2014  2925      Chris.Golden Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -124,12 +125,12 @@ public final class ProductEditorView implements
     }
 
     @Override
-    public ICommandInvoker getIssueInvoker() {
+    public ICommandInvoker<String> getIssueInvoker() {
         return productGenerationDialog.getIssueInvoker();
     }
 
     @Override
-    public ICommandInvoker getDismissInvoker() {
+    public ICommandInvoker<String> getDismissInvoker() {
         return productGenerationDialog.getDismissInvoker();
     }
 

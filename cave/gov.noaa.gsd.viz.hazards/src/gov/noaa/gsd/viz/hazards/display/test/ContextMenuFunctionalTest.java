@@ -41,13 +41,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
  * ------------ ---------- ----------- --------------------------
  * Nov 23, 2013 2474       blawrenc    Initial Coding
  * Apr 09, 2014    2925    Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014    2925    Chris.Golden More changes to get it to work with the new HID.
+ *                                      Also changed to ensure that ongoing preview and
+ *                                      ongoing issue flags are set to false at the end
+ *                                      of each test, and moved the steps enum into the
+ *                                      base class.
  * </pre>
  * 
  * @author blawrenc
  * @version 1.0
  */
-public class ContextMenuFunctionalTest extends FunctionalTest {
+public class ContextMenuFunctionalTest extends
+        FunctionalTest<ContextMenuFunctionalTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
@@ -62,16 +69,11 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
     /**
      * Steps defining this test.
      */
-    private enum Steps {
+    protected enum Steps {
         START, CHECK_CONTEXT_MENU_FOR_ADD_REMOVE_SHAPE,
 
         CREATE_NEW_NODE_HAZARD_AREA
     }
-
-    /**
-     * The current step being tested.
-     */
-    private Steps step;
 
     public ContextMenuFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -86,15 +88,6 @@ public class ContextMenuFunctionalTest extends FunctionalTest {
         this.step = Steps.START;
         autoTestUtilities.createEvent(FIRST_EVENT_CENTER_X,
                 FIRST_EVENT_CENTER_Y);
-    }
-
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
-
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
     }
 
     /**

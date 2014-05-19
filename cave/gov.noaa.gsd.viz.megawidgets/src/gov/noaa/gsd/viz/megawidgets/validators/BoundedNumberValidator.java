@@ -70,8 +70,6 @@ public abstract class BoundedNumberValidator<T extends Number & Comparable<T>>
      * @param highest
      *            Highest allowable value; the maximum value may not be higher
      *            than this.
-     * @param defaultCalculator
-     *            Default calculator.
      */
     public BoundedNumberValidator(Map<String, Object> parameters,
             String minimumValueKey, String maximumValueKey,

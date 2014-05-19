@@ -10,17 +10,12 @@
 package gov.noaa.gsd.viz.hazards.display;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
  * Superclass from which to derive presenters for specific types of views for
@@ -39,7 +34,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * May 17, 2014 2925       Chris.Golden      Removed protected variables; everything
+ *                                           they provided is either accessible using
+ *                                           getModel().getXxxxManager(), or is for
+ *                                           deprecated JSON-to-Java code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,16 +47,6 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
         extends
         Presenter<ISessionManager<ObservedHazardEvent>, HazardConstants.Element, V, Object> {
 
-    protected JSONConverter jsonConverter = new JSONConverter();
-
-    protected final ISessionTimeManager timeManager;
-
-    protected final ISessionConfigurationManager configurationManager;
-
-    protected final ISessionEventManager<ObservedHazardEvent> eventManager;
-
-    protected final IHazardSessionAlertsManager alertsManager;
-
     // Public Constructors
 
     /**
@@ -66,19 +54,12 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            View to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public HazardServicesPresenter(ISessionManager<ObservedHazardEvent> model,
-            V view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
-        this.timeManager = model.getTimeManager();
-        this.configurationManager = model.getConfigurationManager();
-        this.eventManager = model.getEventManager();
-        this.alertsManager = model.getAlertsManager();
-
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -97,8 +78,20 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
     /**
      * Get the session manager.
      * 
+     * TODO: Get rid of this method, replacing calls to it with
+     * {@link #getModel()}, which is built into the {@link Presenter superclass}
+     * . That is part of the point of the presenter, to have direct access to
+     * the model. The model, in Hazard Services, is the session manager.
+     * 
+     * It is public here because some view code is using it to get at the model,
+     * but such use is incorrect, since the view should not be accessing the
+     * model. We need this method for now, though, since the views have not yet
+     * been fully reimplemented to be loosely coupled to the presenter and not
+     * at all to the model.
+     * 
      * @return Session manager.
      */
+    @Deprecated
     public ISessionManager<ObservedHazardEvent> getSessionManager() {
         return getModel();
     }

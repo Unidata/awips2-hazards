@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
-import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;

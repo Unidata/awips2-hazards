@@ -22,27 +22,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Mar 19, 2014  2925      Chris.Golden      Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Mar 19, 2014  2925      Chris.Golden Initial creation.
+ * May 12, 2014  2925      Chris.Golden Changed to be derived from the appropriate
+ *                                      superclass.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SessionEventAllowUntilFurtherNoticeModified extends
-        SessionEventsModified implements ISessionNotification {
-
-    private final IHazardEvent event;
+        SessionEventModified implements ISessionNotification {
 
     public SessionEventAllowUntilFurtherNoticeModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
             IHazardEvent event, IOriginator originator) {
-        super(eventManager, originator);
-        this.event = event;
-    }
-
-    public IHazardEvent getEvent() {
-        return event;
+        super(eventManager, event, originator);
     }
 }

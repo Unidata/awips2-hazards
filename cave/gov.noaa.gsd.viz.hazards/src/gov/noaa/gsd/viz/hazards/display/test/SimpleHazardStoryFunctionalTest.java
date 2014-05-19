@@ -24,7 +24,6 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductConstants;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 
@@ -47,7 +46,9 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -70,20 +71,27 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
  * Feb 07, 2013 2890       bkowal      Product Generation JSON refactor.
  * Apr 09, 2014 2925       Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014 2925       Chris.Golden More changes to get it to work with the new HID.
+ *                                      Also changed to ensure that ongoing preview and
+ *                                      ongoing issue flags are set to false at the end
+ *                                      of each test, and moved the steps enum into the
+ *                                      base class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
+public class SimpleHazardStoryFunctionalTest extends
+        FunctionalTest<SimpleHazardStoryFunctionalTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
     /**
      * Steps defining this test. These follow the Simple Hazard Story.
      */
-    private enum Steps {
+    protected enum Steps {
         CREATE_NEW_HAZARD_AREA, ASSIGN_AREAL_FLOOD_WATCH, PREVIEW_AREAL_FLOOD_WATCH,
 
         ISSUE_AREAL_FLOOD_WATCH, UPGRADE_TO_AREAL_FLOOD_WARNING,
@@ -92,13 +100,8 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
 
         PREVIEW_FOLLOW_UP_STATEMENT, ISSUE_FOLLOW_UP_STATEMENT,
 
-        PREVIEW_CANCELLATION_STATEMENT, ISSUE_CANCELLATION_STATEMENT
+        PREVIEW_CANCELLATION_STATEMENT, ISSUE_CANCELLATION_STATEMENT, TEST_ENDED
     }
-
-    /**
-     * The current step being tested.
-     */
-    private Steps step;
 
     public SimpleHazardStoryFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -118,17 +121,101 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
         }
     }
 
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
+    private void handleCompletedIssuance() {
+        try {
+            switch (step) {
 
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
+            case ISSUE_AREAL_FLOOD_WATCH:
+                checkArealFloodWatchIssue();
+                stepCompleted();
+                step = Steps.UPGRADE_TO_AREAL_FLOOD_WARNING;
+
+                /*
+                 * Retrieve the selected event.
+                 */
+                Collection<ObservedHazardEvent> selectedEvents = appBuilder
+                        .getSessionManager().getEventManager()
+                        .getSelectedEvents();
+
+                assertTrue(selectedEvents.size() == 1);
+
+                ObservedHazardEvent selectedEvent = selectedEvents.iterator()
+                        .next();
+
+                assertTrue(selectedEvent.getEventID().length() > 0);
+
+                String[] phenSigSubType = HazardEventUtilities
+                        .getHazardPhenSigSubType(AutoTestUtilities.AREAL_FLOOD_WARNING_FULLTYPE);
+
+                ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
+                eventManager.setEventType(selectedEvent, phenSigSubType[0],
+                        phenSigSubType[1], phenSigSubType[2],
+                        UIOriginator.HAZARD_INFORMATION_DIALOG);
+                break;
+
+            case ISSUE_AREAL_FLOOD_WARNING:
+
+                /*
+                 * Fire off another preview action.
+                 */
+                checkArealFloodWarningIssue();
+                stepCompleted();
+                step = Steps.PREVIEW_FOLLOW_UP_STATEMENT;
+                autoTestUtilities.previewEvent();
+                break;
+
+            case ISSUE_FOLLOW_UP_STATEMENT:
+
+                /*
+                 * End the selected event.
+                 */
+                checkFollowUpStatementIssue();
+                stepCompleted();
+                step = Steps.PREVIEW_CANCELLATION_STATEMENT;
+                SpatialDisplayAction spatialAction = new SpatialDisplayAction(
+                        SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED,
+                        0, HazardConstants.END_SELECTED_HAZARDS);
+                eventBus.publishAsync(spatialAction);
+                break;
+
+            case ISSUE_CANCELLATION_STATEMENT:
+                checkCancellationStatementIssue();
+                stepCompleted();
+                testSuccess();
+                break;
+
+            default:
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
     }
 
     @Handler(priority = -1)
-    public void sessionEventModifiedOccurred(SessionEventModified action) {
+    public void sessionEventStateModifiedOccurred(
+            final SessionEventStatusModified action) {
+
+        try {
+            switch (step) {
+
+            case ISSUE_AREAL_FLOOD_WATCH:
+            case ISSUE_AREAL_FLOOD_WARNING:
+            case ISSUE_FOLLOW_UP_STATEMENT:
+            case ISSUE_CANCELLATION_STATEMENT:
+
+                if (isIssuanceComplete(true)) {
+                    handleCompletedIssuance();
+                }
+                break;
+            default:
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
+    public void sessionEventTypeOccurred(SessionEventTypeModified action) {
         try {
 
             switch (step) {
@@ -138,27 +225,12 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                         .getSessionManager().getEventManager()
                         .getSelectedEvents();
 
-                DictList hidContents = mockHazardDetailView.getContents();
-
                 assertTrue(selectedEvents.size() == 1);
 
                 IHazardEvent selectedEvent = selectedEvents.iterator().next();
 
-                String eventID = selectedEvent.getEventID();
-
                 assertTrue(selectedEvent.getPhenomenon().equals("FA"));
                 assertTrue(selectedEvent.getSignificance().equals("A"));
-
-                /*
-                 * Check the information passed to the mocked Hazard Information
-                 * Dialog
-                 */
-                assertTrue(hidContents.size() == 1);
-
-                Dict hidContent = hidContents.getDynamicallyTypedValue(0);
-                assertTrue(hidContent.getDynamicallyTypedValue(
-                        HazardConstants.HAZARD_EVENT_IDENTIFIER)
-                        .equals(eventID));
 
                 /*
                  * Trigger a preview action
@@ -172,6 +244,40 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                 break;
 
             }
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
+    public void sessionSelectedEventsModifiedOccurred(
+            SessionSelectedEventsModified action) {
+        try {
+
+            switch (step) {
+
+            case UPGRADE_TO_AREAL_FLOOD_WARNING:
+
+                /*
+                 * There should be two events selected, the FA.A and the FA.W
+                 */
+                ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
+                Collection<ObservedHazardEvent> selectedEvents = eventManager
+                        .getSelectedEvents();
+                assertTrue(selectedEvents.size() == 2);
+
+                List<String> hidSelectedEvents = mockHazardDetailView
+                        .getSelectedEventIdentifiers();
+                assertTrue(hidSelectedEvents.size() == 2);
+
+                stepCompleted();
+                step = Steps.PREVIEW_AREAL_FLOOD_WARNING;
+                autoTestUtilities.previewEvent();
+
+            default:
+                break;
+            }
+
         } catch (Exception e) {
             handleException(e);
         }
@@ -216,24 +322,6 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
                         phenSigSubType[1], phenSigSubType[2],
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
                 break;
-
-            case UPGRADE_TO_AREAL_FLOOD_WARNING:
-
-                /*
-                 * There should be two events selected, the FA.A and the FA.W
-                 */
-                assertTrue(selectedEvents.size() == 2);
-
-                /*
-                 * Check the information passed to the mocked Hazard Information
-                 * Dialog
-                 */
-                DictList hidContents = mockHazardDetailView.getContents();
-                assertTrue(hidContents.size() == 2);
-
-                stepCompleted();
-                step = Steps.PREVIEW_AREAL_FLOOD_WARNING;
-                autoTestUtilities.previewEvent();
 
             default:
                 break;
@@ -289,78 +377,67 @@ public class SimpleHazardStoryFunctionalTest extends FunctionalTest {
     public void handleProductGeneratorResult(
             final IProductGenerationComplete productGenerationComplete) {
         try {
-
-            if (step.equals(Steps.PREVIEW_AREAL_FLOOD_WATCH)) {
+            switch (step) {
+            case PREVIEW_AREAL_FLOOD_WATCH:
                 checkArealFloodWatchPreview();
                 stepCompleted();
-                step = Steps.ISSUE_AREAL_FLOOD_WATCH;
-                autoTestUtilities.issueEvent();
-            } else if (step.equals(Steps.ISSUE_AREAL_FLOOD_WATCH)) {
-                checkArealFloodWatchIssue();
-                stepCompleted();
-                step = Steps.UPGRADE_TO_AREAL_FLOOD_WARNING;
 
                 /*
-                 * Retrieve the selected event.
+                 * TODO: Why does it require 3 firings of the event status
+                 * change notification? Need to look into this.
                  */
-                Collection<ObservedHazardEvent> selectedEvents = appBuilder
-                        .getSessionManager().getEventManager()
-                        .getSelectedEvents();
-
-                assertTrue(selectedEvents.size() == 1);
-
-                ObservedHazardEvent selectedEvent = selectedEvents.iterator()
-                        .next();
-
-                assertTrue(selectedEvent.getEventID().length() > 0);
-
-                String[] phenSigSubType = HazardEventUtilities
-                        .getHazardPhenSigSubType(AutoTestUtilities.AREAL_FLOOD_WARNING_FULLTYPE);
-
-                ISessionEventManager<ObservedHazardEvent> eventManager = getEventManager();
-                eventManager.setEventType(selectedEvent, phenSigSubType[0],
-                        phenSigSubType[1], phenSigSubType[2],
-                        UIOriginator.HAZARD_INFORMATION_DIALOG);
-            } else if (step == Steps.PREVIEW_AREAL_FLOOD_WARNING) {
+                initializeIssuanceTracking(3);
+                step = Steps.ISSUE_AREAL_FLOOD_WATCH;
+                mockProductEditorView.invokeIssueButton();
+                break;
+            case PREVIEW_AREAL_FLOOD_WARNING:
                 checkArealFloodWarningPreview();
                 stepCompleted();
-                step = Steps.ISSUE_AREAL_FLOOD_WARNING;
-                autoTestUtilities.issueEvent();
-            } else if (step == Steps.ISSUE_AREAL_FLOOD_WARNING) {
 
                 /*
-                 * Fire off another preview action.
+                 * TODO: Why does it require 5 firings of the event status
+                 * change notification? Need to look into this.
                  */
-                checkArealFloodWarningIssue();
-                stepCompleted();
-                step = Steps.PREVIEW_FOLLOW_UP_STATEMENT;
-                autoTestUtilities.previewEvent();
-            } else if (step == Steps.PREVIEW_FOLLOW_UP_STATEMENT) {
+                initializeIssuanceTracking(5);
+                step = Steps.ISSUE_AREAL_FLOOD_WARNING;
+                mockProductEditorView.invokeIssueButton();
+                break;
+            case PREVIEW_FOLLOW_UP_STATEMENT:
                 checkFollowUpStatementPreview();
                 stepCompleted();
-                step = Steps.ISSUE_FOLLOW_UP_STATEMENT;
-                autoTestUtilities.issueEvent();
-            } else if (step == Steps.ISSUE_FOLLOW_UP_STATEMENT) {
 
                 /*
-                 * End the selected event.
+                 * TODO: Why does it require 3 firings of the event status
+                 * change notification? Need to look into this.
                  */
-                checkFollowUpStatementIssue();
-                stepCompleted();
-                step = Steps.PREVIEW_CANCELLATION_STATEMENT;
-                SpatialDisplayAction spatialAction = new SpatialDisplayAction(
-                        SpatialDisplayAction.ActionType.CONTEXT_MENU_SELECTED,
-                        0, HazardConstants.END_SELECTED_HAZARDS);
-                eventBus.publishAsync(spatialAction);
-            } else if (step == Steps.PREVIEW_CANCELLATION_STATEMENT) {
+                initializeIssuanceTracking(3);
+                step = Steps.ISSUE_FOLLOW_UP_STATEMENT;
+                mockProductEditorView.invokeIssueButton();
+                break;
+
+            case PREVIEW_CANCELLATION_STATEMENT:
                 checkCancellationStatementPreview();
                 stepCompleted();
+
+                /*
+                 * TODO: Why does it require 2 firings of the event status
+                 * change notification? Need to look into this.
+                 */
+                initializeIssuanceTracking(2);
                 step = Steps.ISSUE_CANCELLATION_STATEMENT;
-                autoTestUtilities.issueEvent();
-            } else if (step == Steps.ISSUE_CANCELLATION_STATEMENT) {
-                checkCancellationStatementIssue();
-                stepCompleted();
-                testSuccess();
+                mockProductEditorView.invokeIssueButton();
+                break;
+
+            case ISSUE_AREAL_FLOOD_WATCH:
+            case ISSUE_AREAL_FLOOD_WARNING:
+            case ISSUE_FOLLOW_UP_STATEMENT:
+            case ISSUE_CANCELLATION_STATEMENT:
+
+                if (isIssuanceComplete(false)) {
+                    handleCompletedIssuance();
+                }
+                break;
+            default:
             }
         } catch (Exception e) {
             handleException(e);

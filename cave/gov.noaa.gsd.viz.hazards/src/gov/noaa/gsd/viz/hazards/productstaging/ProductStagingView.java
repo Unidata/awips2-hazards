@@ -37,6 +37,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 08, 2014   2925     Chris.Golden      Changed to work with MVP framework changes.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -103,7 +104,7 @@ public class ProductStagingView implements
     }
 
     @Override
-    public ICommandInvoker getCommandInvoker() {
+    public ICommandInvoker<String> getCommandInvoker() {
         return productStagingDialog.getCommandInvoker();
     }
 

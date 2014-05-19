@@ -10,7 +10,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A notification that will be sent out through the SessionManager to notify all
@@ -22,17 +23,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 19, 2014 2925       Chris.Golden    Initial creation
+ * Mar 19, 2014 2925       Chris.Golden    Initial creation.
+ * May 10, 2014 2925       Chris.Golden    Added originator.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class VisibleTimeRangeChanged implements ISessionNotification {
+public class VisibleTimeRangeChanged extends OriginatedSessionNotification {
 
     private final ISessionTimeManager timeManager;
 
-    public VisibleTimeRangeChanged(ISessionTimeManager timeManager) {
+    public VisibleTimeRangeChanged(ISessionTimeManager timeManager,
+            IOriginator originator) {
+        super(originator);
         this.timeManager = timeManager;
     }
 

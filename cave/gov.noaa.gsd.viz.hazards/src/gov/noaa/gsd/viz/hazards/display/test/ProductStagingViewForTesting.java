@@ -33,6 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
  * Apr 11, 2014  2819      Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 18, 2014  2925      Chris.Golden      Changed to work with new MVP framework.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -45,10 +46,27 @@ public class ProductStagingViewForTesting implements IProductStagingView {
 
     private ProductStagingInfo productStagingInfo;
 
-    private final ICommandInvoker commandInvoker = new ICommandInvoker() {
+    private final ICommandInvoker<String> commandInvoker = new ICommandInvoker<String>() {
+
         @Override
-        public void setCommandInvocationHandler(
-                ICommandInvocationHandler handler) {
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setCommandInvocationHandler(String identifier,
+                ICommandInvocationHandler<String> handler) {
+
+            /*
+             * This is deliberate. It seems weird, but essentially what is being
+             * done here is that as soon as the mock dialog is brought up, the
+             * presenter's process of binding event handlers to the dialog
+             * causes the dialog to immediately fire the invocation handler
+             * supplied. This allows the mock product editor to come up, which
+             * in turn causes a ProductGenerationComplete notification to go
+             * out, which can in turn be caught by the functional test using
+             * this mock view.
+             */
             handler.commandInvoked(HazardConstants.CONTINUE_BUTTON);
         }
     };

@@ -115,10 +115,8 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
         /**
          * Get the problem value.
          * 
-         * @return Problem value, or <code>null</code> if
-         *         {@link #getProblemElements()} returns
-         *         {@link RangeCheckProblemElements#NONE} or
-         *         {@link RangeCheckProblemElements#BOTH}.
+         * @return Problem value, or <code>null</code> if {@link #getElements()}
+         *         returns {@link RangeCheckProblemElements#BOTH}.
          */
         public final T getValue() {
             return value;
@@ -127,9 +125,8 @@ public class RangeValidatorHelper<T extends Comparable<T>> {
         /**
          * Get the problem description.
          * 
-         * @return Problem description, or <code>null</code> if
-         *         {@link #getProblemElements()} returns
-         *         {@link RangeCheckProblemElements#NONE}.
+         * @return Problem description, or <code>null</code> if there is no
+         *         problem.
          */
         public final String getDescription() {
             return description;

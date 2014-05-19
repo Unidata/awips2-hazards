@@ -7,20 +7,21 @@
  * 
  * Address: Department of Commerce Boulder Labs, 325 Broadway, Boulder, CO 80305
  */
-package gov.noaa.gsd.viz.megawidgets;
+package gov.noaa.gsd.common.utilities;
 
 /**
  * Description: Interface describing the methods that must be implemented by a
- * current time provider. Instances of the latter are used to provide some time
- * megawidgets with the current time as needed. This is done so as to allow the
- * current time to be something other than that tracked by the system clock.
+ * current time provider, used to provide the application's current time (which
+ * may be different from the system current time).
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec 16, 2013    2545    Chris.Golden      Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Dec 16, 2013    2545    Chris.Golden Initial creation.
+ * May 12, 2014    2925    Chris.Golden Moved to gov.noaa.gsd.common.utilities
+ *                                      package.
  * </pre>
  * 
  * @author Chris.Golden

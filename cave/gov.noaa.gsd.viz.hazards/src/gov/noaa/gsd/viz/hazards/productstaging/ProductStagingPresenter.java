@@ -46,6 +46,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Apr 11, 2014   2819     Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 17, 2014 2925       Chris.Golden      Changed to work with MVP framework
+ *                                           widget changes. Also added newly
+ *                                           required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author bryon.lawrence
@@ -68,11 +73,11 @@ public class ProductStagingPresenter extends
     /**
      * Continue command invocation handler.
      */
-    private final ICommandInvocationHandler commandHandler = new ICommandInvocationHandler() {
+    private final ICommandInvocationHandler<String> commandHandler = new ICommandInvocationHandler<String>() {
         @Override
-        public void commandInvoked(String command) {
+        public void commandInvoked(String identifier) {
             try {
-                if (command.equals(HazardConstants.CONTINUE_BUTTON)) {
+                if (identifier.equals(HazardConstants.CONTINUE_BUTTON)) {
                     String issueFlag = (getView().isToBeIssued() ? Boolean.TRUE
                             .toString() : Boolean.FALSE.toString());
                     ProductStagingAction action = new ProductStagingAction();
@@ -86,7 +91,7 @@ public class ProductStagingPresenter extends
                             .getProducts()) {
 
                         List<String> eventIds = product.getSelectedEventIDs();
-                        Collection<ObservedHazardEvent> events = getSessionManager()
+                        Collection<ObservedHazardEvent> events = getModel()
                                 .getEventManager().getEvents();
 
                         for (ObservedHazardEvent eve : events) {
@@ -106,7 +111,7 @@ public class ProductStagingPresenter extends
                      * Originator.OTHER is not really appropriate within a
                      * presenter.
                      */
-                    getSessionManager().getEventManager().setSelectedEvents(
+                    getModel().getEventManager().setSelectedEvents(
                             selectedEvents, Originator.OTHER);
 
                     action.setProductStagingInfo(productStagingInfo);
@@ -131,15 +136,12 @@ public class ProductStagingPresenter extends
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            Product staging view to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public ProductStagingPresenter(ISessionManager<ObservedHazardEvent> model,
-            IProductStagingView<?, ?> view,
             BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -179,10 +181,22 @@ public class ProductStagingPresenter extends
      *            View to be initialized.
      */
     @Override
-    public void initialize(IProductStagingView<?, ?> view) {
+    protected void initialize(IProductStagingView<?, ?> view) {
 
-        // No action.
+        /*
+         * No action.
+         */
     }
+
+    @Override
+    protected void reinitialize(IProductStagingView<?, ?> view) {
+
+        /*
+         * No action.
+         */
+    }
+
+    // Private Methods
 
     /**
      * Binds the presenter to the view which implements the IProductStagingView
@@ -193,7 +207,7 @@ public class ProductStagingPresenter extends
      * By binding to the view, the presenter handles all of the view's events.
      */
     private void bind() {
-        getView().getCommandInvoker().setCommandInvocationHandler(
+        getView().getCommandInvoker().setCommandInvocationHandler(null,
                 commandHandler);
     }
 }

@@ -7,9 +7,9 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.viz.hazards.display.DockTrackingViewPart;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
 
 import java.util.Date;
 import java.util.List;

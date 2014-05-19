@@ -158,6 +158,14 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            manager, and altered to work with class-
  *                                            based metadata, as well as doing general
  *                                            clean-up.
+ * May 15, 2014  2925      Chris.Golden       Minor changes to support new HID. Also
+ *                                            changed instantiation of presenters to not
+ *                                            include view as one of the constructor
+ *                                            arguments, since the view is set post-
+ *                                            construction now (to avoid having a view
+ *                                            be initialized by the Presenter superclass
+ *                                            before the subclass has finished being
+ *                                            built).
  * </pre>
  * 
  * @author bryon.lawrence
@@ -290,7 +298,6 @@ public final class HazardServicesMessageHandler implements
         }
 
         notifyModelEventsChanged();
-        appBuilder.showHazardDetail();
 
         if (originator != UIOriginator.SPATIAL_DISPLAY) {
             appBuilder.recenterRezoomDisplay();
@@ -523,20 +530,10 @@ public final class HazardServicesMessageHandler implements
             IProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued()) {
             sessionManager.setIssueOngoing(false);
-
-            /**
-             * TODO This method call is not actually necessary. However,
-             * deleting it causes the automated tests to break. They would have
-             * to be refactored in a non-trivial way (to handle
-             * {@link SessionModified}. I chose put this off for now by leaving
-             * the method call in.
-             */
-            notifyModelEventsChanged();
-            return;
+        } else {
+            appBuilder.showProductEditorView(productGenerationComplete
+                    .getGeneratedProducts());
         }
-
-        appBuilder.showProductEditorView(productGenerationComplete
-                .getGeneratedProducts());
     }
 
     /**
@@ -597,7 +594,6 @@ public final class HazardServicesMessageHandler implements
      */
     private void issueEvents() {
         if (continueIfThereAreHazardConflicts()) {
-            sessionManager.setIssueOngoing(true);
             generateProducts(true);
             notifyModelEventsChanged();
         }
@@ -612,6 +608,12 @@ public final class HazardServicesMessageHandler implements
      * @return Products that were generated.
      */
     private void generateProducts(boolean issue) {
+
+        if (issue) {
+            sessionManager.setIssueOngoing(true);
+        } else {
+            sessionManager.setPreviewOngoing(true);
+        }
 
         if (productGeneratorHandler.productGenerationRequired()) {
 
@@ -645,6 +647,12 @@ public final class HazardServicesMessageHandler implements
 
             if (continueWithGeneration) {
                 productGeneratorHandler.generateProducts(issue);
+            } else {
+                if (issue) {
+                    sessionManager.setIssueOngoing(false);
+                } else {
+                    sessionManager.setPreviewOngoing(false);
+                }
             }
 
         } else {
@@ -776,7 +784,7 @@ public final class HazardServicesMessageHandler implements
     private void updateVisibleTimeRange(String jsonStartTime, String jsonEndTime) {
         TimeRange visibleRange = new TimeRange(toDate(jsonStartTime),
                 toDate(jsonEndTime));
-        sessionTimeManager.setVisibleRange(visibleRange);
+        sessionTimeManager.setVisibleRange(visibleRange, UIOriginator.CONSOLE);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.VISIBLE_TIME_RANGE));
     }
@@ -950,7 +958,6 @@ public final class HazardServicesMessageHandler implements
      * Generates products for preview.
      */
     private void preview() {
-        sessionManager.setPreviewOngoing(true);
         generateProducts(false);
     }
 
@@ -1060,17 +1067,6 @@ public final class HazardServicesMessageHandler implements
      */
     private void setIssuedState() {
         issueEvents();
-        appBuilder.closeProductEditorView();
-    }
-
-    /**
-     * Sets the state of an event to "Dismissed".
-     * 
-     * @param
-     * @return
-     */
-    private void setDismissedState() {
-        appBuilder.hideHazardDetail();
         appBuilder.closeProductEditorView();
     }
 
@@ -1521,21 +1517,6 @@ public final class HazardServicesMessageHandler implements
 
         case ISSUE:
             setIssuedState();
-            break;
-
-        case DISMISS:
-            setDismissedState();
-            break;
-
-        /*
-         * TODO: Eliminate this once HID has been refactored to no longer change
-         * metadata to default values; that will be the session event manager's
-         * job.
-         */
-        case UPDATE_EVENT_METADATA:
-            updateEventData(hazardDetailAction.getParameters(),
-                    hazardDetailAction.getIsUserInitiated(),
-                    hazardDetailAction.getOriginator());
             break;
 
         default:

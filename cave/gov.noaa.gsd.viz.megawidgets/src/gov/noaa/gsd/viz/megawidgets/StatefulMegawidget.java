@@ -281,7 +281,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
 
     /**
      * Synchronize the component widgets with the current state. This method is
-     * called by {@link synchronizeComponentWidgetsWithState()} after the latter
+     * called by {@link #synchronizeComponentWidgetsToState()} after the latter
      * ensures that a note has been made of the state changing. Subclasses must
      * implement this method to set their component widgets to reflect the
      * current state; they do not have to be concerned that such settings will

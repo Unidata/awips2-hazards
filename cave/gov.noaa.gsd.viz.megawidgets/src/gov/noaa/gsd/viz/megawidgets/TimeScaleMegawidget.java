@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedMultiLongValidator;
 import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
 import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;

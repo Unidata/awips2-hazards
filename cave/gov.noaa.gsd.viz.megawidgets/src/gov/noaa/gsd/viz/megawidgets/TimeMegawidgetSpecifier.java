@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.validators.StateValidator;
 
 import java.util.Map;
@@ -41,11 +42,11 @@ public abstract class TimeMegawidgetSpecifier extends
     /**
      * Current time provider megawidget creation time parameter name; if
      * specified in the map passed to
-     * {@link #createMegawidget(Object, Class, Map)}, its value must be an
-     * object of type {@link ICurrentTimeProvider}, which will be used by the
-     * megawidget when it needs to know what the current time is. If not
-     * specified, the megawidget will use the current system time as the current
-     * time.
+     * {@link #createMegawidget(org.eclipse.swt.widgets.Widget, Class, Map)},
+     * its value must be an object of type {@link ICurrentTimeProvider}, which
+     * will be used by the megawidget when it needs to know what the current
+     * time is. If not specified, the megawidget will use the current system
+     * time as the current time.
      */
     public static final String CURRENT_TIME_PROVIDER = "currentTimeProvider";
 

@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+
 import java.util.Date;
 
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
  * Manages selected, current, and visible times for a session.
@@ -33,7 +36,10 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 21, 2013 1257       bsteffen    Initial creation
- * 
+ * May 12, 2014 2925       C. Golden   Added originator to visible time
+ *                                     range change notification, and
+ *                                     added current time provider and
+ *                                     getter.
  * </pre>
  * 
  * @author bsteffen
@@ -79,11 +85,19 @@ public interface ISessionTimeManager {
     public Date getCurrentTime();
 
     /**
+     * Get the current time provider.
+     * 
+     * @return
+     */
+    public ICurrentTimeProvider getCurrentTimeProvider();
+
+    /**
      * Set the range of times that should be visible to the user.
      * 
      * @param range
+     * @param originator
      */
-    public void setVisibleRange(TimeRange range);
+    public void setVisibleRange(TimeRange range, IOriginator originator);
 
     /**
      * Get the range of times that should be visible to the user.

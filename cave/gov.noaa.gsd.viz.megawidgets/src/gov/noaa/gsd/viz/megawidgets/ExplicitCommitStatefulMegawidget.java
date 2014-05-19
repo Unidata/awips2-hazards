@@ -173,9 +173,9 @@ public abstract class ExplicitCommitStatefulMegawidget extends
 
     /**
      * Synchronize the component widgets with the current state of the specified
-     * state identifier. This method is called by {@link
-     * synchronizeComponentWidgetsWithState(String)} after the latter ensures
-     * that a note has been made of the state changing. Subclasses must
+     * state identifier. This method is called by
+     * {@link #synchronizeComponentWidgetsToState(String)} after the latter
+     * ensures that a note has been made of the state changing. Subclasses must
      * implement this method to set their component widgets to reflect the
      * current state; they do not have to be concerned that such settings will
      * trigger a notification of state change, as the calling method will not

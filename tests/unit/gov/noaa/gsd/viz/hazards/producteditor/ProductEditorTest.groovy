@@ -77,7 +77,8 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Issue Button Pressed"() {
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
+        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, createEventBus());
+        presenter.setView(testView);
         presenter.showProductEditorDetail(generatedProductList);
 
         when:"The user presses the issue button"
@@ -102,7 +103,8 @@ class ProductEditorTest extends spock.lang.Specification {
      */
     def "Dismiss Button Pressed" (){
 
-        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, testView, createEventBus());
+        ProductEditorPresenter presenter = new ProductEditorPresenter(sessionManager, createEventBus());
+        presenter.setView(testView);
         presenter.showProductEditorDetail(generatedProductList);
 
         when:"The user presses the dismiss button"

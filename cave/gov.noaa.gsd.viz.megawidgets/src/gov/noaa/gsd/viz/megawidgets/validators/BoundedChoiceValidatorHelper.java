@@ -25,9 +25,9 @@ import java.util.Set;
 
 /**
  * Description: Validator helper used to ensure that potential choices for
- * instances of {@link BoundedMultiChoiceValidator} are valid. The generic
- * parameter <code>T</code> is the type of the selected choice(s) for the
- * validator using this helper.
+ * instances of {@link BoundedChoiceValidator} are valid. The generic parameter
+ * <code>T</code> is the type of the selected choice(s) for the validator using
+ * this helper.
  * 
  * <pre>
  * 
@@ -166,7 +166,7 @@ public abstract class BoundedChoiceValidatorHelper<T> {
          *            Megawidget identifier.
          * @param type
          *            Megawidget type.
-         * @param parameterKey
+         * @param parameterName
          *            Name of the parameter that has a problematic choices
          *            collection.
          * @return Specification exception.
@@ -268,12 +268,8 @@ public abstract class BoundedChoiceValidatorHelper<T> {
     // Public Constructors
 
     /**
-     * Construct a standard instance for a {@link BoundedMultiChoiceValidator}.
+     * Construct a standard instance for a {@link BoundedChoiceValidator}.
      * 
-     * @param type
-     *            Type of the megawidget.
-     * @param identifier
-     *            State identifier of the megawidget.
      * @param choicesKey
      *            Key within the specifier parameters or mutable properties for
      *            the choices list.
@@ -359,7 +355,7 @@ public abstract class BoundedChoiceValidatorHelper<T> {
      *            of type {@link Map}; if the latter, it must have a
      *            {@link String} as a value paired with the key
      *            <code>elementNameKey</code> specified at
-     *            {@linkplain #ChoiceValidatorHelper(String, String, String, String)
+     *            {@linkplain #BoundedChoiceValidatorHelper(String, String, String)
      *            creation time}.
      * @return Identifier of the choices collection element.
      */
@@ -379,7 +375,7 @@ public abstract class BoundedChoiceValidatorHelper<T> {
      *            of type {@link Map}; if the latter, this implementation
      *            requires that it have a {@link String} as a value paired with
      *            the key <code>elementNameKey</code> specified at
-     *            {@linkplain #ChoiceValidatorHelper(String, String, String, String)
+     *            {@linkplain #BoundedChoiceValidatorHelper(String, String, String)
      *            creation time}.
      * @return Identifier of the choices collection element.
      * @throws IllegalArgumentException

@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.viz.productgen.dialog;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.megawidgets.IParametersEditorListener;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;

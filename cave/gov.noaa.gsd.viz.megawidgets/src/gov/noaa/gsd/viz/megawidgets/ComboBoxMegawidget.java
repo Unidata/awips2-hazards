@@ -50,6 +50,8 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * May 18, 2014   2925     Chris.Golden      Fixed bug with coloring when changing
+ *                                           megawidget from read-only to editable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -329,8 +331,8 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
      */
     private void doSetEditable(boolean editable) {
         comboBox.getParent().setEnabled(editable);
-        comboBox.setBackground(helper.getBackgroundColor(editable, comboBox,
-                label));
+        comboBox.setBackground(editable ? null : helper.getBackgroundColor(
+                editable, comboBox, label));
     }
 
     /**

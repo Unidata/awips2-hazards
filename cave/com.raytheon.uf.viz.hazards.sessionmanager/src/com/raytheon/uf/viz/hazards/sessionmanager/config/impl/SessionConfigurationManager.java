@@ -28,6 +28,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
@@ -35,6 +36,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,15 +45,12 @@ import java.util.Map.Entry;
 import jep.Jep;
 import jep.JepException;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
@@ -84,13 +83,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategories;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaDataEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptionEntry;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptions;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Page;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -98,6 +94,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 
 /**
  * Implementation of ISessionConfigurationManager with asynchronous config file
@@ -123,6 +120,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
  *                                      startup.
  * May 15, 2014  2925      Chris.Golden Added missing Python path for Jep that was messing
  *                                      up H.S. startup on some machines.
+ * May 15, 2014  2925      Chris.Golden Added supplying of current time provider to
+ *                                      megawidget specifier manager, and added some
+ *                                      optimizations for getting megawidget specifier
+ *                                      managers and hazard categories. Also removed
+ *                                      hazard info options fetcher.
  * </pre>
  * 
  * @author bsteffen
@@ -131,6 +133,33 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 
 public class SessionConfigurationManager implements
         ISessionConfigurationManager {
+
+    /**
+     * Name of the Python method used to clean up before shutdown.
+     */
+    private static final String NAME_CLEANUP_FOR_SHUTDOWN = "cleanupForShutdown";
+
+    /**
+     * Python script used for defining the method used to clean up before
+     * shutdown.
+     */
+    private static final String DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD = "def "
+            + NAME_CLEANUP_FOR_SHUTDOWN + "():\n" + "   g = globals()\n"
+            + "   for i in g:\n"
+            + "      if not i.startswith('__') and not i == '"
+            + NAME_CLEANUP_FOR_SHUTDOWN + "':\n" + "         g[i] = None\n\n";
+
+    /**
+     * Python script used for cleaning up before shutdown.
+     */
+    private static final String CLEANUP_FOR_SHUTDOWN = NAME_CLEANUP_FOR_SHUTDOWN
+            + "(); "
+            + NAME_CLEANUP_FOR_SHUTDOWN
+            + " = None; "
+            + "import gc; "
+            + "uncollected = gc.collect(2); "
+            + "uncollected = None; "
+            + "gc = None\n";
 
     /**
      * Empty map standing in for an environment map, which will be needed in the
@@ -151,7 +180,22 @@ public class SessionConfigurationManager implements
 
     private static final String EVENTS = "events";
 
-    private static final String EVENTS_UTILITIES = "events/utilities";
+    private static final String UTILITIES = "utilities";
+
+    private static final MegawidgetSpecifierManager EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+    static {
+        MegawidgetSpecifierManager manager = null;
+        try {
+            manager = new MegawidgetSpecifierManager(
+                    Collections.<Map<String, Object>> emptyList(),
+                    ISpecifier.class);
+        } catch (Exception e) {
+            statusHandler
+                    .error("unexpected error while creating empty megawidget specifier manager",
+                            e);
+        }
+        EMPTY_MEGAWIDGET_SPECIFIER_MANAGER = manager;
+    }
 
     private ISessionNotificationSender notificationSender;
 
@@ -159,6 +203,8 @@ public class SessionConfigurationManager implements
             "Loading Hazard Services Config", 1);
 
     private IPathManager pathManager;
+
+    private ISessionTimeManager timeManager;
 
     private List<ConfigLoader<Settings>> allSettings;
 
@@ -187,9 +233,11 @@ public class SessionConfigurationManager implements
     }
 
     public SessionConfigurationManager(IPathManager pathManager,
+            ISessionTimeManager timeManager,
             ISessionNotificationSender notificationSender) {
         this.jep = buildJep(pathManager);
         this.pathManager = pathManager;
+        this.timeManager = timeManager;
         this.notificationSender = notificationSender;
 
         LocalizationContext commonStaticBase = pathManager.getContext(
@@ -269,8 +317,8 @@ public class SessionConfigurationManager implements
             String logUtilitiesPath = FileUtil.join(pythonPath,
                     PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
             String eventsPath = FileUtil.join(pythonPath, EVENTS);
-            String eventsUtilitiesPath = FileUtil.join(pythonPath,
-                    EVENTS_UTILITIES);
+            String eventsUtilitiesPath = FileUtil.join(pythonPath, EVENTS,
+                    UTILITIES);
             String bridgePath = FileUtil.join(pythonPath, BRIDGE);
 
             /**
@@ -288,6 +336,7 @@ public class SessionConfigurationManager implements
             ClassLoader cl = this.getClass().getClassLoader();
             Jep result = new Jep(false, includePath, cl);
             result.eval("import JavaImporter");
+            result.eval("import HazardServicesMetaDataRetriever");
             return result;
         } catch (JepException e) {
             statusHandler.error("Could not load metadata " + e.getMessage());
@@ -453,45 +502,6 @@ public class SessionConfigurationManager implements
         return config;
     }
 
-    @Override
-    public HazardInfoOptions getHazardInfoOptions() {
-        HazardInfoOptions opt = new HazardInfoOptions();
-        for (HazardMetaDataEntry entry : hazardMetaData.getConfig()) {
-            HazardInfoOptionEntry optEnt = new HazardInfoOptionEntry();
-            for (String[] type : entry.getHazardTypes()) {
-                String subType = null;
-                if (type.length > 2) {
-                    subType = type[2];
-                }
-                String typeAsString = HazardEventUtilities.getHazardType(
-                        type[0], type[1], subType);
-                String headline = getHeadline(typeAsString);
-                if (headline != null) {
-                    typeAsString = typeAsString + " (" + headline + ")";
-                }
-                List<String> types = new ArrayList<>();
-                types.add(typeAsString);
-
-                optEnt.setHazardTypes(types);
-                IHazardEvent hazardEvent = new BaseHazardEvent();
-                hazardEvent.setPhenomenon(type[0]);
-                hazardEvent.setSignificance(type[1]);
-                hazardEvent.setSubType(subType);
-
-                getMegawidgetSpecifiersForHazardEvent(hazardEvent);
-
-                String metaDataInfoAsString = getHazardMetaData(hazardEvent,
-                        new HashMap<String, Serializable>());
-                JsonNode metaData = asJsonNode(metaDataInfoAsString).get(
-                        HazardConstants.METADATA_KEY);
-                optEnt.setMetaData(metaData);
-                opt.add(optEnt);
-            }
-        }
-        return opt;
-
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public MegawidgetSpecifierManager getMegawidgetSpecifiersForHazardEvent(
@@ -514,30 +524,33 @@ public class SessionConfigurationManager implements
         } catch (Exception e) {
             statusHandler.error("Could not get hazard metadata: "
                     + e.getMessage());
-            return null;
+            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
         }
 
         /*
          * Build a megawidget specifier manager out of the metadata.
          */
-        MegawidgetSpecifierManager manager;
         ISideEffectsApplier sideEffectsApplier = null;
         if (result.containsKey(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY)) {
             sideEffectsApplier = new PythonSideEffectsApplier(
                     (String) result
                             .get(HazardConstants.SIDE_EFFECTS_SCRIPT_KEY));
         }
-        try {
-            manager = new MegawidgetSpecifierManager(
-                    (List<Map<String, Object>>) result
-                            .get(HazardConstants.METADATA_KEY),
-                    IControlSpecifier.class, sideEffectsApplier);
-        } catch (MegawidgetSpecificationException e) {
-            statusHandler.error("Could not get hazard metadata: "
-                    + e.getMessage());
-            return null;
+        List<?> specifiersList = (List<?>) result
+                .get(HazardConstants.METADATA_KEY);
+        if (specifiersList.isEmpty()) {
+            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
         }
-        return manager;
+        try {
+            return new MegawidgetSpecifierManager(
+                    (List<Map<String, Object>>) specifiersList,
+                    IControlSpecifier.class,
+                    timeManager.getCurrentTimeProvider(), sideEffectsApplier);
+        } catch (MegawidgetSpecificationException e) {
+            statusHandler.error("Could not get hazard metadata for event ID = "
+                    + hazardEvent.getEventID() + ": " + e.getMessage());
+            return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+        }
     }
 
     /**
@@ -553,29 +566,15 @@ public class SessionConfigurationManager implements
             Map<String, Serializable> environment) {
 
         try {
-            jep.eval("import HazardServicesMetaDataRetriever");
             jep.set("hazardEvent", hazardEvent);
             jep.set("metaDict", environment);
             jep.eval("result = HazardServicesMetaDataRetriever.getMetaData(hazardEvent, metaDict)");
             String result = (String) jep.getValue("result");
+            jep.eval("hazardEvent = None\n" + "metaDict = None\n"
+                    + "result = None");
             return result;
         } catch (JepException e) {
-            statusHandler.error("Could not get hazard metadata "
-                    + e.getMessage());
-            return null;
-        }
-    }
-
-    private JsonNode asJsonNode(String json) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(
-                    DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-                    false);
-            JsonNode result = mapper.readValue(json, JsonNode.class);
-            return result;
-        } catch (Exception e) {
-            statusHandler.error("Could not get hazard metadata "
+            statusHandler.error("Could not get hazard metadata: "
                     + e.getMessage());
             return null;
         }
@@ -704,6 +703,10 @@ public class SessionConfigurationManager implements
 
     @Override
     public String getHazardCategory(IHazardEvent event) {
+        if (event.getPhenomenon() == null) {
+            return (String) event
+                    .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+        }
         for (Entry<String, String[][]> entry : hazardCategories.getConfig()
                 .entrySet()) {
             for (String[] str : entry.getValue()) {
@@ -763,7 +766,14 @@ public class SessionConfigurationManager implements
 
     @Override
     public void shutdown() {
-        jep.close();
+        try {
+            jep.eval(DEFINE_CLEANUP_FOR_SHUTDOWN_METHOD);
+            jep.eval(CLEANUP_FOR_SHUTDOWN);
+            jep.close();
+        } catch (JepException e) {
+            statusHandler.error("Internal error while preparing for shutdown "
+                    + "of Jep for configuration manager.", e);
+        }
     }
 
 }

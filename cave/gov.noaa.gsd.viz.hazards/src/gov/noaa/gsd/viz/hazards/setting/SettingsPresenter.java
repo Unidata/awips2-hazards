@@ -38,9 +38,10 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Chris.Golden
@@ -56,14 +57,12 @@ public class SettingsPresenter extends
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            Settings view to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public SettingsPresenter(ISessionManager<ObservedHazardEvent> model,
-            ISettingsView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -77,10 +76,14 @@ public class SettingsPresenter extends
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView().setSettings(configurationManager.getAvailableSettings());
+            getView()
+                    .setSettings(
+                            getModel().getConfigurationManager()
+                                    .getAvailableSettings());
         }
         if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            getView().setCurrentSettings(configurationManager.getSettings());
+            getView().setCurrentSettings(
+                    getModel().getConfigurationManager().getSettings());
         }
     }
 
@@ -89,33 +92,40 @@ public class SettingsPresenter extends
      */
     public final void showSettingDetail() {
 
-        Settings settings = configurationManager.getSettings();
+        Settings settings = getModel().getConfigurationManager().getSettings();
 
-        // Update the setting's zoom parameters with the current
-        // values.
+        /*
+         * Update the setting's zoom parameters with the current values.
+         */
         double[] zoomParams = getDisplayZoomParameters();
         MapCenter mapCenter = new MapCenter(zoomParams[0], zoomParams[1],
                 zoomParams[2]);
         settings.setMapCenter(mapCenter);
 
-        // Have the view open the setting detail subview.
-        getView().showSettingDetail(configurationManager.getSettingsConfig(),
+        /*
+         * Have the view open the setting detail subview.
+         */
+        getView().showSettingDetail(
+                getModel().getConfigurationManager().getSettingsConfig(),
                 settings);
     }
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
-    public void initialize(ISettingsView<?, ?> view) {
-        Settings settings = configurationManager.getSettings();
-        view.initialize(this, configurationManager.getAvailableSettings(),
-                configurationManager.getFilterConfig(), settings);
+    protected void initialize(ISettingsView<?, ?> view) {
+        Settings settings = getModel().getConfigurationManager().getSettings();
+        view.initialize(this, getModel().getConfigurationManager()
+                .getAvailableSettings(), getModel().getConfigurationManager()
+                .getFilterConfig(), settings);
+    }
+
+    @Override
+    protected void reinitialize(ISettingsView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 
     // Private Methods

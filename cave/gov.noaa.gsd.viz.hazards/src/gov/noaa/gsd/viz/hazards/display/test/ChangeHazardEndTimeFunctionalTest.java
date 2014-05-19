@@ -25,7 +25,10 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 
@@ -43,21 +46,26 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComp
  * Apr 23, 2014 3357       bkowal      No longer error on an unexpected state. Just continue
  *                                     without modifying any data or the state.
  * Apr 29, 2014    2925   Chris.Golden Fixed to work with new HID event propagation.
+ * May 18, 2014    2925   Chris.Golden More changes to get it to work with the new HID.
+ *                                     Also changed to ensure that ongoing preview and
+ *                                     ongoing issue flags are set to false at the end
+ *                                     of each test, and moved the steps enum into the
+ *                                     base class.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
+public class ChangeHazardEndTimeFunctionalTest extends
+        FunctionalTest<ChangeHazardEndTimeFunctionalTest.Steps> {
 
+    @SuppressWarnings("unused")
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(getClass());
 
-    private enum Steps {
-        START, ISSUE_FLASH_FLOOD_WATCH, PREVIEW_MODIFIED_EVENT
+    protected enum Steps {
+        START, ISSUE_FLASH_FLOOD_WATCH, READY_FOR_PREVIEW, PREVIEW_MODIFIED_EVENT, TEST_ENDED
     }
-
-    private Steps step;
 
     public ChangeHazardEndTimeFunctionalTest(HazardServicesAppBuilder appBuilder) {
         super(appBuilder);
@@ -69,19 +77,82 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
         autoTestUtilities.createEvent(-96.0, 41.0);
     }
 
-    @Override
-    protected String getCurrentStep() {
-        return step.toString();
-    }
-
-    private void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
-    }
-
     private Date endTime = null;
 
+    boolean productEditorHasBeenUpdated = false;
+
     @Handler(priority = -1)
-    public void sessionEventModifiedOccurred(SessionEventModified action) {
+    public void sessionModifiedOccurred(final SessionModified action) {
+        if ((step == Steps.PREVIEW_MODIFIED_EVENT)
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && appBuilder.getSessionManager().isPreviewOngoing()) {
+            productEditorHasBeenUpdated = true;
+        } else if (step == Steps.TEST_ENDED
+                && (appBuilder.getSessionManager().isIssueOngoing() == false)
+                && (appBuilder.getSessionManager().isPreviewOngoing() == false)) {
+            stepCompleted();
+            testSuccess();
+        }
+    }
+
+    private void handleCompletedIssuance() {
+        IHazardEvent event = autoTestUtilities.getSelectedEvent();
+        endTime = new Date(event.getEndTime().getTime()
+                + (30 * TimeUtil.MILLIS_PER_HOUR));
+        event.setEndTime(endTime);
+        stepCompleted();
+        step = Steps.READY_FOR_PREVIEW;
+    }
+
+    @Handler(priority = -1)
+    public void sessionEventStateModifiedOccurred(
+            final SessionEventStatusModified action) {
+        try {
+            switch (step) {
+
+            case ISSUE_FLASH_FLOOD_WATCH:
+                if (isIssuanceComplete(true)) {
+                    handleCompletedIssuance();
+                }
+                break;
+
+            default:
+
+            }
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
+    public void handleHazardEventTimeRangeModification(
+            SessionEventTimeRangeModified action) {
+
+        try {
+            switch (step) {
+
+            case READY_FOR_PREVIEW:
+                if (autoTestUtilities.getSelectedEvent().getEndTime()
+                        .equals(endTime) == false) {
+                    return;
+                }
+                stepCompleted();
+                step = Steps.PREVIEW_MODIFIED_EVENT;
+                autoTestUtilities.previewEvent();
+                break;
+
+            default:
+                break;
+
+            }
+
+        } catch (Exception e) {
+            handleException(e);
+        }
+    }
+
+    @Handler(priority = -1)
+    public void sessionEventTypeModifiedOccurred(SessionEventTypeModified action) {
         if (step == Steps.START) {
             ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
             if (!"FF".equals(event.getPhenomenon())
@@ -89,16 +160,14 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                 return;
             }
             stepCompleted();
+
+            /*
+             * TODO: Why does it require 3 firings of the event status change
+             * notification? Need to look into this.
+             */
+            initializeIssuanceTracking(3);
             step = Steps.ISSUE_FLASH_FLOOD_WATCH;
             autoTestUtilities.issueEvent();
-        } else if (step == Steps.ISSUE_FLASH_FLOOD_WATCH) {
-            if (autoTestUtilities.getSelectedEvent().getEndTime()
-                    .equals(endTime) == false) {
-                return;
-            }
-            stepCompleted();
-            step = Steps.PREVIEW_MODIFIED_EVENT;
-            autoTestUtilities.previewEvent();
         }
     }
 
@@ -126,14 +195,10 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
         try {
             switch (step) {
 
-            case ISSUE_FLASH_FLOOD_WATCH:
-                IHazardEvent event = autoTestUtilities.getSelectedEvent();
-                endTime = new Date(event.getEndTime().getTime()
-                        + (30 * TimeUtil.MILLIS_PER_HOUR));
-                event.setEndTime(endTime);
-                break;
-
             case PREVIEW_MODIFIED_EVENT:
+                if (productEditorHasBeenUpdated == false) {
+                    return;
+                }
 
                 Dict products = autoTestUtilities
                         .productsFromEditorView(mockProductEditorView);
@@ -145,8 +210,21 @@ public class ChangeHazardEndTimeFunctionalTest extends FunctionalTest {
                  * TODO Uncomment this when Issue #2447 is resolved.
                  */
                 // assertTrue(legacy.contains(CAN_VTEC_STRING));
-                testSuccess();
 
+                stepCompleted();
+                step = Steps.TEST_ENDED;
+
+                /*
+                 * Preview ongoing needs to be reset, since a preview was
+                 * started but is being canceled.
+                 */
+                mockProductEditorView.invokeDismissButton();
+                break;
+
+            case ISSUE_FLASH_FLOOD_WATCH:
+                if (isIssuanceComplete(false)) {
+                    handleCompletedIssuance();
+                }
                 break;
 
             default:

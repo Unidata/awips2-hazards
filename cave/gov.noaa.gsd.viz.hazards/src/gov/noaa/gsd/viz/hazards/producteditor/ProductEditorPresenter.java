@@ -43,6 +43,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 11, 2014     2819   Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
+ * May 17, 2014 2925       Chris.Golden      Changed to work with MVP framework
+ *                                           widget changes. Also added newly
+ *                                           required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -58,15 +63,12 @@ public class ProductEditorPresenter extends
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            Product editor view to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public ProductEditorPresenter(ISessionManager<ObservedHazardEvent> model,
-            IProductEditorView<?, ?> view,
             BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -93,15 +95,17 @@ public class ProductEditorPresenter extends
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
-    public void initialize(IProductEditorView<?, ?> view) {
+    protected void initialize(IProductEditorView<?, ?> view) {
         view.initialize();
+    }
+
+    @Override
+    protected final void reinitialize(IProductEditorView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 
     // Private Methods
@@ -118,11 +122,11 @@ public class ProductEditorPresenter extends
      * @return
      */
     private void bind() {
-        getView().getIssueInvoker().setCommandInvocationHandler(
-                new ICommandInvocationHandler() {
+        getView().getIssueInvoker().setCommandInvocationHandler(null,
+                new ICommandInvocationHandler<String>() {
 
                     @Override
-                    public void commandInvoked(String command) {
+                    public void commandInvoked(String identifier) {
                         ProductEditorAction action = new ProductEditorAction(
                                 HazardAction.ISSUE);
 
@@ -135,11 +139,11 @@ public class ProductEditorPresenter extends
                     }
                 });
 
-        getView().getDismissInvoker().setCommandInvocationHandler(
-                new ICommandInvocationHandler() {
+        getView().getDismissInvoker().setCommandInvocationHandler(null,
+                new ICommandInvocationHandler<String>() {
 
                     @Override
-                    public void commandInvoked(String command) {
+                    public void commandInvoked(String identifier) {
                         dismissProductEditor();
                     }
                 });

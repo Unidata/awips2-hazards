@@ -86,15 +86,15 @@ public class TimeDeltaSpecifier extends BoundedValueMegawidgetSpecifier<Long>
      * following strings associated with this name: "ms", "seconds", "minutes",
      * "hours", or "days". The specified unit is the one in which the state will
      * be specified when queried via a created megawidget's
-     * {@link TimeDeltaMegawidget#getState()} or passed via callback to a state
-     * change listener. If not specified, it is assumed to be "ms", meaning the
-     * state value will always be given in milliseconds. If the unit is anything
-     * other than "ms", then any remainders will be dropped when the state value
-     * is converted to the specified unit; for example, if the state is 1500 and
-     * the state unit is "seconds", the provided state will be 1. Note that the
-     * time slice represented by the state unit must be less than or equal to
-     * the time slice represented by the smallest unit provided in the
-     * {@link #MEGAWIDGET_UNIT_CHOICES} list.
+     * {@link TimeDeltaMegawidget#getState(String)} or passed via callback to a
+     * state change listener. If not specified, it is assumed to be "ms",
+     * meaning the state value will always be given in milliseconds. If the unit
+     * is anything other than "ms", then any remainders will be dropped when the
+     * state value is converted to the specified unit; for example, if the state
+     * is 1500 and the state unit is "seconds", the provided state will be 1.
+     * Note that the time slice represented by the state unit must be less than
+     * or equal to the time slice represented by the smallest unit provided in
+     * the {@link #MEGAWIDGET_UNIT_CHOICES} list.
      */
     public static final String MEGAWIDGET_STATE_UNIT = "valueUnit";
 

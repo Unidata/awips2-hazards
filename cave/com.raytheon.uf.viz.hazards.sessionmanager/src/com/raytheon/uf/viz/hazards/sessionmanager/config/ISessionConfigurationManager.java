@@ -31,7 +31,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlerts
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoOptions;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
@@ -52,6 +51,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
  *                                     configuration plugin.
  * Apr 29, 2014 2925       Chris.Golden Added method to get a megawidget specifier
  *                                      manager for a given hazard event.
+ * May 15, 2014 2925       Chris.Golden Removed hazard info options fetcher.
  * </pre>
  * 
  * @author bsteffen
@@ -117,14 +117,6 @@ public interface ISessionConfigurationManager {
      * @return
      */
     public HazardInfoConfig getHazardInfoConfig();
-
-    /**
-     * Get the HazardInfoOptions.
-     * 
-     * @param event
-     * @return
-     */
-    public HazardInfoOptions getHazardInfoOptions();
 
     /**
      * Get the megawidget specifier manager for the specified hazard event.

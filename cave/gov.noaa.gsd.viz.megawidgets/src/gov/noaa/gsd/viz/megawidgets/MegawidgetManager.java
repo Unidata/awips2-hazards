@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -99,6 +101,10 @@ import com.google.common.collect.Lists;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * May 12, 2014    2925    Chris.Golden      Added modifyState() method and
+ *                                           getSpecifierManager() method, and changed
+ *                                           to take current time provider from the
+ *                                           megawidget specifier manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,6 +118,12 @@ import com.google.common.collect.Lists;
 public abstract class MegawidgetManager {
 
     // Private Variables
+
+    /**
+     * Megawidget specifier manager, from which the specifiers of the
+     * megawidgets being managed were constructed.
+     */
+    private MegawidgetSpecifierManager specifierManager;
 
     /**
      * Parent widget of the megawidgets being managed.
@@ -281,8 +293,8 @@ public abstract class MegawidgetManager {
             Map<String, Object> state, ISideEffectsApplier sideEffectsApplier)
             throws MegawidgetException {
         construct(parent, IMenu.class, new MegawidgetSpecifierManager(
-                specifiers, IMenuSpecifier.class, sideEffectsApplier), state,
-                0L, 0L, null);
+                specifiers, IMenuSpecifier.class, null, sideEffectsApplier),
+                state, 0L, 0L);
     }
 
     /**
@@ -313,7 +325,7 @@ public abstract class MegawidgetManager {
     public MegawidgetManager(Menu parent,
             MegawidgetSpecifierManager specifierManager,
             Map<String, Object> state) throws MegawidgetException {
-        construct(parent, IMenu.class, specifierManager, state, 0L, 0L, null);
+        construct(parent, IMenu.class, specifierManager, state, 0L, 0L);
     }
 
     /**
@@ -412,8 +424,8 @@ public abstract class MegawidgetManager {
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
             ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
         this(parent, new MegawidgetSpecifierManager(specifiers,
-                IControlSpecifier.class, sideEffectsApplier), state,
-                minVisibleTime, maxVisibleTime, currentTimeProvider);
+                IControlSpecifier.class, currentTimeProvider,
+                sideEffectsApplier), state, minVisibleTime, maxVisibleTime);
     }
 
     /**
@@ -427,11 +439,11 @@ public abstract class MegawidgetManager {
      *            to govern the creation of the megawidgets.
      * @param state
      *            State to be viewed and/or modified via the megawidgets that
-     *            are constructed. Each megawidget specifier defined by <code>
-     *            specifiers</code> should have an entry in this map, mapping
-     *            the specifier's identifier to the value that the megawidget
-     *            will take on (with conversions between megawidget state and
-     *            state element being performed by
+     *            are constructed. Each megawidget specifier within <code>
+     *            specifierManager</code> should have an entry in this map,
+     *            mapping the specifier's identifier to the value that the
+     *            megawidget will take on (with conversions between megawidget
+     *            state and state element being performed by
      *            {@link #convertStateElementToMegawidgetState(String, Object)}
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
@@ -444,11 +456,6 @@ public abstract class MegawidgetManager {
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
-     * @param currentTimeProvider
-     *            Current time provider for any time megawidgets specified
-     *            within <code>specifiers</code>. If <code>null</code>, a
-     *            default current time provider is used. If no time megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
      * @throws MegawidgetException
      *             If one of the megawidget specifiers is invalid, or if an
      *             error occurs while creating or initializing one of the
@@ -456,8 +463,7 @@ public abstract class MegawidgetManager {
      */
     public MegawidgetManager(Composite parent,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
+            Map<String, Object> state, long minVisibleTime, long maxVisibleTime)
             throws MegawidgetException {
 
         /*
@@ -474,17 +480,27 @@ public abstract class MegawidgetManager {
          * Do the heavy lifting for construction.
          */
         Set<IControl> baseMegawidgets = construct(parent, IControl.class,
-                specifierManager, state, minVisibleTime, maxVisibleTime,
-                currentTimeProvider);
+                specifierManager, state, minVisibleTime, maxVisibleTime);
 
         /*
          * Align the base megawidgets' component elements to one another
          * visually.
          */
         ControlComponentHelper.alignMegawidgetsElements(baseMegawidgets);
+        parent.layout();
     }
 
     // Public Methods
+
+    /**
+     * Get the specifier manager holding the specifiers that were used to
+     * construct the megawidgets being managed.
+     * 
+     * @return Specifier manager.
+     */
+    public MegawidgetSpecifierManager getSpecifierManager() {
+        return specifierManager;
+    }
 
     /**
      * Get the parent widget of the megawidgets being managed.
@@ -715,10 +731,11 @@ public abstract class MegawidgetManager {
      *            New state to be viewed and/or modified via the managed
      *            megawidgets. Each megawidget specifier that was defined by
      *            <code>specifiers</code> in the {@link #MegawidgetManager
-     *            constructor} of the manager should have an entry in this map,
-     *            associating the specifier's identifier with the value that the
-     *            megawidget will take on (with conversions between megawidget
-     *            state and state element being performed by
+     *            constructor} of the manager should have one or more entries in
+     *            this map, associating the specifier's state identifier(s) with
+     *            the value(s) that the megawidget will take on (with
+     *            conversions between megawidget state and state element being
+     *            performed by
      *            {@link #convertStateElementToMegawidgetState(String, Object)}
      *            and
      *            {@link #convertMegawidgetStateToStateElement(String, Object)}
@@ -736,6 +753,51 @@ public abstract class MegawidgetManager {
         propertyProgrammaticallyChanged = true;
         if (sideEffectsApplier != null) {
             applySideEffects(statefulMegawidgetsForIdentifiers.keySet(), true);
+        }
+    }
+
+    /**
+     * Modify the current state held by the megawidgets to include the values
+     * given by the specified map associating megawidget identifiers with their
+     * new values. Unlike {@link #setState(Map)}, any state identifiers not
+     * found as keys in the specified map retain their previous values; only
+     * those that are found in this map are changed to use the new values.
+     * 
+     * @param changedState
+     *            Changed state to be viewed and/or modified via the managed
+     *            megawidgets. Any megawidget specifier that was defined by
+     *            <code>specifiers</code> in the {@link #MegawidgetManager
+     *            constructor} of the manager may have one or more entries in
+     *            this map, associating the specifier's identifier(s) with the
+     *            value(s) that the megawidget will take on (with conversions
+     *            between megawidget state and state element being performed by
+     *            {@link #convertStateElementToMegawidgetState(String, Object)}
+     *            and
+     *            {@link #convertMegawidgetStateToStateElement(String, Object)}
+     *            ).
+     * @throws MegawidgetStateException
+     *             If at least one megawidget determines that the new state is
+     *             invalid.
+     */
+    public final void modifyState(Map<String, ?> changedState)
+            throws MegawidgetStateException {
+        state.putAll(changedState);
+        Set<IStateful> megawidgetsWithStateChange = new HashSet<>();
+        for (String identifier : changedState.keySet()) {
+            IStateful megawidget = statefulMegawidgetsForIdentifiers
+                    .get(identifier);
+            if (megawidget != null) {
+                megawidgetsWithStateChange.add(megawidget);
+            }
+        }
+        if (megawidgetsWithStateChange.size() > 0) {
+            for (IStateful megawidget : megawidgetsWithStateChange) {
+                setState(megawidget, false);
+            }
+            propertyProgrammaticallyChanged = true;
+            if (sideEffectsApplier != null) {
+                applySideEffects(changedState.keySet(), true);
+            }
         }
     }
 
@@ -876,11 +938,6 @@ public abstract class MegawidgetManager {
      *            Maximum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
      *            are included in <code>specifiers</code>, this is ignored.
-     * @param currentTimeProvider
-     *            Current time provider for any time megawidgets specified
-     *            within <code>specifiers</code>. If <code>null</code>, a
-     *            default current time provider is used. If no time megawidgets
-     *            are included in <code>specifiers</code>, this is ignored.
      * @return Set of the top-level megawidgets created during this object's
      *         construction.
      * @throws MegawidgetException
@@ -891,14 +948,14 @@ public abstract class MegawidgetManager {
     private <P extends Widget, M extends IMegawidget> Set<M> construct(
             P parent, Class<M> superClass,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Object> state, long minVisibleTime,
-            long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
+            Map<String, Object> state, long minVisibleTime, long maxVisibleTime)
             throws MegawidgetException {
 
         /*
-         * Remember the parent and state values, and the side effects applier,
-         * if any.
+         * Remember the specifier manager, parent and state values, and the side
+         * effects applier, if any.
          */
+        this.specifierManager = specifierManager;
         this.parent = parent;
         this.state = state;
         this.sideEffectsApplier = specifierManager.getSideEffectsApplier();
@@ -919,7 +976,7 @@ public abstract class MegawidgetManager {
                 maxVisibleTime);
         megawidgetCreationParams.put(
                 TimeMegawidgetSpecifier.CURRENT_TIME_PROVIDER,
-                currentTimeProvider);
+                specifierManager.getCurrentTimeProvider());
 
         /*
          * Iterate through the megawidget specifiers, instantiating each one in
@@ -1134,8 +1191,8 @@ public abstract class MegawidgetManager {
     }
 
     /**
-     * Apply side effects resulting from the specified megawidget experiencing a
-     * state change or invocation.
+     * Apply side effects resulting from the specified megawidgets experiencing
+     * a state change or invocation.
      * 
      * @param identifiers
      *            Collection of identifiers of the megawidget that underwent a

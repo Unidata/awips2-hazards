@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
@@ -40,9 +41,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
  * Nov 23, 2013    1462    bryon.lawrence    Added support for drawing hazard
  *                                           hatched areas.
- * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Chris.Golden
@@ -73,6 +75,11 @@ public class SpatialPresenter extends
     private MouseHandlerFactory mouseFactory = null;
 
     /**
+     * JSON converter.
+     */
+    private final JSONConverter jsonConverter = new JSONConverter();
+
+    /**
      * Construct a standard instance.
      * 
      * @param model
@@ -83,8 +90,8 @@ public class SpatialPresenter extends
      *            Event bus used to signal changes.
      */
     public SpatialPresenter(ISessionManager<ObservedHazardEvent> model,
-            ISpatialView<?, ?> view, BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+            BoundedReceptionEventBus<Object> eventBus) {
+        super(model, eventBus);
     }
 
     // Public Methods
@@ -100,7 +107,8 @@ public class SpatialPresenter extends
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
             useSettingZoomParameters();
         } else if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
-            Settings settings = configurationManager.getSettings();
+            Settings settings = getModel().getConfigurationManager()
+                    .getSettings();
             getView().setSettings(settings);
         } else if (changed.contains(HazardConstants.Element.CAVE_TIME)) {
             updateCaveSelectedTime();
@@ -127,7 +135,7 @@ public class SpatialPresenter extends
      * @return
      */
     public void updateCaveSelectedTime() {
-        Date selectedTime = timeManager.getSelectedTime();
+        Date selectedTime = getModel().getTimeManager().getSelectedTime();
         getView().manageViewFrames(selectedTime);
     }
 
@@ -137,24 +145,26 @@ public class SpatialPresenter extends
      * @return Selected time.
      */
     public Date getSelectedTime() {
-        return timeManager.getSelectedTime();
+        return getModel().getTimeManager().getSelectedTime();
     }
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
-    public void initialize(ISpatialView<?, ?> view) {
+    protected void initialize(ISpatialView<?, ?> view) {
         if (mouseFactory == null) {
             mouseFactory = new MouseHandlerFactory(this);
         }
         getView().initialize(this, mouseFactory);
         updateSpatialDisplay();
+    }
+
+    @Override
+    protected void reinitialize(ISpatialView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 
     // Private Methods
@@ -165,11 +175,13 @@ public class SpatialPresenter extends
      */
     private void useSettingZoomParameters() {
 
-        // Get the new setting parameters, and from them, get the
-        // zoom parameters.
+        /*
+         * Get the new setting parameters, and from them, get the zoom
+         * parameters.
+         */
         double[] zoomParams = new double[ZOOM_PARAM_NAMES.length];
         boolean zoomExtracted = true;
-        Settings settings = configurationManager.getSettings();
+        Settings settings = getModel().getConfigurationManager().getSettings();
         try {
             Dict settingDict = Dict.getInstance(jsonConverter.toJson(settings));
             Dict zoomDict = settingDict
@@ -186,7 +198,9 @@ public class SpatialPresenter extends
             zoomExtracted = false;
         }
 
-        // Set the display to the setting's extracted zoom parameters.
+        /*
+         * Set the display to the setting's extracted zoom parameters.
+         */
         if (zoomExtracted) {
             getView().setDisplayZoomParameters(zoomParams[0], zoomParams[1],
                     zoomParams[2]);

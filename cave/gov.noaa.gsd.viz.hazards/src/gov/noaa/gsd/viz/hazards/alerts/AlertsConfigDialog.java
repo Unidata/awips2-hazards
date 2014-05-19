@@ -7,12 +7,12 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
-import gov.noaa.gsd.viz.hazards.dialogs.BasicDialog;
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.display.action.AlertsAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
-import gov.noaa.gsd.viz.megawidgets.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 

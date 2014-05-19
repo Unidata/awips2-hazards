@@ -21,7 +21,7 @@ package gov.noaa.gsd.common.utilities.collect;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 18, 2014  2336      Chris.Golden Initial creation
- * 
+ * May 14, 2014  2925      Chris.Golden Corrected Javadoc.
  * </pre>
  * 
  * @author Chris.Golden
@@ -32,8 +32,7 @@ public interface IParameterInfo {
     /**
      * Get the identifier for this key.
      * 
-     * @param Identifier
-     *            . .
+     * @return Identifier.
      */
     public String getKey();
 

@@ -39,6 +39,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * 
  *  
  * Nov 29, 2013 2380    daniel.s.schaffer@noaa.gov Added call of {@link FilteringFunctionalTest}
+ * May 18, 2014    2925       Chris.Golden Changed to ensure that ongoing preview and
+ *                                         ongoing issue flags are set to false at the
+ *                                         end of each test.
  * 
  * </pre>
  * 
@@ -135,6 +138,8 @@ public class AutomatedTests {
             functionalTest = null;
             statusHandler.debug("Stopping tests");
             resetEvents();
+            appBuilder.getSessionManager().setPreviewOngoing(false);
+            appBuilder.getSessionManager().setIssueOngoing(false);
 
         } else {
             functionalTest = null;

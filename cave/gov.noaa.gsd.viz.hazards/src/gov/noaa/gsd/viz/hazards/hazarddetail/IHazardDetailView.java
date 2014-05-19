@@ -9,142 +9,95 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
+import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.google.common.collect.ImmutableList;
+import com.raytheon.uf.common.time.TimeRange;
 
 /**
- * Interface describing the methods that must be implemented by a class that
- * functions as a hazard detail view, managed by an hazard detail presenter.
+ * Description: Interface describing the methods that must be implemented by a
+ * class that functions as a hazard detail view.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * May 10, 2013            Chris.Golden      Change to Eclipse view implementation.
- * Nov 14, 2013            Bryon.Lawrence    Added code to support hazard conflict 
- *                                           detection.
- * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
- *                                           "until further notice" to the view
- *                                           during initialization.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 09, 2014    2925    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IHazardDetailView<C, E extends Enum<E>> extends IView<C, E> {
-
-    // Public Methods
+public interface IHazardDetailView {
 
     /**
      * Initialize the view.
      * 
-     * @param presenter
-     *            Presenter managing this view.
-     * @param jsonGeneralWidgets
-     *            JSON string holding a dictionary that specifies the general
-     *            widgets for the dialog.
-     * @param jsonMetadataWidgets
-     *            JSON string holding a list of dictionaries specifying
-     *            megawidgets for the metadata specific to each hazard type.
+     * @param hazardCategories
+     *            List of hazard categories.
      * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
+     *            Minimum visible time to be shown in the time widgets.
      * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
-     * @param eventIdentifiersAllowingUntilFurtherNotice
-     *            Set of the hazard event identifiers that at any given moment
-     *            allow the toggling of their "until further notice" mode. The
-     *            set is unmodifiable; attempts to modify it will result in an
-     *            {@link UnsupportedOperationException}. Note that this set is
-     *            kept up-to-date, and thus will always contain only those
-     *            events that can have their "until further notice" mode toggled
-     *            at the instant at which it is checked.
+     *            Maximum visible time to be shown in the time widgets.
+     * @param currentTimeProvider
+     *            Current time provider, used for the time range widgets.
      */
-    public void initialize(HazardDetailPresenter presenter,
-            String jsonGeneralWidgets, String jsonMetadataWidgets,
+    public void initialize(ImmutableList<String> hazardCategories,
             long minVisibleTime, long maxVisibleTime,
-            Set<String> eventIdentifiersAllowingUntilFurtherNotice);
+            ICurrentTimeProvider currentTimeProvider);
 
     /**
-     * Show the hazard detail subview.
+     * Get the visible time range state changer.
      * 
-     * @param eventValuesList
-     *            List of dictionaries, each holding key-value pairs that
-     *            specify a hazard event.
-     * @param topEventID
-     *            Identifier for the hazard event that should be foregrounded
-     *            with respect to other hazard events; must be one of the
-     *            identifiers in the hazard events of
-     *            <code>eventValuesList</code>.
-     * @param force
-     *            Flag indicating whether or not to force the showing of the
-     *            subview. This may be used as a hint by views if they are
-     *            considering not showing the subview for whatever reason.
-     * @param eventConflictMap
-     *            Map of selected events and lists of corresponding conflicting
-     *            events
+     * @return Visible time range state changer.
      */
-    public void showHazardDetail(DictList eventValuesList, String topEventID,
-            Map<String, Collection<IHazardEvent>> eventConflictMap,
-            boolean force);
+    public IStateChanger<String, TimeRange> getVisibleTimeRangeChanger();
 
     /**
-     * Update the hazard detail subview, if it is showing.
+     * Get the selected event state changer.
      * 
-     * @param eventValuesList
-     *            List of dictionaries, each holding key-value pairs that
-     *            specify a hazard event.
-     * @param topEventID
-     *            Identifier for the hazard event that should be foregrounded
-     *            with respect to other hazard events; must be one of the
-     *            identifiers in the hazard events of
-     *            <code>eventValuesList</code>.
-     * @param eventConflictMap
-     *            Contains a map of event ids and associated lists of
-     *            conflicting hazards.
+     * @return Selected event state changer.
      */
-    public void updateHazardDetail(DictList eventValuesList, String topEventID,
-            Map<String, Collection<IHazardEvent>> eventConflictMap);
+    public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> getVisibleEventChanger();
 
     /**
-     * Hide the hazard detail subview.
+     * Get the category state changer.
      * 
-     * @param force
-     *            Flag indicating whether or not to force the hiding of the
-     *            subview. This may be used as a hint by views if they are
-     *            considering not hiding the subview for whatever reason.
+     * @return Category state changer.
      */
-    public void hideHazardDetail(boolean force);
+    public IChoiceStateChanger<String, String, String, String> getCategoryChanger();
 
     /**
-     * Set the visible time range.
+     * Get the type state changer.
      * 
-     * @param minVisibleTime
-     *            Minimum visible time to be shown in the time megawidgets.
-     * @param maxVisibleTime
-     *            Maximum visible time to be shown in the time megawidgets.
+     * @return Type state changer.
      */
-    public void setVisibleTimeRange(long minVisibleTime, long maxVisibleTime);
+    public IChoiceStateChanger<String, String, String, String> getTypeChanger();
 
     /**
-     * Indicate if a preview of any {@link IHazardEvent}s is ongoing.
+     * Get the time range state changer.
      * 
-     * @param previewOngoing
+     * @return Time range state changer.
      */
-    void setPreviewOngoing(boolean previewOngoing);
+    public IStateChanger<String, TimeRange> getTimeRangeChanger();
 
     /**
-     * Indicate if an issue of any {@link IHazardEvent}s is ongoing.
+     * Get the metadata state changer.
      * 
-     * @param issueOngoing
+     * @return Metadata state changer.
      */
-    void setIssueOngoing(boolean issueOngoing);
+    public IMetadataStateChanger getMetadataChanger();
 
+    /**
+     * Get the button invoker.
+     * 
+     * @return Button invoker.
+     */
+    public ICommandInvoker<Command> getButtonInvoker();
 }

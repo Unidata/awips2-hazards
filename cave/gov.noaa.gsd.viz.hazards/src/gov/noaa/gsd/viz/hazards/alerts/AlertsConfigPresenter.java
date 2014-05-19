@@ -34,7 +34,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * 
  * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * 
+ * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
+ *                                           reinitialize(), and made initialize()
+ *                                           protected as it is called by setView().
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,25 +52,16 @@ public class AlertsConfigPresenter extends
      * 
      * @param model
      *            Model to be handled by this presenter.
-     * @param view
-     *            Alerts view to be handled by this presenter.
      * @param eventBus
      *            Event bus used to signal changes.
      */
     public AlertsConfigPresenter(ISessionManager<ObservedHazardEvent> model,
-            IAlertsConfigView<?, ?> view,
             BoundedReceptionEventBus<Object> eventBus) {
-        super(model, view, eventBus);
+        super(model, eventBus);
     }
 
     // Public Methods
 
-    /**
-     * Receive notification of a model change.
-     * 
-     * @param changes
-     *            Set of elements within the model that have changed.
-     */
     @Override
     public final void modelChanged(EnumSet<HazardConstants.Element> changed) {
 
@@ -85,14 +78,16 @@ public class AlertsConfigPresenter extends
 
     // Protected Methods
 
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
     @Override
-    public final void initialize(IAlertsConfigView<?, ?> view) {
+    protected final void initialize(IAlertsConfigView<?, ?> view) {
         getView().initialize(this);
+    }
+
+    @Override
+    protected final void reinitialize(IAlertsConfigView<?, ?> view) {
+
+        /*
+         * No action.
+         */
     }
 }

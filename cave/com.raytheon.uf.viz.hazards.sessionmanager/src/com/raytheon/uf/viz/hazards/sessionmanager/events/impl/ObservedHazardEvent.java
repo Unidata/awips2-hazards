@@ -44,7 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.IllegalEventModificatio
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
@@ -420,8 +420,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         delegate.setStatus(status);
 
         if (notify) {
-            eventManager.hazardEventStateModified(
-                    new SessionEventStateModified(eventManager, this,
+            eventManager.hazardEventStatusModified(
+                    new SessionEventStatusModified(eventManager, this,
                             originator), persist);
         }
     }

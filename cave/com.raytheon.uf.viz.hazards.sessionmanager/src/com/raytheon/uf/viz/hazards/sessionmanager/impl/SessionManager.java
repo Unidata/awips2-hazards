@@ -45,6 +45,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
@@ -75,7 +76,9 @@ import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine
  * 
  * Nov 23, 2013 1462       blawrenc    Added state of hatch area drawing.
  * Apr 08, 2014 2826       dgilling    Fixed filesToDeleteOnReset to reflect proper paths.
- * 
+ * May 12, 2014 2925       C. Golden   Added supplying of time manager to configuration
+ *                                     manager, and the firing of auto-check-conflicts-
+ *                                     changed messages when the toggle changes state.
  * </pre>
  * 
  * @author bsteffen
@@ -105,6 +108,8 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
             .getHandler(this.getClass());
 
     private final BoundedReceptionEventBus<Object> eventBus;
+
+    private final SessionNotificationSender sender;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
@@ -150,10 +155,10 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         // TODO switch the bus to async
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         this.eventBus = eventBus;
-        SessionNotificationSender sender = new SessionNotificationSender(
-                eventBus);
+        sender = new SessionNotificationSender(eventBus);
         timeManager = new SessionTimeManager(sender);
-        configManager = new SessionConfigurationManager(pathManager, sender);
+        configManager = new SessionConfigurationManager(pathManager,
+                timeManager, sender);
         eventManager = new SessionEventManager(timeManager, configManager,
                 hazardEventManager, sender, messenger);
         productManager = new SessionProductManager(this, timeManager,
@@ -239,13 +244,8 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     @Override
     public void toggleAutoHazardChecking() {
         autoHazardChecking = !autoHazardChecking;
-
-        /*
-         * Force a refresh of the Hazard Services views. There is probably a
-         * better way to do this.
-         */
-        eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
-                Originator.OTHER);
+        sender.postNotificationAsync(new SessionAutoCheckConflictsModified(
+                Originator.OTHER));
     }
 
     @Override
@@ -262,6 +262,10 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
         /*
          * Force a refresh of the Hazard Services views. There is probably a
          * better way to do this.
+         * 
+         * TODO: Add a new message class (similar to the auto-check conflict
+         * change message SessionAutocheckConflictsModified) and use that to
+         * post notifications of this change.
          */
         eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
                 Originator.OTHER);

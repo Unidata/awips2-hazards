@@ -58,9 +58,6 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.time.DateUtils;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -89,11 +86,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStateModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -140,7 +142,7 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Feb 17, 2014 2161       Chris.Golden Added code to change the end time or fall-
  *                                      below time to the "until further notice"
  *                                      value if the corresponding "until further
- *                                      notice" flag is set high. Also added code
+ *                                      notice" flag is set to true. Also added code
  *                                      to track the set of hazard events that can
  *                                      have "until further notice" applied to
  *                                      them. Added Javadoc comments to appropriate
@@ -164,6 +166,14 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      of megawidget specifier managers for hazard
  *                                      events, in support of class-based metadata
  *                                      work.
+ * May 15, 2014 2925       Chris.Golden Added methods to set hazard category, set
+ *                                      last modified event, and get set of hazards
+ *                                      for which proposal is possible. Also added
+ *                                      tracking of which selected events have what
+ *                                      conflicts with other events, as opposed to
+ *                                      calculating it every time it is asked for via
+ *                                      the public method. Made a few additional
+ *                                      minor changes to support new HID.
  * </pre>
  * 
  * @author bsteffen
@@ -195,7 +205,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * Look-up IUGCBuilders for tables in the maps geodatabase.
      */
     static {
-        Map<String, IUGCBuilder> tempMap = Maps.newHashMap();
+        Map<String, IUGCBuilder> tempMap = new HashMap<>();
 
         tempMap.put(HazardConstants.MAPDATA_COUNTY, new CountyUGCBuilder());
         tempMap.put(HazardConstants.POLYGON_TYPE, new CountyUGCBuilder());
@@ -245,6 +255,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
 
+    private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
+
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
     /*
@@ -286,6 +298,17 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         filterEventsForConfig(result);
         return result;
+    }
+
+    @Override
+    public void setEventCategory(ObservedHazardEvent event, String category,
+            IOriginator originator) {
+        if (!canChangeType(event)) {
+            throw new IllegalStateException("cannot change type of event "
+                    + event.getEventID());
+        }
+        event.addHazardAttribute(ATTR_HAZARD_CATEGORY, category);
+        event.setHazardType(null, null, null, Originator.OTHER);
     }
 
     @Override
@@ -384,6 +407,44 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     /**
+     * Respond to the addition of a hazard event by firing off a notification
+     * that the list of selected events has changed, if appropriate.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardAdded(SessionEventAdded change) {
+        if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
+                ATTR_SELECTED))) {
+            notificationSender
+                    .postNotificationAsync(new SessionSelectedEventsModified(
+                            this, change.getOriginator()));
+        }
+        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
+                false);
+    }
+
+    /**
+     * Respond to the addition of a hazard event by firing off a notification
+     * that the list of selected events has changed, if appropriate.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardRemoved(SessionEventRemoved change) {
+        if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
+                ATTR_SELECTED))) {
+            notificationSender
+                    .postNotificationAsync(new SessionSelectedEventsModified(
+                            this, change.getOriginator()));
+        }
+        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
+                true);
+    }
+
+    /**
      * Respond to a hazard event's type change by firing off a notification that
      * the event may have new metadata.
      * 
@@ -393,30 +454,38 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Handler(priority = 1)
     public void hazardTypeChanged(SessionEventTypeModified change) {
         updateEventMetadata(change.getEvent());
+        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
+                false);
     }
 
     /**
-     * Respond to a hazard event's state change by firing off a notification
+     * Respond to a hazard event's status change by firing off a notification
      * that the event may have new metadata.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
-    public void hazardStateChanged(SessionEventStateModified change) {
+    public void hazardStatusChanged(SessionEventStatusModified change) {
         updateEventMetadata(change.getEvent());
     }
 
     @Override
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
             ObservedHazardEvent event) {
+        MegawidgetSpecifierManager manager = megawidgetSpecifiersForEventIdentifiers
+                .get(event.getEventID());
+        if (manager != null) {
+            return manager;
+        }
+        updateEventMetadata(event);
         return megawidgetSpecifiersForEventIdentifiers.get(event.getEventID());
     }
 
     /**
      * Update the specified event's metadata in response to some sort of change
-     * (creation of the event, updating of state or hazard type) that may result
-     * in the available metadata changing.
+     * (creation of the event, updating of status or hazard type) that may
+     * result in the available metadata changing.
      * 
      * @param event
      *            Event for which metadata may need updating.
@@ -429,6 +498,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
          */
         MegawidgetSpecifierManager manager = configManager
                 .getMegawidgetSpecifiersForHazardEvent(event);
+
+        assert (manager != null);
+        assert (event.getStartTime() != null);
+        assert (event.getEndTime() != null);
+
         megawidgetSpecifiersForEventIdentifiers
                 .put(event.getEventID(), manager);
 
@@ -563,13 +637,33 @@ public class SessionEventManager extends AbstractSessionEventManager {
     /**
      * Ensure that toggles of "until further notice" flags result in the
      * appropriate time being set to "until further notice" or, if the flag has
-     * been set to false, an appropriate default time.
+     * been set to false, an appropriate default time. Also generate
+     * notifications that the list of selected hazard events has changed if the
+     * selected attribute is found to have been altered.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
     public void hazardAttributesChanged(SessionEventAttributesModified change) {
+
+        /*
+         * If the hazard selection attribute has changed and it is within the
+         * current set of all events being managed, send out a notification of
+         * indicating that selected events have changed, and update the
+         * conflicts for selected events map. The reason that the check is made
+         * for whether the event is currently being managed is to avoid such
+         * updates when an event has its attribute changes before it is added or
+         * after it is removed.
+         */
+        if (change.containsAttribute(ATTR_SELECTED)
+                && getEvents().contains(change.getEvent())) {
+            notificationSender
+                    .postNotificationAsync(new SessionSelectedEventsModified(
+                            this, change.getOriginator()));
+            updateConflictingEventsForSelectedEventIdentifiers(
+                    change.getEvent(), false);
+        }
 
         /*
          * If the end time "until further notice" flag has changed value but was
@@ -604,47 +698,25 @@ public class SessionEventManager extends AbstractSessionEventManager {
                  * Get the name of the attribute that should have its value
                  * changed as a result of the "until further notice" toggle.
                  */
-                int endIndex = key.length()
-                        - HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX.length();
-                if (endIndex < 1) {
-                    statusHandler.error("Illegal to use \""
-                            + HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX
-                            + "\" as complete metadata identifier; must be "
-                            + "suffix for identifier to which until "
-                            + "further notice may be applied.");
+                String attributeBeingChanged = getAttributeForUntilFurtherNoticeAttribute(key);
+                if (attributeBeingChanged == null) {
                     continue;
                 }
-                String attributeBeingChanged = key.substring(0, endIndex);
 
                 /*
                  * Find the time scale specifier that includes this attribute.
                  * It may be the last attribute in a multi-state specifier, or
                  * its only state.
                  */
-                String megawidgetIdentifierSuffix = ":" + attributeBeingChanged;
-                MegawidgetSpecifierManager specifierManager = megawidgetSpecifiersForEventIdentifiers
-                        .get(change.getEvent().getEventID());
-                ISpecifier targetSpecifier = null;
-                boolean singleStateSpecifier = false;
-                for (ISpecifier specifier : specifierManager.getSpecifiers()) {
-                    if (specifier.getIdentifier().endsWith(
-                            megawidgetIdentifierSuffix)
-                            || specifier.getIdentifier().equals(
-                                    attributeBeingChanged)) {
-                        singleStateSpecifier = specifier.getIdentifier()
-                                .equals(attributeBeingChanged);
-                        targetSpecifier = specifier;
-                        break;
-                    }
-                }
-                if ((targetSpecifier instanceof TimeScaleSpecifier) == false) {
-                    statusHandler.warn("Unable to find time scale specifier "
-                            + "for attribute \"" + attributeBeingChanged
-                            + "\" that may be manipulated by toggling of "
-                            + "attribute \"" + key + "\".");
+                ObservedHazardEvent event = (ObservedHazardEvent) change
+                        .getEvent();
+                TimeScaleSpecifier timeScaleSpecifier = getTimeScaleSpecifierForAttribute(
+                        event, attributeBeingChanged, key);
+                if (timeScaleSpecifier == null) {
                     continue;
                 }
-                TimeScaleSpecifier timeScaleSpecifier = (TimeScaleSpecifier) targetSpecifier;
+                boolean singleStateSpecifier = timeScaleSpecifier
+                        .getIdentifier().equals(attributeBeingChanged);
 
                 /*
                  * Get the name of the attribute used to store the information
@@ -661,109 +733,250 @@ public class SessionEventManager extends AbstractSessionEventManager {
                  * attribute to be changed, and the previous attribute within
                  * the specifier.
                  */
-                boolean untilFurtherNotice = Boolean.TRUE.equals(change
-                        .getEvent().getHazardAttribute(key));
-                boolean untilFurtherNoticeWasOn = ((change.getEvent()
-                        .getHazardAttribute(attributeBeingChanged) instanceof Long) && ((Long) change
-                        .getEvent().getHazardAttribute(attributeBeingChanged) == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
+                boolean untilFurtherNotice = Boolean.TRUE.equals(event
+                        .getHazardAttribute(key));
+                boolean untilFurtherNoticeWasOn = ((event
+                        .getHazardAttribute(attributeBeingChanged) instanceof Long) && ((Long) event
+                        .getHazardAttribute(attributeBeingChanged) == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
                 if (singleStateSpecifier) {
-
-                    /*
-                     * If "until further notice" has been toggled on, remember
-                     * the old value for this attribute before giving it the
-                     * special "until further notice" value. If instead it was
-                     * toggled off, use the old value stored when it was toggled
-                     * on to set its new current value. In the latter case,
-                     * check to ensure that the old value stored is indeed a
-                     * Date, since it is possible (although very unlikely) that
-                     * the metadata may have changed for this event, making it
-                     * have a single-state time scale specifier where it used to
-                     * have a multi-state one.
-                     */
-                    if (untilFurtherNotice) {
-                        if (change.getEvent().getHazardAttribute(lastValueKey) == null) {
-                            change.getEvent().addHazardAttribute(
-                                    lastValueKey,
-                                    new Date((Long) change.getEvent()
-                                            .getHazardAttribute(
-                                                    attributeBeingChanged)));
-                        }
-                        change.getEvent()
-                                .addHazardAttribute(
-                                        attributeBeingChanged,
-                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-                    } else if (untilFurtherNoticeWasOn) {
-                        Object savedValue = change.getEvent()
-                                .getHazardAttribute(lastValueKey);
-                        change.getEvent().removeHazardAttribute(lastValueKey);
-                        change.getEvent().addHazardAttribute(
-                                attributeBeingChanged,
-                                (savedValue instanceof Date ? (Date) savedValue
-                                        : change.getEvent().getEndTime())
-                                        .getTime());
-                    }
+                    setSingleStateAttributeForUntilFurtherNoticeChange(event,
+                            attributeBeingChanged, lastValueKey,
+                            untilFurtherNotice, untilFurtherNoticeWasOn);
                 } else {
-
-                    /*
-                     * If "until further notice" has been toggled on, remember
-                     * the interval between this attribute and the previous
-                     * attribute in the time scale specifier. If instead it was
-                     * toggled off, find the old value that was stored. If it is
-                     * a Date object (which is very unlikely, but would occur if
-                     * the metadata has changed for this event since the last
-                     * toggle, and it changed from a single-state specifier to a
-                     * multi-state one at that time), use that as the time if
-                     * possible, or if too early, use a time one hour after the
-                     * previous attribute's time. However, it will generally be
-                     * a long integer interval; in that case, add said interval
-                     * to the previous attribute's value to get a new Date and
-                     * use that.
-                     */
-                    String previousAttribute = timeScaleSpecifier
-                            .getStateIdentifiers().get(
-                                    timeScaleSpecifier.getStateIdentifiers()
-                                            .size() - 2);
-                    if (untilFurtherNotice) {
-                        if (change.getEvent().getHazardAttribute(lastValueKey) == null) {
-                            long interval = ((Long) change.getEvent()
-                                    .getHazardAttribute(attributeBeingChanged))
-                                    - ((Long) change.getEvent()
-                                            .getHazardAttribute(
-                                                    previousAttribute));
-                            change.getEvent().addHazardAttribute(lastValueKey,
-                                    interval);
-                        }
-                        change.getEvent()
-                                .addHazardAttribute(
-                                        attributeBeingChanged,
-                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-                    } else if (untilFurtherNoticeWasOn) {
-                        Object savedValue = change.getEvent()
-                                .getHazardAttribute(lastValueKey);
-                        change.getEvent().removeHazardAttribute(lastValueKey);
-                        Long newValue;
-                        if (savedValue instanceof Long) {
-                            newValue = ((Long) change.getEvent()
-                                    .getHazardAttribute(previousAttribute))
-                                    + (Long) savedValue;
-                        } else {
-                            Long previousAttributeValue = (Long) change
-                                    .getEvent().getHazardAttribute(
-                                            previousAttribute);
-                            if ((savedValue == null)
-                                    || (((Date) savedValue).getTime() <= previousAttributeValue)) {
-                                newValue = previousAttributeValue
-                                        + DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE;
-                            } else {
-                                newValue = ((Date) savedValue).getTime();
-                            }
-                        }
-                        change.getEvent().addHazardAttribute(
-                                attributeBeingChanged, newValue);
-                    }
+                    setMultiStateAttributeForUntilFurtherNoticeChange(event,
+                            timeScaleSpecifier, attributeBeingChanged,
+                            lastValueKey, untilFurtherNotice,
+                            untilFurtherNoticeWasOn);
                 }
             }
         }
+    }
+
+    /**
+     * Get the event attribute name associated with the specified
+     * "until further notice" event attribute name.
+     * 
+     * @param key
+     *            Name of the "until further notice" attribute.
+     * @return Name of the associated attribute, or <code>null</code> if it
+     *         cannot be taken from the specified key.
+     */
+    private String getAttributeForUntilFurtherNoticeAttribute(String key) {
+        int endIndex = key.length()
+                - HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX.length();
+        if (endIndex < 1) {
+            statusHandler.error("Illegal to use \""
+                    + HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX
+                    + "\" as complete metadata identifier; must be "
+                    + "suffix for identifier to which until "
+                    + "further notice may be applied.");
+            return null;
+        }
+        return key.substring(0, endIndex);
+    }
+
+    /**
+     * Get the time scale megawidget specifier associated with the specified
+     * key.
+     * 
+     * @param event
+     *            Hazard event for which the specifier is to be fetched.
+     * @param key
+     *            Key with which the specifier to be fetched is associated,
+     *            meaning that said specifier has the key as one of its state
+     *            identifiers.
+     * @param untilFurtherNoticeKey
+     *            Key of the "until further notice" attribute that may be used
+     *            to modify the <code>key</code> attribute's value.
+     * @return Time scale specifier, or <code>null</code> if no time scale
+     *         specifier can be found for the specified key.
+     */
+    private TimeScaleSpecifier getTimeScaleSpecifierForAttribute(
+            ObservedHazardEvent event, String key, String untilFurtherNoticeKey) {
+        String megawidgetIdentifierSuffix = ":" + key;
+        MegawidgetSpecifierManager specifierManager = getMegawidgetSpecifiers(event);
+        ISpecifier targetSpecifier = null;
+        for (ISpecifier specifier : specifierManager.getSpecifiers()) {
+            if (specifier.getIdentifier().endsWith(megawidgetIdentifierSuffix)
+                    || specifier.getIdentifier().equals(key)) {
+                targetSpecifier = specifier;
+                break;
+            }
+        }
+        if ((targetSpecifier instanceof TimeScaleSpecifier) == false) {
+            statusHandler.warn("Unable to find time scale specifier "
+                    + "for attribute \"" + key
+                    + "\" that may be manipulated by toggling of "
+                    + "attribute \"" + untilFurtherNoticeKey + "\".");
+            return null;
+        }
+        return (TimeScaleSpecifier) targetSpecifier;
+    }
+
+    /**
+     * Set the specified attribute for the specified event to use either the
+     * "until further notice" value (if "until further notice" is true), or the
+     * value it was using before "until further notice" was last turned on. This
+     * method is suitable for use when the time scale specifier used to modify
+     * the attribute has only a single state.
+     * 
+     * @param event
+     *            Event to have its attribute values modified.
+     * @param key
+     *            Attribute to which the "until further notice" value is to be
+     *            assigned (if "until further notice" is being turned on), or
+     *            the previously saved value is to be assigned (if being turned
+     *            off).
+     * @param lastValueKey
+     *            Attribute to which the value that <code>key</code> had prior
+     *            to the last switching on of "until further notice" was
+     *            assigned.
+     * @param untilFurtherNotice
+     *            Flag indicating whether or not "until further notice" has been
+     *            switched on.
+     * @param untilFurtherNoticeWasOn
+     *            Flag indicating that "until further notice" was previously on
+     *            for <code>key</code>, which is to say that the attribute with
+     *            that name was set to the special "until further notice" value.
+     */
+    private void setSingleStateAttributeForUntilFurtherNoticeChange(
+            ObservedHazardEvent event, String key, String lastValueKey,
+            boolean untilFurtherNotice, boolean untilFurtherNoticeWasOn) {
+
+        /*
+         * If "until further notice" has been toggled on, remember the old value
+         * for this attribute before giving it the special
+         * "until further notice" value. If instead it was toggled off, use the
+         * old value stored when it was toggled on to set its new current value.
+         * In the latter case, check to ensure that the old value stored is
+         * indeed a Date, since it is possible (although very unlikely) that the
+         * metadata may have changed for this event, making it have a
+         * single-state time scale specifier where it used to have a multi-state
+         * one.
+         */
+        if (untilFurtherNotice) {
+            if (event.getHazardAttribute(lastValueKey) == null) {
+                event.addHazardAttribute(lastValueKey,
+                        new Date((Long) event.getHazardAttribute(key)), false,
+                        Originator.OTHER);
+            }
+            event.addHazardAttribute(key,
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+        } else if (untilFurtherNoticeWasOn) {
+            Object savedValue = event.getHazardAttribute(lastValueKey);
+            event.removeHazardAttribute(lastValueKey, false, Originator.OTHER);
+            event.addHazardAttribute(
+                    key,
+                    (savedValue instanceof Date ? (Date) savedValue : event
+                            .getEndTime()).getTime());
+        }
+    }
+
+    /**
+     * Set the specified attribute for the specified event to use either the
+     * "until further notice" value (if "until further notice" is true), or the
+     * value it was using before "until further notice" was last turned on. This
+     * method is suitable for use when the time scale specifier used to modify
+     * the attribute has multiple states, one of which is this attribute.
+     * 
+     * @param event
+     *            Event to have its attribute values modified.
+     * @param specifier
+     *            Time scale specifier that is used to modify the attribute
+     *            named <code>key</code>. It is assumed that the latter is the
+     *            last of its state identifiers.
+     * @param key
+     *            Attribute to which the "until further notice" value is to be
+     *            assigned (if "until further notice" is being turned on), or
+     *            the previously saved value is to be assigned (if being turned
+     *            off).
+     * @param lastValueKey
+     *            Attribute to which the value that <code>key</code> had prior
+     *            to the last switching on of "until further notice" was
+     *            assigned.
+     * @param untilFurtherNotice
+     *            Flag indicating whether or not "until further notice" has been
+     *            switched on.
+     * @param untilFurtherNoticeWasOn
+     *            Flag indicating that "until further notice" was previously on
+     *            for <code>key</code>, which is to say that the attribute with
+     *            that name was set to the special "until further notice" value.
+     */
+    private void setMultiStateAttributeForUntilFurtherNoticeChange(
+            ObservedHazardEvent event, TimeScaleSpecifier specifier,
+            String key, String lastValueKey, boolean untilFurtherNotice,
+            boolean untilFurtherNoticeWasOn) {
+
+        /*
+         * If "until further notice" has been toggled on, remember the interval
+         * between this attribute and the previous attribute in the time scale
+         * specifier. If instead it was toggled off, find the old value that was
+         * stored. If it is a Date object (which is very unlikely, but would
+         * occur if the metadata has changed for this event since the last
+         * toggle, and it changed from a single-state specifier to a multi-state
+         * one at that time), use that as the time if possible, or if too early,
+         * use a time one hour after the previous attribute's time. However, it
+         * will generally be a long integer interval; in that case, add said
+         * interval to the previous attribute's value to get a new Date and use
+         * that.
+         */
+        String previousAttribute = specifier.getStateIdentifiers().get(
+                specifier.getStateIdentifiers().size() - 2);
+        if (untilFurtherNotice) {
+            if (event.getHazardAttribute(lastValueKey) == null) {
+                long interval = ((Long) event.getHazardAttribute(key))
+                        - ((Long) event.getHazardAttribute(previousAttribute));
+                event.addHazardAttribute(lastValueKey, interval, false,
+                        Originator.OTHER);
+            }
+            event.addHazardAttribute(key,
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+        } else if (untilFurtherNoticeWasOn) {
+            Object savedValue = event.getHazardAttribute(lastValueKey);
+            event.removeHazardAttribute(lastValueKey, false, Originator.OTHER);
+            Long newValue;
+            if (savedValue instanceof Long) {
+                newValue = ((Long) event.getHazardAttribute(previousAttribute))
+                        + (Long) savedValue;
+            } else {
+                Long previousAttributeValue = (Long) event
+                        .getHazardAttribute(previousAttribute);
+                if ((savedValue == null)
+                        || (((Date) savedValue).getTime() <= previousAttributeValue)) {
+                    newValue = previousAttributeValue
+                            + DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE;
+                } else {
+                    newValue = ((Date) savedValue).getTime();
+                }
+            }
+            event.addHazardAttribute(key, newValue);
+        }
+    }
+
+    /**
+     * Ensure that changes to an event's time range cause the selected hazard
+     * conflicts map to be updated.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardTimeRangeChanged(SessionEventTimeRangeModified change) {
+        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
+                false);
+    }
+
+    /**
+     * Ensure that changes to an event's geometry cause the selected hazard
+     * conflicts map to be updated.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void hazardGeometryChanged(SessionEventGeometryModified change) {
+        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
+                false);
     }
 
     @Override
@@ -882,8 +1095,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 .getEventID()) == false) {
 
             /*
-             * If the attributes contains the flag, remove it. If it was set
-             * high, then reset the end time to an appropriate non-"until
+             * If the attributes contains the flag, remove it. If it was set to
+             * true, then reset the end time to an appropriate non-"until
              * further notice" value.
              */
             Boolean untilFurtherNotice = (Boolean) event
@@ -901,14 +1114,14 @@ public class SessionEventManager extends AbstractSessionEventManager {
         Settings settings = configManager.getSettings();
         Set<String> siteIDs = settings.getVisibleSites();
         Set<String> phenSigs = settings.getVisibleTypes();
-        Set<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
+        Set<HazardStatus> statuses = EnumSet.noneOf(HazardStatus.class);
         for (String state : settings.getVisibleStatuses()) {
-            states.add(HazardStatus.valueOf(state.toUpperCase()));
+            statuses.add(HazardStatus.valueOf(state.toUpperCase()));
         }
         Iterator<? extends IHazardEvent> it = events.iterator();
         while (it.hasNext()) {
             IHazardEvent event = it.next();
-            if (!states.contains(event.getStatus())) {
+            if (!statuses.contains(event.getStatus())) {
                 it.remove();
             } else if (!siteIDs.contains(event.getSiteID())) {
                 it.remove();
@@ -943,11 +1156,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (visibleStatuses == null || visibleStatuses.isEmpty()) {
             return;
         }
-        List<Object> states = new ArrayList<Object>(visibleStatuses.size());
+        List<Object> statuses = new ArrayList<Object>(visibleStatuses.size());
         for (String state : visibleStatuses) {
-            states.add(HazardStatus.valueOf(state.toUpperCase()));
+            statuses.add(HazardStatus.valueOf(state.toUpperCase()));
         }
-        filters.put(HazardConstants.HAZARD_EVENT_STATUS, states);
+        filters.put(HazardConstants.HAZARD_EVENT_STATUS, statuses);
         Map<String, HazardHistoryList> eventsMap = dbManager
                 .getEventsByFilter(filters);
         synchronized (events) {
@@ -975,10 +1188,10 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Override
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
-        HazardStatus state = event.getStatus();
-        if (state == null || state == HazardStatus.PENDING) {
+        HazardStatus status = event.getStatus();
+        if (status == null || status == HazardStatus.PENDING) {
             return addEvent(event, true, originator);
-        } else if (state == HazardStatus.POTENTIAL) {
+        } else if (status == HazardStatus.POTENTIAL) {
             return addEvent(event, false, originator);
         } else {
             List<IHazardEvent> list = new ArrayList<IHazardEvent>();
@@ -1040,7 +1253,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 ObservedHazardEvent existingEvent = getSelectedEvents()
                         .iterator().next();
                 Geometry existingGeometries = existingEvent.getGeometry();
-                List<Geometry> geometryList = Lists.newArrayList();
+                List<Geometry> geometryList = new ArrayList<>();
 
                 for (int i = 0; i < existingGeometries.getNumGeometries(); ++i) {
                     geometryList.add(existingGeometries.getGeometryN(i));
@@ -1195,7 +1408,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     /**
      * Receive notification from an event that it was modified in any way
-     * <strong>except</strong> for state changes (for example, Pending to
+     * <strong>except</strong> for status changes (for example, Pending to
      * Issued), or the addition or removal of individual attributes.
      * <p>
      * <strong>NOTE</strong>: This method is called whenever an event is
@@ -1206,7 +1419,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      */
     protected void hazardEventModified(SessionEventModified notification) {
         IHazardEvent event = notification.getEvent();
-        addModification(event.getEventID());
+        addModification(event.getEventID(), notification.getOriginator());
         if (event instanceof ObservedHazardEvent) {
             ((ObservedHazardEvent) event).setModified(true);
         }
@@ -1228,29 +1441,29 @@ public class SessionEventManager extends AbstractSessionEventManager {
     protected void hazardEventAttributeModified(
             SessionEventAttributesModified notification) {
         IHazardEvent event = notification.getEvent();
-        addModification(event.getEventID());
+        addModification(event.getEventID(), notification.getOriginator());
         notificationSender.postNotificationAsync(notification);
     }
 
     /**
-     * Receive notification from an event that the latter experienced a state
+     * Receive notification from an event that the latter experienced a status
      * change (for example, Pending to Issued).
      * <p>
      * <strong>NOTE</strong>: This method is called whenever an event
-     * experiences a state change in the current session, regardless of the
+     * experiences a status change in the current session, regardless of the
      * source of the change. Additional logic (method calls, etc.) may therefore
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
-    protected void hazardEventStateModified(
-            SessionEventStateModified notification, boolean persist) {
+    protected void hazardEventStatusModified(
+            SessionEventStatusModified notification, boolean persist) {
         if (persist) {
 
             ObservedHazardEvent event = (ObservedHazardEvent) notification
                     .getEvent();
-            HazardStatus newState = event.getStatus();
+            HazardStatus newStatus = event.getStatus();
             boolean needsPersist = false;
-            switch (newState) {
+            switch (newStatus) {
             case ISSUED:
                 event.addHazardAttribute(ATTR_ISSUED, true);
                 needsPersist = true;
@@ -1283,8 +1496,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
             }
         }
 
-        addModification(notification.getEvent().getEventID());
+        addModification(notification.getEvent().getEventID(),
+                notification.getOriginator());
         notificationSender.postNotificationAsync(notification);
+        updateConflictingEventsForSelectedEventIdentifiers(
+                notification.getEvent(), false);
     }
 
     /**
@@ -1366,9 +1582,24 @@ public class SessionEventManager extends AbstractSessionEventManager {
         return timeListener;
     }
 
-    private void addModification(String eventId) {
-        eventModifications.remove(eventId);
-        eventModifications.push(eventId);
+    /**
+     * Add the specified event identifier to the head of the stack of modified
+     * events, removing it from elsewhere in the stack if it is found further
+     * down.
+     * 
+     * @param eventId
+     *            Identifier to be added.
+     * @param originator
+     *            Originator of the modification.
+     */
+    private void addModification(String eventId, IOriginator originator) {
+        if (eventId.equals(eventModifications.peek()) == false) {
+            eventModifications.remove(eventId);
+            eventModifications.push(eventId);
+            notificationSender
+                    .postNotificationAsync(new SessionLastChangedEventModified(
+                            this, originator));
+        }
     }
 
     @Override
@@ -1384,6 +1615,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
             eventModifications.pop();
             return getLastModifiedSelectedEvent();
         }
+    }
+
+    @Override
+    public void setLastModifiedSelectedEvent(ObservedHazardEvent event,
+            IOriginator originator) {
+        addModification(event.getEventID(), originator);
     }
 
     @Override
@@ -1445,9 +1682,41 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+        return Collections
+                .unmodifiableMap(conflictingEventsForSelectedEventIdentifiers);
+    }
 
-        Map<String, Collection<IHazardEvent>> conflictingHazardMap = Maps
-                .newHashMap();
+    /**
+     * Update the map of selected event identifiers to their collections of
+     * conflicting events. This is to be called whenever something that affects
+     * the selected events' potential conflicts changes.
+     * 
+     * @param event
+     *            Event that has been added, removed, or modified.
+     * @param removed
+     *            Flag indicating whether or not the change is the removal of
+     *            the event.
+     */
+    private void updateConflictingEventsForSelectedEventIdentifiers(
+            IHazardEvent event, boolean removed) {
+
+        /*
+         * TODO: If this is found to take too much time, an optimization could
+         * be implemented in which each selected event is checked against the
+         * event specified as a parameter. If the latter has been removed, then
+         * it would be removed from any conflicts collections, as well as from
+         * the map itself if its identifier was a key. Other optimizations could
+         * be performed if other changes had occurred.
+         * 
+         * Currently, however, the entire map is rebuilt from scratch. This is
+         * still an improvement over before, when it was rebuilt each time
+         * getConflictingEventsForSelectedEvents() was invoked; now it is only
+         * rebuilt whenever this method is called in response to a change of
+         * some sort.
+         */
+        Map<String, Collection<IHazardEvent>> oldMap = new HashMap<>(
+                conflictingEventsForSelectedEventIdentifiers);
+        conflictingEventsForSelectedEventIdentifiers.clear();
 
         Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
 
@@ -1459,21 +1728,25 @@ public class SessionEventManager extends AbstractSessionEventManager {
                     HazardEventUtilities.getHazardType(eventToCheck));
 
             if (!conflictingHazards.isEmpty()) {
-                conflictingHazardMap.put(eventToCheck.getEventID(),
-                        conflictingHazards.keySet());
+                conflictingEventsForSelectedEventIdentifiers.put(eventToCheck
+                        .getEventID(), Collections
+                        .unmodifiableSet(conflictingHazards.keySet()));
             }
 
         }
 
-        return conflictingHazardMap;
+        if (oldMap.equals(conflictingEventsForSelectedEventIdentifiers) == false) {
+            notificationSender
+                    .postNotificationAsync(new SessionSelectedEventConflictsModified(
+                            this, Originator.OTHER));
+        }
 
     }
 
     @Override
     public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents() {
 
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap = Maps
-                .newHashMap();
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap = new HashMap<>();
         /*
          * Find the union of the session events and those retrieved from the
          * hazard event manager. Ignore "Ended" events.
@@ -1501,8 +1774,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             final IHazardEvent eventToCompare, final Date startTime,
             final Date endTime, final Geometry geometry, String phenSigSubtype) {
 
-        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = Maps
-                .newHashMap();
+        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
         /*
          * A hazard type may not always be assigned to an event yet.
@@ -1665,13 +1937,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
          */
         Map<String, HazardHistoryList> eventMap = this.dbManager
                 .getEventsByFilter(hazardQueryBuilder.getQuery());
-        Collection<ObservedHazardEvent> evs = getEvents();
-        List<IHazardEvent> eventsToCheck = Lists
-                .<IHazardEvent> newArrayList(evs);
-        for (ObservedHazardEvent ev : evs) {
-            eventsToCheck.add(ev);
-        }
-        Map<String, IHazardEvent> sessionEventMap = Maps.newHashMap();
+        List<IHazardEvent> eventsToCheck = new ArrayList<IHazardEvent>(
+                getEvents());
+        Map<String, IHazardEvent> sessionEventMap = new HashMap<>();
 
         for (IHazardEvent sessionEvent : eventsToCheck) {
             sessionEventMap.put(sessionEvent.getEventID(), sessionEvent);
@@ -1710,7 +1978,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * @param secondEvent
      *            The second of the two events to compare for conflicts
      * @param hatchedAreasFirstEvent
-     *            The hatcheded areas associated with the first event
+     *            The hatched areas associated with the first event
      * @param hatchedAreasSecondEvent
      *            The hatched areas associated with the second event
      * @param firstEventHatchArea
@@ -1734,16 +2002,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
             String firstEventHatchArea, String firstEventLabelParameter,
             String secondEventHatchArea, String secondEventLabelParameter) {
 
-        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = Maps
-                .newHashMap();
+        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
-        List<String> geometryNames = Lists.newArrayList();
+        List<String> geometryNames = new ArrayList<>();
 
         if (!firstEventHatchArea.equalsIgnoreCase(HazardConstants.POLYGON_TYPE)
                 && !secondEventHatchArea
                         .equalsIgnoreCase(HazardConstants.POLYGON_TYPE)) {
 
-            Set<IGeometryData> commonHatchedAreas = Sets.newHashSet();
+            Set<IGeometryData> commonHatchedAreas = new HashSet<>();
             commonHatchedAreas.addAll(hatchedAreasFirstEvent);
             commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
 
@@ -1822,15 +2089,31 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
+    public Set<String> getEventIdsAllowingProposal() {
+        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        Set<String> set = new HashSet<String>(selectedEvents.size());
+        for (ObservedHazardEvent event : selectedEvents) {
+            HazardStatus status = event.getStatus();
+            if ((status != HazardStatus.ISSUED)
+                    && (status != HazardStatus.ENDED)
+                    && (status != HazardStatus.PROPOSED)
+                    && (event.getPhenomenon() != null)) {
+                set.add(event.getEventID());
+            }
+        }
+        return Collections.unmodifiableSet(set);
+    }
+
+    @Override
     public void proposeEvent(ObservedHazardEvent event, IOriginator originator) {
 
         /*
          * Only propose events that are not already proposed, and are not issued
          * or ended, and that have a valid type.
          */
-        HazardStatus state = event.getStatus();
-        if ((state != HazardStatus.ISSUED) && (state != HazardStatus.ENDED)
-                && (state != HazardStatus.PROPOSED)
+        HazardStatus status = event.getStatus();
+        if ((status != HazardStatus.ISSUED) && (status != HazardStatus.ENDED)
+                && (status != HazardStatus.PROPOSED)
                 && (event.getPhenomenon() != null)) {
             event.setStatus(HazardStatus.PROPOSED, true, true, originator);
             clearUndoRedo(event);
@@ -1868,7 +2151,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                     hazardType.getHazardClipArea(), null, cwa,
                                     selectedEvent);
 
-                    List<Geometry> geometryList = Lists.newArrayList();
+                    List<Geometry> geometryList = new ArrayList<>();
 
                     for (IGeometryData geoData : geoDataSet) {
                         for (int i = 0; i < geoData.getGeometry()
@@ -1933,7 +2216,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
                     if (pointLimit > 0) {
 
-                        List<Geometry> geometryList = Lists.newArrayList();
+                        List<Geometry> geometryList = new ArrayList<>();
 
                         /**
                          * TODO: Eventually we want to share the same logic
