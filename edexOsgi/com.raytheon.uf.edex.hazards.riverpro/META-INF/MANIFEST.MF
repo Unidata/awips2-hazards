@@ -13,12 +13,12 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.edex.database;bundle-version="1.0.0",
  org.springframework;bundle-version="3.1.4",
  org.geotools,
- com.raytheon.edex.plugin.text;bundle-version="1.12.1174",
  com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.text;bundle-version="1.12.1174",
  com.raytheon.uf.edex.core;bundle-version="1.12.1174",
  com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.edex.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.serialization.comm;bundle-version="1.12.1174",
- com.raytheon.uf.common.dataquery;bundle-version="1.0.0"
+ com.raytheon.uf.common.dataquery;bundle-version="1.0.0",
+ com.raytheon.uf.edex.plugin.text;bundle-version="1.14.0"
 Import-Package: com.raytheon.uf.common.status
