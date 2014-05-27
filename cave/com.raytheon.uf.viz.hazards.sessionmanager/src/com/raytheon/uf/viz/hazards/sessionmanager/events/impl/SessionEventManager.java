@@ -1055,8 +1055,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 GeometryCollection geometryCollection = geoFactory
                         .createGeometryCollection(geometryList
                                 .toArray(new Geometry[geometryList.size()]));
-
-                existingEvent.setGeometry(geometryCollection);
+                // combine the geometryCollection together!
+                Geometry geom = geometryCollection.union();
+                existingEvent.setGeometry(geom);
                 existingEvent
                         .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
                 return existingEvent;
