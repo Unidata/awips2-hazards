@@ -41,8 +41,8 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
- * Description: Handles computation of the county portions falling within a
- * hazard polygon.
+ * Description: Handles computation of the portions of geographical areas
+ * falling within a hazard polygon.
  * 
  * <pre>
  * 
@@ -56,7 +56,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class PartsOfCounty {
+public class PartsOfGeographicalAreas {
+
+    /*
+     * We are going to leverage this class to also handle parts of state,
+     * because this needs to access some of the same data structures.
+     */
 
     private final IUFStatusHandler statusHandler = UFStatus.getHandler(this
             .getClass());
@@ -65,7 +70,13 @@ public class PartsOfCounty {
 
     private static final String CENTRAL = "Central";
 
+    static final String FE_AREA = "FE_AREA";
+
     private static Map<String, Map<String, Geometry>> geometryOfCountyUgcsMap = new HashMap<>();
+
+    private static Map<String, String> countyUgcToPartOfStateMap = new HashMap<>();
+
+    private static Map<String, String> feAreaToPartOfStateMap = null;
 
     private static Map<String, MathTransform> localToLatLonForSite = new HashMap<>();
 
@@ -81,11 +92,49 @@ public class PartsOfCounty {
 
     private IDirectionsRetriever directionsRetriever;
 
-    PartsOfCounty() {
+    PartsOfGeographicalAreas() {
         this.countyAreaRetriever = new CountyAreaRetriever();
         this.fipMapBuilder = new FIPMapBuilder();
         this.gridSpacingRetriever = new GridSpacingRetriever();
         this.directionsRetriever = new DirectionsRetriever();
+        this.createFeAreaToPartOfStateMap();
+    }
+
+    /*
+     * This method builds a static version of the fe area code to plain language
+     * mapper. Eventually this will be made overrideable.
+     */
+    private void createFeAreaToPartOfStateMap() {
+        if (feAreaToPartOfStateMap != null) {
+            return;
+        }
+        feAreaToPartOfStateMap = new HashMap<>();
+        feAreaToPartOfStateMap.put("ne", "Northeast");
+        feAreaToPartOfStateMap.put("nc", "North Central");
+        feAreaToPartOfStateMap.put("nw", "Northwest");
+        feAreaToPartOfStateMap.put("wc", "West Central");
+        feAreaToPartOfStateMap.put("cc", "Central");
+        feAreaToPartOfStateMap.put("ec", "East Central");
+        feAreaToPartOfStateMap.put("se", "Southeast");
+        feAreaToPartOfStateMap.put("sc", "South Central");
+        feAreaToPartOfStateMap.put("sw", "Southwest");
+        feAreaToPartOfStateMap.put("pa", "the Panhandle of");
+        feAreaToPartOfStateMap.put("ee", "Eastern");
+        feAreaToPartOfStateMap.put("ww", "Western");
+        feAreaToPartOfStateMap.put("nn", "Northern");
+        feAreaToPartOfStateMap.put("ss", "Southern");
+        feAreaToPartOfStateMap.put("er", "East Central Upper");
+        feAreaToPartOfStateMap.put("eu", "Eastern Upper");
+        feAreaToPartOfStateMap.put("wu", "Western Upper");
+        feAreaToPartOfStateMap.put("nr", "North Central Upper");
+        feAreaToPartOfStateMap.put("sr", "South Central Upper");
+        feAreaToPartOfStateMap.put("bb", "Big Bend");
+        feAreaToPartOfStateMap.put("pd", "the Piedmont of");
+        feAreaToPartOfStateMap.put("up", "Upstate");
+        feAreaToPartOfStateMap.put("ea", "East");
+        feAreaToPartOfStateMap.put("mi", "Middle");
+        feAreaToPartOfStateMap.put("so", "South");
+        feAreaToPartOfStateMap.put("ds", "Deep South");
     }
 
     /*
@@ -173,8 +222,21 @@ public class PartsOfCounty {
                 if (stCode == null) {
                     continue;
                 }
-                siteGeometryMap.put(stCode + "C" + fipsData.substring(2, 5),
-                        countyAreas[aaa].getGeometry());
+                String ugcCode = stCode + "C" + fipsData.substring(2, 5);
+                siteGeometryMap.put(ugcCode, countyAreas[aaa].getGeometry());
+                countyUgcToPartOfStateMap.put(ugcCode, "");
+                /*
+                 * When fe area table becomes overrideable, will be able to make
+                 * entries for a specific UGC.
+                 */
+                String partOfState = feAreaToPartOfStateMap.get(ugcCode);
+                if (partOfState == null) {
+                    partOfState = feAreaToPartOfStateMap.get(countyAreas[aaa]
+                            .getAttributes().get(FE_AREA));
+                }
+                if (partOfState != null) {
+                    countyUgcToPartOfStateMap.put(ugcCode, partOfState);
+                }
             } catch (Exception e) {
                 continue;
             }
@@ -251,11 +313,23 @@ public class PartsOfCounty {
                 .getHazardAttribute(HazardConstants.UGCS);
         @SuppressWarnings("unchecked")
         List<String> ugcList = (List<String>) serializableUgcList;
-        Map<String, String> portionDescriptions = new HashMap<>();
+        Map<String, String> partOfCountyDescriptions = new HashMap<>();
+        Map<String, String> partOfStateDescriptions = new HashMap<>();
 
         /* Main UGC loop; only construct one PortionsUtil object. */
         PortionsUtil portionsUtil = null;
+
         for (String ugc : ugcList) {
+            /*
+             * Make sure we have a blank string for any descriptions that cannot
+             * be made because of a database access problem.
+             */
+            partOfCountyDescriptions.put(ugc, "");
+            partOfStateDescriptions.put(ugc, "");
+        }
+
+        for (String ugc : ugcList) {
+
             Geometry countyGeometry = null;
             try {
                 /*
@@ -264,13 +338,20 @@ public class PartsOfCounty {
                  */
                 countyGeometry = geometryOfCountyUGC(site, ugc);
                 if (countyGeometry == null) {
-                    throw new RuntimeException("no countyGeometry for " + ugc);
+                    statusHandler.handle(Priority.SIGNIFICANT,
+                            "Error in determining counties affected by hazard event for ugc: "
+                                    + ugc);
+                    break;
                 }
             } catch (Exception e) {
                 statusHandler.handle(Priority.SIGNIFICANT,
                         "Error in determining counties affected by hazard event for ugc: "
                                 + ugc, e);
                 continue;
+            }
+            String partOfState = countyUgcToPartOfStateMap.get(ugc);
+            if (partOfState != null) {
+                partOfStateDescriptions.put(ugc, partOfState);
             }
             try {
                 if (portionsUtil == null) {
@@ -301,17 +382,19 @@ public class PartsOfCounty {
              */
             List<String> areaPartsList = GisUtil.asStringList(directionSet);
             if (areaPartsList == null) {
-                portionDescriptions.put(ugc, "");
                 continue;
             }
             String portionDesc = portionDescriptionFromAreaParts(areaPartsList);
 
-            portionDescriptions.put(ugc, portionDesc);
+            partOfCountyDescriptions.put(ugc, portionDesc);
 
         }/* end main ugc loop. */
 
-        event.addHazardAttribute(HazardConstants.UGC_PORTIONS,
-                (HashMap<String, String>) portionDescriptions);
+        event.addHazardAttribute(HazardConstants.UGC_PARTS_OF_COUNTY,
+                (HashMap<String, String>) partOfCountyDescriptions);
+
+        event.addHazardAttribute(HazardConstants.UGC_PARTS_OF_STATE,
+                (HashMap<String, String>) partOfStateDescriptions);
 
     }/* end addPortionsDescriptionToEvent() */
 
@@ -328,12 +411,12 @@ public class PartsOfCounty {
                     || areaPart.equalsIgnoreCase(EXTREME)) {
                 portionDesc = areaPart + " " + portionDesc;
             } else {
-                portionDesc += areaPart;
+                portionDesc += areaPart.toLowerCase();
             }
         }
         if (portionDesc.length() > 0
                 && portionDesc.indexOf(toMixedCase(CENTRAL)) < 0) {
-            portionDesc += "ERN";
+            portionDesc += "ern";
         }
         return portionDesc;
     }

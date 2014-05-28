@@ -68,7 +68,7 @@ public class PartsOfCountyTest {
         CountyAreaRetriever countyAreaRetriever = mockCountyAreaRetriever();
         GridSpacingRetriever gridSpacingRetriever = mockGridSpacingRetriever();
 
-        PartsOfCounty partsOfCounty = new PartsOfCounty();
+        PartsOfGeographicalAreas partsOfCounty = new PartsOfGeographicalAreas();
 
         partsOfCounty.setGridSpacingRetriever(gridSpacingRetriever);
         partsOfCounty.setCountyAreaRetriever(countyAreaRetriever);
@@ -83,10 +83,14 @@ public class PartsOfCountyTest {
         String site = OAX;
         partsOfCounty
                 .addPortionsDescriptionToEvent(hazardGeometry, event, site);
-        Map<String, String> ugc = (Map<String, String>) event
-                .getHazardAttribute(HazardConstants.UGC_PORTIONS);
-        assertTrue(ugc.get(NEC067).equals("West Central"));
-        assertTrue(ugc.get(NEC095).equals("East Central"));
+        Map<String, String> partOfCounty = (Map<String, String>) event
+                .getHazardAttribute(HazardConstants.UGC_PARTS_OF_COUNTY);
+        assertTrue(partOfCounty.get(NEC067).equals("West Central"));
+        assertTrue(partOfCounty.get(NEC095).equals("East Central"));
+        Map<String, String> partOfState = (Map<String, String>) event
+                .getHazardAttribute(HazardConstants.UGC_PARTS_OF_STATE);
+        assertTrue(partOfState.get(NEC067).equals("Southeast"));
+        assertTrue(partOfState.get(NEC095).equals("Southeast"));
     }
 
     private IDirectionsRetriever mockDirectionsRetriever() {
@@ -136,6 +140,7 @@ public class PartsOfCountyTest {
         Geometry geometry0 = geometryFromCoordinates(coordinates);
         Map<String, Object> attrs = new HashMap<>();
         attrs.put(CountyAreaRetriever.FIPS, "31095");
+        attrs.put(CountyAreaRetriever.FE_AREA, "se");
         when(result.getGeometry()).thenReturn(geometry0);
         when(result.getAttributes()).thenReturn(attrs);
         return result;
@@ -151,6 +156,7 @@ public class PartsOfCountyTest {
         when(result.getGeometry()).thenReturn(geometry0);
         Map<String, Object> attrs = new HashMap<>();
         attrs.put(CountyAreaRetriever.FIPS, "31067");
+        attrs.put(CountyAreaRetriever.FE_AREA, "se");
         when(result.getAttributes()).thenReturn(attrs);
         return result;
     }

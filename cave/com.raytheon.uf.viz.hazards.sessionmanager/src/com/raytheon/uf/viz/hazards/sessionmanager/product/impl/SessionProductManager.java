@@ -172,7 +172,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     private final SessionManager sessionManager;
 
-    private final PartsOfCounty partsOfCounty;
+    private final PartsOfGeographicalAreas partsOfCounty;
 
     private String vtecMode;
 
@@ -190,7 +190,7 @@ public class SessionProductManager implements ISessionProductManager {
         this.notificationSender = notificationSender;
         this.productGen = new ProductGeneration();
         this.messenger = messenger;
-        this.partsOfCounty = new PartsOfCounty();
+        this.partsOfCounty = new PartsOfGeographicalAreas();
 
         this.vtecMode = "O";
         this.vtecTestMode = false;

@@ -42,6 +42,8 @@ public class CountyAreaRetriever {
 
     static final String FIPS = "FIPS";
 
+    static final String FE_AREA = "FE_AREA";
+
     private final IUFStatusHandler statusHandler = UFStatus.getHandler(this
             .getClass());
 
@@ -58,6 +60,7 @@ public class CountyAreaRetriever {
             List<String> areaFields = new ArrayList<>();
             areaFields.add(WarningConstants.GID);
             areaFields.add(FIPS);
+            areaFields.add(FE_AREA);
             gmd.setAreaFields(areaFields);
             GenerateGeospatialDataRequest request = new GenerateGeospatialDataRequest();
             GeospatialDataSet dataSet = null;

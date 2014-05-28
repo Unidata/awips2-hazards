@@ -7,6 +7,7 @@
 16    April 5, 2013            Tracy.L.Hansen      Initial creation
 17    Feb 14, 2013    2161     Chris.Golden        Added use of UFN_TIME_VALUE_SECS constant
 18                                                 instead of hardcoded value.
+      May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
 19
 20    @author Tracy.L.Hansen@noaa.gov
 21    '''
@@ -14,7 +15,6 @@
 import cPickle, os, types, string, copy
 import sys, gzip, time, re
 import logging, UFStatusHandler
-from MapInfo import MapInfo
 from datetime import datetime
 from dateutil import tz
 import EventFactory
@@ -46,7 +46,6 @@ class TextProductCommon(object):
     def setUp(self, areaDict): 
         self._areaDictionary = areaDict 
         self._root = None
-        self._mapInfo = MapInfo()
         self.logger = logging.getLogger('TextProductCommon')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
@@ -302,48 +301,7 @@ class TextProductCommon(object):
             if arrowIndex >= 0:
                 ugcStr = ugcStr[:arrowIndex] + '-' + ugcStr[arrowIndex+1:]
         return ugcStr    
- 
-    def getLocations(self, polygon, ugcs, mapType, joinStr='...'):
-        '''
-        Provides more description
-         e.g. NORTHEASTERN WELD instead of just WELD for counties
-         Zones will always use the national code
-        '''
-        locationNames = []
-        if mapType == 'counties' and polygon is not None:
-            locationNames = self._mapInfo.getDescriptions(polygon)
-        if len(locationNames) <= 0:
-            # This will work nationally
-            locationNames = self.getUGCnames(mapType, ugcs)
-        if mapType == 'publicZones':
-            newNames = []
-            for locName in locationNames:
-                newNames.append(locName.replace(' County',''))
-            locationNames = newNames                                              
-        locationList = joinStr.join(locationNames)+ '.'
-        return locationList.upper()
-         
-    def getUGCnames(self, mapType, ugcs):
-        '''
-         Get the names for the given ugc codes
-         The filter function will be different if counties
-         @param mapType -- counties or zones
-         @param ugcs -- list of UGC codes
-        '''
-        if mapType == 'counties':
-            mapAtt = 'countyname'
-            code = 'C'
-            filtFunc = self.filtFunc_counties
-        else:
-            mapAtt = 'shortname'
-            code = 'Z'            
-            filtFunc = self.filtFunc_zones
-        geometries = self._mapInfo.getMapPolygons(mapType, filtFunc=filtFunc, compareToken=ugcs)
-        nameList = []
-        for geometry in geometries:
-            nameList.append(geometry.getString(mapAtt))
-        return nameList
-     
+
     def filtFunc_zones(self, atts, compareToken):
         ugc = atts['state'] + 'Z' + atts['zone']
         if ugc in compareToken:

@@ -19,6 +19,7 @@
     Apr 11, 2014   3422      bkowal              Use getHazardTypes in bridge.py
     Apr 18, 2014   696       dgilling            Add support for selectable VTEC mode.
     Apr 20, 2014   2925      Chris.Golden        Changed to work with new hazard event metadata.
+    May 06, 2014   1328      jramer              Remove reference to deprecated MapInfo class.
     @author Tracy.L.Hansen@noaa.gov
 '''
 
@@ -39,7 +40,6 @@ except:
     pass
 
 import logging, UFStatusHandler
-from MapInfo import MapInfo
 from VTECEngineWrapper import VTECEngineWrapper
 
 import collections, datetime, time
@@ -66,7 +66,6 @@ class Product(ProductTemplate.Product):
     
     def initialize(self):      
         self._gh = HazardServicesGenericHazards()
-        self._mapInfo = MapInfo()    
         
         self.bridge = Bridge()        
         self._hazardTypes = self.bridge.getHazardTypes()         
