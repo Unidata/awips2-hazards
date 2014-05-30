@@ -52,7 +52,7 @@ import HazardConstants
 from HazardEvent import HazardEvent
 from shapely import geometry
 from KeyInfo import KeyInfo
-import ProductTextUtil
+from com.raytheon.uf.common.time import SimulatedTime
 
 class Product(ProductTemplate.Product):
  
@@ -669,7 +669,7 @@ class Product(ProductTemplate.Product):
 
         # Summary Headlines for the segment  -- this orders them  -- Used by Legacy after ugc header...
         #   Create and order the sections for the segment:
-        #       (vtecRecord, sectionMetaData, sectionHazardEvent)      
+        #       (vtecRecord, sectionMetaData, sectionHazardEvent)    
         self._summaryHeadlines_value, self._headlines, self._sections = self._tpc.getHeadlinesAndSections(
                     self._segmentVtecRecords, self._metaDataList, self._productID, self._issueTime_secs) 
 
@@ -718,10 +718,11 @@ class Product(ProductTemplate.Product):
         segment, vtecRecords = productSegment
         ids, eventIDs = segment
         cityList = []
-        for city, ugcCity in self.getCityInfo(self._ugcs, returnType='list'):
-            cityList.append(city)        
-        self._setEditedField(segmentDict, 'cityList', self._productCategory, self._productID, list(eventIDs), segment, cityList, "Included Cities")
 
+        for city, ugcCity in self.getCityInfo(self._ugcs, returnType='list'):
+            cityList.append(city)  
+        self._setEditedField(segmentDict, 'cityList', self._productCategory, self._productID, list(eventIDs), segment, cityList, "Included Cities")
+        
     def _summaryHeadlines(self, segmentDict, productSegmentGroup, productSegment):
         '''
          Summary Headlines for the segment  -- this orders them  -- 
@@ -784,7 +785,7 @@ class Product(ProductTemplate.Product):
     def _setup_section(self, sectionDict, productSegmentGroup, arguments):
         self._productSegment, vtecRecord = arguments
         self._segment, self._vtecRecords_value = self._productSegment
-        
+
         if not self._sections:
             return
 
@@ -992,8 +993,9 @@ class Product(ProductTemplate.Product):
                 segment += seg
             segment = str(segment)
             userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
-                    
+     
             # Try and retrieve previously edited text
+            import ProductTextUtil
             productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
             
             # If not there, use defaultValue
@@ -1790,6 +1792,52 @@ class Product(ProductTemplate.Product):
 #             return None
 #         return None
  
+
+    def correctProduct(self, dataList, prevDataList, correctAllSegments):
+        millis = SimulatedTime.getSystemTime().getMillis()
+        dt = datetime.datetime.fromtimestamp(millis / 1000)
+        currentTime = dt.strftime('%d%H%m')
+        for i in range(0, len(dataList)):
+            data = dataList[i]
+   
+            wmoHeader = data['wmoHeader']
+            wmoHeaderLine = wmoHeader['wmoHeaderLine']
+            wmoHeader['wmoHeaderLine'] = wmoHeaderLine[:-6] + currentTime
+            
+            segments = data['segments']               
+            for j in range(0, len(segments)):
+                segment = segments[j]
+                if correctAllSegments:
+                    segment = self.correctSegment(segment)
+                else:
+                    prevData = prevDataList[i]
+                    pSegments = prevData['segments']
+                    pSegment = pSegments[j]
+                    if str(segment) != str(pSegment):
+                        segment = self.correctSegment(segment)                  
+        
+            productName = str(data['productName'])
+            if '...CORRECTED' not in productName:
+                if productName.endswith('...TEST'):
+                    data['productName'] = productName[:-7] + '...CORRECTED...TEST'
+                else:
+                    data['productName'] = productName + '...CORRECTED'
+        return dataList
+    
+    def correctSegment(self, segment):
+        if 'vtecRecords' in segment:
+            vtecRecordList = segment['vtecRecords']
+            for j in range(0,len(vtecRecordList)):
+                vtecRecord = vtecRecordList[j]
+                if vtecRecord['vtecRecordType'] == 'pvtecRecord':
+                    action = vtecRecord['action']
+                    vtecRecord['action'] = 'COR'
+                    vtecString = vtecRecord['vtecString']
+                    updatedVtecString = vtecString.replace(action, 'COR')
+                    vtecRecord['vtecString'] = updatedVtecString
+                    
+        return segment
+                            
     def descWxLocForEvent(self, hazardEvent,
              noevent='FROM HEAVY RAIN. THIS RAIN WAS LOCATED', \
              point='FROM A THUNDERSTORM. THIS STORM WAS LOCATED', \

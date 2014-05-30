@@ -19,13 +19,15 @@
  **/
 package com.raytheon.uf.common.hazards.productgen.product;
 
+import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jep.JepException;
 
@@ -35,8 +37,9 @@ import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
-import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
+import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -55,7 +58,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Feb 18, 2013            jsanchez     Initial creation
  * Jan 20, 2014 2766       bkowal       Updated to use the Python Overrider
  * Mar 19, 2014 3293       bkowal       Code cleanup.
- * 
+ * May 23, 2014 3907       jsanchez     Updated the inventory and reloaded the module on update.
  * </pre>
  * 
  * @author jsanchez
@@ -66,6 +69,8 @@ public class ProductScript extends PythonScriptController {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScript.class);
+
+    public static final String DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR = "ProductGenerators";
 
     private static final String GET_SCRIPT_METADATA = "getScriptMetadata";
 
@@ -83,6 +88,8 @@ public class ProductScript extends PythonScriptController {
 
     private static final String DATA_LIST = "dataList";
 
+    private static final String PREV_DATA_LIST = "prevDataList";
+
     /** Executing method in the python module */
     private static final String METHOD_NAME = "execute";
 
@@ -94,7 +101,9 @@ public class ProductScript extends PythonScriptController {
 
     private static final String PYTHON_INTERFACE = "ProductInterface";
 
-    protected List<ProductInfo> inventory = null;
+    private static final String PYTHON_FILE_EXTENSION = ".py";
+
+    protected Map<String, ProductInfo> inventory = null;
 
     /** python/productgen/events/products directory */
     protected static LocalizationFile productsDir;
@@ -109,11 +118,12 @@ public class ProductScript extends PythonScriptController {
      */
     protected ProductScript(final String jepIncludePath) throws JepException {
         super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
-                PYTHON_INTERFACE), PyUtil.buildJepIncludePath(PythonBuildPaths
-                .buildIncludePath(FORMATS_DIRECTORY, PRODUCTS_DIRECTORY),
-                jepIncludePath), ProductScript.class.getClassLoader(),
-                PYTHON_CLASS);
-        inventory = new CopyOnWriteArrayList<ProductInfo>();
+                PYTHON_INTERFACE), PyUtil.buildJepIncludePath(
+                PythonBuildPaths.buildDirectoryPath(FORMATS_DIRECTORY),
+                PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY),
+                PythonBuildPaths.buildIncludePath(), jepIncludePath),
+                ProductScript.class.getClassLoader(), PYTHON_CLASS);
+        inventory = new ConcurrentHashMap<String, ProductInfo>();
         productsDir = PythonBuildPaths
                 .buildLocalizationDirectory(PRODUCTS_DIRECTORY);
         productsDir.addFileUpdatedObserver(this);
@@ -161,8 +171,8 @@ public class ProductScript extends PythonScriptController {
         args.put(FORMATS, Arrays.asList(formats));
         GeneratedProductList retVal = null;
         try {
-            if (!isInstantiated(product)) {
-                instantiatePythonScript(product);
+            if (this.verifyProductGeneratorIsLoaded(product) == false) {
+                return new GeneratedProductList();
             }
 
             retVal = (GeneratedProductList) execute(METHOD_NAME, INTERFACE,
@@ -195,6 +205,9 @@ public class ProductScript extends PythonScriptController {
         args.put(FORMATS, Arrays.asList(formats));
         GeneratedProductList retVal = null;
         try {
+            if (this.verifyProductGeneratorIsLoaded(product) == false) {
+                return new GeneratedProductList();
+            }
             retVal = (GeneratedProductList) execute(UPDATE_METHOD, INTERFACE,
                     args);
         } catch (JepException e) {
@@ -241,8 +254,8 @@ public class ProductScript extends PythonScriptController {
                 getStarterMap(moduleName));
         Map<String, Serializable> retVal = null;
         try {
-            if (!isInstantiated(moduleName)) {
-                instantiatePythonScript(moduleName);
+            if (this.verifyProductGeneratorIsLoaded(moduleName) == false) {
+                return new HashMap<String, Serializable>();
             }
 
             retVal = (Map<String, Serializable>) execute(methodName, INTERFACE,
@@ -264,62 +277,141 @@ public class ProductScript extends PythonScriptController {
      */
     @Override
     public void fileUpdated(FileUpdatedMessage message) {
-        FileChangeType type = message.getChangeType();
-        if (type == FileChangeType.UPDATED) {
-            for (ProductInfo pg : inventory) {
-                if (pg.getFile().getName().equals(message.getFileName())) {
-                    updateMetadata(pg);
-                    break;
-                }
-            }
-        } else if (type == FileChangeType.ADDED) {
-            for (ProductInfo pg : inventory) {
-                if (pg.getFile().getName().equals(message.getFileName())
-                        && pg.getFile()
-                                .getContext()
-                                .getLocalizationLevel()
-                                .compareTo(
-                                        message.getContext()
-                                                .getLocalizationLevel()) < 0) {
-                    updateMetadata(pg);
-                    break;
-                } else {
-                    ProductInfo newPG = new ProductInfo();
-                    inventory.add(newPG);
-                }
-            }
-        } else if (type == FileChangeType.DELETED) {
-            for (ProductInfo pg : inventory) {
-                if (pg.getFile().getName().equals(message.getFileName())) {
-                    inventory.remove(pg);
-                    break;
-                }
-            }
+        String[] dirs = message.getFileName().split(File.separator);
+        String name = dirs[dirs.length - 1];
+        String filename = resolveCorrectName(name);
+        if (this.inventory.get(filename) != null) {
+            final String modName = resolveCorrectName(name);
+            this.inventory.get(filename).getFile()
+                    .removeFileUpdatedObserver(this);
+
+            statusHandler.handle(Priority.VERBOSE,
+                    "Removing initialized Product Generator " + modName
+                            + " due to update.");
+            this.inventory.remove(filename);
         }
+
         super.fileUpdated(message);
     }
 
-    /**
-     * Updates a product's metadata.
-     * 
-     * @param ProductInfo
-     */
-    private void updateMetadata(ProductInfo ProductInfo) {
-        try {
-            if (isInstantiated(ProductInfo.getName()) == false) {
-                instantiatePythonScript(ProductInfo.getName());
-            }
-            Map<String, Object> args = getStarterMap(ProductInfo.getName());
-            execute(GET_SCRIPT_METADATA, INTERFACE, args);
-        } catch (JepException e) {
-            statusHandler.handle(
-                    Priority.ERROR,
-                    "Unable to update metadata on file "
-                            + ProductInfo.getName(), e);
-        }
+    public synchronized List<ProductInfo> getInventory() {
+        return new ArrayList<ProductInfo>(inventory.values());
     }
 
-    public synchronized List<ProductInfo> getInventory() {
-        return inventory;
+    public List<ProductInfo> getInventory(String productGeneratorName) {
+        this.verifyProductGeneratorIsLoaded(productGeneratorName);
+        return new ArrayList<ProductInfo>(inventory.values());
+    }
+
+    /**
+     * Checks to see if the product generator is already set in the inventory.
+     * Otherwise, a new one is initialized and added to the inventory.
+     * 
+     * @param productGeneratorName
+     * @return
+     */
+    public boolean verifyProductGeneratorIsLoaded(String productGeneratorName) {
+        if (this.inventory.containsKey(productGeneratorName)) {
+            return true;
+        }
+
+        return this.initializeProductGenerator(productGeneratorName);
+    }
+
+    private boolean initializeProductGenerator(String productGeneratorName) {
+        processFileUpdates();
+        LocalizationFile localizationFile = this
+                .lookupProductGeneratorLocalization(productGeneratorName);
+        if (localizationFile == null) {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to find Product Generator: " + productGeneratorName
+                            + "!");
+            return false;
+        }
+        // load the product generator.
+        ProductInfo productInfo = setMetadata(localizationFile);
+        if (productInfo != null) {
+            inventory.put(productInfo.getName(), productInfo);
+        } else {
+            statusHandler.handle(Priority.PROBLEM,
+                    "Failed to initialize Product Generator: "
+                            + productGeneratorName + "!");
+            return false;
+        }
+
+        localizationFile.addFileUpdatedObserver(this);
+
+        return true;
+    }
+
+    private LocalizationFile lookupProductGeneratorLocalization(
+            final String productGeneratorName) {
+        IPathManager manager = PathManagerFactory.getPathManager();
+        LocalizationFile[] lFiles = manager.listStaticFiles(
+                productsDir.getName(),
+                new String[] { PYTHON_FILE_EXTENSION.substring(1) }, false,
+                true);
+        for (LocalizationFile lFile : lFiles) {
+            final String modName = resolveCorrectName(lFile.getFile().getName());
+            if (productGeneratorName.equals(modName)) {
+                return lFile;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Removes .py from the filename
+     * 
+     * @param name
+     * @return
+     */
+    private static String resolveCorrectName(String name) {
+        if (name.endsWith(PYTHON_FILE_EXTENSION)) {
+            name = name.replace(PYTHON_FILE_EXTENSION, "");
+        }
+        return name;
+    }
+
+    /**
+     * Retrieves the metadata of the product generator and sets it in the
+     * product info object.
+     * 
+     * @param file
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    private ProductInfo setMetadata(LocalizationFile file) {
+        final String modName = resolveCorrectName(file.getFile().getName());
+        Map<String, Serializable> results = null;
+
+        try {
+            if (isInstantiated(modName)) {
+                reloadModule(modName);
+            }
+            instantiatePythonScript(modName);
+
+            Map<String, Object> args = getStarterMap(modName);
+            results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
+                    INTERFACE, args);
+        } catch (JepException e) {
+            statusHandler.handle(Priority.WARN, "Product Generator " + modName
+                    + " is unable to be instantiated", e);
+            return null;
+        }
+        ProductInfo productInfo = new ProductInfo();
+        productInfo.setName(modName);
+        productInfo.setFile(file);
+        if (results != null) {
+            Object auth = results.get(ProductInfo.AUTHOR);
+            Object desc = results.get(ProductInfo.DESCRIPTION);
+            Object vers = results.get(ProductInfo.VERSION);
+
+            productInfo.setAuthor(auth != null ? auth.toString() : "");
+            productInfo.setDescription(desc != null ? desc.toString() : "");
+            productInfo.setVersion(vers != null ? vers.toString() : "");
+        }
+        return productInfo;
     }
 }
