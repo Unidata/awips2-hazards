@@ -4,8 +4,7 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="riverproHazardsCreator"
-		class="com.raytheon.uf.edex.hazards.riverpro.RiverProHazardsCreator" 
-		depends-on="authFactory" />
+		class="com.raytheon.uf.edex.hazards.riverpro.RiverProHazardsCreator"/>
 
 	<camelContext id="riverproactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">

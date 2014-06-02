@@ -11,8 +11,7 @@
     </bean>
 
 	<bean id="gfeHazardsCreator"
-		class="com.raytheon.uf.edex.hazards.gfe.GFEHazardsCreator" 
-		depends-on="authFactory" />
+		class="com.raytheon.uf.edex.hazards.gfe.GFEHazardsCreator" />
 
 	<camelContext id="gfeactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">

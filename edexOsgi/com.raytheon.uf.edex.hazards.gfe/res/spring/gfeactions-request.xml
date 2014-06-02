@@ -8,23 +8,6 @@
         <constructor-arg value="com.raytheon.uf.common.dataplugin.events.hazards.requests.HasConflictsRequest"/>
         <constructor-arg ref="hasConflictsHandler"/>
     </bean>
-    
-     <bean id="roleStorage" class="com.raytheon.uf.edex.plugin.nwsauth.NwsRoleStorage" />
-    <bean id="authenticator"
-        class="com.raytheon.uf.edex.plugin.nwsauth.authentication.Authenticator" />
-    <bean id="authStorage"
-        class="com.raytheon.uf.edex.plugin.nwsauth.authentication.AuthenticationStorage" />
-
-    <bean id="authManager" class="com.raytheon.uf.edex.auth.AuthManager">
-        <property name="authenticationStorage" ref="authStorage" />
-        <property name="authenticator" ref="authenticator" />
-        <property name="roleStorage" ref="roleStorage" />
-    </bean>
-
-    <bean id="authFactory" class="com.raytheon.uf.edex.auth.AuthManagerFactory"
-        factory-method="getInstance">
-        <property name="manager" ref="authManager" />
-    </bean>
 
 	<bean id="hazardEventHandler"
 		class="com.raytheon.uf.edex.hazards.gfe.HazardEventHandler" factory-method="getInstance" depends-on="serializeServer, getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/> 

@@ -4,8 +4,7 @@
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
 	<bean id="warningHazardsCreator"
-		class="com.raytheon.uf.edex.hazards.warnings.WarningHazardsCreator" 
-		depends-on="authFactory" />
+		class="com.raytheon.uf.edex.hazards.warnings.WarningHazardsCreator"/>
 
 	<camelContext id="warningactions-camel" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
