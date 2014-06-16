@@ -86,8 +86,8 @@ public class PythonBuildPaths {
         String basePath = pathMgr.getLocalizationFile(baseContext, fileLoc)
                 .getFile().getPath();
 
-        return PyUtil.buildJepIncludePath(userPath, sitePath, regionPath,
-                basePath);
+        return PyUtil.buildJepIncludePath(basePath, regionPath, sitePath,
+                userPath);
     }
 
     /**

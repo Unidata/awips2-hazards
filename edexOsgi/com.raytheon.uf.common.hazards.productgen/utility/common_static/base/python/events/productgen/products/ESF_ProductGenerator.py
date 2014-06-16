@@ -20,7 +20,7 @@
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
-import os, types, copy, sys, json, collections
+import os, types, copy, sys, json
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 
@@ -141,8 +141,11 @@ class Product(Legacy_ProductGenerator.Product):
          *|
          '''
 
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+    def executeFrom(self, dataList):
+        # NOTE -- To properly update the VTEC and ETN's properly it is necessary to call the
+        #  execute method.
+        # This method should not be called for when the user wants to Issue.
         return dataList
+        
+
            

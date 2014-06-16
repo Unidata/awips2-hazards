@@ -10,7 +10,7 @@
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
     '''
-import os, types, copy, sys, json, collections
+import os, types, copy, sys, json
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 
@@ -62,11 +62,11 @@ class Product(Legacy_ProductGenerator.Product):
         valueDict = {'overviewHeadline': 'Enter overview headline here.', 'overview':'Enter overview here.'}
         dialogDict['values'] = valueDict        
 
-    	# TODO Not ready to actually move this into repo.
-    	# If you want to test the dialogInfo, comment this and uncomment 
-    	# the next.
+	# TODO Not ready to actually move this into repo.
+	# If you want to test the dialogInfo, comment this and uncomment 
+	# the next.
+	return {}
         # return dialogDict
-    	return {}
                 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
@@ -164,9 +164,9 @@ class Product(Legacy_ProductGenerator.Product):
             productSegmentGroup['productParts'] = self._hydroProductParts._productParts_FFA_FLW_FLS_point(segment_vtecRecords_tuples)
         del productSegmentGroup['segment_vtecRecords_tuples'] 
            
-    def executeFrom(self, dataList, prevDataList=None):
-        if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
-
+    def executeFrom(self, dataList):
+        # NOTE -- To properly update the VTEC and ETN's properly it is necessary to call the
+        #  execute method.
+        # This method should not be called for when the user wants to Issue.
         return dataList
            

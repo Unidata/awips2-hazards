@@ -46,7 +46,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2013            jsanchez     Initial creation
- * May 23, 2014 3790       jsanchez     Used DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR.
+ * 
  * </pre>
  * 
  * @author jsanchez
@@ -69,11 +69,14 @@ public class ProductScriptFactory extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);
 
+    /** Reference name to get instance in PythonJobCoordinator */
+    public static final String NAME = "productScriptFactory";
+
     /**
      * Default Constructor.
      */
     public ProductScriptFactory() {
-        this(ProductScript.DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR, 1);
+        this(NAME, 1);
     }
 
     /**

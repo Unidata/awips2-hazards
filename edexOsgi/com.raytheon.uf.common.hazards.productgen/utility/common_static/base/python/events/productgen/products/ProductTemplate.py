@@ -48,6 +48,6 @@ class Product(object):
         return
     
     @abc.abstractmethod
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList):
         
         return

@@ -31,7 +31,7 @@ import com.raytheon.uf.common.localization.LocalizationFile;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 8, 2013            jsanchez     Initial creation
- * May 23, 2014 3790      jsanchez     Added static strings.
+ * 
  * </pre>
  * 
  * @author jsanchez
@@ -39,12 +39,6 @@ import com.raytheon.uf.common.localization.LocalizationFile;
  */
 
 public class ProductInfo {
-
-    public static final String DESCRIPTION = "description";
-
-    public static final String AUTHOR = "author";
-
-    public static final String VERSION = "version";
 
     private LocalizationFile file;
 
