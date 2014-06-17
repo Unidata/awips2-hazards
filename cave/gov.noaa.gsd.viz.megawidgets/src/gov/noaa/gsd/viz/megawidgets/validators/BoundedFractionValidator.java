@@ -28,6 +28,12 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Jun 04, 2014   2155     Chris.Golden Corrected invalid increment delta
+ *                                      error message, and changed ordering
+ *                                      of parameter checking when being
+ *                                      initialized so that the increment
+ *                                      delta can be checked against the
+ *                                      precision.
  * </pre>
  * 
  * @author Chris.Golden
@@ -220,7 +226,6 @@ public class BoundedFractionValidator extends BoundedNumberValidator<Double> {
 
     @Override
     protected void doInitialize() throws MegawidgetSpecificationException {
-        super.doInitialize();
 
         /*
          * If the precision is present, ensure that it is a positive integer
@@ -234,6 +239,11 @@ public class BoundedFractionValidator extends BoundedNumberValidator<Double> {
                     getType(), precisionKey, precision,
                     "must be positive number between 1 and 10 inclusive");
         }
+
+        /*
+         * Let the superclass handle the rest of the parameters' initialization.
+         */
+        super.doInitialize();
 
         /*
          * Make sure that the the range, given the precision, is representable.
@@ -256,7 +266,7 @@ public class BoundedFractionValidator extends BoundedNumberValidator<Double> {
             throw new MegawidgetException(getIdentifier(), getType(),
                     incrementDelta,
                     "must be positive number no smaller than 10 raised to "
-                            + "the power of P, where P is precision");
+                            + "the power of -P, where P is precision");
         }
         return newDelta;
     }

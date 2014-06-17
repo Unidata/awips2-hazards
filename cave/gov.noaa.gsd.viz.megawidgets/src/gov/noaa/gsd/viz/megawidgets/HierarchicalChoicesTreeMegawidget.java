@@ -74,7 +74,7 @@ public class HierarchicalChoicesTreeMegawidget extends
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
         Set<String> names = new HashSet<>(
-                HierarchicalBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES);
+                HierarchicalBoundedChoicesMegawidget.MUTABLE_PROPERTY_NAMES_INCLUDING_CHOICES);
         names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };

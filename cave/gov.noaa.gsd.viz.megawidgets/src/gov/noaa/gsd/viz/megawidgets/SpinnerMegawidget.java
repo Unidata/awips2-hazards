@@ -51,6 +51,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 04, 2014   2155     Chris.Golden      Changed scale widget to snap to
+ *                                           the current value when a mouse up
+ *                                           occurs over it.
  * </pre>
  * 
  * @author Chris.Golden
@@ -278,7 +281,9 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
              * notified. Do the same for key up and mouse up events, so that
              * when the user presses and holds a key to change the value, or
              * drags the thumb with the mouse, the state change will result in a
-             * notification after the key or mouse is released.
+             * notification after the key or mouse is released. Regardless of
+             * whether or not the above is done, any mouse up for the scale is
+             * bound to snap the scale handle to the current value.
              */
             if (onlySendEndStateChanges) {
                 scale.addFocusListener(new FocusAdapter() {
@@ -296,7 +301,15 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
                 scale.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseUp(MouseEvent e) {
+                        snapScaleToCurrentState();
                         notifyListenersOfEndingStateChange();
+                    }
+                });
+            } else {
+                scale.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseUp(MouseEvent e) {
+                        snapScaleToCurrentState();
                     }
                 });
             }
@@ -550,6 +563,16 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
         spinner.getParent().setEnabled(editable);
         spinner.setBackground(helper.getBackgroundColor(editable, spinner,
                 label));
+    }
+
+    /**
+     * Snap the scale to the current state value.
+     */
+    private void snapScaleToCurrentState() {
+        int state = scale.getSelection();
+        scale.setSelection(state == scale.getMinimum() ? scale.getMaximum()
+                : scale.getMinimum());
+        scale.setSelection(state);
     }
 
     /**

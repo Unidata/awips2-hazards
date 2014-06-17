@@ -25,6 +25,7 @@ import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -57,6 +58,12 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 04, 2014   2155     Chris.Golden      Fixed bug that caused starting state
+ *                                           to be treated as milliseconds. Also
+ *                                           changed to ensure that the spinner
+ *                                           component is wide enough to show all
+ *                                           the digits it may be called upon to
+ *                                           show.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,19 +163,28 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         spinner = new Spinner(panel, SWT.BORDER + SWT.WRAP);
-        spinner.setTextLimit(Math.max(
+        int numChars = Math.max(
                 getDigitsForValue(getMinimumValue(), specifier.getUnits()
                         .get(0)),
                 getDigitsForValue(getMaximumValue(), specifier.getUnits()
-                        .get(0))));
+                        .get(0)));
+        spinner.setTextLimit(numChars);
         setSpinnerParameters(specifier.getCurrentUnit());
         spinner.setEnabled(specifier.isEnabled());
 
         /*
-         * Place the spinner in the panel's grid.
+         * Place the spinner in the panel's grid, ensuring it is wide enough to
+         * show all the digits it may need to show.
          */
         GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gridData.horizontalSpan = (label == null ? 2 : 1);
+        GC gc = new GC(spinner);
+        StringBuilder stringBuilder = new StringBuilder(numChars - 1);
+        for (int j = 0; j < numChars - 1; j++) {
+            stringBuilder.append("0");
+        }
+        gridData.widthHint = spinner.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
+                + gc.textExtent(stringBuilder.toString()).x;
         spinner.setLayoutData(gridData);
 
         /*
@@ -294,6 +310,14 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         if (isEditable() == false) {
             doSetEditable(false);
         }
+
+        /*
+         * Ensure that the state starts off in milliseconds; if this is not
+         * done, then the state, which in the specification was provided in the
+         * state unit, will be interpreted as milliseconds.
+         */
+        this.state = specifier.getStateUnit().convertUnitToMilliseconds(
+                this.state);
 
         /*
          * Synchronize user-facing widgets to the starting state.

@@ -46,5 +46,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataplugin.warning"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.hydro"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.hazards.configuration"/>
+	<classpathentry kind="lib" path="/org.jep/jep.jar" sourcepath="/org.jep/org.jepsrc.zip"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.viz.megawidgets.sideeffects"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

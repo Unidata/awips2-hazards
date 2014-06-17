@@ -1,0 +1,14 @@
+[
+ {
+  "fieldType": "FractionSpinner",
+  "fieldName": "spinner1",
+  "label": "Inches of Rain:",
+  "minValue": 0.1,
+  "maxValue": 100.0,
+  "values": 1.0,
+  "incrementDelta": 0.1,
+  "precision": 1,
+  "expandHorizontally": true,
+  "sendEveryChange": false
+ }
+]

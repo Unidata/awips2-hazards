@@ -287,45 +287,47 @@ public abstract class StatefulMegawidgetSpecifier extends
         if (stateValidator instanceof SingleStateValidator) {
 
             /*
-             * For single-state specifiers, replace the value in the map with a
-             * corrected version, and if that fails, use a default value.
+             * For single-state specifiers, if the map contains a value, convert
+             * it and use it; if that fails, or if it does not contain a value,
+             * just use the starting state value as specified.
              */
             String identifier = stateIdentifiers.get(0);
-            try {
-                map.put(identifier, ((SingleStateValidator<?>) stateValidator)
-                        .convertToStateValue(map.get(identifier)));
-            } catch (Exception e) {
+            Object mapValue = map.get(identifier);
+            Object correctedValue = null;
+            if (mapValue != null) {
                 try {
-                    map.put(identifier,
-                            ((SingleStateValidator<?>) stateValidator)
-                                    .convertToStateValue(map.get(null)));
-                } catch (Exception e2) {
-                    throw new IllegalStateException(
-                            "unexpected failure to get default value for state",
-                            e2);
+                    correctedValue = ((SingleStateValidator<?>) stateValidator)
+                            .convertToStateValue(mapValue);
+                } catch (Exception e) {
                 }
             }
+            map.put(identifier, (correctedValue != null ? correctedValue
+                    : getStartingState(identifier)));
         } else {
 
             /*
-             * For multi-state specifiers, replace the values in the map with
-             * corrected versions, and if that fails, use default values.
+             * For multi-state specifiers, if the map contains values for all
+             * the state identifiers, convert those and use them; if that fails,
+             * or if it does not contain values for all states, just use the
+             * starting state values as specified.
              */
-            Map<String, ?> correctedMap;
-            try {
-                correctedMap = ((MultiStateValidator<?>) stateValidator)
-                        .convertToStateValues(map);
-            } catch (Exception e) {
-                try {
-                    correctedMap = ((MultiStateValidator<?>) stateValidator)
-                            .convertToStateValues(null);
-                } catch (Exception e2) {
-                    throw new IllegalStateException(
-                            "unexpected failure to get default values for states",
-                            e2);
+            boolean allPresent = true;
+            for (String identifier : stateIdentifiers) {
+                if (map.get(identifier) == null) {
+                    allPresent = false;
+                    break;
                 }
             }
-            map.putAll(correctedMap);
+            Map<String, ?> correctedMap = null;
+            if (allPresent) {
+                try {
+                    correctedMap = ((MultiStateValidator<?>) stateValidator)
+                            .convertToStateValues(map);
+                } catch (Exception e) {
+                }
+            }
+            map.putAll(correctedMap != null ? correctedMap
+                    : valuesForStateIdentifiers);
         }
     }
 

@@ -1,0 +1,12 @@
+[
+ {
+  "fieldType": "IntegerSpinner",
+  "fieldName": "spinner1",
+  "label": "Relative Force:",
+  "minValue": 1,
+  "maxValue": 5,
+  "values": 5,
+  "expandHorizontally": true,
+  "showScale": true
+ }
+]

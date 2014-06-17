@@ -56,6 +56,8 @@ import com.google.common.collect.ImmutableMap;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 04, 2014   2155     Chris.Golden      Fixed bug that caused specifier to treat
+ *                                           time descriptors as mandatory.
  * </pre>
  * 
  * @author Chris.Golden
@@ -198,13 +200,15 @@ public class TimeScaleSpecifier extends TimeMegawidgetSpecifier implements
             Map<?, String> map = (Map<?, String>) parameters
                     .get(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS);
             descriptiveTextForValues = new HashMap<>();
-            for (Object key : map.keySet()) {
-                if (key instanceof Number) {
-                    descriptiveTextForValues.put(((Number) key).longValue(),
-                            map.get(key));
-                } else {
-                    descriptiveTextForValues.put(Long.valueOf((String) key),
-                            map.get(key));
+            if (map != null) {
+                for (Object key : map.keySet()) {
+                    if (key instanceof Number) {
+                        descriptiveTextForValues.put(
+                                ((Number) key).longValue(), map.get(key));
+                    } else {
+                        descriptiveTextForValues.put(
+                                Long.valueOf((String) key), map.get(key));
+                    }
                 }
             }
         } catch (Exception e) {
