@@ -17,7 +17,7 @@ class MetaData(CommonMetaData.MetaData):
                     ] + self.setCAP_Fields()
         return {
                 METADATA_KEY: metaData,
-                SIDE_EFFECTS_SCRIPT_KEY: self.getSideEffectsFromLocalizedFile("RiseCrestFallUntilFurtherNoticeSideEffects.py")
+                INTERDEPENDENCIES_SCRIPT_KEY: self.getInterdependenciesScriptFromLocalizedFile("RiseCrestFallUntilFurtherNoticeInterdependencies.py")
                 }    
                 
     # BASIS

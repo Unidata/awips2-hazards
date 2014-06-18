@@ -105,6 +105,9 @@ import com.google.common.collect.Lists;
  *                                           getSpecifierManager() method, and changed
  *                                           to take current time provider from the
  *                                           megawidget specifier manager.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to allow simpler specification
+ *                                           of "values" mutable property for single-
+ *                                           state megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -607,14 +610,27 @@ public abstract class MegawidgetManager {
              */
             if (megawidgetMutableProperties
                     .containsKey(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+
+                /*
+                 * Handle the values whether they are a single value, or a map
+                 * of values. The former is only possible if this is a
+                 * single-state megawidget.
+                 */
+                Object values = megawidgetMutableProperties
+                        .get(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
                 Map<String, Object> map = null;
-                try {
-                    map = (HashMap<String, Object>) megawidgetMutableProperties
-                            .get(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
-                } catch (Exception e) {
-                    throw new IllegalStateException("Should not occur; state "
-                            + "values should have already been checked by "
-                            + "megawidget.setMutableProperties()");
+                if (values instanceof Map) {
+                    try {
+                        map = (HashMap<String, Object>) values;
+                    } catch (Exception e) {
+                        throw new IllegalStateException(
+                                "Should not occur; state "
+                                        + "values should have already been checked by "
+                                        + "megawidget.setMutableProperties()");
+                    }
+                } else {
+                    map = new HashMap<>();
+                    map.put(identifier, values);
                 }
 
                 /*

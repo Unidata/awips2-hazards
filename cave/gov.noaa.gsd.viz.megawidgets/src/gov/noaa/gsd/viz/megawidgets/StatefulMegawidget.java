@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,6 +34,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to allow simpler specification
+ *                                           of "values" property for single-state
+ *                                           megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -100,9 +104,21 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
     public Object getMutableProperty(String name)
             throws MegawidgetPropertyException {
         if (name.equals(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+            List<String> stateIdentifiers = ((StatefulMegawidgetSpecifier) getSpecifier())
+                    .getStateIdentifiers();
+            if (stateIdentifiers.size() == 1) {
+                try {
+                    return getState(stateIdentifiers.get(0));
+                } catch (MegawidgetStateException e) {
+                    throw new MegawidgetPropertyException(getSpecifier()
+                            .getIdentifier(), name, getSpecifier().getType(),
+                            null, "querying valid state identifier \""
+                                    + stateIdentifiers.get(0)
+                                    + "\" caused internal error", e);
+                }
+            }
             Map<String, Object> map = new HashMap<>();
-            for (String identifier : ((StatefulMegawidgetSpecifier) getSpecifier())
-                    .getStateIdentifiers()) {
+            for (String identifier : stateIdentifiers) {
                 try {
                     map.put(identifier, getState(identifier));
                 } catch (MegawidgetStateException e) {
@@ -126,24 +142,38 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
 
             /*
              * Ensure that the value is a map of state identifiers to their
-             * values.
+             * values; if not, and if there is only one state identifier, assume
+             * it is a state value.
              */
-            Map<String, Object> map = null;
-            try {
-                map = (HashMap<String, Object>) value;
-                if (map == null) {
-                    throw new NullPointerException();
+            StatefulMegawidgetSpecifier specifier = (StatefulMegawidgetSpecifier) getSpecifier();
+            if ((specifier.getStateIdentifiers().size() == 1)
+                    && ((value instanceof Map) == false)) {
+                try {
+                    setState(specifier.getIdentifier(), value);
+                } catch (MegawidgetStateException e) {
+                    throw new MegawidgetPropertyException(
+                            getSpecifier().getIdentifier(),
+                            StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES,
+                            specifier.getType(), value, "bad value", e);
                 }
-            } catch (Exception e) {
-                throw new MegawidgetPropertyException(getSpecifier()
-                        .getIdentifier(), name, getSpecifier().getType(),
-                        value, "bad map of values", e);
-            }
+            } else {
+                Map<String, Object> map = null;
+                try {
+                    map = (HashMap<String, Object>) value;
+                    if (map == null) {
+                        throw new NullPointerException();
+                    }
+                } catch (Exception e) {
+                    throw new MegawidgetPropertyException(getSpecifier()
+                            .getIdentifier(), name, getSpecifier().getType(),
+                            value, "bad map of values", e);
+                }
 
-            /*
-             * Set the states to match the values given.
-             */
-            setStates(map);
+                /*
+                 * Set the states to match the values given.
+                 */
+                setStates(map);
+            }
         } else {
             super.setMutableProperty(name, value);
         }

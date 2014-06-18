@@ -31,6 +31,8 @@ import org.eclipse.swt.widgets.Composite;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new
  *                                           validator package, updated
  *                                           Javadoc and other comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to keep children synced
+ *                                           with enabled and editable state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,11 +65,13 @@ public class CompositeMegawidget extends ContainerMegawidget {
         /*
          * Create a composite widget and its child megawidgets.
          */
-        composite = new Composite(parent, SWT.NONE);
+        Composite composite = new Composite(parent, SWT.NONE);
         composite.setEnabled(specifier.isEnabled());
         gridContainerPanel(composite);
-        children = createChildMegawidgets(composite,
-                specifier.getColumnCount(),
-                specifier.getChildMegawidgetSpecifiers(), paramMap);
+        setComposite(composite);
+        setChildren(createChildMegawidgets(composite,
+                specifier.getColumnCount(), specifier.isEnabled(),
+                specifier.isEditable(),
+                specifier.getChildMegawidgetSpecifiers(), paramMap));
     }
 }

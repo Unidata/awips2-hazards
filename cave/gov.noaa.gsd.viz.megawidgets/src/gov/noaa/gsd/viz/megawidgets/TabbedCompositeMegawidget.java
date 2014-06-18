@@ -36,6 +36,8 @@ import org.eclipse.swt.widgets.Composite;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to keep children synced
+ *                                           with enabled and editable state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,7 +72,7 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
         tabFolder.setTabHeight(tabFolder.getTabHeight() + 8);
         tabFolder.setEnabled(specifier.isEnabled());
         gridContainerPanel(tabFolder);
-        composite = tabFolder;
+        setComposite(tabFolder);
 
         /*
          * Iterate through the tabs, creating for each a page with its child
@@ -84,10 +86,11 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget {
             tabItem.setControl(tabPage);
             List<IControl> children = createChildMegawidgets(tabPage,
                     specifier.getColumnCountForPage(pageName),
+                    specifier.isEnabled(), specifier.isEditable(),
                     specifier.getChildSpecifiersForPage(pageName), paramMap);
             allChildren.addAll(children);
         }
-        this.children = allChildren;
+        setChildren(allChildren);
 
         /*
          * Select the first tab.

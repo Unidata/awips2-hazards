@@ -55,6 +55,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to use new choices button
+ *                                           component, and to disable detail
+ *                                           children when it is disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,7 +90,7 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
     /**
      * Radio buttons associated with this megawidget.
      */
-    private final List<Button> radioButtons;
+    private final List<ChoiceButtonComponent> radioButtons;
 
     /**
      * Detail child megawidget manager.
@@ -150,12 +153,13 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
                  * Set the other radio buttons to be unselected, since again
                  * they are not grouped by a single containing composite.
                  */
-                for (Button otherButton : RadioButtonsMegawidget.this.radioButtons) {
-                    if (otherButton != radioButton) {
-                        otherButton.setSelection(false);
+                for (ChoiceButtonComponent otherButton : RadioButtonsMegawidget.this.radioButtons) {
+                    if (otherButton.getButton() != radioButton) {
+                        otherButton.setChecked(false);
                     }
                 }
-                state = (String) radioButton.getData();
+                state = ((ChoiceButtonComponent) radioButton.getData())
+                        .getChoice();
                 notifyListener(getSpecifier().getIdentifier(), state);
                 notifyListener();
             }
@@ -276,8 +280,8 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
-        for (Button radioButton : radioButtons) {
-            radioButton.setSelection(radioButton.getData().equals(state));
+        for (ChoiceButtonComponent radioButton : radioButtons) {
+            radioButton.setChecked(radioButton.getChoice().equals(state));
         }
     }
 
@@ -286,8 +290,11 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
         if (label != null) {
             label.setEnabled(enable);
         }
-        for (Button radioButton : radioButtons) {
+        for (ChoiceButtonComponent radioButton : radioButtons) {
             radioButton.setEnabled(enable);
+        }
+        for (IControl child : getChildren()) {
+            child.setEnabled(enable);
         }
     }
 
@@ -302,8 +309,8 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        if (radioButtons.size() > 0) {
-            radioButtons.get(0).getParent().setEnabled(editable);
+        for (ChoiceButtonComponent radioButton : radioButtons) {
+            radioButton.setEditable(editable);
         }
     }
 }

@@ -13,6 +13,12 @@ recommender framework
                                                  RiverFloodRecommenderSideEffects.py file,
                                                  which is localized.
     Apr 1, 2014  3581        bkowal     Updated to use common hazards hydro
+    Jun 17, 2014    3982     Chris.Golden        Changed megawidget 'side effects'
+                                                 to 'interdependencies', and
+                                                 changed to use simpler way of
+                                                 getting and setting values for
+                                                 single-state megawidgets' mutable
+                                                 properties.
     
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -114,7 +120,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # affect one another (in this case, radio button selection
         # enables and disables the forecast confidence spinner).        
         localizationInterface = LocalizationInterface()
-        dialogDict["sideEffectsScript"] = localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/RiverFloodRecommenderSideEffects.py", "common")
+        dialogDict["interdependenciesScript"] = localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/RiverFloodRecommenderInterdependencies.py", "common")
         
         return dialogDict
     

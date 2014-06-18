@@ -27,9 +27,11 @@ package gov.noaa.gsd.viz.megawidgets;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Oct 21, 2013    2168    Chris.Golden      Initial creation.
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel".
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,17 +61,17 @@ public interface IControlSpecifier extends ISpecifier {
     public static final String MEGAWIDGET_WIDTH = "width";
 
     /**
-     * Megawidget full width parameter name; any megawidget that allows the
-     * specification of this flag may include a boolean value associated with
-     * this name. True indicates that the megawidget takes up the full width of
-     * its parent megawidget's column, while false indicates it may be able to
-     * exist side by side with other megawidgets in the same column. Most
-     * megawidget specifiers determine this based upon their class, as it is not
-     * configurable, but some allow it to be included in their specification for
-     * each instance. If not specified for such a megawidget, the default is
-     * <code>true</code>.
+     * Megawidget full width of detail panel parameter name; any megawidget that
+     * allows the specification of this flag may include a boolean value
+     * associated with this name. True indicates that the megawidget takes up
+     * the full width of its parent megawidget's detail panel, while false
+     * indicates it may be able to exist side by side with other megawidgets in
+     * the same panel. Most megawidget specifiers determine this based upon
+     * their class, as it is not configurable, but some allow it to be included
+     * in their specification for each instance. If not specified for such a
+     * megawidget, the default is <code>true</code>.
      */
-    public static final String MEGAWIDGET_FULL_WIDTH_OF_COLUMN = "fullWidthOfColumn";
+    public static final String MEGAWIDGET_FULL_WIDTH_OF_DETAIL_PANEL = "fullWidthOfDetailPanel";
 
     /**
      * Megawidget spacing parameter name; a megawidget may include a
@@ -107,15 +109,15 @@ public interface IControlSpecifier extends ISpecifier {
     public int getWidth();
 
     /**
-     * Determine whether or not the megawidget fills the width of the column it
-     * is occupying within its parent. This may be used by parent megawidgets to
-     * determine whether their children may be laid out side by side in the same
-     * column or not.
+     * Determine whether or not the megawidget fills the width of any detail
+     * panel it is occupying within its parent when it is a detail megawidget.
+     * This may be used by megawidgets with detail fields to determine whether
+     * the latter may be laid out side by side in the detail panel or not.
      * 
-     * @return True if the megawidget fills the width of the column it occupies,
-     *         false otherwise.
+     * @return True if the megawidget fills the width of any detail panel it
+     *         occupies, false otherwise.
      */
-    public boolean isFullWidthOfColumn();
+    public boolean isFullWidthOfDetailPanel();
 
     /**
      * Get the spacing between this megawidget and the one above it in pixels.

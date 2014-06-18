@@ -37,6 +37,8 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel".
  * </pre>
  * 
  * @author Chris.Golden
@@ -162,7 +164,7 @@ public abstract class SpinnerSpecifier<T extends Number & Comparable<T>>
     }
 
     @Override
-    public final boolean isFullWidthOfColumn() {
+    public final boolean isFullWidthOfDetailPanel() {
 
         /*
          * Unlike most megawidgets, the integer spinner requires the full width

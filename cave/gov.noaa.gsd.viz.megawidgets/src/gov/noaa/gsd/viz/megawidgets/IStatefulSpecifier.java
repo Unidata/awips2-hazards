@@ -29,6 +29,7 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Removed obsolete properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,36 +54,6 @@ public interface IStatefulSpecifier extends INotifierSpecifier {
      * states.
      */
     public static final String MEGAWIDGET_STATE_LABELS = "valueLabels";
-
-    /**
-     * Megawidget state short labels parameter name; a megawidget may include a
-     * value associated with this name. The value may be either a short label
-     * string (if only one state identifier is associated with the specifier),
-     * or else a dictionary mapping state identifiers to short label strings
-     * (with one per state identifier). State identifiers are as specified in
-     * the value associated with the {@link #MEGAWIDGET_IDENTIFIER} parameter.
-     * There must be the same number of short labels as there are states
-     * associated with this specifier, one per identifier. If not provided, If
-     * not provided, the value is taken to be the same as the value for the
-     * full-length labels.
-     */
-    public static final String MEGAWIDGET_STATE_SHORT_LABELS = "shortValueLabels";
-
-    /**
-     * Megawidget state relative weights parameter name; a megawidget may
-     * include a value associated with this name. The value may be either a
-     * positive integer (if only one state identifier is associated with the
-     * specifier), or else a dictionary mapping state identifiers to positive
-     * integers (with one per state identifier). State identifiers are as
-     * specified in the value associated with the {@link #MEGAWIDGET_IDENTIFIER}
-     * parameter. There must be the same number of positive integers as there
-     * are states associated with this specifier, one per identifier. These
-     * integers provide the relative visual weight of a state within a table, in
-     * comparison with the weights of other states associated with this or other
-     * stateful megawidget specifiers. If not provided, the relative weights for
-     * all states belonging to this megawidget specifier is taken to be 1.
-     */
-    public static final String MEGAWIDGET_STATE_RELATIVE_WEIGHTS = "relativeValueWeights";
 
     /**
      * Megawidget state values parameter name; a megawidget may include a value
@@ -116,25 +87,6 @@ public interface IStatefulSpecifier extends INotifierSpecifier {
      * @return State label.
      */
     public String getStateLabel(String identifier);
-
-    /**
-     * Get the short state label for the specified state. state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the short label is desired.
-     * @return Short state label.
-     */
-    public String getStateShortLabel(String identifier);
-
-    /**
-     * Get the relative weight of the specified state.
-     * 
-     * @param identifier
-     *            Identifier of the state for which the relative weight is
-     *            desired.
-     * @return State relative weight.
-     */
-    public int getRelativeWeight(String identifier);
 
     /**
      * Get the starting value of the specified state.

@@ -80,6 +80,10 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           to work with change to interface (i.e.
  *                                           multiple trigger identifiers being
  *                                           supplied as a string).
+ * Jun 17, 2014    3982    Chris.Golden      Changed to use "interdependencies"
+ *                                           instead of "side effects" in user-
+ *                                           facing situations, and changed to use
+ *                                           better inline comments.
  * </pre>
  * 
  * @author Chris.Golden
@@ -96,15 +100,15 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Name of the Python method that calls the instance's script's
-     * <code>applySideEffects()</code> Python method, and returns the result as
-     * a JSON string.
+     * <code>applyInterdependencies()</code> Python method, and returns the
+     * result as a JSON string.
      */
-    private static final String NAME_APPLY_SIDE_EFFECTS_WRAPPER = "_applySideEffectsWrapper";
+    private static final String NAME_APPLY_SIDE_EFFECTS_WRAPPER = "_applyInterdependenciesWrapper";
 
     /**
      * Python script used for defining the method that calls the instance's
-     * script's <code>applySideEffects()</code> Python method, and returns the
-     * result as a JSON string.
+     * script's <code>applyInterdependencies()</code> Python method, and returns
+     * the result as a JSON string.
      */
     private static final String DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD = "def "
             + NAME_APPLY_SIDE_EFFECTS_WRAPPER
@@ -112,7 +116,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             + "   global _megawidgetMutableProperties\n"
             + "   if mutablePropertiesChanged:\n"
             + "      _megawidgetMutableProperties = json.loads(mutableProperties)\n"
-            + "   result = applySideEffects(triggerIdentifier, _megawidgetMutableProperties)\n"
+            + "   result = applyInterdependencies(triggerIdentifier, _megawidgetMutableProperties)\n"
             + "   if result is not None:\n"
             + "      for identifier in result:\n"
             + "         for name in result[identifier]:\n"
@@ -121,10 +125,10 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
 
     /**
      * Name of the Python method for determining whether the <code>
-     * applySideEffects()</code> Python method is defined and takes two
+     * applyInterdependencies()</code> Python method is defined and takes two
      * parameters.
      */
-    private static final String NAME_IS_SIDE_EFFECTS_METHOD_DEFINED = "_isSideEffectsMethodDefined";
+    private static final String NAME_IS_SIDE_EFFECTS_METHOD_DEFINED = "_isInterdependenciesMethodDefined";
 
     /**
      * Python script used for defining the method used to check to see if the
@@ -132,7 +136,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      */
     private static final String DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD = "def "
             + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED + "():\n" + "   try:\n"
-            + "      argSpec = inspect.getargspec(applySideEffects)\n"
+            + "      argSpec = inspect.getargspec(applyInterdependencies)\n"
             + "   except:\n" + "      return False\n"
             + "   return len(argSpec.args) == 2\n\n";
 
@@ -302,8 +306,8 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * 
      * @param scriptPath
      *            Path to Python script that defines the <code>
-     *            applySideEffects()</code> method used by this instance to
-     *            apply side effects.
+     *            applyInterdependencies()</code> method used by this instance
+     *            to apply side effects.
      * @throws IllegalStateException
      *             If {@link #initialize()} has not been invoked already, or if
      *             {@link #prepareForShutDown()} has been invoked since the last
@@ -324,7 +328,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
      * Construct a standard instance with a Python script.
      * 
      * @param script
-     *            Python script that defines the <code>applySideEffects()
+     *            Python script that defines the <code>applyInterdependencies()
      *            </code> method used by this instance to apply side effects.
      * @throws IllegalStateException
      *             If {@link #initialize()} has not been invoked already, or if
@@ -351,27 +355,37 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             boolean propertiesMayHaveChanged) {
         synchronized (PythonSideEffectsApplier.class) {
 
-            // Ensure that the the Jep instance has been initialized.
+            /*
+             * Ensure that the the Jep instance has been initialized.
+             */
             ensureClassInitialized();
 
-            // Ensure that side effects are not already in the process of being
-            // applied, and set the application-occurring flag.
+            /*
+             * Ensure that side effects are not already in the process of being
+             * applied, and set the application-occurring flag.
+             */
             if (sideEffectsBeingApplied) {
                 throw new IllegalStateException(
                         "Illegal reentry to applySideEffects().");
             }
             sideEffectsBeingApplied = true;
 
-            // If this method has not been run by any instance of this class
-            // since initialization, or if the last instance that ran it is not
-            // the same as this instance, perform a Jep context switch.
+            /*
+             * If this method has not been run by any instance of this class
+             * since initialization, or if the last instance that ran it is not
+             * the same as this instance, perform a Jep context switch.
+             */
             if ((lastApplier == null) || (lastApplier.get() != this)) {
 
-                // Remember that this instance is the last to have had this
-                // method invoked.
+                /*
+                 * Remember that this instance is the last to have had this
+                 * method invoked.
+                 */
                 lastApplier = new WeakReference<PythonSideEffectsApplier>(this);
 
-                // Clean up to prepare for the context switch.
+                /*
+                 * Clean up to prepare for the context switch.
+                 */
                 try {
                     jep.eval(DEFINE_CLEANUP_FOR_CONTEXT_SWITCH_METHOD);
                     jep.eval(CLEANUP_FOR_CONTEXT_SWITCH);
@@ -383,10 +397,13 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                     return null;
                 }
 
-                // Switch context by running the script for this instance. The
-                // script has to define the Python applySideEffects() method.
-                // The script is either evaluated directly, if it was supplied
-                // as a string, or run from a file, if a path was supplied.
+                /*
+                 * Switch context by running the script for this instance. The
+                 * script has to define the Python applyInterdependencies()
+                 * method. The script is either evaluated directly, if it was
+                 * supplied as a string, or run from a file, if a path was
+                 * supplied.
+                 */
                 try {
                     if (script != null) {
                         if (jep.eval(script) == false) {
@@ -404,8 +421,10 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                     return null;
                 }
 
-                // Ensure that the Python method applySideEffects() has been
-                // defined by the script that was run above.
+                /*
+                 * Ensure that the Python method applyInterdependencies() has
+                 * been defined by the script that was run above.
+                 */
                 Object result = null;
                 try {
                     result = jep.invoke(NAME_IS_SIDE_EFFECTS_METHOD_DEFINED);
@@ -438,14 +457,18 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                     return null;
                 }
 
-                // Set the flag indicating that properties have changed since
-                // the last invocation, since owing to the context switch the
-                // mutable properties will certainly need to be reloaded into
-                // the Jep instance.
+                /*
+                 * Set the flag indicating that properties have changed since
+                 * the last invocation, since owing to the context switch the
+                 * mutable properties will certainly need to be reloaded into
+                 * the Jep instance.
+                 */
                 propertiesMayHaveChanged = true;
             }
 
-            // Invoke the side effects wrapper and get the result.
+            /*
+             * Invoke the side effects wrapper and get the result.
+             */
             Map<String, Map<String, Object>> resultMap = null;
             try {
                 Object result = jep.invoke(
@@ -462,17 +485,19 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
             } catch (JepException e) {
                 statusHandler
                         .error("Python script error occurred;"
-                                + "Python method applySideEffects() should either "
+                                + "Python method applyInterdependencies() should either "
                                 + "return None or else a dictionary mapping "
                                 + "megawidget identifiers to dictionaries holding "
                                 + "name-value pairs for changed mutable properties.",
                                 e);
             }
 
-            // Reset the application-occurring flag and return the result,
-            // which is either null if the side effects did not affect the
-            // megawidgets or a map of megawidget identifiers to maps of
-            // mutable properties that have changed.
+            /*
+             * Reset the application-occurring flag and return the result, which
+             * is either null if the side effects did not affect the megawidgets
+             * or a map of megawidget identifiers to maps of mutable properties
+             * that have changed.
+             */
             sideEffectsBeingApplied = false;
             return resultMap;
         }

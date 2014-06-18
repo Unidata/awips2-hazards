@@ -18,8 +18,8 @@ class MetaData:
             self.hazardState = "pending"
             self.previewState = ""
             
-    # SIDE EFFECTS SCRIPT FROM A SEPARATE FILE
-    def getSideEffectsFromLocalizedFile(self, scriptFileName):
+    # INTERDEPENDENCIES SCRIPT FROM A SEPARATE FILE
+    def getInterdependenciesScriptFromLocalizedFile(self, scriptFileName):
         localizationInterface = LocalizationInterface()
         return localizationInterface.getLocFile("hazardServices/megawidgetSideEffects/" + scriptFileName, "common")
     
@@ -151,7 +151,6 @@ class MetaData:
              "fieldName": "floodSeverity",
              "fieldType":"ComboBox",
              "label":"Flood Severity:",
-             "shortValueLabels":"Sev",
              "expandHorizontally": True,
              "choices":[
                       {"displayString": "N (None)","identifier": "N","productString": ""},
@@ -169,7 +168,6 @@ class MetaData:
              "fieldName":"floodRecord",
              "fieldType":"ComboBox",
              "label":"Flood Record Status:",
-             "shortValueLabels":"Rec",
              "expandHorizontally": True,
              "choices":[
                       {"displayString": "NO (Record Flood Not Expected)","identifier": "NO"},
@@ -185,10 +183,7 @@ class MetaData:
             "fieldName":"riseAbove:crest:fallBelow",
             "fieldType":"TimeScale",
             "valueLabels": {"riseAbove": "Rise Above Time:","crest": "Crest Time:","fallBelow": "Fall Below Time:"},
-            "shortValueLabels": {"riseAbove": "Rise","crest": "Crest","fallBelow": "Fall"},
-            "relativeValueWeights": {"riseAbove": 3,"crest": 3,"fallBelow": 3},
             "minimumTimeInterval": 60000,
-            "notify":1,
             "spacing": 5,
             "timeDescriptors": {
                 str(int(VTECConstants.UFN_TIME_VALUE_SECS) * 1000): "N/A"
@@ -765,8 +760,7 @@ class MetaData:
                             {
                              "fieldName":"additionalInfoParticularStreamTime",
                              "fieldType":"Time",
-                             "label": "by:",
-                             "fullWidthOfColumn": False
+                             "label": "by:"
                             }
                       ]
                      }

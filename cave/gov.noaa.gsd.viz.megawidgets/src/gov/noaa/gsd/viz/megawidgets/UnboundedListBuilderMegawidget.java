@@ -14,8 +14,10 @@ import gov.noaa.gsd.viz.megawidgets.validators.UnboundedChoiceValidator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.DND;
@@ -46,6 +48,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 
+import com.google.common.collect.ImmutableSet;
 import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
 
 /**
@@ -72,6 +75,10 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to ensure that drag and drop
+ *                                           is not possible when read-only, and
+ *                                           added "editable" to set of mutable
+ *                                           properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,6 +87,19 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  */
 public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         implements IControl {
+
+    // Protected Static Constants
+
+    /**
+     * Set of all mutable property names for instances of this class.
+     */
+    protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+    static {
+        Set<String> names = new HashSet<>(
+                StatefulMegawidget.MUTABLE_PROPERTY_NAMES);
+        names.add(IControlSpecifier.MEGAWIDGET_EDITABLE);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
+    };
 
     // Private Static Constants
 
@@ -345,10 +365,10 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
             public void dragStart(DragSourceEvent event) {
 
                 /*
-                 * Do not initiate a drag if nothing is selected. Otherwise,
-                 * remember which list is the source.
+                 * Do not initiate a drag if nothing is selected or if
+                 * read-only. Otherwise, remember which list is the source.
                  */
-                if (table.getSelectionCount() == 0) {
+                if (isReadOnly() || (table.getSelectionCount() == 0)) {
                     event.doit = false;
                 } else {
                     draggingFromTable = true;
@@ -401,6 +421,13 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         DropTargetListener dropListener = new DropTargetListener() {
             @Override
             public void dragEnter(DropTargetEvent event) {
+
+                /*
+                 * Do not allow a drop to occur if read-only.
+                 */
+                if (isReadOnly()) {
+                    return;
+                }
 
                 /*
                  * If the source of the drag is this table, or is something else
@@ -531,6 +558,32 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
     // Public Methods
 
     @Override
+    public Set<String> getMutablePropertyNames() {
+        return MUTABLE_PROPERTY_NAMES;
+    }
+
+    @Override
+    public Object getMutableProperty(String name)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            return isEditable();
+        }
+        return super.getMutableProperty(name);
+    }
+
+    @Override
+    public void setMutableProperty(String name, Object value)
+            throws MegawidgetPropertyException {
+        if (name.equals(IControlSpecifier.MEGAWIDGET_EDITABLE)) {
+            setEditable(ConversionUtilities.getPropertyBooleanValueFromObject(
+                    getSpecifier().getIdentifier(), getSpecifier().getType(),
+                    value, name, null));
+        } else {
+            super.setMutableProperty(name, value);
+        }
+    }
+
+    @Override
     public final boolean isEditable() {
         return helper.isEditable();
     }
@@ -574,7 +627,10 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         if (label != null) {
             label.setEnabled(enable);
         }
-        table.setEnabled(false);
+        if (enable == false) {
+            table.setSelection(UiBuilder.NO_SELECTION);
+        }
+        table.setEnabled(enable);
         enableOrDisableSidePanel();
     }
 
@@ -687,6 +743,16 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
     }
 
     // Private Methods
+
+    /**
+     * Determine whether or not the megawidget is currently read-only (that is,
+     * either uneditable, disabled, or both).
+     * 
+     * @return True if the megawidget is read-only.
+     */
+    private boolean isReadOnly() {
+        return (isEditable() == false) || (isEnabled() == false);
+    }
 
     /**
      * Prepare for the state to change.
@@ -830,7 +896,7 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
          * otherwise, enable or disable each one as appropriate given the items
          * selected in the lists.
          */
-        if ((isEnabled() == false) || (isEditable() == false)) {
+        if (isReadOnly()) {
             setTextEntryContents("");
             text.setEnabled(false);
             add.setEnabled(false);

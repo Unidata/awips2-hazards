@@ -51,7 +51,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Mar 3, 2014  3034    bkowal      Added a constant for the gfe interoperability flag
- * 
+ * Jun 17, 2014  3982     Chris.Golden  Changed megawidget "side effects" to "interdependencies".
  * </pre>
  * 
  * @author mnash
@@ -524,7 +524,7 @@ public final class HazardConstants {
      */
     public static final String METADATA_KEY = "metadata";
 
-    public static final String SIDE_EFFECTS_SCRIPT_KEY = "sideEffects";
+    public static final String SIDE_EFFECTS_SCRIPT_KEY = "interdependencies";
 
     /*
      * The following are related to hazard geometries and their supporting meta

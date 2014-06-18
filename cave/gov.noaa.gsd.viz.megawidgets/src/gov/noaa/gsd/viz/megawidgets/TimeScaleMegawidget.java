@@ -80,6 +80,10 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel",
+ *                                           and changed to disable detail children
+ *                                           if it gets disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -464,7 +468,8 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                 statePanel.setLayoutData(statePanelLayoutData);
                 List<Composite> additionalComposites = childManager
                         .createDetailChildMegawidgets(statePanel, panel, 0,
-                                detailSpecifiers).getComposites();
+                                specifier.isEnabled(), detailSpecifiers)
+                        .getComposites();
                 for (Composite composite : additionalComposites) {
                     additionalDetailCompositeLayouts.add((GridLayout) composite
                             .getLayout());
@@ -491,7 +496,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             for (IControl detailMegawidget : childManager
                     .getDetailMegawidgets()) {
                 if (((IControlSpecifier) detailMegawidget.getSpecifier())
-                        .isFullWidthOfColumn()) {
+                        .isFullWidthOfDetailPanel()) {
                     fullWidthDetailMegawidgets.add(detailMegawidget);
                 }
             }
@@ -951,6 +956,9 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
             dateTime.setEnabled(enable);
         }
         scale.setEnabled(enable);
+        for (IControl child : getChildren()) {
+            child.setEnabled(enable);
+        }
     }
 
     @Override

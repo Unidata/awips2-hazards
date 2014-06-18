@@ -75,6 +75,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to ensure that drag and drop
+ *                                           is not possible when read-only.
  * </pre>
  * 
  * @author Chris.Golden
@@ -458,6 +460,14 @@ public class BoundedListBuilderMegawidget extends
             public void dragStart(DragSourceEvent event) {
 
                 /*
+                 * If read-only, do nothing.
+                 */
+                if (isReadOnly()) {
+                    event.doit = false;
+                    return;
+                }
+
+                /*
                  * Do not initiate a drag if nothing is selected. Otherwise,
                  * remember which list is the source.
                  */
@@ -521,6 +531,13 @@ public class BoundedListBuilderMegawidget extends
         DropTargetListener dropListener = new DropTargetListener() {
             @Override
             public void dragEnter(DropTargetEvent event) {
+
+                /*
+                 * If read-only, do nothing.
+                 */
+                if (isReadOnly()) {
+                    return;
+                }
 
                 /*
                  * If the source of the drag is the other list, or the source
@@ -906,12 +923,26 @@ public class BoundedListBuilderMegawidget extends
         if (selectedLabel != null) {
             selectedLabel.setEnabled(enable);
         }
-        availableTable.setEnabled(false);
-        selectedTable.setEnabled(false);
+        if (enable == false) {
+            availableTable.setSelection(UiBuilder.NO_SELECTION);
+            selectedTable.setSelection(UiBuilder.NO_SELECTION);
+        }
+        availableTable.setEnabled(enable);
+        selectedTable.setEnabled(enable);
         enableOrDisableButtons();
     }
 
     // Private Methods
+
+    /**
+     * Determine whether or not the megawidget is currently read-only (that is,
+     * either uneditable, disabled, or both).
+     * 
+     * @return True if the megawidget is read-only.
+     */
+    private boolean isReadOnly() {
+        return (isEditable() == false) || (isEnabled() == false);
+    }
 
     /**
      * Change the component widgets to ensure their state matches that of the
@@ -1036,7 +1067,7 @@ public class BoundedListBuilderMegawidget extends
          * otherwise, enable or disable each one as appropriate given the items
          * selected in the lists.
          */
-        if ((isEnabled() == false) || (isEditable() == false)) {
+        if (isReadOnly()) {
             addAll.setEnabled(false);
             addSelected.setEnabled(false);
             removeAll.setEnabled(false);

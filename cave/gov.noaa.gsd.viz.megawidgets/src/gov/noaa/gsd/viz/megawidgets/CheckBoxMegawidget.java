@@ -18,7 +18,6 @@ import java.util.Set;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
@@ -43,6 +42,8 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to use new choices button
+ *                                           component.
  * </pre>
  * 
  * @author Chris.Golden
@@ -69,7 +70,7 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
     /**
      * Checkbox itself.
      */
-    private final Button checkBox;
+    private final ChoiceButtonComponent checkBox;
 
     /**
      * Current value.
@@ -107,18 +108,11 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
         state = (Boolean) specifier.getStartingState(specifier.getIdentifier());
 
         /*
-         * Create the composite holding the checkbox.
-         */
-        Composite panel = UiBuilder.buildComposite(parent, 1, SWT.NONE,
-                UiBuilder.CompositeType.SINGLE_ROW, specifier);
-
-        /*
          * Create the checkbox component.
          */
-        checkBox = new Button(panel, SWT.CHECK);
-        checkBox.setText(specifier.getLabel() == null ? "" : specifier
-                .getLabel());
-        checkBox.setEnabled(specifier.isEnabled());
+        checkBox = new ChoiceButtonComponent(parent, false, SWT.CHECK,
+                specifier.isEnabled(), null, specifier.getLabel());
+        checkBox.getGridData().verticalIndent = specifier.getSpacing();
         checkBox.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -128,9 +122,6 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
                 notifyListener();
             }
         });
-        GridData buttonGridData = new GridData(SWT.LEFT, SWT.CENTER, false,
-                false);
-        checkBox.setLayoutData(buttonGridData);
 
         /*
          * Set the editability of the megawidget to false if necessary.
@@ -241,7 +232,7 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
-        checkBox.setSelection(this.state);
+        checkBox.setChecked(this.state);
     }
 
     // Private Methods
@@ -255,8 +246,6 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        checkBox.getParent().setEnabled(editable);
-        checkBox.setBackground(helper.getBackgroundColor(editable, checkBox,
-                null));
+        checkBox.setEditable(editable);
     }
 }

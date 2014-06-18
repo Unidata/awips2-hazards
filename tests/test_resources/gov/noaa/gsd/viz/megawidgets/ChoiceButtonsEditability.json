@@ -1,0 +1,90 @@
+[
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "button1",
+  "label": "Include surrounding counties",
+  "values": true
+ },
+ {
+  "fieldType":"CheckBoxes",
+  "fieldName": "button2",
+  "label": "Include:",
+  "spacing": 20,
+  "choices": [
+   { 
+    "identifier": "ffwEmergency",
+    "displayString": "**FLASH FLOOD EMERGENCY**",
+    "detailFields": [
+     {
+      "fieldType": "Text",
+      "fieldName": "text1",
+      "expandHorizontally": True,
+      "maxChars": 40,
+      "visibleChars": 20,
+      "values": "|* Enter Location *|"
+     }
+    ]
+   },
+   {
+    "identifier": "+SM",
+    "displayString": "Also Snow Melt"
+   },
+   {
+    "identifier": "-FL",
+    "displayString": "Flooding not directly reported, only heavy rain"
+   },                
+   {
+    "identifier": "+SS",
+    "displayString": "Small streams"
+   },
+   {
+    "identifier": "+US",
+    "displayString": "Urban areas and small streams"
+   },
+   {
+    "identifier": "+AS",
+    "displayString": "Arroyo and small streams"
+   },
+   {
+    "identifier": "+HA",
+    "displayString": "Hydrologic Flooding"
+   }
+  ],
+  "values": [ "+SM", "+SS" ]
+ },
+ {
+  "fieldType": "RadioButtons",
+  "label": "Rain so far:",
+  "fieldName": "button3",
+  "spacing": 20,
+  "values": "N inches so far",
+  "choices": [ "One inch so far", "Two inches so far", "Three inches so far",
+   {
+    "identifier": "N inches so far",
+    "displayString": "",
+    "detailFields": [
+     {
+      "fieldType": "FractionSpinner",
+      "fieldName": "spinner1",
+      "minValue": 0,
+      "maxValue": 99,
+      "incrementDelta": 1,
+      "precision": 1
+     },
+     {
+      "fieldType": "Label",
+      "fieldName": "label1",
+      "label": "inches of rain so far"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "editability",
+  "spacing": 30,
+  "label": "Editable",
+  "values": true
+ }
+]

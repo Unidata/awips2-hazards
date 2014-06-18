@@ -32,6 +32,8 @@ import org.eclipse.swt.widgets.Group;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new
  *                                           validator package, updated
  *                                           Javadoc and other comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to keep children synced
+ *                                           with enabled and editable state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,18 +66,19 @@ public class GroupMegawidget extends ContainerMegawidget {
          * Create the group panel in which to place the child megawidgets, and
          * give it its title if it has one.
          */
-        Group panel = new Group(parent, SWT.NONE);
+        Group group = new Group(parent, SWT.NONE);
         if (specifier.getLabel() != null) {
-            panel.setText(specifier.getLabel());
+            group.setText(specifier.getLabel());
         }
-        panel.setEnabled(specifier.isEnabled());
-        gridContainerPanel(panel);
-        composite = panel;
+        group.setEnabled(specifier.isEnabled());
+        gridContainerPanel(group);
+        setComposite(group);
 
         /*
          * Create its child megawidgets.
          */
-        children = createChildMegawidgets(panel, specifier.getColumnCount(),
-                specifier.getChildMegawidgetSpecifiers(), paramMap);
+        setChildren(createChildMegawidgets(group, specifier.getColumnCount(),
+                specifier.isEnabled(), specifier.isEditable(),
+                specifier.getChildMegawidgetSpecifiers(), paramMap));
     }
 }

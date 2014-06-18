@@ -41,6 +41,8 @@ import java.util.Map;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel".
  * </pre>
  * 
  * @author Chris.Golden
@@ -126,8 +128,8 @@ public class CheckListSpecifier extends
     }
 
     @Override
-    public final boolean isFullWidthOfColumn() {
-        return optionsManager.isFullWidthOfColumn();
+    public final boolean isFullWidthOfDetailPanel() {
+        return optionsManager.isFullWidthOfDetailPanel();
     }
 
     @Override

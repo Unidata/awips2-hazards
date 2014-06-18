@@ -1,0 +1,93 @@
+[
+ {
+  "fieldType": "TabbedComposite",
+  "fieldName": "container1",
+  "leftMargin": 10,
+  "rightMargin": 10,
+  "topMargin": 10,
+  "bottomMargin": 10,
+  "expandHorizontally": true,
+  "expandVertically": true,
+  "pages": [
+   {
+    "pageName": "First Tab",
+    "pageFields": [
+     {
+      "fieldType": "Label",
+      "fieldName": "label1",
+      "label": "This is the first tab's page...",
+      "italic": true
+     },
+     {
+      "fieldType": "BoundedListBuilder",
+      "fieldName": "boundedListBuilder1",
+      "label": "Available Columns:",
+      "selectedLabel": "Selected Columns:",
+      "choices": [ "Name", "Type", "Description", "Threat Level", "Time Until Impact", "Confidence", "Duration" ],
+      "values": [ "Description",  "Time Until Impact", "Threat Level" ],
+      "expandHorizontally": true,
+      "expandVertically": true
+     }
+    ]
+   },
+   {
+    "pageName": "Second Tab",
+    "pageFields": [
+     {
+      "fieldType": "Label",
+      "fieldName": "label2",
+      "label": "... and this is the second tab's page.",
+      "italic": true
+     }
+    ]
+   },
+   {
+    "pageName": "Third Tab",
+    "pageFields": [
+     {
+      "fieldType": "Label",
+      "fieldName": "label3",
+      "label": "Each tab may hold zero or more child megawidgets.",
+      "italic": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "fieldName": "parent1:parent2:parent3",
+  "fieldType": "TimeScale",
+  "valueLabels": {
+   "parent1": "Rise Above Time:",
+   "parent2": "Crest Time:",
+   "parent3": "Fall Below Time:"
+  },
+  "minimumTimeInterval": 60000,
+  "detailFields": {
+   "parent3": [
+    {
+     "fieldType": "CheckBox",
+     "fieldName": "outputLocalTime",
+     "label": "Output local time"
+    }
+   ]
+  },
+  "values": {
+   "parent1": 1402401000000,
+   "parent2": 1402401600000,
+   "parent3": 1402402200000
+  }
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "enabled",
+  "label": "Enabled",
+  "values": true
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "editability",
+  "label": "Editable",
+  "values": true
+ }
+]

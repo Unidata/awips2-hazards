@@ -1,0 +1,24 @@
+[
+ {
+  "fieldType": "Text",
+  "fieldName": "text1",
+  "label": "Warning Message:",
+  "values": "Enter warning message here...",
+  "visibleChars": 40,
+  "expandHorizontally": true
+ },
+ {
+  "fieldType": "Text",
+  "fieldName": "text2",
+  "label": "Additional Info:",
+  "visibleChars": 40,
+  "lines": 6,
+  "expandHorizontally": true
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "enabled",
+  "label": "Enabled",
+  "values": true
+ }
+]

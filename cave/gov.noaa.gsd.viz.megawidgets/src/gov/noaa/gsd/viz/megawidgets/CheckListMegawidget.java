@@ -59,6 +59,8 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to deselect any selected
+ *                                           items before being disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -422,6 +424,9 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
     protected final void doSetEnabled(boolean enable) {
         if (label != null) {
             label.setEnabled(enable);
+        }
+        if (enable == false) {
+            table.setSelection(UiBuilder.NO_SELECTION);
         }
         table.setEnabled(enable);
         if (allButton != null) {

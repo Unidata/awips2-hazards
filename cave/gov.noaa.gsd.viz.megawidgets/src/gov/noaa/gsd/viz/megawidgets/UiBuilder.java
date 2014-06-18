@@ -54,12 +54,22 @@ import com.google.common.collect.Lists;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to use new choice button
+ *                                           component.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class UiBuilder {
+
+    // Public Static Constants
+
+    /**
+     * Index used to indicate that nothing should be selected in various SWT
+     * widgets.
+     */
+    public static final int NO_SELECTION = -1;
 
     // Public Enumerated Types
 
@@ -200,7 +210,8 @@ public class UiBuilder {
      *             If an error occurs while creating or initializing any
      *             megawidgets acting as detail fields for the various choices.
      */
-    public static List<Button> buildChoiceButtons(Composite parent,
+    public static List<ChoiceButtonComponent> buildChoiceButtons(
+            Composite parent,
             FlatChoicesWithDetailMegawidgetSpecifier<?> specifier,
             int buttonFlags,
             BoundedChoicesDetailChildrenManager detailChildrenManager,
@@ -211,7 +222,7 @@ public class UiBuilder {
          */
         int buttonWidth = -1;
         boolean radioButtons = ((buttonFlags & SWT.RADIO) != 0);
-        List<Button> buttons = new ArrayList<>();
+        List<ChoiceButtonComponent> buttons = new ArrayList<>();
         List<Control> controls = new ArrayList<>();
         List<GridData> buttonsGridData = new ArrayList<>();
         int greatestHeight = 0;
@@ -236,17 +247,14 @@ public class UiBuilder {
              * compute it so that it may be used when indenting any additional
              * megawidgets that are on a row below the button.
              */
-            Button button = new Button(choiceParent, buttonFlags);
+            ChoiceButtonComponent button = new ChoiceButtonComponent(
+                    choiceParent, radioButtons, buttonFlags,
+                    specifier.isEnabled(), identifier,
+                    specifier.getNameOfNode(choice));
             if (buttonWidth == -1) {
-                buttonWidth = button.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
+                buttonWidth = button.getButtonNonTextWidth();
             }
-            button.setText(specifier.getNameOfNode(choice));
-            button.setData(identifier);
-            button.setEnabled(specifier.isEnabled());
-            GridData buttonGridData = new GridData(SWT.LEFT, SWT.CENTER, false,
-                    true);
-            button.setLayoutData(buttonGridData);
-            buttonsGridData.add(buttonGridData);
+            buttonsGridData.add(button.getGridData());
             buttons.add(button);
 
             /*
@@ -261,13 +269,13 @@ public class UiBuilder {
                 controls.addAll(detailChildrenManager
                         .createDetailChildMegawidgetsForChoice(button,
                                 choiceParent, parent, buttonWidth,
-                                detailSpecifiers));
+                                specifier.isEnabled(), detailSpecifiers));
                 int height = choiceParent.computeSize(SWT.DEFAULT, SWT.DEFAULT).y;
                 if (height > greatestHeight) {
                     greatestHeight = height;
                 }
             } else {
-                controls.add(button);
+                controls.add(button.getButton().getParent());
             }
         }
 
@@ -281,7 +289,7 @@ public class UiBuilder {
             for (IControl detailMegawidget : detailChildrenManager
                     .getDetailMegawidgets()) {
                 if (((IControlSpecifier) detailMegawidget.getSpecifier())
-                        .isFullWidthOfColumn()) {
+                        .isFullWidthOfDetailPanel()) {
                     fullWidthDetailMegawidgets.add(detailMegawidget);
                 }
             }
@@ -304,13 +312,16 @@ public class UiBuilder {
             for (GridData buttonGridData : buttonsGridData) {
                 buttonGridData.minimumHeight = greatestHeight;
             }
+            for (ChoiceButtonComponent button : buttons) {
+                button.parentMinimumHeightChanged(greatestHeight);
+            }
         }
 
         /*
          * Bind each choice button selection event to trigger a change in the
          * record of the state for the widget.
          */
-        for (Button button : buttons) {
+        for (ChoiceButtonComponent button : buttons) {
             button.addSelectionListener(listener);
         }
 

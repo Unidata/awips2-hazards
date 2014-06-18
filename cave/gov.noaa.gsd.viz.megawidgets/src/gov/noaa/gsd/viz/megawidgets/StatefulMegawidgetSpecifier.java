@@ -56,6 +56,7 @@ import com.google.common.collect.ImmutableList;
  *                                           is given within their specification
  *                                           parameters. Also updated Javadoc and
  *                                           other comments.
+ * Jun 17, 2014   3982     Chris.Golden      Removed obsolete properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -123,27 +124,6 @@ public abstract class StatefulMegawidgetSpecifier extends
      * Map pairing state identifier keys with state label values.
      */
     private final Map<String, String> labelsForStateIdentifiers;
-
-    /**
-     * Map pairing state identifier keys with short state label values.
-     */
-    private final Map<String, String> shortLabelsForStateIdentifiers;
-
-    /**
-     * Map pairing state identifier keys with relative visual weight values. The
-     * latter are used to specify their associated state's visual weight
-     * relative to the that of each other state that is part of this or another
-     * stateful megawidget in a grouping; it must be a positive integer if it is
-     * specified. This is not used for the megawidget's own display, but may be
-     * utilized as a hint as to the relative importance of the state in
-     * comparison with other states of this or other specifiers if they have
-     * their data tabulated in a table or some other form. If specified, the
-     * relative importance of this state is calculated as this value divided by
-     * the total of all such values for all the states of stateful megawidget
-     * specifiers in the group. If not specified, it is assumed to be 1 for each
-     * state.
-     */
-    private final Map<String, Integer> relativeWeightsForStateIdentifiers;
 
     /**
      * Map pairing state identifiers with starting values for each state, if
@@ -216,23 +196,6 @@ public abstract class StatefulMegawidgetSpecifier extends
                 null, null, true);
 
         /*
-         * Ensure that the short state labels, if present, are acceptable.
-         */
-        shortLabelsForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_SHORT_LABELS, "string", classes,
-                "", labelsForStateIdentifiers, null, true);
-
-        /*
-         * Ensure that the relative state weights, if present, are acceptable.
-         */
-        classes.clear();
-        classes.add(Number.class);
-        relativeWeightsForStateIdentifiers = getStateMappedParametersFromObject(
-                parameters, MEGAWIDGET_STATE_RELATIVE_WEIGHTS,
-                "positive integer", classes, new Integer(1), null,
-                POSITIVE_INTEGER_VALUE_CONVERTER, true);
-
-        /*
          * Initialize the state validator.
          */
         if (stateValidator instanceof SingleStateValidator) {
@@ -260,16 +223,6 @@ public abstract class StatefulMegawidgetSpecifier extends
     @Override
     public final String getStateLabel(String identifier) {
         return labelsForStateIdentifiers.get(identifier);
-    }
-
-    @Override
-    public final String getStateShortLabel(String identifier) {
-        return shortLabelsForStateIdentifiers.get(identifier);
-    }
-
-    @Override
-    public final int getRelativeWeight(String identifier) {
-        return relativeWeightsForStateIdentifiers.get(identifier);
     }
 
     @Override

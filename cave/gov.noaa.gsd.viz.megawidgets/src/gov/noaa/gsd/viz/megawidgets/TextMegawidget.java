@@ -17,16 +17,20 @@ import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableSet;
@@ -61,6 +65,8 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to have correct look when
+ *                                           disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -82,6 +88,18 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
+    // Private Constants
+
+    /**
+     * Disabled foreground color. This is required because the
+     * {@link StyledText} does not take on a proper disabled look when it is
+     * disabled. See <a
+     * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=4745">this SWT
+     * bug</a> for details.
+     */
+    protected final Color DISABLED_FOREGROUND_COLOR = new Color(
+            Display.getCurrent(), 186, 182, 180);
+
     // Private Variables
 
     /**
@@ -93,6 +111,11 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      * Text component associated with this megawidget.
      */
     private final StyledText text;
+
+    /**
+     * Standard foreground color for the styled text component.
+     */
+    private final Color defaultForegroundColor;
 
     /**
      * Current value.
@@ -169,6 +192,14 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             text.setTextLimit(limit);
         }
         text.setEnabled(specifier.isEnabled());
+        defaultForegroundColor = text.getForeground();
+        text.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                DISABLED_FOREGROUND_COLOR.dispose();
+            }
+        });
 
         /*
          * Place the text component in the grid.
@@ -310,6 +341,10 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
             label.setEnabled(enable);
         }
         text.setEnabled(enable);
+        text.setBackground(helper.getBackgroundColor((enable && isEditable()),
+                text, label));
+        text.setForeground(enable ? defaultForegroundColor
+                : DISABLED_FOREGROUND_COLOR);
     }
 
     @Override
@@ -352,7 +387,8 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      */
     private void doSetEditable(boolean editable) {
         text.getParent().setEnabled(editable);
-        text.setBackground(helper.getBackgroundColor(editable, text, label));
+        text.setBackground(helper.getBackgroundColor(isEnabled() && editable,
+                text, label));
     }
 
     /**

@@ -51,12 +51,12 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * <dd>List of dictionaries, with each of the latter defining a megawidget.</dd>
  * <dt><code>valueDict</code></dt>
  * <dd>Dictionary mapping tool parameter identifiers to their starting values.</dd>
- * <dt><code>sideEffectsScript</code></dt>
+ * <dt><code>interdependenciesScript</code></dt>
  * <dd>Optional string which, if provided, is used as the Python script that
- * defines the <code>applySideEffects()</code> method required by
+ * defines the <code>applyInterdependencies()</code> method required by
  * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}. If
- * not provided, no side effects are applied when megawidgets are invoked or
- * experience state changes.</dd>
+ * not provided, no interdependencies are applied when megawidgets are invoked
+ * or experience state changes.</dd>
  * <dt><code>runToolTriggers</code></dt>
  * <dd>Optional list of megawidget identifier strings indicating which of the
  * megawidgets defined within <code>fields</code> are to trigger tool execution
@@ -91,6 +91,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           for megawidget use.
  * Apr 14, 2014   2925     Chris.Golden      Minor changes to work with megawidget
  *                                           framework changes.
+ * Jun 17, 2014   3982     Chris.Golden      Changed megawidget "side effects" to
+ *                                           "interdependencies".
  * </pre>
  * 
  * @author Chris.Golden
@@ -211,7 +213,8 @@ class ToolDialog extends BasicDialog {
         }
         String script = null;
         try {
-            script = dialogDict.getDynamicallyTypedValue("sideEffectsScript");
+            script = dialogDict
+                    .getDynamicallyTypedValue("interdependenciesScript");
         } catch (Exception e) {
             statusHandler
                     .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",

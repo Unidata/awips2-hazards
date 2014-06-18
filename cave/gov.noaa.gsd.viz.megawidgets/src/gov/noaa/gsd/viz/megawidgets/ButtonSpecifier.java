@@ -23,6 +23,8 @@ import java.util.Map;
  * Oct 21, 2013    2168    Chris.Golden      Changed to implement IControlSpecifier
  *                                           and use ControlSpecifierOptionsManager
  *                                           (composition over inheritance).
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel".
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,8 +73,8 @@ public class ButtonSpecifier extends NotifierMegawidgetSpecifier implements
     }
 
     @Override
-    public final boolean isFullWidthOfColumn() {
-        return optionsManager.isFullWidthOfColumn();
+    public final boolean isFullWidthOfDetailPanel() {
+        return optionsManager.isFullWidthOfDetailPanel();
     }
 
     @Override

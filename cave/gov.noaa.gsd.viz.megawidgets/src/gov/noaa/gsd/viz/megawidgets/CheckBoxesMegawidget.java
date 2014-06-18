@@ -58,6 +58,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014   3982     Chris.Golden      Changed to use new choices button
+ *                                           component, and to disable detail
+ *                                           children when it is disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,7 +93,7 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
     /**
      * Checkboxes associated with this megawidget.
      */
-    private final List<Button> checkBoxes;
+    private final List<ChoiceButtonComponent> checkBoxes;
 
     /**
      * Detail child megawidget manager.
@@ -135,7 +138,8 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
             @Override
             public void widgetSelected(SelectionEvent e) {
                 Button checkBox = (Button) e.widget;
-                String choice = (String) checkBox.getData();
+                String choice = ((ChoiceButtonComponent) checkBox.getData())
+                        .getChoice();
                 if (checkBox.getSelection()) {
                     state.add(choice);
                 } else {
@@ -262,8 +266,8 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
 
     @Override
     protected final void doSynchronizeComponentWidgetsToState() {
-        for (Button checkBox : checkBoxes) {
-            checkBox.setSelection(state.contains(checkBox.getData()));
+        for (ChoiceButtonComponent checkBox : checkBoxes) {
+            checkBox.setChecked(state.contains(checkBox.getChoice()));
         }
     }
 
@@ -272,8 +276,11 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
         if (label != null) {
             label.setEnabled(enable);
         }
-        for (Button checkBox : checkBoxes) {
+        for (ChoiceButtonComponent checkBox : checkBoxes) {
             checkBox.setEnabled(enable);
+        }
+        for (IControl child : getChildren()) {
+            child.setEnabled(enable);
         }
     }
 
@@ -288,8 +295,8 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        if (checkBoxes.size() > 0) {
-            checkBoxes.get(0).getParent().setEnabled(editable);
+        for (ChoiceButtonComponent checkBox : checkBoxes) {
+            checkBox.setEditable(editable);
         }
     }
 }

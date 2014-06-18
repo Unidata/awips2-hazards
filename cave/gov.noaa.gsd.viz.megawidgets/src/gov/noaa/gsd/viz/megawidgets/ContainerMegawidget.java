@@ -42,6 +42,8 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to keep children synced
+ *                                           with enabled and editable state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,17 +65,17 @@ public abstract class ContainerMegawidget extends Megawidget implements
         MUTABLE_PROPERTY_NAMES = ImmutableSet.copyOf(names);
     };
 
-    // Protected Variables
+    // Private Variables
 
     /**
-     * Composite.
+     * Composite panel that holds the megawidgets.
      */
-    protected Composite composite = null;
+    private Composite composite;
 
     /**
      * List of child widgets.
      */
-    protected List<IControl> children = null;
+    private List<IControl> children;
 
     /**
      * Control component helper.
@@ -130,6 +132,9 @@ public abstract class ContainerMegawidget extends Megawidget implements
     @Override
     public final void setEditable(boolean editable) {
         helper.setEditable(editable);
+        for (IControl child : getChildren()) {
+            child.setEditable(editable);
+        }
     }
 
     @Override
@@ -168,6 +173,33 @@ public abstract class ContainerMegawidget extends Megawidget implements
     @Override
     protected final void doSetEnabled(boolean enable) {
         composite.setEnabled(enable);
+        for (IControl child : children) {
+            child.setEnabled(enable);
+        }
+    }
+
+    /**
+     * Set the composite acting as the parent component to that specified. This
+     * method can only be called once per instance.
+     * 
+     * @param composite
+     *            Composite to be used as the parent component.
+     */
+    protected final void setComposite(Composite composite) {
+        assert (this.composite == null);
+        this.composite = composite;
+    }
+
+    /**
+     * Set the children to those specified. This method can only be called once
+     * per instance.
+     * 
+     * @param children
+     *            Children to be used.
+     */
+    protected final void setChildren(List<IControl> children) {
+        assert (this.children == null);
+        this.children = children;
     }
 
     /**
@@ -206,6 +238,12 @@ public abstract class ContainerMegawidget extends Megawidget implements
      * @param columnCount
      *            Number of columns that the layout must provide to its
      *            children.
+     * @param enabled
+     *            Flag indicating whether or not the container of the children
+     *            is enabled; if it is not, children will also be disabled.
+     * @param editable
+     *            Flag indicating whether or not the container of the children
+     *            is editable; if it is not, children will also be uneditable.
      * @param childMegawidgetSpecifiers
      *            List of child megawidgets for which GUI components are to be
      *            created and placed within the composite.
@@ -218,7 +256,7 @@ public abstract class ContainerMegawidget extends Megawidget implements
      *             megawidgets.
      */
     protected final List<IControl> createChildMegawidgets(Composite composite,
-            int columnCount,
+            int columnCount, boolean enabled, boolean editable,
             List<? extends IControlSpecifier> childMegawidgetSpecifiers,
             Map<String, Object> creationParams) throws MegawidgetException {
 
@@ -237,13 +275,21 @@ public abstract class ContainerMegawidget extends Megawidget implements
         composite.setLayout(layout);
 
         /*
-         * Create the child megawidgets, align their elements, and return the
-         * former.
+         * Create the child megawidgets, making sure that they are disabled
+         * and/or uneditable if the container is. Then align their elements, and
+         * return the former.
          */
         List<IControl> childMegawidgets = new ArrayList<>();
         for (IControlSpecifier childSpecifier : childMegawidgetSpecifiers) {
-            childMegawidgets.add(childSpecifier.createMegawidget(composite,
-                    IControl.class, creationParams));
+            IControl childMegawidget = childSpecifier.createMegawidget(
+                    composite, IControl.class, creationParams);
+            if (enabled == false) {
+                childMegawidget.setEnabled(false);
+            }
+            if (editable == false) {
+                childMegawidget.setEditable(false);
+            }
+            childMegawidgets.add(childMegawidget);
         }
         ControlComponentHelper.alignMegawidgetsElements(childMegawidgets);
         return childMegawidgets;

@@ -39,9 +39,11 @@ import org.eclipse.swt.widgets.Event;
  * Feb 12, 2014    2161    Chris.Golden      Changed to delegate most of its
  *                                           work to the new DetailChildren-
  *                                           Manager.
- * Apr 23, 2014    2925     Chris.Golden     Changed to work with new validator
+ * Apr 23, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 17, 2014    3982    Chris.Golden      Changed to work with new choice
+ *                                           button component.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,11 +64,11 @@ public class BoundedChoicesDetailChildrenManager implements
      * Map of identifiers of detail child megawidgets that are notifiers to the
      * choice buttons with which they are associated.
      */
-    private final Map<String, Button> choiceButtonsForDetailIdentifiers = new HashMap<>();
+    private final Map<String, ChoiceButtonComponent> choiceButtonsForDetailIdentifiers = new HashMap<>();
 
     /**
-     * Map of choice buttons to the listeners used to receive notification of
-     * the buttons' selection.
+     * Choice button listener used to receive notification of the buttons'
+     * selection.
      */
     private final SelectionListener choiceButtonListener;
 
@@ -139,6 +141,10 @@ public class BoundedChoicesDetailChildrenManager implements
      *            Width in pixels of the choice button, used so as to allow
      *            subsequent rows of child megawidgets, if any, to have the
      *            correct indentation.
+     * @param enabled
+     *            Flag indicating whether or not the parent megawidget is
+     *            enabled. If it is not, the child megawidgets will be disabled
+     *            as well.
      * @param detailSpecifiers
      *            List of the choice's detail child megawidget specifiers.
      * @return List of any composites that were created to hold megawidgets on
@@ -147,9 +153,10 @@ public class BoundedChoicesDetailChildrenManager implements
      *             If an error occurs while creating or initializing the
      *             associated megawidgets.
      */
-    public List<Composite> createDetailChildMegawidgetsForChoice(Button button,
-            Composite adjacentComposite, Composite overallComposite,
-            int buttonWidth, List<IControlSpecifier> detailSpecifiers)
+    public List<Composite> createDetailChildMegawidgetsForChoice(
+            ChoiceButtonComponent button, Composite adjacentComposite,
+            Composite overallComposite, int buttonWidth, boolean enabled,
+            List<IControlSpecifier> detailSpecifiers)
             throws MegawidgetException {
 
         /*
@@ -159,7 +166,8 @@ public class BoundedChoicesDetailChildrenManager implements
          */
         DetailChildrenManager.CompositesAndMegawidgets compositesAndMegawidgets = detailChildrenManager
                 .createDetailChildMegawidgets(adjacentComposite,
-                        overallComposite, buttonWidth, detailSpecifiers);
+                        overallComposite, buttonWidth, enabled,
+                        detailSpecifiers);
         for (IControl megawidget : compositesAndMegawidgets
                 .getDetailMegawidgets()) {
             rememberChildMegawidgetsAssociationWithChoiceButton(megawidget,
@@ -217,7 +225,7 @@ public class BoundedChoicesDetailChildrenManager implements
      */
     @SuppressWarnings("unchecked")
     private void rememberChildMegawidgetsAssociationWithChoiceButton(
-            IControl megawidget, Button button) {
+            IControl megawidget, ChoiceButtonComponent button) {
         if (megawidget instanceof INotifier) {
             choiceButtonsForDetailIdentifiers.put(megawidget.getSpecifier()
                     .getIdentifier(), button);
@@ -240,12 +248,12 @@ public class BoundedChoicesDetailChildrenManager implements
      *            selection event firing.
      */
     private void fireSelectionEventForDetailMegawidget(IMegawidget megawidget) {
-        Button choiceButton = choiceButtonsForDetailIdentifiers.get(megawidget
-                .getSpecifier().getIdentifier());
-        if (choiceButton.getSelection() == false) {
-            choiceButton.setSelection(true);
+        Button button = choiceButtonsForDetailIdentifiers.get(
+                megawidget.getSpecifier().getIdentifier()).getButton();
+        if (button.getSelection() == false) {
+            button.setSelection(true);
             Event baseEvent = new Event();
-            baseEvent.widget = choiceButton;
+            baseEvent.widget = button;
             SelectionEvent event = new SelectionEvent(baseEvent);
             choiceButtonListener.widgetSelected(event);
         }

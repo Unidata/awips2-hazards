@@ -56,9 +56,9 @@ public class ControlSpecifierOptionsManager {
 
     /**
      * Flag indicating whether or not the megawidget occupies the full width of
-     * its parent megawidget's column.
+     * its parent megawidget's detail panel if it is a detail megawidget.
      */
-    private final boolean fullWidthOfColumn;
+    private final boolean fullWidthOfDetailPanel;
 
     /**
      * Spacing between this megawidget and whatever is above it.
@@ -123,21 +123,22 @@ public class ControlSpecifierOptionsManager {
         }
 
         /*
-         * Ensure that the full-width-of-column flag, if present, is acceptable.
+         * Ensure that the full-width-of-detail panel flag, if present, is
+         * acceptable.
          */
         switch (howToSetFullWidthOption) {
         case USE_PARAMETER_VALUE:
-            fullWidthOfColumn = ConversionUtilities
+            fullWidthOfDetailPanel = ConversionUtilities
                     .getSpecifierBooleanValueFromObject(
                             specifier.getIdentifier(),
                             specifier.getType(),
                             parameters
-                                    .get(IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_COLUMN),
-                            IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_COLUMN,
+                                    .get(IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_DETAIL_PANEL),
+                            IControlSpecifier.MEGAWIDGET_FULL_WIDTH_OF_DETAIL_PANEL,
                             true);
             break;
         default:
-            fullWidthOfColumn = (howToSetFullWidthOption == BooleanSource.TRUE);
+            fullWidthOfDetailPanel = (howToSetFullWidthOption == BooleanSource.TRUE);
         }
 
         /*
@@ -179,16 +180,16 @@ public class ControlSpecifierOptionsManager {
     }
 
     /**
-     * Determine whether or not the megawidget fills the width of the column it
-     * is occupying within its parent. This may be used by parent megawidgets to
-     * determine whether their children may be laid out side by side in the same
-     * column or not.
+     * Determine whether or not the megawidget fills the width of the detail
+     * panel it is occupying within its parent, if it is a detail megawidget.
+     * This may be used by parent megawidgets to determine whether their
+     * children may be laid out side by side in the same detail panel or not.
      * 
-     * @return True if the megawidget fills the width of the column it occupies,
-     *         false otherwise.
+     * @return True if the megawidget fills the width of the detail panel it
+     *         occupies, false otherwise.
      */
-    public boolean isFullWidthOfColumn() {
-        return fullWidthOfColumn;
+    public boolean isFullWidthOfDetailPanel() {
+        return fullWidthOfDetailPanel;
     }
 
     /**

@@ -35,6 +35,11 @@ import org.eclipse.swt.widgets.Composite;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 10, 2014    2161    Chris.Golden      Initial creation.
+ * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
+ *                                           property to "isFullWidthOfDetailPanel",
+ *                                           and changed to make sure that children
+ *                                           are disabled along with their parents
+ *                                           if the latter are disabled.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,7 +53,8 @@ public class DetailChildrenManager {
     /**
      * Encapsulation of any composites created, and any detail megawidgets
      * created, as the result of a call to
-     * {@link #createDetailChildMegawidgets(Composite, Composite, int, List)}.
+     * {@link #createDetailChildMegawidgets(Composite, Composite, int, boolean, List)}
+     * .
      */
     public static class CompositesAndMegawidgets {
 
@@ -166,6 +172,10 @@ public class DetailChildrenManager {
      *            row created in the <code>overallComposite</code>, leaving that
      *            much blank space to the left of the leftmost megawidget in
      *            each new row.
+     * @param enabled
+     *            Flag indicating whether or not the parent megawidget is
+     *            enabled. If it is not, the child megawidgets will be disabled
+     *            as well.
      * @param detailSpecifiers
      *            List of the choice's detail child megawidget specifiers.
      * @return List of any composites that were created to hold megawidgets on
@@ -178,7 +188,8 @@ public class DetailChildrenManager {
 
     public CompositesAndMegawidgets createDetailChildMegawidgets(
             Composite adjacentComposite, Composite overallComposite,
-            int newRowLeftOffset, List<IControlSpecifier> detailSpecifiers)
+            int newRowLeftOffset, boolean enabled,
+            List<IControlSpecifier> detailSpecifiers)
             throws MegawidgetException {
 
         /*
@@ -196,7 +207,7 @@ public class DetailChildrenManager {
         Queue<Integer> specifierCountPerRow = new LinkedBlockingQueue<>();
         int specifierCount = 0;
         for (int j = 0; j < detailSpecifiers.size(); j++) {
-            if (detailSpecifiers.get(j).isFullWidthOfColumn()) {
+            if (detailSpecifiers.get(j).isFullWidthOfDetailPanel()) {
                 if ((specifierCount > 0) || specifierCountPerRow.isEmpty()) {
                     specifierCountPerRow.add(specifierCount);
                     specifierCount = 0;
@@ -245,10 +256,13 @@ public class DetailChildrenManager {
             }
 
             /*
-             * Create the megawidget.
+             * Create the megawidget, ensuring it is disabled if the parent is.
              */
             IControl megawidget = detailSpecifier.createMegawidget(composite,
                     IControl.class, creationParams);
+            if (enabled == false) {
+                megawidget.setEnabled(false);
+            }
             theseDetailMegawidgets.add(megawidget);
         }
         detailMegawidgets.addAll(theseDetailMegawidgets);

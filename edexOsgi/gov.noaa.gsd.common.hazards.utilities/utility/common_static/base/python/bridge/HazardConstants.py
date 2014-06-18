@@ -9,7 +9,9 @@
                                                  Bridge
     April 09, 2014 2925     Chris.Golden         Added constants for
                                                  class-based metadata.
-    
+    June 17, 2014  3982     Chris.Golden         Changed megawidget
+                                                 "side effects" to
+                                                 "interdependencies".
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -134,7 +136,7 @@ FILTER_KEY = "filter"
 RETURN_TYPE_KEY = "returnType"
 GRID_PARAM_KEY = "gridParm"
 METADATA_KEY = "metadata"
-SIDE_EFFECTS_SCRIPT_KEY = "sideEffects"
+INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
 
 
 #################################
