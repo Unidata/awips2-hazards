@@ -32,7 +32,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 
-import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialogUtility;
 import com.raytheon.uf.viz.productgen.widgetcreation.datatypes.IProductEditable;
 
 /**
@@ -46,6 +45,7 @@ import com.raytheon.uf.viz.productgen.widgetcreation.datatypes.IProductEditable;
  * ------------ ---------- ----------- --------------------------
  * Oct 7, 2013            mnash     Initial creation
  * Feb 18, 2014 2702      jsanchez  Used parseEditable method from ProductGenerationDialogUtility.
+ * Jun 18, 2014 3519      jsanchez  Removed the ProductGenerationUtility.
  * 
  * </pre>
  * 
@@ -100,8 +100,7 @@ public class ProductEditorComposite extends Composite {
         editable = WidgetCreationRegistry.getInstance(listener)
                 .getProductEditable(data);
         if (editable != null) {
-            editable.setKey(ProductGenerationDialogUtility
-                    .parseEditable((String) getData("key")));
+            editable.setKey((String) getData("key"));
             control = editable.getWidget(data, this);
             editable.addListeners(control);
         }
@@ -124,7 +123,7 @@ public class ProductEditorComposite extends Composite {
         GridData gridData = new GridData(SWT.FILL, SWT.NONE, true, false);
         label.setLayoutData(gridData);
 
-        label.setText(ProductGenerationDialogUtility.parseEditable(text));
+        label.setText(text);
         label.setFont(BOLD_FONT);
         label.moveAbove(this);
     }

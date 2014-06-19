@@ -16,12 +16,13 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.productgen.dialog.ProductEditor;
+import com.raytheon.viz.ui.VizWorkbenchManager;
 
 /**
  * Product editor view, an implementation of IProductEditorView that provides an
@@ -41,6 +42,7 @@ import com.raytheon.uf.viz.productgen.dialog.ProductGenerationDialog;
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
  * May 08, 2014  2925      Chris.Golden Changed to work with MVP framework changes.
+ * Jun 18, 2014  3519      jsanchez         Replaced ProductGenerationDialog with ProductEditor.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -63,7 +65,7 @@ public final class ProductEditorView implements
     /**
      * Product editor dialog.
      */
-    private ProductGenerationDialog productGenerationDialog = null;
+    private ProductEditor productEditor;
 
     // Public Constructors
 
@@ -85,9 +87,9 @@ public final class ProductEditorView implements
 
     @Override
     public void dispose() {
-        if (productGenerationDialog != null) {
-            productGenerationDialog.close();
-            productGenerationDialog = null;
+        if (productEditor != null) {
+            productEditor.close();
+            productEditor = null;
         }
     }
 
@@ -99,43 +101,53 @@ public final class ProductEditorView implements
 
     @Override
     public boolean showProductEditorDetail(
-            List<GeneratedProductList> generatedProductsList) {
-        productGenerationDialog = new ProductGenerationDialog(PlatformUI
-                .getWorkbench().getActiveWorkbenchWindow().getShell());
-        productGenerationDialog
-                .setGeneratedProductListStorage(generatedProductsList);
+            final List<GeneratedProductList> generatedProductsList) {
+        VizApp.runSync(new Runnable() {
+            @Override
+            public void run() {
+
+                productEditor = new ProductEditor(VizWorkbenchManager
+                        .getInstance().getCurrentWindow().getShell(),
+                        generatedProductsList);
+            }
+        });
         return true;
     }
 
     @Override
     public void closeProductEditorDialog() {
 
-        if ((productGenerationDialog != null)
-                && (productGenerationDialog.getShell() != null)
-                && (!productGenerationDialog.getShell().isDisposed())) {
-            productGenerationDialog.close();
+        if ((productEditor != null) && (productEditor.getShell() != null)
+                && (!productEditor.getShell().isDisposed())) {
+            productEditor.close();
         }
 
-        productGenerationDialog = null;
+        productEditor = null;
     }
 
     @Override
     public List<GeneratedProductList> getGeneratedProductsList() {
-        return productGenerationDialog.getGeneratedProductListStorage();
+        return productEditor.getGeneratedProductListStorage();
     }
 
     @Override
     public ICommandInvoker<String> getIssueInvoker() {
-        return productGenerationDialog.getIssueInvoker();
+        return productEditor.getIssueInvoker();
     }
 
     @Override
     public ICommandInvoker<String> getDismissInvoker() {
-        return productGenerationDialog.getDismissInvoker();
+        return productEditor.getDismissInvoker();
     }
 
     @Override
     public void openDialog() {
-        productGenerationDialog.open();
+        VizApp.runSync(new Runnable() {
+            @Override
+            public void run() {
+                productEditor.open();
+            }
+        });
+
     }
 }

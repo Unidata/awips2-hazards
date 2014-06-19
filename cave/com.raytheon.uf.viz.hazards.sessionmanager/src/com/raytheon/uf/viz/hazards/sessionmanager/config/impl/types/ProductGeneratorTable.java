@@ -19,11 +19,13 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 
 /**
  * JSon compatible object for loading and storing Product Generator Tables.
@@ -35,6 +37,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 29, 2013 1257       bsteffen    Initial creation
+ * Apr 24, 2014 1480       jsanchez    Added getProductFormats method.
  * 
  * </pre>
  * 
@@ -47,9 +50,9 @@ public class ProductGeneratorTable extends
 
     private static final long serialVersionUID = -6842654894871115837L;
 
-    public String getProduct(IHazardEvent event){
+    public String getProduct(IHazardEvent event) {
         String key = HazardEventUtilities.getHazardType(event);
-        for(Entry<String, ProductGeneratorEntry> entry : entrySet()){
+        for (Entry<String, ProductGeneratorEntry> entry : entrySet()) {
             for (String[] pair : entry.getValue().getAllowedHazards()) {
                 if (pair[0].equals(key)) {
                     return entry.getKey();
@@ -57,5 +60,19 @@ public class ProductGeneratorTable extends
             }
         }
         return null;
+    }
+
+    public ProductFormats getProductFormats(String productGeneratorName) {
+        ProductFormats productFormats = new ProductFormats();
+
+        ProductGeneratorEntry entry = get(productGeneratorName);
+        if (entry != null) {
+            productFormats.setIssueFormats(Arrays.asList(entry
+                    .getIssueFormatters()));
+            productFormats.setPreviewFormats(Arrays.asList(entry
+                    .getPreviewFormatters()));
+        }
+
+        return productFormats;
     }
 }

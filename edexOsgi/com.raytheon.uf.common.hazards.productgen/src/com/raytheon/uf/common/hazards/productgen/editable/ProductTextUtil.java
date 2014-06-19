@@ -20,7 +20,7 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextRequest.ProductRequestType;
@@ -59,15 +59,14 @@ public class ProductTextUtil {
      * @param productCategory
      * @param productID
      * @param segment
-     * @param eventId
+     * @param eventIDs
      * @param value
      */
     public static ProductTextResponse createProductText(String key,
             String productCategory, String productID, String segment,
-            List<Integer> eventIDs, Serializable value) {
-        String eventID = createQueryConstraintEventID(eventIDs);
+            ArrayList<Integer> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventID, value, ProductRequestType.CREATE);
+                productID, segment, eventIDs, value, ProductRequestType.CREATE);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to store product text, most likely the database already contains an entry",
@@ -83,15 +82,14 @@ public class ProductTextUtil {
      * @param productCategory
      * @param productID
      * @param segment
-     * @param eventId
+     * @param eventIDs
      * @param value
      */
     public static ProductTextResponse updateProductText(String key,
             String productCategory, String productID, String segment,
-            List<Integer> eventIDs, Serializable value) {
-        String eventID = createQueryConstraintEventID(eventIDs);
+            ArrayList<Integer> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventID, value, ProductRequestType.UPDATE);
+                productID, segment, eventIDs, value, ProductRequestType.UPDATE);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to update product text, most likely the database does not contain a matching entry",
@@ -108,15 +106,14 @@ public class ProductTextUtil {
      * @param productCategory
      * @param productID
      * @param segment
-     * @param eventId
+     * @param eventIDs
      * @param value
      */
     public static ProductTextResponse deleteProductText(String key,
             String productCategory, String productID, String segment,
-            List<Integer> eventIDs) {
-        String eventID = createQueryConstraintEventID(eventIDs);
+            ArrayList<Integer> eventIDs) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventID, null, ProductRequestType.DELETE);
+                productID, segment, eventIDs, null, ProductRequestType.DELETE);
         if (response.getExceptions() != null) {
             handler.error(
                     "Unable to update product text, most likely the database does not contain a matching entry",
@@ -134,15 +131,14 @@ public class ProductTextUtil {
      * @param productCategory
      * @param product
      * @param segment
-     * @param eventId
+     * @param eventIDs
      * @return
      */
     public static List<ProductText> retrieveProductText(String key,
             String productCategory, String productID, String segment,
-            List<Integer> eventIDs) {
-        String eventID = createQueryConstraintEventID(eventIDs);
+            ArrayList<Integer> eventIDs) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventID, null, ProductRequestType.RETRIEVE);
+                productID, segment, eventIDs, null, ProductRequestType.RETRIEVE);
         if (response != null && response.getText() != null) {
             return response.getText();
         }
@@ -156,16 +152,15 @@ public class ProductTextUtil {
      * @param productCategory
      * @param productID
      * @param segment
-     * @param eventID
+     * @param eventIDs
      * @param value
      * @return
      */
     public static ProductTextResponse createOrUpdateProductText(String key,
             String productCategory, String productID, String segment,
-            List<Integer> eventIDs, Serializable value) {
-        String eventID = createQueryConstraintEventID(eventIDs);
+            ArrayList<Integer> eventIDs, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventID, value,
+                productID, segment, eventIDs, value,
                 ProductRequestType.SAVE_OR_UPDATE);
         if (response.getExceptions() != null) {
             handler.error("Unable to store product text",
@@ -181,16 +176,17 @@ public class ProductTextUtil {
      * @param productCategory
      * @param productID
      * @param segment
-     * @param eventId
+     * @param eventIDs
      * @param value
      * @param type
      * @return
      */
     private static ProductTextResponse sendRequest(String key,
             String productCategory, String productID, String segment,
-            String eventID, Serializable value, ProductRequestType type) {
+            ArrayList<Integer> eventIDs, Serializable value,
+            ProductRequestType type) {
         ProductText text = new ProductText(key, productCategory, productID,
-                segment, eventID, value);
+                segment, eventIDs, value);
         ProductTextRequest request = new ProductTextRequest(text, type);
         ProductTextResponse response = null;
         try {
@@ -199,17 +195,5 @@ public class ProductTextUtil {
             handler.error("Unable to send request to server", e);
         }
         return response;
-    }
-
-    private static String createQueryConstraintEventID(List<Integer> eventIDs) {
-        Collections.sort(eventIDs);
-        StringBuilder sb = new StringBuilder();
-        for (Integer eventID : eventIDs) {
-            if (sb.length() > 0) {
-                sb.append(",");
-            }
-            sb.append(eventID);
-        }
-        return sb.toString();
     }
 }

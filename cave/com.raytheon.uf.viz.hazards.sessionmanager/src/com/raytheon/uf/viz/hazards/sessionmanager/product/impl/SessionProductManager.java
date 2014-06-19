@@ -70,7 +70,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerated;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -128,6 +127,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Apr 18, 2014  696       dgilling     Add support for selectable VTEC format.
  * Apr 29, 2014 2925       Chris.Golden Added protection against null values for checking
  *                                      the selection state of a hazard event.
+ * Jun 12, 2014 1480       jsanchez     Updated the use of product formats.
  * </pre>
  * 
  * @author bsteffen
@@ -139,13 +139,7 @@ public class SessionProductManager implements ISessionProductManager {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionProductManager.class);
 
-    private static final String ISSUE_FORMATS = "issueFormatters";
-
-    private static final String PREVIEW_FORMATS = "previewFormatters";
-
     private final ISessionTimeManager timeManager;
-
-    private Map<String, List<Serializable>> productGeneratorTable;
 
     /*
      * A full configuration manager is needed to get access to the product
@@ -236,8 +230,8 @@ public class SessionProductManager implements ISessionProductManager {
                         .getDialogInfo(entry.getKey());
 
                 info.setDialogInfo(dialogInfo);
-                info.setProductFormats(getProductFormats(info
-                        .getProductGeneratorName()));
+                info.setProductFormats(configManager.getProductGeneratorTable()
+                        .getProductFormats(info.getProductGeneratorName()));
                 result.add(info);
             }
         }
@@ -294,32 +288,7 @@ public class SessionProductManager implements ISessionProductManager {
         return unsupportedHazards;
     }
 
-    /*
-     * Returns a list of product formats from the proudctFormats.xml.
-     */
     @SuppressWarnings("unchecked")
-    private ProductFormats getProductFormats(String productGeneratorName) {
-        ProductFormats productFormats = new ProductFormats();
-
-        if (productGeneratorTable == null) {
-            productGeneratorTable = ProductFormats
-                    .getProductGeneratorTable(this.getClass().getClassLoader());
-        }
-
-        Map<String, Serializable> productGeneratorInfo = (Map<String, Serializable>) productGeneratorTable
-                .get(productGeneratorName);
-        if (productGeneratorInfo != null) {
-            productFormats.setIssueFormats((List<String>) productGeneratorInfo
-                    .get(ISSUE_FORMATS));
-            productFormats
-                    .setPreviewFormats((List<String>) productGeneratorInfo
-                            .get(PREVIEW_FORMATS));
-        }
-
-        return productFormats;
-
-    }
-
     private boolean isCombinable(IHazardEvent e) {
         String type = HazardEventUtilities.getHazardType(e);
         HazardTypes hazardTypes = configManager.getHazardTypes();
@@ -361,15 +330,8 @@ public class SessionProductManager implements ISessionProductManager {
          */
         eventManager.updateSelectedHazardUGCs();
 
-        if (issue && confirm) {
-            boolean answer = messenger.getQuestionAnswerer()
-                    .getUserAnswerToQuestion(
-                            "Are you sure "
-                                    + "you want to issue the hazard event(s)?");
-            if (!answer) {
-                sessionManager.setIssueOngoing(false);
-                return false;
-            }
+        if (issue && confirm && !areYouSure()) {
+            return false;
         }
         String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
         EventSet<IEvent> events = new EventSet<IEvent>();
@@ -581,6 +543,18 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
+    }
+
+    private boolean areYouSure() {
+        boolean answer = messenger.getQuestionAnswerer()
+                .getUserAnswerToQuestion(
+                        "Are you sure "
+                                + "you want to issue the hazard event(s)?",
+                        new String[] { "Issue", "Cancel" });
+        if (!answer) {
+            sessionManager.setIssueOngoing(false);
+        }
+        return answer;
     }
 
     private boolean checkForConflicts(IHazardEvent hazardEvent) {

@@ -19,27 +19,13 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
-import java.io.File;
-import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import jep.JepException;
-
-import com.raytheon.uf.common.localization.IPathManager;
-import com.raytheon.uf.common.localization.LocalizationContext;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
-import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.python.PythonScript;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 
 /**
- * Contents of productFormats.xml are converted into this object.
+ * Contains the preview and issue formats of a product.
  * 
  * <pre>
  * 
@@ -49,7 +35,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * ------------ ---------- ----------- --------------------------
  * Dec 9, 2013            jsanchez     Initial creation
  * Mar 18, 2014 2917      jsanchez     Separated out issue and preview formats.
- * 
+ * Apr 23, 2014 1480      jsanchez     Made class into a simple getter/setter class.
  * </pre>
  * 
  * @author jsanchez
@@ -58,12 +44,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 public class ProductFormats {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductFormats.class);
-
-    private static final String PRODUCT_GENERATOR_TABLE = "hazardServices"
-            + File.separator + "productGeneratorTable" + File.separator
-            + "ProductGeneratorTable.py";
-
-    private static final String METHOD_NAME = "getProductGeneratorTable";
 
     private List<String> issueFormats;
 
@@ -83,49 +63,5 @@ public class ProductFormats {
 
     public void setPreviewFormats(List<String> previewFormats) {
         this.previewFormats = previewFormats;
-    }
-
-    /**
-     * Returns a map of the ProductGeneratorTable.py.
-     * 
-     * @param classLoader
-     * @return
-     */
-    public static Map<String, List<Serializable>> getProductGeneratorTable(
-            ClassLoader classLoader) {
-
-        Map<String, List<Serializable>> productGeneratorTable = null;
-        PythonScript python = null;
-
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext commonCx = pathMgr.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        String filePath = pathMgr.getFile(commonCx, PRODUCT_GENERATOR_TABLE)
-                .getPath();
-        String pythonPath = pathMgr.getFile(commonCx, "python").getPath();
-
-        try {
-            List<String> preEvals = new ArrayList<String>();
-            preEvals.add("from JUtil import pyDictToJavaMap");
-            preEvals.add("def " + METHOD_NAME
-                    + "() :\n return pyDictToJavaMap(ProductGeneratorTable)");
-
-            python = new PythonScript(filePath,
-                    PyUtil.buildJepIncludePath(pythonPath), classLoader,
-                    preEvals);
-
-            productGeneratorTable = (Map<String, List<Serializable>>) python
-                    .execute(METHOD_NAME, null);
-
-        } catch (JepException e) {
-            statusHandler.handle(Priority.PROBLEM,
-                    "Error initializing product generator table", e);
-        } finally {
-            if (python != null) {
-                python.dispose();
-            }
-        }
-
-        return productGeneratorTable;
     }
 }

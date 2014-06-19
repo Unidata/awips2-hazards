@@ -292,6 +292,12 @@ public abstract class FunctionalTest<E extends Enum<E>> {
                 return true;
             }
 
+            @Override
+            public boolean getUserAnswerToQuestion(String question,
+                    String[] buttonLabels) {
+                return true;
+            }
+
         };
         appBuilder.setQuestionAnswerer(questionAnswerer);
     }

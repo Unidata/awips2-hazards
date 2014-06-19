@@ -704,7 +704,6 @@ class Product(ProductTemplate.Product):
         segmentDict['ugcCodes'] = self._formatUGC_entries(segment)
         self._ugcHeader_value = self._tpc.formatUGCs(self._ugcs, self._expireTime)
         segmentDict['ugcHeader'] = self._ugcHeader_value
-        segmentDict['segmentID'] = self._ugcHeader_value
        
     def _vtecRecords(self, segmentDict, productSegmentGroup, productSegment):
        segment, vtecRecords = productSegment

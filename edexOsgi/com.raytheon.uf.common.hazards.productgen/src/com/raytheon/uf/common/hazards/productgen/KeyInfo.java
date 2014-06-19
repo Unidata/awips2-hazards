@@ -21,11 +21,18 @@ package com.raytheon.uf.common.hazards.productgen;
 
 import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import javax.persistence.Embeddable;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
+
+import com.raytheon.uf.common.serialization.ISerializableObject;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * Basic information about the keys set in the python dictionary.
@@ -38,29 +45,44 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * ------------ ---------- ----------- --------------------------
  * Apr 1, 2014            jsanchez     Initial creation
  * Apr 10, 2014  2336     Chris.Golden Added implementation of IParameterInfo.
+ * Apr 23, 2014  3519     jsanchez     Made this class serializable and added the required field.
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
-
-public class KeyInfo implements IParameterInfo {
-
+@Embeddable
+@DynamicSerialize
+public class KeyInfo implements IParameterInfo, ISerializableObject,
+        Serializable {
+    @DynamicSerializeElement
     private String name;
 
+    @DynamicSerializeElement
     private String productCategory;
 
+    @DynamicSerializeElement
     private String productID;
 
+    @DynamicSerializeElement
     private List<Integer> eventIDs;
 
+    @DynamicSerializeElement
     private String segment;
 
+    @DynamicSerializeElement
     private boolean editable;
 
+    @DynamicSerializeElement
     private boolean displayable;
 
+    @DynamicSerializeElement
     private String label;
+
+    @DynamicSerializeElement
+    private boolean required;
+
+    private int index;
 
     public KeyInfo() {
 
@@ -134,6 +156,14 @@ public class KeyInfo implements IParameterInfo {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public boolean isRequired() {
+        return required;
+    }
+
+    public void setRequired(boolean required) {
+        this.required = required;
     }
 
     @Override
@@ -213,6 +243,7 @@ public class KeyInfo implements IParameterInfo {
         return info;
     }
 
+    @Deprecated
     public static KeyInfo getElements(String label, Set<KeyInfo> keySet) {
         for (KeyInfo key : keySet) {
             if (key.getLabel().equals(label)) {
@@ -220,6 +251,14 @@ public class KeyInfo implements IParameterInfo {
             }
         }
         return null;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
     }
 
 }

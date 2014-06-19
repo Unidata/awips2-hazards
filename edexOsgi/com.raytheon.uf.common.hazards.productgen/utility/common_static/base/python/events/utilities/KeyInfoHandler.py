@@ -50,7 +50,8 @@ def javaKeyInfoToPyKeyInfo(obj, customConverter=None):
     editable = obj.isEditable()
     displayable = obj.isDisplayable()
     label = obj.getLabel()
-    keyInfo = PythonKeyInfo(name, productCategory, productID, eventIDs, segment, editable, displayable, label)
+    required = obj.isRequired()
+    keyInfo = PythonKeyInfo(name, productCategory, productID, eventIDs, segment, editable, displayable, label, required)
     return True, keyInfo
 
 def _isJavaConvertible(obj):

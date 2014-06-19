@@ -33,40 +33,20 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CTabFolder;
-import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Listener;
 
-import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
-import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
+import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.productgen.dialog.data.AbstractProductGeneratorData;
-import com.raytheon.uf.viz.productgen.dialog.listener.GenerateListener;
 
 /**
  * If there are any editable keys in the data dictionary returned by the product
- * generators then this composite will be used. This is the editor for the
- * unformatted and formatted data returned by the product generators and the
- * formatters.
+ * generators then this composite will be used.
  * 
  * <pre>
  * 
@@ -74,12 +54,8 @@ import com.raytheon.uf.viz.productgen.dialog.listener.GenerateListener;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 11, 2014            jsanchez     Initial creation
- * Apr 20, 2014  2336      Chris.Golden Changed to use improved version of
- *                                      ParametersEditorFactory that allows
- *                                      specification of keys as KeyInfo
- *                                      objects instead of requiring keys
- *                                      to be String instances.
+ * Jun 13, 2014 3519       jsanchez     Initial creation
+ * 
  * </pre>
  * 
  * @author jsanchez
@@ -87,27 +63,31 @@ import com.raytheon.uf.viz.productgen.dialog.listener.GenerateListener;
  */
 
 public class DataEditor {
-
     private static final IUFStatusHandler handler = UFStatus
             .getHandler(DataEditor.class);
 
-    private static final String GENERATE_LABEL = "Generate";
+    private ProductEditor productEditor;
 
-    private static final String SAVE_LABEL = "Save";
-
-    private static final String REVERT_LABEL = "Revert";
-
-    private static final String UNFORMATTED_LABEL = "Unformatted";
-
-    private static final int WIDTH = 250;
-
-    private static final int HEIGHT = 300;
-
-    private Button revertButton;
-
-    private Button saveButton;
+    private LinkedHashMap<KeyInfo, Serializable> data;
 
     private MegawidgetManager manager;
+
+    private final Map<KeyInfo, EditableKeyInfo> editableKeyInfoMap = new LinkedHashMap<>();
+
+    private class EditableKeyInfo {
+
+        List<KeyInfo> path;
+
+        boolean modified = false;
+
+        boolean isDisplayable = false;
+
+        Serializable value;
+
+        Serializable originalValue;
+
+        Serializable previousValue;
+    }
 
     private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
         @Override
@@ -116,147 +96,24 @@ public class DataEditor {
         }
     };
 
-    /*
-     * The formatListener that handles all the work in product generation, as
-     * well as sets up the progress bar and calls the method to re-populate the
-     * formats
-     */
-    public final Listener formatListener = createGenerateListener();
-
-    private final ProductGenerationDialog dialog;
-
-    private final GenerateListener generateListener;
-
-    public DataEditor(ProductGenerationDialog dialog, Composite composite,
-            int folderIndex) {
-        this.dialog = dialog;
-        generateListener = new GenerateListener(dialog);
-        createDataEditor(composite, folderIndex);
+    public DataEditor(ProductEditor productEditor,
+            LinkedHashMap<KeyInfo, Serializable> data) {
+        this.productEditor = productEditor;
+        this.data = data;
+        determineEditableKeyPaths(null, data, 0);
     }
 
-    /*
-     * Creates the left side editor for managing the dictionary data and
-     * individual formatted data.
-     */
-    private void createDataEditor(Composite comp, final int folderIndex) {
-        final List<AbstractProductGeneratorData> decodedDataList = dialog
-                .getDecodedDataList(folderIndex);
-        Label segmentsLabel = new Label(comp, SWT.NONE);
-        segmentsLabel.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true,
-                false, 1, 1));
-        final Combo segmentsCombo = new Combo(comp, SWT.READ_ONLY);
-        segmentsCombo.add(String.format("---- %d Segment(s) Available ----",
-                decodedDataList.size() - 1));
-        for (AbstractProductGeneratorData dataItem : decodedDataList) {
-            segmentsCombo.add(dataItem.getDescriptionName());
-        }
-
-        segmentsCombo.select(0);
-        dialog.setLayoutInfo(segmentsCombo, 1, false, SWT.FILL, SWT.FILL, true,
-                true, new Point(WIDTH, 20));
-        CTabFolder dataFolder = new CTabFolder(comp, SWT.BORDER);
-        dialog.setLayoutInfo(dataFolder, 1, false, SWT.FILL, SWT.FILL, true,
-                true, new Point(WIDTH, HEIGHT));
-
-        // set up the 'Unformatted' scroll composite
-        final ScrolledComposite unformattedScroller = new ScrolledComposite(
-                dataFolder, SWT.BORDER | SWT.V_SCROLL);
-        dialog.setLayoutInfo(unformattedScroller, 1, false, SWT.FILL, SWT.FILL,
-                true, true, new Point(WIDTH, HEIGHT));
-
-        final Composite unformattedComp = new Composite(unformattedScroller,
-                SWT.NONE);
-        dialog.setLayoutInfo(unformattedComp, 1, false, SWT.FILL, SWT.FILL,
-                true, true, null);
-        addUnformattedEntries(unformattedComp, decodedDataList.get(0));
-
-        unformattedScroller.setExpandHorizontal(true);
-        unformattedScroller.setExpandVertical(true);
-        unformattedScroller.setContent(unformattedComp);
-        unformattedScroller.setMinSize(unformattedComp.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        unformattedScroller.layout();
-
-        final CTabItem unformattedTabItem = new CTabItem(dataFolder, SWT.NONE);
-        unformattedTabItem.setText(UNFORMATTED_LABEL);
-        unformattedTabItem.setControl(unformattedScroller);
-
-        // set up the generate button
-        Composite buttonComp = new Composite(comp, SWT.NONE);
-        GridLayout layout = new GridLayout(3, false);
-        GridData data = new GridData(SWT.CENTER, SWT.CENTER, true, false);
-        buttonComp.setLayout(layout);
-        buttonComp.setLayoutData(data);
-        createGenerateButton(buttonComp);
-        createSaveButton(buttonComp);
-        createRevertButton(buttonComp);
-
-        segmentsCombo.addSelectionListener(new SelectionAdapter() {
-
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // Clear out composite's contents
-                for (Control control : unformattedComp.getChildren()) {
-                    control.dispose();
-                }
-
-                int selectionIndex = segmentsCombo.getSelectionIndex() - 1;
-                if (selectionIndex > -1) {
-                    addUnformattedEntries(unformattedComp,
-                            decodedDataList.get(selectionIndex));
-                    dialog.setLayoutInfo(unformattedComp, 1, false, SWT.FILL,
-                            SWT.FILL, true, true, null);
-                    unformattedScroller.setExpandHorizontal(true);
-                    unformattedScroller.setExpandVertical(true);
-                    unformattedScroller.setContent(unformattedComp);
-                    unformattedScroller.setMinSize(unformattedComp.computeSize(
-                            SWT.DEFAULT, SWT.DEFAULT));
-                    unformattedScroller.layout();
-
-                    if (e.data == null || Boolean.valueOf((boolean) e.data)) {
-                        ProductGenerationDialogUtility.selectSegmentInTabs(
-                                decodedDataList.get(selectionIndex),
-                                dialog.getCurrentFormatTabMap());
-                    }
-                } else if (selectionIndex == -1) {
-                    ProductGenerationDialogUtility.clearHighlighting(dialog
-                            .getCurrentFormatTabMap());
-                }
-            }
-
-        });
-        dialog.addSegmentCombo(segmentsCombo);
-
-        dataFolder.setSelection(0);
-        dataFolder.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                // removes the highlighting
-                ProductGenerationDialogUtility.clearHighlighting(dialog
-                        .getCurrentFormatTabMap());
-            }
-        });
-
-    }
-
-    /**
-     * Creates the 'Unformatted' tab with the dictionary from the generators
-     */
-    private void addUnformattedEntries(Composite comp,
-            final AbstractProductGeneratorData segment) {
-
-        if (segment.getEditableKeys().isEmpty()) {
-            Label noEditableFieldsLabel = new Label(comp, SWT.CENTER);
-            noEditableFieldsLabel
-                    .setText("No editable fields for this segment");
+    public void create(Composite comp) {
+        if (isDataEditable() == false) {
+            handler.info("There are no editable fields. The data editor cannot be created.");
             return;
         }
 
         List<KeyInfo> keyInfos = new ArrayList<>();
         Map<KeyInfo, Object> valuesForKeyInfos = new HashMap<>();
-        for (KeyInfo key : segment.getEditableKeys()) {
+        for (KeyInfo key : new ArrayList<>(editableKeyInfoMap.keySet())) {
             keyInfos.add(key);
-            valuesForKeyInfos.put(key, segment.getValue(key));
+            valuesForKeyInfos.put(key, editableKeyInfoMap.get(key).value);
         }
 
         try {
@@ -271,179 +128,298 @@ public class DataEditor {
                         @Override
                         public void parameterValueChanged(KeyInfo keyInfo,
                                 Object value) {
-                            Combo segmentsCombo = dialog
-                                    .getCurrentSegmentCombo();
-                            int segmentNumber = segmentsCombo
-                                    .getSelectionIndex() - 1;
-                            List<KeyInfo> path = new ArrayList<>(segment
-                                    .getPath(keyInfo));
-                            path.add(keyInfo);
-                            ProductGenerationDialogUtility.updateData(path,
-                                    dialog.getCurrentGeneratedProduct()
-                                            .getData(), segmentNumber,
-                                    (Serializable) value);
-                            ProductGenerationDialogUtility.updateData(path,
-                                    segment.getData(), segmentNumber,
-                                    (Serializable) value);
-                            segment.modify(keyInfo, (Serializable) value);
+                            EditableKeyInfo editableKeyInfo = editableKeyInfoMap
+                                    .get(keyInfo);
+
+                            Serializable newValue = (Serializable) value;
+
+                            // update the dict with the new value
+                            update(editableKeyInfo, keyInfo, newValue);
+                            // regenerate with updated data
+                            productEditor.regenerate();
+
+                            // mark editableKeyInfo as modified
+                            editableKeyInfo.previousValue = editableKeyInfo.value;
+                            editableKeyInfo.value = newValue;
+                            editableKeyInfo.modified = true;
+
+                            productEditor.getIssueButton().setEnabled(
+                                    requiredFieldsCompleted());
+                            productEditor.getSaveButton().setEnabled(true);
+                            productEditor.getRevertButton().setEnabled(true);
                         }
                     });
 
-            // Disables those that 'displayable'
-            if (segment.getDisplayableKeys().isEmpty() == false) {
+            // Disables 'displayable'
+            // TODO Check if the megawidget for a list handled editable
+            List<KeyInfo> displayableKeys = getDisplayableKeys();
+            if (displayableKeys.isEmpty() == false) {
                 Map<String, Map<String, Object>> mutablePropertiesMap = manager
                         .getMutableProperties();
-                Boolean falseObject = new Boolean(false);
-                for (KeyInfo displayableKey : segment.getDisplayableKeys()) {
+
+                for (KeyInfo displayableKey : displayableKeys) {
                     Map<String, Object> properties = mutablePropertiesMap
-                            .get(displayableKey.getLabel());
+                            .get(displayableKey.toString());
                     if (properties != null) {
                         properties.put(IControlSpecifier.MEGAWIDGET_EDITABLE,
-                                falseObject);
+                                Boolean.FALSE);
                     }
                 }
+
                 manager.setMutableProperties(mutablePropertiesMap);
             }
+
         } catch (MegawidgetException e) {
             handler.error("Error creating megawidets", e);
         }
     }
 
-    /*
-     * Updates the contents on the right with the data provided on the left. If
-     * the 'Unformatted' tab is selected than the formatListenered is fired,
-     * which passes the updated dictionary to the formatters. If the 'Formatted'
-     * view is selected than a simple text replace is performed.
-     * 
-     * @param buttonComp
-     */
-    private void createGenerateButton(Composite buttonComp) {
-        Button generateButton = new Button(buttonComp, SWT.PUSH);
-        generateButton.setText(GENERATE_LABEL);
-        dialog.setButtonGridData(generateButton);
-        generateButton.setEnabled(true);
-        generateButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                dialog.getProgressBar().setVisible(true);
-
-                formatListener.handleEvent(null);
-                revertButton.setEnabled(true);
-                saveButton.setEnabled(true);
-
-            }
-        });
-
-    }
-
-    private void createRevertButton(Composite buttonComp) {
-        revertButton = new Button(buttonComp, SWT.PUSH);
-        revertButton.setText(REVERT_LABEL);
-        dialog.setButtonGridData(revertButton);
-        revertButton.setEnabled(true);
-        revertButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Combo segmentsCombo = dialog.getCurrentSegmentCombo();
-                int segmentNumber = segmentsCombo.getSelectionIndex() - 1;
-                AbstractProductGeneratorData segment = dialog
-                        .getDecodedDataList(dialog.getFolderSelectionIndex())
-                        .get(segmentNumber);
-                Map<String, Object> state = manager.getState();
-                for (KeyInfo key : segment.getEditableKeys()) {
-                    Serializable value = segment.revertValue(key);
-                    if (value != null) {
-                        List<KeyInfo> path = new ArrayList<>(segment
-                                .getPath(key));
-                        path.add(key);
-                        ProductGenerationDialogUtility.updateData(path, dialog
-                                .getCurrentGeneratedProduct().getData(),
-                                segmentNumber, value);
-                        ProductGenerationDialogUtility.updateData(path,
-                                segment.getData(), segmentNumber, value);
-                        state.put(key.getLabel(), value);
-                    }
-                }
-                try {
-                    manager.setState(state);
-                } catch (MegawidgetStateException exception) {
-                    handler.error("Error trying to reset megawidget state ",
-                            exception);
-                }
-
-                formatListener.handleEvent(null);
-                revertButton.setEnabled(false);
-                saveButton.setEnabled(false);
-            }
-        });
-        revertButton.setEnabled(false);
-    }
-
     /**
-     * Creates the reformat listener that will update the UI to notify the user
-     * that formatting is/has happened.
+     * Returns the list of editable keys of the data dictionary.
      * 
      * @return
      */
-    private Listener createGenerateListener() {
-        return new Listener() {
+    public List<KeyInfo> getEditableKeys() {
 
-            @Override
-            public void handleEvent(Event event) {
-                ProductGeneration generation = new ProductGeneration();
-                for (GeneratedProductList products : dialog
-                        .getGeneratedProductListStorage()) {
-                    List<LinkedHashMap<KeyInfo, Serializable>> dataList = new ArrayList<>();
-                    for (IGeneratedProduct product : products) {
-                        dataList.add(product.getData());
+        /*
+         * The list will always be in the same order for a given map between
+         * calls to determineEditableKeyPaths(); a list is created and returned
+         * instead of simply returning the key set in order to indicate that
+         * ordering will be maintained.
+         */
+        return new ArrayList<>(editableKeyInfoMap.keySet());
+    }
+
+    private void update(EditableKeyInfo editableKeyInfo, KeyInfo keyInfo,
+            Serializable newValue) {
+        // get path in the dict
+        List<KeyInfo> path = new ArrayList<KeyInfo>();
+        if (editableKeyInfo.path != null && !editableKeyInfo.path.isEmpty()) {
+            path.addAll(editableKeyInfo.path);
+        }
+        path.add(keyInfo);
+
+        Map<KeyInfo, Serializable> currentDataMap = data;
+        for (int counter = 0; counter < path.size(); counter++) {
+            KeyInfo key = path.get(counter);
+            Serializable currentValue = currentDataMap.get(key);
+
+            if (counter == path.size() - 1 && currentDataMap.containsKey(key)) {
+                currentDataMap.put(key, newValue);
+                break;
+            } else if (currentValue instanceof Map<?, ?>) {
+                currentDataMap = (Map<KeyInfo, Serializable>) currentValue;
+            } else if (currentValue instanceof ArrayList<?>) {
+                /*
+                 * need to increment - going down another level
+                 */
+                int index = keyInfo.getIndex();
+                KeyInfo nextKey = path.get(++counter);
+                List<?> list = (ArrayList<?>) currentValue;
+
+                if (list.get(index) instanceof Map<?, ?>) {
+                    Map<KeyInfo, Serializable> map = (Map<KeyInfo, Serializable>) list
+                            .get(index);
+                    if ((counter == path.size() - 1)
+                            && map.containsKey(nextKey)) {
+                        map.put(nextKey, newValue);
+                        break;
+                    } else if (map.get(nextKey) instanceof Map<?, ?>) {
+                        // found map to use
+                        currentDataMap = (Map<KeyInfo, Serializable>) map
+                                .get(nextKey);
+                    } else if (map.get(nextKey) instanceof ArrayList<?>) {
+                        currentDataMap = map;
+                        counter--;
                     }
-                    List<String> formats = new ArrayList<>(products.get(0)
-                            .getEntries().keySet());
-                    generation.update(products.getProductInfo(), dataList,
-                            formats.toArray(new String[formats.size()]),
-                            generateListener);
+                }
+            }
+        }
+    }
+
+    public void revertValues() {
+        Map<String, Object> state = manager.getState();
+        for (KeyInfo key : editableKeyInfoMap.keySet()) {
+            EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(key);
+            if (editableKeyInfo.modified) {
+                editableKeyInfo.value = editableKeyInfo.previousValue;
+                editableKeyInfo.previousValue = null;
+
+                if (editableKeyInfo.value == editableKeyInfo.originalValue) {
+                    editableKeyInfo.modified = false;
                 }
 
-            }
-        };
-    }
-
-    /**
-     * The save button will save the edits made to the database.
-     * 
-     * @param buttonComp
-     */
-    private void createSaveButton(Composite buttonComp) {
-        saveButton = new Button(buttonComp, SWT.PUSH);
-        saveButton.setText(SAVE_LABEL);
-        dialog.setButtonGridData(saveButton);
-        saveButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                save();
-                saveButton.setEnabled(false);
-            }
-        });
-        saveButton.setEnabled(false);
-    }
-
-    /**
-     * Saves any modifications made to the unformatted data.
-     */
-    public void save() {
-        int offset = 0;
-        for (GeneratedProductList products : dialog
-                .getGeneratedProductListStorage()) {
-            int index = 0;
-            for (@SuppressWarnings("unused")
-            IGeneratedProduct product : products) {
-                ProductGenerationDialogUtility.save(dialog
-                        .getDecodedDataList(offset + index));
-                index++;
+                update(editableKeyInfo, key, editableKeyInfo.value);
+                // updates the values displayed in the GUI
+                state.put(key.toString(), editableKeyInfo.value);
             }
 
-            offset += products.size();
         }
-        revertButton.setEnabled(false);
+        // regenerate with updated data
+        productEditor.regenerate();
+        try {
+            manager.setState(state);
+        } catch (MegawidgetStateException exception) {
+            handler.error("Error trying to reset megawidget state ", exception);
+        }
+    }
+
+    private void clearModifiedValues() {
+        for (EditableKeyInfo editableKeyInfo : editableKeyInfoMap.values()) {
+            editableKeyInfo.modified = false;
+        }
+    }
+
+    public boolean isDataEditable() {
+        return !editableKeyInfoMap.isEmpty();
+    }
+
+    public List<KeyInfo> getDisplayableKeys() {
+        List<KeyInfo> displayableKeys = new ArrayList<>();
+        for (Entry<KeyInfo, EditableKeyInfo> entry : editableKeyInfoMap
+                .entrySet()) {
+            if (entry.getValue().isDisplayable) {
+                displayableKeys.add(entry.getKey());
+            }
+        }
+        return displayableKeys;
+    }
+
+    /**
+     * Checks to see if there are any required fields that needs to be
+     * completed.
+     */
+
+    public boolean requiredFieldsCompleted() {
+        for (KeyInfo editableKey : editableKeyInfoMap.keySet()) {
+            Serializable value = getModifiedValue(editableKey, false);
+            if (editableKey.isRequired()
+                    && (value == null || String.valueOf(value).trim().length() == 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns one modified value
+     * 
+     * @return
+     */
+    public Serializable getOneModifiedValue() {
+        Serializable value = null;
+        for (KeyInfo keyInfo : editableKeyInfoMap.keySet()) {
+            value = getModifiedValue(keyInfo, false);
+            if (value != null) {
+                break;
+            }
+        }
+        return value;
+    }
+
+    public Serializable getModifiedValue(KeyInfo editableKey, boolean saving) {
+        EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(editableKey);
+        if (editableKeyInfo.modified) {
+            if (saving) {
+                editableKeyInfo.originalValue = editableKeyInfo.value;
+                editableKeyInfo.modified = false;
+            }
+            return editableKeyInfo.value;
+        }
+        return null;
+    }
+
+    public boolean hasUnsavedChanges() {
+        for (EditableKeyInfo value : editableKeyInfoMap.values()) {
+            if (value.modified) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void saveModifiedValues() {
+        for (KeyInfo editableKey : editableKeyInfoMap.keySet()) {
+            Serializable value = getModifiedValue(editableKey, true);
+            if (value != null) {
+                ProductTextUtil.createOrUpdateProductText(
+                        editableKey.getName(),
+                        editableKey.getProductCategory(),
+                        editableKey.getProductID(), editableKey.getSegment(),
+                        new ArrayList<Integer>(editableKey.getEventIDs()),
+                        value);
+            }
+        }
+
+        clearModifiedValues();
+    }
+
+    /**
+     * Determines the path of the editable keys. The path are key values of
+     * dictionaries/maps within dictionaries/maps
+     * 
+     * @param parentPath
+     * @param data
+     */
+    @SuppressWarnings("unchecked")
+    private void determineEditableKeyPaths(List<KeyInfo> parentPath,
+            Map<KeyInfo, Serializable> data, int index) {
+
+        if (data != null) {
+            for (Entry<KeyInfo, Serializable> entry : data.entrySet()) {
+                KeyInfo key = entry.getKey();
+                boolean isEditable = key.isEditable();
+                boolean isDisplayable = key.isDisplayable();
+
+                if (isDisplayable) {
+                    EditableKeyInfo info = new EditableKeyInfo();
+                    info.isDisplayable = true;
+                    info.value = entry.getValue();
+                    info.originalValue = entry.getValue();
+                    editableKeyInfoMap.put(key, info);
+                    continue;
+                }
+
+                if (isEditable) {
+                    EditableKeyInfo info = new EditableKeyInfo();
+                    info.path = parentPath;
+                    info.value = entry.getValue();
+                    info.originalValue = entry.getValue();
+                    key.setIndex(index);
+                    editableKeyInfoMap.put(key, info);
+                } else if (entry.getValue() instanceof Map<?, ?>) {
+                    Map<KeyInfo, Serializable> subdata = (Map<KeyInfo, Serializable>) entry
+                            .getValue();
+                    determineEditableKeyPaths(createPath(parentPath, key),
+                            subdata, 0);
+                } else if (entry.getValue() instanceof ArrayList) {
+                    List<Serializable> list = (ArrayList<Serializable>) entry
+                            .getValue();
+                    determineEditableKeyPaths(createPath(parentPath, key), list);
+                }
+            }
+        }
+    }
+
+    private List<KeyInfo> createPath(List<KeyInfo> parentPath, KeyInfo latestKey) {
+        List<KeyInfo> path = new ArrayList<>();
+        if (parentPath != null) {
+            path.addAll(parentPath);
+        }
+        path.add(latestKey);
+        return path;
+    }
+
+    private void determineEditableKeyPaths(List<KeyInfo> parentPath,
+            List<Serializable> list) {
+        for (int index = 0; index < list.size(); index++) {
+            Serializable item = list.get(index);
+            if (item instanceof Map<?, ?>) {
+                determineEditableKeyPaths(parentPath,
+                        (Map<KeyInfo, Serializable>) item, index);
+            } else if (item instanceof ArrayList) {
+                determineEditableKeyPaths(parentPath, (List<Serializable>) item);
+            }
+        }
     }
 }

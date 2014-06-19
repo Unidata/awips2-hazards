@@ -95,7 +95,7 @@ public class ProductGeneratorEntry {
     /**
      * @return the issueFormatters
      */
-    private String[] getIssueFormatters() {
+    public String[] getIssueFormatters() {
         return issueFormatters;
     }
 

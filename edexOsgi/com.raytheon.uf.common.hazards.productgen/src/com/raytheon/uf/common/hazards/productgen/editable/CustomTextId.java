@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
+ * Apr 23, 2014 3519       jsanchez  Changed eventID to ArrayList
  * 
  * </pre>
  * 
@@ -70,7 +72,7 @@ public class CustomTextId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
-    private String eventID;
+    private ArrayList<Integer> eventIDs;
 
     /**
      * Default constructor for serialization
@@ -79,12 +81,12 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     public CustomTextId(String key, String productCategory, String productID,
-            String segment, String eventID) {
+            String segment, ArrayList<Integer> eventIDs) {
         this.key = key;
         this.productCategory = productCategory;
         this.productID = productID;
         this.segment = segment;
-        this.eventID = eventID;
+        this.eventIDs = eventIDs;
     }
 
     /**
@@ -148,18 +150,18 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     /**
-     * @return the eventID
+     * @return the eventIDs
      */
-    public String getEventID() {
-        return eventID;
+    public ArrayList<Integer> getEventIDs() {
+        return eventIDs;
     }
 
     /**
      * @param eventID
      *            the eventID to set
      */
-    public void setEventID(String eventID) {
-        this.eventID = eventID;
+    public void setEventIDs(ArrayList<Integer> eventIDs) {
+        this.eventIDs = eventIDs;
     }
 
     /*
@@ -171,7 +173,8 @@ public class CustomTextId implements ISerializableObject, Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((eventID == null) ? 0 : eventID.hashCode());
+        result = prime * result
+                + ((eventIDs == null) ? 0 : eventIDs.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
         result = prime * result
                 + ((productCategory == null) ? 0 : productCategory.hashCode());
@@ -195,10 +198,10 @@ public class CustomTextId implements ISerializableObject, Serializable {
         if (getClass() != obj.getClass())
             return false;
         CustomTextId other = (CustomTextId) obj;
-        if (eventID == null) {
-            if (other.eventID != null)
+        if (eventIDs == null) {
+            if (other.eventIDs != null)
                 return false;
-        } else if (!eventID.equals(other.eventID))
+        } else if (!eventIDs.equals(other.eventIDs))
             return false;
         if (key == null) {
             if (other.key != null)

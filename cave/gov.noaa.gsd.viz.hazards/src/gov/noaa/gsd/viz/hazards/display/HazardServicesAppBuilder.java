@@ -138,6 +138,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             closing, leading to null pointer exceptions.
  * Feb 7, 2014  2890       bkowal              Product Generation JSON refactor.
  * Apr 09, 2014 2925       Chris.Golden        Changed to support class-based metadata.
+ * Jun 18, 2014 3519       jsanchez            Allowed allowed the message dialog buttons to be configurable.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -406,6 +407,25 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             public boolean getUserAnswerToQuestion(String question) {
                 return MessageDialog.openQuestion(null, "Hazard Services",
                         question);
+            }
+
+            @Override
+            public boolean getUserAnswerToQuestion(String question,
+                    String[] buttonLabels) {
+                final int ISSUE_CODE = 0;
+                MessageDialog dialog = new MessageDialog(null,
+                        "Hazard Services", null, question,
+                        MessageDialog.QUESTION, buttonLabels, ISSUE_CODE)
+
+                {
+                    protected void buttonPressed(int buttonId) {
+                        setReturnCode(buttonId);
+                        close();
+                    }
+                };
+
+                int buttonId = dialog.open();
+                return buttonId == ISSUE_CODE;
             }
 
         };

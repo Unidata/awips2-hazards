@@ -120,8 +120,8 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
             if (pText.getSegment() != null) {
                 criteria.add(Restrictions.eq("id.segment", pText.getSegment()));
             }
-            if (pText.getEventID() != null) {
-                criteria.add(Restrictions.eq("id.eventID", pText.getEventID()));
+            if (pText.getEventIDs() != null) {
+                criteria.add(Restrictions.eq("id.eventIDs", pText.getEventIDs()));
             }
 
             List<ProductText> text = criteria.list();
@@ -137,7 +137,7 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
         CustomTextId textId = text.getId();
         builder.append(textId.getKey());
         builder.append("/");
-        builder.append(textId.getEventID());
+        builder.append(textId.getEventIDs());
         builder.append("/");
         builder.append(textId.getProductCategory());
         builder.append("/");

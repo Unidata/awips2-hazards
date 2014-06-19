@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.productgen.editable;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -27,7 +28,6 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
-import com.raytheon.uf.common.serialization.ISerializableObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -42,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 2, 2013            mnash     Initial creation
+ * Jun 18, 2014 3519      jsanchez  Made eventID an array list.
  * 
  * </pre>
  * 
@@ -52,8 +53,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @Table(name = "producttext")
 @DynamicSerialize
-public class ProductText extends PersistableDataObject implements
-        ISerializableObject, Serializable {
+public class ProductText extends PersistableDataObject implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -75,8 +75,9 @@ public class ProductText extends PersistableDataObject implements
      * Constructor to construct the necessary elements.
      */
     public ProductText(String key, String productCategory, String productID,
-            String segment, String eventID, Serializable value) {
-        id = new CustomTextId(key, productCategory, productID, segment, eventID);
+            String segment, ArrayList<Integer> eventIDs, Serializable value) {
+        id = new CustomTextId(key, productCategory, productID, segment,
+                eventIDs);
         this.value = value;
     }
 
@@ -107,8 +108,8 @@ public class ProductText extends PersistableDataObject implements
         return this.getId().getSegment();
     }
 
-    public String getEventID() {
-        return this.getId().getEventID();
+    public ArrayList<Integer> getEventIDs() {
+        return this.getId().getEventIDs();
     }
 
     /**

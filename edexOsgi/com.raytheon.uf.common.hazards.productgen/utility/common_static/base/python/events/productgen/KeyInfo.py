@@ -29,12 +29,13 @@
 #    ------------    ----------    -----------    --------------------------
 #    04/07/14                      jsanchez        Initial Creation.
 #    04/21/14        2336          Chris.Golden    Added capitalization of labels.
+#    04/23/14        3519          jsanchez        Added required fields.
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
 class KeyInfo(JUtil.JavaWrapperClass):
     
-    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False, label=None):
+    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False, label=None, required=False):
         self.name = name
         self.productCategory = productCategory
         self.productID = productID
@@ -49,6 +50,12 @@ class KeyInfo(JUtil.JavaWrapperClass):
             self.label = self.name.title()
         else:
             self.label = label.title()
+            
+        self.required = required
+        # This should be refactored after the ParametersEditorFactory
+        # can receive a KeyInfo class.
+        if required:
+            self.label = label + '*'
     
     def getName(self):
         return self.name
@@ -78,7 +85,7 @@ class KeyInfo(JUtil.JavaWrapperClass):
         return hash((self.name, self.productCategory, self.productID, self.eventIDs, self.segment))
     
     def __eq__(self, other):
-        return (self.name, self.productCategory, self.productID, self.getEventIDs(), self.segment) == (other.getName(), other.getProductCategory(), other.getProductID(), other.other.getEventIDs(), other.getSegment())
+        return (self.name, self.productCategory, self.productID, self.getEventIDs(), self.segment) == (other.getName(), other.getProductCategory(), other.getProductID(), other.getEventIDs(), other.getSegment())
     
     def __str__(self):
         string = 'Name: ' + self.name + \
@@ -99,6 +106,7 @@ class KeyInfo(JUtil.JavaWrapperClass):
         keyInfo.setEditable(self.editable)
         keyInfo.setDisplayable(self.displayable)
         keyInfo.setLabel(self.label)
+        keyInfo.setRequired(self.required)
         
         return keyInfo
     

@@ -42,6 +42,9 @@ public interface IMessenger {
      */
     public interface IQuestionAnswerer {
         public boolean getUserAnswerToQuestion(String question);
+
+        public boolean getUserAnswerToQuestion(String question,
+                String[] buttonLabels);
     }
 
     /**
