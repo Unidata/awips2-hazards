@@ -9,12 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 
 import java.util.List;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.eclipse.jface.action.Action;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
  * Description: Mock {@link IToolsView} for testing
@@ -32,14 +36,15 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * @version 1.0
  */
 @SuppressWarnings("rawtypes")
-public class ToolsViewForTesting implements IToolsView {
+public class ToolsViewForTesting implements
+        IToolsView<Action, RCPMainUserInterfaceElement> {
 
     @Override
     public void dispose() {
     }
 
     @Override
-    public void initialize(ToolsPresenter presenter, String jsonTools) {
+    public void initialize(ToolsPresenter presenter, List<Tool> tools) {
     }
 
     @Override
@@ -47,11 +52,11 @@ public class ToolsViewForTesting implements IToolsView {
     }
 
     @Override
-    public void setTools(String jsonTools) {
+    public void setTools(List<Tool> tools) {
     }
 
     @Override
-    public List contributeToMainUI(Enum type) {
+    public List contributeToMainUI(RCPMainUserInterfaceElement type) {
         return null;
     }
 

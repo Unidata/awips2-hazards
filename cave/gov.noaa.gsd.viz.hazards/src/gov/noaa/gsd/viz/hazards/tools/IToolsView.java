@@ -11,6 +11,10 @@ package gov.noaa.gsd.viz.hazards.tools;
 
 import gov.noaa.gsd.viz.mvp.IView;
 
+import java.util.List;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+
 /**
  * Interface describing the methods required for implementing a tools view, used
  * by the user to view, execute, and manipulate tools.
@@ -36,10 +40,10 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
-     * @param jsonTools
-     *            JSON string providing the tools.
+     * @param tools
+     *            - a List of Tool objects
      */
-    public void initialize(ToolsPresenter presenter, String jsonTools);
+    public void initialize(ToolsPresenter presenter, List<Tool> tools);
 
     /**
      * Show a tool subview that is used to gather parameter values for a tool
@@ -58,9 +62,12 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
     /**
      * Set the tools to those specified.
      * 
-     * @param jsonTools
-     *            JSON string holding a list of dictionaries providing the
-     *            tools.
+     * @param tools
+     *            - a list of Tool objects
      */
-    public void setTools(String jsonTools);
+    public void setTools(List<Tool> tools);
+
+    /**
+     * @param tools
+     */
 }

@@ -735,6 +735,28 @@ public final class HazardServicesMessageHandler implements
     }
 
     /**
+     * TODO, this method will be moved once this class is refactored, but it
+     * should be able to be moved quickly and easily
+     */
+    private void saveSetting() {
+        sessionConfigurationManager.saveSettings();
+    }
+
+    private void saveAsSetting(String settingsId) {
+        Settings settings = new Settings(
+                sessionConfigurationManager.getSettings());
+        String name = settingsId.replaceAll("\\P{Alnum}", "");
+        settings.setSettingsID(name);
+        settings.setStaticSettingsID(settingsId);
+        settings.setDisplayName(settingsId);
+        sessionConfigurationManager.getSettings().apply(settings);
+        sessionConfigurationManager.saveSettings();
+        List<Settings> availableSettings = sessionConfigurationManager
+                .getAvailableSettings();
+        availableSettings.add(settings);
+    }
+
+    /**
      * Updates the selected time either in CAVE or the Console. Selected time
      * updates in CAVE appear in the Console. Selected time updates in the
      * Console appear in CAVE.
@@ -1585,7 +1607,13 @@ public final class HazardServicesMessageHandler implements
         case SETTINGS_CHOSEN:
             changeSetting(settingsAction.getSettingID(), true);
             break;
-
+        case SAVE:
+            saveSetting();
+            break;
+        case SAVE_AS:
+            saveAsSetting(settingsAction.getSettings().getSettingsID());
+            changeSetting(settingsAction.getSettingID(), true);
+            break;
         default:
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -1642,6 +1670,9 @@ public final class HazardServicesMessageHandler implements
     @Handler
     public void changeSiteOccurred(ChangeSiteAction action) {
         sessionManager.getConfigurationManager().setSiteID(action.getSite());
+        Settings currentSetting = sessionManager.getConfigurationManager()
+                .getSettings();
+        currentSetting.getVisibleSites().add(action.getSite());
         ConsoleAction cAction = new ConsoleAction(
                 ConsoleAction.ActionType.SITE_CHANGED);
         cAction.setId(action.getSite());

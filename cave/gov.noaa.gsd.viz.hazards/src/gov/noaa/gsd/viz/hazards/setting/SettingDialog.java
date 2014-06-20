@@ -92,8 +92,7 @@ class SettingDialog extends BasicDialog {
      * File menu item names.
      */
     private static final List<String> FILE_MENU_ITEM_NAMES = Lists
-            .newArrayList("&New", "&Save", "Save &As", "&Delete", null,
-                    "&Close");;
+            .newArrayList("&Save", "Save &As", "&Close");;
 
     /**
      * Edit menu item names.
@@ -111,38 +110,48 @@ class SettingDialog extends BasicDialog {
      * effect.
      */
     private final List<?> FILE_MENU_ITEM_ACTIONS = Lists.newArrayList(
-            new StaticSettingsAction(StaticSettingsAction.ActionType.NEW),
             new Runnable() {
                 @Override
                 public void run() {
                     fireAction(new StaticSettingsAction(
                             StaticSettingsAction.ActionType.SAVE, values));
                 }
-            },
-            new Runnable() {
+            }, new Runnable() {
                 private final IInputValidator validator = new IInputValidator() {
                     @Override
                     public String isValid(String text) {
-                        return (text.length() < 1 ? "The name must contain at least one character."
-                                : null);
+                        if (text.length() < 1) {
+                            return "The name must contain at least one character";
+                        }
+                        List<Settings> settings = presenter.getSessionManager()
+                                .getConfigurationManager()
+                                .getAvailableSettings();
+                        for (Settings setting : settings) {
+                            if (setting.getDisplayName() == null) {
+                                continue;
+                            }
+                            if (setting.getDisplayName().equals(text)) {
+                                return "There is already a setting with this name";
+                            }
+                        }
+                        return null;
                     }
                 };
 
                 @Override
                 public void run() {
                     InputDialog inputDialog = new InputDialog(getShell(),
-                            "Hazard Services", "Enter the new setting name: ",
+                            "Save Setting As", "Enter the new setting name: ",
                             "", validator);
                     if (inputDialog.open() == InputDialog.OK) {
                         values.setDisplayName(inputDialog.getValue());
+                        values.setSettingsID(inputDialog.getValue());
                         setDialogName(getShell());
                         fireAction(new StaticSettingsAction(
                                 StaticSettingsAction.ActionType.SAVE_AS, values));
                     }
                 }
-            },
-            new StaticSettingsAction(StaticSettingsAction.ActionType.DIALOG),
-            null, "Close");
+            }, "Close");
 
     /**
      * Edit menu item actions; each is either a {@link StaticSettingsAction},
@@ -271,8 +280,10 @@ class SettingDialog extends BasicDialog {
         Menu menuBar = new Menu(shell, SWT.BAR);
         createCascadeMenu(menuBar, FILE_MENU_TEXT, FILE_MENU_ITEM_NAMES,
                 FILE_MENU_ITEM_ACTIONS);
-        createCascadeMenu(menuBar, EDIT_MENU_TEXT, EDIT_MENU_ITEM_NAMES,
-                EDIT_MENU_ITEM_ACTIONS);
+        /*
+         * createCascadeMenu(menuBar, EDIT_MENU_TEXT, EDIT_MENU_ITEM_NAMES,
+         * EDIT_MENU_ITEM_ACTIONS);
+         */
         shell.setMenuBar(menuBar);
     }
 
@@ -342,10 +353,6 @@ class SettingDialog extends BasicDialog {
             statusHandler.error(
                     "Failed to convert the Current Settings to a Java Map!", e);
         }
-
-        /*
-         * Return the created client area.
-         */
         return top;
     }
 

@@ -362,23 +362,26 @@ public class SessionConfigurationManager implements
         for (LocalizationFile file : files) {
             ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
                     Settings.class);
-            allSettings.add(loader);
-            loaderPool.schedule(loader);
-            if (previousPersisted != null) {
-                try {
-                    String fileName = file.getFile(false).getName();
-                    if (fileName.startsWith(previousPersisted.getSettingsID()
-                            + ".")) {
-                        Settings s = loader.getConfig();
-                        if (s.getSettingsID().equals(
-                                previousPersisted.getSettingsID())) {
-                            settings.applyPersistedChanges(previousPersisted, s);
-                            previousPersisted = null;
+            if (file.getFile().length() != 0) {
+                allSettings.add(loader);
+                loaderPool.schedule(loader);
+                if (previousPersisted != null) {
+                    try {
+                        String fileName = file.getFile(false).getName();
+                        if (fileName.startsWith(previousPersisted
+                                .getSettingsID() + ".")) {
+                            Settings s = loader.getConfig();
+                            if (s.getSettingsID().equals(
+                                    previousPersisted.getSettingsID())) {
+                                settings.applyPersistedChanges(
+                                        previousPersisted, s);
+                                previousPersisted = null;
+                            }
                         }
+                    } catch (LocalizationException e) {
+                        statusHandler.handle(Priority.PROBLEM,
+                                e.getLocalizedMessage(), e);
                     }
-                } catch (LocalizationException e) {
-                    statusHandler.handle(Priority.PROBLEM,
-                            e.getLocalizedMessage(), e);
                 }
             }
         }
@@ -415,11 +418,7 @@ public class SessionConfigurationManager implements
 
     @Override
     public void saveSettings() {
-        LocalizationContext context = pathManager.getContext(
-                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
-        Settings settings = getSettings();
-        LocalizationFile f = this.pathManager.getLocalizationFile(context,
-                "hazardServices/settings/" + settings.getSettingsID() + ".py");
+        LocalizationFile f = getUserSettings();
         StringBuilder contents = new StringBuilder();
         contents.append(settings.getSettingsID());
         contents.append(" = ");
@@ -434,6 +433,45 @@ public class SessionConfigurationManager implements
             statusHandler.handle(Priority.PROBLEM, "Unable to save settings.",
                     e);
         }
+        if (allSettings.contains(settings) == false) {
+            allSettings.add(new ConfigLoader<>(f, Settings.class));
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.viz.hazards.sessionmanager.config.
+     * ISessionConfigurationManager#deleteSettings()
+     */
+    @Override
+    public void deleteSettings() {
+        Settings settings = getSettings();
+        Map<LocalizationLevel, LocalizationFile> map = pathManager
+                .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
+                        "hazardServices/settings/" + settings.getSettingsID()
+                                + ".py");
+        // since we can't delete base settings, we will write them as empty so
+        // they don't show up anywhere
+        try {
+            if (map.containsKey(LocalizationLevel.USER) && map.size() == 1) {
+                map.get(LocalizationLevel.USER).delete();
+            } else {
+                getUserSettings().write("".getBytes());
+            }
+            allSettings.remove(settings);
+        } catch (LocalizationException e) {
+            statusHandler.handle(Priority.PROBLEM, "Unable to delete "
+                    + settings.getDisplayName() + " setting.", e);
+        }
+    }
+
+    private LocalizationFile getUserSettings() {
+        LocalizationContext context = pathManager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
+        Settings settings = getSettings();
+        return pathManager.getLocalizationFile(context,
+                "hazardServices/settings/" + settings.getSettingsID() + ".py");
     }
 
     @Override

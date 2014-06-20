@@ -25,14 +25,14 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -42,7 +42,6 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.ImmutableList;
@@ -50,6 +49,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
@@ -86,12 +86,13 @@ public class SettingsView implements
      */
     private static final String EDIT_COMMAND_MENU_TEXT = "&Edit...";
 
+    private static final String DELETE_COMMAND_MENU_TEXT = "&Delete...";
+
     /**
      * Array of settings dropdown menu items.
      */
     private static final List<String> SETTINGS_DROPDOWN_MENU_ITEMS = ImmutableList
-            .of("&Open...", "&Save", "Save &As...", "&Delete...",
-                    EDIT_COMMAND_MENU_TEXT);
+            .of(DELETE_COMMAND_MENU_TEXT, EDIT_COMMAND_MENU_TEXT);
 
     /**
      * Settings toolbar menu button text.
@@ -132,11 +133,10 @@ public class SettingsView implements
         private final SelectionListener listener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
-                if (((MenuItem) event.widget).getText().equals(
-                        EDIT_COMMAND_MENU_TEXT)) {
+                String text = ((MenuItem) event.widget).getText();
+                if (text.equals(EDIT_COMMAND_MENU_TEXT)) {
                     presenter.showSettingDetail();
                 } else if (event.widget.getData() != null) {
-
                     /*
                      * Remember the newly selected setting name and fire off the
                      * action.
@@ -145,11 +145,21 @@ public class SettingsView implements
                     presenter.fireAction(new StaticSettingsAction(
                             StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
                             settingsID));
-                } else {
-                    Shell shell = PlatformUI.getWorkbench()
-                            .getActiveWorkbenchWindow().getShell();
-                    MessageDialog.openInformation(shell, null,
-                            "This feature is not yet implemented.");
+                } else if (text.equals(DELETE_COMMAND_MENU_TEXT)) {
+                    ISessionConfigurationManager configManager = presenter
+                            .getSessionManager().getConfigurationManager();
+                    configManager.deleteSettings();
+                    List<Settings> availableSettings = configManager
+                            .getAvailableSettings();
+                    Iterator<Settings> iter = availableSettings.iterator();
+                    while (iter.hasNext()) {
+                        Settings available = iter.next();
+                        if (available.getSettingsID().equals(
+                                configManager.getSettings().getSettingsID())) {
+                            iter.remove();
+                        }
+                    }
+                    setSettings(availableSettings);
                 }
             }
         };
@@ -375,7 +385,7 @@ public class SettingsView implements
     /**
      * Map of setting names to their associated identifiers.
      */
-    private final Map<String, String> settingIdentifiersForNames = new HashMap<>();
+    private final Map<String, String> settingIdentifiersForNames = new LinkedHashMap<>();
 
     /**
      * List of filter maps.

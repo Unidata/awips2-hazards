@@ -10,13 +10,13 @@ package gov.noaa.gsd.viz.hazards.tools;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction.ToolActionEnum;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -33,9 +33,9 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
  * Settings view, an implementation of ISettingsView that provides an SWT-based
@@ -125,7 +125,7 @@ public class ToolsView implements
          */
         public void toolsChanged() {
             toolsChanged = true;
-            setEnabled(toolNames.size() > 0);
+            setEnabled(toolIdentifiersForNames.size() > 0);
         }
 
         // Protected Methods
@@ -159,10 +159,11 @@ public class ToolsView implements
 
                 // Iterate through the tools, if any, creating an item
                 // for each.
-                for (int j = 0; j < toolNames.size(); j++) {
+                for (Entry<String, String> entry : toolIdentifiersForNames
+                        .entrySet()) {
                     MenuItem item = new MenuItem(menu, SWT.PUSH);
-                    item.setText(toolNames.get(j));
-                    item.setData(toolIdentifiersForNames.get(toolNames.get(j)));
+                    item.setText(entry.getKey());
+                    item.setData(entry.getValue());
                     item.addSelectionListener(listener);
                 }
 
@@ -183,15 +184,9 @@ public class ToolsView implements
     private ToolsPresenter presenter = null;
 
     /**
-     * Array of tool names.
-     */
-    private final List<String> toolNames = Lists.newArrayList();
-
-    /**
      * Map of tool names to their associated identifiers.
      */
-    private final Map<String, String> toolIdentifiersForNames = Maps
-            .newHashMap();;
+    private final Map<String, String> toolIdentifiersForNames = new LinkedHashMap<>();
 
     /**
      * Tools pulldown action.
@@ -230,13 +225,13 @@ public class ToolsView implements
      * 
      * @param presenter
      *            Presenter managing this view.
-     * @param jsonTools
-     *            JSON string providing the tools.
+     * @param tools
+     * 
      */
     @Override
-    public final void initialize(ToolsPresenter presenter, String jsonTools) {
+    public final void initialize(ToolsPresenter presenter, List<Tool> tools) {
         this.presenter = presenter;
-        setTools(jsonTools);
+        setTools(tools);
     }
 
     /**
@@ -306,28 +301,15 @@ public class ToolsView implements
     /**
      * Set the tools to those specified.
      * 
-     * @param jsonTools
-     *            JSON string holding a list of dictionaries providing the
-     *            tools.
+     * @param tools
      */
     @Override
-    public final void setTools(String jsonTools) {
-
-        // Get the dictionary list from the JSON.
-        DictList tools = DictList.getInstance(jsonTools);
-        if (tools == null) {
-            tools = new DictList();
-        }
-
+    public final void setTools(List<Tool> tools) {
         // Get the names and identifiers of the tools.
-        toolNames.clear();
         toolIdentifiersForNames.clear();
-        for (int j = 0; j < tools.size(); j++) {
-            Dict tool = tools.getDynamicallyTypedValue(j);
-            String name = tool.getDynamicallyTypedValue("displayName");
-            toolNames.add(name);
-            String identifier = tool.getDynamicallyTypedValue("toolName");
-            toolIdentifiersForNames.put(name, identifier);
+        for (Tool tool : tools) {
+            toolIdentifiersForNames.put(tool.getDisplayName(),
+                    tool.getToolName());
         }
 
         // Notify the pulldown that the tools have changed.

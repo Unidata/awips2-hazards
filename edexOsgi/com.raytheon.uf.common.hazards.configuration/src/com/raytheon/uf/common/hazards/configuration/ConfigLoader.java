@@ -138,9 +138,9 @@ public class ConfigLoader<T> implements Runnable {
     }
 
     private T loadXml() throws LocalizationException {
-	File file = lfile.getFile();
-	FileLocker.lock(this, file, FileLocker.Type.READ);
-        T result =  JAXB.unmarshal(file, clazz);
+        File file = lfile.getFile();
+        FileLocker.lock(this, file, FileLocker.Type.READ);
+        T result = JAXB.unmarshal(file, clazz);
         FileLocker.unlock(this, file);
         return result;
     }

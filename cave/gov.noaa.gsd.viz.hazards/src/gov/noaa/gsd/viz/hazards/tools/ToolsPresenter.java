@@ -10,14 +10,17 @@
 package gov.noaa.gsd.viz.hazards.tools;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 import java.util.EnumSet;
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -35,7 +38,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           bus so that the latter is no longer a
  *                                           singleton.
  * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Dec 03, 2013     2182  daniel.s.schaffer Refactoring
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
@@ -45,13 +48,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * @version 1.0
  */
 public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
-
-    // Private Variables
-
-    /**
-     * JSON converter.
-     */
-    private final JSONConverter jsonConverter = new JSONConverter();
 
     // Public Constructors
 
@@ -73,18 +69,40 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     // Public Methods
 
     /**
+     * Initialize the specified view in a subclass-specific manner.
+     * 
+     * @param view
+     *            View to be initialized.
+     */
+    @Override
+    protected void initialize(IToolsView<?, ?> view) {
+        List<Tool> toolList = getModel().getConfigurationManager()
+                .getSettings().getToolbarTools();
+        view.initialize(this, toolList);
+    }
+
+    /**
      * Receive notification of a model change.
      * 
      * @param changes
      *            Set of elements within the model that have changed.
      */
     @Override
+    @Deprecated
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        if (changed.contains(HazardConstants.Element.TOOLS)) {
-            List<Tool> toolList = getModel().getConfigurationManager()
-                    .getSettings().getToolbarTools();
-            getView().setTools(jsonConverter.toJson(toolList));
-        }
+        // DO NOTHING HERE, WILL BE REMOVED
+    }
+
+    @Handler
+    public void toolsChanged(SettingsToolsModified modified) {
+        getView().setTools(modified.getSettingsTools());
+    }
+
+    @Handler
+    public void settingsChanged(SettingsModified loaded) {
+        getView().setTools(
+                getModel().getConfigurationManager().getSettings()
+                        .getToolbarTools());
     }
 
     /**
@@ -103,24 +121,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
         getView().showToolParameterGatherer(toolName, jsonParams);
     }
 
-    // Protected Methods
-
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
-    @Override
-    protected void initialize(IToolsView<?, ?> view) {
-        List<Tool> toolList = getModel().getConfigurationManager()
-                .getSettings().getToolbarTools();
-        view.initialize(this, jsonConverter.toJson(toolList));
-    }
-
     @Override
     protected void reinitialize(IToolsView<?, ?> view) {
-
         /*
          * No action.
          */

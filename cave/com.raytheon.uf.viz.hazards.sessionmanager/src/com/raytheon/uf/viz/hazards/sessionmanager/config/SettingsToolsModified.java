@@ -17,13 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
+package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.annotate.JsonProperty;
+import java.util.List;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 
 /**
- * Built from the objects defined in StartupConfig localization file.
+ * Anytime tools are modified directly (by the UI element, this will be fired)
  * 
  * <pre>
  * 
@@ -31,28 +33,23 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 23, 2013 1257       bsteffen    Initial creation
+ * May 12, 2014            mnash     Initial creation
  * 
  * </pre>
  * 
- * @author bsteffen
+ * @author mnash
  * @version 1.0
  */
 
-public class StartUpConfig {
-    @JsonProperty("Console")
-    private Console console;
+public class SettingsToolsModified extends SettingsModified implements
+        ISessionNotification {
 
-    public Console getConsole() {
-        return console;
+    public SettingsToolsModified(ISessionConfigurationManager manager) {
+        super(manager);
     }
 
-    public void setConsole(Console console) {
-        this.console = console;
+    public List<Tool> getSettingsTools() {
+        return getSettings().getToolbarTools();
     }
 
-    @Override
-    public String toString() {
-        return ToStringBuilder.reflectionToString(this);
-    }
 }

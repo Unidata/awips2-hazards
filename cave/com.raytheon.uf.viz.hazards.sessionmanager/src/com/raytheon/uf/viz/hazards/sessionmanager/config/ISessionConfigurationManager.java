@@ -97,6 +97,12 @@ public interface ISessionConfigurationManager {
     public void saveSettings();
 
     /**
+     * Delete the current settings from user level, or write an empty file if
+     * only at base
+     */
+    public void deleteSettings();
+
+    /**
      * Get a list of the available settings a user could change to.
      * 
      * @return
