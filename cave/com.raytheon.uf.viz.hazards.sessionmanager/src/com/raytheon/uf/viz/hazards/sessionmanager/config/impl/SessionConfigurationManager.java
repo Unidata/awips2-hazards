@@ -77,6 +77,7 @@ import com.raytheon.uf.common.style.StyleRule;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -634,6 +635,20 @@ public class SessionConfigurationManager implements
                     config[0].setFieldType("HierarchicalChoicesMenu");
                     config[0].setLabel("Hazard &Types");
                 } else if (field.getFieldName().equals(SETTING_HAZARD_SITES)) {
+                    boolean found = false;
+                    String currSite = LocalizationManager
+                            .getContextName(LocalizationLevel.SITE);
+                    // this will get around the fact that we are a certain site,
+                    // and it may not be in the list
+                    for (Choice choice : field.getChoices()) {
+                        if (choice.getDisplayString().equals(currSite)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found == false) {
+                        field.addChoice(new Choice(currSite, currSite));
+                    }
                     config[1] = new Field(field);
                     config[1].setFieldType("CheckBoxesMenu");
                     config[1].setLabel("Site &IDs");

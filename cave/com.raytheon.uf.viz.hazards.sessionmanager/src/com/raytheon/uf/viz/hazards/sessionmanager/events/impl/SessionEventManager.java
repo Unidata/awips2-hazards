@@ -1324,6 +1324,12 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
         Settings settings = configManager.getSettings();
 
+        Set<String> visibleSites = new HashSet<>(configManager.getSettings()
+                .getVisibleSites());
+        if (visibleSites.contains(configManager.getSiteID()) == false) {
+            visibleSites.add(configManager.getSiteID());
+            configManager.getSettings().setVisibleSites(visibleSites);
+        }
         if (configManager.getHazardCategory(oevent) == null
                 && oevent.getHazardAttribute(ATTR_HAZARD_CATEGORY) == null) {
             oevent.addHazardAttribute(ATTR_HAZARD_CATEGORY,
