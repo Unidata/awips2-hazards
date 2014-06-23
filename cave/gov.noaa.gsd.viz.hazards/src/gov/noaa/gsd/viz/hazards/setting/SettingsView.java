@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
@@ -40,6 +41,7 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.PlatformUI;
@@ -148,18 +150,26 @@ public class SettingsView implements
                 } else if (text.equals(DELETE_COMMAND_MENU_TEXT)) {
                     ISessionConfigurationManager configManager = presenter
                             .getSessionManager().getConfigurationManager();
-                    configManager.deleteSettings();
-                    List<Settings> availableSettings = configManager
-                            .getAvailableSettings();
-                    Iterator<Settings> iter = availableSettings.iterator();
-                    while (iter.hasNext()) {
-                        Settings available = iter.next();
-                        if (available.getSettingsID().equals(
-                                configManager.getSettings().getSettingsID())) {
-                            iter.remove();
+                    boolean answer = MessageDialog.openQuestion(Display
+                            .getCurrent().getActiveShell(), "Delete Setting",
+                            "Are you sure you want to delete ["
+                                    + configManager.getSettings()
+                                            .getDisplayName() + "]?");
+                    if (answer) {
+                        configManager.deleteSettings();
+                        List<Settings> availableSettings = configManager
+                                .getAvailableSettings();
+                        Iterator<Settings> iter = availableSettings.iterator();
+                        while (iter.hasNext()) {
+                            Settings available = iter.next();
+                            if (available.getSettingsID()
+                                    .equals(configManager.getSettings()
+                                            .getSettingsID())) {
+                                iter.remove();
+                            }
                         }
+                        setSettings(availableSettings);
                     }
-                    setSettings(availableSettings);
                 }
             }
         };
