@@ -34,6 +34,7 @@
 
 from shapely.geometry import *
 from shapely import wkt
+from shapely.ops import cascaded_union
 
 def createLineString(coordinates):
     '''
@@ -99,3 +100,10 @@ def createCollection(geometries):
             geometries.remove(g)
     text = 'GEOMETRYCOLLECTION (%s)' % ', '.join(g.wkt for g in geometries)
     return wkt.loads(text)
+
+def performCascadedUnion(polygons):
+    '''    
+    @param polygons: a list of polygons
+    @return: the union of all of the polygons in the provided list
+    '''    
+    return cascaded_union(polygons) 
