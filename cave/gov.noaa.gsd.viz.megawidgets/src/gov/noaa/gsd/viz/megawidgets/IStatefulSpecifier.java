@@ -30,6 +30,8 @@ import java.util.Map;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Removed obsolete properties.
+ * Jun 23, 2014   4010     Chris.Golden      Changed to no longer extend notifier
+ *                                           specifier, which has been removed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,7 +40,7 @@ import java.util.Map;
  * @see Megawidget
  * @see MegawidgetSpecifier
  */
-public interface IStatefulSpecifier extends INotifierSpecifier {
+public interface IStatefulSpecifier extends ISpecifier {
 
     // Public Static Constants
 

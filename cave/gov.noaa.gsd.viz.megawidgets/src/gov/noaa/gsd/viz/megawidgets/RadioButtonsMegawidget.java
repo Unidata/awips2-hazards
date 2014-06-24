@@ -58,6 +58,8 @@ import com.google.common.collect.ImmutableSet;
  * Jun 17, 2014    3982    Chris.Golden      Changed to use new choices button
  *                                           component, and to disable detail
  *                                           children when it is disabled.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -161,7 +163,6 @@ public class RadioButtonsMegawidget extends SingleBoundedChoiceMegawidget
                 state = ((ChoiceButtonComponent) radioButton.getData())
                         .getChoice();
                 notifyListener(getSpecifier().getIdentifier(), state);
-                notifyListener();
             }
         };
         this.childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new BoundedChoicesDetailChildrenManager(

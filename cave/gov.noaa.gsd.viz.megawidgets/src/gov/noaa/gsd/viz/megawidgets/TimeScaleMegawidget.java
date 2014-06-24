@@ -84,6 +84,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           property to "isFullWidthOfDetailPanel",
  *                                           and changed to disable detail children
  *                                           if it gets disabled.
+ * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -283,7 +285,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
              */
             if ((onlySendEndStateChanges == false) || (rapidChange == false)) {
                 notifyListener(identifier, value);
-                notifyListener();
             }
         }
     };
@@ -660,15 +661,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                      * time.
                      */
                     lastForwardedStatesForIds = null;
-                    notify = true;
-                }
-
-                /*
-                 * Notify listeners that invocation occurred if this is
-                 * something that should be sent on.
-                 */
-                if (notify) {
-                    notifyListener();
                 }
             }
 

@@ -53,6 +53,8 @@ import org.eclipse.swt.widgets.Shell;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 06, 2014    2155    Chris.Golden Initial creation.
+ * Jun 23, 2014    4010    Chris.Golden Changed to work with latest megawidget
+ *                                      manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -163,8 +165,7 @@ public class MegawidgetTest extends Dialog {
                             script))) {
 
                 @Override
-                protected void commandInvoked(String identifier,
-                        String extraCallback) {
+                protected void commandInvoked(String identifier) {
                 }
 
                 @Override

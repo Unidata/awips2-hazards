@@ -49,6 +49,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Dec 16, 2013   2545     Chris.Golden           Added current time provider for megawidget
  *                                                use.
  * Apr 20, 2014   2925     Chris.Golden           Changed to work with megawidget manager changes.
+ * Jun 23, 2014   4010     Chris.Golden           Changed to work with yet more megawidget manager
+ *                                                changes.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -283,8 +285,7 @@ class AlertsConfigDialog extends BasicDialog {
             megawidgetManager = new MegawidgetManager(parent, fieldsList,
                     values, 0L, 0L, currentTimeProvider) {
                 @Override
-                protected void commandInvoked(String identifier,
-                        String extraCallback) {
+                protected void commandInvoked(String identifier) {
 
                     // No action.
                 }

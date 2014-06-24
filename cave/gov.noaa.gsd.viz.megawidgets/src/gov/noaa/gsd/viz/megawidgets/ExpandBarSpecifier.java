@@ -12,30 +12,23 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.util.Map;
 
 /**
- * Button megawidget specifier.
+ * Expand bar megawidget specifier, used to construct a megawidget containing
+ * expand bars, each such bar having its own page of megawidgets that are
+ * displayed when its bar is expanded.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Oct 21, 2013    2168    Chris.Golden      Changed to implement IControlSpecifier
- *                                           and use ControlSpecifierOptionsManager
- *                                           (composition over inheritance).
- * Jun 17, 2014    3982    Chris.Golden      Changed "isFullWidthOfColumn"
- *                                           property to "isFullWidthOfDetailPanel".
- * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
- *                                           of NotifierSpecifier, which has been
- *                                           removed.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 20, 2014    4010    Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see ButtonMegawidget
+ * @see ExpandBarMegawidget
  */
-public class ButtonSpecifier extends MegawidgetSpecifier implements
-        IControlSpecifier {
+public class ExpandBarSpecifier extends MultiPageMegawidgetSpecifier {
 
     // Private Variables
 
@@ -56,11 +49,11 @@ public class ButtonSpecifier extends MegawidgetSpecifier implements
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
-    public ButtonSpecifier(Map<String, Object> parameters)
+    public ExpandBarSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
         super(parameters);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
-                ControlSpecifierOptionsManager.BooleanSource.FALSE);
+                ControlSpecifierOptionsManager.BooleanSource.TRUE);
     }
 
     // Public Methods

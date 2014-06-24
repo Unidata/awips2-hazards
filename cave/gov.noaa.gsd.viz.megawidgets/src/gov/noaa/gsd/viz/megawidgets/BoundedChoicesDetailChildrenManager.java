@@ -44,6 +44,8 @@ import org.eclipse.swt.widgets.Event;
  *                                           comments.
  * Jun 17, 2014    3982    Chris.Golden      Changed to work with new choice
  *                                           button component.
+ * Jun 24, 2014    4010    Chris.Golden      Changed to work with new notifier
+ *                                           modifications.
  * </pre>
  * 
  * @author Chris.Golden
@@ -177,7 +179,7 @@ public class BoundedChoicesDetailChildrenManager implements
     }
 
     @Override
-    public void megawidgetInvoked(INotifier megawidget, String extraCallback) {
+    public void megawidgetInvoked(INotifier megawidget) {
 
         /*
          * If the invoked megawidget is not stateful, first fire off a selection
@@ -193,7 +195,7 @@ public class BoundedChoicesDetailChildrenManager implements
         /*
          * Notify the real notification listener of the invocation.
          */
-        notificationListener.megawidgetInvoked(megawidget, extraCallback);
+        notificationListener.megawidgetInvoked(megawidget);
     }
 
     @Override

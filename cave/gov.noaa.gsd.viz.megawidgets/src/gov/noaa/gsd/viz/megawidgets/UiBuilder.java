@@ -56,6 +56,13 @@ import com.google.common.collect.Lists;
  *                                           comments.
  * Jun 17, 2014    3982    Chris.Golden      Changed to use new choice button
  *                                           component.
+ * Jun 23, 2014    4010    Chris.Golden      Changed to allow choice buttons
+ *                                           to have the option to ask for
+ *                                           extra space when more vertical
+ *                                           space is available (previously,
+ *                                           they always took up extra space,
+ *                                           which was bad when used with the
+ *                                           CheckBoxMegawidget).
  * </pre>
  * 
  * @author Chris.Golden
@@ -249,7 +256,7 @@ public class UiBuilder {
              */
             ChoiceButtonComponent button = new ChoiceButtonComponent(
                     choiceParent, radioButtons, buttonFlags,
-                    specifier.isEnabled(), identifier,
+                    specifier.isEnabled(), true, identifier,
                     specifier.getNameOfNode(choice));
             if (buttonWidth == -1) {
                 buttonWidth = button.getButtonNonTextWidth();

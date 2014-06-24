@@ -210,6 +210,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  *                                           and right-click context-sensitive menu. 
  *                                           Also fixed Javadoc comments, and added
  *                                           usage of JDK 1.7 features.
+ * Jun 23, 2014   4010     Chris.Golden      Changed to work with megawidget manager
+ *                                           changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -2090,8 +2092,7 @@ class TemporalDisplay {
                                             settingsAsDict) {
                                         @Override
                                         protected void commandInvoked(
-                                                String identifier,
-                                                String extraCallback) {
+                                                String identifier) {
 
                                             // No action.
                                         }

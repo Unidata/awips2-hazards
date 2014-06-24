@@ -77,6 +77,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Changed to ensure that drag and drop
  *                                           is not possible when read-only.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1651,7 +1653,6 @@ public class BoundedListBuilderMegawidget extends
         state.clear();
         state.addAll(getItemsFromList(selectedTable, false, false, null));
         notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
-        notifyListener();
     }
 
     /**

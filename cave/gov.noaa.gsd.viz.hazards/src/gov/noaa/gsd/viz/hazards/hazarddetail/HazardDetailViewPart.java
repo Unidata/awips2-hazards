@@ -20,6 +20,7 @@ import gov.noaa.gsd.viz.megawidgets.ComboBoxSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.IControl;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IManagerResizeListener;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
@@ -161,7 +162,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           class-based metadata changes, as well as
  *                                           to conform to new event propagation
  *                                           scheme.
- * May 15, 2014    2925    Chris.Golden      Together with changes made in last 2925
+ * May 15, 2014   2925     Chris.Golden      Together with changes made in last 2925
  *                                           changeset, essentially rewritten to provide
  *                                           far better separation of concerns between
  *                                           model, view, and presenter; switch to
@@ -180,6 +181,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           and removal of hazard category, type, and
  *                                           time range from the scrollable area of the
  *                                           dialog.
+ * Jun 23, 2014   4010     Chris.Golden      Changed to work with megawidget manager
+ *                                           changes, as well as adding a resize listener
+ *                                           that resizes the scrollable area when a
+ *                                           megawidget changes its size.
  * </pre>
  * 
  * @author Chris.Golden
@@ -453,13 +458,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 MegawidgetSpecifierManager specifierManager,
                 Map<String, Object> state) throws MegawidgetException {
             super(parent, specifierManager, state, minimumVisibleTime,
-                    maximumVisibleTime);
+                    maximumVisibleTime, resizeListener);
         }
 
         // Public Methods
 
         @Override
-        protected void commandInvoked(String identifier, String extraCallback) {
+        protected void commandInvoked(String identifier) {
 
             /*
              * No action.
@@ -622,6 +627,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Current time provider.
      */
     private ICurrentTimeProvider currentTimeProvider;
+
+    /**
+     * Resize listener for metadata megawidget managers.
+     */
+    private final IManagerResizeListener resizeListener = new IManagerResizeListener() {
+
+        @Override
+        public void sizeChanged(String identifier) {
+            metadataPanelResized();
+        }
+    };
 
     /**
      * <p>
@@ -2204,22 +2220,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             scrolledCompositeContentsChanging = true;
 
             /*
-             * Determine the required width and height of the metadata panel.
+             * Recalculate the client area's size.
              */
-            Point metadataSize = panel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
-
-            /*
-             * Set the enclosing content panel's size to be appropriate for the
-             * new metadata panel, and tell the scrolled composite that in turn
-             * holds it of its new size.
-             */
-            metadataContentPanel.setSize(metadataSize);
-            scrolledComposite.setMinSize(metadataSize);
-
-            /*
-             * Recalculate the scrolled composite's page size.
-             */
-            recalculateScrolledCompositePageIncrement();
+            recalculateScrolledCompositeClientArea(panel);
 
             /*
              * If the event that is showing has a previously-recorded scrolling
@@ -2264,6 +2267,45 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * Redo the layout of the tab page.
          */
         tabPagePanel.layout();
+    }
+
+    /**
+     * Respond to a potential resize of the metadata panel because a megawidget
+     * changed its size.
+     */
+    private void metadataPanelResized() {
+        scrolledCompositeContentsChanging = true;
+        Composite panel = megawidgetManagersForEventIds.get(
+                visibleEventIdentifier).getParent();
+        recalculateScrolledCompositeClientArea(panel);
+        scrolledCompositeContentsChanging = false;
+    }
+
+    /**
+     * Recalculate the scrolled copmosite's client area, that is, its size.
+     * 
+     * @param panel
+     *            Panel that is displayed within the metadata group widget.
+     */
+    private void recalculateScrolledCompositeClientArea(Composite panel) {
+
+        /*
+         * Determine the required width and height of the metadata panel.
+         */
+        Point metadataSize = panel.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+
+        /*
+         * Set the enclosing content panel's size to be appropriate for the new
+         * metadata panel, and tell the scrolled composite that in turn holds it
+         * of its new size.
+         */
+        metadataContentPanel.setSize(metadataSize);
+        scrolledComposite.setMinSize(metadataSize);
+
+        /*
+         * Recalculate the scrolled composite's page size.
+         */
+        recalculateScrolledCompositePageIncrement();
     }
 
     /**

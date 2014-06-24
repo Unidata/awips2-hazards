@@ -27,6 +27,9 @@ package gov.noaa.gsd.viz.megawidgets;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 23, 2014    4010    Chris.Golden      Changed to no longer include the
+ *                                           extra callback information in any
+ *                                           method invocations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,15 +41,10 @@ public interface INotificationListener {
     // Public Methods
 
     /**
-     * Receive notification that the given specifier's megawidget has been
-     * invoked or has changed state. Megawidgets will only call this method if
-     * they were marked as being notifiers when they were constructed.
+     * Receive notification that the given megawidget has been invoked.
      * 
      * @param megawidget
      *            Megawidget that was invoked.
-     * @param extraCallback
-     *            Extra callback information associated with this megawidget, or
-     *            <code>null</code> if no such extra information is provided.
      */
-    public void megawidgetInvoked(INotifier megawidget, String extraCallback);
+    public void megawidgetInvoked(INotifier megawidget);
 }

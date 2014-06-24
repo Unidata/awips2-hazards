@@ -42,8 +42,14 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014   3982     Chris.Golden      Changed to use new choices button
+ * Jun 17, 2014    3982    Chris.Golden      Changed to use new choices button
  *                                           component.
+ * Jun 23, 2014    4010    Chris.Golden      Changed to not cause its component
+ *                                           widgets to ask to take up extra
+ *                                           space when more vertical space is
+ *                                           available. Also changed to no
+ *                                           longer be a subclass of Notifier-
+ *                                           Megawidget, which has been removed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,7 +117,7 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
          * Create the checkbox component.
          */
         checkBox = new ChoiceButtonComponent(parent, false, SWT.CHECK,
-                specifier.isEnabled(), null, specifier.getLabel());
+                specifier.isEnabled(), false, null, specifier.getLabel());
         checkBox.getGridData().verticalIndent = specifier.getSpacing();
         checkBox.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -119,7 +125,6 @@ public class CheckBoxMegawidget extends StatefulMegawidget implements IControl {
                 Button checkBox = (Button) e.widget;
                 state = checkBox.getSelection();
                 notifyListener(getSpecifier().getIdentifier(), state);
-                notifyListener();
             }
         });
 

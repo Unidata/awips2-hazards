@@ -79,6 +79,8 @@ import com.raytheon.viz.ui.widgets.duallist.ButtonImages;
  *                                           is not possible when read-only, and
  *                                           added "editable" to set of mutable
  *                                           properties.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1371,7 +1373,6 @@ public class UnboundedListBuilderMegawidget extends StatefulMegawidget
         state.clear();
         state.addAll(getChoiceNames(false, null));
         notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
-        notifyListener();
     }
 
     /**

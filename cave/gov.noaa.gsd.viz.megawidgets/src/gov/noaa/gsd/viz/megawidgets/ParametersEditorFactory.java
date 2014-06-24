@@ -34,7 +34,7 @@ import com.google.common.collect.ImmutableMap;
  * megawidget-based GUIs to manipulate values.
  * <p>
  * Megawidgets are build using the
- * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
+ * {@link #buildParametersEditor(Composite, List, Map, long, long, ICurrentTimeProvider, IParametersEditorListener, IManagerResizeListener)}
  * method which returns a {@link MegawidgetManager}. Each megawidget managed by
  * the latter is given as its identifier the label with which the corresponding
  * parameter is associated. Note that the labels passed to the editor should not
@@ -61,6 +61,11 @@ import com.google.common.collect.ImmutableMap;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 20, 2014    4010    Chris.Golden      Changed to allow megawidgets to
+ *                                           have their visibility toggled via
+ *                                           an expand bar if desired. Also
+ *                                           changed to work with newest
+ *                                           megawidget manager changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,6 +76,12 @@ public class ParametersEditorFactory {
     // Private Static Constants
 
     /**
+     * Expand bar megawidget identifier prefix, used for expand bars that are to
+     * enclose megawidgets.
+     */
+    private static final String EXPAND_BAR_IDENTIFIER_PREFIX = "__expandBar__";
+
+    /**
      * Minimum fraction value allowed.
      */
     private static final Double MIN_FRACTION_VALUE = -10000.0;
@@ -79,6 +90,24 @@ public class ParametersEditorFactory {
      * Maximum fraction value allowed.
      */
     private static final Double MAX_FRACTION_VALUE = 10000.0;
+
+    /**
+     * Default specification parameters for expand bar container megawidgets.
+     */
+    private static final Map<String, Object> DEFAULT_EXPAND_BAR_SPECIFICATION_PARAMETERS;
+    static {
+        Map<String, Object> map = new HashMap<>();
+        map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "ExpandBar");
+        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 5);
+        map.put(ExpandBarSpecifier.EXPAND_HORIZONTALLY, true);
+        map.put(ExpandBarSpecifier.EXPAND_VERTICALLY, true);
+        map.put(ExpandBarSpecifier.LEFT_MARGIN, 0);
+        map.put(ExpandBarSpecifier.RIGHT_MARGIN, 0);
+        map.put(ExpandBarSpecifier.TOP_MARGIN, 2);
+        map.put(ExpandBarSpecifier.BOTTOM_MARGIN, 2);
+
+        DEFAULT_EXPAND_BAR_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
+    }
 
     /**
      * Mapping of commonly used stateful megawidget specifiers to nested maps,
@@ -213,6 +242,9 @@ public class ParametersEditorFactory {
          *            default current time provider is used. If no time
          *            megawidgets are included in <code>specifiers</code>, this
          *            is ignored.
+         * @param resizeListener
+         *            Listener to be notified when the <code>parent</code> may
+         *            have been resized as a result of a megawidget size change.
          * @throws MegawidgetException
          *             If one of the megawidget specifiers is invalid, or if an
          *             error occurs while creating or initializing one of the
@@ -222,17 +254,18 @@ public class ParametersEditorFactory {
                 List<Map<String, Object>> specifiers,
                 Map<String, Object> state, Map<String, K> parametersForKeys,
                 long minTime, long maxTime,
-                ICurrentTimeProvider currentTimeProvider)
+                ICurrentTimeProvider currentTimeProvider,
+                IManagerResizeListener resizeListener)
                 throws MegawidgetException {
             super(parent, specifiers, state, minTime, maxTime,
-                    currentTimeProvider);
+                    currentTimeProvider, resizeListener);
             this.parametersForKeys = parametersForKeys;
         }
 
         // Public Methods
 
         @Override
-        protected void commandInvoked(String identifier, String extraCallback) {
+        protected void commandInvoked(String identifier) {
 
             /*
              * No action.
@@ -273,11 +306,25 @@ public class ParametersEditorFactory {
     // Private Variables
 
     /**
+     * Map of properties to be used when creating expand bars for any parameter
+     * editors that are to be embedded within expandable areas.
+     */
+    private final Map<String, Object> expandBarSpecifier = new HashMap<>(
+            DEFAULT_EXPAND_BAR_SPECIFICATION_PARAMETERS);
+
+    /**
      * Map of parameter classes to nested maps, the latter acting as specifiers
      * for the megawidgets that are to be used to allow manipulation of values
      * that are instances of these parameter classes.
      */
     private final ClassKeyedMap<Map<String, Object>> megawidgetSpecifiersForParameterClasses = new ClassKeyedMap<>();
+
+    /**
+     * Map of parameter classes to flags indicating whether or not their
+     * megawidgets are to be expandable, that is, to have their visibility
+     * toggled via an expand bar.
+     */
+    private final ClassKeyedMap<Boolean> expandabilityForParameterClasses = new ClassKeyedMap<>();
 
     /**
      * Map of parameter classes to the converters, if any, that must be used to
@@ -352,11 +399,29 @@ public class ParametersEditorFactory {
     // Public Methods
 
     /**
+     * Register expand bar options, to be used for the containers of editors of
+     * any parameter types that are to be expandable.
+     * 
+     * @param expandBarOptions
+     *            Map of expand bar specifier options to be used. Any options
+     *            that are not specified within this map are taken from the
+     *            defaults.
+     * @see #registerParameterType(Class, Class, Map, IConverter, boolean)
+     */
+    public void registerExpandBarOptions(Map<String, ?> expandBarOptions) {
+        expandBarSpecifier.clear();
+        expandBarSpecifier.putAll(DEFAULT_EXPAND_BAR_SPECIFICATION_PARAMETERS);
+        expandBarSpecifier.putAll(expandBarOptions);
+    }
+
+    /**
      * Register a parameter type, associating its class with the specified
      * megawidget class. The latter is configured in some default manner, and
      * expects its state to be specified by an object of the type given by the
      * parameter class. If an association with this class is already in
-     * existence, it is overwritten by this new one.
+     * existence, it is overwritten by this new one. The megawidget will not be
+     * expandable (i.e. will not have its visiblility toggled via an expand
+     * bar).
      * 
      * @param parameterClass
      *            Class of the parameter.
@@ -367,7 +432,7 @@ public class ParametersEditorFactory {
     public void registerParameterType(Class<?> parameterClass,
             Class<? extends IStatefulSpecifier> megawidgetClass) {
         registerParameterType(parameterClass, megawidgetClass,
-                Collections.<String, Object> emptyMap(), null);
+                Collections.<String, Object> emptyMap(), null, false);
     }
 
     /**
@@ -375,7 +440,8 @@ public class ParametersEditorFactory {
      * megawidget class with the specified options. The latter expects its state
      * to be specified by an object of the type given by the parameter class. If
      * an association with this class is already in existence, it is overwritten
-     * by this new one.
+     * by this new one. The megawidget will not be expandable (i.e. will not
+     * have its visiblility toggled via an expand bar).
      * 
      * @param parameterClass
      *            Class of the parameter.
@@ -390,14 +456,15 @@ public class ParametersEditorFactory {
             Class<? extends IStatefulSpecifier> megawidgetClass,
             Map<String, ?> megawidgetOptions) {
         registerParameterType(parameterClass, megawidgetClass,
-                megawidgetOptions, null);
+                megawidgetOptions, null, false);
     }
 
     /**
      * Register a parameter type, associating its class with the specified
      * megawidget class. The latter is configured in some default manner. If an
      * association with this class is already in existence, it is overwritten by
-     * this new one.
+     * this new one. The megawidget will not be expandable (i.e. will not have
+     * its visiblility toggled via an expand bar).
      * 
      * @param parameterClass
      *            Class of the parameter.
@@ -414,7 +481,35 @@ public class ParametersEditorFactory {
             Class<? extends IStatefulSpecifier> megawidgetClass,
             IConverter converter) {
         registerParameterType(parameterClass, megawidgetClass,
-                Collections.<String, Object> emptyMap(), converter);
+                Collections.<String, Object> emptyMap(), converter, false);
+    }
+
+    /**
+     * Register a parameter type, associating its class with the specified
+     * megawidget class. If an association with this class is already in
+     * existence, it is overwritten by this new one. The megawidget will not be
+     * expandable (i.e. will not have its visiblility toggled via an expand
+     * bar).
+     * 
+     * @param parameterClass
+     *            Class of the parameter.
+     * @param megawidgetClass
+     *            Class of the megawidget with which this parameter class is to
+     *            be associated.
+     * @param megawidgetOptions
+     *            Map of specifier options to be used to configure the
+     *            megawidget.
+     * @param converter
+     *            Converter to be used to translate between objects of the type
+     *            given by <code>parameterClass</code> and the objects expected
+     *            and provided by the megawidget of type <code>megawidgetClass
+     *            </code> as state.
+     */
+    public <A> void registerParameterType(Class<A> parameterClass,
+            Class<? extends IStatefulSpecifier> megawidgetClass,
+            Map<String, ?> megawidgetOptions, IConverter converter) {
+        registerParameterType(parameterClass, megawidgetClass,
+                megawidgetOptions, converter, false);
     }
 
     /**
@@ -435,10 +530,15 @@ public class ParametersEditorFactory {
      *            given by <code>parameterClass</code> and the objects expected
      *            and provided by the megawidget of type <code>megawidgetClass
      *            </code> as state.
+     * @param expandable
+     *            Flag indicating whether or not the megawidget should be
+     *            expandable, that is, its header should be able to be toggled
+     *            to show or hide the megawidget.
      */
     public <A> void registerParameterType(Class<A> parameterClass,
             Class<? extends IStatefulSpecifier> megawidgetClass,
-            Map<String, ?> megawidgetOptions, IConverter converter) {
+            Map<String, ?> megawidgetOptions, IConverter converter,
+            boolean expandable) {
 
         /*
          * Create a map to act as a megawidget specifier, and fill it with
@@ -473,17 +573,17 @@ public class ParametersEditorFactory {
          * Place the option key-value pairs in the specifier map, overriding any
          * default values that exist for such parameters.
          */
-        for (String key : megawidgetOptions.keySet()) {
-            specifierMap.put(key, megawidgetOptions.get(key));
-        }
+        specifierMap.putAll(megawidgetOptions);
 
         /*
          * Associate the resulting specifier map with the parameter type, and if
-         * a converter was supplied, remember that as well.
+         * a converter was supplied, remember that as well. Also remember
+         * whether or not it should be expandable.
          */
         megawidgetSpecifiersForParameterClasses.put(parameterClass,
                 specifierMap);
         convertersForParameterClasses.put(parameterClass, converter);
+        expandabilityForParameterClasses.put(parameterClass, expandable);
     }
 
     /**
@@ -519,12 +619,16 @@ public class ParametersEditorFactory {
      *            Current time provider for any time megawidgets. If <code>
      *            null</code>, a default current time provider is used which
      *            always provides the current system time.
-     * @param listener
+     * @param parametersListener
      *            Listener to be notified each time the one of the parameter
      *            values has changed, if any. If no listener is desired, the
      *            caller may track the life of <code>parent</code> and simply
      *            check the values within <code>valuesForParameters</code> to
      *            see their updated values once <code>parent</code> is disposed.
+     * @param resizeListener
+     *            Listener to be notified each time a resize of the
+     *            <code>parent</code> may have occurred as a result of a
+     *            megawidget size change.
      * @return Megawidget manager that is acting as the parameters editor.
      * @throws MegawidgetSpecificationException
      *             If the megawidgets cannot be constructed.
@@ -533,7 +637,8 @@ public class ParametersEditorFactory {
             Composite parent, List<K> parameters,
             Map<K, Object> valuesForParameters, long minimumTime,
             long maximumTime, ICurrentTimeProvider currentTimeProvider,
-            IParametersEditorListener<K> listener) throws MegawidgetException {
+            IParametersEditorListener<K> parametersListener,
+            IManagerResizeListener resizeListener) throws MegawidgetException {
 
         /*
          * Assemble a list of the megawidget specifiers, and any converters
@@ -576,12 +681,42 @@ public class ParametersEditorFactory {
             parametersForKeys.put(key, parameter);
 
             /*
-             * Modify the base specifier by adding the label as the megawidget
-             * label and the key as its identifier, and add it to the list.
+             * Determine whether or not the megawidget should be embedded within
+             * an expand bar.
+             */
+            boolean expandable = expandabilityForParameterClasses
+                    .getProximate(parameterClass);
+
+            /*
+             * Modify the base specifier by adding the key as its identifier.
              */
             Map<String, Object> specifier = new HashMap<>(baseSpecifier);
-            specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
             specifier.put(IStatefulSpecifier.MEGAWIDGET_IDENTIFIER, key);
+
+            /*
+             * If the megawidget should be expandable, embed it within an expand
+             * bar megawidget; otherwise, just set the label of the megawidget.
+             */
+            if (expandable) {
+                List<Map<String, Object>> pageSpecifiers = new ArrayList<>(1);
+                pageSpecifiers.add(specifier);
+                Map<String, Object> page = new HashMap<>();
+                page.put(ExpandBarSpecifier.PAGE_IDENTIFIER, label);
+                page.put(ExpandBarSpecifier.PAGE_FIELDS, pageSpecifiers);
+                List<Map<String, Object>> pageList = new ArrayList<>(1);
+                pageList.add(page);
+                specifier = new HashMap<>(expandBarSpecifier);
+                specifier.put(ExpandBarSpecifier.MEGAWIDGET_IDENTIFIER,
+                        EXPAND_BAR_IDENTIFIER_PREFIX + key);
+                specifier.put(ExpandBarSpecifier.MEGAWIDGET_PAGES, pageList);
+            } else {
+                specifier.put(IStatefulSpecifier.MEGAWIDGET_LABEL, label + ":");
+            }
+
+            /*
+             * Add the megawidget (or its enclosing expand bar, if it is
+             * embedded within one) to the list.
+             */
             specifiers.add(specifier);
 
             /*
@@ -599,7 +734,7 @@ public class ParametersEditorFactory {
          * these items when it is constructing itself.
          */
         convertersForKeysForParents.put(parent, convertersForKeys);
-        listenersForParents.put(parent, listener);
+        listenersForParents.put(parent, parametersListener);
 
         /*
          * Ensure that when the parent composite is disposed of, the
@@ -622,6 +757,6 @@ public class ParametersEditorFactory {
          */
         return new ParametersEditor<K>(parent, specifiers, valuesForKeys,
                 parametersForKeys, minimumTime, maximumTime,
-                currentTimeProvider);
+                currentTimeProvider, resizeListener);
     }
 }

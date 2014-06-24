@@ -58,6 +58,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Feb 19, 2014   2915     bkowal          JSON settings re-factor
  * Apr 14, 2014   2925     Chris.Golden    Minor changes to work with megawidget
  *                                         framework changes.
+ * Jun 23, 2014   4010     Chris.Golden    Changed to work with megawidget manager
+ *                                         changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -326,8 +328,7 @@ class SettingDialog extends BasicDialog {
                             .settingsPOJOToMap(this.values), 0L, 0L,
                     currentTimeProvider) {
                 @Override
-                protected void commandInvoked(String identifier,
-                        String extraCallback) {
+                protected void commandInvoked(String identifier) {
 
                     // No action.
                 }

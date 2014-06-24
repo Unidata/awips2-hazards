@@ -55,12 +55,14 @@ import com.google.common.collect.ImmutableSet;
  *                                           defensive copying of the state when
  *                                           notifying a state change listener of
  *                                           a change.
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
+ * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014   3982     Chris.Golden      Changed to use new choices button
+ * Jun 17, 2014    3982    Chris.Golden      Changed to use new choices button
  *                                           component, and to disable detail
  *                                           children when it is disabled.
+ * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -147,7 +149,6 @@ public class CheckBoxesMegawidget extends MultipleBoundedChoicesMegawidget
                 }
                 notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(
                         state));
-                notifyListener();
             }
         };
         this.childManager = (specifier.getChildMegawidgetSpecifiers().size() > 0 ? new BoundedChoicesDetailChildrenManager(

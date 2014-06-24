@@ -52,6 +52,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           comments.
  * May 18, 2014   2925     Chris.Golden      Fixed bug with coloring when changing
  *                                           megawidget from read-only to editable.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -165,7 +167,6 @@ public class ComboBoxMegawidget extends SingleBoundedChoiceMegawidget implements
                             .getItem(index));
                 }
                 notifyListener(getSpecifier().getIdentifier(), state);
-                notifyListener();
             }
         });
 

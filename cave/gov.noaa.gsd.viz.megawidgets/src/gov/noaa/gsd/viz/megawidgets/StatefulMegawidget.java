@@ -37,13 +37,15 @@ import com.google.common.collect.ImmutableSet;
  * Jun 17, 2014   3982     Chris.Golden      Changed to allow simpler specification
  *                                           of "values" property for single-state
  *                                           megawidgets.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see StatefulMegawidgetSpecifier
  */
-public abstract class StatefulMegawidget extends NotifierMegawidget implements
+public abstract class StatefulMegawidget extends Megawidget implements
         IStateful {
 
     // Protected Static Constants
@@ -88,7 +90,7 @@ public abstract class StatefulMegawidget extends NotifierMegawidget implements
      */
     protected StatefulMegawidget(StatefulMegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
-        super(specifier, paramMap);
+        super(specifier);
         stateChangeListener = (IStateChangeListener) paramMap
                 .get(STATE_CHANGE_LISTENER);
     }

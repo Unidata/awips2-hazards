@@ -61,6 +61,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           comments.
  * Jun 17, 2014   3982     Chris.Golden      Changed to deselect any selected
  *                                           items before being disabled.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -484,6 +486,5 @@ public class CheckListMegawidget extends MultipleBoundedChoicesMegawidget
      */
     private void notifyListeners() {
         notifyListener(getSpecifier().getIdentifier(), new ArrayList<>(state));
-        notifyListener();
     }
 }

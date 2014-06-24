@@ -9,13 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.collect.IParameterInfo;
 
 /**
  * Description: Listener for parameters editor events. The generic parameter
  * <code>K</code> indicates the class of the labels being used, and must be
  * identical to the <code>K</code> used in the call to
- * {@link ParametersEditorFactory#buildParametersEditor(org.eclipse.swt.widgets.Composite, java.util.List, java.util.Map, long, long, ICurrentTimeProvider, IParametersEditorListener)}
+ * {@link ParametersEditorFactory#buildParametersEditor(org.eclipse.swt.widgets.Composite, java.util.List, java.util.Map, long, long, ICurrentTimeProvider, IParametersEditorListener, IManagerResizeListener)}
  * .
  * 
  * <pre>

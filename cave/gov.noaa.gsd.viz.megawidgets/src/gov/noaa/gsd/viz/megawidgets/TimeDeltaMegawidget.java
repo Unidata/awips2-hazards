@@ -64,6 +64,8 @@ import com.google.common.collect.ImmutableSet;
  *                                           component is wide enough to show all
  *                                           the digits it may be called upon to
  *                                           show.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -639,6 +641,5 @@ public class TimeDeltaMegawidget extends BoundedValueMegawidget<Long> implements
         notifyListener(getSpecifier().getIdentifier(),
                 ((TimeDeltaSpecifier) getSpecifier()).getStateUnit()
                         .convertMillisecondsToUnit(state));
-        notifyListener();
     }
 }

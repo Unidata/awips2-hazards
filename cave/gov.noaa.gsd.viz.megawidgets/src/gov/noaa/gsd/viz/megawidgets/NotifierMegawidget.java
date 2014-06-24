@@ -25,12 +25,14 @@ import java.util.Map;
  *                                           (variable names, comments, etc.) to
  *                                           "widget" with "megawidget" to avoid
  *                                           confusion.
+ * Jun 23, 2014   4010     Chris.Golden      Changed to no longer include the
+ *                                           extra callback information in any
+ *                                           method invocations.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see INotificationListener
- * @see NotifierMegawidgetSpecifier
  */
 public abstract class NotifierMegawidget extends Megawidget implements
         INotifier {
@@ -54,7 +56,7 @@ public abstract class NotifierMegawidget extends Megawidget implements
      *            Hash table mapping megawidget creation time parameter
      *            identifiers to values.
      */
-    protected NotifierMegawidget(NotifierMegawidgetSpecifier specifier,
+    protected NotifierMegawidget(MegawidgetSpecifier specifier,
             Map<String, Object> paramMap) {
         super(specifier);
         notificationListener = (INotificationListener) paramMap
@@ -68,10 +70,8 @@ public abstract class NotifierMegawidget extends Megawidget implements
      * should be called by subclasses whenever the latter are invoked.
      */
     protected final void notifyListener() {
-        NotifierMegawidgetSpecifier specifier = getSpecifier();
         if (notificationListener != null) {
-            notificationListener.megawidgetInvoked(this,
-                    specifier.getCallbackData());
+            notificationListener.megawidgetInvoked(this);
         }
     }
 }

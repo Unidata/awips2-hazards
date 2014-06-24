@@ -174,6 +174,14 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      calculating it every time it is asked for via
  *                                      the public method. Made a few additional
  *                                      minor changes to support new HID.
+ * Jun 24, 2014 4010       Chris.Golden Fixed bug uncovered by testing use of expand
+ *                                      bar megawidgets within the event metadata
+ *                                      specifiers that caused "until further notice"
+ *                                      functionality to fail and give a warning if
+ *                                      a time scale megawidget to be manipulated
+ *                                      via an UFN checkbox was not a top-level
+ *                                      megawidget, but was instead embedded within
+ *                                      a parent megawidget.
  * </pre>
  * 
  * @author bsteffen
@@ -793,16 +801,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
      */
     private TimeScaleSpecifier getTimeScaleSpecifierForAttribute(
             ObservedHazardEvent event, String key, String untilFurtherNoticeKey) {
-        String megawidgetIdentifierSuffix = ":" + key;
-        MegawidgetSpecifierManager specifierManager = getMegawidgetSpecifiers(event);
-        ISpecifier targetSpecifier = null;
-        for (ISpecifier specifier : specifierManager.getSpecifiers()) {
-            if (specifier.getIdentifier().endsWith(megawidgetIdentifierSuffix)
-                    || specifier.getIdentifier().equals(key)) {
-                targetSpecifier = specifier;
-                break;
-            }
-        }
+        ISpecifier targetSpecifier = getSpecifierWithStateIdentifier(key,
+                getMegawidgetSpecifiers(event).getSpecifiers());
         if ((targetSpecifier instanceof TimeScaleSpecifier) == false) {
             statusHandler.warn("Unable to find time scale specifier "
                     + "for attribute \"" + key
@@ -811,6 +811,42 @@ public class SessionEventManager extends AbstractSessionEventManager {
             return null;
         }
         return (TimeScaleSpecifier) targetSpecifier;
+    }
+
+    /**
+     * Get the megawidget specifier, from the given list of specifiers and any
+     * child specifiers of the latter, that includes with the provided state
+     * identifier in its identifier as its last or only state identifier.
+     * 
+     * @param identifier
+     *            State identifier that must be within the specifier's
+     *            identifier.
+     * @param specifiers
+     *            List of specifiers in which to look.
+     * @return Specifier that contains the state identifier as its last or only
+     *         state identifier, or <code>null</code> if no such specifier is
+     *         found.
+     */
+    @SuppressWarnings("unchecked")
+    private ISpecifier getSpecifierWithStateIdentifier(String identifier,
+            List<ISpecifier> specifiers) {
+        String megawidgetIdentifierSuffix = ":" + identifier;
+        for (ISpecifier specifier : specifiers) {
+            if (specifier.getIdentifier().endsWith(megawidgetIdentifierSuffix)
+                    || specifier.getIdentifier().equals(identifier)) {
+                return specifier;
+            }
+            if (specifier instanceof IParentSpecifier) {
+                ISpecifier targetSpecifier = getSpecifierWithStateIdentifier(
+                        identifier,
+                        ((IParentSpecifier<ISpecifier>) specifier)
+                                .getChildMegawidgetSpecifiers());
+                if (targetSpecifier != null) {
+                    return targetSpecifier;
+                }
+            }
+        }
+        return null;
     }
 
     /**

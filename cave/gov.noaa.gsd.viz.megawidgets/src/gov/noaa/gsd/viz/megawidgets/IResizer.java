@@ -13,27 +13,24 @@ import java.util.Map;
 
 /**
  * Interface describing the methods to be implemented by a megawidget that
- * notifies an {@link INotificationListener} when it is invoked. Any subclasses
- * of {@link Megawidget} must implement this interface if they are to issue such
+ * notifies an {@link IResizeListener} when it is invoked. Any subclasses of
+ * {@link Megawidget} must implement this interface if they are to issue such
  * notifications.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
- *                                           package, updated Javadoc and other
- *                                           comments.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 24, 2014   4010     Chris.Golden Initial creation.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
- * @see INotificationListener
+ * @see IResizeListener
  * @see Megawidget
  */
-public interface INotifier extends IMegawidget {
+public interface IResizer extends IMegawidget {
 
     // Public Static Constants
 
@@ -41,7 +38,7 @@ public interface INotifier extends IMegawidget {
      * Notification listener megawidget creation time parameter name; if
      * specified in the map passed to
      * {@link ISpecifier#createMegawidget(org.eclipse.swt.widgets.Widget, Class, Map)}
-     * , its value must be an object of type <code>INotificationListener</code>.
+     * , its value must be an object of type <code>IResizeListener</code>.
      */
-    public static final String NOTIFICATION_LISTENER = "notificationListener";
+    public static final String RESIZE_LISTENER = "resizeListener";
 }

@@ -54,6 +54,8 @@ import com.google.common.collect.ImmutableSet;
  * Jun 04, 2014   2155     Chris.Golden      Changed scale widget to snap to
  *                                           the current value when a mouse up
  *                                           occurs over it.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -611,6 +613,5 @@ public abstract class SpinnerMegawidget<T extends Number & Comparable<T>>
     private void notifyListeners() {
         notifyListener(getSpecifier().getIdentifier(),
                 SpinnerMegawidget.this.state);
-        notifyListener();
     }
 }

@@ -65,8 +65,10 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 17, 2014    3982    Chris.Golden      Changed to have correct look when
+ * Jun 17, 2014   3982    Chris.Golden       Changed to have correct look when
  *                                           disabled.
+ * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ *                                           of NotifierMegawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -427,6 +429,5 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      */
     private void notifyListeners() {
         notifyListener(getSpecifier().getIdentifier(), state);
-        notifyListener();
     }
 }

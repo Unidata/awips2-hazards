@@ -93,6 +93,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                           framework changes.
  * Jun 17, 2014   3982     Chris.Golden      Changed megawidget "side effects" to
  *                                           "interdependencies".
+ * Jun 23, 2014   4010     Chris.Golden      Changed to work with megawidget manager
+ *                                           changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -361,8 +363,7 @@ class ToolDialog extends BasicDialog {
                     megawidgetSpecifiersList, valuesDict, minVisibleTime,
                     maxVisibleTime, currentTimeProvider, sideEffectsApplier) {
                 @Override
-                protected void commandInvoked(String identifier,
-                        String extraCallback) {
+                protected void commandInvoked(String identifier) {
 
                     /*
                      * Fire off the action if the invoked megawidget is a
@@ -371,7 +372,7 @@ class ToolDialog extends BasicDialog {
                     if (runToolTriggerIdentifiers.contains(identifier)) {
                         fireAction(new ToolAction(
                                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,
-                                extraCallback, ToolDialog.this.getState()));
+                                identifier, ToolDialog.this.getState()));
                     }
                 }
 

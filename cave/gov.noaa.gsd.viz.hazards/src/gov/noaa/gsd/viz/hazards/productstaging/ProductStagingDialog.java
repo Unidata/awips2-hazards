@@ -68,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Apr 14, 2014   2925     Chris G.    Minor changes to support megawidget framework
  *                                     changes.
  * May 08, 2014   2925     Chris G.    Changed to work with MVP framework changes.
+ * Jun 23, 2014   4010     Chris G.    Changed to work with megawidget manager
+ *                                     changes.
  * </pre>
  * 
  * @author shouming.wei
@@ -182,8 +184,7 @@ class ProductStagingDialog extends BasicDialog {
         // Protected Methods
 
         @Override
-        protected final void commandInvoked(String identifier,
-                String extraCallback) {
+        protected final void commandInvoked(String identifier) {
 
             /*
              * No action.

@@ -52,10 +52,11 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
  * Jun 13, 2014 3519       jsanchez     Initial creation
- * 
+ * Jun 24, 2014 4010       Chris.Golden Changed to work with parameters
+ *                                      editor changes.
  * </pre>
  * 
  * @author jsanchez
@@ -66,9 +67,9 @@ public class DataEditor {
     private static final IUFStatusHandler handler = UFStatus
             .getHandler(DataEditor.class);
 
-    private ProductEditor productEditor;
+    private final ProductEditor productEditor;
 
-    private LinkedHashMap<KeyInfo, Serializable> data;
+    private final LinkedHashMap<KeyInfo, Serializable> data;
 
     private MegawidgetManager manager;
 
@@ -148,7 +149,7 @@ public class DataEditor {
                             productEditor.getSaveButton().setEnabled(true);
                             productEditor.getRevertButton().setEnabled(true);
                         }
-                    });
+                    }, null);
 
             // Disables 'displayable'
             // TODO Check if the megawidget for a list handled editable

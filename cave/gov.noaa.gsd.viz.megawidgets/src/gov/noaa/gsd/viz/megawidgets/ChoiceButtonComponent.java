@@ -42,6 +42,10 @@ import org.eclipse.swt.widgets.Label;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 12, 2014    3982    Chris.Golden Initial creation.
+ * Jun 23, 2014    4010    Chris.Golden Changed to allow the option of not
+ *                                      having its component widgets ask to take
+ *                                      up extra space when more vertical space
+ *                                      is available.
  * </pre>
  * 
  * @author Chris.Golden
@@ -107,13 +111,17 @@ public class ChoiceButtonComponent {
      * @param enabled
      *            Flag indicating whether or not the component should start off
      *            as enabled.
-     * @param identifier
+     * @param expandVertically
+     *            Flag indicating whether or not the component should expand to
+     *            fill any available vertical space.
+     * @param choice
      *            Choice identifier, if any.
      * @param description
      *            Label description.
      */
     public ChoiceButtonComponent(Composite parent, boolean radioButton,
-            int buttonFlags, boolean enabled, String choice, String description) {
+            int buttonFlags, boolean enabled, boolean expandVertically,
+            String choice, String description) {
         this.choice = choice;
 
         /*
@@ -125,7 +133,8 @@ public class ChoiceButtonComponent {
         GridLayout layout = new GridLayout(2, false);
         layout.horizontalSpacing = layout.marginWidth = layout.marginHeight = 0;
         panel.setLayout(layout);
-        containerGridData = new GridData(SWT.LEFT, SWT.CENTER, false, true);
+        containerGridData = new GridData(SWT.LEFT, SWT.CENTER, false,
+                expandVertically);
         panel.setLayoutData(containerGridData);
 
         /*
