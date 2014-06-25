@@ -35,6 +35,8 @@ import java.util.Set;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 23, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -440,7 +442,7 @@ public abstract class BoundedChoiceValidatorHelper<T> {
      * Convert the specified object into a valid choice(s) subset.
      * 
      * @param available
-     *            List of available choices; <code>selected</code> must be a
+     *            List of available choices; <code>subset</code> must be a
      *            subset of this.
      * @param subset
      *            Object holding the subset.
@@ -465,6 +467,19 @@ public abstract class BoundedChoiceValidatorHelper<T> {
             throw e.toStateException(getIdentifier(), getType());
         }
     }
+
+    /**
+     * Get a copy of the specified subset that has been pruned of any choices
+     * not found in the specified superset.
+     * 
+     * @param subset
+     *            Subset that is to be pruned to not include anything that is
+     *            not part of <code>superset</code>.
+     * @param superset
+     *            Superset to which to prune <code>subset</code>.
+     * @return Properly pruned subset.
+     */
+    public abstract T getPrunedSubset(T subset, List<?> superset);
 
     /**
      * Convert the specified available choices list to an unmodifiable version.

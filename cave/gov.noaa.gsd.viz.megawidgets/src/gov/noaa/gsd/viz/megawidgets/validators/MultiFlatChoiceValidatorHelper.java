@@ -13,9 +13,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
 /**
  * Description: Validator helper used to ensure that potential choices for
  * instances of {@link BoundedChoiceValidator} that allow a flat set of choices
@@ -27,6 +24,8 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,8 +67,7 @@ public class MultiFlatChoiceValidatorHelper extends
     }
 
     @Override
-    protected Collection<String> createSingleElementSubset(String element) {
-        return (isOrderedSubset() ? Lists.newArrayList(element) : Sets
-                .newHashSet(element));
+    protected String getPrunedSubsetNode(String subNode, Object superNode) {
+        return subNode;
     }
 }

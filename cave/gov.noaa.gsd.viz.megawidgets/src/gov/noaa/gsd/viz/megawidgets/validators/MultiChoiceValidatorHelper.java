@@ -9,7 +9,9 @@
  */
 package gov.noaa.gsd.viz.megawidgets.validators;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,8 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -67,6 +71,48 @@ public abstract class MultiChoiceValidatorHelper<E> extends
         this.orderedSubset = orderedSubset;
     }
 
+    // Public Methods
+
+    @Override
+    public final Collection<E> getPrunedSubset(Collection<E> subset,
+            List<?> superset) {
+
+        /*
+         * Create the proper type of collection to be returned.
+         */
+        Collection<E> prunedSubset = (orderedSubset ? new ArrayList<E>()
+                : new HashSet<E>());
+
+        /*
+         * For each node in the subset, find the equivalent node in the
+         * available list, and ensure that the superset one has at least all the
+         * nodes of the subset one.
+         */
+        for (E subNode : subset) {
+
+            /*
+             * Find the superset node equivalent to this subset node; if it is
+             * found, include a copy of this subset node in the pruned subset.
+             */
+            String identifier = getIdentifierOfNode(subNode);
+            Object superNode = null;
+            for (Object node : superset) {
+                if (identifier.equals(getIdentifierOfNode(node))) {
+                    superNode = node;
+                    break;
+                }
+            }
+            if (superNode != null) {
+                prunedSubset.add(getPrunedSubsetNode(subNode, superNode));
+            }
+        }
+
+        /*
+         * Return the pruned subset.
+         */
+        return prunedSubset;
+    }
+
     // Protected Methods
 
     /**
@@ -77,15 +123,6 @@ public abstract class MultiChoiceValidatorHelper<E> extends
     protected final boolean isOrderedSubset() {
         return orderedSubset;
     }
-
-    /**
-     * Create a subset holding the specified single element.
-     * 
-     * @param element
-     *            Element to be within the subset.
-     * @return Single-element subset.
-     */
-    protected abstract Collection<E> createSingleElementSubset(String element);
 
     @SuppressWarnings("unchecked")
     @Override
@@ -189,4 +226,19 @@ public abstract class MultiChoiceValidatorHelper<E> extends
     protected boolean isNodeSubset(Object subNode, Object superNode) {
         return true;
     }
+
+    /**
+     * Get a copy of the specified subset node that has been pruned of anything
+     * not found in the specified superset node. It may be assumed that the
+     * subset node and the superset node have already been confirmed to have the
+     * same identifier.
+     * 
+     * @param subNode
+     *            Subset node that is to be pruned to not include anything that
+     *            is not part of <code>supersetNode</code>.
+     * @param superNode
+     *            Superset node to which to prune <code>subsetNode</code>.
+     * @return Properly pruned subset.
+     */
+    protected abstract E getPrunedSubsetNode(E subNode, Object superNode);
 }

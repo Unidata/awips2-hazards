@@ -21,6 +21,8 @@ import java.util.List;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,6 +48,18 @@ public class SingleChoiceValidatorHelper extends
     public SingleChoiceValidatorHelper(String choicesKey,
             String elementNameKey, String elementIdentifierKey) {
         super(choicesKey, elementNameKey, elementIdentifierKey);
+    }
+
+    // Public Methods
+
+    @Override
+    public final String getPrunedSubset(String subset, List<?> superset) {
+        for (Object superNode : superset) {
+            if (subset.equals(getIdentifierOfNode(superNode))) {
+                return subset;
+            }
+        }
+        return createDefaultSubset(superset);
     }
 
     // Protected Methods

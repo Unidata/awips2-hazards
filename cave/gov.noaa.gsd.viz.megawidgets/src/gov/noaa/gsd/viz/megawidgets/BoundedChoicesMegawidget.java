@@ -34,6 +34,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 24, 2014   4023     Chris.Golden      Changed to prune old state to new
+ *                                           choices when available choices are
+ *                                           changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -206,6 +209,7 @@ public abstract class BoundedChoicesMegawidget<T> extends StatefulMegawidget {
      * @throws MegawidgetPropertyException
      *             If the choices are invalid.
      */
+    @SuppressWarnings("unchecked")
     protected final void doSetChoices(Object value)
             throws MegawidgetPropertyException {
 
@@ -226,26 +230,16 @@ public abstract class BoundedChoicesMegawidget<T> extends StatefulMegawidget {
         }
 
         /*
-         * Set the state to what it was before to see if it is still valid given
-         * the new choices if possible.
+         * Prune the state so that anything not found in the new choices is
+         * removed.
          */
+        String identifier = getSpecifier().getIdentifier();
         try {
-            doSetState(getSpecifier().getIdentifier(),
-                    stateValidator.convertToStateValue(getState(getSpecifier()
-                            .getIdentifier())));
+            doSetState(identifier,
+                    stateValidator.pruneToStateValue((T) getState(identifier)));
         } catch (MegawidgetException e) {
-
-            /*
-             * If an error occurred, the old state is no longer valid; set the
-             * choices to the default value.
-             */
-            try {
-                doSetState(getSpecifier().getIdentifier(),
-                        stateValidator.convertToStateValue(null));
-            } catch (MegawidgetException e2) {
-                throw new IllegalStateException(
-                        "setting default state caused internal error", e);
-            }
+            throw new IllegalStateException(
+                    "pruning state to new choices caused internal error", e);
         }
 
         /*

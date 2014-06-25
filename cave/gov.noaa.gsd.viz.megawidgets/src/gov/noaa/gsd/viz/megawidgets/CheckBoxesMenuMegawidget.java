@@ -48,6 +48,9 @@ import org.eclipse.swt.widgets.MenuItem;
  *                                           comments.
  * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Jun 24, 2014   4023     Chris.Golden      Changed to prune old state to new
+ *                                           choices when available choices are
+ *                                           changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -152,8 +155,8 @@ public class CheckBoxesMenuMegawidget extends MultipleBoundedChoicesMegawidget
     // Public Methods
 
     /**
-     * Set the choices to those specified. If the current state is not a subset
-     * of the new choices, the state will be set to <code>null</code>.
+     * Set the choices to those specified. The current state will be pruned of
+     * any elements that are not found within the new choices.
      * 
      * @param value
      *            List of new choices.

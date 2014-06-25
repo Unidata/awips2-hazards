@@ -15,9 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
 /**
  * Description: Validator helper used to ensure that potential choices for
  * instances of {@link BoundedChoiceValidator} that allow hierarchical choices
@@ -29,6 +26,8 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,12 +86,6 @@ public class MultiHierarchicalChoiceValidatorHelper extends
     protected final Collection<Object> createDefaultSubset(List<?> available) {
         return (isOrderedSubset() ? Collections.emptyList() : Collections
                 .emptySet());
-    }
-
-    @Override
-    protected Collection<Object> createSingleElementSubset(String element) {
-        return (isOrderedSubset() ? Lists.newArrayList((Object) element) : Sets
-                .newHashSet((Object) element));
     }
 
     @Override
@@ -161,5 +154,52 @@ public class MultiHierarchicalChoiceValidatorHelper extends
             }
         }
         return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    protected Object getPrunedSubsetNode(Object subNode, Object superNode) {
+
+        /*
+         * If either the superset node or the subset node is a string
+         * identifier, then the pruned subset cannot have children, so return
+         * the identifier. The same is true if either the superset or subset
+         * node has no children.
+         */
+        if ((superNode instanceof String) || (subNode instanceof String)) {
+            return getIdentifierOfNode(superNode);
+        }
+        Map<?, ?> subNodeMap = (Map<?, ?>) subNode;
+        Collection<Object> subNodeChildren = (Collection<Object>) subNodeMap
+                .get(elementChildrenKey);
+        if ((subNodeChildren == null) || subNodeChildren.isEmpty()) {
+            return getIdentifierOfNode(superNode);
+        }
+        List<?> superNodeChildren = (List<?>) ((Map<?, ?>) superNode)
+                .get(elementChildrenKey);
+        if ((superNodeChildren == null) || superNodeChildren.isEmpty()) {
+            return getIdentifierOfNode(superNode);
+        }
+
+        /*
+         * Get the pruned child list; if it is not empty, return a map holding
+         * the name, identifier and the pruned child list as values. Otherwise,
+         * just return the identifier.
+         */
+        subNodeChildren = getPrunedSubset(subNodeChildren, superNodeChildren);
+        if (subNodeChildren.isEmpty() == false) {
+            Map<String, Object> newSubNode = new HashMap<>();
+            if (subNodeMap.containsKey(getElementNameKey())) {
+                newSubNode.put(getElementNameKey(),
+                        subNodeMap.get(getElementNameKey()));
+            }
+            if (subNodeMap.containsKey(getElementIdentifierKey())) {
+                newSubNode.put(getElementIdentifierKey(),
+                        subNodeMap.get(getElementIdentifierKey()));
+            }
+            newSubNode.put(elementChildrenKey, subNodeChildren);
+            return newSubNode;
+        }
+        return getIdentifierOfNode(superNode);
     }
 }

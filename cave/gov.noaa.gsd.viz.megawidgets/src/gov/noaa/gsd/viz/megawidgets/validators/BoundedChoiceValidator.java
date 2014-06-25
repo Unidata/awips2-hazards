@@ -27,6 +27,8 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Apr 24, 2014   2925     Chris.Golden Initial creation.
+ * Jun 24, 2014   4023     Chris.Golden Added ability to create a pruned
+ *                                      subset.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,6 +158,18 @@ public class BoundedChoiceValidator<T> extends SingleStateValidator<T> {
     @Override
     public T convertToStateValue(Object object) throws MegawidgetException {
         return helper.convertToSubset(availableChoices, object);
+    }
+
+    /**
+     * Prune the specified state to remove anything that is not an available
+     * choice.
+     * 
+     * @param state
+     *            State to be pruned.
+     * @return Pruned state.
+     */
+    public T pruneToStateValue(T state) {
+        return helper.getPrunedSubset(state, availableChoices);
     }
 
     // Protected Methods
