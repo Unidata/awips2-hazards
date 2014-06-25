@@ -69,10 +69,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.requests.HazardEventIdRequest;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
-import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -1312,7 +1310,15 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 return existingEvent;
 
             } else {
-                oevent.setEventID(generateEventID(), false, originator);
+                try {
+                    oevent.setEventID(
+                            HazardEventUtilities.generateEventID(
+                                    configManager.getSiteID(),
+                                    CAVEMode.getMode() == CAVEMode.PRACTICE),
+                            false, originator);
+                } catch (Exception e) {
+                    statusHandler.error("Unable to set event id", e);
+                }
             }
         }
 
@@ -1699,21 +1705,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private boolean hasEverBeenIssued(IHazardEvent event) {
         return Boolean.TRUE.equals(event.getHazardAttribute(ATTR_ISSUED));
-    }
-
-    private String generateEventID() {
-        HazardEventIdRequest request = new HazardEventIdRequest();
-        request.setSiteId(configManager.getSiteID());
-        request.setPractice(CAVEMode.getMode() == CAVEMode.PRACTICE);
-        String value = "";
-        try {
-            value = RequestRouter.route(request).toString();
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    "Unable to make request for hazard event id", e);
-        }
-
-        return value;
     }
 
     @Override

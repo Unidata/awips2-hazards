@@ -197,9 +197,6 @@ public class HazardEventUtilities {
             IHazardEventManager manager) throws Exception {
         // make a request for the hazard event id from the cluster task
         // table
-        HazardEventIdRequest request = new HazardEventIdRequest();
-        request.setPractice(true);
-        request.setSiteId(site);
         String value = "";
         boolean createNew = false;
         if (HazardConstants.NEW_ACTION.equals(action) == false) {
