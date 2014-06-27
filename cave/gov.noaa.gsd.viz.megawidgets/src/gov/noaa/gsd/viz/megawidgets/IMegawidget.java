@@ -24,6 +24,7 @@ import java.util.Set;
  * Apr 30, 2013   1277     Chris.Golden      Added support for mutable properties.
  * Oct 23, 2013   2168     Chris.Golden      Removed methods that belonged in
  *                                           new IControl interface.
+ * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -109,4 +110,24 @@ public interface IMegawidget {
      *            disabled.
      */
     public void setEnabled(boolean enable);
+
+    /**
+     * Get the extra data map.
+     * 
+     * @return Shallow copy of the extra data map, meaning that modifying any
+     *         mutable objects that are values is not recommended, but the map
+     *         itself may be modified without harm.
+     */
+    public Map<String, Object> getExtraData();
+
+    /**
+     * Set the extra data map to that specified. The entries in the new map are
+     * copied to the old map, so modifying any mutable objects that are values
+     * is not recommended, but the map that is passed in may itself be
+     * subsequently modified by the caller.
+     * 
+     * @param extraData
+     *            New extra data map.
+     */
+    public void setExtraData(Map<String, Object> extraData);
 }

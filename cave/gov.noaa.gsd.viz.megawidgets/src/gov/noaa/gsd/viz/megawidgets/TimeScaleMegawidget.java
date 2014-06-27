@@ -86,6 +86,12 @@ import com.google.common.collect.ImmutableSet;
  *                                           if it gets disabled.
  * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Jun 25, 2014    4009    Chris.Golden      Fixed bug that caused descriptive text
+ *                                           strings to be used for certain times as
+ *                                           per specifier configuration to be
+ *                                           ignored when the megawidget was created
+ *                                           with one or more of those times as a
+ *                                           current state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -452,6 +458,7 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
                     statePanel, text, specifier, statesForIds.get(identifier),
                     false, (statePanel == panel ? specifier.getSpacing() : 0),
                     onlySendEndStateChanges, dateTimeManager);
+            setDateTimeComponentValues(dateTime, statesForIds.get(identifier));
             labels.add(dateTime.getLabel());
             if (editabilityForIds.get(identifier) == false) {
                 dateTime.setEditable(false, helper);
@@ -1051,7 +1058,6 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
          * Record the change in the state records.
          */
         long value = statesForIds.get(identifier);
-        synchronizeComponentWidgetsToState(identifier);
         recordStateChange(identifier, value);
 
         /*
@@ -1131,7 +1137,19 @@ public class TimeScaleMegawidget extends ExplicitCommitStatefulMegawidget
      *            New value of the date-time component.
      */
     private void setDateTimeComponentValues(String identifier, long value) {
-        DateTimeComponent dateTime = dateTimesForIds.get(identifier);
+        setDateTimeComponentValues(dateTimesForIds.get(identifier), value);
+    }
+
+    /**
+     * Set the specified date-time component to show the specified state.
+     * 
+     * @param dateTime
+     *            Date-time component to have its value set.
+     * @param value
+     *            New value of the date-time component.
+     */
+    private void setDateTimeComponentValues(DateTimeComponent dateTime,
+            long value) {
         dateTime.setState(value);
         String descriptiveString = ((TimeScaleSpecifier) getSpecifier())
                 .getStateDescriptiveText(value);

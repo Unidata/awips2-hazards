@@ -84,6 +84,9 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                           instead of "side effects" in user-
  *                                           facing situations, and changed to use
  *                                           better inline comments.
+ * Jun 24, 2014    4009    Chris.Golden      Changed to allow Python include path
+ *                                           to be specified at initialization
+ *                                           time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -257,13 +260,26 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
     // Public Static Methods
 
     /**
-     * Initialize the single instance of this class.
+     * Initialize the single instance of this class with no extra Python include
+     * path.
      */
     public static void initialize() {
+        initialize(null);
+    }
+
+    /**
+     * Initialize the single instance of this class.
+     * 
+     * @param includePath
+     *            Python include path to be used. If not <code>null</code>, it
+     *            is used when running Python code so that the latter can import
+     *            non-standard modules.
+     */
+    public static void initialize(String includePath) {
         synchronized (PythonSideEffectsApplier.class) {
             if ((++requestCounter == 1) && (jep == null)) {
                 try {
-                    jep = new Jep(false);
+                    jep = new Jep(false, includePath);
                     jep.eval(INITIALIZE);
                     jep.eval(DEFINE_CHECK_FOR_SIDE_EFFECTS_METHOD);
                     jep.eval(DEFINE_APPLY_SIDE_EFFECTS_WRAPPER_METHOD);
@@ -450,8 +466,7 @@ public class PythonSideEffectsApplier implements ISideEffectsApplier {
                     return null;
                 } else if ((Boolean) result == false) {
                     statusHandler.error("Could not find Python method "
-                            + NAME_IS_SIDE_EFFECTS_METHOD_DEFINED
-                            + "() defined "
+                            + "applyInterdependencies() defined "
                             + "within Python side effects applier.");
                     sideEffectsBeingApplied = false;
                     return null;

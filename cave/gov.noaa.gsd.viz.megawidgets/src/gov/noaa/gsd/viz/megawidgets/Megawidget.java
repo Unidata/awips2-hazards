@@ -53,6 +53,7 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -68,8 +69,9 @@ public abstract class Megawidget implements IMegawidget {
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
     static {
-        MUTABLE_PROPERTY_NAMES = ImmutableSet
-                .of(MegawidgetSpecifier.MEGAWIDGET_ENABLED);
+        MUTABLE_PROPERTY_NAMES = ImmutableSet.of(
+                MegawidgetSpecifier.MEGAWIDGET_ENABLED,
+                MegawidgetSpecifier.MEGAWIDGET_EXTRA_DATA);
     };
 
     // Private Variables
@@ -84,6 +86,11 @@ public abstract class Megawidget implements IMegawidget {
      */
     private boolean enabled;
 
+    /**
+     * Map of extra data.
+     */
+    private final Map<String, Object> extraData;
+
     // Protected Constructors
 
     /**
@@ -95,6 +102,7 @@ public abstract class Megawidget implements IMegawidget {
     protected Megawidget(ISpecifier specifier) {
         this.specifier = specifier;
         enabled = getSpecifier().isEnabled();
+        extraData = new HashMap<>(getSpecifier().getExtraData());
     }
 
     // Public Methods
@@ -115,11 +123,14 @@ public abstract class Megawidget implements IMegawidget {
             throws MegawidgetPropertyException {
         if (name.equals(MegawidgetSpecifier.MEGAWIDGET_ENABLED)) {
             return isEnabled();
+        } else if (name.equals(MegawidgetSpecifier.MEGAWIDGET_EXTRA_DATA)) {
+            return getExtraData();
         }
         throw new MegawidgetPropertyException(specifier.getIdentifier(), name,
                 specifier.getType(), null, "nonexistent property");
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void setMutableProperty(String name, Object value)
             throws MegawidgetPropertyException {
@@ -127,6 +138,23 @@ public abstract class Megawidget implements IMegawidget {
             setEnabled(ConversionUtilities.getPropertyBooleanValueFromObject(
                     getSpecifier().getIdentifier(), getSpecifier().getType(),
                     value, name, null));
+        } else if (name.equals(MegawidgetSpecifier.MEGAWIDGET_EXTRA_DATA)) {
+
+            /*
+             * Ensure that the value is a map with string keys.
+             */
+            Map<String, Object> map = null;
+            try {
+                map = (HashMap<String, Object>) value;
+                if (map == null) {
+                    throw new NullPointerException();
+                }
+            } catch (Exception e) {
+                throw new MegawidgetPropertyException(getSpecifier()
+                        .getIdentifier(), name, getSpecifier().getType(),
+                        value, "bad map of extra data", e);
+            }
+            setExtraData(map);
         } else {
             throw new MegawidgetPropertyException(specifier.getIdentifier(),
                     name, specifier.getType(), null, "nonexistent property");
@@ -165,6 +193,17 @@ public abstract class Megawidget implements IMegawidget {
     public final void setEnabled(boolean enable) {
         enabled = enable;
         doSetEnabled(enabled);
+    }
+
+    @Override
+    public final Map<String, Object> getExtraData() {
+        return new HashMap<>(extraData);
+    }
+
+    @Override
+    public final void setExtraData(Map<String, Object> extraData) {
+        this.extraData.clear();
+        this.extraData.putAll(extraData);
     }
 
     // Protected Methods

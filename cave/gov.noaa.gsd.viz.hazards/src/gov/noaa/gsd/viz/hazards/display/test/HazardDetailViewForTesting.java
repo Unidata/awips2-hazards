@@ -46,6 +46,7 @@ import com.raytheon.uf.common.time.TimeRange;
  * Nov 14, 2013  1463      bryon.lawrence Updated to support hazard conflict
  *                                        detection.
  * May 18, 2014  2925      Chris.Golden   Substantially rewrote to work with the new HID.
+ * Jun 25, 2014  4009      Chris.Golden   Changed to work with new initialize() signature.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -250,9 +251,12 @@ public class HazardDetailViewForTesting implements
     }
 
     @Override
-    public void initialize(ImmutableList<String> hazardCategories,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider) {
+    public void initialize(
+            ImmutableList<String> hazardCategories,
+            long minVisibleTime,
+            long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider,
+            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
     }
 
     @Override

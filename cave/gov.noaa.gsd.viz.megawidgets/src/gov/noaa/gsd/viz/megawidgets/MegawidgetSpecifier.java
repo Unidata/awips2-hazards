@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import org.eclipse.swt.widgets.Widget;
  * Apr 24, 2014   2925     Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,6 +116,11 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
      */
     private final String label;
 
+    /**
+     * Extra data.
+     */
+    private final Map<String, Object> extraData;
+
     // Public Constructors
 
     /**
@@ -125,6 +132,7 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
      * @throws MegawidgetSpecificationException
      *             If the megawidget specifier parameters are invalid.
      */
+    @SuppressWarnings("unchecked")
     public MegawidgetSpecifier(Map<String, Object> parameters)
             throws MegawidgetSpecificationException {
 
@@ -160,6 +168,27 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
                     MEGAWIDGET_LABEL, parameters.get(MEGAWIDGET_LABEL),
                     "must be string");
         }
+
+        /*
+         * Ensure that if extra data is specified, it is a map.
+         */
+        Map<String, Object> extraData = null;
+        try {
+            extraData = (Map<String, Object>) parameters
+                    .get(MEGAWIDGET_EXTRA_DATA);
+            if (extraData != null) {
+                extraData = Collections.unmodifiableMap(extraData);
+            }
+        } catch (Exception e) {
+            throw new MegawidgetSpecificationException(identifier, getType(),
+                    MEGAWIDGET_EXTRA_DATA,
+                    parameters.get(MEGAWIDGET_EXTRA_DATA),
+                    "must be map of string keys to arbitrary object values");
+        }
+        if (extraData == null) {
+            extraData = Collections.emptyMap();
+        }
+        this.extraData = extraData;
     }
 
     // Public Methods
@@ -187,6 +216,11 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
     @Override
     public final String getLabel() {
         return label;
+    }
+
+    @Override
+    public final Map<String, Object> getExtraData() {
+        return extraData;
     }
 
     @SuppressWarnings("unchecked")

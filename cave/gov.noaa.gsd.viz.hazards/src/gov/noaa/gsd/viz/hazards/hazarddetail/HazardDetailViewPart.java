@@ -185,6 +185,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           changes, as well as adding a resize listener
  *                                           that resizes the scrollable area when a
  *                                           megawidget changes its size.
+ * Jun 25, 2014   4009     Chris.Golden      Added code to merge the extra data from a
+ *                                           megawidget manager that is about to be
+ *                                           replaced into the extra data for its
+ *                                           replacement, allowing interdependency scripts
+ *                                           to keep state in between executions even if
+ *                                           the metadata megawidgets have changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -478,7 +484,6 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         (Serializable) state);
             }
         }
-
     }
 
     // Private Constants
@@ -681,7 +686,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public final MegawidgetManager remove(Object key) {
             if (containsKey(key)) {
-                get(key).getParent().dispose();
+                prepareMegawidgetManagerForRemoval((String) key, get(key));
             }
             return super.remove(key);
         }
@@ -692,13 +697,29 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         protected final boolean removeEldestEntry(
                 Map.Entry<String, MegawidgetManager> eldest) {
             if (size() > MAXIMUM_EVENT_METADATA_CACHE_SIZE) {
-                eldest.getValue().getParent().dispose();
+                prepareMegawidgetManagerForRemoval(eldest.getKey(),
+                        eldest.getValue());
                 return true;
             } else {
                 return false;
             }
         }
     };
+
+    /**
+     * Map of event identifiers to maps holding extra data for the associated
+     * metadata megawidgets. This is provided at initialization, and then used
+     * when metadata megawidget managers are instantiated if they are for an
+     * event identifier for which an entry is found in this map. It is updated
+     * whenever a megawidget manager is disposed of, so as to save any extra
+     * data that said manager's megawidgets had. Since it is passed in by
+     * reference at initialization time, the client can keep a reference around
+     * to it when this instance is disposed of, and pass the same map to the
+     * next instance of this class, allowing extra data to persist for the
+     * entire session regardless of how many different hazard detail view parts
+     * are created and deleted.
+     */
+    private Map<String, Map<String, Map<String, Object>>> extraDataForEventIds;
 
     /**
      * Map of commands to buttons that issue these commands.
@@ -1135,9 +1156,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     // Public Methods
 
     @Override
-    public void initialize(ImmutableList<String> hazardCategories,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider) {
+    public void initialize(
+            ImmutableList<String> hazardCategories,
+            long minVisibleTime,
+            long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider,
+            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
 
         /*
          * Remember the passed-in parameters.
@@ -1146,6 +1170,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         this.minimumVisibleTime = minVisibleTime;
         this.maximumVisibleTime = maxVisibleTime;
         this.currentTimeProvider = currentTimeProvider;
+        this.extraDataForEventIds = extraDataForEventIdentifiers;
 
         /*
          * Synchronize any time-based widgets with the visible time range.
@@ -1160,6 +1185,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     @Override
     public void dispose() {
+        for (Map.Entry<String, MegawidgetManager> entry : megawidgetManagersForEventIds
+                .entrySet()) {
+            recordExtraDataForEvent(entry.getKey(), entry.getValue());
+        }
         for (Resource resource : resources) {
             resource.dispose();
         }
@@ -1972,17 +2001,37 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         .getSpecifiers().isEmpty() == false))) {
 
             /*
-             * Delete the old megawidget manager, if any.
+             * Delete the old megawidget manager, if any. Before deleting it,
+             * get any extra data that its megawidgets have stashed away, as
+             * this may be being used in interdependency scripts and may be
+             * needed for the next megawidget manager's scripts. Delete the
+             * entry for it in the extra data cache, since an entry will have
+             * been created as part of the remove() call.
              */
+            Map<String, Map<String, Object>> oldExtraDataMap = null;
             if (megawidgetManager != null) {
+                oldExtraDataMap = megawidgetManager.getExtraData();
                 megawidgetManagersForEventIds.remove(eventIdentifier);
+                extraDataForEventIds.remove(eventIdentifier);
+            }
+
+            /*
+             * If no extra data was found above, see if any has been cached from
+             * previous views, and if so, use that.
+             */
+            if (oldExtraDataMap == null) {
+                oldExtraDataMap = extraDataForEventIds.get(eventIdentifier);
             }
 
             /*
              * If there are specifiers from which to create megawidgets, create
              * a panel for them, then the megawidget manager itself. If this
              * creation fails, log an error and reset state so that it is as if
-             * there are no specifiers for which to create megawidgets.
+             * there are no specifiers for which to create megawidgets. Then, if
+             * extra data was taken from the old megawidget manager (if any)
+             * above, merge it with the new manager's megawidgets' extra data.
+             * This allows any interdependency scripts that may be looking for
+             * saved values in the extra data to continue to function.
              */
             if (specifierManager.getSpecifiers().isEmpty() == false) {
                 panel = new Composite(metadataContentPanel, SWT.NONE);
@@ -2001,6 +2050,28 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     panel = null;
                 }
                 if (panel != null) {
+                    if (oldExtraDataMap != null) {
+
+                        /*
+                         * Merge the old and new extra data maps together. If
+                         * the new map has no entry for a key found in the old
+                         * map, just use the old map's entry. Otherwise, take
+                         * the new map's entry's submap and place any entries
+                         * found in the the old map's entry's submap into it.
+                         */
+                        Map<String, Map<String, Object>> newExtraDataMap = megawidgetManager
+                                .getExtraData();
+                        for (String identifier : oldExtraDataMap.keySet()) {
+                            if (newExtraDataMap.containsKey(identifier)) {
+                                newExtraDataMap.get(identifier).putAll(
+                                        oldExtraDataMap.get(identifier));
+                            } else {
+                                newExtraDataMap.put(identifier,
+                                        oldExtraDataMap.get(identifier));
+                            }
+                        }
+                        megawidgetManager.setExtraData(newExtraDataMap);
+                    }
                     megawidgetManagersForEventIds.put(eventIdentifier,
                             megawidgetManager);
                 }
@@ -2019,6 +2090,40 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             layoutMetadataGroup(panel);
             metadataContentPanel.setRedraw(true);
+        }
+    }
+
+    /**
+     * Prepare the specified megawidget manager for removal.
+     * 
+     * @param eventIdentifier
+     *            Event identifier with which the megawidget manager is
+     *            associated.
+     * @param megawidgetManager
+     *            Megawidget manager to be removed.
+     */
+    private void prepareMegawidgetManagerForRemoval(String eventIdentifier,
+            MegawidgetManager megawidgetManager) {
+        recordExtraDataForEvent(eventIdentifier, megawidgetManager);
+        megawidgetManager.getParent().dispose();
+    }
+
+    /**
+     * Record the specified event identifier's extra data from the specified
+     * megawidget manager, if any extra data is found.
+     * 
+     * @param eventIdentifier
+     *            Event identifier with which the megawidget manager is
+     *            associated.
+     * @param megawidgetManager
+     *            Megawidget manager to have its extra data recorded.
+     */
+    private void recordExtraDataForEvent(String eventIdentifier,
+            MegawidgetManager megawidgetManager) {
+        Map<String, Map<String, Object>> extraData = megawidgetManager
+                .getExtraData();
+        if (extraData.isEmpty() == false) {
+            extraDataForEventIds.put(eventIdentifier, extraData);
         }
     }
 

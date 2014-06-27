@@ -30,7 +30,6 @@ import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
-import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -180,6 +179,12 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  *                                      via an UFN checkbox was not a top-level
  *                                      megawidget, but was instead embedded within
  *                                      a parent megawidget.
+ * Jun 25, 2014 4009       Chris.Golden Removed all code related to "until further
+ *                                      notice" for arbitrary attribute values; only
+ *                                      the end time "until further notice" code
+ *                                      belongs here. The rest has been moved to
+ *                                      interdependency scripts that go with the
+ *                                      appropriate metadata megawidget specifiers.
  * </pre>
  * 
  * @author bsteffen
@@ -193,13 +198,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
      */
     private static final long DEFAULT_HAZARD_DURATION = TimeUnit.HOURS
             .toMillis(8);
-
-    /**
-     * Default interval between two attributes for when the second attribute's
-     * "until further notice" is toggled off.
-     */
-    private static final long DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE = TimeUnit.HOURS
-            .toMillis(1);
 
     /**
      * Contains the mappings between geodatabase table names and the UGCBuilders
@@ -641,9 +639,9 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     /**
-     * Ensure that toggles of "until further notice" flags result in the
-     * appropriate time being set to "until further notice" or, if the flag has
-     * been set to false, an appropriate default time. Also generate
+     * Ensure that toggles of end time "until further notice" flags result in
+     * the appropriate time being set to "until further notice" or, if the flag
+     * has been set to false, an appropriate default time. Also generate
      * notifications that the list of selected hazard events has changed if the
      * selected attribute is found to have been altered.
      * 
@@ -689,301 +687,6 @@ public class SessionEventManager extends AbstractSessionEventManager {
                                     .getEvent()
                                     .getHazardAttribute(
                                             HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
-        }
-
-        /*
-         * For any attribute with the "until further notice" suffix that has
-         * changed value, find the corresponding attribute in a time scale
-         * specifier, and change its value appropriately.
-         */
-        for (String key : change.getAttributeKeys()) {
-            if (key.endsWith(HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX)
-                    && (key.equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE) == false)) {
-
-                /*
-                 * Get the name of the attribute that should have its value
-                 * changed as a result of the "until further notice" toggle.
-                 */
-                String attributeBeingChanged = getAttributeForUntilFurtherNoticeAttribute(key);
-                if (attributeBeingChanged == null) {
-                    continue;
-                }
-
-                /*
-                 * Find the time scale specifier that includes this attribute.
-                 * It may be the last attribute in a multi-state specifier, or
-                 * its only state.
-                 */
-                ObservedHazardEvent event = (ObservedHazardEvent) change
-                        .getEvent();
-                TimeScaleSpecifier timeScaleSpecifier = getTimeScaleSpecifierForAttribute(
-                        event, attributeBeingChanged, key);
-                if (timeScaleSpecifier == null) {
-                    continue;
-                }
-                boolean singleStateSpecifier = timeScaleSpecifier
-                        .getIdentifier().equals(attributeBeingChanged);
-
-                /*
-                 * Get the name of the attribute used to store the information
-                 * concerning the previous value of the attribute to be changed.
-                 */
-                String lastValueKey = HazardConstants.BEFORE_UNTIL_FURTHER_NOTICE_PREFIX
-                        + attributeBeingChanged;
-
-                /*
-                 * If the specifier has only one state, just use the last-value
-                 * attribute as the last value before "until further notice" was
-                 * toggled on; if it has multiple states, use the last-value
-                 * attribute to hold the interval between the value of the
-                 * attribute to be changed, and the previous attribute within
-                 * the specifier.
-                 */
-                boolean untilFurtherNotice = Boolean.TRUE.equals(event
-                        .getHazardAttribute(key));
-                boolean untilFurtherNoticeWasOn = ((event
-                        .getHazardAttribute(attributeBeingChanged) instanceof Long) && ((Long) event
-                        .getHazardAttribute(attributeBeingChanged) == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
-                if (singleStateSpecifier) {
-                    setSingleStateAttributeForUntilFurtherNoticeChange(event,
-                            attributeBeingChanged, lastValueKey,
-                            untilFurtherNotice, untilFurtherNoticeWasOn);
-                } else {
-                    setMultiStateAttributeForUntilFurtherNoticeChange(event,
-                            timeScaleSpecifier, attributeBeingChanged,
-                            lastValueKey, untilFurtherNotice,
-                            untilFurtherNoticeWasOn);
-                }
-            }
-        }
-    }
-
-    /**
-     * Get the event attribute name associated with the specified
-     * "until further notice" event attribute name.
-     * 
-     * @param key
-     *            Name of the "until further notice" attribute.
-     * @return Name of the associated attribute, or <code>null</code> if it
-     *         cannot be taken from the specified key.
-     */
-    private String getAttributeForUntilFurtherNoticeAttribute(String key) {
-        int endIndex = key.length()
-                - HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX.length();
-        if (endIndex < 1) {
-            statusHandler.error("Illegal to use \""
-                    + HazardConstants.UNTIL_FURTHER_NOTICE_SUFFIX
-                    + "\" as complete metadata identifier; must be "
-                    + "suffix for identifier to which until "
-                    + "further notice may be applied.");
-            return null;
-        }
-        return key.substring(0, endIndex);
-    }
-
-    /**
-     * Get the time scale megawidget specifier associated with the specified
-     * key.
-     * 
-     * @param event
-     *            Hazard event for which the specifier is to be fetched.
-     * @param key
-     *            Key with which the specifier to be fetched is associated,
-     *            meaning that said specifier has the key as one of its state
-     *            identifiers.
-     * @param untilFurtherNoticeKey
-     *            Key of the "until further notice" attribute that may be used
-     *            to modify the <code>key</code> attribute's value.
-     * @return Time scale specifier, or <code>null</code> if no time scale
-     *         specifier can be found for the specified key.
-     */
-    private TimeScaleSpecifier getTimeScaleSpecifierForAttribute(
-            ObservedHazardEvent event, String key, String untilFurtherNoticeKey) {
-        ISpecifier targetSpecifier = getSpecifierWithStateIdentifier(key,
-                getMegawidgetSpecifiers(event).getSpecifiers());
-        if ((targetSpecifier instanceof TimeScaleSpecifier) == false) {
-            statusHandler.warn("Unable to find time scale specifier "
-                    + "for attribute \"" + key
-                    + "\" that may be manipulated by toggling of "
-                    + "attribute \"" + untilFurtherNoticeKey + "\".");
-            return null;
-        }
-        return (TimeScaleSpecifier) targetSpecifier;
-    }
-
-    /**
-     * Get the megawidget specifier, from the given list of specifiers and any
-     * child specifiers of the latter, that includes with the provided state
-     * identifier in its identifier as its last or only state identifier.
-     * 
-     * @param identifier
-     *            State identifier that must be within the specifier's
-     *            identifier.
-     * @param specifiers
-     *            List of specifiers in which to look.
-     * @return Specifier that contains the state identifier as its last or only
-     *         state identifier, or <code>null</code> if no such specifier is
-     *         found.
-     */
-    @SuppressWarnings("unchecked")
-    private ISpecifier getSpecifierWithStateIdentifier(String identifier,
-            List<ISpecifier> specifiers) {
-        String megawidgetIdentifierSuffix = ":" + identifier;
-        for (ISpecifier specifier : specifiers) {
-            if (specifier.getIdentifier().endsWith(megawidgetIdentifierSuffix)
-                    || specifier.getIdentifier().equals(identifier)) {
-                return specifier;
-            }
-            if (specifier instanceof IParentSpecifier) {
-                ISpecifier targetSpecifier = getSpecifierWithStateIdentifier(
-                        identifier,
-                        ((IParentSpecifier<ISpecifier>) specifier)
-                                .getChildMegawidgetSpecifiers());
-                if (targetSpecifier != null) {
-                    return targetSpecifier;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Set the specified attribute for the specified event to use either the
-     * "until further notice" value (if "until further notice" is true), or the
-     * value it was using before "until further notice" was last turned on. This
-     * method is suitable for use when the time scale specifier used to modify
-     * the attribute has only a single state.
-     * 
-     * @param event
-     *            Event to have its attribute values modified.
-     * @param key
-     *            Attribute to which the "until further notice" value is to be
-     *            assigned (if "until further notice" is being turned on), or
-     *            the previously saved value is to be assigned (if being turned
-     *            off).
-     * @param lastValueKey
-     *            Attribute to which the value that <code>key</code> had prior
-     *            to the last switching on of "until further notice" was
-     *            assigned.
-     * @param untilFurtherNotice
-     *            Flag indicating whether or not "until further notice" has been
-     *            switched on.
-     * @param untilFurtherNoticeWasOn
-     *            Flag indicating that "until further notice" was previously on
-     *            for <code>key</code>, which is to say that the attribute with
-     *            that name was set to the special "until further notice" value.
-     */
-    private void setSingleStateAttributeForUntilFurtherNoticeChange(
-            ObservedHazardEvent event, String key, String lastValueKey,
-            boolean untilFurtherNotice, boolean untilFurtherNoticeWasOn) {
-
-        /*
-         * If "until further notice" has been toggled on, remember the old value
-         * for this attribute before giving it the special
-         * "until further notice" value. If instead it was toggled off, use the
-         * old value stored when it was toggled on to set its new current value.
-         * In the latter case, check to ensure that the old value stored is
-         * indeed a Date, since it is possible (although very unlikely) that the
-         * metadata may have changed for this event, making it have a
-         * single-state time scale specifier where it used to have a multi-state
-         * one.
-         */
-        if (untilFurtherNotice) {
-            if (event.getHazardAttribute(lastValueKey) == null) {
-                event.addHazardAttribute(lastValueKey,
-                        new Date((Long) event.getHazardAttribute(key)), false,
-                        Originator.OTHER);
-            }
-            event.addHazardAttribute(key,
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-        } else if (untilFurtherNoticeWasOn) {
-            Object savedValue = event.getHazardAttribute(lastValueKey);
-            event.removeHazardAttribute(lastValueKey, false, Originator.OTHER);
-            event.addHazardAttribute(
-                    key,
-                    (savedValue instanceof Date ? (Date) savedValue : event
-                            .getEndTime()).getTime());
-        }
-    }
-
-    /**
-     * Set the specified attribute for the specified event to use either the
-     * "until further notice" value (if "until further notice" is true), or the
-     * value it was using before "until further notice" was last turned on. This
-     * method is suitable for use when the time scale specifier used to modify
-     * the attribute has multiple states, one of which is this attribute.
-     * 
-     * @param event
-     *            Event to have its attribute values modified.
-     * @param specifier
-     *            Time scale specifier that is used to modify the attribute
-     *            named <code>key</code>. It is assumed that the latter is the
-     *            last of its state identifiers.
-     * @param key
-     *            Attribute to which the "until further notice" value is to be
-     *            assigned (if "until further notice" is being turned on), or
-     *            the previously saved value is to be assigned (if being turned
-     *            off).
-     * @param lastValueKey
-     *            Attribute to which the value that <code>key</code> had prior
-     *            to the last switching on of "until further notice" was
-     *            assigned.
-     * @param untilFurtherNotice
-     *            Flag indicating whether or not "until further notice" has been
-     *            switched on.
-     * @param untilFurtherNoticeWasOn
-     *            Flag indicating that "until further notice" was previously on
-     *            for <code>key</code>, which is to say that the attribute with
-     *            that name was set to the special "until further notice" value.
-     */
-    private void setMultiStateAttributeForUntilFurtherNoticeChange(
-            ObservedHazardEvent event, TimeScaleSpecifier specifier,
-            String key, String lastValueKey, boolean untilFurtherNotice,
-            boolean untilFurtherNoticeWasOn) {
-
-        /*
-         * If "until further notice" has been toggled on, remember the interval
-         * between this attribute and the previous attribute in the time scale
-         * specifier. If instead it was toggled off, find the old value that was
-         * stored. If it is a Date object (which is very unlikely, but would
-         * occur if the metadata has changed for this event since the last
-         * toggle, and it changed from a single-state specifier to a multi-state
-         * one at that time), use that as the time if possible, or if too early,
-         * use a time one hour after the previous attribute's time. However, it
-         * will generally be a long integer interval; in that case, add said
-         * interval to the previous attribute's value to get a new Date and use
-         * that.
-         */
-        String previousAttribute = specifier.getStateIdentifiers().get(
-                specifier.getStateIdentifiers().size() - 2);
-        if (untilFurtherNotice) {
-            if (event.getHazardAttribute(lastValueKey) == null) {
-                long interval = ((Long) event.getHazardAttribute(key))
-                        - ((Long) event.getHazardAttribute(previousAttribute));
-                event.addHazardAttribute(lastValueKey, interval, false,
-                        Originator.OTHER);
-            }
-            event.addHazardAttribute(key,
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-        } else if (untilFurtherNoticeWasOn) {
-            Object savedValue = event.getHazardAttribute(lastValueKey);
-            event.removeHazardAttribute(lastValueKey, false, Originator.OTHER);
-            Long newValue;
-            if (savedValue instanceof Long) {
-                newValue = ((Long) event.getHazardAttribute(previousAttribute))
-                        + (Long) savedValue;
-            } else {
-                Long previousAttributeValue = (Long) event
-                        .getHazardAttribute(previousAttribute);
-                if ((savedValue == null)
-                        || (((Date) savedValue).getTime() <= previousAttributeValue)) {
-                    newValue = previousAttributeValue
-                            + DEFAULT_INTERVAL_AFTER_UNTIL_FURTHER_NOTICE;
-                } else {
-                    newValue = ((Date) savedValue).getTime();
-                }
-            }
-            event.addHazardAttribute(key, newValue);
         }
     }
 

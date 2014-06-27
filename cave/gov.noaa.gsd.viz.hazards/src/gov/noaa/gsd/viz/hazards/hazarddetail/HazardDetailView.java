@@ -78,7 +78,7 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           class-based metadata changes, as well as
  *                                           to conform to new event propagation
  *                                           scheme.
- * May 15, 2014    2925    Chris.Golden      Together with changes made in last
+ * May 15, 2014   2925     Chris.Golden      Together with changes made in last
  *                                           2925 changeset, essentially rewritten
  *                                           to provide far better separation of
  *                                           concerns between model, view, and
@@ -92,6 +92,9 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           are still sent via message to the
  *                                           message handler); and preparation for
  *                                           multithreading in the future.
+ * Jun 25, 2014   4009     Chris.Golden      Added code to cache extra data held by
+ *                                           metadata megawidgets between view
+ *                                           instantiations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -170,6 +173,13 @@ public class HazardDetailView extends
      * Current time provider.
      */
     private ICurrentTimeProvider currentTimeProvider;
+
+    /**
+     * Map pairing event identifiers with any extra data they may have used in
+     * previous view instantiations, allowing such data to persist between
+     * different views.
+     */
+    private Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers;
 
     /**
      * View part listener.
@@ -522,9 +532,12 @@ public class HazardDetailView extends
     // Public Methods
 
     @Override
-    public final void initialize(ImmutableList<String> hazardCategories,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider) {
+    public final void initialize(
+            ImmutableList<String> hazardCategories,
+            long minVisibleTime,
+            long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider,
+            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
         this.hazardCategories = hazardCategories;
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
@@ -533,6 +546,7 @@ public class HazardDetailView extends
                     + TimeUnit.DAYS.toMillis(1);
         }
         this.currentTimeProvider = currentTimeProvider;
+        this.extraDataForEventIdentifiers = extraDataForEventIdentifiers;
 
         /*
          * Execute manipulation of the view part immediately, or delay such
@@ -664,7 +678,8 @@ public class HazardDetailView extends
          * Do the basic initialization.
          */
         getViewPart().initialize(hazardCategories, minVisibleTime,
-                maxVisibleTime, currentTimeProvider);
+                maxVisibleTime, currentTimeProvider,
+                extraDataForEventIdentifiers);
 
         /*
          * Register the scroll origin change handler with the view part, so that

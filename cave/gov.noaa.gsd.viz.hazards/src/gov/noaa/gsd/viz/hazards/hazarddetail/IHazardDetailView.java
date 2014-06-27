@@ -16,6 +16,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
+import java.util.Map;
+
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.time.TimeRange;
 
@@ -29,6 +31,9 @@ import com.raytheon.uf.common.time.TimeRange;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 09, 2014    2925    Chris.Golden Initial creation.
+ * Jun 25, 2014    4009    Chris.Golden Added code to cache extra data held by
+ *                                      metadata megawidgets between view
+ *                                      instantiations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,10 +52,17 @@ public interface IHazardDetailView {
      *            Maximum visible time to be shown in the time widgets.
      * @param currentTimeProvider
      *            Current time provider, used for the time range widgets.
+     * @param extraDataForEventIdentifiers
+     *            Map pairing event identifiers with any extra data they may
+     *            have used in previous view instantiations, allowing such data
+     *            to persist between different views.
      */
-    public void initialize(ImmutableList<String> hazardCategories,
-            long minVisibleTime, long maxVisibleTime,
-            ICurrentTimeProvider currentTimeProvider);
+    public void initialize(
+            ImmutableList<String> hazardCategories,
+            long minVisibleTime,
+            long maxVisibleTime,
+            ICurrentTimeProvider currentTimeProvider,
+            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers);
 
     /**
      * Get the visible time range state changer.

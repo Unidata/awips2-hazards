@@ -7,6 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
@@ -70,9 +74,16 @@ import org.eclipse.ui.PlatformUI;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationContext;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
+import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.exception.VizException;
@@ -139,6 +150,11 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * Feb 7, 2014  2890       bkowal              Product Generation JSON refactor.
  * Apr 09, 2014 2925       Chris.Golden        Changed to support class-based metadata.
  * Jun 18, 2014 3519       jsanchez            Allowed allowed the message dialog buttons to be configurable.
+ * Jun 24, 2014 4009       Chris.Golden        Changed to pass new Python include path to
+ *                                             Python side effects applier when initializing
+ *                                             the latter, in order to allow side effects
+ *                                             scripts to have access to AWIPS2/H.S. Python
+ *                                             modules.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -381,7 +397,20 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         PlatformUI.getWorkbench().addWorkbenchListener(this);
 
         // Initialize the Python side effects applier.
-        PythonSideEffectsApplier.initialize();
+        IPathManager pathManager = PathManagerFactory.getPathManager();
+        LocalizationContext localizationContext = pathManager.getContext(
+                LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
+        String pythonPath = pathManager.getFile(localizationContext,
+                PYTHON_LOCALIZATION_DIR).getPath();
+        String localizationUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_UTILITIES_DIR);
+        String vtecUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+        String logUtilitiesPath = FileUtil.join(pythonPath,
+                PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        PythonSideEffectsApplier.initialize(PyUtil.buildJepIncludePath(
+                pythonPath, localizationUtilitiesPath, logUtilitiesPath,
+                vtecUtilitiesPath));
 
         /*
          * For testing and demos, force DRT for operational mode start HS
@@ -418,6 +447,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         MessageDialog.QUESTION, buttonLabels, ISSUE_CODE)
 
                 {
+                    @Override
                     protected void buttonPressed(int buttonId) {
                         setReturnCode(buttonId);
                         close();

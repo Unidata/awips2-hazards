@@ -32,6 +32,7 @@ import org.eclipse.swt.widgets.Widget;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
+ * Jun 24, 2014    4009     Chris.Golden     Added extra data functionality.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +82,17 @@ public interface ISpecifier {
      */
     public static final String MEGAWIDGET_LABEL = "label";
 
+    /**
+     * Megawidget data parameter name; a megawidget may include a map associated
+     * with this name, holding arbitrary {@link String} keys paired with
+     * arbitrary values of any type. This provides a mechanism to attach any
+     * sort of data to a megawidget specifier; this data is transferred to the
+     * megawidget built using the specifier, and may then be used by
+     * {@link ISideEffectsApplier} instances to store and retrieve data as
+     * needed. If not specified, an empty map is used.
+     */
+    public static final String MEGAWIDGET_EXTRA_DATA = "extraData";
+
     // Public Methods
 
     /**
@@ -112,6 +124,13 @@ public interface ISpecifier {
      * @return Label.
      */
     public String getLabel();
+
+    /**
+     * Get the extra data map.
+     * 
+     * @return Extra data map.
+     */
+    public Map<String, Object> getExtraData();
 
     /**
      * Create the GUI components making up the specified megawidget.

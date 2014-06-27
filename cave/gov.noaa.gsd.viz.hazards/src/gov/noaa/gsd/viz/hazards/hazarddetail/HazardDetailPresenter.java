@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilF
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
@@ -103,6 +105,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           are still sent via message to the
  *                                           message handler); and preparation for
  *                                           multithreading in the future.
+ * Jun 25, 2014    4009    Chris.Golden      Added code to cache extra data held by
+ *                                           metadata megawidgets between view
+ *                                           instantiations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -117,6 +122,12 @@ public class HazardDetailPresenter extends
      * String to be displayed for an event with no hazard type.
      */
     private static final String BLANK_TYPE_CHOICE = "";
+
+    /**
+     * Maximum number of events for which extra data objects may be stored by
+     * the cache.
+     */
+    private static final int MAXIMUM_EVENT_EXTRA_DATA_CACHE_SIZE = 50;
 
     // Public Enumerated Types
 
@@ -236,6 +247,44 @@ public class HazardDetailPresenter extends
      * Map of event identifiers to their megawidget specifier managers.
      */
     private final Map<String, MegawidgetSpecifierManager> specifierManagersForSelectedEvents = new HashMap<>();
+
+    /**
+     * <p>
+     * Map of event identifiers to maps holding extra data for the associated
+     * metadata megawidgets. Only the most recently used extra data maps are
+     * cached away; the maximum number that can be cached is
+     * {@link #MAXIMUM_EVENT_EXTRA_DATA_CACHE_SIZE}.
+     * </p>
+     * <p>
+     * This map is passed by reference to views during their initialization,
+     * allowing them to update it so that if they are destroyed and then
+     * recreated, the extra data stored here from the old view will be provided
+     * to the new one.
+     * </p>
+     * <p>
+     * Note that his map, once created, should be considered read-only by
+     * instances of this class; the views may examine or modify it, and this may
+     * occur in a different thread.
+     * </p>
+     */
+    private final Map<String, Map<String, Map<String, Object>>> extraDataForEvents = new LinkedHashMap<String, Map<String, Map<String, Object>>>(
+            MAXIMUM_EVENT_EXTRA_DATA_CACHE_SIZE + 1, 0.75f, true) {
+
+        // Private Static Constants
+
+        /**
+         * Serial version UID.
+         */
+        private static final long serialVersionUID = 1L;
+
+        // Protected Methods
+
+        @Override
+        protected final boolean removeEldestEntry(
+                Map.Entry<String, Map<String, Map<String, Object>>> eldest) {
+            return (size() > MAXIMUM_EVENT_EXTRA_DATA_CACHE_SIZE);
+        }
+    };
 
     /**
      * Set of identifiers of events that allow "until further notice" mode to be
@@ -492,6 +541,23 @@ public class HazardDetailPresenter extends
         if (detailViewShowing) {
             updateViewButtonsEnabledStates();
         }
+    }
+
+    /**
+     * Respond to the removal of an event.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventRemoved(final SessionEventRemoved change) {
+
+        /*
+         * Remove any cached specifier manager for this event, and tell the view
+         * that there are no metadata megawidgets for this event either.
+         */
+        String identifier = change.getEvent().getEventID();
+        specifierManagersForSelectedEvents.remove(identifier);
     }
 
     /**
@@ -817,7 +883,8 @@ public class HazardDetailPresenter extends
         TimeRange timeRange = getModel().getTimeManager().getVisibleRange();
         getView().initialize(categories, timeRange.getStart().getTime(),
                 timeRange.getEnd().getTime(),
-                getModel().getTimeManager().getCurrentTimeProvider());
+                getModel().getTimeManager().getCurrentTimeProvider(),
+                extraDataForEvents);
 
         /*
          * Show the detail view if appropriate.
