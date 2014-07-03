@@ -126,6 +126,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      optimizations for getting megawidget specifier
  *                                      managers and hazard categories. Also removed
  *                                      hazard info options fetcher.
+ * Jul 03, 2014  4084      Chris.Golden Added displaying of exceptions for errors while
+ *                                      trying to retrieve hazard event metadata.
  * </pre>
  * 
  * @author bsteffen
@@ -340,7 +342,7 @@ public class SessionConfigurationManager implements
             result.eval("import HazardServicesMetaDataRetriever");
             return result;
         } catch (JepException e) {
-            statusHandler.error("Could not load metadata " + e.getMessage());
+            statusHandler.error("Could not initialize metadata retriever.", e);
             return null;
         }
     }
@@ -561,8 +563,7 @@ public class SessionConfigurationManager implements
         try {
             result = converter.fromJson(metaData);
         } catch (Exception e) {
-            statusHandler.error("Could not get hazard metadata: "
-                    + e.getMessage());
+            statusHandler.error("Could not get hazard metadata.", e);
             return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
         }
 
@@ -587,7 +588,7 @@ public class SessionConfigurationManager implements
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
-                    + hazardEvent.getEventID() + ": " + e.getMessage());
+                    + hazardEvent.getEventID() + ".", e);
             return EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
         }
     }
@@ -613,8 +614,7 @@ public class SessionConfigurationManager implements
                     + "result = None");
             return result;
         } catch (JepException e) {
-            statusHandler.error("Could not get hazard metadata: "
-                    + e.getMessage());
+            statusHandler.error("Could not get hazard metadata.", e);
             return null;
         }
     }

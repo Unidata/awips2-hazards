@@ -47,6 +47,8 @@ import net.engio.mbassy.listener.Handler;
  * ------------ ---------- ------------ --------------------------
  * Apr 04, 2014   3319     Chris.Golden Initial creation.
  * May 14, 2014   2925     Chris.Golden Corrected Javadoc.
+ * Jul 03, 2014   4084     Chris.Golden Made shutdown() shut down the nested
+ *                                      event bus as well as itself.
  * </pre>
  * 
  * @author Chris.Golden
@@ -147,6 +149,12 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
     public MessagePublication publishAsync(T message, long timeout,
             TimeUnit unit) {
         return asyncBus.publishAsync(new EventWrapper(message), timeout, unit);
+    }
+
+    @Override
+    public void shutdown() {
+        asyncBus.shutdown();
+        super.shutdown();
     }
 
     // Private Methods

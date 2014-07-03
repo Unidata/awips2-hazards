@@ -155,6 +155,8 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                             the latter, in order to allow side effects
  *                                             scripts to have access to AWIPS2/H.S. Python
  *                                             modules.
+ * Jul 03, 2014 4084       Chris.Golden        Added shut down of event bus when shutting
+ *                                             down Hazard Services.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1179,6 +1181,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         eventBus.publishAsync(new HazardServicesCloseAction());
         sessionManager.shutdown();
+        eventBus.shutdown();
 
         VizGlobalsManager.removeListener(VizConstants.FRAMES_ID, this);
         VizGlobalsManager.removeListener(VizConstants.LOOPING_ID, this);
