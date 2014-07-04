@@ -553,7 +553,7 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_SELECTED = "ContextMenuSelected";
 
-    public static final String CONETXT_MENU_BRING_TO_FRONT = "Bring to Front";
+    public static final String CONTEXT_MENU_BRING_TO_FRONT = "Bring to Front";
 
     public static final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
 

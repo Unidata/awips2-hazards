@@ -685,4 +685,12 @@ public class PracticeHazardEvent extends PersistableDataObject<String>
         }
         return true;
     }
+
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
+            addHazardAttribute(entry.getKey(), entry.getValue());
+        }
+
+    }
 }

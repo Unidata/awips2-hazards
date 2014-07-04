@@ -9,6 +9,9 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Date;
@@ -16,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
@@ -47,6 +51,10 @@ public class SessionEventUtilities {
 
     /**
      * Merge the contents of the newEvent into the oldEvent
+     * 
+     * TODO. This hopefully can go away once we have the history list. Under
+     * that scenario, we can use the copy constructor to just create a new
+     * hazard and push it on to the history list.
      */
     public static void mergeHazardEvents(IHazardEvent newEvent,
             IHazardEvent oldEvent) {
@@ -66,25 +74,34 @@ public class SessionEventUtilities {
         } else {
             oldAttr = new HashMap<String, Serializable>();
         }
+
         if (newAttr != null) {
+            /*
+             * Aggregate the changes so that only one notification will occur.
+             */
+            Map<String, Serializable> modifiedAttributes = Maps.newHashMap();
             for (Entry<String, Serializable> entry : newAttr.entrySet()) {
-                oldEvent.addHazardAttribute(entry.getKey(), entry.getValue());
+                modifiedAttributes.put(entry.getKey(), entry.getValue());
                 oldAttr.remove(entry.getKey());
             }
+            oldEvent.addHazardAttributes(modifiedAttributes);
         } else {
             newAttr = Collections.emptyMap();
         }
-        oldAttr.remove(ISessionEventManager.ATTR_CHECKED);
-        oldAttr.remove(ISessionEventManager.ATTR_SELECTED);
+        oldAttr.remove(HAZARD_EVENT_CHECKED);
+        oldAttr.remove(HAZARD_EVENT_SELECTED);
         oldAttr.remove(ISessionEventManager.ATTR_ISSUED);
 
         for (String key : oldAttr.keySet()) {
             oldEvent.removeHazardAttribute(key);
         }
 
+        /*
+         * This is relevant when you set the clock back.
+         */
         if (isEnded(oldEvent) == false) {
             if (oldEvent instanceof ObservedHazardEvent) {
-                ObservedHazardEvent obEvent = ((ObservedHazardEvent) oldEvent);
+                ObservedHazardEvent obEvent = (ObservedHazardEvent) oldEvent;
                 obEvent.setStatus(newEvent.getStatus(), true, false,
                         Originator.OTHER);
             } else {

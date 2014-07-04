@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static gov.noaa.gsd.viz.hazards.spatialdisplay.LineStyle.LINE_DASHED_4;
 
 import java.awt.Color;
@@ -17,7 +18,6 @@ import java.util.List;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -59,9 +59,9 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
 
     private double sizeScale;
 
-    private float lineWidth = 2.0f;
+    private final float lineWidth = 2.0f;
 
-    private Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
+    private final Color[] colors = new Color[] { Color.WHITE, Color.WHITE };
 
     private Element element = Element.INNER;
 
@@ -123,7 +123,7 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
     public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
         super.setAttributes(shapeNum, hazardEvent);
         Boolean selected = (Boolean) hazardEvent
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+                .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
         if (element.equals(Element.INNER)) {
             sizeScale = INNER_SIZE_SCALE;
@@ -161,7 +161,7 @@ public class PointDrawingAttributes extends HazardServicesDrawingAttributes {
     public List<Coordinate> buildCoordinates(int shapeNum,
             IHazardEvent hazardEvent) {
         Boolean selected = (Boolean) hazardEvent
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+                .getHazardAttribute(HAZARD_EVENT_SELECTED);
         double radius = 3.0;
         if (selected) {
             radius = 5.0;

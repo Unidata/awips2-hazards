@@ -724,9 +724,8 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public int getBorderWidth(IHazardEvent event) {
-        if (Boolean.TRUE.equals(event
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
+    public int getBorderWidth(IHazardEvent event, boolean selected) {
+        if (selected) {
             return 5;
         } else {
             return 3;

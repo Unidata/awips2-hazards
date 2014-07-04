@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SHAPES;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
@@ -25,7 +26,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -114,14 +114,14 @@ public abstract class HazardServicesDrawingAttributes extends Line {
     public void setAttributes(int shapeNum, IHazardEvent hazardEvent) {
 
         Boolean selected = (Boolean) hazardEvent
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+                .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
         if (selected != null) {
             setSelected(selected);
         }
         setLabel(hazardEvent);
         setLineStyle(hazardEvent, configurationManager);
-        setLineWidth(configurationManager.getBorderWidth(hazardEvent));
+        setLineWidth(configurationManager.getBorderWidth(hazardEvent, selected));
         setColors(buildHazardEventColors(hazardEvent, configurationManager));
     }
 
@@ -157,6 +157,7 @@ public abstract class HazardServicesDrawingAttributes extends Line {
         return colors;
     }
 
+    @Override
     public void setColors(Color[] colors) {
         this.colors = colors;
     }

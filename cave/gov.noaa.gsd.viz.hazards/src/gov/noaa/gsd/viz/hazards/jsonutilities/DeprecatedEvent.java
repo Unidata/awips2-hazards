@@ -29,7 +29,9 @@ package gov.noaa.gsd.viz.hazards.jsonutilities;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CREATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
@@ -231,9 +233,9 @@ public class DeprecatedEvent {
             fullType = type + " (" + headline + ")";
         }
 
-        checked = (Boolean) attr.get(ISessionEventManager.ATTR_CHECKED);
+        checked = (Boolean) attr.get(HAZARD_EVENT_CHECKED);
         color = "255 255 255";
-        selected = (Boolean) attr.get(ISessionEventManager.ATTR_SELECTED);
+        selected = (Boolean) attr.get(HAZARD_EVENT_SELECTED);
 
         if (event.getStatus() != HazardStatus.ENDED
                 && Boolean.TRUE.equals(attr

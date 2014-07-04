@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -62,7 +62,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * @version 1.0
  */
 
-public class SimpleSessionEventManager extends AbstractSessionEventManager {
+public class SimpleSessionEventManager implements
+        ISessionEventManager<ObservedHazardEvent> {
 
     private final boolean canChangeGeometry;
 
@@ -112,7 +113,7 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public void removeEvent(IHazardEvent event, IOriginator originator) {
+    public void removeEvent(ObservedHazardEvent event, IOriginator originator) {
         events.remove(event);
     }
 
@@ -227,6 +228,50 @@ public class SimpleSessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void updateSelectedHazardUGCs() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ObservedHazardEvent getEventById(String eventId) {
+        for (ObservedHazardEvent event : events) {
+            if (event.getEventID().equals(eventId)) {
+                return event;
+            }
+
+        }
+        return null;
+    }
+
+    @Override
+    public Collection<ObservedHazardEvent> getEventsByStatus(HazardStatus state) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<ObservedHazardEvent> getSelectedEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getLastSelectedEventID() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setSelectedEvents(
+            Collection<ObservedHazardEvent> selectedEvents,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Collection<ObservedHazardEvent> getCheckedEvents() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeEvents(Collection<ObservedHazardEvent> event,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 }

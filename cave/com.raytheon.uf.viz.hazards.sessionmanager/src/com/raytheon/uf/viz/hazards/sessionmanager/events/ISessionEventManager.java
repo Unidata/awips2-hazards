@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -71,20 +70,6 @@ import com.vividsolutions.jts.geom.Geometry;
 public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
-     * The selected attribute will be available as a Boolean for all hazards in
-     * the session to mark whether the user has selected them, it will not be
-     * persisted.
-     */
-    public static final String ATTR_SELECTED = "selected";
-
-    /**
-     * The checked attribute will be available as a Boolean for all hazards in
-     * the session to mark whether the user has checked them, it will not be
-     * persisted.
-     */
-    public static final String ATTR_CHECKED = "checked";
-
-    /**
      * The issued attribute will be available as a Boolean for all hazards in
      * the session to mark whether the event has been previously issued, it will
      * not be persisted.
@@ -98,39 +83,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * attribute will not be persisted.
      */
     public static final String ATTR_HAZARD_CATEGORY = "hazardCategory";
-
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * front of the list.
-     */
-    public static final Comparator<IHazardEvent> SEND_SELECTED_FRONT = new Comparator<IHazardEvent>() {
-
-        @Override
-        public int compare(IHazardEvent o1, IHazardEvent o2) {
-            boolean s1 = Boolean.TRUE.equals(o1
-                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED));
-            boolean s2 = Boolean.TRUE.equals(o2
-                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED));
-            if (s1) {
-                if (s2) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            } else if (s2) {
-                return -1;
-            }
-            return 0;
-        }
-
-    };
-
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * back of the list.
-     */
-    public static final Comparator<IHazardEvent> SEND_SELECTED_BACK = Collections
-            .reverseOrder(SEND_SELECTED_FRONT);
 
     /**
      * Add a new event to the Session, for example the event might come from a
@@ -220,7 +172,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param event
      * @param originator
      */
-    public void removeEvent(IHazardEvent event, IOriginator originator);
+    public void removeEvent(E event, IOriginator originator);
+
+    /**
+     * Remove events from the session.
+     * 
+     * @param events
+     * @param originator
+     */
+    public void removeEvents(Collection<E> event, IOriginator originator);
 
     /**
      * Get all events that are currently part of this session.
@@ -230,9 +190,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public Collection<E> getEvents();
 
     /**
-     * Get all events where the ATTR_SELECTED is True.
      * 
-     * @return
+     * @return the selected events
      */
     public List<E> getSelectedEvents();
 
@@ -270,9 +229,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
             IOriginator originator);
 
     /**
-     * Get all events where the ATTR_CHECKED is True.
      * 
-     * @return
+     * @return the checked events
      */
     public Collection<E> getCheckedEvents();
 

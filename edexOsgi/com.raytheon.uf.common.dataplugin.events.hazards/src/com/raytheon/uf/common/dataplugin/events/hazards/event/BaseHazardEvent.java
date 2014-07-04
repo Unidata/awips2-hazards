@@ -427,4 +427,9 @@ public class BaseHazardEvent implements IHazardEvent {
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
     }
+
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        this.attributes.putAll(attributes);
+    }
 }

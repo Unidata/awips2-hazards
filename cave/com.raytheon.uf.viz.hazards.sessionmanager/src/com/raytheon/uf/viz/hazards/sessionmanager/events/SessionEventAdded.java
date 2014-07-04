@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -56,5 +58,11 @@ public class SessionEventAdded extends SessionEventsModified implements
 
     public IHazardEvent getEvent() {
         return event;
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+
     }
 }

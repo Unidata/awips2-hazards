@@ -132,4 +132,6 @@ public interface IHazardEvent extends IEvent {
     public void removeHazardAttribute(String key);
 
     public Serializable getHazardAttribute(String key);
+
+    public void addHazardAttributes(Map<String, Serializable> attributes);
 }

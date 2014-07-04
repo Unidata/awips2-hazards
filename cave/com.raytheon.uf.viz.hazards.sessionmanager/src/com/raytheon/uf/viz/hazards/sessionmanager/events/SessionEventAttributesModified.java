@@ -19,10 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -52,28 +54,36 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public class SessionEventAttributesModified extends SessionEventModified
         implements ISessionNotification {
 
-    private final Set<String> attributeKeys;
+    private final Map<String, Serializable> attributes;
 
     public SessionEventAttributesModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, String attributeKey, IOriginator originator) {
+            ObservedHazardEvent event, String attributeKey,
+            Serializable attributeValue, IOriginator originator) {
         super(eventManager, event, originator);
-        this.attributeKeys = Sets.newHashSet(attributeKey);
+        Map<String, Serializable> attributes = Maps.newHashMap();
+        attributes.put(attributeKey, attributeValue);
+        this.attributes = Collections.unmodifiableMap(attributes);
     }
 
     public SessionEventAttributesModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, Set<String> attributeKeys,
+            ObservedHazardEvent event, Map<String, Serializable> attributes,
             IOriginator originator) {
         super(eventManager, event, originator);
-        this.attributeKeys = attributeKeys;
+        this.attributes = Collections.unmodifiableMap(attributes);
     }
 
     public boolean containsAttribute(String key) {
-        return attributeKeys.contains(key);
+        return attributes.keySet().contains(key);
     }
 
     public Set<String> getAttributeKeys() {
-        return attributeKeys;
+        return attributes.keySet();
     }
+
+    public Serializable getAttribute(String key) {
+        return attributes.get(key);
+    }
+
 }

@@ -19,7 +19,6 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
@@ -96,7 +95,7 @@ public class ChangeHazardAreaFunctionalTest extends
 
     private void handleCompletedIssuance() {
 
-        IHazardEvent event = autoTestUtilities.getSelectedEvent();
+        ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
         Geometry geometry = event.getGeometry();
         Coordinate[] coordinates = geometry.getCoordinates();
         Coordinate modifiedPoint = coordinates[1];

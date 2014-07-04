@@ -176,9 +176,10 @@ public interface ISessionConfigurationManager {
      * Get the border width to use when displaying an event.
      * 
      * @param event
+     * @param selected
      * @return
      */
-    public int getBorderWidth(IHazardEvent event);
+    public int getBorderWidth(IHazardEvent event, boolean selected);
 
     /**
      * Get the border style to use when displaying an event.

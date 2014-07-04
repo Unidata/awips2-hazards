@@ -356,7 +356,7 @@ public class SelectByAreaDrawingActionGeometryResource extends
                     } else {
 
                         hazardGeometryList.put(eventID, copyGeometriesList);
-                        IHazardEvent modifiedEvent = sessionManager
+                        ObservedHazardEvent modifiedEvent = sessionManager
                                 .getEventManager().getEventById(eventID);
                         modifiedEvent.setGeometry(mergedPolygons);
                         SessionEventGeometryModified modifyAction = new SessionEventGeometryModified(

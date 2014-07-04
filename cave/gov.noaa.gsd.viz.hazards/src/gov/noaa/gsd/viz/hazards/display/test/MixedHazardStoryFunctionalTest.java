@@ -15,6 +15,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.E
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_COLOR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_STATUS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
@@ -182,7 +183,7 @@ class MixedHazardStoryFunctionalTest extends
     private int eventStateChangeCount = 0;
 
     @Handler(priority = -1)
-    public void sessionEventStateModifiedOccurred(
+    public void sessionEventStatusModifiedOccurred(
             final SessionEventStatusModified action) {
 
         try {
@@ -191,11 +192,7 @@ class MixedHazardStoryFunctionalTest extends
             case SELECTION_ISSUE:
 
                 /*
-                 * TODO: Why does it require 4 firings of the event status
-                 * change notification for 2 events to change state once per
-                 * event? Shouldn't it say "... < 2" here? Determining this
-                 * would required seeing what's going on in the session manager
-                 * with respect to these firings; no time for that now.
+                 * TODO Waiting for too many notifications
                  */
                 if (++eventStateChangeCount < 4) {
                     return;
@@ -218,11 +215,7 @@ class MixedHazardStoryFunctionalTest extends
             case REPLACEMENT_ISSUE_PRODUCTS:
 
                 /*
-                 * TODO: Why does it require 8 firings of the event status
-                 * change notification for 4 events to change state once per
-                 * event? Shouldn't it say "... < 4" here? Determining this
-                 * would required seeing what's going on in the session manager
-                 * with respect to these firings; no time for that now.
+                 * TODO Waiting for too many notifications.
                  */
                 if (++eventStateChangeCount < 8) {
                     return;
@@ -242,11 +235,7 @@ class MixedHazardStoryFunctionalTest extends
             case CONTINUED_ISSUE_PRODUCTS:
 
                 /*
-                 * TODO: Why does it require 4 firings of the event status
-                 * change notification for 2 events to change state once per
-                 * event? Shouldn't it say "... < 2" here? Determining this
-                 * would required seeing what's going on in the session manager
-                 * with respect to these firings; no time for that now.
+                 * TODO Waiting for too many
                  */
                 if (++eventStateChangeCount < 4) {
                     return;
@@ -261,11 +250,7 @@ class MixedHazardStoryFunctionalTest extends
             case ENDED_ISSUE_PRODUCTS:
 
                 /*
-                 * TODO: Why does it require 4 firings of the event status
-                 * change notification for 2 events to change state once per
-                 * event? Shouldn't it say "... < 2" here? Determining this
-                 * would required seeing what's going on in the session manager
-                 * with respect to these firings; no time for that now.
+                 * TODO Waiting for too many
                  */
                 if (++eventStateChangeCount < 4) {
                     return;
@@ -290,8 +275,7 @@ class MixedHazardStoryFunctionalTest extends
             switch (step) {
 
             case SELECT_RECOMMENDED:
-                if (action.getAttributeKeys().contains(
-                        ISessionEventManager.ATTR_SELECTED)) {
+                if (action.getAttributeKeys().contains(HAZARD_EVENT_SELECTED)) {
                     for (IHazardEvent event : eventManager.getSelectedEvents()) {
                         waitingToBeSelected.remove(event.getEventID());
                     }
@@ -675,8 +659,7 @@ class MixedHazardStoryFunctionalTest extends
         List<Dict> hazards = mockConsoleView.getHazardEvents();
         int numSelected = 0;
         for (Dict hazard : hazards) {
-            Boolean selected = (Boolean) hazard
-                    .get(ISessionEventManager.ATTR_SELECTED);
+            Boolean selected = (Boolean) hazard.get(HAZARD_EVENT_SELECTED);
             if (selected) {
                 numSelected += 1;
             }

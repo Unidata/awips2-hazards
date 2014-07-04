@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawableelements;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesEditorUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.DotDrawingAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAttributes;
@@ -41,7 +42,6 @@ import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.hatching.HatchingUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -560,8 +560,7 @@ public class HazardServicesDrawableBuilder {
          * around a failure somewhere else to properly identify whether or not
          * an event is selected. As a result, you cannot modify the polygons.
          */
-        if ((Boolean) hazardEvent
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED)) {
+        if ((Boolean) hazardEvent.getHazardAttribute(HAZARD_EVENT_SELECTED)) {
             toolLayer.setSelectedHazardIHISLayer(drawableComponent);
         }
 

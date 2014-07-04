@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 import java.util.Date;
@@ -31,7 +32,6 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -148,9 +148,9 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     @Handler
     public void eventSelected(SessionEventAttributesModified notification) {
-        if (notification.containsAttribute(ISessionEventManager.ATTR_SELECTED)) {
+        if (notification.containsAttribute(HAZARD_EVENT_SELECTED)) {
             if (Boolean.TRUE.equals(notification.getEvent().getHazardAttribute(
-                    ISessionEventManager.ATTR_SELECTED))) {
+                    HAZARD_EVENT_SELECTED))) {
                 IEvent event = notification.getEvent();
                 TimeRange eventRange = new TimeRange(event.getStartTime(),
                         event.getEndTime());

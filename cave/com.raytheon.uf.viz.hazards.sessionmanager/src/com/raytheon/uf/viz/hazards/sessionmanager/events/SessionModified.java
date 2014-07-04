@@ -20,6 +20,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
 /**
  * A Notification that will be sent out through the SessionManager to notify all
@@ -40,6 +42,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public class SessionModified implements ISessionNotification {
+public class SessionModified extends OriginatedSessionNotification implements
+        ISessionNotification {
+
+    /**
+     * @param originator
+     */
+    public SessionModified(IOriginator originator) {
+        super(originator);
+    }
 
 }

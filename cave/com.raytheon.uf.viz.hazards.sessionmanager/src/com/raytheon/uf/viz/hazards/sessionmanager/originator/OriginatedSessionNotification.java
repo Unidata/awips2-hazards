@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.originator;
 
+import gov.noaa.gsd.common.utilities.Utils;
+
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
 /**
@@ -42,26 +47,56 @@ public class OriginatedSessionNotification implements ISessionNotification {
 
     private IOriginator originator;
 
-    /**
-     * 
-     */
+    private String notificationContext;
+
     public OriginatedSessionNotification(IOriginator originator) {
         this.originator = originator;
+        buildNotificationContext();
     }
 
-    /**
-     * @return the originator
+    private static final String ENVIRONMENT_VARIABLE = "HAZARD_SERVICES_AUTO_TESTS_ENABLED";
+
+    /*
+     * TODO. Move this.
      */
+    private static final boolean automatedTestsEnabled;
+
+    static {
+        automatedTestsEnabled = BooleanUtils.toBoolean(System
+                .getenv(ENVIRONMENT_VARIABLE));
+    }
+
     public IOriginator getOriginator() {
         return originator;
     }
 
-    /**
-     * @param originator
-     *            the originator to set
-     */
     public void setOriginator(IOriginator originator) {
         this.originator = originator;
     }
 
+    String getNotificationContext() {
+        return notificationContext;
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+
+    }
+
+    private static boolean areAutomatedTestsEnabled() {
+        return automatedTestsEnabled;
+    }
+
+    private void buildNotificationContext() {
+        if (areAutomatedTestsEnabled()) {
+            try {
+                throw new RuntimeException();
+            } catch (RuntimeException e) {
+                notificationContext = Utils.stackTraceAsString(e);
+            }
+        } else {
+            notificationContext = "Not Available";
+        }
+    }
 }

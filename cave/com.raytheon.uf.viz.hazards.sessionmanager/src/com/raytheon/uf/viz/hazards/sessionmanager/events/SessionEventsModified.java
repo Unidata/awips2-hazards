@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.Collection;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
@@ -56,5 +58,15 @@ public class SessionEventsModified extends OriginatedSessionNotification {
 
     public Collection<ObservedHazardEvent> getEvents() {
         return eventManager.getEvents();
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+
+    }
+
+    public ISessionEventManager<ObservedHazardEvent> getEventManager() {
+        return eventManager;
     }
 }

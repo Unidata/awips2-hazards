@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -46,7 +45,7 @@ public class SessionEventTypeModified extends SessionEventModified implements
 
     public SessionEventTypeModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, IOriginator originator) {
+            ObservedHazardEvent event, IOriginator originator) {
         super(eventManager, event, originator);
     }
 

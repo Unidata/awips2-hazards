@@ -21,6 +21,8 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PILS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PREVIEW_STATE;
@@ -132,7 +134,6 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Nov 29, 2013 2378       blawrenc    Changed to not set modified
  *                                     events back to PENDING.
- * 
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * Jan 14, 2014 2755       bkowal      No longer create new Event IDs for events that
  *                                     are created EDEX-side for interoperability purposes.
@@ -191,7 +192,8 @@ import com.vividsolutions.jts.simplify.DouglasPeuckerSimplifier;
  * @version 1.0
  */
 
-public class SessionEventManager extends AbstractSessionEventManager {
+public class SessionEventManager implements
+        ISessionEventManager<ObservedHazardEvent> {
 
     /**
      * Default duration for hazard events that do not have a type.
@@ -276,6 +278,39 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     private final GeometryFactory geoFactory;
 
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * front of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_FRONT = new Comparator<ObservedHazardEvent>() {
+
+        @Override
+        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
+            boolean s1 = Boolean.TRUE.equals(o1
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
+            boolean s2 = Boolean.TRUE.equals(o2
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
+            if (s1) {
+                if (s2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else if (s2) {
+                return -1;
+            }
+            return 0;
+        }
+
+    };
+
+    /**
+     * Comparator can be used with sortEvents to send selected events to the
+     * back of the list.
+     */
+    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_BACK = Collections
+            .reverseOrder(SEND_SELECTED_FRONT);
+
     public SessionEventManager(ISessionTimeManager timeManager,
             ISessionConfigurationManager configManager,
             IHazardEventManager dbManager,
@@ -289,6 +324,112 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 createTimeListener());
         this.messenger = messenger;
         geoFactory = new GeometryFactory();
+    }
+
+    @Override
+    public ObservedHazardEvent getEventById(String eventId) {
+        for (ObservedHazardEvent event : getEvents()) {
+            if (event.getEventID().equals(eventId)) {
+                return event;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Collection<ObservedHazardEvent> getEventsByStatus(HazardStatus state) {
+        Collection<ObservedHazardEvent> allEvents = getEvents();
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
+                allEvents.size());
+        for (ObservedHazardEvent event : allEvents) {
+            if (event.getStatus().equals(state)) {
+                events.add(event);
+            }
+        }
+        return events;
+    }
+
+    @Override
+    public List<ObservedHazardEvent> getSelectedEvents() {
+
+        /*
+         * TODO: Consider having getEventsForCurrentSettings() return a list as
+         * well. It's questionable as to whether that method should return a
+         * list, because maybe implying an inherent ordering of the events is
+         * incorrect; however, the order is relied upon (since the code here
+         * iterates through all those events) to return a consistently ordered
+         * set of events. Perhaps the order should be set via the GUI, since the
+         * console allows sorting of events, and maybe the order in which those
+         * events occur should provide the order in which the selected events,
+         * which are after all in the console list, occur.
+         * 
+         * TODO: Consider having this list rebuilt each time selection changes
+         * (by doing so before sending off a SessionSelectedEventsModified
+         * message in SessionEventManager), and then simply returning an
+         * unmodifiable version of that list each time this method is called. Or
+         * better yet, simply use the same list each time, modifying it as
+         * appropriate when the selected events are changing, and again simply
+         * returning an unmodifiable view of it to callers of this method. In
+         * this case, any caller that wished to cache the selected events list
+         * for comparison to updates to it later (i.e. classes such as
+         * HazardDetailPresenter) would need to make a copy of what they got
+         * from invoking this method.
+         */
+        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
+        List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
+        for (ObservedHazardEvent event : allEvents) {
+            if (Boolean.TRUE.equals(event
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
+                events.add(event);
+            }
+        }
+        return events;
+    }
+
+    @Override
+    public void setSelectedEvents(
+            Collection<ObservedHazardEvent> selectedEvents,
+            IOriginator originator) {
+        for (ObservedHazardEvent event : getSelectedEvents()) {
+            if (!selectedEvents.contains(event.getEventID())) {
+                event.addHazardAttribute(HAZARD_EVENT_SELECTED, false,
+                        originator);
+            }
+        }
+        for (ObservedHazardEvent event : selectedEvents) {
+            event.addHazardAttribute(HAZARD_EVENT_SELECTED, true, originator);
+
+            /*
+             * Once selected, a potential event or set of events should be set
+             * to PENDING.
+             */
+            if (event.getStatus() == HazardStatus.POTENTIAL) {
+                event.setStatus(HazardStatus.PENDING, Originator.OTHER);
+            }
+        }
+    }
+
+    @Override
+    public Collection<ObservedHazardEvent> getCheckedEvents() {
+        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
+        Collection<ObservedHazardEvent> events = new ArrayList<>(
+                allEvents.size());
+        for (ObservedHazardEvent event : allEvents) {
+            if (Boolean.TRUE.equals(event
+                    .getHazardAttribute(HAZARD_EVENT_CHECKED))) {
+                events.add(event);
+            }
+        }
+        return events;
+    }
+
+    @Override
+    public String getLastSelectedEventID() {
+        IHazardEvent event = getLastModifiedSelectedEvent();
+        if (event != null) {
+            return event.getEventID();
+        }
+        return "";
     }
 
     @Handler(priority = 1)
@@ -420,7 +561,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Handler(priority = 1)
     public void hazardAdded(SessionEventAdded change) {
         if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
-                ATTR_SELECTED))) {
+                HAZARD_EVENT_SELECTED))) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
                             this, change.getOriginator()));
@@ -439,7 +580,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
     @Handler(priority = 1)
     public void hazardRemoved(SessionEventRemoved change) {
         if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
-                ATTR_SELECTED))) {
+                HAZARD_EVENT_SELECTED))) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
                             this, change.getOriginator()));
@@ -494,7 +635,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      * @param event
      *            Event for which metadata may need updating.
      */
-    private void updateEventMetadata(IHazardEvent event) {
+    private void updateEventMetadata(ObservedHazardEvent event) {
 
         /*
          * Get a new megawidget specifier manager for this event, and store it
@@ -540,7 +681,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
          * For now, copying back and forth between maps holding Object values
          * and those holding Serializable values must be done.
          */
-        boolean eventModified = ((ObservedHazardEvent) event).isModified();
+        boolean eventModified = event.isModified();
         Map<String, Serializable> attributes = event.getHazardAttributes();
         Map<String, Object> newAttributes = new HashMap<>(attributes.size());
         for (String name : attributes.keySet()) {
@@ -555,7 +696,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
             attributes.put(name, (Serializable) newAttributes.get(name));
         }
         event.setHazardAttributes(attributes);
-        ((ObservedHazardEvent) event).setModified(eventModified);
+        event.setModified(eventModified);
     }
 
     /**
@@ -660,7 +801,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
          * updates when an event has its attribute changes before it is added or
          * after it is removed.
          */
-        if (change.containsAttribute(ATTR_SELECTED)
+        if (change.containsAttribute(HAZARD_EVENT_SELECTED)
                 && getEvents().contains(change.getEvent())) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
@@ -779,7 +920,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
      *            the event.
      */
     private void updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
-            IHazardEvent event, boolean removed) {
+            ObservedHazardEvent event, boolean removed) {
 
         /*
          * Assume the event should be removed from the set unless it is not
@@ -1083,21 +1224,23 @@ public class SessionEventManager extends AbstractSessionEventManager {
         synchronized (events) {
             if (localEvent && !Boolean.TRUE.equals(settings.getAddToSelected())) {
                 for (IHazardEvent e : events) {
-                    e.addHazardAttribute(ATTR_SELECTED, false);
+                    e.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
                 }
             }
             events.add(oevent);
         }
-        oevent.addHazardAttribute(ATTR_SELECTED, false, false, originator);
-        oevent.addHazardAttribute(ATTR_CHECKED, false, false, originator);
+        oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, false, false,
+                originator);
+        oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
+                originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
                 oevent.getStatus().equals(HazardStatus.ISSUED), false,
                 originator);
 
         if (localEvent) {
-            oevent.addHazardAttribute(ATTR_SELECTED, true);
+            oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, true, false);
         }
-        oevent.addHazardAttribute(ATTR_CHECKED, true);
+        oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
         notificationSender.postNotificationAsync(new SessionEventAdded(this,
                 oevent, originator));
@@ -1105,8 +1248,21 @@ public class SessionEventManager extends AbstractSessionEventManager {
     }
 
     @Override
-    public void removeEvent(IHazardEvent event, IOriginator originator) {
+    public void removeEvent(ObservedHazardEvent event, IOriginator originator) {
         removeEvent(event, true, originator);
+    }
+
+    @Override
+    public void removeEvents(Collection<ObservedHazardEvent> events,
+            IOriginator originator) {
+        /*
+         * Avoid concurrent modification since events is backed by this.events
+         */
+        List<ObservedHazardEvent> eventsToRemove = new ArrayList<ObservedHazardEvent>(
+                events);
+        for (int i = 0; i < events.size(); i++) {
+            removeEvent(eventsToRemove.get(i), true, originator);
+        }
     }
 
     /**
@@ -1132,8 +1288,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                         dbManager.removeEvents(histList);
                     }
                 }
-                updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event,
-                        true);
+                updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
+                        (ObservedHazardEvent) event, true);
                 megawidgetSpecifiersForEventIdentifiers.remove(event
                         .getEventID());
                 notificationSender
@@ -1174,7 +1330,11 @@ public class SessionEventManager extends AbstractSessionEventManager {
         if (event instanceof ObservedHazardEvent) {
             ((ObservedHazardEvent) event).setModified(true);
         }
-        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event, false);
+        /*
+         * TODO The casting here is indicative of a larger problem. Fix it.
+         */
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
+                (ObservedHazardEvent) event, false);
         ensureEventEndTimeUntilFurtherNoticeAppropriate(event);
         notificationSender.postNotificationAsync(notification);
     }
@@ -1223,7 +1383,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 needsPersist = true;
                 break;
             case ENDED:
-                event.addHazardAttribute(ATTR_SELECTED, false);
+                event.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
                 needsPersist = true;
                 break;
             default:
@@ -1235,8 +1395,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
                 try {
                     IHazardEvent dbEvent = dbManager.createEvent(event);
                     dbEvent.removeHazardAttribute(ATTR_ISSUED);
-                    dbEvent.removeHazardAttribute(ATTR_SELECTED);
-                    dbEvent.removeHazardAttribute(ATTR_CHECKED);
+                    dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+                    dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
                     dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
                     dbManager.storeEvent(dbEvent);
                     scheduleExpirationTask(event);
@@ -1360,7 +1520,8 @@ public class SessionEventManager extends AbstractSessionEventManager {
         }
         ObservedHazardEvent event = getEventById(eventModifications.peek());
         if (event != null
-                && Boolean.TRUE.equals(event.getHazardAttribute(ATTR_SELECTED))) {
+                && Boolean.TRUE.equals(event
+                        .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
             return event;
         } else {
             eventModifications.pop();
@@ -1811,7 +1972,7 @@ public class SessionEventManager extends AbstractSessionEventManager {
 
     @Override
     public void endEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, false);
+        event.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
         event.setStatus(HazardStatus.ENDED, true, true, originator);
         clearUndoRedo(event);
         event.setModified(false);

@@ -100,7 +100,8 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     public void handleNotification(HazardNotification notification) {
         ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
         IHazardEvent newEvent = notification.getEvent();
-        IHazardEvent oldEvent = manager.getEventById(newEvent.getEventID());
+        ObservedHazardEvent oldEvent = manager.getEventById(newEvent
+                .getEventID());
         if (CAVEMode.getMode() == CAVEMode.PRACTICE
                 && notification.isPracticeMode() == false) {
             return;

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -77,7 +78,6 @@ import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
 import com.raytheon.uf.viz.core.PixelExtent;
-import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.FillPatterns;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.IShadedShape;
@@ -522,7 +522,7 @@ public class ToolLayer extends
             String eventID = hazardEvent.getEventID();
 
             Boolean isSelected = (Boolean) hazardEvent
-                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+                    .getHazardAttribute(HAZARD_EVENT_SELECTED);
 
             if (isSelected != null && isSelected
                     && !selectedEventIDs.contains(eventID)) {
@@ -1348,7 +1348,7 @@ public class ToolLayer extends
             ISessionEventManager<ObservedHazardEvent> sessionEventManager = appBuilder
                     .getSessionManager().getEventManager();
 
-            IHazardEvent hazardEvent = sessionEventManager
+            ObservedHazardEvent hazardEvent = sessionEventManager
                     .getEventById(eventID);
             hazardEvent.setGeometry(geometry);
             SessionEventGeometryModified action = new SessionEventGeometryModified(

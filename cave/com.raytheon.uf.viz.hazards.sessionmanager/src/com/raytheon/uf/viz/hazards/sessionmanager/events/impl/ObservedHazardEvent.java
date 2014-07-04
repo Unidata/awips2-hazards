@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -317,8 +318,18 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        addHazardAttributes(attributes, true, Originator.OTHER);
+    }
+
+    @Override
     public void addHazardAttribute(String key, Serializable value) {
         addHazardAttribute(key, value, true, Originator.OTHER);
+    }
+
+    protected void addHazardAttribute(String key, Serializable value,
+            boolean notify) {
+        addHazardAttribute(key, value, notify, Originator.OTHER);
     }
 
     @Override
@@ -417,6 +428,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     protected void setStatus(HazardStatus status, boolean notify,
             boolean persist, IOriginator originator) {
+        /*
+         * TODO This bug fix from Matt needs to be restored. Unfortunately, it
+         * broke automated tests.
+         */
+        // if (changed(getStatus(), status)) {
         delegate.setStatus(status);
 
         if (notify) {
@@ -424,6 +440,7 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
                     new SessionEventStatusModified(eventManager, this,
                             originator), persist);
         }
+        // }
     }
 
     protected void setPhenomenon(String phenomenon, boolean notify,
@@ -584,18 +601,60 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    public void setHazardAttributes(Map<String, Serializable> attributes,
+    protected void setHazardAttributes(Map<String, Serializable> attributes,
             boolean notify, IOriginator originator) {
+        Set<String> changedKeys = getChangedAttributes(attributes, true);
+        if (changedKeys.isEmpty() == false) {
+            delegate.setHazardAttributes(attributes);
+            if (notify) {
+                Map<String, Serializable> modifiedAttributes = new HashMap<>();
+                for (String changedKey : changedKeys) {
+                    modifiedAttributes.put(changedKey,
+                            attributes.get(changedKey));
+
+                }
+                eventManager
+                        .hazardEventModified(new SessionEventAttributesModified(
+                                eventManager, this, modifiedAttributes,
+                                originator));
+            }
+        }
+    }
+
+    /**
+     * Get the set of attribute names that will be changed by modifying the
+     * current hazard attributes using the specified attributes. If
+     * <code>willReplace</code> is true, the modification is assumed to be that
+     * the specified attributes map will replace the old map; otherwise, it is
+     * assumed that the specified attributes will be added to the old map,
+     * meaning that any attributes present in the old map but not the new will
+     * retain their old values.
+     * 
+     * @param attributes
+     *            Map of attributes with which to modify the old attributes.
+     * @param willReplace
+     *            Flag indicating whether or not the specified attributes will
+     *            replace the old attributes; if false, they will simply be
+     *            added on top of the old attributes, overwriting only those old
+     *            ones that are found in the new attributes map as well.
+     * @return Set of attribute names that will change as a result of the
+     *         specified modification to the old attributes map.
+     */
+    private Set<String> getChangedAttributes(
+            Map<String, Serializable> attributes, boolean willReplace) {
 
         /*
-         * Determine which attributes are present in the old map but not the new
-         * or vice versa.
+         * Determine which attributes are present in the new map but not the old
+         * (and, if this is being checked for a replacement map of attributes,
+         * the old map but not the new).
          */
         Map<String, Serializable> oldAttributes = getHazardAttributes();
         Set<String> oldAttributeKeys = oldAttributes.keySet();
         Set<String> attributeKeys = attributes.keySet();
-        Set<String> changedKeys = new HashSet<>(Sets.symmetricDifference(
-                oldAttributeKeys, attributeKeys));
+        Set<String> changedKeys = new HashSet<>(
+                willReplace ? Sets.symmetricDifference(oldAttributeKeys,
+                        attributeKeys) : Sets.difference(attributeKeys,
+                        oldAttributeKeys));
 
         /*
          * For each attribute present in both maps, determine whether the values
@@ -612,20 +671,26 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             }
         }
 
-        /*
-         * Only use the new attributes if there has been at least one change.
-         */
-        if (changedKeys.isEmpty() == false) {
-            delegate.setHazardAttributes(attributes);
-            if (notify) {
-                eventManager
-                        .hazardEventModified(new SessionEventAttributesModified(
-                                eventManager, this, changedKeys, originator));
-            }
-        }
+        return changedKeys;
     }
 
-    public void addHazardAttribute(String key, Serializable value,
+    protected void addHazardAttributes(Map<String, Serializable> attributes,
+            boolean notify, IOriginator originator) {
+        Set<String> changedKeys = getChangedAttributes(attributes, false);
+        if (changedKeys.size() > 0) {
+            Map<String, Serializable> modifiedAttributes = new HashMap<>();
+            for (String changedKey : changedKeys) {
+                modifiedAttributes.put(changedKey, attributes.get(changedKey));
+            }
+            delegate.addHazardAttributes(modifiedAttributes);
+            eventManager
+                    .hazardEventModified(new SessionEventAttributesModified(
+                            eventManager, this, modifiedAttributes, originator));
+        }
+
+    }
+
+    protected void addHazardAttribute(String key, Serializable value,
             boolean notify, IOriginator originator) {
         if (changed(value, getHazardAttribute(key))) {
             delegate.removeHazardAttribute(key);
@@ -633,19 +698,20 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             if (notify) {
                 eventManager
                         .hazardEventAttributeModified(new SessionEventAttributesModified(
-                                eventManager, this, key, originator));
+                                eventManager, this, key, value, originator));
             }
         }
     }
 
-    public void removeHazardAttribute(String key, boolean notify,
+    protected void removeHazardAttribute(String key, boolean notify,
             IOriginator originator) {
         if (getHazardAttribute(key) != null) {
             delegate.removeHazardAttribute(key);
             if (notify) {
                 eventManager
                         .hazardEventAttributeModified(new SessionEventAttributesModified(
-                                eventManager, this, key, originator));
+                                eventManager, this, key,
+                                getHazardAttribute(key), originator));
             }
         }
     }

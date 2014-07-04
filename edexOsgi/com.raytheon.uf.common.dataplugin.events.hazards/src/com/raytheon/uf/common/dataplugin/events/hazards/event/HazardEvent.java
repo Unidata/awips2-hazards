@@ -486,6 +486,17 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     /*
+     * 
+     */
+    @Override
+    public void addHazardAttributes(Map<String, Serializable> attributes) {
+        for (Map.Entry<String, Serializable> entry : attributes.entrySet()) {
+            addHazardAttribute(entry.getKey(), entry.getValue());
+        }
+
+    }
+
+    /*
      * (non-Javadoc)
      * 
      * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
@@ -722,4 +733,5 @@ public class HazardEvent implements IHazardEvent, IValidator {
         }
         return true;
     }
+
 }

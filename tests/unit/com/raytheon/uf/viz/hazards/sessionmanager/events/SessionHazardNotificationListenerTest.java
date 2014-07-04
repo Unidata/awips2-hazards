@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -117,14 +119,13 @@ public class SessionHazardNotificationListenerTest {
         eventManager.reset();
 
         IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
-        event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
+        event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
                 NotificationType.STORE, Mode.PRACTICE));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED),
-                Boolean.TRUE);
+                .getHazardAttribute(HAZARD_EVENT_SELECTED), Boolean.TRUE);
     }
 
     /**
@@ -151,14 +152,13 @@ public class SessionHazardNotificationListenerTest {
     public void testPreserveSelection() {
         eventManager.reset();
         IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
-        event.addHazardAttribute(ISessionEventManager.ATTR_SELECTED, true);
+        event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
                 NotificationType.UPDATE, Mode.PRACTICE));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
-                .getHazardAttribute(ISessionEventManager.ATTR_SELECTED),
-                Boolean.TRUE);
+                .getHazardAttribute(HAZARD_EVENT_SELECTED), Boolean.TRUE);
     }
 
     /**

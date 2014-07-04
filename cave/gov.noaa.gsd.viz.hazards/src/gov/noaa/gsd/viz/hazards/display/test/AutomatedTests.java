@@ -64,15 +64,19 @@ public class AutomatedTests {
      * uses weak references, and thus if this reference is not kept, garbage
      * collection of the test occurs.
      */
-    private FunctionalTest functionalTest;
+    private FunctionalTest<? extends Enum<?>> functionalTest;
+
+    private final NotificationLogger notificationLogger;
 
     public AutomatedTests() {
+        notificationLogger = new NotificationLogger();
     }
 
     public void run(final HazardServicesAppBuilder appBuilder) {
 
         this.appBuilder = appBuilder;
         appBuilder.getEventBus().subscribe(this);
+        appBuilder.getEventBus().subscribe(notificationLogger);
 
     }
 
@@ -136,14 +140,14 @@ public class AutomatedTests {
 
         } else if (testCompleted.getTestClass().equals(StopTesting.class)) {
             functionalTest = null;
-            statusHandler.debug("Stopping tests");
+            System.err.println("Stopping tests");
             resetEvents();
             appBuilder.getSessionManager().setPreviewOngoing(false);
             appBuilder.getSessionManager().setIssueOngoing(false);
 
         } else {
             functionalTest = null;
-            statusHandler.debug("All tests completed");
+            System.out.println("All tests completed");
 
             /**
              * TODO If the HID is detached, in causes a an error in
@@ -157,7 +161,7 @@ public class AutomatedTests {
 
     }
 
-    private void runTest(FunctionalTest test) {
+    private void runTest(FunctionalTest<? extends Enum<?>> test) {
         functionalTest = test;
         functionalTest.run();
     }

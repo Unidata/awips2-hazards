@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 
 import java.io.Serializable;
@@ -209,9 +211,8 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
-                        if (Boolean.TRUE
-                                .equals(e
-                                        .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
+                        if (Boolean.TRUE.equals(e
+                                .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
                             productEvents.add(e);
                         } else if (e.getStatus() != HazardStatus.POTENTIAL
                                 && e.getStatus() != HazardStatus.ENDED
@@ -279,9 +280,8 @@ public class SessionProductManager implements ISessionProductManager {
                 }
             }
             if (!found
-                    && Boolean.TRUE
-                            .equals(e
-                                    .getHazardAttribute(ISessionEventManager.ATTR_SELECTED))) {
+                    && Boolean.TRUE.equals(e
+                            .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
                 unsupportedHazards.add(key);
             }
         }
@@ -454,8 +454,8 @@ public class SessionProductManager implements ISessionProductManager {
                 event.removeHazardAttribute(HazardConstants.PILS);
             }
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_CHECKED);
-            event.removeHazardAttribute(ISessionEventManager.ATTR_SELECTED);
+            event.removeHazardAttribute(HAZARD_EVENT_CHECKED);
+            event.removeHazardAttribute(HAZARD_EVENT_SELECTED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
 
             events.add(event);

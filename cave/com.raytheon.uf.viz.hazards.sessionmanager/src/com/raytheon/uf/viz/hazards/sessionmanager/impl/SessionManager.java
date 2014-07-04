@@ -413,7 +413,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     }
 
     private void notifySessionModified() {
-        eventBus.publish(new SessionModified());
+        eventBus.publish(new SessionModified(Originator.OTHER));
     }
 
 }

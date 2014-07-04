@@ -81,8 +81,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.AbstractSessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
@@ -554,9 +554,8 @@ public final class HazardServicesMessageHandler implements
         statusHandler.debug("HazardServicesMessageHandler: deleteEvent: "
                 + events);
 
-        for (IHazardEvent event : events) {
-            sessionEventManager.removeEvent(event, null);
-        }
+        sessionEventManager.removeEvents(events, null);
+
         notifyModelEventsChanged();
         appBuilder.hideHazardDetail();
     }
@@ -1063,11 +1062,11 @@ public final class HazardServicesMessageHandler implements
             appBuilder.loadGeometryOverlayForSelectedEvent();
         } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
             sessionEventManager
-                    .sortEvents(AbstractSessionEventManager.SEND_SELECTED_BACK);
+                    .sortEvents(SessionEventManager.SEND_SELECTED_BACK);
             notifyModelEventsChanged();
-        } else if (label.equals(HazardConstants.CONETXT_MENU_BRING_TO_FRONT)) {
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_BRING_TO_FRONT)) {
             sessionEventManager
-                    .sortEvents(AbstractSessionEventManager.SEND_SELECTED_FRONT);
+                    .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
             notifyModelEventsChanged();
         } else if (label
                 .equals(HazardConstants.CONTEXT_MENU_CLIP_AND_REDUCE_SELECTED_HAZARDS)) {

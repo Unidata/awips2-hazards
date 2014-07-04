@@ -151,7 +151,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
     }
 
     protected final void stepCompleted() {
-        statusHandler.debug("Completed step " + step);
+        System.out.println("Completed step " + step);
     }
 
     private void registerForEvents() {
@@ -162,7 +162,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         resetEvents();
         mockViews();
         checkForFloodSettings();
-        statusHandler.debug(String.format("Starting %s...", this.getClass()
+        System.out.println(String.format("Starting %s...", this.getClass()
                 .getSimpleName()));
         runFirstStep();
     }
@@ -390,7 +390,7 @@ public abstract class FunctionalTest<E extends Enum<E>> {
 
         unRegisterForEvents();
         if (success) {
-            statusHandler.debug(String.format("%s Successful", this.getClass()
+            System.out.println(String.format("%s Successful", this.getClass()
                     .getSimpleName()));
             eventBus.publish(new TestCompleted(this.getClass()));
         } else {
