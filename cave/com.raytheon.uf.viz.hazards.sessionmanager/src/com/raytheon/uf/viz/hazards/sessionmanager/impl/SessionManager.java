@@ -133,7 +133,7 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
     /*
      * Flag indicating whether or not hazard hatch areas are displayed.
      */
-    private boolean hatchAreaDisplay = false;
+    private boolean hatchAreaDisplay = true;
 
     private volatile boolean previewOngoing = false;
 
