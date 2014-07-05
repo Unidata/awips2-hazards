@@ -45,8 +45,6 @@ public class ConsoleAction {
 
     public static final String RESET_EVENTS = "Events";
 
-    public static final String RESET_SETTINGS = "Settings";
-
     // Applies in instances where a setting or a tool
     // are chosen.
     private ActionType actionType;

@@ -98,11 +98,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     public static final String RESET_EVENTS_COMMAND_MENU_TEXT = "Reset Events";
 
     /**
-     * Reset settings command menu item text.
-     */
-    public static final String RESET_SETTINGS_COMMAND_MENU_TEXT = "Reset Settings";
-
-    /**
      * Check hazard conflicts command menu item text.
      */
     public static final String CHECK_HAZARD_CONFLICTS_MENU_TEXT = "Check Hazard Conflicts";
@@ -413,11 +408,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     private Action resetEventsCommandAction;
 
     /**
-     * Reset settings command action.
-     */
-    private Action resetSettingsCommandAction;
-
-    /**
      * Check hazard conflicts command action.
      */
     private Action checkHazardConflictsAction;
@@ -714,11 +704,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     RESET_EVENTS_COMMAND_MENU_TEXT, null,
                     Action.AS_PUSH_BUTTON, null,
                     ConsoleAction.ActionType.RESET, ConsoleAction.RESET_EVENTS);
-            resetSettingsCommandAction = new BasicConsoleAction(
-                    RESET_SETTINGS_COMMAND_MENU_TEXT, null,
-                    Action.AS_PUSH_BUTTON, null,
-                    ConsoleAction.ActionType.RESET,
-                    ConsoleAction.RESET_SETTINGS);
             SeparatorAction sep = new SeparatorAction();
             checkHazardConflictsAction = new BasicConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null,
@@ -738,9 +723,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     ConsoleAction.SHOW_HATCHED_AREA);
 
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
-                    resetSettingsCommandAction, sep,
-                    checkHazardConflictsAction, autoCheckHazardConflictsAction,
-                    showHatchedAreaAction, sep);
+                    sep, checkHazardConflictsAction,
+                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep);
 
             if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
                 Action changeVtecFormat = new ChangeVtecFormatAction(presenter

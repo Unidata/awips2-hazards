@@ -7,13 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
@@ -698,13 +692,6 @@ public final class HazardServicesMessageHandler implements
      */
     private void reset(String type) {
         sessionManager.reset();
-
-        /*
-         * Switch back to the default settings only if resetting the settings.
-         */
-        if (type.equals(ConsoleAction.RESET_SETTINGS)) {
-            changeSetting(getSettingForCurrentPerspective(), true);
-        }
     }
 
     /**
