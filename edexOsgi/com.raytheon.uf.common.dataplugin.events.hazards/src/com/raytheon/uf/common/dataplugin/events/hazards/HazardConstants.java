@@ -563,9 +563,9 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_DELETE = "Delete";
 
-    public static final String CONTEXT_MENU_ADD_NODE = "Add Node";
+    public static final String CONTEXT_MENU_ADD_VERTEX = "Add Vertex";
 
-    public static final String CONTEXT_MENU_DELETE_NODE = "Delete Node";
+    public static final String CONTEXT_MENU_DELETE_VERTEX = "Delete Vertex";
 
     public static final String CONTEXT_MENU_END = "End";
 

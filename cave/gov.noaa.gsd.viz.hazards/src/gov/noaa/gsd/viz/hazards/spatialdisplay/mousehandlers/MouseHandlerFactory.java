@@ -97,8 +97,8 @@ public class MouseHandlerFactory {
                 handler = new RectangleMultiSelectionAction(
                         presenter.getSessionManager());
                 break;
-            case NODE_DRAWING:
-                handler = new NodeHazardDrawingAction(
+            case VERTEX_DRAWING:
+                handler = new VertexHazardDrawingAction(
                         presenter.getSessionManager());
                 break;
             case FREEHAND_DRAWING:
@@ -123,8 +123,8 @@ public class MouseHandlerFactory {
 
         // Perform any handler-specific configuration that might be required.
         switch (mouseHandler) {
-        case NODE_DRAWING:
-            ((NodeHazardDrawingAction) handler).setShapeType(args[0]);
+        case VERTEX_DRAWING:
+            ((VertexHazardDrawingAction) handler).setShapeType(args[0]);
             break;
         case STORM_TOOL_DRAG_DOT_DRAWING:
             ((DragDropAction) handler).setToolName(args[0]);

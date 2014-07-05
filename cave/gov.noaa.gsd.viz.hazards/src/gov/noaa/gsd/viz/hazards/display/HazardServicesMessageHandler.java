@@ -472,7 +472,7 @@ public final class HazardServicesMessageHandler implements
                 eventSet, spatialInfo, dialogInfo,
                 getRecommenderListener(toolName));
 
-        appBuilder.setCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+        appBuilder.setCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
 
         notifyModelEventsChanged();
 
@@ -1028,10 +1028,10 @@ public final class HazardServicesMessageHandler implements
         } else if (label.contains(HazardConstants.CONTEXT_MENU_END)) {
             updateToPreviewEnded();
             preview();
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_NODE)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_NODE);
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_NODE)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.ADD_NODE);
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_VERTEX)) {
+            appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_VERTEX);
+        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_VERTEX)) {
+            appBuilder.modifyShape(HazardServicesDrawingAction.ADD_VERTEX);
         } else if (label.contains(HazardConstants.CONTEXT_MENU_DELETE)) {
             deleteEvent(sessionEventManager.getSelectedEvents());
         } else if (label
@@ -1333,7 +1333,7 @@ public final class HazardServicesMessageHandler implements
                                 : GeometryType.POINT));
 
                 // Activate the hazard drawing mouse handler.
-                requestMouseHandler(HazardServicesMouseHandlers.NODE_DRAWING,
+                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
                         geometryType.getValue());
             } else if (spatialDisplayAction
                     .getActionIdentifier()

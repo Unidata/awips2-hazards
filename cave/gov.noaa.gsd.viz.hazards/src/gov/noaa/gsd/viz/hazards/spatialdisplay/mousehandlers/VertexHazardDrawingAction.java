@@ -36,7 +36,6 @@ import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -64,11 +63,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public class NodeHazardDrawingAction extends AbstractMouseHandler {
+public class VertexHazardDrawingAction extends AbstractMouseHandler {
 
     /** for logging */
     private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(NodeHazardDrawingAction.class);
+            .getHandler(VertexHazardDrawingAction.class);
 
     /**
      * Shape type to be drawn.
@@ -85,7 +84,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
     private final ISessionManager<ObservedHazardEvent> sessionManager;
 
-    public NodeHazardDrawingAction(
+    public VertexHazardDrawingAction(
             ISessionManager<ObservedHazardEvent> sessionManager) {
         this.sessionManager = sessionManager;
         hazardEventBuilder = new HazardEventBuilder(sessionManager);
@@ -93,7 +92,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
 
     @Override
     protected IInputHandler createMouseHandler() {
-        return new NodeHazardDrawingHandler();
+        return new VertexHazardDrawingHandler();
     }
 
     /**
@@ -128,7 +127,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
     /**
      * 
      * Description: Mouse handler for drawing hazard events consisting of one or
-     * more distinct nodes.
+     * more distinct vertices.
      * 
      * <pre>
      * 
@@ -142,7 +141,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
      * @author Bryon.Lawrence
      * @version 1.0
      */
-    public class NodeHazardDrawingHandler extends InputHandlerDefaultImpl {
+    public class VertexHazardDrawingHandler extends InputHandlerDefaultImpl {
 
         /*
          * Points of the new watch box.
@@ -290,7 +289,7 @@ public class NodeHazardDrawingAction extends AbstractMouseHandler {
                         getSpatialPresenter());
             } catch (InvalidGeometryException e) {
                 statusHandler.handle(Priority.WARN,
-                        "Error drawing noded polygon: " + e.getMessage());
+                        "Error drawing vertex polygon: ", e);
             }
             points.clear();
         }

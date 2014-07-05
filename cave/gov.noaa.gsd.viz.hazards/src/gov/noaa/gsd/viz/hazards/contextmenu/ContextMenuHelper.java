@@ -19,6 +19,7 @@
  **/
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 
@@ -157,9 +158,9 @@ public class ContextMenuHelper {
             }
         }
         if (moving) {
-            items.add(newAction("Delete Node"));
+            items.add(newAction(CONTEXT_MENU_DELETE_VERTEX));
         } else if (drawing) {
-            items.add(newAction("Add Node"));
+            items.add(newAction(CONTEXT_MENU_ADD_VERTEX));
         }
 
         return items;

@@ -1454,7 +1454,7 @@ public class ToolLayer extends
         boolean drawCursor = spatialView
                 .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
         boolean moveCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
         action = helper.createMenu(
                 "Modify area...",
                 helper.getSpatialHazardItems(drawCursor, moveCursor).toArray(
@@ -1496,7 +1496,7 @@ public class ToolLayer extends
         boolean drawCursor = spatialView
                 .isCurrentCursor(SpatialViewCursorTypes.DRAW_CURSOR);
         boolean moveCursor = spatialView
-                .isCurrentCursor(SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+                .isCurrentCursor(SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
         for (IContributionItem item : helper.getSpatialHazardItems(drawCursor,
                 moveCursor)) {
             if (item instanceof ActionContributionItem) {

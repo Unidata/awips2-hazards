@@ -309,9 +309,9 @@ public class SelectionAction extends NonDrawingAction {
              */
             if (button == 2
                     && getDrawingLayer().getSelectedHazardIHISLayer() != null) {
-                handleNodeAdditionOrDeletion();
+                handleVertexAdditionOrDeletion();
             } else if (isVertexMove) {
-                handleNodeMove();
+                handleVertexMove();
 
             } else if (ghostEl != null) {
                 DrawableElement selectedDE = getDrawingLayer().getSelectedDE();
@@ -480,7 +480,7 @@ public class SelectionAction extends NonDrawingAction {
             getDrawingLayer().notifyModifiedStormTrack(modifiedAreaObject);
         }
 
-        private void handleNodeMove() {
+        private void handleVertexMove() {
             getDrawingLayer().setSelectedDE(null);
 
             isVertexMove = false;
@@ -495,11 +495,11 @@ public class SelectionAction extends NonDrawingAction {
                     modifiedGeometry);
         }
 
-        private void handleNodeAdditionOrDeletion() {
+        private void handleVertexAdditionOrDeletion() {
             if (moveType == MoveType.SINGLE_POINT) {
-                deleteNode();
+                deleteVertex();
             } else {
-                addNode();
+                addVertex();
             }
         }
 
@@ -802,7 +802,7 @@ public class SelectionAction extends NonDrawingAction {
                                                 getSpatialPresenter()
                                                         .getView()
                                                         .setCursor(
-                                                                SpatialViewCursorTypes.MOVE_NODE_CURSOR);
+                                                                SpatialViewCursorTypes.MOVE_VERTEX_CURSOR);
                                                 moveType = MoveType.SINGLE_POINT;
                                                 movePointIndex = i;
                                                 minDistance = dist;
@@ -832,9 +832,9 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         /**
-         * Add a new node to a selected geometry.
+         * Add a new vertex to a selected geometry.
          */
-        public void addNode() {
+        public void addVertex() {
             AbstractEditor editor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             AbstractDrawableComponent selectedElement = getDrawingLayer()
@@ -934,9 +934,9 @@ public class SelectionAction extends NonDrawingAction {
         }
 
         /**
-         * Delete a node from a selected geometry.
+         * Delete a vertex from a selected geometry.
          */
-        public void deleteNode() {
+        public void deleteVertex() {
             AbstractDrawableComponent selectedElement = getDrawingLayer()
                     .getSelectedHazardIHISLayer();
 

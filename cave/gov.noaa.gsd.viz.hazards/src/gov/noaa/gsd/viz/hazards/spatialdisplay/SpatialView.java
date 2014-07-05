@@ -114,9 +114,9 @@ public class SpatialView implements
     public static enum SpatialViewCursorTypes {
 
         // Types of cursors.
-        MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_NODE_CURSOR(SWT.CURSOR_HAND), ARROW_CURSOR(
-                SWT.CURSOR_ARROW), DRAW_CURSOR(SWT.CURSOR_CROSS), WAIT_CURSOR(
-                SWT.CURSOR_WAIT);
+        MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_VERTEX_CURSOR(
+                SWT.CURSOR_HAND), ARROW_CURSOR(SWT.CURSOR_ARROW), DRAW_CURSOR(
+                SWT.CURSOR_CROSS), WAIT_CURSOR(SWT.CURSOR_WAIT);
 
         // Private Variables
 
@@ -513,9 +513,9 @@ public class SpatialView implements
     private Action moveAndSelectChoiceAction;
 
     /**
-     * Draw noded polygon choice action.
+     * Draw vertex based polygon choice action.
      */
-    private Action drawNodedPolygonChoiceAction;
+    private Action drawVertexBasedPolygonChoiceAction;
 
     /**
      * Draw freehand polygon choice action.
@@ -523,9 +523,9 @@ public class SpatialView implements
     private Action drawFreehandPolygonChoiceAction;
 
     /**
-     * Draw noded path choice action.
+     * Draw vertex path choice action.
      */
-    private Action drawNodedPathChoiceAction;
+    private Action drawVertexPathChoiceAction;
 
     /**
      * Draw point choice action.
@@ -756,7 +756,7 @@ public class SpatialView implements
                     "Select Event", SpatialDisplayAction.ActionType.DRAWING,
                     SpatialDisplayAction.ActionIdentifier.SELECT_EVENT);
             moveAndSelectChoiceAction.setChecked(true);
-            drawNodedPolygonChoiceAction = new BasicSpatialAction("",
+            drawVertexBasedPolygonChoiceAction = new BasicSpatialAction("",
                     "drawPolygon.png", Action.AS_RADIO_BUTTON, "Draw Polygon",
                     SpatialDisplayAction.ActionType.DRAWING,
                     SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON);
@@ -767,7 +767,7 @@ public class SpatialView implements
                     "Draw Freehand Polygon",
                     SpatialDisplayAction.ActionType.DRAWING,
                     SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON);
-            drawNodedPathChoiceAction = new BasicSpatialAction("",
+            drawVertexPathChoiceAction = new BasicSpatialAction("",
                     "drawPath.png", Action.AS_RADIO_BUTTON, "Draw Path",
                     SpatialDisplayAction.ActionType.DRAWING,
                     SpatialDisplayAction.ActionIdentifier.DRAW_LINE);
@@ -787,10 +787,11 @@ public class SpatialView implements
             return Lists.newArrayList(undoCommandAction, redoCommandAction,
                     new SeparatorAction(), addToSelectedToggleAction,
                     new SeparatorAction(), moveAndSelectChoiceAction,
-                    drawNodedPolygonChoiceAction,
-                    drawFreehandPolygonChoiceAction, drawNodedPathChoiceAction,
-                    drawPointChoiceAction, selectByAreaMapsPulldownAction,
-                    new SeparatorAction(), addGeometryToSelectedAction);
+                    drawVertexBasedPolygonChoiceAction,
+                    drawFreehandPolygonChoiceAction,
+                    drawVertexPathChoiceAction, drawPointChoiceAction,
+                    selectByAreaMapsPulldownAction, new SeparatorAction(),
+                    addGeometryToSelectedAction);
         }
         return Collections.emptyList();
     }
@@ -803,9 +804,9 @@ public class SpatialView implements
     private void notifyDrawingActionComplete() {
         moveAndSelectChoiceAction.setChecked(true);
         moveAndSelectChoiceAction.run();
-        drawNodedPolygonChoiceAction.setChecked(false);
+        drawVertexBasedPolygonChoiceAction.setChecked(false);
         drawFreehandPolygonChoiceAction.setChecked(false);
-        drawNodedPathChoiceAction.setChecked(false);
+        drawVertexPathChoiceAction.setChecked(false);
         drawPointChoiceAction.setChecked(false);
     }
 
@@ -814,9 +815,9 @@ public class SpatialView implements
      */
     private void notifySelectByAreaInitiated() {
         moveAndSelectChoiceAction.setChecked(false);
-        drawNodedPolygonChoiceAction.setChecked(false);
+        drawVertexBasedPolygonChoiceAction.setChecked(false);
         drawFreehandPolygonChoiceAction.setChecked(false);
-        drawNodedPathChoiceAction.setChecked(false);
+        drawVertexPathChoiceAction.setChecked(false);
         drawPointChoiceAction.setChecked(false);
     }
 
@@ -855,7 +856,7 @@ public class SpatialView implements
             setCursor(SpatialViewCursorTypes.ARROW_CURSOR);
             break;
 
-        case NODE_DRAWING:
+        case VERTEX_DRAWING:
             setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
             break;
 
@@ -924,21 +925,21 @@ public class SpatialView implements
             HazardServicesMessageHandler messageHandler) {
 
         switch (drawingAction) {
-        case ADD_NODE:
+        case ADD_VERTEX:
             IInputHandler mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
             SelectionHandler addMouseHandler = (SelectionHandler) mouseHandler;
-            addMouseHandler.addNode();
+            addMouseHandler.addVertex();
             break;
 
-        case DELETE_NODE:
+        case DELETE_VERTEX:
             mouseHandler = mouseFactory.getMouseHandler(
                     HazardServicesMouseHandlers.SINGLE_SELECTION,
                     new String[] {});
 
             SelectionHandler deleteMouseHandler = (SelectionHandler) mouseHandler;
-            deleteMouseHandler.deleteNode();
+            deleteMouseHandler.deleteVertex();
             break;
 
         default:

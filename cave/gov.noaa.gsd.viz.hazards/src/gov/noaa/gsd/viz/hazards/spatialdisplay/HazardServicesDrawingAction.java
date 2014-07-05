@@ -25,6 +25,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
  * @version 1.0
  */
 public enum HazardServicesDrawingAction {
-    ADD_NODE, // Add a point to the selected hazard
-    DELETE_NODE
+    ADD_VERTEX, // Add a point to the selected hazard
+    DELETE_VERTEX
 }

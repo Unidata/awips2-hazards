@@ -28,7 +28,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 public enum HazardServicesMouseHandlers {
     FREE_HAND_MULTI_SELECTION, // Free-hand multi selection mouse handler
     SINGLE_SELECTION, // Single selection mouse handler
-    NODE_DRAWING, // Noded (point/line-path/noded-polygon) drawing action
+    VERTEX_DRAWING, // Vertex (point/line-path/vertex-polygon) drawing action
     FREEHAND_DRAWING, // Freehand drawing action
     STORM_TOOL_DRAG_DOT_DRAWING, // Drag me to storm drawing action
     DRAW_BY_AREA, // Draw by area drawing action
