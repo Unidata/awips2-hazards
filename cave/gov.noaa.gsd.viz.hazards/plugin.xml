@@ -58,7 +58,7 @@
             <command
                   commandId="gov.noaa.gsd.viz.hazards.display.startHazardServices"
                   icon="icons/startHazardServices.png"
-                  label="Start Hazard Services"
+                  label="Hazard Services"
                   style="push">
                <visibleWhen>
 	               <and>
