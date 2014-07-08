@@ -33,8 +33,8 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
 /**
- * Used to retrieve hydro data utilized by recommenders and product
- * generators in hazard services.
+ * Used to retrieve hydro data utilized by recommenders and product generators
+ * in hazard services.
  * 
  * <pre>
  * 

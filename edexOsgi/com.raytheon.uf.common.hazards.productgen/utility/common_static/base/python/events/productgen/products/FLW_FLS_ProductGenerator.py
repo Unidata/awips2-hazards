@@ -1,18 +1,18 @@
 '''
-10    Description: Product Generator for the FLW and FLS products.
-12    
-13    SOFTWARE HISTORY
-14    Date         Ticket#    Engineer    Description
-15    ------------ ---------- ----------- --------------------------
-16    April 5, 2013            Tracy.L.Hansen      Initial creation
+    Description: Product Generator for the FLW and FLS products.
+    
+    SOFTWARE HISTORY
+    Date         Ticket#    Engineer    Description
+    ------------ ---------- ----------- --------------------------
+    April 5, 2013            Tracy.L.Hansen      Initial creation
     Nov      2013  2368      Tracy.L.Hansen      Changing from eventDicts to hazardEvents, simplifying product
                                                  dictionary
-17    
-18    @author Tracy.L.Hansen@noaa.gov
-19    @version 1.0
-20    '''
+    
+    @author Tracy.L.Hansen@noaa.gov
+    @version 1.0
+'''
 
-import os, types, copy, sys, json
+import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 
@@ -101,9 +101,9 @@ class Product(Legacy_ProductGenerator.Product):
             about when separate products are needed.          
         '''
         productSegmentGroups = []        
-        if self._point_segment_vtecRecords_tuples: 
+        if self._point_productSegments: 
             productSegmentGroups += self._createPointSegmentGroups()
-        if self._area_segment_vtecRecords_tuples:
+        if self._area_productSegments:
             productSegmentGroups += self._createAreaSegmentGroups()
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
@@ -122,38 +122,41 @@ class Product(Legacy_ProductGenerator.Product):
         # All FL.Y actions can be in one FLS
         #   TODO Allow user-defined ordering of segments to reflect geography of river.
         # FL.Y and FL.W need to be in separate FLS products
-        self._point_segment_vtecRecords_tuples_forFLW = []
-        self._point_segment_vtecRecords_tuples_forFLS = []
-        self._point_segment_vtecRecords_tuples_forFLS_Advisory = []
-        self._point_segment_vtecRecords_tuples_forHY_S = []
-        for segment, vtecRecords in self._point_segment_vtecRecords_tuples:
-           for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
+        self._point_productSegments_forFLW = []
+        self._point_productSegments_forFLS = []
+        self._point_productSegments_forFLS_Advisory = []
+        self._point_productSegments_forHY_S = []
+        for productSegment in self._point_productSegments:
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords       
+            for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
                 if vtecRecord.get('phenSig') == 'HY.S':
-                    self._point_segment_vtecRecords_tuples_forHY_S.append((segment, vtecRecords))
+                    self._point_productSegments_forHY_S.append(self.createProductSegment(segment, vtecRecords))
                 else:
                     pil = vtecRecord.get('pil')
                     if pil == 'FLW':                           
-                       self._point_segment_vtecRecords_tuples_forFLW.append((segment, vtecRecords))
+                       self._point_productSegments_forFLW.append(self.createProductSegment(segment, vtecRecords))
                     elif vtecRecord.get('sig') == 'Y':  
-                        self._point_segment_vtecRecords_tuples_forFLS_Advisory.append((segment, vtecRecords))
+                        self._point_productSegments_forFLS_Advisory.append(self.createProductSegment(segment, vtecRecords))
                     else:                                      
-                        self._point_segment_vtecRecords_tuples_forFLS.append((segment, vtecRecords))
+                        self._point_productSegments_forFLS.append(self.createProductSegment(segment, vtecRecords))
                 break 
         
         self._distribute_HY_S_segments() 
         # Make productSegmentGroups
         # Point-based FLW
-        if self._point_segment_vtecRecords_tuples_forFLW:
-            productSegmentGroups.append(self._getProductSegmentGroup(
-                'FLW', self._FLW_ProductName, 'point', self._pointVtecEngine, self._point_segment_vtecRecords_tuples_forFLW))
+        if self._point_productSegments_forFLW:
+            productSegmentGroups.append(self.createProductSegmentGroup(
+                'FLW', self._FLW_ProductName, 'point', self._pointVtecEngine, 'counties', False, self._point_productSegments_forFLW, formatPolygon=True))
         # Point-based FLS - FL.W
-        if self._point_segment_vtecRecords_tuples_forFLS:
-            productSegmentGroups.append(self._getProductSegmentGroup(
-                'FLS', self._FLS_ProductName,'point', self._pointVtecEngine, self._point_segment_vtecRecords_tuples_forFLS))
+        if self._point_productSegments_forFLS:
+            productSegmentGroups.append(self.createProductSegmentGroup(
+                'FLS', self._FLS_ProductName,'point', self._pointVtecEngine, 'counties', False, self._point_productSegments_forFLS, formatPolygon=True))
         # Point-based FLS - FL.Y
-        if self._point_segment_vtecRecords_tuples_forFLS_Advisory:
-            productSegmentGroups.append(self._getProductSegmentGroup(
-                'FLS', self._FLS_ProductName_Advisory,'point', self._pointVtecEngine, self._point_segment_vtecRecords_tuples_forFLS_Advisory))        
+        if self._point_productSegments_forFLS_Advisory:
+            productSegmentGroups.append(self.createProductSegmentGroup(
+                'FLS', self._FLS_ProductName_Advisory,'point', self._pointVtecEngine, 'counties', False, self._point_productSegments_forFLS_Advisory,
+                formatPolygon=True))        
         return productSegmentGroups
 
     def _createAreaSegmentGroups(self):
@@ -162,97 +165,89 @@ class Product(Legacy_ProductGenerator.Product):
         '''
         productSegmentGroups = []
                 
-        area_segment_vtecRecords_tuples_forFLW = []
-        area_segment_vtecRecords_tuples_forFLS = []
-        area_segment_vtecRecords_tuples_forFLS_Advisory = []
-        for segment, vtecRecords in self._area_segment_vtecRecords_tuples:
-           for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
+        area_productSegments_forFLW = []
+        area_productSegments_forFLS = []
+        area_productSegments_forFLS_Advisory = []
+        for productSegment in self._area_productSegments:
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords       
+            for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
                 pil = vtecRecord.get('pil')
                 if pil == 'FLW':                           
-                    area_segment_vtecRecords_tuples_forFLW.append((segment, vtecRecords))
+                    area_productSegments_forFLW.append(self.createProductSegment(segment, vtecRecords))
                 elif vtecRecord.get('sig') == 'Y':  
-                    area_segment_vtecRecords_tuples_forFLS_Advisory.append((segment, vtecRecords))
+                    area_productSegments_forFLS_Advisory.append(self.createProductSegment(segment, vtecRecords))
                 else:                                      
-                    area_segment_vtecRecords_tuples_forFLS.append((segment, vtecRecords))
+                    area_productSegments_forFLS.append(self.createProductSegment(segment, vtecRecords))
                 break              
 
         # Make productSegmentGroups        
         # Area-based FLW groups
         if self._forceSingleSegmentInArealFLW():
-            for area_segment_vtecRecords_tuple in area_segment_vtecRecords_tuples_forFLW:
-                productSegmentGroups.append(self._getProductSegmentGroup(
-                    'FLW', self._FLW_ProductName, 'area', self._areaVtecEngine, [area_segment_vtecRecords_tuple]))        
+            for area_productSegment in area_productSegments_forFLW:
+                productSegmentGroups.append(self.createProductSegmentGroup(
+                    'FLW', self._FLW_ProductName, 'area', self._areaVtecEngine, 'counties', False, [area_productSegment], formatPolygon=True))       
         else:
-            if area_segment_vtecRecords_tuples_forFLW:
-                productSegmentGroups.append(self._getProductSegmentGroup(
-                    'FLW', self._FLW_ProductName, 'area', self._areaVtecEngine, area_segment_vtecRecords_tuples_forFLW))       
+            if area_productSegments_forFLW:
+                productSegmentGroups.append(self.createProductSegmentGroup(
+                    'FLW', self._FLW_ProductName, 'area', self._areaVtecEngine, 'counties', False, area_productSegments_forFLW, formatPolygon=True))             
             
         # Area-based FLS for FL.W groups
         # Need to separate by ETN
-        for segment, vtecRecords in area_segment_vtecRecords_tuples_forFLS:
-           for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
+        for productSegment in area_productSegments_forFLS:
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords       
+            for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
                 etn = vtecRecord.get('etn')            
                 # See if this record matches the ETN of an existing FLS -- 
                 found = False
                 for segmentGroup in productSegmentGroups:
                     if segmentGroup.get('productID') == 'FLS' and segmentGroup.get('etn') == etn:
-                        segmentGroup['segment_vtecRecords_tuples'].append((segment,vtecRecords))
+                        segmentGroup.addProductSegment(self.createProductSegment(segment,vtecRecords))
                         found = True
                 if not found: 
-                    productSegmentGroups.append(self._getProductSegmentGroup(
-                        'FLS', self._FLS_ProductName, 'area', self._areaVtecEngine, [(segment,vtecRecords)], etn))        
+                    productSegmentGroups.append(self.createProductSegmentGroup(
+                        'FLS', self._FLS_ProductName, 'area', self._areaVtecEngine, 'counties', False, [self.createProductSegment(segment,vtecRecords)], 
+                        etn=etn, formatPolygon=True))        
                 break
             
         # Area-based FLS - FL.Y groups
         # Need to separate by ETN and also separate NEW, EXT from CAN, EXP, CON
         actionSet1 = ['NEW', 'EXT']
         actionSet2 = ['CAN', 'EXP', 'CON']
-        for segment, vtecRecords in area_segment_vtecRecords_tuples_forFLS_Advisory:
-           for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
+        for productSegment in area_productSegments_forFLS_Advisory:
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords       
+            for vtecRecord in vtecRecords:  # assuming vtecRecords (sections) within each segment have the same pil, phenSig
                 etn = vtecRecord.get('etn')   
                 act = vtecRecord.get('act')         
                 # See if this record matches the ETN and actionSet of an existing FLS -- 
                 found = False
                 for segmentGroup in productSegmentGroups:
-                    if segmentGroup.get('productID') == 'FLS' \
-                    and segmentGroup.get('etn') == etn \
-                    and act in segmentGroup.get('actions'):
-                        segmentGroup['segment_vtecRecords_tuples'].append((segment, vtecRecords))
+                    if segmentGroup.productID == 'FLS' \
+                    and segmentGroup.etn == etn \
+                    and act in segmentGroup.actions:
+                        segmentGroup.addProductSegment(self.createProductSegment(segment, vtecRecords))
                         found = True
                 if not found:
-                    segmentGroup = self._getProductSegmentGroup(
-                        'FLS', self._FLS_ProductName_Advisory, 'area', self._areaVtecEngine, [(segment, vtecRecords)], etn)        
+                    segmentGroup = self.createProductSegmentGroup(
+                        'FLS', self._FLS_ProductName_Advisory, 'area', self._areaVtecEngine, 'counties', False,  [self.createProductSegment(segment, vtecRecords)],
+                        etn=etn, formatPolygon=True)        
                     if act in actionSet1:
                         actions = actionSet1
                     else:
                         actions = actionSet2
-                    segmentGroup['actions'] = actions
+                    segmentGroup.actions = actions
                     productSegmentGroups.append(segmentGroup)
         return productSegmentGroups
 
     def _addProductParts(self, productSegmentGroup):
-        geoType = productSegmentGroup.get('geoType')
-        segment_vtecRecords_tuples = productSegmentGroup.get('segment_vtecRecords_tuples')
+        geoType = productSegmentGroup.geoType
+        productSegments = productSegmentGroup.productSegments
         if geoType == 'area':
-            productSegmentGroup['productParts'] = self._hydroProductParts._productParts_FFA_FLW_FLS_area(segment_vtecRecords_tuples)
+            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_area(productSegments))
         elif geoType == 'point':
-            productSegmentGroup['productParts'] = self._hydroProductParts._productParts_FFA_FLW_FLS_point(segment_vtecRecords_tuples)
-        del productSegmentGroup['segment_vtecRecords_tuples'] 
-
-    def _getProductSegmentGroup(self, productID, productName, geoType, vtecEngine, segment_vtecRecords_tuples, etn=None):
-        segmentGroup = { 
-           'productID': productID,
-           'productName': productName,
-           'geoType': geoType,
-           'vtecEngine': vtecEngine,
-           'segment_vtecRecords_tuples': segment_vtecRecords_tuples,
-           'mapType': 'counties',
-           'segmented': True,
-           'formatPolygon': True,
-           }
-        if etn:
-           segmentGroup['etn'] = etn
-        return segmentGroup
+            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_point(productSegments))
                 
     def _forceSingleSegmentInArealFLW(self):
         ''' NOTE:  Although the directive allows multiple segments in the areal FLW (FA.W), 
@@ -265,20 +260,21 @@ class Product(Legacy_ProductGenerator.Product):
     
     def _distribute_HY_S_segments(self):
         '''
-        Add each HY_S segment to the segment_vtecRecords_tuples that contain segments for the same 'streamName'
+        Add each HY_S segment to the productSegments that contain segments for the same 'streamName'
         '''
-        if not self._point_segment_vtecRecords_tuples_forHY_S:
+        if not self._point_productSegments_forHY_S:
             return 
-        for segment_vtecRecords_tuples in [self._point_segment_vtecRecords_tuples_forFLW, 
-                                    self._point_segment_vtecRecords_tuples_forFLS, 
-                                    self._point_segment_vtecRecords_tuples_forFLS_Advisory]:
-            segments = [segment for segment, vtecRecords in segment_vtecRecords_tuple]
+        for productSegments in [self._point_productSegments_forFLW, 
+                                    self._point_productSegments_forFLS, 
+                                    self._point_productSegments_forFLS_Advisory]:
+            segments = [productSegment.segment for productSegment in productSegments]
             productStreamNames = self._getStreamNames(segments)
-            for HY_S_segment, vtecRecords in self._point_segment_vtecRecords_tuples_forHY_S:
+            for productSegment in self._point_productSegments_forHY_S:
+                HY_S_segment = productSegment.segment
                 streamNames = self._getStreamNames([HY_S_segment])
                 for streamName in streamNames:
                     if streamName in productStreamNames:
-                        segment_vtecRecords_tuple.append((HY_S_segment, vtecRecords))                    
+                        productSegment.append(self.createProductSegment(HY_S_segment, vtecRecords))                    
         
     def _getStreamNames(self, segments):
         '''
@@ -287,41 +283,11 @@ class Product(Legacy_ProductGenerator.Product):
         hazardEvents = self.getSegmentHazardEvents(segments, self._inputHazardEvents)
         return [hazardEvent.get('streamName') for hazardEvent in hazardEvents]
     
-    
+    def getBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
+        # Basis bullet
+        return self.floodBasisPhrase(vtecRecord, hazardEvent, metaData, 'Flooding', lineLength)
+     
     #########################################
-            
-    def getBasisPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):
-        #  Time is off of last frame of data
-        try :
-            eventTime = self._sessionDict['framesInfo']['frameTimeList'][-1]
-        except :
-            eventTime = vtecRecord.get('startTime')            
-        eventTime = self._tpc.getFormattedTime(eventTime / 1000, '%I%M %p %Z ',
-                                               shiftToLocal=1, stripLeading=1).upper()
-        para = '* at ' + eventTime
-        basis = self.getMetadataItemForEvent(hazardEvent, metaData, 'basis')
-        if basis is None :
-            basis = ' Flooding was reported'
-        para += basis + ' Flooding ' + self.descWxLocForEvent(hazardEvent)
-        motion = self.descMotionForEvent(hazardEvent)
-        if motion == None :
-            para += '.'
-        else :
-            para += self.descWxLocForEvent(hazardEvent, '. THIS RAIN WAS ', \
-               '. THIS STORM WAS ', '. THESE STORMS WERE ', '-')
-            para += motion + '.'
-        return '\n' + para
-    
-    def getImpactsPhrase(self, vtecRecord, canVtecRecord, hazardEvent, metaData, lineLength=69):
-        '''
-        #* LOCATIONS IN THE WARNING INCLUDE BUT ARE NOT LIMITED TO CASTLE
-        #  PINES...THE PINERY...SURREY RIDGE...SEDALIA...LOUVIERS...HIGHLANDS
-        #  RANCH AND BEVERLY HILLS. 
-        '''        
-        para = '* LOCATIONS IN THE WARNING INCLUDE BUT' + \
-               ' ARE NOT LIMITED TO '
-        para += self.getCityInfo(self._ugcs)
-        return '\n' + para + '\n'
     
     def executeFrom(self, dataList, prevDataList=None):
         if prevDataList is not None:

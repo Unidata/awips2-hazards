@@ -40,7 +40,7 @@ class MetaData(CommonMetaData.MetaData):
 
     # ADDITIONAL INFORMATION
     def additionalInfoChoices(self):
-        if self.previewState == "ended":
+        if self.hazardStatus == "ending":
             return [ 
                 self.recedingWater(),
                 self.rainEnded(),
@@ -50,7 +50,7 @@ class MetaData(CommonMetaData.MetaData):
                 self.listOfCities(),
                 self.listOfDrainages(),
                 self.additionalRain(),
-                self.particularStream(),
+                self.floodMoving(),
                 ]
 
     # CALLS TO ACTION
@@ -87,7 +87,7 @@ class MetaData(CommonMetaData.MetaData):
         return capFields          
         
     def CAP_WEA_Values(self):
-        if self.hazardState == "pending":
+        if self.hazardStatus == "pending":
                 return ["WEA_activated"] 
         else:
             return []

@@ -20,7 +20,7 @@
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
-import os, types, copy, sys, json
+import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 
@@ -145,6 +145,4 @@ class Product(Legacy_ProductGenerator.Product):
         if prevDataList is not None:
             dataList = self.correctProduct(dataList, prevDataList, False)
         return dataList
-        
-
            

@@ -18,7 +18,7 @@
 # further licensing information.   
 # #
 
-#    Formats a dictionary 'data' and generates watch, warning, advidsory legacy text. The dictionary values
+#    Formats a dictionary 'data' and generates watch, warning, advisory legacy text. The dictionary values
 #    will be extracted and managed appropriately based on their keys. 
 #
 #
@@ -50,7 +50,10 @@ class Format(FormatTemplate.Formatter):
         self.productDict = productDict
         productParts = self._tpc.getVal(productDict, 'productParts', [])
         text = self._processProductParts(productDict, productParts.get('partsList'))
-        return ProductUtils.wrapLegacy(str(text))
+        printText = text.replace('\n','CR\n')
+        text = self._tpc.endline(text)
+        text = text.upper()
+        return str(text)    
     
     def _processProductParts(self, productDict, productParts, skipParts=[]):
         '''
@@ -61,62 +64,69 @@ class Format(FormatTemplate.Formatter):
         @return text -- product string
         '''
         text = ''
-        for part in productParts:             
+        for part in productParts:    
+         
             valtype = type(part)
             if valtype is str:
                 name = part
             elif valtype is tuple or valtype is list:
                 name = part[0]
                 infoDicts = part[1]
-            if name == 'wmoHeader': text += self.processWmoHeader(productDict['wmoHeader']) + '\n'
-            elif name == 'wmoHeader_noCR': text += self.processWmoHeader(productDict['wmoHeader'])
+            
+            partText = ''                                   
+            if name == 'wmoHeader': 
+                partText = self.processWmoHeader(productDict['wmoHeader']) + '\n'
+            elif name == 'wmoHeader_noCR': 
+                partText = self.processWmoHeader(productDict['wmoHeader'])
             elif name == 'easMessage':
                 easMessage = self.processEAS(productDict)
                 if easMessage is not None:
-                    text += easMessage + '\n'
+                    partText = easMessage + '\n'
+                else:
+                    partText = ''
             elif name == 'productHeader':
-                text += self._tpc.getVal(productDict, 'productName', altDict=self.productDict) + '\n'
-                text += self._tpc.getVal(productDict, 'senderName', altDict=self.productDict) + '\n'
-                text += self._tpc.getVal(productDict, 'issuedByString', default='', altDict=self.productDict)
-                text += self.formatIssueTime()
+                partText = self._tpc.getVal(productDict, 'productName', altDict=self.productDict) + '\n'
+                partText += self._tpc.getVal(productDict, 'senderName', altDict=self.productDict) + '\n'
+                partText += self._tpc.getVal(productDict, 'issuedByString', default='', altDict=self.productDict)
+                partText += self.formatIssueTime()
             elif name == 'overview':
-                text += '|* DEFAULT OVERVIEW SECTION *|\n\n'
-            elif name == 'segments':
-                text += self.processSubParts(productDict['segments'], infoDicts) 
-            elif name == 'sections':
-                text += self.processSubParts(productDict['sections'], infoDicts)
+                partText = '|* DEFAULT OVERVIEW SECTION *|\n\n'
             elif name == 'vtecRecords':
                 if 'vtecRecords' in productDict:
                     vtecRecords = productDict['vtecRecords']
                     for vtecRecord in vtecRecords:
-                        text += vtecRecord['vtecString'] + '\n'
+                        partText += vtecRecord['vtecString'] + '\n'
             elif name == 'issuanceTimeDate':
-                text += self.formatIssueTime()
+                partText = self.formatIssueTime()
             elif name == 'callsToAction':
                 callsToAction = productDict['callsToAction']
                 if callsToAction:
-                    text += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
+                    partText += 'PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n'
                     for cta in callsToAction:
-                        text += cta + '\n\n'
-                    text += '&&\n\n'
+                        partText += cta + '\n\n'
+                    partText += '&&\n\n'
             elif name == 'polygonText':
                 if 'polygonText' in productDict and productDict['polygonText']:
-                    text += productDict['polygonText'] + '\n\n'
+                    partText += productDict['polygonText'] + '\n\n'
             elif name == 'endSegment':
-                text += '\n$$' 
+                partText += '\n$$' 
             elif name == 'CR':
-                text += '\n'
+                partText += '\n'
             elif name == 'cityList':
-                cities = 'INCLUDING THE CITIES OF '
+                cities = 'Including the cities of '
                 elements = KeyInfo.getElements('cityList', productDict)
                 cityList = productDict[elements[0]]
-                for city in cityList:
-                    cities += city + '...'
-                text += cities + '\n'
-            else:               
+                cities += self._tpc.getTextListStr(cityList)
+                partText += cities + '\n'
+            elif name == 'segments':
+                text += self.processSubParts(productDict['segments'], infoDicts) 
+            elif name == 'sections':
+                text += self.processSubParts(productDict['sections'], infoDicts)
+            else:    
                 textStr = self._tpc.getVal(productDict, name)
                 if textStr:
-                    text += textStr + '\n'               
+                    partText = textStr + '\n'                                 
+            text += partText
         return text
         
     def processWmoHeader(self, wmoHeader):
@@ -131,7 +141,7 @@ class Format(FormatTemplate.Formatter):
             for segment in segments:
                 vtecRecords = segment['vtecRecords']
                 for vtecRecord in vtecRecords:
-                    if vtecRecord.get('pvtecRecordType') == 'pvtecRecord' and vtecRecord.get('significance') is 'A':
+                    if vtecRecord.get('vtecRecordType') == 'pvtecRecord' and vtecRecord.get('significance') is 'A':
                         return 'URGENT - IMMEDIATE BROADCAST REQUESTED'
                 return 'BULLETIN - EAS ACTIVATION REQUESTED'       
         return None
@@ -141,9 +151,9 @@ class Format(FormatTemplate.Formatter):
         sentTimeZ = self._tpc.getVal(self.productDict, 'sentTimeZ_datetime')
         timeZones = self._tpc.getVal(self.productDict, 'timeZones')
         for timeZone in timeZones:
-            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %e %b %Y', timeZone) + '\n'
+            text += self._tpc.formatDatetime(sentTimeZ, '%I%M %p %Z %a %b %e %Y', timeZone)
         return text + '\n'
-        
+            
     def processSubParts(self, subParts, infoDicts):
         """
         Generates Legacy text from a list of subParts e.g. segments or sections

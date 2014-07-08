@@ -1,11 +1,12 @@
 package com.raytheon.uf.common.hazards.productgen;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import jep.Jep;
 import jep.JepException;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -26,6 +27,8 @@ import org.junit.Test;
  * @author bryon.lawrence
  * @version 1.0
  */
+
+@Ignore
 public class RiverProTemplateVariableTest {
 
     static private Jep jep;

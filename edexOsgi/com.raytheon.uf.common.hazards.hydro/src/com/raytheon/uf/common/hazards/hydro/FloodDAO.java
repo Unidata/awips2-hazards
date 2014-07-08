@@ -23,8 +23,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 
 /**
- * Description: Product data accessor implementation of the
- * IFloodDAO.
+ * Description: Product data accessor implementation of the IFloodDAO.
  * 
  * <pre>
  * 
@@ -45,6 +44,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
 public class FloodDAO implements IFloodDAO {
 
     private static final String IHFS = "ihfs";
+
+    private static final String MISSING_VALUE = "-9999";
 
     /**
      * For logging...
@@ -740,6 +741,132 @@ public class FloodDAO implements IFloodDAO {
     }
 
     /**
+     * Retrieves the given physical element for a river forecast point.
+     * 
+     * @param lid
+     *            The river forecast point identifier
+     * @param physicalElement
+     *            The SHEF physical element code
+     * @param duration
+     * @param typeSource
+     *            The SHEF typesource code
+     * @param extremum
+     *            e.g. Z, X
+     * @param timeArg
+     *            The time specification e.g. 0|12:00|1 day|hh:mm|interval
+     *            around hour in hours -- 0 today, 1 tomorrow etc.
+     * @param derivationInstruction
+     *            e.g. "Time", "Max24", etc.
+     * 
+     *            For example:
+     * 
+     *            new Object[] { "DCTN1", "HG", 0, "FF", "Z", -1,
+     *            "2011-02-08 18:00:00", "2011-02-08 15:06:00", 39.91, "Z",
+     *            1879048191, 1, "KKRFRVFMOM", "2011-02-08 15:15:00",
+     *            "2011-02-08 15:15:10" });
+     * 
+     */
+    @Override
+    public String getPhysicalElement(String lid, String physicalElement,
+            int duration, String typeSource, String extremum, String timeArg,
+            String derivationInstruction, boolean timeFlag) {
+
+        /*
+         * Set the table name to use.
+         */
+        String tableName = "";
+
+        if ((physicalElement.startsWith("h") || physicalElement.startsWith("H"))
+                && (typeSource.startsWith("f'") || typeSource.startsWith("F"))) {
+            tableName = "fcstheight";
+        } else if ((physicalElement.startsWith("q") || physicalElement
+                .startsWith("Q"))
+                && (typeSource.startsWith("f'") || typeSource.startsWith("F"))) {
+            tableName = "fcstdischarge";
+        } else if ((physicalElement.startsWith("h") || physicalElement
+                .startsWith("H"))
+                && (typeSource.startsWith("r'") || typeSource.startsWith("R"))) {
+            tableName = "height";
+        } else if ((physicalElement.startsWith("q") || physicalElement
+                .startsWith("Q"))
+                && (typeSource.startsWith("r'") || typeSource.startsWith("R"))) {
+            tableName = "discharge";
+        }
+
+        StringBuffer query = new StringBuffer();
+        String selectItem = "value, validTime";
+        String basisTime = "";
+
+        /*
+         * if forecast: pull out basis time and send into next query to get
+         * value I’m looking for
+         * 
+         * if obs use value passed in translate into database format -- see Date
+         * formats)
+         */
+
+        if (typeSource.startsWith("f") || typeSource.startsWith("F")) {
+            /*
+             * pull out the basistime for the next query
+             */
+            query.append("SELECT basistime FROM " + tableName + " ");
+            query.append("WHERE lid = '" + lid + "' ");
+            query.append("AND pe = '" + physicalElement + "' ");
+            query.append("AND ts = '" + typeSource + "' ");
+            query.append("AND extremum = '" + extremum + "' ");
+            query.append("ORDER BY basisTime desc limit 1");
+            List<Object[]> basisTimes = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, query.toString(), IHFS,
+                    "basis time");
+            if (basisTimes.isEmpty() == false) {
+                basisTime = basisTimes.get(0)[0].toString();
+            }
+            /*
+             * For typeSource "F" -- Building validTime from timeArg if 'NEXT',
+             * validTime = current time else if x|HH:MM|y, current time + x days
+             * and then find the validTime closest to the HH:MM within the +/- y
+             * interval
+             */
+            // TODO, this needs to be passed in
+            String currentTime = "2011-02-08 04:00:00.0";
+            String validTimeCondition;
+            if ("NEXT".equals(timeArg)) {
+                query = new StringBuffer();
+                validTimeCondition = ">= '" + currentTime + "'";
+                query.append("SELECT " + selectItem + " FROM " + tableName
+                        + " ");
+                query.append("WHERE lid = '" + lid + "' ");
+                query.append("AND pe = '" + physicalElement + "' ");
+                query.append("AND ts = '" + typeSource + "' ");
+                query.append("AND basistime = '" + basisTime + "' ");
+                query.append("AND extremum = '" + extremum + "' ");
+                query.append("AND validTime " + validTimeCondition + " ");
+                query.append("ORDER BY validTime limit 1");
+            } else {
+                validTimeCondition = null;
+            }
+        } else {
+            if (timeFlag) {
+                selectItem = "obsTime";
+            }
+        }
+
+        List<Object[]> forecastResults = DatabaseQueryUtil
+                .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                        query.toString(), IHFS, "physical element");
+        if (forecastResults.isEmpty() == false) {
+            if (timeFlag) {
+                return forecastResults.get(0)[1].toString();
+            } else {
+                return forecastResults.get(0)[0].toString();
+            }
+        }
+
+        return MISSING_VALUE;
+
+    }
+
+    /**
      * @return the number of hours to look back for observed river data.
      */
     @Override
@@ -993,5 +1120,17 @@ public class FloodDAO implements IFloodDAO {
                 QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
 
         return statResults;
+    }
+
+    @Override
+    public String getPrimaryPE(String lid) {
+        String query = "SELECT primary_pe from RiverStat WHERE lid = '" + lid
+                + "';";
+        List<Object[]> primaryPE = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS state table");
+        if (primaryPE.isEmpty() == false) {
+            return primaryPE.get(0)[0].toString();
+        }
+        return null;
     }
 }

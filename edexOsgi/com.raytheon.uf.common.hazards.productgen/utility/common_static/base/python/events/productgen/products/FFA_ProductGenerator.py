@@ -10,7 +10,7 @@
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
     '''
-import os, types, copy, sys, json
+import os, types, copy, sys, json, collections
 import Legacy_ProductGenerator
 from HydroProductParts import HydroProductParts
 
@@ -27,6 +27,7 @@ class Product(Legacy_ProductGenerator.Product):
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
         metadata['author'] = 'GSD'
+        
         metadata['description'] = 'Product generator for FFA.'
         metadata['version'] = '1.0'
         return metadata
@@ -62,11 +63,11 @@ class Product(Legacy_ProductGenerator.Product):
         valueDict = {'overviewHeadline': 'Enter overview headline here.', 'overview':'Enter overview here.'}
         dialogDict['values'] = valueDict        
 
-	# TODO Not ready to actually move this into repo.
-	# If you want to test the dialogInfo, comment this and uncomment 
-	# the next.
-	return {}
+    	# TODO Not ready to actually move this into repo.
+    	# If you want to test the dialogInfo, comment this and uncomment 
+    	# the next.
         # return dialogDict
+    	return {}
                 
     def _initialize(self):
         # TODO Fix problem in framework which does not re-call the constructor
@@ -127,45 +128,32 @@ class Product(Legacy_ProductGenerator.Product):
          All FFA products are segmented
         '''        
         productSegmentGroups = []
-        if len(self._point_segment_vtecRecords_tuples):
-            pointSegmentGroup = {
-                       'productID': 'FFA',
-                       'productName': self._FFA_ProductName,
-                       'geoType': 'point',
-                       'vtecEngine': self._pointVtecEngine,
-                       'mapType': 'counties',
-                       'segmented': True,
-                       'segment_vtecRecords_tuples': self._point_segment_vtecRecords_tuples,
-                       }
+        if len(self._point_productSegments):
+            pointSegmentGroup = self.createProductSegmentGroup('FFA', self._FFA_ProductName, 'point', self._pointVtecEngine, 'counties', True,
+                                                         self._point_productSegments)
             productSegmentGroups.append(pointSegmentGroup)
-        if len(self._area_segment_vtecRecords_tuples):
-            areaSegmentGroup = {
-                       'productID': 'FFA',
-                       'productName': self._FFA_ProductName,
-                       'geoType': 'area',
-                       'vtecEngine': self._areaVtecEngine,
-                       'mapType': 'publicZones',
-                       'segmented': True,
-                       'segment_vtecRecords_tuples': self._area_segment_vtecRecords_tuples,
-                       }
+        if len(self._area_productSegments):
+            areaSegmentGroup = self.createProductSegmentGroup('FFA', self._FFA_ProductName, 'area', self._areaVtecEngine, 'publicZones', True,
+                                                        self._area_productSegments)
             productSegmentGroups.append(areaSegmentGroup)
         for productSegmentGroup in productSegmentGroups:
             self._addProductParts(productSegmentGroup)
-            #print 'FFA ProductSegmentGroup \n', productSegmentGroup
-        #self.flush()
         return productSegmentGroups
     
     def _addProductParts(self, productSegmentGroup):
-        geoType = productSegmentGroup.get('geoType')
-        segment_vtecRecords_tuples = productSegmentGroup.get('segment_vtecRecords_tuples')
+        geoType = productSegmentGroup.geoType
+        productSegments = productSegmentGroup.productSegments
         if geoType == 'area':
-            productSegmentGroup['productParts'] = self._hydroProductParts._productParts_FFA_FLW_FLS_area(segment_vtecRecords_tuples)
+            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_area(productSegments))
         elif geoType == 'point':
-            productSegmentGroup['productParts'] = self._hydroProductParts._productParts_FFA_FLW_FLS_point(segment_vtecRecords_tuples)
-        del productSegmentGroup['segment_vtecRecords_tuples'] 
+            productSegmentGroup.setProductParts(self._hydroProductParts._productParts_FFA_FLW_FLS_point(productSegments))
            
     def executeFrom(self, dataList, prevDataList=None):
         if prevDataList is not None:
             dataList = self.correctProduct(dataList, prevDataList, False)
         return dataList
-           
+
+    def getBasisPhrase(self, vtecRecord, hazardEvent, metaData, lineLength=69):
+        # Basis bullet
+        return hazardEvent.get('basis')
+            

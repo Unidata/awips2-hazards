@@ -220,6 +220,11 @@ public interface IFloodDAO {
             long endValidTime, long basisBTime, boolean useLatestForecast,
             List<Object[]> basisTimeResults);
 
+    public String getPhysicalElement(String lid, String physicalElement,
+            int duration, String typeSource, String extremum, String timeArg,
+            String derivationInstruction, boolean timeFlag);
+
+    // public String getImpact
     /**
      * 
      * @param
@@ -358,4 +363,12 @@ public interface IFloodDAO {
      * @return The record in the riverstat for the specified river point
      */
     public List<Object[]> getRiverStationInfo(String lid);
+
+    /**
+     * Gets the primary physical element
+     * 
+     * @param
+     * @return
+     */
+    public String getPrimaryPE(String lid);
 }

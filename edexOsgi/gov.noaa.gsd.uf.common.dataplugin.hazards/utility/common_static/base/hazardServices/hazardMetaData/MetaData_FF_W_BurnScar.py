@@ -5,8 +5,7 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        if self.hazardStatus == 'pending':
-            metaData = [
+        metaData = [
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
@@ -21,25 +20,6 @@ class MetaData(CommonMetaData.MetaData):
                      self.getDownstreamLocation(),
                      self.getVolcano(),                  
                     ] + self.setCAP_Fields()
-        elif self.hazardStatus == "issued":
-            metaData = [
-                     self.getFloodSeverity(),
-                     self.getHydrologicCause(editable=False),
-                     self.getBasis(),                                        
-                     self.getAdditionalInfo(),
-                     self.getCTAs(), 
-                     self.getDamOrLevee(),
-                     self.getScenario(),
-                     self.getRiver(editable=False),
-                     self.getFloodLocation(),
-                     self.getUpstreamLocation(),
-                     self.getDownstreamLocation(),
-                     self.getVolcano(),                  
-                    ]  
-        else:
-            metaData = [
-                    #self.getCancellationStatement(), 
-                    ]
         return {
                 METADATA_KEY: metaData
                 }    
@@ -48,7 +28,7 @@ class MetaData(CommonMetaData.MetaData):
     # INCLUDE  -- include
     #
     #<bullet bulletName="ffwEmergency" bulletText="**SELECT FOR FLASH FLOOD EMERGENCY**" bulletGroup="ffwEMER" floodSeverity="3" parseString="FLASH FLOOD EMERGENCY"/>
-    # TODO -- put in side-effect to set floodSeverity to 3 if chosen
+    #
     def includeChoices(self):
         return [
             self.includeEmergency(),
@@ -163,13 +143,12 @@ class MetaData(CommonMetaData.MetaData):
     #     #set($reportType1 = "EXCESSIVE RAIN CAUSING FLASH FLOODING WAS OCCURING OVER THE WARNED AREA")
     # #end
     
-    def getHydrologicCause(self, editable=True):
+    def getHydrologicCause(self):
         return {   
             # The immediate cause will be automatically assigned based on the hydrologic cause chosen.  
              "fieldType":"RadioButtons",
              "fieldName": "hydrologicCause",
              "label":"Hydrologic Cause:",
-             "editable": editable,
              "values": "dam",
              "choices": self.hydrologicCauseChoices(),
              }
@@ -215,7 +194,7 @@ class MetaData(CommonMetaData.MetaData):
                 "productString":"An ice jam on the #riverName# River at #upstreamLocation# broke causing Flash Flooding downstream"}
     def hydrologicCauseSnowMelt(self):
         return {"identifier":"snowMelt", "displayString":"Rapid snowmelt (with or without rain)", 
-                "productString":"Extremely rapid snowmelt combined with heavy rain is generating flash flooding"}
+                "productString":"Extremely rapid snowmelt |* combined with heavy rain *| is generating flash flooding"}
     def hydrologicCauseVolcano(self):
         return {"identifier":"volcano", "displayString":"Volcano induced snowmelt", 
                 "productString":'''Activity of the #volcanoName# Volcano was causing rapid snowmelt on its slopes and 
@@ -262,7 +241,7 @@ class MetaData(CommonMetaData.MetaData):
 
     # ADDITIONAL INFORMATION -- 'additionalChoices'
     def additionalInfoChoices(self):
-        if self.hazardStatus == "ending":
+        if self.previewState == "ENDED":
             return [ 
                 self.recedingWater(),
                 self.rainEnded(),
@@ -352,15 +331,14 @@ class MetaData(CommonMetaData.MetaData):
                 "productString": "Medium Normal"}
        
 
-    def getRiver(self, editable=True):
+    def getRiver(self):
         return {
              "fieldType": "Text",
              "fieldName": "riverName",
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "editable": editable,
-             "values": "Enter river name",
+             "values": "|* Enter river name *|",
             } 
 
     def getFloodLocation(self):
@@ -370,7 +348,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter flood location",
+             "values": "|* Enter flood location *|",
             } 
 
 
@@ -381,7 +359,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter upstream location",
+             "values": "|* Enter upstream location *|",
             } 
  
     def getDownstreamLocation(self):
@@ -391,7 +369,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter downstream location",
+             "values": "|* Enter downstream location *|",
             } 
         
     def getVolcano(self):
@@ -401,7 +379,7 @@ class MetaData(CommonMetaData.MetaData):
              "expandHorizontally": True,
              "maxChars": 40,
              "visibleChars": 12,
-             "values": "Enter volcano name",
+             "values": "|* Enter volcano name *|",
             } 
 
     # CALLS TO ACTION -- 'cta'
@@ -419,17 +397,6 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaBurnAreas(),
             self.ctaReportFlooding(),
             ]
-        
-    def cancellationStatement(self):
-        return {
-             "fieldType": "Text",
-             "fieldName": "cancellationStatement",
-             "expandHorizontally": True,
-             "visibleChars": 12,
-             "lines": 2,
-             "values": "Enter basis text",
-            } 
-
          
     # CAP fields        
     def setCAP_Fields(self):
@@ -449,7 +416,7 @@ class MetaData(CommonMetaData.MetaData):
         return capFields          
         
     def CAP_WEA_Values(self):
-        if self.hazardStatus == "pending":
+        if self.hazardStatus == "PENDING":
            return ["WEA_activated"]
         else:
            return [] 

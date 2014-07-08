@@ -41,7 +41,6 @@ class ProductParts:
         else:
             partsList = productParts
         for part in partsList:
-            self.flush()
             if type(part) is types.TupleType:
                 # e.g. subPart == 'segments', subPartsLists == list of parts for each segment
                 subPart, subPartsLists = part

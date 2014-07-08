@@ -22,6 +22,7 @@ import GeometryFactory
 import JUtil
 import VTECConstants
 from KeyInfo import KeyInfo
+import ProductTextUtil
 
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -49,8 +50,85 @@ class TextProductCommon(object):
         self.logger = logging.getLogger('TextProductCommon')
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
-        self.logger.setLevel(logging.INFO)  
+        self.logger.setLevel(logging.INFO) 
+        
+    #### Product Dictionary methods 
 
+    def getVal(self, dictionary, key, default=None, altDict=None):
+        '''
+        Convenience method to access dictionary keys and account for :skip and :editable suffixes
+        
+        @param dictionary 
+        @param key, potentially without a suffix e.g. 'info'
+        @return the key value accounting for suffixes e.g. 'info:skip'
+        '''        
+        if dictionary.get(key): 
+            return dictionary.get(key)
+        elif len(KeyInfo.getElements(key, dictionary)) > 0:
+            elements = KeyInfo.getElements(key, dictionary)
+            return dictionary[elements[0]]
+        if altDict and altDict.get(key):
+            return altDict.get(key)
+        return default
+
+    def setVal(self, dictionary, key, default, editable=False, eventIDs=None, segment=None, 
+                  label=None, productCategory=None, productID=None, formatMethod=None, formatArgs=None, displayable=False):      
+        '''
+        If editable:
+             Retrieve user edited text using the given identifying information:
+                key, self._productCategory, productID, segment, eventIDs 
+             If not found, use the default value provided 
+        If formatMethdod:
+             format the field according to the formatMethod and formatArgs
+        '''   
+        
+        if editable:
+            # Converts a list of string integers into a list of integers
+            tmp = []
+            for eventID in eventIDs:
+                tmp.append(int(eventID))
+            eventIDs = tmp
+                
+            if None in [key, productCategory, productID, eventIDs, segment]:
+                userEditedKey = key
+                value = default
+            else:
+                # create KeyInfo object
+                segmentList = list(segment[0])
+                segmentList.sort()
+                segment = ''
+                for seg in segmentList:
+                    if len(segment) > 0:
+                        segment += ', '
+                    segment += seg
+                segment = str(segment)
+                userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, True, label=label)
+                        
+                # Try and retrieve previously edited text
+                productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventIDs)
+                
+                # If not there, use defaultValue
+                if len(productTextList) > 0:
+                    value = productTextList[0].getValue()
+                else:
+                    value = default
+        #TODO Needs to be tested with Product Editor
+#         elif displayable:
+#                 userEditedKey = KeyInfo(key, productCategory, productID, eventIDs, segment, False, displayable=True, label=label) 
+#                 value = default           
+        else:
+            value = default
+            userEditedKey = key
+        
+        # TODO -- have Legacy handle the formatting e.g.
+        #     bulletFormat_CR...
+        # By setting value to {'value':value, 'valueFormat':formatMethod}
+        if formatMethod:
+            exec 'value = self.'+formatMethod+'(value, formatArgs)'
+    
+        dictionary[userEditedKey] = value
+        
+    ### Formatting helper methods
                 
     def formatDatetime(self, dt, format='ISO', timeZone=None):
         '''
@@ -73,22 +151,6 @@ class TextProductCommon(object):
         else:
             return new_time.strftime(format)  
  
-    def getVal(self, dictionary, key, default=None, altDict=None):
-        '''
-        Convenience method to access dictionary keys and account for :skip and :editable suffixes
-        
-        @param dictionary 
-        @param key, potentially without a suffix e.g. 'info'
-        @return the key value accounting for suffixes e.g. 'info:skip'
-        '''        
-        if dictionary.get(key): 
-            return dictionary.get(key)
-        elif len(KeyInfo.getElements(key, dictionary)) > 0:
-            elements = KeyInfo.getElements(key, dictionary)
-            return dictionary[elements[0]]
-        if altDict and altDict.get(key):
-            return altDict.get(key)
-        return default
                
     def setSiteID(self, siteID):
         self._siteID = siteID
@@ -289,6 +351,174 @@ class TextProductCommon(object):
         ugcStr = self.checkLastArrow(inSeq, ugcStr)
         return ugcStr
 
+    ### Formatting methods
+    
+    def bulletFormat_CR(self, text, label=''):
+        text = self.bulletFormat_noCR(text, label)
+        if text:
+            text += '\n'
+        return text
+                  
+    def bulletFormat_noCR(self, text, label='', defaultText='', frameit='Never', lineLength=69):
+        '''
+        Returns a properly formatted bulleted text 
+        
+        @param text:  Can be a single text string or list of text strings
+          which will be concatenated together with carriage returns
+        @param defaultText: If text is None or 0 length, then
+            the default text is used. 
+        @param frameit:  can be 
+             'Never', in which nothing is wrapped in framing codes, 
+             'Always' in which the text (default or cap) is wrapped in framing codes, or 
+             'DefaultOnly' in which just the default text is wrapped.
+        '''
+        if label is None:
+            label = ''
+                
+        if text is not None and len(text):
+            if type(text) is types.ListType:
+                newText = ''
+                for t in text:
+                    newText += t + '\n'
+                text = newText
+            textToUse = text
+            if frameit == 'Always':
+                textToUse = '|* ' + textToUse + ' *|'
+        else:
+            textToUse = defaultText
+            if frameit == 'Always' or frameit == 'DefaultOnly':
+                textToUse = '|* ' + textToUse + ' *|'
+
+        textToUse = '* '+label+textToUse
+        textToUse = self.indentText(textToUse, indentFirstString = '',
+          indentNextString = '  ', maxWidth=lineLength,
+          breakStrings=[' ', '-', '...'])
+        return textToUse
+        
+    def frame(self, text):
+        return '|* ' + text + ' *|'
+
+
+    ###########
+    #  Accessing MetaData
+    def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None):
+        '''
+        Translates the entries from the Hazard Information Dialog into product strings.
+        @param hazardEvent: hazard event with user choices
+        @param metaData:  dictionary specifying information to be entered through the Hazard Information Dialog
+        @param fieldName: key field in the dictionaries, e.g. 'cta'
+        @param productStringIdentifier:  If not None, identifies the particular productString requested.
+            For example productStringIdentifier might be 'reportType1':
+            return {"identifier":"ER", "displayString":"ER (Excessive Rainfall)",
+                "productString": {
+                        'reportType1': "Excessive rain causing Flash Flooding was occurring over the warned area", }}
+  
+        @param choiceIdentifier: for checkbox fields (rather than bullet), specifying the choice for which to retrieve the
+           productString, e.g. 'particularStream' choice within 'additionalInformation' field
+           IF no choiceIdentifier is specified, then a list of productStrings will be returned
+           
+        @return the associated productString.  If a productString is not given, return the displayString.
+            If no value is specified in the hazardEvent, return empty string.
+        
+        For example, In the Hazard Information Dialog, there is a field for specifying the Flood Severity.  
+        This is specified in the Meta Data for certain flood type hazards.  The key field would be 
+        'immediateCause', the user-entered value might be 'ER (Excessive Rainfall)' and the productString 
+        returned would then be 'Excessive rain causing Flash Flooding was occurring over the warned area.'
+        '''   
+        value = hazardEvent.get(fieldName) 
+        if not value:
+            return '' 
+        if type(value) is types.ListType:
+            if choiceIdentifier:
+                return self.getMetaDataValue(hazardEvent, metaData, fieldName, choiceIdentifier)
+            else:
+                returnList = []
+                for val in value:
+                    returnList.append(self.getMetaDataValue(hazardEvent, metaData, fieldName, val))
+                return returnList
+        else:
+            return self.getMetaDataValue(hazardEvent, metaData, fieldName, value)
+
+    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value):                     
+        '''
+        Given a value, return the corresponding productString (or displayString) from the metaData. 
+        @param hazardEvent: hazard event with user choices
+        @param metaData:  dictionary specifying information to be entered through the Hazard Information Dialog
+        @param fieldName: key field in the dictionaries, e.g. 'cta'
+        @param value: chosen value for the key field
+
+        @return the associated productString.  If a productString is not given, return the displayString.
+            If no value is specified in the hazardEvent, return empty string.
+            
+        Example Meta Data field:  The fieldName might be "basis" and the value chosen by the user might be "wxSpot"
+        
+        def getBasis(self):
+            return {
+                "fieldName": "basis",
+                "fieldType":"RadioButtons",
+                "label":"Basis:",
+                "values": self.basisDefaultValue(),
+                "choices": self.basisChoices(),
+                } 
+        
+        def basisSpotter(self):
+            return {"identifier":"wxSpot", 
+                    "displayString": "Weather spotters report flooding in", 
+                    "productString": "Trained weather spotters reported flooding in #basisWxSpotLocation#.",
+                    "detailFields": [
+                                {
+                                 "fieldType": "Text",
+                                 "fieldName": "basisWxSpotLocation",
+                                 "expandHorizontally": True,
+                                 "maxChars": 40,
+                                 "visibleChars": 12,
+                                 "values": "|* Enter location *|",
+                                }]
+                          }
+
+        '''    
+        returnVal = ''
+        for widget in metaData:
+            if widget.get('fieldName') == fieldName:
+                for choice in widget.get('choices'):
+                    if choice.get('identifier') == value or choice.get('displayString') == value:
+                        returnVal = choice.get('productString')
+                        if returnVal is None:
+                            returnVal = choice.get('displayString')
+                        returnVal = returnVal.replace('  ', '')
+                        returnVal = returnVal.replace('\n', ' ')
+                        returnVal = returnVal.replace('</br>', '\n')
+                        # Search for #...# values  e.g. floodLocation
+                        hashTags = self.getFramedValues(returnVal, '#', '#')
+                        for hashTag in hashTags:
+                            eventValue = hazardEvent.get(hashTag)
+                            if eventValue is not None:
+                                replaceVal = eventValue
+                            else:
+                                replaceVal = self.frame(hashTag)
+                            returnVal = returnVal.replace('#'+hashTag+'#', replaceVal) 
+        return returnVal
+    
+    def getFramedValues(self, text, beginStr='|* ', endStr=' *|'):
+        '''
+        @param text -- text string 
+        @param beginStr -- string to begin a framed value
+        @param endStr -- string to end framed value
+        
+        @return list of values framed by beginStr, endStr within the given text string
+        '''
+        values = text.split(beginStr)
+        framedValues = []
+        for value in values:
+            value = value.strip()
+            if text.find(beginStr +value+endStr) >=0:
+                framedValues.append(value)
+        return framedValues        
+
+
+    ###########
+
+
     def checkLastArrow(self, inSeq, ugcStr):
         '''
         Part of formatUGCs
@@ -356,42 +586,66 @@ class TextProductCommon(object):
                 for n in names:
                     nmeList.append(n)
                 nmeList.sort()               
-        return out                
-        
-    def makeAreaPhrase(self, areaGroups, areas, generalOnly=False):
+        return out      
+    
+          
+    def getAreaPhrase(self, ugcs, simplified=True, generalOnly=False):
+        areaGroups = self.getGeneralAreaList(ugcs, areaDict=self._areaDictionary)
+        if simplified:
+            areaGroups = self.simplifyAreas(areaGroups)
+        return self.makeAreaPhrase(areaGroups, generalOnly=generalOnly)
+                      
+    def makeAreaPhrase(self, areaGroups, generalOnly=False):
         '''
+        Portions of Iowa and Nebraska...including the following counties...
+        in Iowa...Harrison and Monona. 
+        in Nebraska...Burt and Thurston
+        
         Creates the area phrase based on the groups of areas (areaGroups, 
         such as NE Pennsylvania), and the areas (areas), individual zones.
         returns the area phrase.  Area phrase does not have a terminating
         period.
+        
+        param @areaGroups: 
+            (stateName, partOfState, list of tuples (name, nameType))
+            where nameType is COUNTY, ZONE, etc.
+        param @generalOnly:  If true returns only the state level description
+        
         '''
         areaGroupLen = len(areaGroups)
         if areaGroupLen == 1:
-            areaPhrase = 'A PORTION OF '
+            areaPhrase = 'a portion of '
         else:
-            areaPhrase = 'PORTIONS OF '
+            areaPhrase = 'portions of '
 
-        #parts of the states
-        areaGroupCount = 0
-        for state, partOfState, names in areaGroups:
-            areaGroupCount = areaGroupCount + 1
-            if areaGroupCount == 1:
-                conn = ''
-            elif areaGroupCount == areaGroupLen:
-                conn = ' AND '
-            else:
-                conn = '...'
+        areaPhrase += self.getStateDescription(areaGroups)        
+        if generalOnly:
+            return areaPhrase 
+        
+        nameDescription, nameTypePhrase = self.getNameDescription(areaGroups)
+        areaPhrase = areaPhrase + '...including the following ' + nameTypePhrase + '...'
+        areaPhrase = areaPhrase + nameDescription
+      
+        return areaPhrase
 
-            if partOfState == '' or partOfState == ' ':
-                areaPhrase = areaPhrase + conn + state
-            else:
-                areaPhrase = areaPhrase + conn + partOfState + ' ' + state
-
+    def getNameDescription(self, areaGroups):
+        '''
+        Get description of names e.g.
+        
+        in Iowa...Harrison and Monona
+        in Nebraska...Burt and Thurston
+        
+        OR 
+        Harrison...Burt and Monona
+        
+        '''        
         #including phrase, have to count what we have
-        d = {'INDEPENDENT CITY': ('INDEPENDENT CITY', 'INDEPENDENT CITIES'),
-             'PARISH': ('PARISH', 'PARISHES'),
-             'COUNTY': ('COUNTY', 'COUNTIES'),
-             'ZONE':   ('AREA', 'AREAS')  }
+        d = {
+             'INDEPENDENT CITY': ('independent city', 'independent cities'),
+             'PARISH': ('parish', 'parishes'),
+             'COUNTY': ('county', 'counties'),
+             'ZONE':   ('area', 'areas')  
+             }
         icCnt = 0
         parishCnt = 0
         zoneCnt = 0
@@ -406,38 +660,31 @@ class TextProductCommon(object):
                     icCnt = icCnt + 1
                 elif nameType == 'PARISH':
                     parishCnt = parishCnt + 1
-
-        incPhrases = []
+        nameTypes = []
         if zoneCnt == 1:
-            incPhrases.append('AREA')
+            nameTypes.append('AREA')
         elif zoneCnt > 1:
-            incPhrases.append('AREAS')
+            nameTypes.append('AREAS')
         if countyCnt == 1:
-            incPhrases.append('COUNTY')
+            nameTypes.append('COUNTY')
         elif countyCnt > 1:
-            incPhrases.append('COUNTIES')
+            nameTypes.append('COUNTIES')
         if icCnt == 1:
-            incPhrases.append('INDEPENDENT CITY')
+            nameTypes.append('INDEPENDENT CITY')
         elif icCnt > 1:
-            incPhrases.append('INDEPENDENT CITIES')
+            nameTypes.append('INDEPENDENT CITIES')
         if parishCnt == 1:
-            incPhrases.append('PARISH')
+            nameTypes.append('PARISH')
         elif parishCnt > 1:
-            incPhrases.append('PARISHES')
-        incPhrase = ' AND '.join(incPhrases)
-
-        if generalOnly:
-            return areaPhrase
-
+            nameTypes.append('PARISHES')
+        nameTypePhrase = ' and '.join(nameTypes)
              
-        areaPhrase = areaPhrase + '...INCLUDING THE FOLLOWING ' + \
-          incPhrase + '...'
-
         #list of the specific areas
+        nameDescription = ''
         for i in xrange(len(areaGroups)):
             state, partOfState, names = areaGroups[i]
-            if state == 'THE DISTRICT OF COLUMBIA':
-                areaPhrase = areaPhrase + state
+            if state == 'the District of Columbia':
+                nameDescription = nameDescription + state
             else:
                 # extract out the names
                 snames = []
@@ -449,7 +696,7 @@ class TextProductCommon(object):
                     phrase = '...'.join(snames[0:-1])
                 # complex phrasing (state, partOfState, and names)
                 else:
-                    phrase = 'IN '
+                    phrase = 'In '
                     if partOfState != '' and partOfState != ' ':
                         phrase = phrase + partOfState + ' '
                     phrase = phrase + state + '...' + '...'.join(snames[0:-1])
@@ -457,12 +704,65 @@ class TextProductCommon(object):
                 if len(snames) == 1:
                     phrase = phrase + snames[-1]
                 else:
-                    phrase = phrase + ' AND ' + snames[-1]
-                areaPhrase = areaPhrase + phrase
+                    phrase = phrase + ' and ' + snames[-1]
+                nameDescription = nameDescription + phrase
             if i != len(areaGroups) - 1:
-                areaPhrase = areaPhrase + '. '  #another one coming, add period
+                nameDescription = nameDescription + '. '  #another one coming, add period
                 
+        return nameDescription, nameTypePhrase
+
+    def getStateDescription(self, areaGroups):
+        ''' 
+        Describe the parts of the states
+         e.g. Southwest Iowa and Eastern Nebraska
+        '''
+        areaGroupCount = 0
+        areaPhrase = ''
+        for state, partOfState, names in areaGroups:
+            areaGroupCount += 1
+            if areaGroupCount == 1:
+                conn = ''
+            elif areaGroupCount == len(areaGroups):
+                conn = ' and '
+            else:
+                conn = '...'
+
+            if partOfState == '' or partOfState == ' ':
+                areaPhrase = areaPhrase + conn + state
+            else:
+                areaPhrase = areaPhrase + conn + partOfState + ' ' + state
         return areaPhrase
+
+    def getTextListStr(self, textList, format='dotted'):
+        ''' 
+        Return a text version of the list of strings e.g.
+            Iowa...Harrison and Monona
+            
+        @param textList -- list of text strings
+        @param format -- 'dotted' is separated by dots
+                      -- 'separateLines' is one per line
+                      -- 'columnFormat' is a column format
+        Describe the parts of the states
+         e.g. Southwest Iowa and Eastern Nebraska
+        '''
+        count = 0
+        textListStr = ''
+        for textStr in textList:
+            if type(textStr) is types.TupleType:
+                textStr = textStr[0]
+            count += 1
+            if count == 1:
+                conn = ''
+            else:
+                if format == 'separateLines':
+                    conn = '\n'
+                elif format == 'dotted':
+                    if count == len(textList):
+                        conn = ' and '
+                    else:
+                        conn = '...'
+            textListStr += conn + textStr
+        return textListStr
 
     def sortSection(self, r1, r2):
         '''
@@ -475,13 +775,13 @@ class TextProductCommon(object):
            
 
     ################ From GHG GenericHazards
-    def hazardTimePhrases(self, vtecRecord, issueTime, prefixSpace=True):
+    def hazardTimePhrases(self, vtecRecord, hazardEvent, issueTime, prefixSpace=True):
         '''
         The _hazardTimePhrases method is passed a hazard key, and returns
         time phrase wording consistent with that generated by the headline
         algorithms.
         '''
-        timeWords = self.getTimingPhrase(vtecRecord, issueTime)
+        timeWords = self.getTimingPhrase(vtecRecord, [hazardEvent], issueTime)
         if prefixSpace and len(timeWords):
             timeWords = ' ' + timeWords   #add a leading space
         return timeWords
@@ -758,7 +1058,7 @@ class TextProductCommon(object):
             self.logger.info(actionCode + 'not recognized in actionControlWord.')
             return '<actionControlWord>'
 
-    def getHeadlinesAndSections(self, vtecRecords, metaDataList, productID, issueTime):
+    def getHeadlinesAndSections(self, vtecRecords, metaDataList, productID, issueTime, includeTiming=True):
         '''
         Order vtec records and create the sections for the segment
         
@@ -776,6 +1076,8 @@ class TextProductCommon(object):
                 hList.sort(self.marineSortHazardAlg)
             else:
                 hList.sort(self.regularSortHazardAlg)
+                
+        hazardEvents = [hazardEvent for metaData, hazardEvent in metaDataList]       
                                            
         while len(hList) > 0:
             vtecRecord = hList[0]
@@ -805,10 +1107,11 @@ class TextProductCommon(object):
             actionWords = self.actionControlWord(vtecRecord, issueTime)
             hazStr = hazStr + ' ' + actionWords
             
-            #get the timing words
-            timeWords = self.getTimingPhrase(vtecRecord, issueTime)
-            if len(timeWords):
-                hazStr = hazStr + ' ' + timeWords
+            if includeTiming:
+                #get the timing words
+                timeWords = self.getTimingPhrase(vtecRecord, hazardEvents, issueTime)
+                if len(timeWords):
+                    hazStr = hazStr + ' ' + timeWords
             
             if len(hazStr):
                 # Call user hook
@@ -839,7 +1142,7 @@ class TextProductCommon(object):
             
         return headlineStr, headlines, sections
         
-    def getTimingPhrase(self, vtecRecord, issueTime, stype=None, etype=None):
+    def getTimingPhrase(self, vtecRecord, hazardEvents, issueTime, stype=None, etype=None):
         '''
         vtecRecord has times converted to ms
         issueTime in ms
@@ -851,7 +1154,9 @@ class TextProductCommon(object):
             stype, etype = self.getTimingType(vtecRecord, issueTime)
 
         # Get the time zones for the areas
-        timeZones = self.hazardTimeZones(vtecRecord['id'])
+        timeZones = []
+        for hazardEvent in hazardEvents:
+            timeZones += self.hazardTimeZones(hazardEvent.get('ugcs'))
 
         # Get the starting time
         stext = []
@@ -929,7 +1234,6 @@ class TextProductCommon(object):
                 if info not in etext:
                     etext.append(info)
                     
-
         # timing connection types
         startPrefix, endPrefix = self.getTimingConnectorType((stype, etype),
           vtecRecord['act'])
@@ -957,7 +1261,7 @@ class TextProductCommon(object):
         #time from issuanceTime
         deltaTstart = vtecRecord['startTime'] - issueTime  #ms past now
         deltaTend = vtecRecord['endTime'] - issueTime  #ms past now
-    
+        
         HR=3600 * 1000  #convenience constants
         MIN=60  * 1000  #convenience constants
     
@@ -2158,7 +2462,99 @@ class TextProductCommon(object):
     def hazard_hook(self, tree, node, phen, sig, act, start, end):
         return ''
         
-################### From GFE StringUtils   
+################### From GFE StringUtils 
+    def endline(self, phrase, linelength=66, breakStr=[" ", "..."]):
+        "Insert endlines into phrase"
+
+        # Break into sub-phrases separated by \n
+        subPhrases = string.split(phrase,"\n")
+
+        # Break each sub-phrase into lines
+        str = ""
+        for subPhrase in subPhrases:
+            if subPhrase == "":
+                str = str + "\n"
+            else:
+                str = str + self.linebreak(subPhrase, linelength, breakStr)
+        return str
+
+    def linebreak(self, phrase, linelength, breakStr=[' ', '...'],
+                  forceBreakStr=[" ","/"]):
+        # Break phrase into lines of the given linelength
+        # Prevents a line break on a number.
+        # If no breakStr is found for a given linelength of characters,
+        # force a break on the rightmost forceBreakStr.
+        text = ''
+        start = 0
+        end = start + linelength
+        subPhrase = phrase[start:end]
+        while len(subPhrase) == linelength:
+            maxIndex, breakChars = self.findRightMost(subPhrase, breakStr)
+            if maxIndex == -1:
+                # Didn't find any breakStr; line is too long.
+                # Find the rightmost force break string, if possible.
+                forceIndex, breakChars = self.findRightMost(subPhrase, forceBreakStr)
+                if forceIndex == 0:
+                    # space in first position: will be skipped.
+                    pass
+                elif forceIndex > 0:
+                    subPhrase = subPhrase[0:forceIndex]
+                    text = '%s%s\n' % (text, subPhrase)
+                    start += forceIndex
+                else:
+                    # no forcebreak spot, either.
+                    # break at linelength.
+                    text = '%s%s\n' % (text, subPhrase)
+                    start += linelength
+            elif maxIndex == 0:
+                pass # space in first position: will be skipped
+            else:
+                text = '%s%s\n' % (text, subPhrase[:maxIndex])
+                start += maxIndex
+            if breakChars == " ":
+                # Skip the space
+                start +=1
+            end = start + linelength
+            subPhrase = phrase[start:end]
+        if subPhrase:
+            return '%s%s\n' % (text, subPhrase)
+        else:
+            # It's possible for subPhrase to be [] coming out of the while
+            # loop. In that case, we just need to return text.
+            return text
+
+    def findRightMost(self, text, breakStr=[" "], nonNumeric=1):
+        # Return the index of the right most break string characters
+        # and the break characters that were found.
+        # If nonNumeric, then make sure the index does not refer to
+        # a numeric character.
+        # If the break characters are a space, the index indicate
+        # the character prior to the space.
+        maxIndex = -1
+        maxChars = ''
+        for breakChars in breakStr:
+            index = text.rfind(breakChars)
+            done = False
+            while index > 0 and not done:
+                # Check for a numeric at end of line
+                if nonNumeric and breakChars == " " and text[index-1].isdigit():
+                    # Try to find the next right most break char
+                    index = text.rfind(breakChars, 0, index-1)
+                    continue
+                done = True
+            if index > maxIndex:
+                maxIndex = index
+                maxChars = breakChars
+        if maxIndex == -1:
+            return maxIndex, maxChars
+        if maxChars == ' ':
+            index = maxIndex
+        else:
+            # We want to keep the breakChars, which are assumed not to end
+            # with a number
+            index = maxIndex + len(maxChars)
+        return index, maxChars
+  
     def indentText(self, text, indentFirstString = '', indentNextString = '',
                    maxWidth=69, breakStrings=[' ']):
         '''
@@ -2202,7 +2598,7 @@ class TextProductCommon(object):
         if len(line):
             out = out + line
 
-        return out + '\n'
+        return out
 
     def splitIntoWords(self, words, breakStrings=[' ']):
         # Break the list of words further

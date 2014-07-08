@@ -27,7 +27,7 @@ InputTestCaseData = { \
 },
 "dialogDict" :
 {
-    "damName": "Branch Oak Dam", 
+    "damName": "Branched Oak Dam", 
     "urgencyLevel": "High Confidence (Structure Failure Imminent)"
 }
 }
@@ -36,7 +36,7 @@ TestCaseResults = \
 {
     "eventID": "", 
     "hazardAttributes": {
-        "damName": "Branch Oak Dam", 
+        "damName": "Branched Oak Dam", 
         "cause": "Dam Failure"
     }, 
     "phenomenon": "FF", 

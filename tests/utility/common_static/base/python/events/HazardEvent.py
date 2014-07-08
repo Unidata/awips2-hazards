@@ -87,6 +87,12 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setSignificance(self, significance):
         self.jobj.setSignificance(significance)
         
+    def getSubType(self):
+        return self.jobj.getSubType()
+    
+    def setSubType(self, subType):
+        self.subtype = self.jobj.setSubType(subtType)
+
     def getSubtype(self):
         return self.jobj.getSubType()
     

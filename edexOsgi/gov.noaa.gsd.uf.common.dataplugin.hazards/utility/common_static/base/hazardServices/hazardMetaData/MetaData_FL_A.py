@@ -6,25 +6,17 @@ class MetaData(CommonMetaData.MetaData):
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
         metaData = [
-                    self.getPointID(),
-                    self.getImmediateCause(),
-                    self.getFloodSeverity(),
-                    self.getFloodRecord(),
-                    self.getBasis(),
-                    self.getDebrisFlowOptions(),
-                    self.getCTAs(),                    
+                     self.getPointID(),
+                     self.getImmediateCause(),
+                     self.getFloodSeverity(),
+                     self.getFloodRecord(),
+                     self.getDebrisFlowOptions(),
+                     self.getCTAs(),                    
                     ] + self.setCAP_Fields()
         return {
                 METADATA_KEY: metaData
                 }    
                 
-    # BASIS
-    def basisChoices(self):
-        return [  
-            self.basisHeavyRain(),
-            self.basisEnteredText(),
-            ]  
-
         # CALLS TO ACTION
     def getCTAs(self):
         return {

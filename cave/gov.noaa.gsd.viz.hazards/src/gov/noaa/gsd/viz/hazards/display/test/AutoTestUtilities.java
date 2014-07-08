@@ -9,8 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.*;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
@@ -161,7 +160,7 @@ public class AutoTestUtilities {
 
     static final String URGENCY_LEVEL = "urgencyLevel";
 
-    static final String BRANCH_OAK_DAM = "Branch Oak Dam";
+    static final String BRANCHED_OAK_DAM = "Branched Oak Dam";
 
     static final String DAM_NAME = "damName";
 
@@ -299,7 +298,7 @@ public class AutoTestUtilities {
 
     void runDamBreakRecommender(DamBreakUrgencyLevels urgencyLevel) {
         Map<String, Serializable> damBreakInfo = new HashMap<>();
-        damBreakInfo.put(DAM_NAME, BRANCH_OAK_DAM);
+        damBreakInfo.put(DAM_NAME, BRANCHED_OAK_DAM);
         damBreakInfo.put(URGENCY_LEVEL, urgencyLevel.toString());
         eventBus.publishAsync(new ToolAction(
                 ToolAction.ToolActionEnum.RUN_TOOL_WITH_PARAMETERS,

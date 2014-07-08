@@ -170,6 +170,18 @@ class HazardEvent:
      '''    
     def setSubtype(self, subtype):
         self.subtype = subtype
+
+    '''
+     * @return subtype
+     '''    
+    def getSubType(self):
+        return self.subtype
+    
+    '''
+     * @param subtype
+     '''    
+    def setSubType(self, subtype):
+        self.subtype = subtype
                 
     '''
      * @return hazardType e.g. FA.A or FF.W.Convective

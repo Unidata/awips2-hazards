@@ -7,17 +7,10 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         metaData = [
                     self.getImmediateCause(),
-                    self.getCTAs(),
                     ] + self.setCAP_Fields()
         return {
                 METADATA_KEY: metaData
                 }    
-
-    # CALLS TO ACTION
-    def getCTA_Choices(self):
-        return [
-            self.ctaFloodWatchMeans(),
-            ]
             
     # CAP fields        
     def setCAP_Fields(self):

@@ -79,7 +79,7 @@ class MetaData(CommonMetaData.MetaData):
         
     # ADDITIONAL INFORMATION
     def additionalInfoChoices(self):
-        if self.hazardState == "ended":
+        if self.hazardStatus == "ending":
             return [ 
                 self.recedingWater(),
                 self.rainEnded(),

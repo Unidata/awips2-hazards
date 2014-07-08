@@ -371,4 +371,16 @@ public class FloodRecommenderTestDAO implements IFloodDAO {
     public List<Object[]> getRiverStationInfo(String lid) {
         return new ArrayList<>();
     }
+
+    @Override
+    public String getPhysicalElement(String lid, String physicalElement,
+            int duration, String typeSource, String extremum, String timeArg,
+            String derivationInstruction, boolean timeFlag) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getPrimaryPE(String lid) {
+        throw new UnsupportedOperationException();
+    }
 }

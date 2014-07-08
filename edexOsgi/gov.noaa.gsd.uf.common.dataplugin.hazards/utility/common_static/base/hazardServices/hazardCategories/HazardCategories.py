@@ -8,7 +8,8 @@ HazardCategories = collections.OrderedDict(
         "Winter Weather": [("BZ", "W"), ("BZ", "A"), ("ZR", "Y"), ("IS", "W"), ("LE", "W"),("LE", "Y"), ("LE", "A"), 
                            ("WC", "W"), ("WC", "Y"), ("WC", "A"), ("WS", "W"), ("WS", "A"), ("WW", "Y")], 
                                         
-        "Hydrology": [("FF", "A"), ("FF", "W", "Convective"), ("FF", "W", "NonConvective"), ("FA", "Y"), ("FA", "A"), ("FA", "W"), 
+        "Hydrology": [("FF", "A"), ("FF", "W", "Convective"), ("FF", "W", "NonConvective"), ("FF", "W", "BurnScar"),
+                      ("FA", "Y"), ("FA", "A"), ("FA", "W"), 
                        ("FL", "A"), ("FL", "W"), ("FL", "Y"), ("HY", "S"), ("HY", "O")],
                        #("FF", "Y")],  # This is not used...         
         
@@ -27,6 +28,6 @@ HazardCategories = collections.OrderedDict(
                        ("LW", "Y"), ("SM", "Y"), ("WI", "Y") ],
                        
         "Tropical": [("TR", "W"), ("TR", "A"), ("HU", "W"), ("HU", "S"), ("HU", "A"), ("HI", "A"), ("HI", "W"), 
-                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W")], 
+                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W")],          
         }
 )

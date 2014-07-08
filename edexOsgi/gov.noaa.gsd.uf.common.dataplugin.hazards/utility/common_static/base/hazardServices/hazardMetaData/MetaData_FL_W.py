@@ -12,7 +12,6 @@ class MetaData(CommonMetaData.MetaData):
                     self.getFloodRecord(),
                     self.getRiseCrestFall(),
                     self.getRainAmt(),
-                    self.getBasis(),
                     self.getCTAs(),
                     ] + self.setCAP_Fields()
         return {
@@ -20,20 +19,6 @@ class MetaData(CommonMetaData.MetaData):
                 INTERDEPENDENCIES_SCRIPT_KEY: self.getInterdependenciesScriptFromLocalizedFile("RiseCrestFallUntilFurtherNoticeInterdependencies.py")
                 }    
                 
-    # BASIS
-    def getBasis(self):
-        return {
-            "fieldName": "basis",
-            "fieldType":"RadioButtons",
-            "label":"Basis:",
-            "values": "basisEnteredText",
-            "choices": self.basisChoices(),
-            }        
-
-    def basisChoices(self):
-        return [
-                self.basisEnteredText()
-                ]
         
     # CALLS TO ACTION
     def getCTAs(self):

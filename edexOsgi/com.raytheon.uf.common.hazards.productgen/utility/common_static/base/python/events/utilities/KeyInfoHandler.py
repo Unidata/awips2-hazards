@@ -36,7 +36,7 @@ from KeyInfo import KeyInfo as PythonKeyInfo
 
 def pyKeyInfoToJavaKeyInfo(val):
     if isinstance(val, KeyInfo) == False:
-        return False, val
+            return False, val
     return True, val.toJavaObj()
 
 def javaKeyInfoToPyKeyInfo(obj, customConverter=None):

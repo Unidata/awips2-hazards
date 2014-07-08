@@ -479,4 +479,16 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
         return riverStatInfo;
     }
 
+    @Override
+    public String getPhysicalElement(String lid, String physicalElement,
+            int duration, String typeSource, String extremum, String timeArg,
+            String derivationInstruction, boolean timeFlag) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getPrimaryPE(String lid) {
+        throw new UnsupportedOperationException();
+    }
+
 }

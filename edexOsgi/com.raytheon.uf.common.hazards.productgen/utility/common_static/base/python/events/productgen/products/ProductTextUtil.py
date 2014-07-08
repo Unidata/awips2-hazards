@@ -79,6 +79,8 @@ def retrieveProductText(key, productCategory, productID, segment, eventID):
     eventID = JUtil.pyValToJavaObj(eventID)
     productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventID)
     
+    if productTextList is None:
+        return []
     size = productTextList.size()
     pythonlist = list()
     for i in range(size):

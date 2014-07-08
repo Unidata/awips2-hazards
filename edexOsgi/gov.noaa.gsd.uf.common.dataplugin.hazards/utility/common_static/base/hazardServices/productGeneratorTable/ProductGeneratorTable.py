@@ -24,8 +24,9 @@ ProductGeneratorTable = {
             "allowedHazards": [
              ('FF.W.Convective',     "Flood"),
              ('FF.W.NonConvective',  "Flood"),             
+             ('FF.W.BurnScar',  "Flood"),             
              ],
-            "previewFormatters": ["Legacy"],
+            "previewFormatters": ["Legacy", "XML", "CAP"],
             "issueFormatters": ["Legacy"],   
             }, 
         "ESF_ProductGenerator": {

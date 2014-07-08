@@ -33,34 +33,36 @@ class HydroProductParts():
     ######################################################
     #  Product Parts for ESF         
     ######################################################
-    def _productParts_ESF(self, segment_vtecRecords_tuples):            
+    def _productParts_ESF(self, productSegments):            
         segmentParts = []
-        for segment_vtecRecords_tuple in segment_vtecRecords_tuples:
-            segmentParts.append(self._segmentParts_ESF(segment_vtecRecords_tuple))
+        for productSegment in productSegments:
+            segmentParts.append(self._segmentParts_ESF(productSegment))
         return {
             'partsList': [
+                'setUp_product',
                 'wmoHeader',
                 ('segments', segmentParts),
             ]
             }
 
-    def _segmentParts_ESF(self, segment_vtecRecords_tuple): 
-        segment, vtecRecords = segment_vtecRecords_tuple
+    def _segmentParts_ESF(self, productSegment): 
+        segment = productSegment.segment
+        vtecRecords = productSegment.vtecRecords
         sectionPartsList = [
-                    'setup_section',
+                    'setUp_section',
                     'narrativeForecastInformation'
                     ]
         sectionParts = []
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': (segment_vtecRecords_tuple, vtecRecord),
+                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': sectionPartsList,
                 }
             sectionParts.append(section)
         return {
-                'arguments': segment_vtecRecords_tuple,
+                'arguments': (segment, vtecRecords),
                 'partsList': [
-                    'setup_segment',
+                    'setUp_segment',
                     'ugcHeader',
                     'CR',
                     'productHeader',
@@ -75,33 +77,38 @@ class HydroProductParts():
 
     ############################  FFW
 
-    def _productParts_FFW(self, segment_vtecRecords_tuples):
+    def _productParts_FFW(self, productSegments):
         '''
-        @segment_vtecRecords_tuples -- list of (segment, vtecRecords)
+        @productSegments -- list of ProductSegments -- (segment, vtecRecords)
         @return  Dictionary for FFW productParts including the given segments
         '''          
         # Note: Product Parts for each segment may be different e.g. NEW, CON, CAN...      
         segmentParts = []
-        for segment_vtecRecords_tuple in segment_vtecRecords_tuples:
-            segmentParts.append(self._segmentParts_FFW(segment_vtecRecords_tuple))
+        for productSegment in productSegments:
+            segmentParts.append(self._segmentParts_FFW(productSegment))
         return {
                 'partsList': [
+                    'setUp_product',
+                    # TODO Example doesn't match directive
+                    #  Example: Has CR for wmoHeader - pg 26
+                    #  Directive does not - pg 31
                     'wmoHeader_noCR',
                     ('segments', segmentParts),
                     ]
                 }
         
-    def _segmentParts_FFW(self, segment_vtecRecords_tuple): 
+    def _segmentParts_FFW(self, productSegment): 
         '''               
-        @segment_vtecRecords_tuple -- (segment, vtecRecords)
+        @productSegment -- (segment, vtecRecords)
         @return FFW productParts for the given segment
         '''
-        segment, vtecRecords = segment_vtecRecords_tuple
+        segment = productSegment.segment
+        vtecRecords = productSegment.vtecRecords
         sectionParts = []
         easActivationRequested = False
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': (segment_vtecRecords_tuple, vtecRecord),
+                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFW(),
                 }
             sectionParts.append(section)
@@ -110,7 +117,7 @@ class HydroProductParts():
                 easActivationRequested = True
                     
         partsList = [
-                    'setup_segment',
+                    'setUp_segment',
                     'ugcHeader',
                     'vtecRecords',
                     'CR',
@@ -119,7 +126,8 @@ class HydroProductParts():
             partsList.append('easMessage')
             
         partsList += [
-                    'productHeader',                       
+                    'productHeader', 
+                    'CR',                      
                     ('sections', sectionParts),
                     'callsToAction', # optional
                     'polygonText',
@@ -128,31 +136,33 @@ class HydroProductParts():
                     # 'pointSections'
                     ]
         return {
-                'arguments': segment_vtecRecords_tuple,
+                'arguments': (segment, vtecRecords),
                 'partsList': partsList,
                 }
 
     def _sectionPartsList_FFW(self):
         return [
-                'setup_section',
+                'setUp_section',
                 'attribution',  
                 'firstBullet',
                 'timeBullet',
                 'basisBullet',
+                'emergencyHeadline',
                 'locationsAffected',
                 ]
 
     ############################  FFS
-    def _productParts_FFS(self, segment_vtecRecords_tuples):
+    def _productParts_FFS(self, productSegments):
         '''
-        @segment_vtecRecords_tuples -- list of (segment, vtecRecords)
+        @productSegments -- list of ProductSegments (segment, vtecRecords)
         @return  FFW productParts including the given segments
         '''        
         segments = []
-        for segment_vtecRecords_tuple in segment_vtecRecords_tuples:
-            segments.append(self._segmentParts_FFS(segment_vtecRecords_tuple))
+        for productSegment in productSegments:
+            segments.append(self._segmentParts_FFS(productSegment))
         return {
                 'partsList' : [
+                    'setUp_product',
                     'wmoHeader',
                     'productHeader', 
                     'CR',
@@ -160,12 +170,13 @@ class HydroProductParts():
                     ]
                 }
 
-    def _segmentParts_FFS(self, segment_vtecRecords_tuple): 
+    def _segmentParts_FFS(self, productSegment): 
         '''               
-        @segment_vtecRecords_tuple -- (segment, vtecRecords)
+        @productSegment -- (segment, vtecRecords)
         @return FFS productParts for the given segment
         '''
-        segment, vtecRecords = segment_vtecRecords_tuple
+        segment = productSegment.segment
+        vtecRecords = productSegment.vtecRecords
         # TODO placeholder for point records to be optionally included in FFS
         pointRecords = [] 
 
@@ -174,8 +185,8 @@ class HydroProductParts():
             # There is only one action / vtec record per segment
             action = vtecRecord.get('act')
             section = {
-                'arguments': (segment_vtecRecords_tuple, vtecRecord),
-                'partsList': ['setup_section'],
+                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
+                'partsList': ['setUp_section'],
                 }
             sectionParts.append(section)
           
@@ -188,7 +199,7 @@ class HydroProductParts():
             pointSections = []
             for pointRecord in pointRecords:
                 pointSection = {
-                           'arguments': pointRecord,
+                           'arguments': ((segment, vtecRecords), pointRecord, {'bulletFormat':'bulletFormat_noCR'}),
                            'partsList': self._pointSectionPartsList_FFS(pointRecord),
                            }
                 pointSections.append(pointSection)
@@ -200,9 +211,9 @@ class HydroProductParts():
                 ('pointSections', pointSections), # Sections are optional --only if points are included                   
                 ]
         return {
-                'arguments': segment_vtecRecords_tuple,
+                'arguments': (segment, vtecRecords),
                 'partsList': [
-                    'setup_segment',
+                    'setUp_segment',
                     'ugcHeader',
                     'vtecRecords',
                     'areaList',
@@ -210,20 +221,20 @@ class HydroProductParts():
                     'issuanceTimeDate',
                     'CR',
                     'summaryHeadlines',
-                    ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setup                    
+                    ('sections', sectionParts), # Sections so not have information displayed, but need to call section_setUp                    
                     ] + parts
                 }
 
     def _pointSectionPartsList_FFS(self, pointRecord):
         return  [
-                'setup_section',
+                'setUp_section',
                 'ugcHeader',
                 'issuanceTimeDate',
                 'nwsli',
                 'CR'
                 'floodPointHeader',
                 'floodPointHeadline',    
-                'floodPointTimeBullet',
+                'observedStageBullet',
                 'floodStageBullet',
                 'floodCategoryBullet',
                 'otherStageBullet',
@@ -238,9 +249,9 @@ class HydroProductParts():
 
     ###########  AREA-based  ################
     
-    def _productParts_FFA_FLW_FLS_area(self, segment_vtecRecords_tuples):
+    def _productParts_FFA_FLW_FLS_area(self, productSegments):
         '''
-        @segment_vtecRecords_tuples -- list of (segment, vtecRecords)
+        @productSegments -- list of ProductSegments (segment, vtecRecords)
         @return  Dictionary for productParts including the given segments
         '''
         # Note: Product Parts for each segment / section may be different e.g. NEW, CON, CAN...      
@@ -248,17 +259,18 @@ class HydroProductParts():
         non_CAN_EXP = True
         easActivationRequested = False
         segmentParts = []
-        for segment_vtecRecords_tuple in segment_vtecRecords_tuples:
-            segmentParts.append(self._segmentParts_FFA_FLW_FLS_area(segment_vtecRecords_tuple))
+        for productSegment in productSegments:
+            segmentParts.append(self._segmentParts_FFA_FLW_FLS_area(productSegment))
             
-            segment, vtecRecords = segment_vtecRecords_tuple
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords
             for vtecRecord in vtecRecords:
                 if vtecRecord['act'] not in ['CAN', 'EXP']:
                     non_CAN_EXP = False
                 if self._requestEAS(vtecRecord):
                     easActivationRequested = True
        
-        partsList =  ['wmoHeader']
+        partsList =  ['setUp_product', 'wmoHeader']
         
         if easActivationRequested:
             partsList.append('easMessage')
@@ -275,18 +287,19 @@ class HydroProductParts():
             'partsList': partsList,
             }
 
-    def _segmentParts_FFA_FLW_FLS_area(self, segment_vtecRecords_tuple):
+    def _segmentParts_FFA_FLW_FLS_area(self, productSegment):
         '''               
-        @segment_vtecRecords_tuple -- (segment, vtecRecords)
+        @productSegment -- (segment, vtecRecords)
         @return  productParts for the given segment
         '''
-        segment, vtecRecords = segment_vtecRecords_tuple
+        segment = productSegment.segment
+        vtecRecords = productSegment.vtecRecords
         sectionParts = []
         # non_CAN_EXP is True if the segment has only CAN, EXP in it
         non_CAN_EXP = True
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': (segment_vtecRecords_tuple, vtecRecord),
+                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_CR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_area(vtecRecord),
                 }
             sectionParts.append(section)
@@ -296,7 +309,7 @@ class HydroProductParts():
             pil = vtecRecord['pil']  # All vtec records in this segment must have the same pil
             
         partsList = [
-            'setup_segment',
+            'setUp_segment',
             'ugcHeader',
             'vtecRecords',
             'areaList',
@@ -309,8 +322,10 @@ class HydroProductParts():
             
         partsList.append(('sections', sectionParts))
         
-        if pil == 'FFA' and non_CAN_EXP: 
-            partsList.append('meaningOfStatement')
+        # TODO Example doesn't match directive 
+        # Should the statement be part of the CTA's (example) or separate (directive)?
+        #if pil == 'FFA' and non_CAN_EXP: 
+            #partsList.append('meaningOfStatement')
             
         if non_CAN_EXP:
             partsList.append('callsToAction')
@@ -320,7 +335,7 @@ class HydroProductParts():
         
         partsList.append('endSegment')    
         return {
-                'arguments': segment_vtecRecords_tuple,
+                'arguments': ((segment, vtecRecords)),
                 'partsList': partsList,
                 }
 
@@ -333,21 +348,21 @@ class HydroProductParts():
         if action in ['CAN', 'EXP']:
             if pil == 'FLS':
                 partsList = [
-                    'setup_section',
+                    'setUp_section',
                     'attribution',
                     'firstBullet',
                     'endingSynopsis',
                     ]
             elif pil == 'FFA':
                  partsList = [
-                    'setup_section',
+                    'setUp_section',
                     'attribution',
                     'firstBullet',
                     ]
         # FFA, FLW, or FLS FA.Y NEW OR EXT
         elif pil in ['FFA', 'FLW'] or (phen == 'FA' and sig == 'Y' and action in ['NEW', 'EXT']):
             partsList = [
-                    'setup_section',
+                    'setUp_section',
                     'attribution', 
                     'firstBullet',
                     'timeBullet',
@@ -357,7 +372,7 @@ class HydroProductParts():
         # Otherwise (FLS)
         else:
             partsList = [
-                    'setup_section',
+                    'setUp_section',
                     'attribution',
                     'firstBullet',
                     'basisAndImpactsStatement',
@@ -366,28 +381,33 @@ class HydroProductParts():
 
     ###########  POINT-based  ################
 
-    def _productParts_FFA_FLW_FLS_point(self, segment_vtecRecords_tuples):
+    def _productParts_FFA_FLW_FLS_point(self, productSegments):
         '''
-        @segment_vtecRecords_tuples -- list of (segment, vtecRecords)
+        @productSegments -- list of ProductSegments(segment, vtecRecords)
         @return  Dictionary for productParts including the given segments
         '''
         # Note: Product Parts for each segment / section may be different e.g. NEW, CON, CAN...      
         # non_CAN_EXP is True if the segment has only CAN, EXP in it
         non_CAN_EXP = True
         segmentParts = []
-        for segment_vtecRecords_tuple in segment_vtecRecords_tuples:
-            segmentParts.append(self._segmentParts_FFA_FLW_FLS_point(segment_vtecRecords_tuple))
+        productSegment_tuples = []
+        for productSegment in productSegments:
+            segmentParts.append(self._segmentParts_FFA_FLW_FLS_point(productSegment))
             
-            segment, vtecRecords = segment_vtecRecords_tuple
+            segment = productSegment.segment
+            vtecRecords = productSegment.vtecRecords
+            productSegment_tuples.append((segment, vtecRecords))
             for vtecRecord in vtecRecords:
                 pil = vtecRecord['pil']   # Pil will be the same for all vtecRecords in this segment
-                if vtecRecord['act'] not in ['CAN', 'EXP']:
+                if vtecRecord['act'] in ['CAN', 'EXP']:
                     non_CAN_EXP = False
             
         partsList = [
+                'setUp_product',
                 'wmoHeader',
                 'easMessage',  
-                'productHeader',
+                'productHeader', 
+                'CR',
                 
                 'overviewHeadline_point',  #(optional)
                 'overviewSynopsis',        #(optional)
@@ -409,28 +429,29 @@ class HydroProductParts():
                 ]
 
         return {
-            'arguments': segment_vtecRecords_tuples,
+            'arguments': productSegment_tuples,
             'partsList': partsList,
             }
         
-    def _segmentParts_FFA_FLW_FLS_point(self, segment_vtecRecords_tuple):
+    def _segmentParts_FFA_FLW_FLS_point(self, productSegment):
         '''               
-        @segment_vtecRecords_tuple -- (segment, vtecRecords)
+        @productSegment -- (segment, vtecRecords)
         @return  productParts for the given segment
         '''
-        segment, vtecRecords = segment_vtecRecords_tuple
+        segment = productSegment.segment
+        vtecRecords = productSegment.vtecRecords
         sectionParts = []
         for vtecRecord in vtecRecords:
             section = {
-                'arguments': (segment_vtecRecords_tuple, vtecRecord),
+                'arguments': ((segment, vtecRecords), vtecRecord, {'bulletFormat':'bulletFormat_noCR'}),
                 'partsList': self._sectionPartsList_FFA_FLW_FLS_point(vtecRecord),
                 }
             sectionParts.append(section)
             
         return {
-                'arguments': segment_vtecRecords_tuple,
+                'arguments': (segment, vtecRecords),
                 'partsList': [
-                    'setup_segment',
+                    'setUp_segment',
                     'ugcHeader',
                     'vtecRecords',
                     'issuanceTimeDate',
@@ -448,25 +469,32 @@ class HydroProductParts():
         phen = vtecRecord['phen']
         sig = vtecRecord['sig']
         
-        partsList = ['setup_section']
+        partsList = ['setUp_section']
         if  not (pil == 'FLS' and phen == 'FL' and sig == 'Y' and action in ['CON', 'EXT']):
             # NOT for FLS FL.Y CON, EXT
-            partsList.append('attribution')
+            partsList.append('attribution_point')
   
-        partsList.append('firstBullet')
+        partsList.append('firstBullet_point')
         
         if not action in 'ROU' and not (pil == 'FLS' and action in ['CAN', 'EXP']):
             # NOT for ROU, FLS CAN, EXP
             partsList.append('timeBullet')
             
-        partsList += [
-            'floodPointTimeBullet',
-            'floodStageBullet',
-            'otherStageBullet',  
-            'floodCategoryBullet', 
-            'recentActivityBullet',  
-            'forecastStageBullet',
-            'pointImpactsBullet',
+        if action in ['CAN', 'EXP']:
+            partsList += [
+                'observedStageBullet',
+                'recentActivityBullet',  
+                'forecastStageBullet',
+            ]
+        else:
+            partsList += [
+                'observedStageBullet',
+                'floodStageBullet',
+                'otherStageBullet',  
+                'floodCategoryBullet', 
+                'recentActivityBullet',  
+                'forecastStageBullet',
+                'pointImpactsBullet',
             ] 
          
         if not pil == 'FFA' and not (pil == 'FLS' and phen == 'FL' and sig == 'Y'):

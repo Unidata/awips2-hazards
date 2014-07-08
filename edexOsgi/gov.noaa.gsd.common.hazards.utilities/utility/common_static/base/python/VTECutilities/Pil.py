@@ -6,8 +6,16 @@
 #------------------------------------------------------------------
 
 from HazardConstants import *
-import os
+# For the VTEC tests to work, we need to be able to bypass the RiverForecastPoints module
 
+
+import Logger as LogStream
+
+try:
+    from RiverForecastPoints import RiverForecastPoints
+except Exception, e:
+    LogStream.logProblem('Could not import RiverForecastPoints ' + str(e))
+     
 class Pil:
 
     def __init__(self, productCategory, vtecRecord, hazardEvent):
@@ -16,10 +24,9 @@ class Pil:
         self._hazardEvent = hazardEvent
         self._action = self._vtecRecord.get('act')
         try:
-            import RiverHazardCommon
-            self._rhc = RiverHazardCommon.RiverHazardCommon()
-        except:
-            pass
+            self._rfp = RiverForecastPoints()
+        except Exception, e:
+            LogStream.logProblem('Could not instantiate RiverForecastPoints' + str(e))
         
     def getPil(self):  
         pil = None      
@@ -61,12 +68,15 @@ class Pil:
                 
                 else:
                     # actions CON, EXT
-                    try:
-                        fcstCategory = self._rhc.getForecastCategory(self._hazardEvent)
-                        prevCateogry = self._rhc.getPreviousCategory(self._hazardEvent)
-                    except:
-                        fcstCategory = 1
-                        prevCategory = 1
+                    pointID = self._hazardEvent.get('pointID')
+                    fcstCategory = 1
+                    prevCategory = 1
+                    if pointID:
+                        try:
+                            fcstCategory = self._rfp.getMaximumForecastCategory(pointID)
+                            prevCategory = self._hazardEvent.get('previousForecastCategory')
+                        except Exception, e:
+                            LogStream.logProblem('Could not get category information' + str(e))
                     if fcstCategory > prevCategory:
                          pil = "FLW"
                     else:
