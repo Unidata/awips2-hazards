@@ -53,6 +53,7 @@ from HazardEvent import HazardEvent
 from shapely import geometry
 from KeyInfo import KeyInfo
 import ProductTextUtil
+from com.raytheon.uf.common.time import SimulatedTime
 
 class Product(ProductTemplate.Product):
  
@@ -1789,6 +1790,51 @@ class Product(ProductTemplate.Product):
 #             return None
 #         return None
  
+    def correctProduct(self, dataList, prevDataList, correctAllSegments):
+        millis = SimulatedTime.getSystemTime().getMillis()
+        dt = datetime.datetime.fromtimestamp(millis / 1000)
+        currentTime = dt.strftime('%d%H%m')
+        for i in range(0, len(dataList)):
+            data = dataList[i]
+   
+            wmoHeader = data['wmoHeader']
+            wmoHeaderLine = wmoHeader['wmoHeaderLine']
+            wmoHeader['wmoHeaderLine'] = wmoHeaderLine[:-6] + currentTime
+            
+            segments = data['segments']       
+            for j in range(0, len(segments)):
+                segment = segments[j]
+                if correctAllSegments:
+                    segment = self.correctSegment(segment)
+                else:
+                    prevData = prevDataList[i]
+                    pSegments = prevData['segments']
+                    pSegment = pSegments[j]
+                    if segment != pSegment:
+                        segment = self.correctSegment(segment)                  
+        
+            productName = str(data['productName'])
+            if '...CORRECTED' not in productName:
+                if productName.endswith('...TEST'):
+                    data['productName'] = productName[:-7] + '...CORRECTED...TEST'
+                else:
+                    data['productName'] = productName + '...CORRECTED'
+        return dataList
+    
+    def correctSegment(self, segment):
+        if 'vtecRecords' in segment:
+            vtecRecordList = segment['vtecRecords']
+            for j in range(0,len(vtecRecordList)):
+                vtecRecord = vtecRecordList[j]
+                if vtecRecord['vtecRecordType'] == 'pvtecRecord':
+                    action = vtecRecord['action']
+                    vtecRecord['action'] = 'COR'
+                    vtecString = vtecRecord['vtecString']
+                    updatedVtecString = vtecString.replace(action, 'COR')
+                    vtecRecord['vtecString'] = updatedVtecString
+                    
+        return segment
+
     def descWxLocForEvent(self, hazardEvent,
              noevent='FROM HEAVY RAIN. THIS RAIN WAS LOCATED', \
              point='FROM A THUNDERSTORM. THIS STORM WAS LOCATED', \

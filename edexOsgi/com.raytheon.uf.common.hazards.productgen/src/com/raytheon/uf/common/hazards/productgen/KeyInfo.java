@@ -188,51 +188,40 @@ public class KeyInfo implements IParameterInfo, ISerializableObject,
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
+        if (this == obj)
             return true;
-        }
-        if (obj == null) {
+        if (obj == null)
             return false;
-        }
-        if (getClass() != obj.getClass()) {
+        if (getClass() != obj.getClass())
             return false;
-        }
         KeyInfo other = (KeyInfo) obj;
         if (eventIDs == null) {
-            if (other.eventIDs != null) {
+            if (other.eventIDs != null)
                 return false;
-            }
-        } else if (!eventIDs.equals(other.eventIDs)) {
+        } else if (!eventIDs.equals(other.eventIDs))
             return false;
-        }
+        if (index != other.index)
+            return false;
         if (name == null) {
-            if (other.name != null) {
+            if (other.name != null)
                 return false;
-            }
-        } else if (!name.equals(other.name)) {
+        } else if (!name.equals(other.name))
             return false;
-        }
         if (productCategory == null) {
-            if (other.productCategory != null) {
+            if (other.productCategory != null)
                 return false;
-            }
-        } else if (!productCategory.equals(other.productCategory)) {
+        } else if (!productCategory.equals(other.productCategory))
             return false;
-        }
         if (productID == null) {
-            if (other.productID != null) {
+            if (other.productID != null)
                 return false;
-            }
-        } else if (!productID.equals(other.productID)) {
+        } else if (!productID.equals(other.productID))
             return false;
-        }
         if (segment == null) {
-            if (other.segment != null) {
+            if (other.segment != null)
                 return false;
-            }
-        } else if (!segment.equals(other.segment)) {
+        } else if (!segment.equals(other.segment))
             return false;
-        }
         return true;
     }
 

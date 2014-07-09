@@ -55,7 +55,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jan 10, 2013            jsanchez     Initial creation
  * Sep 19, 2013 2046       mnash        Update for less dependencies.
  * Nov  5, 2013 2266       jsanchez     Removed unused method and used GeneratedProductList.
- * 
+ * Apr 23, 2014 1480       jsanchez     Passed correction flag to update method.
  * </pre>
  * 
  * @author jsanchez
@@ -114,9 +114,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      */
     public void update(String product,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
+            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
             String[] formats, IPythonJobListener<GeneratedProductList> listener) {
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new ProductScriptUpdater(
-                product, updatedDataList, formats);
+                product, updatedDataList, prevDataList, formats);
 
         try {
             coordinator.submitAsyncJob(executor, listener);

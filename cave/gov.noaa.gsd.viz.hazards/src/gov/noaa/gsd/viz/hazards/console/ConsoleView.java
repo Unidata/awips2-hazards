@@ -14,6 +14,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.product.ReviewAction;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
@@ -81,6 +82,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 19, 2014    2161    Chris.Golden      Added passing of set of events allowing
  *                                           "until further notice" to the view part.
  * Apr 15, 2014     696    David.Gillingham  Add ChangeVtecFormatAction to menu.
+ * Apr 23, 2014    1480    jsanchez          Added a Correct menu to the console.
  * </pre>
  * 
  * @author Chris.Golden
@@ -723,10 +725,10 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     ConsoleAction.SHOW_HATCHED_AREA);
             showHatchedAreaAction.setChecked(true);
 
+            Action reviewAction = new ReviewAction(presenter);
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
                     sep, checkHazardConflictsAction,
-                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep);
-
+                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep, reviewAction);
             if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
                 Action changeVtecFormat = new ChangeVtecFormatAction(presenter
                         .getSessionManager().getProductManager());

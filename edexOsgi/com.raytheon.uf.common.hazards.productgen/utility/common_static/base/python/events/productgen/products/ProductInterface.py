@@ -106,6 +106,16 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                 dList.append(self.keyInfoDictToPythonDict(data))
             dataList = dList
             kwargs['dataList'] = dataList            
+        
+        if 'prevDataList' in kwargs:
+            prevDataList = kwargs['prevDataList']
+            if prevDataList is not None:
+                prevDataList = JUtil.javaObjToPyVal(prevDataList)
+                pList = []
+                for data in prevDataList:
+                    pList.append(self.keyInfoDictToPythonDict(data))
+                prevDataList = pList
+                kwargs['prevDataList'] = prevDataList           
 
         # executeFrom does not need formats
         formats = kwargs.pop('formats')

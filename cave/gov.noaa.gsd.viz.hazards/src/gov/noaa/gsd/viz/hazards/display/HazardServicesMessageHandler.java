@@ -21,6 +21,7 @@ import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.product.ReviewAction;
 import gov.noaa.gsd.viz.hazards.pythonjoblistener.HazardServicesRecommenderJobListener;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
@@ -51,12 +52,13 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -80,6 +82,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManage
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -160,6 +163,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            be initialized by the Presenter superclass
  *                                            before the subclass has finished being
  *                                            built).
+ * Apr 23, 2014  1480      jsanchez           Handled reviewable products.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -969,6 +973,10 @@ public final class HazardServicesMessageHandler implements
         generateProducts(false);
     }
 
+    public void generateReviewableProduct(List<ProductData> productData) {
+        productGeneratorHandler.generateReviewableProduct(productData);
+    }
+
     /**
      * Updates the model with CAVE frame information.
      */
@@ -1087,14 +1095,33 @@ public final class HazardServicesMessageHandler implements
      *            enumeration).
      */
     private void handleProductDisplayAction(ProductEditorAction action) {
-        if (action.getHazardAction() == HazardAction.PROPOSE) {
+        switch (action.getHazardAction()) {
+        case PROPOSE:
             changeSelectedEventsToProposedState(action.getOriginator());
-        } else if (action.getHazardAction() == HazardAction.ISSUE) {
+            break;
+        case ISSUE:
             if (this.continueIfThereAreHazardConflicts()) {
                 productGeneratorHandler.createProductsFromHazardEventSets(true,
                         action.getGeneratedProductsList());
                 notifyModelEventsChanged();
             }
+            break;
+        case CORRECT:
+            for (GeneratedProductList products : action
+                    .getGeneratedProductsList()) {
+                ProductInformation information = new ProductInformation();
+                information.setProductGeneratorName(products.getProductInfo());
+                ProductFormats productFormats = sessionConfigurationManager
+                        .getProductGeneratorTable().getProductFormats(
+                                information.getProductGeneratorName());
+                information.setProductFormats(productFormats);
+                information.setProducts(products);
+                sessionManager.getProductManager().issueCorrection(information);
+            }
+
+            break;
+        default:
+            // do nothing
         }
 
         appBuilder.closeProductEditorView();
@@ -1527,6 +1554,13 @@ public final class HazardServicesMessageHandler implements
             setIssuedState();
             break;
 
+        case REVIEW:
+            Map<String, Serializable> parameters = hazardDetailAction
+                    .getParameters();
+            ArrayList<ProductData> productData = (ArrayList<ProductData>) parameters
+                    .get(ReviewAction.PRODUCT_DATA_PARAM);
+            generateReviewableProduct(productData);
+            break;
         default:
             throw new IllegalArgumentException("Unsupported actionType "
                     + hazardDetailAction.getActionType());

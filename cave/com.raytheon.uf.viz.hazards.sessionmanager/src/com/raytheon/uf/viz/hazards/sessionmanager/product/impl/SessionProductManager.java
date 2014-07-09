@@ -30,6 +30,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -49,8 +51,10 @@ import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
+import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -519,6 +523,31 @@ public class SessionProductManager implements ISessionProductManager {
 
             }
         }
+
+        disseminate(information);
+    }
+
+    private boolean areYouSure() {
+        boolean answer = messenger.getQuestionAnswerer()
+                .getUserAnswerToQuestion(
+                        "Are you sure "
+                                + "you want to issue the hazard event(s)?",
+                        new String[] { "Issue", "Cancel" });
+        if (!answer) {
+            sessionManager.setIssueOngoing(false);
+        }
+        return answer;
+    }
+
+    @Override
+    public void issueCorrection(ProductInformation information) {
+        if (areYouSure()) {
+            disseminate(information);
+            sessionManager.setIssueOngoing(false);
+        }
+    }
+
+    private void disseminate(ProductInformation information) {
         boolean operational = CAVEMode.getMode() == CAVEMode.OPERATIONAL;
         /*
          * Disseminate the products
@@ -543,18 +572,36 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
-    }
-
-    private boolean areYouSure() {
-        boolean answer = messenger.getQuestionAnswerer()
-                .getUserAnswerToQuestion(
-                        "Are you sure "
-                                + "you want to issue the hazard event(s)?",
-                        new String[] { "Issue", "Cancel" });
-        if (!answer) {
-            sessionManager.setIssueOngoing(false);
+        Date startTime = null;
+        boolean ended = false;
+        ArrayList<Integer> eventIDs = new ArrayList<Integer>();
+        Iterator<IEvent> iterator = information.getProducts().getEventSet()
+                .iterator();
+        while (iterator.hasNext()) {
+            IEvent event = iterator.next();
+            if (event instanceof IHazardEvent) {
+                IHazardEvent hazardEvent = (IHazardEvent) event;
+                String eventID = hazardEvent.getEventID();
+                startTime = hazardEvent.getStartTime();
+                HazardStatus status = hazardEvent.getStatus();
+                if (status == HazardStatus.ENDED) {
+                    ended = true;
+                }
+                eventIDs.add(new Integer(eventID));
+            }
         }
-        return answer;
+
+        String mode = CAVEMode.getMode().toString();
+        String productInfo = information.getProducts().getProductInfo();
+        for (IGeneratedProduct product : information.getProducts()) {
+            if (ended) {
+                ProductDataUtil.deleteProductData(mode, productInfo, eventIDs);
+            } else {
+                ProductDataUtil.createOrUpdateProductData(mode, productInfo,
+                        eventIDs, startTime, product.getData());
+            }
+        }
+
     }
 
     private boolean checkForConflicts(IHazardEvent hazardEvent) {
@@ -702,5 +749,22 @@ public class SessionProductManager implements ISessionProductManager {
             this.vtecMode = vtecMode;
             this.vtecTestMode = testMode;
         }
+    }
+
+    @Override
+    public void generateProductReview(ProductInformation productInformation,
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList) {
+        sessionManager.setPreviewOngoing(true);
+        String[] formats = productInformation.getProductFormats()
+                .getPreviewFormats().toArray(new String[0]);
+        UpdateListener listener = new UpdateListener(productInformation,
+                notificationSender);
+        /*
+         * Generating a product review does not need to do any comparisons of a
+         * previous version. Instead, the data only needs to be passed to the
+         * formatters.
+         */
+        productGen.update(productInformation.getProductGeneratorName(),
+                updatedDataList, null, formats, listener);
     }
 }

@@ -65,7 +65,7 @@ class Format(FormatTemplate.Formatter):
             valtype = type(part)
             if valtype is str:
                 name = part
-            elif valtype is tuple:
+            elif valtype is tuple or valtype is list:
                 name = part[0]
                 infoDicts = part[1]
             if name == 'wmoHeader': text += self.processWmoHeader(productDict['wmoHeader']) + '\n'

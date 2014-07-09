@@ -275,6 +275,10 @@ public class AutoTestUtilities {
                 HazardDetailAction.ActionType.PREVIEW));
     }
 
+    void retrieveReviweableProducts() {
+
+    }
+
     Dict productsFromEditorView(ProductEditorViewForTesting editorView) {
         List<GeneratedProductList> generatedProductsStorage = editorView
                 .getGeneratedProductsList();

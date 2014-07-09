@@ -19,8 +19,12 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
+import java.io.Serializable;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 
 /**
  * Manages product generation for a session.
@@ -35,6 +39,7 @@ import java.util.List;
  * Apr 29, 2014 3558       bkowal      generate now returns a boolean indicating
  *                                     whether or not product generation has been cancelled.
  * Apr 17, 2014  696       dgilling    Added setVTECFormat().
+ * Apr 29, 2014 1480       jsanchez    Added generateCorrectionProduct and issueCorrection.
  * 
  * </pre>
  * 
@@ -65,6 +70,20 @@ public interface ISessionProductManager {
      */
     public boolean generate(ProductInformation information, boolean issue,
             boolean confirm);
+
+    /**
+     * Generates the issued product from the product information and the
+     * updatedDataList derived from the database.
+     */
+    public void generateProductReview(ProductInformation productInformation,
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList);
+
+    /**
+     * Issue the corrected product
+     * 
+     * @param information
+     */
+    public void issueCorrection(ProductInformation information);
 
     /**
      * Issue the provided product and all the events associated with it.

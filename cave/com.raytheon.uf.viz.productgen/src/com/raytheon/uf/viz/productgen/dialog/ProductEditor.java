@@ -89,6 +89,8 @@ public class ProductEditor extends CaveSWTDialog {
 
     private static final String DIALOG_TITLE = "Product Editor";
 
+    private static final String REVIEW_TITLE = "Product Editor (Review)";
+
     private static final String DISMISS_DIALOG_TITLE = "Are you sure?";
 
     private static final String DISMISS_DIALOG_MESSAGE = "Are you sure you want to 'Dismiss'? Your product(s) will NOT be issued and your edits have not been saved.";
@@ -115,13 +117,15 @@ public class ProductEditor extends CaveSWTDialog {
 
     private static final String ENTRY_TAB_LABEL_FORMAT = "%s (%d)";
 
-    private static final int ENTRY_PANE_WIDTH = 475;
+    public static final int ENTRY_PANE_WIDTH = 500;
 
-    private static final int ENTRY_PANE_HEIGHT = 300;
+    public static final int ENTRY_PANE_HEIGHT = 300;
 
     private List<GeneratedProductList> generatedProductListStorage;
 
     private List<GeneratedProductList> prevGeneratedProductListStorage;
+
+    private boolean isCorrectable;
 
     private CTabFolder productsFolder;
 
@@ -196,8 +200,25 @@ public class ProductEditor extends CaveSWTDialog {
     public ProductEditor(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage) {
         super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT);
-        setText(DIALOG_TITLE);
         this.generatedProductListStorage = generatedProductListStorage;
+        isCorrectable = generatedProductListStorage.get(0).isCorrectable();
+        if (isCorrectable) {
+            setPrevGeneratedProductListStorage(generatedProductListStorage);
+            setText(REVIEW_TITLE);
+        } else {
+            setText(DIALOG_TITLE);
+        }
+    }
+
+    public void setPrevGeneratedProductListStorage(
+            List<GeneratedProductList> generatedProductListStorage) {
+        List<GeneratedProductList> copy = new ArrayList<GeneratedProductList>(
+                generatedProductListStorage.size());
+        for (GeneratedProductList generatedProductList : generatedProductListStorage) {
+            copy.add(new GeneratedProductList(generatedProductList));
+        }
+
+        this.prevGeneratedProductListStorage = copy;
     }
 
     /**
@@ -228,7 +249,7 @@ public class ProductEditor extends CaveSWTDialog {
         createButtonComp(fullComp);
     }
 
-    private void setLayoutInfo(Composite comp, int cols,
+    protected static void setLayoutInfo(Composite comp, int cols,
             boolean colsEqualWidth, int horFil, int verFil,
             boolean grabHorSpace, boolean grabVerSpace, Point bounds) {
         GridLayout layout = new GridLayout(cols, colsEqualWidth);
@@ -299,6 +320,8 @@ public class ProductEditor extends CaveSWTDialog {
             editorTab.setText(EDITOR_TAB_LABEL);
             Composite editorPane = new Composite(editorAndFormatsFolder,
                     SWT.NONE);
+            setLayoutInfo(editorPane, 1, false, SWT.FILL, SWT.FILL, true, true,
+                    null);
             dataEditor.create(editorPane);
             editorTab.setControl(editorPane);
             editorTab.setData(dataEditor);
@@ -306,10 +329,11 @@ public class ProductEditor extends CaveSWTDialog {
 
         for (Entry<String, List<Serializable>> entry : product.getEntries()
                 .entrySet()) {
-            CTabItem formatterResultTab = new CTabItem(editorAndFormatsFolder,
-                    SWT.VERTICAL);
-            int counter = 0;
-            for (Serializable formatterResult : entry.getValue()) {
+            List<Serializable> values = entry.getValue();
+            for (int counter = 0; counter < values.size(); counter++) {
+                Serializable formatterResult = values.get(counter);
+                CTabItem formatterResultTab = new CTabItem(
+                        editorAndFormatsFolder, SWT.VERTICAL);
                 AbstractFormatTab tab = null;
                 Composite formatterResultPane = new Composite(
                         editorAndFormatsFolder, SWT.NONE);
@@ -321,7 +345,7 @@ public class ProductEditor extends CaveSWTDialog {
                  * separate results
                  */
                 String label = entry.getKey();
-                if (entry.getValue().size() > 1) {
+                if (values.size() > 1) {
                     label = String.format(ENTRY_TAB_LABEL_FORMAT,
                             entry.getKey(), counter);
                 }
@@ -431,12 +455,20 @@ public class ProductEditor extends CaveSWTDialog {
                     List<String> formats = new ArrayList<String>(products
                             .get(0).getEntries().keySet());
                     productGeneration.update(products.getProductInfo(),
-                            dataList,
+                            dataList, null,
                             formats.toArray(new String[formats.size()]),
                             issueListener);
                 }
             }
         });
+
+        /*
+         * If the product is correctable, disable the issue button unless they
+         * make a modification, which means the product has been corrected.
+         */
+        if (isCorrectable) {
+            issueButton.setEnabled(false);
+        }
     }
 
     protected IPythonJobListener<GeneratedProductList> issueListener = new IPythonJobListener<GeneratedProductList>() {
@@ -528,8 +560,15 @@ public class ProductEditor extends CaveSWTDialog {
                 boolean hasUnsavedChanges = false;
                 for (DataEditor dataEditor : getAllDataEditors()) {
                     if (dataEditor != null && dataEditor.hasUnsavedChanges()) {
-                        String[] buttonLabels = new String[] { DISMISS_LABEL,
-                                SAVE_AND_DISMISS_LABEL, CANCEL_DISMISS };
+                        String[] buttonLabels = null;
+
+                        if (isCorrectable) {
+                            buttonLabels = new String[] { DISMISS_LABEL,
+                                    CANCEL_DISMISS };
+                        } else {
+                            buttonLabels = new String[] { DISMISS_LABEL,
+                                    SAVE_AND_DISMISS_LABEL, CANCEL_DISMISS };
+                        }
 
                         MessageDialog dismissDialog = new MessageDialog(null,
                                 DISMISS_DIALOG_TITLE, null,
@@ -595,28 +634,24 @@ public class ProductEditor extends CaveSWTDialog {
                                 .get(EDITOR_TAB_LABEL);
                         Serializable modifiedValue = dataEditor
                                 .getOneModifiedValue();
-
-                        int selectionIndex = productsFolder.getSelectionIndex();
-                        int offset = 0;
                         for (GeneratedProductList products : generatedProductListStorage) {
                             if (products.getProductInfo().equals(
                                     productList.getProductInfo())) {
                                 for (int index = 0; index < productList.size(); index++) {
                                     IGeneratedProduct updatedProduct = productList
                                             .get(index);
-
-                                    if (selectionIndex == (index + offset)) {
-                                        IGeneratedProduct product = products
-                                                .get(index);
-                                        product.setEntries(updatedProduct
-                                                .getEntries());
-                                        updateFormatTabs(formatTabsMap,
-                                                product, modifiedValue);
-                                        break;
-                                    }
+                                    IGeneratedProduct product = products
+                                            .get(index);
+                                    product.setEntries(updatedProduct
+                                            .getEntries());
+                                    updateFormatTabs(formatTabsMap, product,
+                                            modifiedValue);
                                 }
                             }
-                            offset += products.size();
+                        }
+
+                        if (isCorrectable) {
+                            setPrevGeneratedProductListStorage(prevGeneratedProductListStorage);
                         }
                     } finally {
                         progressBar.setVisible(false);
@@ -640,10 +675,10 @@ public class ProductEditor extends CaveSWTDialog {
 
         for (String format : formats) {
             List<Serializable> entries = product.getEntry(format);
-            int labelCounter = 0;
-            for (Serializable entry : entries) {
+            for (int labelCounter = 0; labelCounter < entries.size(); labelCounter++) {
+                Serializable entry = entries.get(labelCounter);
                 String label = format;
-                if (entries.size() > 2) {
+                if (entries.size() > 1) {
                     label = String.format(ENTRY_TAB_LABEL_FORMAT, format,
                             labelCounter);
                 }
@@ -661,7 +696,6 @@ public class ProductEditor extends CaveSWTDialog {
                         highlightText(styledText, String.valueOf(value));
                     }
                 }
-                labelCounter++;
             }
         }
     }
@@ -674,10 +708,24 @@ public class ProductEditor extends CaveSWTDialog {
                 dataList.add(product.getData());
             }
 
+            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList = null;
+            if (isCorrectable) {
+                prevDataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
+                for (GeneratedProductList prevGeneratedProductList : prevGeneratedProductListStorage) {
+                    if (prevGeneratedProductList.getProductInfo().equals(
+                            products.getProductInfo())) {
+                        for (IGeneratedProduct prevProduct : prevGeneratedProductList) {
+                            prevDataList.add(prevProduct.getData());
+                        }
+                        break;
+                    }
+                }
+            }
+
             List<String> formats = new ArrayList<String>(products.get(0)
                     .getEntries().keySet());
             productGeneration.update(products.getProductInfo(), dataList,
-                    formats.toArray(new String[formats.size()]),
+                    prevDataList, formats.toArray(new String[formats.size()]),
                     generateListener);
         }
     }
@@ -733,7 +781,8 @@ public class ProductEditor extends CaveSWTDialog {
         for (int lineIndex = 0; lineIndex < styledText.getLineCount()
                 && startIndex != -1; lineIndex++) {
             String line = styledText.getLine(lineIndex);
-            counter += line.length();
+            // Add 1 for the new line char
+            counter += line.length() + 1;
             if (counter >= startIndex) {
                 styledText.setTopIndex(lineIndex);
                 break;
@@ -743,7 +792,11 @@ public class ProductEditor extends CaveSWTDialog {
     }
 
     private void invokeIssue() {
-        issueHandler.commandInvoked(HazardConstants.ISSUE_FLAG);
+        if (isCorrectable) {
+            issueHandler.commandInvoked(HazardConstants.CORRECTION_FLAG);
+        } else {
+            issueHandler.commandInvoked(HazardConstants.ISSUE_FLAG);
+        }
     }
 
     private void invokeDismiss() {

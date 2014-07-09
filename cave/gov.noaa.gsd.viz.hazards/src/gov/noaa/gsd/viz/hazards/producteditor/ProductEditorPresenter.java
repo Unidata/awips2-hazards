@@ -48,6 +48,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
+ * Apr 23, 2014 1480        jsanchez      Added product editor action CORRECT.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -127,8 +128,15 @@ public class ProductEditorPresenter extends
 
                     @Override
                     public void commandInvoked(String identifier) {
-                        ProductEditorAction action = new ProductEditorAction(
-                                HazardAction.ISSUE);
+                        ProductEditorAction action = null;
+                        if (identifier != null
+                                && identifier
+                                        .equalsIgnoreCase(HazardConstants.CORRECTION_FLAG)) {
+                            action = new ProductEditorAction(
+                                    HazardAction.CORRECT);
+                        } else {
+                            action = new ProductEditorAction(HazardAction.ISSUE);
+                        }
 
                         action.setGeneratedProductsList(getView()
                                 .getGeneratedProductsList());

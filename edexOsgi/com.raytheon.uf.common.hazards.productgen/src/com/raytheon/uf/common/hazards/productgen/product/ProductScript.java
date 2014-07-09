@@ -83,6 +83,8 @@ public class ProductScript extends PythonScriptController {
 
     private static final String DATA_LIST = "dataList";
 
+    private static final String PREV_DATA_LIST = "prevDataList";
+
     /** Executing method in the python module */
     private static final String METHOD_NAME = "execute";
 
@@ -187,14 +189,20 @@ public class ProductScript extends PythonScriptController {
      */
     public GeneratedProductList updateGeneratedProducts(String product,
             List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList,
+            List<LinkedHashMap<KeyInfo, Serializable>> prevDataList,
             String[] formats) {
 
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(DATA_LIST, updatedDataList);
+        args.put(PREV_DATA_LIST, prevDataList);
         args.put(FORMATS, Arrays.asList(formats));
         GeneratedProductList retVal = null;
         try {
+            if (!isInstantiated(product)) {
+                instantiatePythonScript(product);
+            }
+
             retVal = (GeneratedProductList) execute(UPDATE_METHOD, INTERFACE,
                     args);
         } catch (JepException e) {

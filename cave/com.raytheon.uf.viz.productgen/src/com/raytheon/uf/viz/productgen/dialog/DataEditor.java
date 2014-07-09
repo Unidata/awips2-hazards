@@ -36,6 +36,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Composite;
 
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
@@ -109,18 +112,28 @@ public class DataEditor {
             handler.info("There are no editable fields. The data editor cannot be created.");
             return;
         }
+        // Setting up the scroller composite and the layouts
+        ScrolledComposite scrollerComposite = new ScrolledComposite(comp,
+                SWT.BORDER | SWT.V_SCROLL);
+        ProductEditor.setLayoutInfo(scrollerComposite, 1, false, SWT.FILL,
+                SWT.FILL, true, true, new Point(ProductEditor.ENTRY_PANE_WIDTH,
+                        ProductEditor.ENTRY_PANE_HEIGHT));
+        Composite parent = new Composite(scrollerComposite, SWT.BORDER);
+        ProductEditor.setLayoutInfo(parent, 1, false, SWT.FILL, SWT.FILL, true,
+                true, null);
 
         List<KeyInfo> keyInfos = new ArrayList<>();
         Map<KeyInfo, Object> valuesForKeyInfos = new HashMap<>();
         for (KeyInfo key : new ArrayList<>(editableKeyInfoMap.keySet())) {
             keyInfos.add(key);
-            valuesForKeyInfos.put(key, editableKeyInfoMap.get(key).value);
+            EditableKeyInfo editableKeyInfo = editableKeyInfoMap.get(key);
+            valuesForKeyInfos.put(key, editableKeyInfo.value);
         }
 
         try {
             // Use factory to create megawidgets
             ParametersEditorFactory factory = new ParametersEditorFactory();
-            manager = factory.buildParametersEditor(comp, keyInfos,
+            manager = factory.buildParametersEditor(parent, keyInfos,
                     valuesForKeyInfos, System.currentTimeMillis()
                             - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
@@ -173,6 +186,13 @@ public class DataEditor {
         } catch (MegawidgetException e) {
             handler.error("Error creating megawidets", e);
         }
+
+        scrollerComposite.setExpandHorizontal(true);
+        scrollerComposite.setExpandVertical(true);
+        scrollerComposite.setContent(parent);
+        scrollerComposite.setMinSize(parent.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT));
+        scrollerComposite.layout();
     }
 
     /**
@@ -214,8 +234,8 @@ public class DataEditor {
                 /*
                  * need to increment - going down another level
                  */
-                int index = keyInfo.getIndex();
                 KeyInfo nextKey = path.get(++counter);
+                int index = nextKey.getIndex();
                 List<?> list = (ArrayList<?>) currentValue;
 
                 if (list.get(index) instanceof Map<?, ?>) {
@@ -303,16 +323,16 @@ public class DataEditor {
     }
 
     /**
-     * Returns one modified value
+     * Returns the last modified value
      * 
      * @return
      */
     public Serializable getOneModifiedValue() {
         Serializable value = null;
         for (KeyInfo keyInfo : editableKeyInfoMap.keySet()) {
-            value = getModifiedValue(keyInfo, false);
-            if (value != null) {
-                break;
+            Serializable modifiedValue = getModifiedValue(keyInfo, false);
+            if (modifiedValue != null) {
+                value = modifiedValue;
             }
         }
         return value;
@@ -369,31 +389,24 @@ public class DataEditor {
         if (data != null) {
             for (Entry<KeyInfo, Serializable> entry : data.entrySet()) {
                 KeyInfo key = entry.getKey();
+                Serializable entryValue = entry.getValue();
                 boolean isEditable = key.isEditable();
                 boolean isDisplayable = key.isDisplayable();
 
-                if (isDisplayable) {
-                    EditableKeyInfo info = new EditableKeyInfo();
-                    info.isDisplayable = true;
-                    info.value = entry.getValue();
-                    info.originalValue = entry.getValue();
-                    editableKeyInfoMap.put(key, info);
-                    continue;
-                }
-
-                if (isEditable) {
+                key.setIndex(index);
+                if (isEditable || isDisplayable) {
                     EditableKeyInfo info = new EditableKeyInfo();
                     info.path = parentPath;
                     info.value = entry.getValue();
                     info.originalValue = entry.getValue();
-                    key.setIndex(index);
+                    info.isDisplayable = isDisplayable;
                     editableKeyInfoMap.put(key, info);
-                } else if (entry.getValue() instanceof Map<?, ?>) {
+                } else if (entryValue instanceof Map<?, ?>) {
                     Map<KeyInfo, Serializable> subdata = (Map<KeyInfo, Serializable>) entry
                             .getValue();
                     determineEditableKeyPaths(createPath(parentPath, key),
                             subdata, 0);
-                } else if (entry.getValue() instanceof ArrayList) {
+                } else if (entryValue instanceof ArrayList) {
                     List<Serializable> list = (ArrayList<Serializable>) entry
                             .getValue();
                     determineEditableKeyPaths(createPath(parentPath, key), list);

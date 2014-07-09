@@ -29,6 +29,7 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationFile;
@@ -57,6 +58,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.uf.viz.recommenders.interactive.InteractiveRecommenderEngine;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Implementation of ISessionManager.
@@ -310,6 +312,9 @@ public class SessionManager implements ISessionManager<ObservedHazardEvent> {
                 }
             }
         }
+
+        String mode = CAVEMode.getMode().toString();
+        ProductDataUtil.deleteProductData(mode, null, null);
     }
 
     @Override

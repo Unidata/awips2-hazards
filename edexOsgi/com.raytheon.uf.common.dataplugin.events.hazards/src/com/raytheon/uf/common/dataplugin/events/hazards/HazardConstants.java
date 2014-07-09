@@ -52,6 +52,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Mar 3, 2014  3034    bkowal      Added a constant for the gfe interoperability flag
  * Jun 17, 2014  3982     Chris.Golden  Changed megawidget "side effects" to "interdependencies".
+ * Apr 23,2014  1480    jsanchez    Added CORRECTION_FLAG
  * </pre>
  * 
  * @author mnash
@@ -145,7 +146,8 @@ public final class HazardConstants {
     }
 
     public static enum HazardAction {
-        PROPOSE("Propose"), PREVIEW("Preview"), ISSUE("Issue");
+        PROPOSE("Propose"), PREVIEW("Preview"), ISSUE("Issue"), CORRECT(
+                "Correct");
 
         private final String value;
 
@@ -488,6 +490,8 @@ public final class HazardConstants {
      * The following are related to product generation.
      */
     public static final String ISSUE_FLAG = "issueFlag";
+
+    public static final String CORRECTION_FLAG = "correctionFlag";
 
     public static final String HEADLINE = "headline";
 

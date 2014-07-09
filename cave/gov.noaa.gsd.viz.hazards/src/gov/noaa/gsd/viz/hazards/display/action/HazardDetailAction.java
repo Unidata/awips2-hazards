@@ -28,7 +28,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Bryon.Lawrence      Initial induction into repo
- * 
+ * Apr 23, 2014 1480       jsanchez     Added ActionType CORRECT.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -37,7 +37,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 public class HazardDetailAction {
 
     public enum ActionType {
-        PREVIEW, PROPOSE, ISSUE, UPDATE_TIME_RANGE, UPDATE_EVENT_TYPE, UPDATE_EVENT_METADATA
+        PREVIEW, PROPOSE, ISSUE, DISMISS, UPDATE_TIME_RANGE, UPDATE_EVENT_TYPE, UPDATE_EVENT_METADATA, REVIEW
     }
 
     private ActionType actionType;

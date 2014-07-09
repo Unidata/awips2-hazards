@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,9 +28,14 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import com.raytheon.uf.common.dataplugin.events.EventSet;
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -63,6 +69,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductInformation;
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - Update for move of JSONConverter
  * Feb 07, 2014 2890       bkowal      Product Generation JSON refactor.
  * Apr 29, 2014 3558       bkowal      Halt product generation if the user clicks "No" on the confirm issue dialog.
+ * Apr 23, 2014 1480       jsanchez    Added a generateReviewableProduct method.
  * 
  * </pre>
  * 
@@ -127,6 +134,58 @@ class HazardServicesProductGenerationHandler {
         Collection<ProductInformation> products = productManager
                 .getSelectedProducts();
         this.runProductGeneration(products, issue);
+    }
+
+    public void generateReviewableProduct(List<ProductData> result) {
+        ProductInformation productInformation = new ProductInformation();
+        synchronized (this.productGenerationAuditManager) {
+            final String productGenerationTrackingID = UUID.randomUUID()
+                    .toString();
+            ProductGenerationAuditor productGenerationAuditor = new ProductGenerationAuditor(
+                    false, productGenerationTrackingID);
+            productInformation.setGenerationID(productGenerationTrackingID);
+            productGenerationAuditor
+                    .addProductToBeGenerated(productInformation);
+            this.productGenerationAuditManager.put(productGenerationTrackingID,
+                    productGenerationAuditor);
+        }
+
+        if (result.size() > 0) {
+            List<LinkedHashMap<KeyInfo, Serializable>> updatedDataList = new ArrayList<LinkedHashMap<KeyInfo, Serializable>>();
+            EventSet<IEvent> eventSet = new EventSet<IEvent>();
+            for (ProductData productData : result) {
+
+                updatedDataList
+                        .add((LinkedHashMap<KeyInfo, Serializable>) productData
+                                .getData());
+
+                if (productInformation.getProductGeneratorName() == null) {
+                    String productGeneratorName = productData
+                            .getProductGeneratorName();
+                    productInformation
+                            .setProductGeneratorName(productGeneratorName);
+                    productInformation.setProductFormats(sessionManager
+                            .getConfigurationManager()
+                            .getProductGeneratorTable()
+                            .getProductFormats(productGeneratorName));
+
+                    for (Integer eventID : productData.getEventIDs()) {
+                        IHazardEvent hazardEvent = new HazardEvent();
+                        hazardEvent.setStartTime(productData.getStartTime());
+                        hazardEvent.setEventID(String.valueOf(eventID));
+                        eventSet.add(hazardEvent);
+                    }
+
+                    GeneratedProductList products = new GeneratedProductList();
+                    products.setEventSet(eventSet);
+                    productInformation.setProducts(products);
+                }
+            }
+
+            this.productManager.generateProductReview(productInformation,
+                    updatedDataList);
+        }
+
     }
 
     /**

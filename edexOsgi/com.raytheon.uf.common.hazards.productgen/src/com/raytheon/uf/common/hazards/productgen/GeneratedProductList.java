@@ -36,7 +36,8 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
  * ------------ ---------- ----------- --------------------------
  * Oct 29, 2013  2266      jsanchez     Initial creation
  * Feb 07, 2014  2890      bkowal      Fix serializable warning.
- * 
+ * Apr 23, 2014  1480      jsanchez    Added isCorrection attribute.
+ * Jun  3, 2014  1480      jsanchez    Added a copy constructor.
  * </pre>
  * 
  * @author jsanchez
@@ -50,6 +51,26 @@ public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
     private String productInfo;
 
     private EventSet<IEvent> eventSet;
+
+    private boolean isCorrectable;
+
+    public GeneratedProductList() {
+
+    }
+
+    /**
+     * Copy constructor.
+     * 
+     * @param generatedProductList
+     */
+    public GeneratedProductList(GeneratedProductList generatedProductList) {
+        this.productInfo = generatedProductList.getProductInfo();
+        this.isCorrectable = generatedProductList.isCorrectable();
+        this.eventSet = generatedProductList.getEventSet();
+        for (IGeneratedProduct generatedProduct : generatedProductList) {
+            add(new GeneratedProduct(generatedProduct));
+        }
+    }
 
     public String getProductInfo() {
         return productInfo;
@@ -67,4 +88,11 @@ public class GeneratedProductList extends ArrayList<IGeneratedProduct> {
         this.eventSet = eventSet;
     }
 
+    public boolean isCorrectable() {
+        return isCorrectable;
+    }
+
+    public void setCorrectable(boolean isCorrectable) {
+        this.isCorrectable = isCorrectable;
+    }
 }

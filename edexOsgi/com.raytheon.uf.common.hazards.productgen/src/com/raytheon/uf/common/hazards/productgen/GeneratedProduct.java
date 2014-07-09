@@ -20,9 +20,11 @@
 package com.raytheon.uf.common.hazards.productgen;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * 
@@ -62,6 +64,46 @@ public class GeneratedProduct implements IGeneratedProduct, ITextProduct {
 
     public GeneratedProduct(String productID) {
         this.productID = productID;
+    }
+
+    public GeneratedProduct(IGeneratedProduct generatedProduct) {
+        this.productID = generatedProduct.getProductID();
+        this.entries = generatedProduct.getEntries();
+        this.editableEntries = generatedProduct.getEditableEntries();
+        this.data = deepCopyHashMap(generatedProduct.getData());
+    }
+
+    private LinkedHashMap<KeyInfo, Serializable> deepCopyHashMap(
+            LinkedHashMap<KeyInfo, Serializable> map) {
+        LinkedHashMap<KeyInfo, Serializable> data = new LinkedHashMap<KeyInfo, Serializable>();
+        for (Entry<KeyInfo, Serializable> entry : map.entrySet()) {
+            KeyInfo key = entry.getKey();
+            Serializable value = entry.getValue();
+            if (value instanceof Map) {
+                data.put(key,
+                        deepCopyHashMap((LinkedHashMap<KeyInfo, Serializable>) value));
+            } else if (value instanceof List) {
+                data.put(key, deepCopyArrayList((ArrayList<Serializable>) value));
+            } else {
+                data.put(key, value);
+            }
+        }
+
+        return data;
+    }
+
+    private ArrayList<Serializable> deepCopyArrayList(ArrayList<Serializable> list) {
+        ArrayList<Serializable> data = new ArrayList<Serializable>();
+        for (Serializable item : list) {
+            if (item instanceof Map) {
+                data.add(deepCopyHashMap((LinkedHashMap<KeyInfo, Serializable>) item));
+            } else if (item instanceof List) {
+                data.add(deepCopyArrayList((ArrayList<Serializable>) item));
+            } else {
+                data.add(item);
+            }
+        }
+        return data;
     }
 
     @Override

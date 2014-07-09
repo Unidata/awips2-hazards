@@ -10,4 +10,5 @@ Require-Bundle: com.raytheon.uf.edex.database;bundle-version="1.0.0",
  com.raytheon.uf.common.hazards.productgen;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin;bundle-version="1.12.1174",
  com.raytheon.uf.common.status;bundle-version="1.12.1174",
- com.raytheon.uf.edex.core;bundle-version="1.12.1174"
+ com.raytheon.uf.edex.core;bundle-version="1.12.1174",
+ com.raytheon.uf.common.dataquery;bundle-version="1.0.0"

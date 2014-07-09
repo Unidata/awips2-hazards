@@ -35,7 +35,7 @@ from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 
 class KeyInfo(JUtil.JavaWrapperClass):
     
-    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False, label=None, required=False):
+    def __init__(self, name, productCategory=None, productID=None, eventIDs=[], segment=None, editable=False, displayable=False, label=None, required=False, index=0):
         self.name = name
         self.productCategory = productCategory
         self.productID = productID
@@ -55,7 +55,8 @@ class KeyInfo(JUtil.JavaWrapperClass):
         # This should be refactored after the ParametersEditorFactory
         # can receive a KeyInfo class.
         if required:
-            self.label = label + '*'
+            self.label = label + '*'          
+        self.index = index
     
     def getName(self):
         return self.name
@@ -80,12 +81,15 @@ class KeyInfo(JUtil.JavaWrapperClass):
     
     def getLabel(self):
         return self.label
+    
+    def getIndex(self):
+        return self.index
 
     def __hash__(self):
         return hash((self.name, self.productCategory, self.productID, self.eventIDs, self.segment))
     
     def __eq__(self, other):
-        return (self.name, self.productCategory, self.productID, self.getEventIDs(), self.segment) == (other.getName(), other.getProductCategory(), other.getProductID(), other.getEventIDs(), other.getSegment())
+        return (self.name, self.productCategory, self.productID, self.getEventIDs(), self.segment, self.index) == (other.getName(), other.getProductCategory(), other.getProductID(), other.getEventIDs(), other.getSegment(), other.getIndex())
     
     def __str__(self):
         string = 'Name: ' + self.name + \
@@ -107,6 +111,7 @@ class KeyInfo(JUtil.JavaWrapperClass):
         keyInfo.setDisplayable(self.displayable)
         keyInfo.setLabel(self.label)
         keyInfo.setRequired(self.required)
+        keyInfo.setIndex(self.index)
         
         return keyInfo
     
@@ -120,6 +125,9 @@ class KeyInfo(JUtil.JavaWrapperClass):
                 elements.append(key)    
             
         return elements
+    
+    def __repr__(self):
+        return self.name
     
 
     
