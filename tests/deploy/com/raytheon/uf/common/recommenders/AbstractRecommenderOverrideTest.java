@@ -19,15 +19,19 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import java.io.Serializable;
-import java.util.Map;
-
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -69,7 +73,7 @@ public abstract class AbstractRecommenderOverrideTest extends
         this.expectedKeyValue = expectedKeyValue;
     }
 
-    @Test
+    @Ignore
     public void run() {
         super.runRecommender(this.recommenderName, this.getPythonJobListener());
         while (proceed == false) {
@@ -77,7 +81,7 @@ public abstract class AbstractRecommenderOverrideTest extends
         }
     }
 
-    @Test
+    @Ignore
     public void runGetDialogInfo() {
         Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
         assertNotNull(vals);
@@ -85,7 +89,7 @@ public abstract class AbstractRecommenderOverrideTest extends
                 equalTo(this.expectedKeyValue));
     }
 
-    @Test
+    @Ignore
     public void runGetSpatialInfo() {
         Map<String, Serializable> vals = getDialogInfo(this.recommenderName);
         assertNotNull(vals);

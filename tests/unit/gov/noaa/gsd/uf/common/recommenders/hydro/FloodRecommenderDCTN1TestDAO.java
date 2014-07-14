@@ -478,7 +478,6 @@ public class FloodRecommenderDCTN1TestDAO implements IFloodDAO {
                         "NGVD 1929", null, 33, 1010, "2013-02-17", null, 0, "T" });
         return riverStatInfo;
     }
-
     @Override
     public String getPhysicalElement(String lid, String physicalElement,
             int duration, String typeSource, String extremum, String timeArg,
