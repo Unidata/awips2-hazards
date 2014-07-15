@@ -65,5 +65,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/org.apache.commons.lang"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.hamcrest"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.viz.core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataaccess"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
