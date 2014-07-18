@@ -28,6 +28,11 @@ import inspect
 import glob
 import traceback
 
+# Thrift client interface to localization files in EDEX is broken for now,
+# so force localization file access from the code base in order to get
+# the VTEC tests to function.
+os.environ["LOCALIZATION_DATA_SOURCE"] = "CODE"
+
 # use updateSysPath module in ../python_Tests/ to bootstrap python paths
 import sys
 sourcePath = os.path.abspath(inspect.getsourcefile(lambda _: None))

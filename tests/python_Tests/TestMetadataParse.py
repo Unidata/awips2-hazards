@@ -30,7 +30,7 @@ def setUpCore():
     # applied, but any imports will always be handled through standard python
     # import mechanism, and so will always only see the base level file.
     rootPaths = [ "*",
-              "edexOsgi/gov.noaa.gsd.uf.common.dataplugin.hazards/utility"+\
+              "common/gov.noaa.gsd.uf.common.dataplugin.hazards/utility"+\
               "/common_static/base/hazardServices/hazardMetaData" ]
     baselinePaths = [ "edexOsgi/com.raytheon.uf.tools.cli/impl/src", \
                       "pythonPackages/ufpy",
@@ -38,7 +38,7 @@ def setUpCore():
               "/common_static/base/python" ]
     rootDir = updateSysPath(fromRoot=rootPaths, fromSibling=baselinePaths)
     metaRoot = rootDir+\
-       "/edexOsgi/gov.noaa.gsd.uf.common.dataplugin.hazards/utility/"+ \
+       "/common/gov.noaa.gsd.uf.common.dataplugin.hazards/utility/"+ \
        "common_static/base"
     setTestCaseLocation(metaRoot, "hazardServices/hazardMetaData", "*.py")
     from LocalizationInterface import LocalizationInterface

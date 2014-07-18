@@ -63,8 +63,10 @@ def constructPaths(rootPath, relPaths, default='.') :
 # any relative paths provided NOT have either a leading or trailing /.
 # The root directory is located by steping upward through the directory
 # structure from where this source code file is until a directory is
-# encountered with a basename of 'edexOsgi', and then the root is assumed to
-# be the next step up.
+# encountered with a subdirectory of 'common', and then the root is assumed to
+# be that directory.  This is not as unambiguous as the previous trigger of
+# 'edexOsgi', so we need to be on the lookout for unexpected behavior going
+# forward.
 # fromRoot specifies a path or list of paths relative to the root directory
 # to add to the sys.path data structure.  Default value of fromRoot, as well
 # as a literal "*", will trigger adding all subdirectories under the root
@@ -127,15 +129,15 @@ def updateSysPath(fromRoot=None, fromHere=None,
     rootPart = nparts-stepsBelowRoot
     if rootPart>0 :
         rootDir = "/"+"/".join(pathList[0:rootPart])
-        byAutoRoot = not os.path.isdir(rootDir+"/edexOsgi")
+        byAutoRoot = not os.path.isdir(rootDir+"/common")
         if byAutoRoot and rootPart<nparts :
             rootPart += 1
             rootDir = "/"+"/".join(pathList[0:rootPart])
-            byAutoRoot = not os.path.isdir(rootDir+"/edexOsgi")
+            byAutoRoot = not os.path.isdir(rootDir+"/common")
         if byAutoRoot and rootPart>1 :
             rootPart -= 2
             rootDir = "/"+"/".join(pathList[0:rootPart])
-            byAutoRoot = not os.path.isdir(rootDir+"/edexOsgi")
+            byAutoRoot = not os.path.isdir(rootDir+"/common")
     else :
         byAutoRoot = True
 

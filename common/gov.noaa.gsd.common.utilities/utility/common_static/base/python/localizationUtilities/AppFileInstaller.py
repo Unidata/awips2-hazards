@@ -37,7 +37,8 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.plugin.nwsauth.user import 
 
 # NOTE, THE LOGIC THAT ALLOWS STANDALONE UNIT TESTS TO RETRIEVE BASE LEVEL
 # LOCALIZATION FILES OUT OF THE CODE BASE IS COMPLETELY DEPENDENT ON THIS
-# MODULE BEING PHYSICALLY LOCATED SOMEWHERE UNDER .../edexOsgi/.
+# MODULE BEING PHYSICALLY LOCATED SOMEWHERE UNDER THE TOP LEVEL REPOSITORY
+# SUBDIRECTORY NAMED .../common/.
 
 from ufpy import ThriftClient
 try:
@@ -73,7 +74,7 @@ class AppFileInstaller():
 
     # Returns a boolean that specifies whether to use EDEX to retrieve
     # localization files.  This only works if this code actually resides
-    # somewhere under edexOsgi.
+    # somewhere under the top level repository subdirectory named .../common/.
     def __checkIfUsingEdex(self) :
         global myBranchAFI
         global siblingBranchAFI
@@ -120,14 +121,14 @@ class AppFileInstaller():
             me = here+"/"+me
 
         # Break this path into its individual directory parts and locate the
-        # edexOsgi/ part.
+        # common/ part.
         pathList = []
         pathParts = me.split("/")
         m = len(pathParts)-1
         basename = pathParts[m]
         pathParts = pathParts[:m]
         nparts = 0
-        edexOsgiPart = -1
+        commonPart = -1
         ok = False
         for part in pathParts :
             if part == '.' :
@@ -135,15 +136,15 @@ class AppFileInstaller():
             elif part == '..' :
                 nparts = nparts - 1
                 pathList = pathList[0:nparts]
-            elif part == "edexOsgi" :
-                edexOsgiPart = nparts
+            elif part == "common" :
+                commonPart = nparts
                 break
             elif len(part)>0 :
                 nparts = nparts + 1
                 pathList.append(part)
 
-        # No edexOsgi found, force an exception throw from ctor.
-        if edexOsgiPart < 1 :
+        # No common found, force an exception throw from ctor.
+        if commonPart < 1 :
             self.__context = None
             return False
 
@@ -155,7 +156,9 @@ class AppFileInstaller():
         except :
             pass
 
-        # Attempt to locate the proper sibling branch.
+        # Attempt to locate the proper sibling branch, which apparently
+        # is still using edexOsgi for the top of its localization file
+        # heirarchy.
         cmd = 'find /'+"/".join(pathList[:-1])+' -mindepth 2 -maxdepth 2 '+ \
               '-type d ! -path "*/.*" -name edexOsgi | grep -v '+myBranchAFI
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
@@ -195,7 +198,7 @@ class AppFileInstaller():
         # directories that carry hazardServices EDEX installable files, putting
         # the test package first on the list so unit tests prefer that.
         if myBranchOsgiPkgs == None :
-            cmd = "find "+myBranchAFI+"/edexOsgi/ "+ \
+            cmd = "find "+myBranchAFI+"/common/ "+myBranchAFI+"/edex/ "+ \
                   " -maxdepth 1 -mindepth 1 -type d"
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
