@@ -14,5 +14,5 @@
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="gov.noaa.gsd.viz.megawidgets.MegawidgetTest"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="TimeScaleWithNoTimeDescriptors.json"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="tests-Hazard_Services"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.library.path=${env_var:ADE}/AWIPS2_baseline/cots/org.jep.linux64"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.library.path=${env_var:ADE}/ufcore-foss/lib/org.jep.linux64"/>
 </launchConfiguration>

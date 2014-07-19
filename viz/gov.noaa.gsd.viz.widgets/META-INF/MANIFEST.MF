@@ -5,5 +5,5 @@ Bundle-SymbolicName: gov.noaa.gsd.viz.widgets
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: GSD
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
-Require-Bundle: org.eclipse.swt;bundle-version="3.6.1"
+Require-Bundle: org.eclipse.swt;bundle-version="3.8.1"
 Export-Package: gov.noaa.gsd.viz.widgets

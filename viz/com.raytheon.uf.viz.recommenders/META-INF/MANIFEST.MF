@@ -7,7 +7,7 @@ Bundle-Activator: com.raytheon.uf.viz.recommenders.Activator
 Bundle-Vendor: RAYTHEON
 Eclipse-BuddyPolicy: registered, ext, global
 Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.swt;bundle-version="3.6.1",
+ org.eclipse.swt,
  org.jep;bundle-version="1.0.0",
  com.raytheon.uf.common.recommenders;bundle-version="1.0.0",
  com.raytheon.uf.common.dataplugin.events;bundle-version="1.0.0",
@@ -16,7 +16,7 @@ Require-Bundle: org.eclipse.core.runtime,
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.dataaccess;bundle-version="1.0.0",
  com.raytheon.uf.viz.localization;bundle-version="1.12.1174",
- org.eclipse.jface;bundle-version="3.6.1",
+ org.eclipse.jface,
  com.raytheon.uf.common.util;bundle-version="1.12.1174",
  org.apache.velocity;bundle-version="1.7.0",
  com.raytheon.uf.viz.core;bundle-version="1.12.1174",
